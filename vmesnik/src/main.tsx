@@ -7,6 +7,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { App } from './App'
 import { AvtentikacijaPonudnik } from './avtentikacija/AvtentikacijaKontekst'
+/* Lokalno vgrajeni spremenljivi pisavi (brez zunanjih klicev - deluje tudi
+   brez interneta v dvorani). Archivo za naslove/rezultate, Manrope za besedilo. */
+import '@fontsource-variable/archivo'
+import '@fontsource-variable/manrope'
 import './slog.css'
 
 const odjemalecPoizvedb = new QueryClient({

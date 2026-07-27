@@ -78,7 +78,7 @@ function MiniLestvica({
   if (!vrstice || vrstice.length === 0) return <p className="obvestilo">Še ni igralcev.</p>
 
   return (
-    <table className="tabela lestvica domov__lestvica">
+    <table className="tabela lestvica domov__lestvica lestvica--razvrstitev">
       <tbody>
         {vrstice.slice(0, 10).map((v, indeks) => (
           <tr key={v.idIgralca}>

@@ -14,48 +14,74 @@
 /* ---------- 1. Spremenljivke in osnove ---------- */
 
 :root {
-  /* Osnovna paleta: umirjena modra + oranzen poudarek (zogica). */
-  --barva-poudarek: #2563eb;
-  --barva-poudarek-temna: #1d4ed8;
-  --barva-poudarek-blaga: #e8edfb;
-  --barva-oranzna: #ea580c;
-  --barva-ozadje: #eef1f6;
+  /* --- Pisavi (lokalno vgrajeni, spremenljivi) ---
+     Archivo za naslove in velike rezultate (sportni znacaj, lahko razsirjen),
+     Manrope za besedilo in tabele (cist, dobre tabularne stevilke). */
+  --pisava-besedilo: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --pisava-naslov: 'Archivo Variable', var(--pisava-besedilo);
+
+  /* --- Paleta (svetla tema) ---
+     Osnova mornarsko-modra, glavni poudarek modro-zelena (teal), uporabljena
+     ZADRZANO. Oranzna zogica le kot iskra: "v zivo", zmagovalec, poudarek
+     rezultata - nikjer drugje. */
+  --barva-poudarek: #0a7885;        /* teal: povezave, aktivno, glavni gumbi */
+  --barva-poudarek-temna: #075e69;  /* hover (svetla tema potemni) */
+  --barva-poudarek-blaga: #d9edef;  /* blaga podlaga poudarka */
+  --barva-poudarek-ziv: #12b0bd;    /* zivahen cyan za drobne poudarke, graf */
+  --barva-na-poudarku: #ffffff;     /* besedilo na poudarku (gumbi) */
+  --barva-ink: #0b1f3a;             /* globoka mornarska: semafor, hero */
+  --barva-ink-2: #14315a;
+  --barva-oranzna: #f5601f;         /* iskra */
+
+  --barva-ozadje: #edf1f7;
   --barva-povrsina: #ffffff;
-  --barva-povrsina-2: #f7f9fc;
-  --barva-crta: #dbe1ea;
-  --barva-besedilo: #1e293b;
-  --barva-besedilo-blago: #64748b;
-  --barva-napaka-ozadje: #fef2f2;
-  --barva-napaka: #b91c1c;
-  --barva-napaka-crta: #fecaca;
-  --barva-zmaga-ozadje: #ecfdf3;
-  --barva-napreduje-ozadje: #eff6ff;
-  --barva-uspeh: #15803d;
-  --senca: 0 1px 3px rgb(15 23 42 / 0.08);
-  --senca-dvig: 0 12px 40px rgb(15 23 42 / 0.22);
-  --zaokrozitev: 12px;
+  --barva-povrsina-2: #f4f7fb;
+  --barva-crta: #dde4ef;
+  --barva-besedilo: #0f1e33;
+  --barva-besedilo-blago: #5c6b82;
+
+  --barva-napaka-ozadje: #fdecee;
+  --barva-napaka: #c62a3c;
+  --barva-napaka-crta: #f4c7cd;
+  --barva-zmaga-ozadje: #e7f6ec;
+  --barva-napreduje-ozadje: #e6f3f5;
+  --barva-uspeh: #1f9d57;            /* zmaga / pozitiven ELO (locen od teala) */
+  --neg: #d63b47;
+
+  --senca: 0 1px 2px rgb(11 31 58 / 0.06), 0 2px 8px rgb(11 31 58 / 0.06);
+  --senca-dvig: 0 22px 55px rgb(11 31 58 / 0.30);
+  --zaokrozitev: 14px;
+  --zaokrozitev-s: 9px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --barva-poudarek: #60a5fa;
-    --barva-poudarek-temna: #3b82f6;
-    --barva-poudarek-blaga: #1e2a44;
-    --barva-oranzna: #fb923c;
-    --barva-ozadje: #0f172a;
-    --barva-povrsina: #1b2537;
-    --barva-povrsina-2: #172032;
-    --barva-crta: #334155;
-    --barva-besedilo: #e2e8f0;
-    --barva-besedilo-blago: #94a3b8;
-    --barva-napaka-ozadje: #3a1a1a;
-    --barva-napaka: #fca5a5;
-    --barva-napaka-crta: #7f1d1d;
-    --barva-zmaga-ozadje: #16311f;
-    --barva-napreduje-ozadje: #17263f;
-    --barva-uspeh: #4ade80;
-    --senca: 0 1px 3px rgb(0 0 0 / 0.45);
-    --senca-dvig: 0 12px 40px rgb(0 0 0 / 0.6);
+    --barva-poudarek: #2fc2ce;        /* svetlejsi teal za temno podlago */
+    --barva-poudarek-temna: #4ad2dd;  /* hover (temna tema posvetli) */
+    --barva-poudarek-blaga: #103038;
+    --barva-poudarek-ziv: #3fd6e2;
+    --barva-na-poudarku: #06232a;     /* temno besedilo na svetlem tealu */
+    --barva-ink: #0a1a30;
+    --barva-ink-2: #14315a;
+    --barva-oranzna: #ff7a45;
+
+    --barva-ozadje: #0a1422;
+    --barva-povrsina: #111f33;
+    --barva-povrsina-2: #0e1a2b;
+    --barva-crta: #26374f;
+    --barva-besedilo: #e7edf6;
+    --barva-besedilo-blago: #90a1ba;
+
+    --barva-napaka-ozadje: #35171d;
+    --barva-napaka: #ff8a94;
+    --barva-napaka-crta: #7f2530;
+    --barva-zmaga-ozadje: #10301f;
+    --barva-napreduje-ozadje: #0f2b33;
+    --barva-uspeh: #45cc82;
+    --neg: #ff6b78;
+
+    --senca: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 10px rgb(0 0 0 / 0.4);
+    --senca-dvig: 0 22px 55px rgb(0 0 0 / 0.62);
   }
 }
 
@@ -65,21 +91,26 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--pisava-besedilo);
   background: var(--barva-ozadje);
   color: var(--barva-besedilo);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-h1 { font-size: 1.6rem; margin: 0; }
-h2 { font-size: 1.1rem; margin: 0; }
+h1, h2, h3 { font-family: var(--pisava-naslov); }
+h1 { font-size: 1.7rem; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 a { color: var(--barva-poudarek); }
 
 /* ---------- 2. Postavitev ---------- */
 
 .glava {
-  background: var(--barva-povrsina);
+  background: color-mix(in srgb, var(--barva-povrsina) 85%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
   border-bottom: 1px solid var(--barva-crta);
   position: sticky;
   top: 0;
@@ -94,16 +125,25 @@ a { color: var(--barva-poudarek); }
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  height: 58px;
+  height: 62px;
 }
 
 .glava__logotip {
-  font-weight: 700;
-  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--pisava-naslov);
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--barva-besedilo);
   white-space: nowrap;
 }
+
+/* Lasten znak (lopar + zogica) v glavi. */
+.logo-znak { display: block; flex: none; }
+.logo-znak__zogica { fill: var(--barva-oranzna); }
 
 .glava__navigacija {
   display: flex;
@@ -116,12 +156,13 @@ a { color: var(--barva-poudarek); }
   border-radius: 999px;
   text-decoration: none;
   color: var(--barva-besedilo-blago);
-  font-weight: 500;
+  font-weight: 600;
+  transition: color 0.15s, background 0.15s;
 }
 
 .glava__povezava:hover {
   color: var(--barva-besedilo);
-  background: var(--barva-ozadje);
+  background: var(--barva-povrsina-2);
 }
 
 .glava__povezava--aktivna,
@@ -142,6 +183,32 @@ a { color: var(--barva-poudarek); }
   font-size: 0.85rem;
   color: var(--barva-besedilo-blago);
   font-weight: 600;
+}
+
+/* Na telefonu naj se navigacija drsi vodoravno v eni vrstici (igralci jo
+   uporabljajo na mobilnem), namesto da se lomi v vec vrstic. */
+@media (max-width: 640px) {
+  .glava__vsebina { gap: 0.65rem; padding: 0 0.85rem; }
+  .glava__navigacija {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
+  }
+  .glava__navigacija::-webkit-scrollbar { display: none; }
+  .glava__povezava { padding: 0.35rem 0.7rem; }
+  .glava__oznaka-vloge { max-width: 7rem; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* Vidna oznaka fokusa za tipkovnico (dostopnost). */
+.gumb:focus-visible,
+.glava__povezava:focus-visible,
+.glava__logotip:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--barva-poudarek);
+  outline-offset: 2px;
+  border-radius: var(--zaokrozitev-s);
 }
 
 .vsebina {
@@ -213,31 +280,35 @@ a { color: var(--barva-poudarek); }
   border: 1px solid var(--barva-crta);
   background: var(--barva-povrsina);
   color: var(--barva-besedilo);
-  padding: 0.45rem 1rem;
-  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  border-radius: var(--zaokrozitev-s);
+  font-family: var(--pisava-besedilo);
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.05s;
 }
 
 .gumb:hover:not(:disabled) { border-color: var(--barva-poudarek); color: var(--barva-poudarek); }
+.gumb:active:not(:disabled) { transform: translateY(1px); }
 .gumb:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .gumb--glavni {
   background: var(--barva-poudarek);
   border-color: var(--barva-poudarek);
-  color: #fff;
+  color: var(--barva-na-poudarku);
 }
 
 .gumb--glavni:hover:not(:disabled) {
   background: var(--barva-poudarek-temna);
   border-color: var(--barva-poudarek-temna);
-  color: #fff;
+  color: var(--barva-na-poudarku);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--barva-poudarek) 40%, transparent);
 }
 
 .gumb--nevaren:hover:not(:disabled) { border-color: var(--barva-napaka); color: var(--barva-napaka); }
 
-.gumb--majhen { padding: 0.2rem 0.6rem; font-size: 0.8rem; }
+.gumb--majhen { padding: 0.25rem 0.65rem; font-size: 0.8rem; }
 
 /* Znacke statusov (PRIPRAVA / V_TEKU / ZAKLJUCEN). */
 .znacka {
@@ -249,9 +320,16 @@ a { color: var(--barva-poudarek); }
   white-space: nowrap;
 }
 
-.znacka--PRIPRAVA { background: #fef3c7; color: #b45309; }
+.znacka--PRIPRAVA { background: #fdf0d6; color: #a76a12; }
 .znacka--V_TEKU { background: #dcfce7; color: #15803d; }
 .znacka--ZAKLJUCEN { background: #e2e8f0; color: #475569; }
+
+/* Statusne znacke v temni temi (svetla ostane zgoraj). */
+@media (prefers-color-scheme: dark) {
+  .znacka--PRIPRAVA { background: #3a2c12; color: #e6b45c; }
+  .znacka--V_TEKU { background: #10301f; color: #56d98a; }
+  .znacka--ZAKLJUCEN { background: #1f2c3f; color: #9fb2c9; }
+}
 
 /* Znacka sistema tekmovanja. */
 .znacka--sistem {
@@ -328,6 +406,9 @@ section > .tabela {
 }
 
 .tabela tr:last-child td { border-bottom: none; }
+
+.tabela tbody tr { transition: background 0.12s; }
+.tabela tbody tr:hover { background: var(--barva-povrsina-2); }
 
 .tabela__dejanja {
   text-align: right;
@@ -472,7 +553,9 @@ input[type='checkbox'], input[type='radio'] {
 .modal__zastor {
   position: fixed;
   inset: 0;
-  background: rgb(15 23 42 / 0.5);
+  background: rgb(6 12 24 / 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -601,8 +684,8 @@ input[type='checkbox'], input[type='radio'] {
 .tekma--klikljiva { cursor: pointer; }
 
 .tekma--klikljiva:hover {
-  border-color: var(--barva-oranzna);
-  box-shadow: 0 2px 8px rgb(234 88 12 / 0.25);
+  border-color: var(--barva-poudarek);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--barva-poudarek) 30%, transparent);
 }
 
 .tekma__stran {
@@ -677,6 +760,12 @@ input[type='checkbox'], input[type='radio'] {
   font-weight: 700;
 }
 
+/* Odlicja za prve tri (samo globalna razvrstitev - modifikator, da se ne
+   pomesa s "napreduje" v skupinskih lestvicah). */
+.lestvica--razvrstitev tbody tr:nth-child(1) .lestvica__mesto { color: #d4a52a; font-weight: 800; }
+.lestvica--razvrstitev tbody tr:nth-child(2) .lestvica__mesto { color: #97a4b3; font-weight: 800; }
+.lestvica--razvrstitev tbody tr:nth-child(3) .lestvica__mesto { color: #c58a3d; font-weight: 800; }
+
 /* Skupine (sistem skupine + izlocilni). */
 .skupine {
   display: grid;
@@ -721,7 +810,7 @@ input[type='checkbox'], input[type='radio'] {
 .tekme-seznam__vrstica--klikljiva { cursor: pointer; }
 
 .tekme-seznam__vrstica--klikljiva:hover {
-  border-color: var(--barva-oranzna);
+  border-color: var(--barva-poudarek);
 }
 
 .tekme-seznam__igralec { min-width: 0; }
@@ -775,43 +864,50 @@ input[type='checkbox'], input[type='radio'] {
   overflow: hidden;
 }
 
+/* Semafor: navy hero v obeh temah, zato so barve besedila tu izrecno svetle. */
 .dvoboj__glava {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1rem;
-  padding: 1.5rem 1.25rem;
-  background: var(--barva-povrsina-2);
-  border-bottom: 1px solid var(--barva-crta);
+  padding: 1.75rem 1.25rem;
+  background: linear-gradient(135deg, var(--barva-ink), var(--barva-ink-2));
+  border-bottom: none;
+  color: #eaf1fb;
 }
 
 .dvoboj__igralec { text-align: center; }
 .dvoboj__igralec:first-child { text-align: left; }
 .dvoboj__igralec:last-child { text-align: right; }
 
-.dvoboj__ime { font-weight: 700; font-size: 1.05rem; }
-.dvoboj__klub { color: var(--barva-besedilo-blago); font-size: 0.85rem; }
-.dvoboj__rating { color: var(--barva-poudarek); font-size: 0.82rem; font-weight: 600; }
+.dvoboj__ime { font-family: var(--pisava-naslov); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em; }
+.dvoboj__klub { color: #9db4d6; font-size: 0.85rem; }
+.dvoboj__rating { color: var(--barva-poudarek-ziv); font-size: 0.82rem; font-weight: 700; }
 
 .dvoboj__izid { text-align: center; }
 
 .dvoboj__stevilo {
-  font-size: 2rem;
+  font-family: var(--pisava-naslov);
+  font-size: 2.6rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   display: flex;
   gap: 0.4rem;
   justify-content: center;
-  color: var(--barva-besedilo-blago);
+  color: #ffffff;
 }
 
-.dvoboj__vodi { color: var(--barva-poudarek); }
-.dvoboj__crtica { color: var(--barva-crta); }
+.dvoboj__vodi { color: var(--barva-poudarek-ziv); }
+.dvoboj__crtica { color: #3a5480; }
 
 .dvoboj__oznaka {
-  font-size: 0.8rem;
-  color: var(--barva-besedilo-blago);
-  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9db4d6;
+  margin-top: 0.4rem;
 }
 
 .dvoboj__tabela { font-size: 0.88rem; }
@@ -822,24 +918,30 @@ input[type='checkbox'], input[type='radio'] {
 
 .podij {
   display: flex;
-  gap: 1rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 
 .podij__mesto {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.7rem;
   background: var(--barva-povrsina);
   border: 1px solid var(--barva-crta);
+  border-top: 3px solid var(--barva-crta);
   border-radius: var(--zaokrozitev);
   box-shadow: var(--senca);
-  padding: 0.6rem 1rem;
+  padding: 0.7rem 1.1rem;
 }
 
-.podij__stevilka { font-size: 1.4rem; }
-.podij__ime { font-weight: 700; }
+/* Odlicja: barvni zgornji rob (in blag preliv za zmagovalca). */
+.podij__mesto:nth-child(1) { border-top-color: #d4a52a; background: color-mix(in srgb, #d4a52a 9%, var(--barva-povrsina)); }
+.podij__mesto:nth-child(2) { border-top-color: #97a4b3; }
+.podij__mesto:nth-child(3) { border-top-color: #c58a3d; }
+
+.podij__stevilka { font-size: 1.55rem; line-height: 1; }
+.podij__ime { font-family: var(--pisava-naslov); font-weight: 700; letter-spacing: -0.01em; }
 .podij__klub { color: var(--barva-besedilo-blago); font-size: 0.85rem; }
 
 /* ---------- 8. Sprememba ELO (znacka +16 / -16) ---------- */
@@ -922,7 +1024,7 @@ input[type='checkbox'], input[type='radio'] {
   margin-bottom: 0.35rem;
 }
 
-.enanaena__ime { font-weight: 700; font-size: 1.02rem; }
+.enanaena__ime { font-family: var(--pisava-naslov); font-weight: 700; font-size: 1.02rem; letter-spacing: -0.01em; }
 .enanaena__klub { color: var(--barva-poudarek); font-size: 0.85rem; font-weight: 600; }
 .enanaena__rating { color: var(--barva-besedilo-blago); font-size: 0.85rem; }
 
@@ -954,7 +1056,8 @@ input[type='checkbox'], input[type='radio'] {
 }
 
 .enanaena__stevilo {
-  font-size: 2.4rem;
+  font-family: var(--pisava-naslov);
+  font-size: 2.5rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   display: flex;
@@ -1197,6 +1300,7 @@ section > .enanaena__tabela {
 .liga__srecanje-ekipa { min-width: 0; }
 .liga__srecanje-ekipa--desno { text-align: right; }
 .liga__srecanje-izid {
+  font-family: var(--pisava-naslov);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--barva-besedilo-blago);
@@ -1213,8 +1317,10 @@ section > .enanaena__tabela {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1rem;
-  font-size: 1.15rem;
+  font-family: var(--pisava-naslov);
+  font-size: 1.2rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .srecanje__ekipa { min-width: 0; }
 .srecanje__ekipa--desno { text-align: right; }
@@ -1318,9 +1424,11 @@ section > .enanaena__tabela {
 }
 .kazalnik--poudarjen { border-color: var(--barva-poudarek); }
 .kazalnik__vrednost {
-  font-size: 1.35rem;
-  font-weight: 700;
+  font-family: var(--pisava-naslov);
+  font-size: 1.4rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 .kazalnik--poudarjen .kazalnik__vrednost { color: var(--barva-poudarek); }
 .kazalnik__oznaka {

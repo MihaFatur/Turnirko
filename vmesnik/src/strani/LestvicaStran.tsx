@@ -44,7 +44,7 @@ export function LestvicaStran() {
       )}
 
       {prikazani.length > 0 && (
-        <table className="tabela lestvica">
+        <table className="tabela lestvica lestvica--razvrstitev">
           <thead>
             <tr>
               <th className="lestvica__mesto">#</th>

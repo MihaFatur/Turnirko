@@ -42,7 +42,13 @@ export function Postavitev() {
       <header className="glava">
         <div className="glava__vsebina">
           <NavLink to="/" className="glava__logotip">
-            🏓 Turnirko
+            {/* Lasten znak: lopar (currentColor) + oranzna zogica kot iskra. */}
+            <svg className="logo-znak" width="27" height="27" viewBox="0 0 28 28" aria-hidden="true">
+              <path d="M14 25 L18 21" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
+              <circle cx="12" cy="12" r="8.5" fill="currentColor" />
+              <circle className="logo-znak__zogica" cx="21" cy="8" r="3.4" />
+            </svg>
+            Turnirko
           </NavLink>
           <nav className="glava__navigacija">
             {vidne.map((povezava) => (
