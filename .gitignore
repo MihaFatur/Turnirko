@@ -1,0 +1,15 @@
+# Maven / Java
+target/
+
+# Lokalna baza podatkov (nikoli v git - vsebuje osebne podatke!)
+podatki/
+*.db
+
+# Node (vmesnik)
+node_modules/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml

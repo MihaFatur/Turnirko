@@ -1,0 +1,156 @@
+/* Liga je sezonsko ekipno tekmovanje med klubi (SNTL, rekreacijske lige).
+   Konfiguracija je namenoma prilagodljiva: format srecanja, stevilo nizov,
+   prag zmag za konec srecanja, tockovanje in stetje v ELO se izberejo ob
+   ustvarjanju. Lige so lahko povezane (id_visja_liga) za prehode med sezonami. */
+package si.turnirko.modeli;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
+@Entity
+@Table(name = "liga")
+public class Liga {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "ime", nullable = false)
+    private String ime;
+
+    @Column(name = "sezona")
+    private String sezona;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "spol_kategorija", nullable = false)
+    private SpolKategorija spolKategorija;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "format_srecanja", nullable = false)
+    private FormatSrecanja formatSrecanja = FormatSrecanja.SNTL;
+
+    @Column(name = "stevilo_nizov", nullable = false)
+    private int steviloNizov = 5;
+
+    /* Prvi do N dobljenih tekem konca srecanje; null = odigrajo se vse tekme. */
+    @Column(name = "zmag_za_srecanje")
+    private Integer zmagZaSrecanje;
+
+    @Column(name = "dvokrozno", nullable = false)
+    private boolean dvokrozno = true;
+
+    @Column(name = "tocke_zmaga", nullable = false)
+    private int tockeZmaga = 2;
+
+    @Column(name = "tocke_neodloceno", nullable = false)
+    private int tockeNeodloceno = 1;
+
+    @Column(name = "tocke_poraz", nullable = false)
+    private int tockePoraz = 0;
+
+    @Column(name = "dovoljeno_neodloceno", nullable = false)
+    private boolean dovoljenoNeodloceno = true;
+
+    /* Igralec sme biti v kadru le ene ekipe v tej ligi. */
+    @Column(name = "prepoved_dvojne_registracije", nullable = false)
+    private boolean prepovedDvojneRegistracije = false;
+
+    /* Ali posamicne tekme lige stejejo v klubski ELO (dvojice nikoli). */
+    @Column(name = "steje_v_elo", nullable = false)
+    private boolean stejeVElo = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_visja_liga")
+    private Liga visjaLiga;
+
+    @Column(name = "st_napreduje", nullable = false)
+    private int stNapreduje = 0;
+
+    @Column(name = "st_izpade", nullable = false)
+    private int stIzpade = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private StatusTekmovanja status = StatusTekmovanja.PRIPRAVA;
+
+    @Version
+    @Column(name = "verzija", nullable = false)
+    private long verzija;
+
+    @Column(name = "ustvarjen_ob", nullable = false, updatable = false)
+    private LocalDateTime ustvarjenOb;
+
+    @PrePersist
+    void obShranjevanju() {
+        ustvarjenOb = LocalDateTime.now();
+    }
+
+    public Long getId() { return id; }
+
+    public String getIme() { return ime; }
+    public void setIme(String ime) { this.ime = ime; }
+
+    public String getSezona() { return sezona; }
+    public void setSezona(String sezona) { this.sezona = sezona; }
+
+    public SpolKategorija getSpolKategorija() { return spolKategorija; }
+    public void setSpolKategorija(SpolKategorija spolKategorija) { this.spolKategorija = spolKategorija; }
+
+    public FormatSrecanja getFormatSrecanja() { return formatSrecanja; }
+    public void setFormatSrecanja(FormatSrecanja formatSrecanja) { this.formatSrecanja = formatSrecanja; }
+
+    public int getSteviloNizov() { return steviloNizov; }
+    public void setSteviloNizov(int steviloNizov) { this.steviloNizov = steviloNizov; }
+
+    public Integer getZmagZaSrecanje() { return zmagZaSrecanje; }
+    public void setZmagZaSrecanje(Integer zmagZaSrecanje) { this.zmagZaSrecanje = zmagZaSrecanje; }
+
+    public boolean isDvokrozno() { return dvokrozno; }
+    public void setDvokrozno(boolean dvokrozno) { this.dvokrozno = dvokrozno; }
+
+    public int getTockeZmaga() { return tockeZmaga; }
+    public void setTockeZmaga(int tockeZmaga) { this.tockeZmaga = tockeZmaga; }
+
+    public int getTockeNeodloceno() { return tockeNeodloceno; }
+    public void setTockeNeodloceno(int tockeNeodloceno) { this.tockeNeodloceno = tockeNeodloceno; }
+
+    public int getTockePoraz() { return tockePoraz; }
+    public void setTockePoraz(int tockePoraz) { this.tockePoraz = tockePoraz; }
+
+    public boolean isDovoljenoNeodloceno() { return dovoljenoNeodloceno; }
+    public void setDovoljenoNeodloceno(boolean dovoljenoNeodloceno) { this.dovoljenoNeodloceno = dovoljenoNeodloceno; }
+
+    public boolean isPrepovedDvojneRegistracije() { return prepovedDvojneRegistracije; }
+    public void setPrepovedDvojneRegistracije(boolean v) { this.prepovedDvojneRegistracije = v; }
+
+    public boolean isStejeVElo() { return stejeVElo; }
+    public void setStejeVElo(boolean stejeVElo) { this.stejeVElo = stejeVElo; }
+
+    public Liga getVisjaLiga() { return visjaLiga; }
+    public void setVisjaLiga(Liga visjaLiga) { this.visjaLiga = visjaLiga; }
+
+    public int getStNapreduje() { return stNapreduje; }
+    public void setStNapreduje(int stNapreduje) { this.stNapreduje = stNapreduje; }
+
+    public int getStIzpade() { return stIzpade; }
+    public void setStIzpade(int stIzpade) { this.stIzpade = stIzpade; }
+
+    public StatusTekmovanja getStatus() { return status; }
+    public void setStatus(StatusTekmovanja status) { this.status = status; }
+
+    public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
+}

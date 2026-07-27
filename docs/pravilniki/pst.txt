@@ -1,0 +1,1250 @@
+NAMIZNOTENIŠKA ZVEZA SLOVENIJE
+Celovška cesta 25
+1000 Ljubljana
+Tel.: 01 4397560
+Fax: 01 4331142
+E-mail: info@ntzs.si
+www.ntzs.si
+Pravilnik o sistemu tekmovanj
+(PST)
+Verzija dokumenta 4.6
+Ljubljana, junij 2026
+
+-- 1 of 28 --
+
+Nadzor dokumentacije
+Modul: 	Pravilnik o sistemu tekmovanj
+Avtor(ji) dokumenta: 	Namiznoteniška zveza Slovenije
+Sodelovali: 	Strokovne službe NTZS, Tehnična komisija NTZS,
+Komisar STNL
+Status dokumenta: 	Končna verzija
+Upravljavec: 	Tehnična komisija NTZS
+
+-- 2 of 28 --
+
+Zgodovina sprememb dokumenta:
+31.08.2005 	Ver 1.0 	Aleš Šuštaršič 	Spremembe v skladu s sklepi seje TK z dne 23.08.2005
+Datum potrditve sprememb s strani IO: 07.09.2005
+20.09.2007 	Spremembe v skladu s sklepi Združenja ligašev
+27.06.2008Datum potrditve sprememb s strani IO:
+11.09.2007
+13.08.2010 	Ver 2.0 	Janez Stibrič 	Spremembe v skladu s sklepi seje TK z dne 09.08.2010
+Datum potrditve sprememb s strani IO: 25.08.2010
+Dopolnitve v skladu s sklepi seje IO z dne 08.09.2010
+Datum potrditve sprememb s strani IO: 08.09.2010
+01.11.2010 	Ver 2.1 	Aleš Šuštaršič 	Dopolnitve v skladu s sklepi seje IO z dne 25.10.2010
+Datum potrditve sprememb s strani IO: 03.11.2010
+05.12.2010 	Ver 2.2 	Aleš Šuštaršič 	- 	dopolnitev točkovanja MASTERS
+- 	neupoštevanje SNTL in ekipnih točka za MASTERS
+- 	potrebno urediti št. Tekmovalcev, ki dobi nagrado + razmerja
+med nagradami
+- 	igranje za vsa mesta
+07.12.2010 	Ver 2.3 	Aleš Šuštaršič 	- 	uskladitev v skladu z dogovori po elektronski pošti
+16.01.2011 	Ver. 2.4 	Aleš Šuštaršič 	Dopolnitve v skladu s sklepi seje IO z dne 13.12.2010
+18.01.2011 	Ver. 2.5 	Aleš Šuštaršič 	Dopolnitve:
+- 	14. Člen: tujci na EP DP za mladince in kadete
+- 	16. Člen: za Masters se ne upošteva SNTL in EP DP
+17.02.2011 	Ver.2.6 	Aleš Šuštaršič 	Sprememba glede Masters-a
+Dopolnitve v skladu s sklepi seje IO z dne 01.03.2011
+Datum potrditve sprememb s strani IO: 01.03.2011
+27.08.2011 	Ver.2.7 	Aleš Šuštaršič,
+Milana Krmelj
+Spremembe glede na sklepe STS in TRK 23.08.2011
+07.09.2011 	Ver.2.8 	Aleš Šuštaršič 	Spremembe glede na sklepe 16.seje IO z dne 29.08.2011
+07.10.2011 	Ver.2.9 	Aleš Šuštaršič 	Spremembe glede na sklepe korespondenčne seje IO, 07.10.2011
+18.09.2012 	Ver.3.0 	Aleš Šuštaršič 	Spremembe glede na sklepe korespondenčne seje IO, 13.09.2012
+02.04.2013 	Ver.3.1 	Aleš Šuštaršič 	Spremembe glede na sklepe 21. Seje IO z dne 05.03.2013
+- 	črtanje dela 14. Člen: tujci na EP DP za mladince in kadete ne
+morejo nastopati
+09.05.2013 	Ver.3.2 	Aleš Šuštaršič 	Spremembe glede na sklepe 21. Seje IO z dne 05.03.2013
+- 	dopolnitev 22.člena: tujci na EP DP za mladince in kadete ne
+morejo nastopati
+01.07.2013 	Ver.3.3 	Aleš Šuštaršič 	Spremembe glede na 8.sklep 22. Seje IO z dne 20.06.2013
+08.11.2013 	Ver.3.4 	Aleš Šuštaršič 	Spremembe glede 3.skupine TOP Člani
+13.01.2014 	Ver.3.5 	Aleš Šuštaršič 	Spremembe glede na 1.sejo IO z dne 03.12.2013
+21.03.2014 	Ver.3.6 	Aleš Šuštaršič 	Predlog za spremembe glede na 2.sejo IO, ki bo 25.03.2014
+21.06.2014 	Ver.3.7 	Aleš Šuštaršič 	31.korespondenčna seja IO 23.-24.05.2013 – nagrade Masters
+26.05.2015 	Ver.3.8 	Aleš Šuštaršič 	Spremembe glede na 1.sejo IO z dne 03.12.2013 (zdr. pregledi)
+16.06.2015 	Ver.3.9 	Aleš Šuštaršič 	Spremembe glede na 19.sklep seje IO z dne 28.05.2015 (točkovanje
+TOP turnirji)
+27.07.2015 	Ver.4.0 	Aleš Šuštaršič 	Spremembe glede na 15. in 16. sklep seje IO z dne 28.05.2015
+(sistem OT, višina prijavnin)
+27.08.2015 	Ver.4.1 	Aleš Šuštaršič,
+Darijan Vizjak
+Spremembe glede novega načina igranja OT, točkovanje OT, TOP.
+11.09.2015 	Ver.4.2 	Aleš Šuštaršič,
+Darijan Vizjak
+16. Korespondenčna seja IO (stara pravila igranja OT)
+27.01.2016 	Ver.4.3 	Aleš Šuštaršič 	Popravki priloge A (položaj prostih mest X)
+22.12.2022 	Ver.4.4 	Domen Peperko Popravki skladno s sklepi sprejetimi na 1. seji izvršnega odbora NTZS
+dne 22.12.2022
+25.08.2025 	Ver.4.5 	Milana Krmelj 	Popravki skladno s sklepi sprejetimi na 12.seji IO NTZS z dne
+3.6.2025 in potrjeno s sklepom IO na 14. redni seji 25.08.2025
+04.06.2026 	Ver.4.6 	Strokovne
+službe
+Popravki skladno s sklepi sprejetimi na 23. redni seji IO NTZS z dne
+4.6.2026
+
+-- 3 of 28 --
+
+PRAVILNIK O SISTEMU TEKMOVANJ
+NAMIZNOTENIŠKE ZVEZE SLOVENIJE
+SPLOŠNA DOLOČILA
+1. člen
+Na prvenstvenih tekmovanjih na ozemlju Republike Slovenije imajo pravico nastopa samo
+ekipe oziroma selekcije (z licenco in registracijo) in posamezniki (v celotnem Pravilniku se
+uporabljajo moške oblike izrazov, ki označujejo posameznice in posameznike, tekmovalke
+in tekmovalce oz. igralce in igralke), ki so pravilno registrirani v skladu z Registracijskim
+pravilnikom Namiznoteniške zveze Slovenije oziroma so slovenski državljani in nastopajo
+za klube v tujini.
+2. člen
+Na tekmovanju ne smejo nastopati tekmovalci in klubi, ki jim je bila izrečena kazen
+disciplinskega organa NTZS ali matičnega kluba oz. društva, ki jim prepoveduje nastopanje.
+Ta prepoved velja za dobo, izrečeno v odločbi o kaznovanju.
+3. člen
+Zdravniško potrdilo o tekmovalčevi sposobnosti za tekmovalno udejstvovanje pri namiznem
+tenisu ni obvezno, vendar ga NTZS kljub temu priporoča. Zdravniško potrdilo za tekmovalce
+stare nad 50 let je obvezno.
+4. člen
+Tekmovalci lahko igrajo na tekmovanjih samo z loparji in opremo, ki ustreza Pravilom za
+mednarodna tekmovanja ITTF.
+5. člen
+Tekmovalec enega kluba ali društva lahko igra kot gost za drugi klub na promocijskih ali
+prijateljskih tekmovanjih v skladu z določili Registracijskega pravilnika NTZS. Za to mora
+imeti pisno dovoljenje matičnega kluba ali društva.
+6. člen
+Vsa tekmovanja se delijo na prvenstvena in ostala. Prvenstvena tekmovanja so lahko
+javna 	ali 	interna. 	Javna 	tekmovanja 	so 	odprtega 	ali 	zaprtega 	značaja. 	Na 	zaprtih
+tekmovanjih sodeluje določen krog tekmovalcev oz. tekmovalk.
+
+-- 4 of 28 --
+
+7. člen
+Prvenstvena tekmovanja so:
+− 	prvenstvo kluba, občine ali območne skupnosti;
+− 	prvenstvo regije;
+− 	državno prvenstvo;
+− 	mednarodna prvenstva;
+− 	Sredozemske igre;
+− 	Evropsko prvenstvo;
+− 	Svetovno prvenstvo;
+− 	Olimpijske igre.
+8. člen
+Prvenstvena tekmovanja v Republiki Sloveniji so razdeljena v dve stopnji po selektivnem
+principu:
+1. stopnja — prvenstvo kluba, občine, območne skupnosti ali regije;
+2. stopnja — prvenstvo države.
+TEKMOVANJA 1. STOPNJE
+9. člen
+Ta tekmovanja so praviloma množična in redna. So popolnoma odprta in na njih lahko
+nastopajo vsi igralci, ki so registrirani pri Namiznoteniški zvezi Slovenije. Organizirajo se
+za posameznike, dvojice in mešane dvojice.
+Prvenstvena tekmovanja 1. stopnje morajo biti odigrana pred začetkom tekmovanj 2.
+stopnje. 	Izvedba 	in 	način 	tekmovanja 	sta 	prepuščena 	forumom 	oz. 	organom, 	ki 	ta
+tekmovanja vodijo.
+10. člen
+Posamezna tekmovanja 1. stopnje lahko potekajo v naslednjih disciplinah:
+− 	člani 	posamezno in dvojice
+− 	članice 	posamezno in dvojice
+− 	člani 	mešane dvojice
+− 	U21 	moški posamezno in dvojice
+− 	U21 	ženske posamezno in dvojice
+− 	U19 	moški posamezno in dvojice
+− 	U19 	ženske posamezno in dvojice
+− 	U19 	mešane dvojice
+− 	U17 	moški posamezno in dvojice
+− 	U17 	ženske posamezno in dvojice
+− 	U17 	mešane dvojice
+− 	U15 	moški posamezno in dvojice
+− 	U15 	ženske posamezno in dvojice
+− 	U15 	mešane dvojice
+− 	U13 	moški posamezno in dvojice
+− 	U13 	ženske posamezno in dvojice
+− 	U11 	moški posamezno in dvojice
+− 	U11 	ženske posamezno in dvojice
+
+-- 5 of 28 --
+
+TEKMOVANJA 2. STOPNJE
+11. člen
+Državna prvenstva se delijo na ekipna in posamezna.
+Ekipna prvenstva — 2.a stopnja — so:
+− 	ekipno državno prvenstvo za člane in članice (državne lige);
+− 	ekipno državno prvenstvo za U19 moški in U19 ženske ( polfinale in finale );
+− 	ekipno državno prvenstvo za U17 moški in U17 ženske ( polfinale in finale);
+− 	ekipno državno prvenstvo za U15 moški in U15 ženske ( polfinale in finale);
+− 	ekipno državno prvenstvo za U13 moški in U13 ženske ( polfinale in finale).
+Posamezna prvenstva — 2.b stopnja — so:
+− 	državno prvenstvo za člane in članice posamezno in dvojice (vključuje mešane
+dvojice);
+− 	državno prvenstvo za U21 moški in U21 ženske posamezno in dvojice;
+− 	državno prvenstvo za U19 moški in U19 ženske posamezno in dvojice (vključuje
+mešane dvojice);
+− 	državno prvenstvo za U17 moški in U17 ženske posamezno in dvojice (vključuje
+mešane dvojice);
+− 	državno prvenstvo za U15 moški in U15 ženske posamezno in dvojice (vključuje
+mešane dvojice )
+− 	državno prvenstvo za U13 moški in U13 ženske posamezno in dvojice
+− 	državno prvenstvo za U11 moški in U11 ženske posamezno in dvojice.
+11.a člen
+Kategorije igralcev in igralk se ločujejo gleda na starost, oziroma letnico rojstva:
+- 	U11
+- 	U13
+- 	U15
+- 	U17
+- 	U19
+- 	U21
+Igralci in igralke tekmujejo v starostni kategoriji od septembra do julija. Starost igralca 	za
+posamezno sezono se določa na dan 31.december v letu v katerem se sezona začne. Igralec
+mora biti na ta dan mlajši od določene starosti, da lahko nastopa v ustrezni starostni kategoriji
+(npr. U13, U15, U17,U19, U21). To pomeni, da igralci in igralke od septembra do decembra
+tekmujejo v kategoriji, kater letnice rojstva še niso dosegli. Izjema je U11, kjer po Zakonu o
+športa lahko tekmujejo šele v letu, ko dopolnijo 10 let.
+TEKMOVANJA 2.A STOPNJE
+12. člen
+Prvenstvo članov in članic ekipno
+Prvenstvo članov in članic ekipno poteka v državnih ligah (SNTL).
+Sistem tekmovanja, število ekip, napredovanje in izpad ter vse ostalo v zvezi s
+tekmovanjem v SNTL je določeno s Pravili igranja v SNTL.
+13. člen
+
+-- 6 of 28 --
+
+Pokalno tekmovanje
+Zmagovalna ekipa osvoji naslov Pokalnega prvaka Republike Slovenije.
+Sistem tekmovanja ter vse ostalo v zvezi s pokalnim tekmovanjem je določeno s Pravili
+igranja za pokalno tekmovanje NTZS.
+14. člen
+Prvenstvo U19 moški, U19 ženske, U17 moški, U17 ženske, U15 moški, U15 ženske
+U13 moški, U13 ženske ekipno
+Ekipno 	prvenstvo 	Republike 	Slovenije 	je 	odprto. 	V 	predtekmovanju 	(polfinalu) 	lahko
+nastopijo vse prijavljene ekipe. Vsak klub lahko prijavi poljubno število ekip. Klubi, ki prijavijo
+več ekip v posamezni kategoriji, morajo navesti poimensko najmanjše število igralcev, ki so
+predvideni glede na sistem igranja v posamezni kategoriji. V kolikor se pri klubih, ki imajo
+dve ali več prijavljenih ekip, katerakoli ekipa ne uvrsti v finale, igralci iz teh ekip, v finalu ne
+smejo igrati za morebitne preostale v finale uvrščene ekipe iz istega kluba. Predtekmovanje
+se igra v štirih polfinalnih skupinah po teritorialnem in kvalitetnem principu, ki 	jih 	določi
+državni kapetan (ta lahko določi le nosilce, ostale ekipe pa se tedaj žrebajo). V kolikor je
+število prijavljenih ekip manjše od 12, se predtekmovanje igra v dveh polfinalnih skupinah.
+Tekmovanje v polfinalu traja en dan. Dvoboji se igrajo na dveh mizah, s soglasjem obeh
+ekip tudi na več.
+V finalu prvenstva nastopa 8 ekip, ki si pravico nastopa pridobijo na polfinalnih tekmovanjih.
+Prvenstvo se igra v dveh enakovrednih skupinah s po štirimi ekipami, ki se žrebajo (nosilce
+določi državni kapetan), nato pa se prvo in drugo uvrščena ekipa iz predtekmovalne skupine
+uvrstita v finalno skupino od 1. do 4. mesta, tretje in četrto uvrščeni pa v finalno skupino
+od 	5. 	do 	8. 	mesta. 	V 	finalno 	skupino 	se 	prenese rezultat relevantnega dvoboja iz
+predtekmovalne skupine.
+Če katera od ekip, ki se je na polfinalnem tekmovanju uvrstila v finale državnega prvenstva,
+sodelovanje tam odpove, se namesto nje postavi 3. ekipa te predtekmovalne skupine. Če
+še ta odpove udeležbo, se izžreba 3. uvrščeno ekipo iz vseh preostalihpolfinalnih skupin.
+Sistem igranja za kategoriji U13 in U15:
+Ekipna tekma se igra po Corbillon sistemu. Ekipo sestavljata najmanj dva in največ štirje
+igralci.
+Vrstni red iger je:
+A : X, B : Y, par : par, A : Y, B : X.
+Par za igro dvojic se lahko določi po zaključenih prvih dveh posameznih igrah, pri čemer ga
+lahko sestavljata tudi igralca, ki nista nastopila v prvih dveh posameznih igrah.
+Po zaključeni igri dvojic lahko vsaka ekipa za zadnji dve posamezni igri opravi največ eno
+menjavo igralca.
+Sistem igranja za kategoriji U17 in U19:
+Ekipna tekma se igra po prilagojenem Corbillon sistemu brez dvojic. Ekipo sestavljajo najmanj
+trije in največ pet igralcev, pri čemer lahko na eni ekipni tekmi nastopijo največ štirje igralci.
+Vrstni red iger je:
+A : X, B : Y, C : Z, A : Y, B : X.
+Po zaključeni tretji posamezni igri lahko vsaka ekipa za zadnji dve posamezni igri opravi največ
+eno menjavo igralca.
+
+-- 7 of 28 --
+
+Vse posamezne igre in igre dvojic se igrajo na tri dobljene nize.
+Finale prvenstva se igra en dan. Zmagovalna ekipa postane državni prvak Republike
+Slovenije za tekočo sezono.
+TEKMOVANJE 2.B STOPNJE
+15. člen
+Tekmovanje 2.b stopnje je Prvenstvo Republike Slovenije za posameznike in dvojice,
+ločeno za vse discipline.
+Prvenstvo RS za posameznike in dvojice poteka v naslednjih članskih disciplinah:
+− 	člani posamezno,
+− 	članice posamezno,
+− 	člani dvojice,
+− 	članice dvojice,
+− 	mešane dvojice,
+Prvenstvo RS za U21 moški in U21 ženske posamezno in dvojice poteka v naslednjih
+disciplinah:
+− 	U21 moški posamezno,
+− 	U21 ženske posamezno,
+− 	U21 moški dvojice,
+− 	U21 ženske dvojice.
+Prvenstvo RS za U19 moški in U19 ženske posamezno in dvojice poteka v naslednjih
+disciplinah:
+− 	U19 moški posamezno,
+− 	U19 ženske posamezno,
+− 	U19 moški dvojice,
+− 	U19 ženske dvojice,
+− 	U19 mešane dvojice.
+Prvenstvo RS za U17 moški in U17 ženske posamezno in dvojice poteka v naslednjih
+disciplinah:
+− 	U17 moški posamezno,
+− 	U17 ženske posamezno,
+− 	U17 moški dvojice,
+− 	U17 ženske dvojice,
+− 	U17 mešane dvojice.
+Prvenstvo RS za U15 moški in U15 ženske posamezno in dvojice poteka v naslednjih
+disciplinah:
+− 	U15 moški posamezno,
+− 	U15 ženske posamezno,
+− 	U15 moški dvojice,
+− 	U15 ženske dvojice,
+− 	U15 mešane dvojice
+Prvenstvo RS za U13 moški in U13 ženske posamezno in dvojice poteka v naslednjih
+disciplinah:
+
+-- 8 of 28 --
+
+− 	U13 moški posamezno,
+− 	U13 ženske posamezno,
+− 	U13 moški dvojice,
+− 	U13 ženske dvojice,
+Prvenstvo RS za U11 moški in U11 ženske posamezno in dvojice poteka v naslednjih
+disciplinah:
+− 	U11 moški posamezno,
+− 	U11 ženske posamezno,
+− 	U11 moški dvojice,
+− 	U11 ženske dvojice,
+V vseh disciplinah posamezno se predtekmovanje igra po skupinah, finalna skupina pa na
+izpadanje. Število predtekmovalnih skupin glede na število nastopajočih, način prehoda iz
+predtekmovanja v finalno skupino, število nosilcev glede na število nastopajočih in postopek
+žrebanja, so določeni v 21. členu tega Pravilnika.
+V finalno skupino se uvrstijo vsi prvo in drugo uvrščeni tekmovalci v vseh kategorijah,
+skupine mali finale za tretje in četrto uvrščene tekmovalcev predtekmovalnih skupin na
+državnih prvenstvih ni.
+Vse tekme v disciplinah posameznikov se v igrajo na tri dobljene nize, razen četrtfinalnih,
+polfinalnih in finalnih tekem, ki se v vseh kategorijah igrajo na štiri dobljene nize. V
+kategorijah U11 in U13 se ne glede na navedeno vse tekme igrajo na tri dobljene. V kategoriji
+članov se ves finalni del igra na štiri dobljene nize. Vse discipline dvojic se igrajo od začetka
+do konca na izpadanje na tri dobljene nize.
+Prvenstvo Republike Slovenije se v vseh kategorijah igra v soboto cel dan in v nedeljo do
+konca tekmovanja. Izjema sta kategoriji U21 	in U11, v katerih se Prvenstvo Republike
+Slovenije izvede kot enodnevno tekmovanje.
+OSTALA TEKMOVANJA
+16. člen
+MASTERS
+Turnir se organizira za 8 kategorij: člani, članice, U19 moški, U19 ženske, U15 moški, U15
+ženske, U13 moški in U13 ženske. V vsaki kategoriji nastopa 16 najboljših igralcev po rang
+lestvicah; pri tem se ne upošteva točk SNTL in ekipnih prvenstev. Posameznik lahko
+nastopa v največ dveh kategorijah.
+V članskih kategorijah poteka tekmovanje na štiri dobljene nize, v vseh ostalih kategorijah
+pa na tri dobljene nize.
+Dodatno nastopajo 3 kategorije rekreativcev:
+- moški do 50 let: 2 najboljša igralca do 40 let + 2 najboljša igralca do 40-50 let
+- moški nad 50 let: 2 najboljša igralca do 50-60 let + 2 najboljša igralca nad 60 let
+- ženske: 2 najboljši igralki do 50 let + 2 najboljši igralki nad 50 let
+V kategorijah rekreativcev igralci igrajo vsak z vsakim v eni skupini.
+Tekmovanje je enodnevno in poteka od začetka do konca na izpadanje.
+
+-- 9 of 28 --
+
+Za kategoriji članov in članic je obvezno zagotoviti nagradni denarni sklad v minimalni višini
+5000 EUR, ki se razdeli med šestnajst prvouvrščenih. Nagrade se delijo po naslednjem
+ključu: 1. mesto 28%, 2. mesto 16%, 3.-4. mesto 19,2%, 5.-8. mesto 24%, 9.- 16.mesto
+12,8% Nagrade se izplačajo kot bruto zneski. Za vse ostale kategorije je potrebno zagotoviti
+praktične nagrade za 4 prvouvrščene igralce.
+Odprti turnirji Republike Slovenije
+Turnirji se igrajo v vseh starostnih kategorijah. V sezoni se v vseh kategorijah, torej pri članih,
+U21, U19, U17, U15, U13 in U11, igrata dva odprta turnirja. Udeležba na odprtih turnirjih je
+odprta.
+V vseh disciplinah se predtekmovanje igra po skupinah, finalna skupina (in skupina mali
+finale - samo pri U11 moški in U11 ženske) pa na izpadanje.
+V finalno skupino se uvrstijo vsi prvo in drugo uvrščeni tekmovalci v vseh kategorijah, tretje
+in četrto uvrščeni tekmovalci v disciplinah U11 moški in U11 ženske pa igrajo v skupini mali
+finale.
+V vseh kategorijah se v predtekmovalnih skupinah, v finalni skupini in mali finale igra na 3
+dobljene nize, v finalni skupini kategorij člani in članice pa na 4 dobljene nize.
+Top turnirji Republike Slovenije
+V eni sezoni se odigrata dva top turnirja za člane, članice, U19 moški, U19 ženske, U15
+moški in U15 ženske. En top turnir na sezono se igra pri U17 moški, U17 ženske, U13 moški,
+U13 ženske, U11 moški in U11 ženske.
+Igralce na top turnirje določajo državni kapetani na podlagi trenutnih jakostnih lestvic in
+rezultatov na odprtih turnirjih, po naslednjem pravilu: najmanj 75% po jakostni lestvici,
+največ 25% po lastni izbiri.
+V 1. kvalitetni skupini v kategoriji nastopa vedno 8 igralcev. Po potrebi, torej po morebitnih
+odpovedih po žrebu ali neudeležbi prijavljenih in izžrebanih igralcev na tekmovanju, se 1.
+skupino dopolni z igralci iz 2. skupine (oziroma po potrebi tudi rezervami za turnir) po
+vrstnem redu, kot ga je določil državni kapetan in je razviden iz razpisa. Če v tem primeru
+za nastop v 2. skupini ostane manj kot 8 igralcev, se skupino po ustreznem vrstnem redu
+dopolnjuje z določenimi in prijavljenimi rezervami, prisotnimi na samem tekmovanju. Po
+vsaki odpovedi je organizator dolžan (telefonsko ali osebno) takoj obvestiti relevantne
+rezerve, v času do konca delovnega časa zadnjega delovnega dne pred tekmovanjem pa
+tudi pisarno NTZS in državnega kapetana.
+Na top turnirjih za člane in članice je zaželeno zagotoviti nagradni denarni sklad v minimalni
+višini 650 EUR, ki se razdeli med prvih pet igralcev v razmerju 40%:24%:16%:12%:8%.
+Nagrade se izplačajo kot bruto zneski.
+Top turnirji za člane U19, U15 in U13 se igrajo v treh kvalitetnih skupinah s po 8 igralci. Top
+turnirji za članice, U17 in U11 se igrajo v dveh kvalitetnih skupinah s po 8 igralci. V vseh
+skupinah se igra po sistemu vsak z vsakim.
+Zmagovalec 2. skupine na prvem top turnirju se obvezno uvrsti v 1. skupino na drugem top
+turnirju, zmagovalec 3. skupine pa v drugo.
+
+-- 10 of 28 --
+
+V vseh kategorijah se vse tekme igrajo na tri dobljene nize.
+Vsi top turnirji se odigrajo v enem dnevu.
+17. člen
+Turnirji za igralce brez točk
+V sezoni 2026/2027 se z namenom pospeševanja množičnosti in usmerjanja otrok v
+kakovostni in tekmovalni šport lahko poskusno organizira 2 turnirja za igralce, ki v
+kategorijah U11, U13, U15, U17 in U19 šele pričenjajo tekmovati in predhodno še nikoli niso
+dosegli točk za katerokoli jakostno lestvico NTZS.
+Sistem tekmovanja ter vse ostale podrobnosti v zvezi s turnirji, vključno z razporeditvijo točk,
+se določi s posebnimi Pravili igranja, ki veljajo za turnirje za igralce brez točk.
+18. člen
+Spominski in drugi turnirji
+V koledarju tekmovanj Namiznoteniške zveze Slovenije se v vsaki sezoni upošteva tiste
+spominske in druge turnirje, katerih termini so do roka za izdelavo koledarja posredovani
+Tehnični komisiji NTZS.
+Tekmovanje na teh turnirjih mora biti organizirano tako, da noben igralec ne odigra samo
+ene tekme. Če se igrajo ekipne discipline in discipline dvojic, se lahko igra izključno na
+izpadanje, drugače pa se sistem tekmovanja prilagodi tako, da vsak igralec odigra vsaj nekaj
+iger.
+V primeru izvedbe posebnih tekmovanj, na primer integriranih s para namiznim tenisom ali
+tekmovanj, ki sledijo usmeritvam športa za zdravje, se pravila določi s posebnimi Pravili
+igranja.
+TEHNIČNA DOLOČILA
+19. člen
+Propozicije
+Za vsako tekmovanje, predvideno s tem Pravilnikom, se izdajo propozicije hkrati z razpisom
+tekmovanja.
+Klub, društvo oz. sekcija, ki si pridobi organizacijo tekmovanja (z natečajem oz. po dodelitvi
+organizacije tekmovanj v koledarju NTZS), mora najmanj 20 dni pred začetkom tekmovanja
+elektronsko 	dostaviti 	Strokovnim 	službam 	Namiznoteniške 	zveze 	Slovenije 	podatke,
+potrebne za izdajo propozicij.
+Propozicije 	in 	razpis 	pripravi 	na 	podlagi 	navodil 	Tehnične 	komisije 	pisarna 	NTZS.
+Propozicije za vsa tekmovanja morajo biti objavljena na spletni strani NTZS in poslane vsem
+klubom, najmanj 10 dni pred pričetkom tekmovanja.
+Po zaključku prijav se v seznam nastopajočih ne sme vnašati novih igralcev. V kategoriji
+dvojic se lahko dvojice sestavljajo vse do izvedbe žreba, pri čemer se upošteva pravilnik
+ITTF (člen 3.6.4 Zamenjave, 3.6.4.5 eksplicitno za dvojice). Po izvedenih žrebih spremembe
+niso dovoljene, razen če je prišlo do odpovedi polovice ali več nosilcev, vodstvo tekmovanja
+
+-- 11 of 28 --
+
+neposredno pred začetkom tekmovanja opravi 	novo žrebanje v prisotnosti predstavnikov
+klubov. Izjema so tudi top turnirji, kjer se lahko tudi po opravljenem žrebu namesto igralcev,
+ki so udeležbo odpovedali, ter manjkajočih igralcev v žreb uvrsti določene in pravilno
+prijavljene rezerve.
+Pari dvobojev pri tekmovanju po sistemu vsak z vsakim se določajo po tabeli (Priloga B), pri
+čemer mora biti žreb zaporednih številk ekip oz. igralcev v skupini tak, da ekipe oz.
+posamezniki iz istega kluba, društva oz. sekcije igrajo med seboj v prvem krogu, zadnja pa
+je tekma med igralci oziroma ekipami, ki v skupini zasedajo drugo in tretjo zaporedno
+številko.
+20. člen
+Uvrstitve v tekmovalni skupini se določajo na osnovi števila zmag. Zmagovalec tekmovalne
+skupine 	postane tista ekipa oz. posameznik, ki doseže največje število zmag. V primeru
+enakega števila zmag med posamezniki oz. ekipami odloča o uvrstitvi v skupini rezultat
+medsebojnih dvobojev, če pa so še ti izenačeni, odloča o uvrstitvi količnik medsebojnih
+rezultatov, iger, nizov oz. točk. Pri igranju na izpadanje je uvrstitev sorazmerna s številom
+zmag – zmagovalec ostane neporažen.
+Igralec, ki na tekmovanju preda tekmo brez boja, po predani tekmi ne more nadaljevati s
+tekmovanjem (razen v primeru poškodbe oz. bolezni, kar mora dokazati z zdravniškim
+spričevalom, ko o njegovem nadaljnjem nastopanju odloči vrhovni sodnik). Tak igralec na
+tekmovanju nima uvrstitve, hkrati pa se preda v obravnavo Disciplinskemu razsodišču
+Namiznoteniške zveze Slovenije in je do prvostopenjske odločitve disciplinskega organa
+suspendiran.
+Če posameznik v ekipnem dvoboju preda tekmo oz. jo izgubi brez boja (razen v primeru
+poškodbe oz. bolezni, izkazane z zdravniškim spričevalom), ekipa to tekmo izgubi brez boja,
+vendar lahko s tekmovanjem nadaljuje, ta posameznik pa s tekmovanjem ne more
+nadaljevati.
+Ekipa, ki med trajanjem zapusti tekmovanje, izgubi preostala srečanja brez boja, če je že
+odigrala vsaj polovico tekem. Če pa odstopi brez opravičenega razloga v prvem delu
+tekmovanja, se vsi njeni doseženi rezultati črtajo.
+Če posameznik na top turnirjih zaradi poškodbe oz. 	bolezni ne more nadaljevati 	s
+tekmovanjem, izgubi preostale dvoboje brez boja. Če je že odigral najmanj polovico vseh
+možnih dvobojev, se mu že doseženi rezultati upoštevajo in doseže končno uvrstitev, ki
+mu 	pripada. 	Obvezno 	mora 	dostaviti 	ustrezno 	zdravniško 	dokumentacijo 	v 	zvezi 	z
+opravičenostjo svojega ne nastopanja najkasneje v treh delovnih dneh od predvidenega
+nastopa vodstvu tekmovanja in/ali Tehnični komisiji, drugače za doseženo uvrstitev ne dobi
+nobenih točk za rang lestvico. Posamezniku, ki ne odigra 	najmanj polovice vseh možnih
+dvobojev, 	se 	vsi 	že 	doseženi 	rezultati 	brišejo 	in 	ne 	upoštevajo 	v 	razvrstitvi 	ostalih
+nastopajočih. Uvrsti se na zadnje mesto v svoji skupini in ne prejme točk za rang lestvico.
+Na absolutni končni vrstni red nastopajočih v morebitnih nižjih skupinah njegovo ne
+nastopanje nima nobenega vpliva in vsi za njim prejmejo za svoje uvrstitve točke, kot da so
+višje skupine popolne.
+21. člen
+Nosilce za tekmovanja se žreba po naslednjem sistemu:
+− 	1. in 2. nosilec se ne žrebata, temveč se postavita na mesto 1. oz. 2. nosilca 	v
+žrebu;
+− 	3. in 4. nosilec se žrebata na 3. oz. 4. mesto;
+
+-- 12 of 28 --
+
+− 	5., 6., 7., in 8. nosilec se žrebajo na mesta 5 do 8;
+− 	nosilci št. 9 do 16 se žrebajo na mesta 9 do 16;
+− 	nosilci št. 17 do 32 se žrebajo na mesta 17 do 32.
+Žrebanje se izvaja v skladu s predpisi ITTF za mednarodna tekmovanja in Priročnikom za
+mednarodne vrhovne sodnike ITTF.
+Žrebanja za odprte turnirje in posamično državno prvenstvo se izvajajo najpozneje en dan
+pred 	pričetkom 	tekmovanja, 	z 	izjemo 	žrebanja 	dvojic, 	ki 	se 	izvede 	pred 	začetkom
+tekmovanja na kraju samem. Pri vodenju teh tekmovanj je priporočljiva uporaba že
+pripravljene programske opreme, ki jo zagotovi NTZS.
+Za določitev nosilcev skupin za ustrezno tekmovanje Republike Slovenije se upoštevajo, z
+odbitkom 	enega 	najslabšega 	rezultata, 	seštevki 	točk 	ustrezajoče 	kategorije 	jakostne
+lestvice prejšnje sezone brez točk že izvedenih istovrstnih tekmovanj v novi sezoni ter točke
+dosežene v novi tekoči sezoni do državnega prvenstva. V kategorijah U11 in U21 se
+najslabši rezultat ne odbija.
+V izjemnih primerih, ko je igralec opravičeno odsoten s tekmovanja ali igra v tujini in zato
+nima točk za jakostno lestvico, ga lahko državni kapetan določi za nosilca za državno
+prvenstvo in/ali odprte turnirje po lastni presoji ne glede na točkovanje.
+Za tekmovanja, ki so na vrsti po državnem prvenstvu, se nosilce skupin in rezerve določi
+na podlagi doseženih točk v tekoči sezoni.
+Če nosilec skupine ne pride na tekmovanje, se žreba ne spreminja, razen v primeru, da
+manjka več kot polovica nosilcev skupin (19. člen).
+22. člen
+Predtekmovanje na državnih prvenstvih v disciplinah posamezno in na odprtih turnirjih se
+igra v skupinah s po 3 do 4 igralci. Vse tekme predtekmovanja se igrajo po izmenjajočem
+sistemu en krog moški, en krog ženske kategorije. Velikost finalne skupine, skupine mali
+finale ter velikost in število predtekmovalnih skupin določajo tabele v Prilogi A tega
+Pravilnika. V izjemnem primeru, da prijavljenih manj kot 8 igralcev (pri članih in članicah pa
+manj kot 10), se igra po sistemu vsak z vsakim v eni skupini.
+V vseh kategorijah vsi tekmovalci in vse tekmovalke tekmujejo v predtekmovanju.
+Prvo in drugo uvrščeni igralci predtekmovalnih skupin se uvrstijo v finalno skupino.
+Zmagovalci predtekmovalnih skupin se žrebajo na pozicije finalne skupine analogno, kot je
+opredeljeno v 1. odstavku 21.člena tega pravilnika (ponoven žreb na samem tekmovanju).
+Za tem se izvede še žreb za drugouvrščene igralce, ki se žrebajo povsem prosto,z izjemo,
+da se morata prvo in drugo uvrščeni iz iste predtekmovalne skupine žrebati v različni polovici
+finalne skupine. Ostalih omejitev (npr. igralci istega kluba,….ipd.) pri žrebu ni.
+Pri izvajanju žreba se uporablja Priloga C tega Pravilnika, ki natančno opredeljuje na katera
+mesta finalne skupine se žreba posamezne igralce glede na nosilska mesta.
+V kategorijah U11 moški in U11 ženske imamo tudi finalno skupino »mali finale«, v kateri
+igrajo vsi tretje in četrto uvrščeni. Žrebanje se opravi enako kot 	za finalno skupino. Vse
+tekme v skupini »mali finale« se igrajo na 3 dobljene nize.
+Število nosilcev za katerokoli tekmovanje se določi glede na število nastopajočih in je enako
+številu vseh predtekmovalnih skupin; kot je določeno v Prilogi A tega Pravilnika.
+
+-- 13 of 28 --
+
+Nosilce določi selektor po naslednjem pravilu: najmanj 75% po jakostni lestvici, največ 25%
+po 	lastni 	izbiri. 	Pri 	določanju 	nosilcev 	na 	domačih 	tekmovanjih 	lahko 	selektor 	med
+tekmovalno sezono smiselno uporablja tudi določila 25. člena tega Pravilnika glede uporabe
+svetovnih jakostnih lestvic ITTF za igralce, ki nastopajo v tujini. Igralci, ki so kot nosilci
+določeni na tej podlagi, se ne vštevajo v kvoto 25 % nosilcev, določenih po lastni presoji
+selektorja.
+23. člen
+Na posameznih prvenstvih Republike Slovenije lahko nastopijo vsi igralci, ki imajo pravico
+zastopati Slovenijo na mednarodnih tekmovanjih v skladu s predpisi ITTF in ETTU (torej tudi
+igralci s slovenskim državljanstvom, ki igrajo v tujih klubih, ne pa tuji igralci, ki igrajo za
+slovenske klube).
+Na Masters in odprtih turnirjih lahko igrajo tudi tuji igralci, ki igrajo za slovenske klube, in
+slovenski igralci, ki igrajo v tujini. Vsi njihovi rezultati in uvrstitve na odprtem turnirju se štejejo
+kot uradne uvrstitve.
+Na top turnirjih lahko igrajo slovenski igralci, ki igrajo za tuje klube in jih državni kapetan
+pokliče na turnir, pa tudi tuji igralci, ki igrajo v slovenskih klubih in jih državni kapetan pokliče
+na turnir v interesu slovenskega namiznega tenisa. Vsi njihovi rezultati in uvrstitve na takem
+turnirju se štejejo kot uradne uvrstitve.
+Pravico nastopa na prvenstvu članov in članic ekipno (SNTL) določajo Pravila igranja v
+SNTL.
+24. člen
+Kategorizacija tekmovalcev
+Kategorizacija tekmovalcev se izvaja na podlagi nacionalne kategorizacije športnikov, za
+katero je pristojen OKS ZŠZ.
+Predloge NTZS za kategorizacijo podaja Strokovno-trenerski svet.
+TOČKOVANJE
+25. člen
+Točke se določijo na podlagi uvrstitev na Masters, odprtih in top turnirjih, posameznih
+državnih prvenstvih ter na osnovi doseženega števila zmag na ekipnih državnih prvenstvih
+(vključno z državnimi ligami) po tabeli točkovanja.
+Na podlagi vrstnega reda jakostnih lestvic ITTF ob koncu sezone ter na podlagi državnih
+jakostnih lestvic se ob koncu sezone sestavi končne jakostne lestvice Republike Slovenije
+za vsako disciplino posebej (U11 moški, U11 ženske, U13 moški, U13 ženske, U15 moški,
+U15 ženske, U17 moški, U17 ženske, U19 moški, U19 ženske, U21 moški, U21 ženske,
+člani in članice), pri čemer se ne glede na predhodno državno jakostno lestvico višje uvrsti
+posameznik, ki je bolje uvrščen na svetovni jakostni lestvici. Upošteva se samo uvrstitev do
+250. mesta na svetovni jakostni lestvici ITTF – člani oziroma uvrstitev do 200. mesta na
+svetovni jakostni lestvici ITTF - članice).
+
+-- 14 of 28 --
+
+Tekoči seštevek točk med sezono v posamezni kategoriji je osnova za določitev nosilcev
+skupin za tekmovanja v Republiki Sloveniji. Do posameznih državnih prvenstev se pri tem
+upošteva, z odbitkom enega najslabšega rezultata, seštevek točk pretekle sezone brez
+točk že izvedenih istovrstnih tekmovanj v tekoči sezoni ter točke že dosežene v novi tekoči
+sezoni; po posameznem DP pa samo točke tekoče sezone (20. člen), prav tako brez enega
+najslabšega rezultata. V kategorijah U11 moški, U11 ženske in U21 moški, U21 ženske se
+najslabši rezultat ne odbija.
+Igralcu, ki v sezoni nima vseh možnih uvrstitev za točkovanje - se upoštevajo za točkovanje
+vse uvrstitve v sezoni. Igralci v SNTL, ki igrajo v končnici oz. kvalifikacijah/dvobojih za
+napredovanje/izpad, za te tekme ne dobijo točk.
+Med sezono (in po sezoni v primeru, da ne odloča uvrstitev na svetovni) pomeni enako
+število doseženih točk delitev mesta na jakostni lestvici.
+26. člen
+Točke za državno jakostno lestvico lahko prejme samo posameznik na podlagi nastopanja
+in uvrstitve oz. zmag (za ekipo). Prijava za tekmovanje brez nastopa ne prinaša točk. Prav
+tako točk igralcem ne prinese zmaga ekipe brez boja. Igralec, ki ne nastopi drugi dan
+dvodnevnega točkovanega tekmovanja brez utemeljenega razloga (dokumentacijo v zvezi
+s tem mora dostaviti najkasneje v treh delovnih dneh od predvidenega nastopa vodstvu
+tekmovanja in/ali Tehnični komisiji), tudi ne dobi točk.
+27. člen
+Igralci, ki zaradi obveznosti do reprezentanc Republike Slovenije (vključno s pripravami pred
+najpomembnejšimi tekmovanji, ki so po odločitvi Strokovnega sveta NTZS nujen del
+reprezentančnega 	programa) 	ali 	nastopa 	v 	evropskem 	klubskem 	pokalu 	ne 	morejo
+sodelovati na top turnirjih in/ali odprtih turnirjih, dobijo nadomestne točke na podlagi
+začasnega mesta na jakostni lestvici Namiznoteniške zveze Slovenije pred turnirjem (dobijo
+toliko točk, kot bi jih njihovo mesto prineslo na top ali odprtem turnirju, s katerega so
+odsotni). Na enak način dobijo nadomestne točke tudi igralci, ki so upravičeni do nastopanja
+na Masters turnirju v več kot dveh kategorijah, vendar v tretji in četrti kategoriji ne morejo
+nastopati (16. člen tega pravilnika).
+28. člen
+Strokovne službe Namiznoteniške zveze Slovenije vodijo točkovanje v sezoni za vsako
+disciplino posebej. Trenutni vrstni red vseh tekmovalcev v vsaki disciplini se objavlja na
+spletni strani zveze po vsakem točkovanem tekmovanju.
+29. člen
+Končne jakostne lestvice Namiznoteniške zveze Slovenije se objavi takoj po končanisezoni
+oziroma po objavi zadnje svetovne lestvice ITTF v mesecu juniju. Na končnih jakostnih
+lestvicah se vedno objavi vrstni red vseh, ki so osvojili točke.
+30. člen
+Postopek točkovanja
+Uvrstitve na posameznih državnih prvenstvih, državnih TOP turnirjih, državnih odprtih
+turnirjih in MASTERS turnirju ter tekme v državnih ligah in na državnih ekipnih prvenstvih se
+točkujejo v skladu z naslednjimi tabelami:
+
+-- 15 of 28 --
+
+a.) posamezno državno prvenstvo
+mesto (fin. sk.) 	1. 	2. 	3.-4. 	5. - 8. 	9. - 16. 	17. - 32. 	33. - 64.
+točke 	2000 	1600 	1300 	1000 	700 	400 	200
+Velikost finalne skupine
+4 	8 	12, 16 	24, 32 	48, 64
+št. točk za 3.mesto v predtek.skup. 	1000 	700 	400 	200 	100
+št. točk za 4.mesto v predtek.skup. 	700 	400 	200 	100 	50
+b.) MASTERS turnir
+mesto 	1. 	2. 	3.-4. 	5. - 8. 	9. - 16.
+točke 	1700 	1400 	1200 	950 	650
+c.) državni top turnirji
+mesto 	1. 	2. 	3. 	4. 	5. 	6. 	7. 	8. 	9. 	10. 	11. 	12.
+točke 	1700 	1400 	1200 	1050 	950 	900 	850 	800 	750 	700 	650 	600
+mesto 	13. 	14. 	15. 	16. 	17. 	18. 	19. 	20. 	21. 	22. 	23. 	24.
+točke 	560 	520 	480 	440 	410 	380 	350 	320 	290 	260 	230 	200
+d.) državni odprti turnirji
+mesto (fin. sk.) 	1. 	2. 	3. - 4. 	5. - 8. 	9. - 16. 	17. - 32. 	33. - 64.
+točke 	1300 	1000 	800 	600 	400 	200 	100
+Velikost finalne skupine
+4 	8 	12, 16 	24, 32 	48, 64
+št. točk za 3.mesto v predtek.skup. 	600 	400 	200 	100 	50
+št. točk za 4.mesto v predtek.skup. 	400 	200 	100 	50 	25
+e.) turnirji za igralce brez točk
+Vsi udeleženci turnirja prejmejo točke, pri čemer zmagovalec lahko prejme največ 25 točk,
+kar je enako število točk kot jih prejme četrto uvrščeni v predtekmovalni skupini, če je finalna
+skupina velikosti 48 ali 64.
+Podrobna razporeditev točk bo objavljena najpozneje skupaj s Pravili igranja, ki veljajo za
+turnirje za igralce brez točk.
+f.) državne lige
+dobljena igra posameznikov 	točke
+1. SNTL 	75
+2. SNTL 	25
+3. SNTL
+4. SNTL
+10
+5
+Državne lige se točkujejo samo za kategorijo članov in članic.
+g.) kvalifikacije državnega ekipnega prvenstva za U19 moški, U19 ženske, U17 moški, U17
+ženske, U15 moški, U15 ženske
+dobljena igra posameznikov 	točke
+
+-- 16 of 28 --
+
+v predtekmovanju 	50
+h.) finale državnega ekipnega prvenstva za U19 moški, U19 ženske, U17 moški, U17
+ženske, U15 moški, U15 ženske
+dobljena igra posameznikov 	točke
+v predtekmovanju 	100
+v finalni skupini za 1. do 4. mesto 	150
+v finalni skupini za 5. do 8. mesto 	100
+Za posamezno državno prvenstvo in državne odprte turnirje veljajo dodatna pravila:
+- 	Tekmovalec, ki je neposredno uvrščen v finalno skupino, a tam ne doseže zmage, prejme
+toliko točk, kot je predvideno za uvrstitev v finalno skupino.
+- 	Tretje in četrto uvrščeni tekmovalci, ki ne nastopajo v skupini mali finale, ne dobijo točk.
+PRIJAVNINA ZA TEKMOVANJA
+31. člen
+Prijave in odjave za tekmovanja NTZS so možne samo preko spletne aplikacije NTZS, rok
+za prijave je zadnji petek pred tekmovanjem do 10:00h. Pravočasne odjave so do dneva
+tekmovanja do 8:00h na telefonsko številko delegata tekmovanja, ki je objavljena v razpisu
+tekmovanja. V primeru dvojnega sporeda so pravočasne odjave možne do 7:30h.
+Prijavnina za tekmovanja se plača po prijavi za vse prijavljene in nepravočasno odjavljene
+igralce. Prijavnina se plačuje za vsa tekmovanja v koledarju tekmovanj Namiznoteniške
+zveze Slovenije.
+Višina prijavnine je določena glede na vrsto tekmovanja za naslednjo tabelo:
+tekmovanje 	prijavnina
+odprti turnirji 	20 točk
+državna prvenstva posamezno in dvojice 	30 točk
+top turnirji 	25 točk
+Masters 	15 točk
+polfinale državnega prvenstva ekipno 	60 točk
+finale državnega prvenstva ekipno 	75 točk
+Za državna prvenstva ekipno je navedena prijavnina za vsako posamezno ekipo.
+PRITOŽBENI POSTOPKI
+32. člen
+Pritožbe na točkovanje rešuje v prvi stopnji Tehnična komisija Namiznoteniške zveze
+Slovenije na podlagi dokumentacije, ki jo mora pritožbi priložiti pritožnik.
+Zoper odločitve posameznih organov oziroma služb NTZS, ki jih le ti izdajajo v skladu s tem
+pravilnikom, je dovoljen ugovor v roku 8. dni po objavi (na spletni strani) oziroma prejema
+pisne odločitve. Za ugovor se plača taksa v višini 50 točk. Če ugovoru ni predložen dokaz
+
+-- 17 of 28 --
+
+o 	plačilu 	takse, 	Tehnična 	komisija 	ugovor 	zavrže 	brez 	njegovega 	vsebinskega
+obravnavanja. Prav tako ugovor zavrže, če ugotovi, da je prepozna ali jo je vložila oseba, ki
+ne izkazuje pravnega interesa.
+O ugovoru odloča Tehnična komisija s sklepom. Ugovoru mora biti predložena vsa
+dokumentacija, iz katere izhaja utemeljenost ugovora. Tehnična komisija ne poziva k
+dopolnitvi ugovora, pač pa odloči izključno na podlagi predložene dokumentacije. Če je to
+potrebno, pa lahko pridobi potrebne izjave od drugih organov NTZS.
+O ugovoru mora Tehnična komisija odločiti nemudoma, najkasneje pa v roku 15 dni od
+prejema. Odločba Tehnične komisije mora biti pisna in obrazložena in se vroči vložniku
+ugovora s priporočeno pošiljko.
+33. člen
+Zoper odločbo Tehnične komisije je dovoljena pritožba na Izvršni odbor Namiznoteniške
+zveze Slovenije.
+Pritožbo je moč vložiti v roku 8 dni od prejema odločbe Tehnične komisije. Za pritožbo se
+ne plača taksa.
+34. člen
+V kolikor je ugovoru ugodeno, mora v primeru, da vpliva sprememba tudi na druge (npr.
+sprememba jakostne lestvice, ….), Tehnična komisija z elektronskim sporočilom obvestiti
+vse člane o ugoditvi ugovoru ter spremembah, ki so zaradi tega nastale.
+PREHODNE IN KONČNE DOLOČBE
+35. člen
+Vsa tolmačenja tega Pravilnika daje Tehnična komisija ter so obvezna za vse klube, društva
+in sekcije na področju Republike Slovenije.
+36. člen
+Pravilnik o sistemu tekmovanj Namiznoteniške zveze Slovenije je bil sprejet na
+korespondenčni seji IO NTZS 07.09.2005 ter dopolnjen na 	IO NTZS 25. 08. 2010,
+13.12.2010, 01.03.2011,29.08.2011,07.10.2011, 13.09.2012,05.03.2013, 23.-24.05.2013,
+03.12.2013, 25.03.2014, 28.05.2015, 22.12.2022, 25.08.2025 in 04.06.2026. V veljavo stopi
+dne 04.06.2026.
+Predsednik NTZS: Tomaž Kralj
+
+-- 18 of 28 --
+
+Priloga A2: Model za žrebanje FINALNE SKUPINE
+PRIJAV 	PREDTEKM. št. skupin FINALNA SKUPINA
+4 igralci
+v skupini
+3 igralci
+v skupini
+Model 	Število in položaj
+prostih mest (X)
+8 	2 	0 	4 	0
+9 	0 	3 	8 	2 	(2,7)
+10 	1 	2 	8 	2 	(2,7)
+11 	2 	1 	8 	2 	(2,7)
+12 	3 	0 	8 	2 	(2,7)
+13 	1 	3 	8
+14 	2 	2 	8
+15 	3 	1 	8
+16 	4 	0 	8
+17 	2 	3 	12 	2 	(5,8)
+18 	3 	2 	12 	2 	(5,8)
+19 	4 	1 	12 	2 	(5,8)
+20 	5 	0 	12 	2 	(5,8)
+21 	3 	3 	12
+22 	4 	2 	12
+23 	5 	1 	12
+24 	6 	0 	12
+25 	4 	3 	16 	2 	(2,15)
+26 	5 	2 	16 	2 	(2,15)
+27 	6 	1 	16 	2 	(2,15)
+28 	7 	0 	16 	2 	(2,15)
+29 	5 	3 	16
+30 	6 	2 	16
+31 	7 	1 	16
+32 	8 	0 	16
+33 	6 	3 	24 	6 	(5,20,8,17,2,23)
+34 	7 	2 	24 	6 	(5,20,8,17,2,23)
+35 	8 	1 	24 	6 	(5,20,8,17,2,23)
+36 	9 	0 	24 	6 	(5,20,8,17,2,23)
+37 	7 	3 	24 	4 	(5,20,8,17)
+38 	8 	2 	24 	4 	(5,20,8,17)
+39 	9 	1 	24 	4 	(5,20,8,17)
+40 	10 	0 	24 	4 	(5,20,8,17)
+41 	8 	3 	24 	2 	(5,20)
+42 	9 	2 	24 	2 	(5,20)
+43 	10 	1 	24 	2 	(5,20)
+44 	11 	0 	24 	2 	(5,20)
+45 	9 	3 	24
+46 	10 	2 	24
+47 	11 	1 	24
+48 	12 	0 	24
+49 	10 	3 	32 	6 	(2,31,15,18,7,26)
+50 	11 	2 	32 	6 	(2,31,15,18,7,26)
+51 	12 	1 	32 	6 	(2,31,15,18,7,26)
+52 	13 	0 	32 	6 	(2,31,15,18,7,26)
+53 	11 	3 	32 	4 	(2,31,15,18)
+54 	12 	2 	32 	4 	(2,31,15,18)
+55 	13 	1 	32 	4 	(2,31,15,18)
+56 	14 	0 	32 	4 	(2,31,15,18)
+57 	12 	3 	32 	2 	(2,31)
+58 	13 	2 	32 	2 	(2,31)
+59 	14 	1 	32 	2 	(2,31)
+60 	15 	0 	32 	2 	(2,31)
+61 	13 	3 	32
+62 	14 	2 	32
+63 	15 	1 	32
+Kategorija: VSE KATEGORIJE
+
+-- 19 of 28 --
+
+64 	16 	0 	32
+65 	14 	3 	48 	14 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38)
+66 	15 	2 	48 	14 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38)
+67 	16 	1 	48 	14 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38)
+68 	17 	0 	48 	14 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38)
+69 	15 	3 	48 	12 	(5,44,20,29,8,41,17,32,2,47,23,26)
+70 	16 	2 	48 	12 	(5,44,20,29,8,41,17,32,2,47,23,26)
+71 	17 	1 	48 	12 	(5,44,20,29,8,41,17,32,2,47,23,26)
+72 	18 	0 	48 	12 	(5,44,20,29,8,41,17,32,2,47,23,26)
+73 	16 	3 	48 	10 	(5,44,20,29,8,41,17,32,2,47)
+74 	17 	2 	48 	10 	(5,44,20,29,8,41,17,32,2,47)
+75 	18 	1 	48 	10 	(5,44,20,29,8,41,17,32,2,47)
+76 	19 	0 	48 	10 	(5,44,20,29,8,41,17,32,2,47)
+77 	17 	3 	48 	8 	(5,44,20,29,8,41,17,32)
+78 	18 	2 	48 	8 	(5,44,20,29,8,41,17,32)
+79 	19 	1 	48 	8 	(5,44,20,29,8,41,17,32)
+80 	20 	0 	48 	8 	(5,44,20,29,8,41,17,32)
+81 	18 	3 	48 	6 	(5,44,20,29,8,41)
+82 	19 	2 	48 	6 	(5,44,20,29,8,41)
+83 	20 	1 	48 	6 	(5,44,20,29,8,41)
+84 	21 	0 	48 	6 	(5,44,20,29,8,41)
+85 	19 	3 	48 	4 	(5,44,20,29)
+86 	20 	2 	48 	4 	(5,44,20,29)
+87 	21 	1 	48 	4 	(5,44,20,29)
+88 	22 	0 	48 	4 	(5,44,20,29)
+89 	20 	3 	48 	2 	(5,44)
+90 	21 	2 	48 	2 	(5,44)
+91 	22 	1 	48 	2 	(5,44)
+92 	23 	0 	48 	2 	(5,44)
+93 	21 	3 	48
+94 	22 	2 	48
+95 	23 	1 	48
+96 	24 	0 	48
+97 	22 	3 	64 	14 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55)
+98 	23 	2 	64 	14 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55)
+99 	24 	1 	64 	14 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55)
+100 	25 	0 	64 	14 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55)
+101 	23 	3 	64 	12 	(2,63,31,34,15,50,18,47,7,58,26,39)
+102 	24 	2 	64 	12 	(2,63,31,34,15,50,18,47,7,58,26,39)
+103 	25 	1 	64 	12 	(2,63,31,34,15,50,18,47,7,58,26,39)
+104 	26 	0 	64 	12 	(2,63,31,34,15,50,18,47,7,58,26,39)
+105 	24 	3 	64 	10 	(2,63,31,34,15,50,18,47,7,58)
+106 	25 	2 	64 	10 	(2,63,31,34,15,50,18,47,7,58)
+107 	26 	1 	64 	10 	(2,63,31,34,15,50,18,47,7,58)
+108 	27 	0 	64 	10 	(2,63,31,34,15,50,18,47,7,58)
+109 	25 	3 	64 	8 	(2,63,31,34,15,50,18,47)
+110 	26 	2 	64 	8 	(2,63,31,34,15,50,18,47)
+111 	27 	1 	64 	8 	(2,63,31,34,15,50,18,47)
+112 	28 	0 	64 	8 	(2,63,31,34,15,50,18,47)
+113 	26 	3 	64 	6 	(2,63,31,34,15,50)
+114 	27 	2 	64 	6 	(2,63,31,34,15,50)
+115 	28 	1 	64 	6 	(2,63,31,34,15,50)
+116 	29 	0 	64 	6 	(2,63,31,34,15,50)
+117 	27 	3 	64 	4 	(2,63,31,34)
+118 	28 	2 	64 	4 	(2,63,31,34)
+119 	29 	1 	64 	4 	(2,63,31,34)
+120 	30 	0 	64 	4 	(2,63,31,34)
+121 	28 	3 	64 	2 	(2,63)
+122 	29 	2 	64 	2 	(2,63)
+123 	30 	1 	64 	2 	(2,63)
+124 	31 	0 	64 	2 	(2,63)
+125 	29 	3 	64
+126 	30 	2 	64
+127 	31 	1 	64
+128 	32 	0 	64
+
+-- 20 of 28 --
+
+Priloga A3: Model za žrebanje MALI finale
+PRIJAV 	ŠT. IGRALCEV 	MALI FINALE
+v FINALNI
+skupini
+v skupini
+MALI FINALE
+Model 	Število in položaj
+prostih mest (X)
+8 	4 	4 	4 	0
+9 	6 	3 	4 	1 	(2)
+10 	6 	4 	4 	0
+11 	6 	5 	8 	3 	(2,7,3)
+12 	6 	6 	8 	2 	(2,7)
+13 	8 	5 	8 	3 	(2,7,3)
+14 	8 	6 	8 	2 	(2,7)
+15 	8 	7 	8 	1 	(2)
+16 	8 	8 	8 	0
+17 	10 	7 	8 	1 	(2)
+18 	10 	8 	8 	0
+19 	10 	9 	12 	3 	(5,8,2)
+20 	10 	10 	12 	2 	(5,8)
+21 	12 	9 	12 	3 	(5,8,2)
+22 	12 	10 	12 	2 	(5,8)
+23 	12 	11 	12 	1 	(5)
+24 	12 	12 	12 	0
+25 	14 	11 	12 	1 	(5)
+26 	14 	12 	12 	0
+27 	14 	13 	16 	3 	(2,15,7)
+28 	14 	14 	16 	2 	(2,15)
+29 	16 	13 	16 	3 	(2,15,7)
+30 	16 	14 	16 	2 	(2,15)
+31 	16 	15 	16 	1 	(2)
+32 	16 	16 	16 	0
+33 	18 	15 	16 	1 	(2)
+34 	18 	16 	16 	0
+35 	18 	17 	24 	7 	(5,20,8,17,2,23,11)
+36 	18 	18 	24 	6 	(5,20,8,17,2,23)
+37 	20 	17 	24 	7 	(5,20,8,17,2,23,11)
+38 	20 	18 	24 	6 	(5,20,8,17,2,23)
+39 	20 	19 	24 	5 	(5,20,8,17,2)
+40 	20 	20 	24 	4 	(5,20,8,17)
+41 	22 	19 	24 	5 	(5,20,8,17,2)
+42 	22 	20 	24 	4 	(5,20,8,17)
+43 	22 	21 	24 	3 	(5,20,8)
+44 	22 	22 	24 	2 	(5,20)
+45 	24 	21 	24 	3 	(5,20,8)
+46 	24 	22 	24 	2 	(5,20)
+47 	24 	23 	24 	1 	(5)
+48 	24 	24 	24 	0
+49 	26 	23 	24 	1 	(5)
+50 	26 	24 	24 	0
+51 	26 	25 	32 	7 	(2,31,15,18,7,26,10)
+52 	26 	26 	32 	6 	(2,31,15,18,7,26)
+53 	28 	25 	32 	7 	(2,31,15,18,7,26,10)
+54 	28 	26 	32 	6 	(2,31,15,18,7,26)
+55 	28 	27 	32 	5 	(2,31,15,18,7)
+56 	28 	28 	32 	4 	(2,31,15,18)
+57 	30 	27 	32 	5 	(2,31,15,18,7)
+58 	30 	28 	32 	4 	(2,31,15,18)
+59 	30 	29 	32 	3 	(2,31,15)
+60 	30 	30 	32 	2 	(2,31)
+61 	32 	29 	32 	3 	(2,31,15)
+62 	32 	30 	32 	2 	(2,31)
+63 	32 	31 	32 	1 	(2)
+64 	32 	32 	32 	0
+65 	34 	31 	32 	1 	(2)
+66 	34 	32 	32 	0
+67 	34 	33 	48 	15 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38,14)
+68 	34 	34 	48 	14 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38)
+69 	36 	33 	48 	15 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38,14)
+70 	36 	34 	48 	14 	(5,44,20,29,8,41,17,32,2,47,23,26,11,38)
+71 	36 	35 	48 	13 	(5,44,20,29,8,41,17,32,2,47,23,26,11)
+Kategorija: U11 moški, U11 ženske
+
+-- 21 of 28 --
+
+72 	36 	36 	48 	12 	(5,44,20,29,8,41,17,32,2,47,23,26)
+73 	38 	35 	48 	13 	(5,44,20,29,8,41,17,32,2,47,23,26,11)
+74 	38 	36 	48 	12 	(5,44,20,29,8,41,17,32,2,47,23,26)
+75 	38 	37 	48 	11 	(5,44,20,29,8,41,17,32,2,47,23)
+76 	38 	38 	48 	10 	(5,44,20,29,8,41,17,32,2,47)
+77 	40 	37 	48 	11 	(5,44,20,29,8,41,17,32,2,47,23)
+78 	40 	38 	48 	10 	(5,44,20,29,8,41,17,32,2,47)
+79 	40 	39 	48 	9 	(5,44,20,29,8,41,17,32,2)
+80 	40 	40 	48 	8 	(5,44,20,29,8,41,17,32)
+81 	42 	39 	48 	9 	(5,44,20,29,8,41,17,32,2)
+82 	42 	40 	48 	8 	(5,44,20,29,8,41,17,32)
+83 	42 	41 	48 	7 	(5,44,20,29,8,41,17)
+84 	42 	42 	48 	6 	(5,44,20,29,8,41)
+85 	44 	41 	48 	7 	(5,44,20,29,8,41,17)
+86 	44 	42 	48 	6 	(5,44,20,29,8,41)
+87 	44 	43 	48 	5 	(5,44,20,29,8)
+88 	44 	44 	48 	4 	(5,44,20,29)
+89 	46 	43 	48 	5 	(5,44,20,29,8)
+90 	46 	44 	48 	4 	(5,44,20,29)
+91 	46 	45 	48 	3 	(5,44,20)
+92 	46 	46 	48 	2 	(5,44)
+93 	48 	45 	48 	3 	(5,44,20)
+94 	48 	46 	48 	2 	(5,44)
+95 	48 	47 	48 	1 	(5)
+96 	48 	48 	48 	0
+97 	50 	47 	48 	1 	(2)
+98 	50 	48 	48 	0
+99 	50 	49 	64 	15 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55,23)
+100 	50 	50 	64 	14 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55)
+101 	52 	49 	64 	15 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55,23)
+102 	52 	50 	64 	14 	(2,63,31,34,15,50,18,47,7,58,26,39,10,55)
+103 	52 	51 	64 	13 	(2,63,31,34,15,50,18,47,7,58,26,39,10)
+104 	52 	52 	64 	12 	(2,63,31,34,15,50,18,47,7,58,26,39)
+105 	54 	51 	64 	13 	(2,63,31,34,15,50,18,47,7,58,26,39,10)
+106 	54 	52 	64 	12 	(2,63,31,34,15,50,18,47,7,58,26,39)
+107 	54 	53 	64 	11 	(2,63,31,34,15,50,18,47,7,58,26)
+108 	54 	54 	64 	10 	(2,63,31,34,15,50,18,47,7,58)
+109 	56 	53 	64 	11 	(2,63,31,34,15,50,18,47,7,58,26)
+110 	56 	54 	64 	10 	(2,63,31,34,15,50,18,47,7,58)
+111 	56 	55 	64 	9 	(2,63,31,34,15,50,18,47,7)
+112 	56 	56 	64 	8 	(2,63,31,34,15,50,18,47)
+113 	58 	55 	64 	9 	(2,63,31,34,15,50,18,47,7)
+114 	58 	56 	64 	8 	(2,63,31,34,15,50,18,47)
+115 	58 	57 	64 	7 	(2,63,31,34,15,50,18)
+116 	58 	58 	64 	6 	(2,63,31,34,15,50)
+117 	60 	57 	64 	7 	(2,63,31,34,15,50,18)
+118 	60 	58 	64 	6 	(2,63,31,34,15,50)
+119 	60 	59 	64 	5 	(2,63,31,34,15)
+120 	60 	60 	64 	4 	(2,63,31,34)
+121 	62 	59 	64 	5 	(2,63,31,34,15)
+122 	62 	60 	64 	4 	(2,63,31,34)
+123 	62 	61 	64 	3 	(2,63,31)
+124 	62 	62 	64 	2 	(2,63)
+125 	64 	61 	64 	3 	(2,63,31)
+126 	64 	62 	64 	2 	(2,63)
+127 	64 	63 	64 	1 	(2)
+128 	64 	64 	64 	0
+
+-- 22 of 28 --
+
+Priloga B: TABELE
+3 in 4 udeleženci (prilagojena, ko iz skupine napredujeta dva igralca)
+5 in 6 udeležencev
+Krog:
+l. 	1-(6) 	2-5 	3-4
+2. 	(6)-4 	5-3 	1-2
+3. 	2-(6) 	3-1 	4-5
+4. 	(6)-5 	1-4 	2-3
+5. 	3-(6) 	4-2 	5-1
+7 in 8 udeležencev
+Krog:
+1. 	1-(8) 	2-7 	3-6 	4-5
+2. 	(8)-5 	6-4 	7-3 	1-2
+3. 	2-(8) 	3-1 	4-7 	5-6
+4. 	(8)-6 	7-5 	1-4 	2-3
+5. 	3-(8) 	4-2 	5-1 	6-7
+6. 	(8)-7 	1-6 	2-5 	3-4
+7. 	4-(8) 	5-3 	6-2 	7-1
+9 in 10 udeležencev
+Krog:
+1. 	1-(10) 	2-9 	3-8 	4-7 	5-6
+2. 	(10)-6 	7-5 	8-4 	9-3 	1-2
+3. 	2-(10) 	3-1 	4-9 	5-8 	6-7
+4. 	(l0)-7 	8-6 	9-5 	1-4 	2-3
+5. 	3-(l0) 	4-2 	5-1 	6-9 	7-8
+6. 	(l0)-8 	9-7 	1-6 	2-5 	3-4
+7. 	4-(l0) 	5-3 	6-2 	7-1 	8-9
+8. 	(l0)-9 	1-8 	2-7 	3-6 	4-5
+9. 	5-(l0) 	6-4 	7-3 	8-2 	9-1
+11 in 12 udeležencev
+Krog:
+l. 	1-(l2) 	2-11 	3-l0 	4-9 	5-8 	6-7
+2. 	(l2)-7 	8-6 	9-5 	10-4 	ll-3 	1-2
+3. 	2-(l2) 	3-1 	4-11 	5-10 	6-9 	7-8
+4. 	(l2)-8 	9-7 	10-6 	ll-5 	1-4 	2-3
+5. 	3-(l2) 	4-2 	5-1 	6-ll 	7-10 	8-9
+6. 	(l2)-9 	10-8 	11-7 	1-6 	2-5 	3-4
+7. 	4-(12) 	5-3 	6-2 	7-1 	8-ll 	9-10
+8. 	(12)-10 	ll-9 	1-8 	2-7 	3-6 	4-5
+9. 	5-(l2) 	6-4 	7-3 	8-2 	9-1 	10-ll
+10. 	(l2)-11 	1-10 	2-9 	3-8 	4-7 	5-6
+ll. 	6-(l2) 	7-5 	8-4 	9-3 	10-2 	ll-1
+Krog:
+1. 	1-3 	2-(4)
+2. 	1-2 	3-(4)
+3. 	2-3 	1-(4)
+
+-- 23 of 28 --
+
+Priloga C: žreb v finalno skupino - model 4
+1.
+2.
+3.
+4.
+
+-- 24 of 28 --
+
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+1.
+3.-4.
+3.-4.
+2.
+Priloga C: žreb v finalno skupino - model 8
+1.
+
+-- 25 of 28 --
+
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+9.
+10.
+11.
+12.
+13.
+14.
+15.
+16.
+1.
+5.-8.
+5.-8.
+3.-4.
+3.-4.
+5.-8.
+5.-8.
+2.
+Priloga C: žreb v finalno skupino - model 16
+1.
+
+-- 26 of 28 --
+
+Priloga C: žreb v finalno skupino - model 32
+1.
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+9.
+10.
+11.
+12.
+13.
+14.
+15.
+16.
+17.
+18.
+19.
+20.
+21.
+22.
+23.
+24.
+25.
+26.
+27.
+28.
+29.
+30.
+31.
+32.
+1.
+9.-16.
+9.-16.
+5.-8.
+5.-8.
+9.-16.
+9.-16.
+3.-4.
+3.-4.
+9.-16.
+9.-16.
+5.-8.
+5.-8.
+9.-16.
+9.-16.
+2.
+
+-- 27 of 28 --
+
+Priloga C: žreb v finalno skupino - model 64
+1.
+2.
+3.
+4.
+5.
+6.
+7.
+8.
+9.
+10.
+11.
+12.
+13.
+14.
+15.
+16.
+17.
+18.
+19.
+20.
+21.
+22.
+23.
+24.
+25.
+26.
+27.
+28.
+29.
+30.
+31.
+32.
+33.
+34.
+35.
+36.
+37.
+38.
+39.
+40.
+41.
+42.
+43.
+44.
+45.
+46.
+47.
+48.
+49.
+50.
+51.
+52.
+53.
+54.
+55.
+56.
+57.
+58.
+59.
+60.
+61.
+62.
+63.
+64.
+1.
+17.-32.
+17.-32.
+9.-16.
+9.-16.
+17.-32.
+17.-32.
+5.-8.
+5.-8.
+17.-32.
+17.-32.
+9.-16.
+9.-16.
+17.-32.
+17.-32.
+3.-4.
+3.-4.
+17.-32.
+17.-32.
+9.-16.
+9.-16.
+17.-32.
+17.-32.
+5.-8.
+5.-8.
+17.-32.
+17.-32.
+9.-16.
+9.-16.
+17.-32.
+17.-32.
+2.
+
+-- 28 of 28 --
+
