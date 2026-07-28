@@ -31,6 +31,16 @@ function SamoAdmin({ children }: { children: ReactElement }) {
   return children
 }
 
+/* Ovoj za urejevalce (administrator ali organizator). Stran igralcev je tu -
+   organizator sme dodati novega igralca (urejevalna dejanja zanj skrije sama
+   stran); gosta in navadnega igralca preusmeri na lestvico. */
+function SamoUrejevalec({ children }: { children: ReactElement }) {
+  const { jeAdmin, jeOrganizator, nalaganje } = useAvtentikacija()
+  if (nalaganje) return <p className="obvestilo">Preverjanje prijave …</p>
+  if (!jeAdmin && !jeOrganizator) return <Navigate to="/lestvica" replace />
+  return children
+}
+
 /* Bližnjica "Moj profil": prijavljenega igralca preusmeri na njegov profil.
    Račun, ki čaka na potrditev, še nima povezanega igralca, zato mu razložimo,
    zakaj profila (še) ni. */
@@ -79,9 +89,9 @@ export function App() {
         <Route
           path="/igralci"
           element={
-            <SamoAdmin>
+            <SamoUrejevalec>
               <IgralciStran />
-            </SamoAdmin>
+            </SamoUrejevalec>
           }
         />
         <Route

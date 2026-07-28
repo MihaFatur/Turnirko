@@ -43,13 +43,16 @@ public class IzborStoritev {
     private final DogodekRepozitorij dogodekRepozitorij;
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final RatingStanjeRepozitorij ratingStanjeRepozitorij;
+    private final LastnistvoStoritev lastnistvo;
 
     public IzborStoritev(DogodekRepozitorij dogodekRepozitorij,
                          PrijavaRepozitorij prijavaRepozitorij,
-                         RatingStanjeRepozitorij ratingStanjeRepozitorij) {
+                         RatingStanjeRepozitorij ratingStanjeRepozitorij,
+                         LastnistvoStoritev lastnistvo) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.ratingStanjeRepozitorij = ratingStanjeRepozitorij;
+        this.lastnistvo = lastnistvo;
     }
 
     /* Prijave dogodka v veljavnem jakostnem vrstnem redu.
@@ -103,6 +106,7 @@ public class IzborStoritev {
        zato ga zavrnemo. */
     @Transactional
     public List<Prijava> shraniVrstniRed(Long idDogodka, List<Long> idjiPrijavPoVrsti) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
         Dogodek dogodek = najdiDogodek(idDogodka);
         if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
             throw new DomenskaIzjema(

@@ -21,7 +21,7 @@ export type StatusPrijave =
   | 'DISKVALIFICIRAN'
   | 'REZERVA'
   | 'ODSTOPIL'
-export type Vloga = 'ADMIN' | 'IGRALEC'
+export type Vloga = 'ADMIN' | 'ORGANIZATOR' | 'IGRALEC'
 
 /* ---------- Izpisni DTO-ji ---------- */
 
@@ -66,6 +66,11 @@ export interface TurnirDto {
   datumKonca: string | null
   status: StatusTekmovanja
   opombe: string | null
+  /* Lastnistvo: racun, ki je turnir ustvaril, in klub lastnik. Po njiju
+     vmesnik pokaze urejanje le lastniku (streznik je zadnja obramba). */
+  idLastnik: number | null
+  idKlubLastnik: number | null
+  klubLastnik: string | null
 }
 
 export interface DogodekDto {
@@ -190,12 +195,17 @@ export interface MrezaDto {
 /* Prijavljeni uporabnik (administrator ali igralec); gost nima zapisa.
    Pri igralcu je uporabniško ime njegova e-pošta. */
 export interface UporabnikDto {
+  /* Id računa; vmesnik ga primerja z idLastnik turnirja/lige. */
+  id: number
   uporabniskoIme: string
   vloga: Vloga
   status: StatusRacuna
   /* Zapis igralca, s katerim je račun povezan (šele po potrditvi). */
   idIgralec: number | null
   imeIgralca: string | null
+  /* Klub organizatorja (po njem soupravlja klubska tekmovanja); sicer null. */
+  idKlub: number | null
+  klub: string | null
 }
 
 export type StatusRacuna = 'CAKA' | 'POTRJEN' | 'ZAVRNJEN'
@@ -206,12 +216,20 @@ export const OZNAKE_STATUSA_RACUNA: Record<StatusRacuna, string> = {
   ZAVRNJEN: 'Zavrnjen',
 }
 
+export const OZNAKE_VLOGA: Record<Vloga, string> = {
+  ADMIN: 'Administrator',
+  ORGANIZATOR: 'Organizator',
+  IGRALEC: 'Igralec',
+}
+
 export interface RegistracijaVnos {
   ime: string
   priimek: string
   idKlub: number | null
   email: string
   geslo: string
+  /* true = registracija organizatorja; sicer (false/undefined) igralec. */
+  organizator?: boolean
 }
 
 export interface SpremembaGeslaVnos {
@@ -224,19 +242,29 @@ export interface NastavitevGeslaVnos {
   geslo: string
 }
 
-/* Račun igralca v administratorjevem pregledu. */
+/* Račun osebe (igralca ali organizatorja) v administratorjevem pregledu. */
 export interface RacunIgralcaDto {
   id: number
   email: string
+  /* Loči račun igralca od organizatorja (potrjevanje je različno). */
+  vloga: Vloga
   prijavljenoIme: string | null
   prijavljeniPriimek: string | null
   klubZelja: string | null
+  /* Potrjen klub organizatorja (pri igralcu null). */
+  idKlub: number | null
+  klub: string | null
   status: StatusRacuna
   aktiven: boolean
   idIgralec: number | null
   imeIgralca: string | null
   ustvarjenOb: string
   predlogi: PredlogIgralcaDto[]
+}
+
+/* Administratorjeva potrditev organizatorja: (neobvezni) klub. */
+export interface PotrditevOrganizatorjaVnos {
+  idKlub: number | null
 }
 
 export interface PredlogIgralcaDto {
@@ -470,6 +498,10 @@ export interface LigaDto {
   stIzpade: number
   status: StatusTekmovanja
   steviloEkip: number
+  /* Lastnistvo (glej TurnirDto). */
+  idLastnik: number | null
+  idKlubLastnik: number | null
+  klubLastnik: string | null
 }
 
 export interface LigaVnos {
@@ -541,6 +573,8 @@ export interface LestvicaEkipeDto {
 
 export interface SrecanjeDto {
   id: number
+  /* Liga, ki ji srečanje pripada (za preverbo lastništva). */
+  idLiga: number
   kolo: number
   idEkipaDomaci: number
   domaci: string

@@ -46,6 +46,7 @@ public class TekmaStoritev {
     private final NapredovanjeStoritev napredovanjeStoritev;
     private final SkupineStoritev skupineStoritev;
     private final RazvrstitevStoritev razvrstitevStoritev;
+    private final LastnistvoStoritev lastnistvo;
 
     public TekmaStoritev(TekmaRepozitorij tekmaRepozitorij,
                          NizRepozitorij nizRepozitorij,
@@ -54,7 +55,8 @@ public class TekmaStoritev {
                          RatingStoritev ratingStoritev,
                          NapredovanjeStoritev napredovanjeStoritev,
                          SkupineStoritev skupineStoritev,
-                         RazvrstitevStoritev razvrstitevStoritev) {
+                         RazvrstitevStoritev razvrstitevStoritev,
+                         LastnistvoStoritev lastnistvo) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
@@ -63,11 +65,13 @@ public class TekmaStoritev {
         this.napredovanjeStoritev = napredovanjeStoritev;
         this.skupineStoritev = skupineStoritev;
         this.razvrstitevStoritev = razvrstitevStoritev;
+        this.lastnistvo = lastnistvo;
     }
 
     /* Vnese koncni rezultat tekme in sprozi vse posledice. */
     @Transactional
     public Tekma vnesiRezultat(Long idTekme, VnosRezultata vnos) {
+        lastnistvo.preveriTurnirPoTekmi(idTekme);
         Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
 
@@ -116,6 +120,7 @@ public class TekmaStoritev {
        Na lestvici skupine tekma normalno steje kot njegova zmaga. */
     @Transactional
     public Prijava odstopiIgralca(Long idPrijave) {
+        lastnistvo.preveriTurnirPoPrijavi(idPrijave);
         Prijava prijava = prijavaRepozitorij.najdiZIgralcem(idPrijave)
                 .orElseThrow(() -> new NiNajdenoIzjema("Prijava z id " + idPrijave + " ne obstaja."));
         Dogodek dogodek = prijava.getDogodek();

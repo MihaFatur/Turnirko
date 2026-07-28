@@ -174,7 +174,6 @@ function IzbiraIgralca({
           .map((i) => (
             <option key={i.id} value={i.id}>
               {i.priimek} {i.ime}
-              {i.klub ? ` (${i.klub.ime})` : ''}
             </option>
           ))}
       </select>

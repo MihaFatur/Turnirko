@@ -1,6 +1,6 @@
-/* Registracija igralca. Ime, priimek in klub sluzijo administratorju, da
-   racun poveze s pravim zapisom v sifrantu igralcev; e-posta je hkrati
-   prijavno ime. */
+/* Registracija osebe (igralca ali organizatorja). Ime, priimek in klub
+   sluzijo administratorju pri potrjevanju (igralca poveze z zapisom v
+   sifrantu, organizatorju potrdi klub); e-posta je hkrati prijavno ime. */
 package si.turnirko.dto;
 
 import jakarta.validation.constraints.Email;
@@ -14,7 +14,7 @@ public record RegistracijaVnos(
         @NotBlank(message = "priimek je obvezen")
         @Size(max = 60, message = "priimek je predolg") String priimek,
 
-        /* Neobvezen - igralec morda ni v klubu. */
+        /* Neobvezen - igralec morda ni v klubu, organizator navede zeleni klub. */
         Long idKlub,
 
         @NotBlank(message = "e-posta je obvezna")
@@ -22,5 +22,9 @@ public record RegistracijaVnos(
         @Size(max = 120, message = "e-posta je predolga") String email,
 
         @NotBlank(message = "geslo je obvezno")
-        @Size(min = 8, max = 100, message = "geslo mora imeti vsaj 8 znakov") String geslo
+        @Size(min = 8, max = 100, message = "geslo mora imeti vsaj 8 znakov") String geslo,
+
+        /* true = registracija organizatorja (klub/oseba, ki bo vodila
+           tekmovanja); privzeto (null/false) je registracija igralca. */
+        Boolean organizator
 ) {}

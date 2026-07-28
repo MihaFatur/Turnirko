@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { dogodkiApi, igralciApi } from '../api/zahteve'
+import { dogodkiApi, igralciApi, turnirjiApi } from '../api/zahteve'
 import type { IzborDto, MrezaDto, PrijavaDto, SkupinaDto, TekmaDto } from '../api/tipi'
 import { OZNAKE_SISTEM_KRATKO, OZNAKE_SPOL_KATEGORIJA, OZNAKE_STATUS_PRIJAVE } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
@@ -29,11 +29,20 @@ export function DogodekStran() {
   const { id } = useParams()
   const idDogodka = Number(id)
   const odjemalec = useQueryClient()
-  const { jeAdmin } = useAvtentikacija()
+  const { jeAdmin, jeOrganizator, smemUrejati } = useAvtentikacija()
 
   const mreza = useQuery({
     queryKey: ['dogodek', idDogodka],
     queryFn: () => dogodkiApi.mreza(idDogodka),
+  })
+
+  /* Za urejanje potrebujemo lastnistvo nadrejenega turnirja (dogodek ga sam
+     ne nosi); poizvedbo sprozimo le za morebitne urejevalce. */
+  const idTurnir = mreza.data?.dogodek.idTurnir
+  const turnir = useQuery({
+    queryKey: ['turnir', idTurnir],
+    queryFn: () => turnirjiApi.najdi(idTurnir!),
+    enabled: idTurnir != null && (jeAdmin || jeOrganizator),
   })
 
   /* Tekma, za katero je odprto okno za vnos rezultata. */
@@ -45,6 +54,9 @@ export function DogodekStran() {
   if (mreza.error) return <SporociloNapake napaka={mreza.error} />
   const podatki = mreza.data!
   const dogodek = podatki.dogodek
+  // organizator sme upravljati dogodke svojega (ali klubskega) turnirja
+  const smem = jeAdmin
+    || (!!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik))
 
   return (
     <section>
@@ -62,7 +74,7 @@ export function DogodekStran() {
           </p>
         </div>
         <div className="naslovna-vrstica__desno">
-          {jeAdmin && dogodek.status === 'V_TEKU' && (
+          {smem && dogodek.status === 'V_TEKU' && (
             <Link to={`/dogodki/${idDogodka}/listki`} className="gumb gumb--majhen">
               🖨 Listki
             </Link>
@@ -73,7 +85,7 @@ export function DogodekStran() {
       </div>
 
       {dogodek.status === 'PRIPRAVA' ? (
-        jeAdmin ? (
+        smem ? (
           <Priprava podatki={podatki} idDogodka={idDogodka} osvezi={osvezi} />
         ) : (
           <PripravaGost podatki={podatki} />
@@ -81,9 +93,9 @@ export function DogodekStran() {
       ) : (
         <Tekmovanje
           podatki={podatki}
-          naKlikTekme={jeAdmin ? nastaviIzbranoTekmo : undefined}
+          naKlikTekme={smem ? nastaviIzbranoTekmo : undefined}
           osvezi={osvezi}
-          jeAdmin={jeAdmin}
+          jeAdmin={smem}
         />
       )}
 

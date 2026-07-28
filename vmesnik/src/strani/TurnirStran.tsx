@@ -19,7 +19,7 @@ export function TurnirStran() {
   const { id } = useParams()
   const idTurnirja = Number(id)
   const odjemalec = useQueryClient()
-  const { jeAdmin } = useAvtentikacija()
+  const { smemUrejati } = useAvtentikacija()
 
   const turnir = useQuery({
     queryKey: ['turnir', idTurnirja],
@@ -44,6 +44,8 @@ export function TurnirStran() {
   if (turnir.isPending) return <p className="obvestilo">Nalaganje …</p>
   if (turnir.error) return <SporociloNapake napaka={turnir.error} />
   const podatki = turnir.data!
+  // organizator sme upravljati svoj (ali klubski) turnir, admin vse
+  const smem = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik)
 
   /* Gumb za zakljucek ponudimo sele, ko so vsi dogodki zakljuceni. */
   const vsiDogodkiZakljuceni =
@@ -68,7 +70,7 @@ export function TurnirStran() {
         </div>
         <div className="naslovna-vrstica__desno">
           <ZnackaStatusa status={podatki.status} />
-          {jeAdmin && podatki.status !== 'ZAKLJUCEN' && vsiDogodkiZakljuceni && (
+          {smem && podatki.status !== 'ZAKLJUCEN' && vsiDogodkiZakljuceni && (
             <button
               className="gumb"
               disabled={zakljucevanje.isPending}
@@ -85,7 +87,7 @@ export function TurnirStran() {
 
       <div className="naslovna-vrstica">
         <h2>Dogodki</h2>
-        {jeAdmin && podatki.status !== 'ZAKLJUCEN' && (
+        {smem && podatki.status !== 'ZAKLJUCEN' && (
           <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
             + Nov dogodek
           </button>

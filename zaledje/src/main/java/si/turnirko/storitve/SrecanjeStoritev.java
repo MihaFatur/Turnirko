@@ -59,6 +59,7 @@ public class SrecanjeStoritev {
     private final RatingStoritev ratingStoritev;
     private final RatingZgodovinaRepozitorij zgodovinaRepozitorij;
     private final SpremembeEloStoritev spremembeEloStoritev;
+    private final LastnistvoStoritev lastnistvo;
 
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
                             PostavaSrecanjaRepozitorij postavaRepozitorij,
@@ -66,7 +67,8 @@ public class SrecanjeStoritev {
                             KaderEkipeRepozitorij kaderRepozitorij,
                             RatingStoritev ratingStoritev,
                             RatingZgodovinaRepozitorij zgodovinaRepozitorij,
-                            SpremembeEloStoritev spremembeEloStoritev) {
+                            SpremembeEloStoritev spremembeEloStoritev,
+                            LastnistvoStoritev lastnistvo) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -74,6 +76,7 @@ public class SrecanjeStoritev {
         this.ratingStoritev = ratingStoritev;
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
         this.spremembeEloStoritev = spremembeEloStoritev;
+        this.lastnistvo = lastnistvo;
     }
 
     @Transactional(readOnly = true)
@@ -111,6 +114,7 @@ public class SrecanjeStoritev {
 
     @Transactional
     public void nastaviPostavo(Long idSrecanje, PostavaVnos vnos) {
+        lastnistvo.preveriLigaPoSrecanju(idSrecanje);
         Srecanje s = srecanjeRepozitorij.najdiPodrobno(idSrecanje)
                 .orElseThrow(() -> new NiNajdenoIzjema("Srecanje z id " + idSrecanje + " ne obstaja."));
         FormatSrecanja format = s.getLiga().getFormatSrecanja();
@@ -167,6 +171,7 @@ public class SrecanjeStoritev {
 
     @Transactional
     public TekmaSrecanjaDto vnesiRezultat(Long idTekma, VnosRezultataSrecanja v) {
+        lastnistvo.preveriLigaPoTekmiSrecanja(idTekma);
         TekmaSrecanja t = tekmaRepozitorij.najdiZaObracun(idTekma)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja."));
         Srecanje s = t.getSrecanje();

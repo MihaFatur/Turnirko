@@ -51,6 +51,7 @@ public class LigaStoritev {
     private final RazporedStoritev razporedStoritev;
     private final LestvicaLigeStoritev lestvicaLigeStoritev;
     private final SpremembeEloStoritev spremembeEloStoritev;
+    private final LastnistvoStoritev lastnistvo;
 
     public LigaStoritev(LigaRepozitorij ligaRepozitorij,
                         EkipaRepozitorij ekipaRepozitorij,
@@ -60,7 +61,8 @@ public class LigaStoritev {
                         IgralecRepozitorij igralecRepozitorij,
                         RazporedStoritev razporedStoritev,
                         LestvicaLigeStoritev lestvicaLigeStoritev,
-                        SpremembeEloStoritev spremembeEloStoritev) {
+                        SpremembeEloStoritev spremembeEloStoritev,
+                        LastnistvoStoritev lastnistvo) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.ekipaRepozitorij = ekipaRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
@@ -70,6 +72,7 @@ public class LigaStoritev {
         this.razporedStoritev = razporedStoritev;
         this.lestvicaLigeStoritev = lestvicaLigeStoritev;
         this.spremembeEloStoritev = spremembeEloStoritev;
+        this.lastnistvo = lastnistvo;
     }
 
     // ---------- Liga ----------
@@ -92,12 +95,15 @@ public class LigaStoritev {
     public LigaDto ustvari(LigaVnos v) {
         Liga liga = new Liga();
         uporabiVnos(liga, v);
+        // zabelezi lastnika (organizator oz. admin, ki jo ustvarja)
+        lastnistvo.oznaciLastnika(liga);
         liga = ligaRepozitorij.save(liga);
         return LigaDto.iz(liga, 0);
     }
 
     @Transactional
     public LigaDto uredi(Long id, LigaVnos v) {
+        lastnistvo.preveriLigaPoId(id);
         Liga liga = ligaRepozitorij.findById(id)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
         if (liga.getStatus() != StatusTekmovanja.PRIPRAVA) {
@@ -110,6 +116,7 @@ public class LigaStoritev {
 
     @Transactional
     public void zbrisi(Long id) {
+        lastnistvo.preveriLigaPoId(id);
         Liga liga = ligaRepozitorij.findById(id)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
         if (srecanjeRepozitorij.existsByLigaId(id)) {
@@ -131,6 +138,7 @@ public class LigaStoritev {
 
     @Transactional
     public EkipaDto dodajEkipo(Long idLiga, EkipaVnos v) {
+        lastnistvo.preveriLigaPoId(idLiga);
         Liga liga = ligaRepozitorij.findById(idLiga)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja."));
         preveriVPripravi(liga);
@@ -152,6 +160,7 @@ public class LigaStoritev {
 
     @Transactional
     public void odstraniEkipo(Long idEkipa) {
+        lastnistvo.preveriLigaPoEkipi(idEkipa);
         Ekipa ekipa = ekipaRepozitorij.najdiZKlubomInLigo(idEkipa)
                 .orElseThrow(() -> new NiNajdenoIzjema("Ekipa z id " + idEkipa + " ne obstaja."));
         preveriVPripravi(ekipa.getLiga());
@@ -173,6 +182,7 @@ public class LigaStoritev {
 
     @Transactional
     public KaderIgralecDto dodajVKader(Long idEkipa, KaderVnos v) {
+        lastnistvo.preveriLigaPoEkipi(idEkipa);
         Ekipa ekipa = ekipaRepozitorij.najdiZKlubomInLigo(idEkipa)
                 .orElseThrow(() -> new NiNajdenoIzjema("Ekipa z id " + idEkipa + " ne obstaja."));
         Igralec igralec = igralecRepozitorij.najdiZVsem(v.idIgralec())
@@ -193,6 +203,7 @@ public class LigaStoritev {
 
     @Transactional
     public void odstraniIzKadra(Long idKader) {
+        lastnistvo.preveriLigaPoKadru(idKader);
         KaderEkipe k = kaderRepozitorij.findById(idKader)
                 .orElseThrow(() -> new NiNajdenoIzjema("Vnos kadra z id " + idKader + " ne obstaja."));
         kaderRepozitorij.delete(k);
@@ -202,6 +213,7 @@ public class LigaStoritev {
 
     @Transactional
     public void generirajRazpored(Long idLiga) {
+        lastnistvo.preveriLigaPoId(idLiga);
         Liga liga = ligaRepozitorij.findById(idLiga)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja."));
         if (liga.getStatus() != StatusTekmovanja.PRIPRAVA) {

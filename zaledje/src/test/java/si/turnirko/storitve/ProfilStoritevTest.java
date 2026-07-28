@@ -152,7 +152,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
         Igralec prvi = tekma.getPrijava1().getIgralec();
 
         racuniStoritev.registriraj(new RegistracijaVnos(
-                prvi.getIme(), prvi.getPriimek(), null, "caka@test.si", "geslo123"));
+                prvi.getIme(), prvi.getPriimek(), null, "caka@test.si", "geslo123", false));
 
         assertThrows(PrepovedanoIzjema.class,
                 () -> profilStoritev.zasebno(prvi.getId(), "caka@test.si"));
@@ -164,14 +164,14 @@ class ProfilStoritevTest extends IntegracijskiTest {
         Igralec igralec = tekma.getPrijava1().getIgralec();
 
         var profil = racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "nov@test.si", "geslo123"));
+                igralec.getIme(), igralec.getPriimek(), null, "nov@test.si", "geslo123", false));
         assertEquals(StatusRacuna.CAKA, profil.status());
         assertEquals(Vloga.IGRALEC, profil.vloga());
         assertEquals(null, profil.idIgralec(), "nepotrjen racun se ni povezan z igralcem");
 
         // ista e-posta se ne more registrirati dvakrat
         assertThrows(DomenskaIzjema.class, () -> racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "nov@test.si", "geslo123")));
+                igralec.getIme(), igralec.getPriimek(), null, "nov@test.si", "geslo123", false)));
 
         // administrator vidi zahtevo in predlagane igralce (ujemanje po priimku)
         RacunIgralcaDto zahteva = racuniStoritev.racuni().stream()
@@ -190,9 +190,9 @@ class ProfilStoritevTest extends IntegracijskiTest {
         Igralec igralec = tekma.getPrijava1().getIgralec();
 
         racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "prvi@test.si", "geslo123"));
+                igralec.getIme(), igralec.getPriimek(), null, "prvi@test.si", "geslo123", false));
         racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "drugi@test.si", "geslo123"));
+                igralec.getIme(), igralec.getPriimek(), null, "drugi@test.si", "geslo123", false));
 
         List<RacunIgralcaDto> racuni = racuniStoritev.racuni();
         Long idPrvega = racuni.stream().filter(r -> r.email().equals("prvi@test.si"))
@@ -209,25 +209,25 @@ class ProfilStoritevTest extends IntegracijskiTest {
     @Test
     void izbrisRacunaSprostiEposto() {
         racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123"));
+                "Ana", "Novak", null, "ana@test.si", "geslo123", false));
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals("ana@test.si")).findFirst().orElseThrow().id();
         racuniStoritev.zavrni(idRacuna);
 
         // dokler racun obstaja, je e-posta zasedena
         assertThrows(DomenskaIzjema.class, () -> racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123")));
+                "Ana", "Novak", null, "ana@test.si", "geslo123", false)));
 
         racuniStoritev.zbrisi(idRacuna);
         assertTrue(uporabnikRepozitorij.findByUporabniskoIme("ana@test.si").isEmpty());
         assertNotNull(racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123")));
+                "Ana", "Novak", null, "ana@test.si", "geslo123", false)));
     }
 
     @Test
     void zamenjavaGeslaZahtevaPravilnoStaro() {
         racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123"));
+                "Ana", "Novak", null, "ana@test.si", "geslo123", false));
 
         assertThrows(NeveljavenVnosIzjema.class, () -> racuniStoritev.zamenjajGeslo(
                 "ana@test.si", new SpremembaGeslaVnos("napacno", "novogeslo1")));
@@ -242,7 +242,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
     @Test
     void adminNastaviGesloRacunu() {
         racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123"));
+                "Ana", "Novak", null, "ana@test.si", "geslo123", false));
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals("ana@test.si")).findFirst().orElseThrow().id();
 
@@ -259,7 +259,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
     /* Registrira in potrdi racun za igralca; vrne njegovo prijavno ime. */
     private String racunZa(Igralec igralec, String email) {
         racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, email, "geslo123"));
+                igralec.getIme(), igralec.getPriimek(), null, email, "geslo123", false));
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals(email)).findFirst().orElseThrow().id();
         racuniStoritev.potrdi(idRacuna, new PotrditevRacunaVnos(igralec.getId()));

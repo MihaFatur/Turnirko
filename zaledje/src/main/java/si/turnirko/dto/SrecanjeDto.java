@@ -8,6 +8,8 @@ import si.turnirko.modeli.StatusSrecanja;
 
 public record SrecanjeDto(
         Long id,
+        // liga, ki ji srecanje pripada - vmesnik po njej preveri lastnistvo
+        Long idLiga,
         int kolo,
         Long idEkipaDomaci,
         String domaci,
@@ -22,6 +24,7 @@ public record SrecanjeDto(
     public static SrecanjeDto iz(Srecanje s) {
         return new SrecanjeDto(
                 s.getId(),
+                s.getLiga().getId(),
                 s.getKolo(),
                 s.getEkipaDomaci().getId(),
                 s.getEkipaDomaci().prikazanoIme(),

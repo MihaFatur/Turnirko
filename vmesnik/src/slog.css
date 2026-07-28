@@ -173,17 +173,113 @@ a { color: var(--barva-poudarek); }
 
 .glava__uporabnik {
   margin-left: auto;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.6rem;
   white-space: nowrap;
 }
 
-.glava__oznaka-vloge {
-  font-size: 0.85rem;
+/* Okrogel prozilnik z ikono osebe; ob prijavi dobi barvo poudarka. */
+.uporabnik-gumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--barva-crta);
+  background: var(--barva-povrsina);
   color: var(--barva-besedilo-blago);
-  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
+
+.uporabnik-gumb:hover { border-color: var(--barva-poudarek); color: var(--barva-poudarek); }
+
+.uporabnik-gumb--prijavljen {
+  background: var(--barva-poudarek-blaga);
+  border-color: var(--barva-poudarek);
+  color: var(--barva-poudarek);
+}
+
+/* Spustni meni pod prozilnikom (poravnan ob desni rob). */
+.uporabnik-meni {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 224px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem;
+  background: var(--barva-povrsina);
+  border: 1px solid var(--barva-crta);
+  border-radius: var(--zaokrozitev);
+  box-shadow: var(--senca-dvig);
+  z-index: 20;
+  /* Glava ima "white-space: nowrap"; v meniju naj se namig lomi normalno. */
+  white-space: normal;
+}
+
+.uporabnik-meni__glava {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem 0.65rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.uporabnik-meni__avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--barva-poudarek-blaga);
+  color: var(--barva-poudarek);
+}
+
+.uporabnik-meni__oseba { display: flex; flex-direction: column; min-width: 0; }
+
+.uporabnik-meni__ime {
+  font-family: var(--pisava-naslov);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uporabnik-meni__vloga { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
+
+.uporabnik-meni__namig {
+  margin: 0.1rem 0 0.35rem;
+  padding: 0 0.6rem;
+  font-size: 0.82rem;
+  color: var(--barva-besedilo-blago);
+}
+
+.uporabnik-meni__postavka {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: none;
+  border-radius: var(--zaokrozitev-s);
+  background: none;
+  color: var(--barva-besedilo);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.uporabnik-meni__postavka:hover { background: var(--barva-povrsina-2); color: var(--barva-poudarek); }
+.uporabnik-meni__postavka--nevaren:hover { background: var(--barva-napaka-ozadje); color: var(--barva-napaka); }
 
 /* Na telefonu naj se navigacija drsi vodoravno v eni vrstici (igralci jo
    uporabljajo na mobilnem), namesto da se lomi v vec vrstic. */
@@ -205,6 +301,8 @@ a { color: var(--barva-poudarek); }
 .gumb:focus-visible,
 .glava__povezava:focus-visible,
 .glava__logotip:focus-visible,
+.uporabnik-gumb:focus-visible,
+.uporabnik-meni__postavka:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--barva-poudarek);
   outline-offset: 2px;
@@ -1119,12 +1217,21 @@ section > .enanaena__tabela {
 
 .domov > .naslovna-vrstica { margin: 0.5rem 0 0; }
 
-/* Spodnji plosci (lestvica + turnirji) enakomerno v dveh stolpcih. */
+/* Nadzorna plosca: levi stolpec (turnirji, lige, strnjen "1 na 1") in desni
+   stolpec z daljso lestvico. Levi je sirsi, ker nosi pripomocek "1 na 1". */
 .domov__mreza {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
+}
+
+/* Levi stolpec zlaga svoje plosce navpicno; "1 na 1" tako pade v spodnji kot. */
+.domov__stolpec {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
@@ -1149,12 +1256,12 @@ section > .enanaena__tabela {
 
 .domov__vec:hover { text-decoration: underline; }
 
-/* Strnjena lestvica na domaci strani (brez glave, 10 vrstic). */
+/* Daljsa lestvica na domaci strani (brez glave, 15 vrstic) v desnem stolpcu. */
 .domov__lestvica { font-size: 0.9rem; }
 .domov__lestvica td { padding: 0.4rem 0.5rem; }
 .domov__lestvica tr:first-child td { border-top: none; }
 
-/* Seznam turnirjev na domaci strani. */
+/* Seznam postavk (turnirji ali lige) na domaci strani. */
 .domov__seznam {
   list-style: none;
   margin: 0;
@@ -1164,7 +1271,7 @@ section > .enanaena__tabela {
   gap: 0.4rem;
 }
 
-.domov__turnir {
+.domov__postavka {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1177,10 +1284,34 @@ section > .enanaena__tabela {
   color: inherit;
 }
 
-.domov__turnir:hover { border-color: var(--barva-poudarek); }
-.domov__turnir-ime { font-weight: 600; min-width: 0; }
-.domov__turnir-desno { display: flex; align-items: center; gap: 0.6rem; white-space: nowrap; }
-.domov__turnir-datum { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
+.domov__postavka:hover { border-color: var(--barva-poudarek); }
+.domov__postavka-ime { font-weight: 600; min-width: 0; }
+.domov__postavka-desno { display: flex; align-items: center; gap: 0.6rem; white-space: nowrap; }
+.domov__postavka-datum { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
+
+/* Strnjen pripomocek "1 na 1" v ozjem levem stolpcu: manjse kartice,
+   rezultat in razmiki, da se tri-stolpcna postavitev udobno zmesti. */
+.domov__plosca--kompakt .enanaena__plosca { column-gap: 0.6rem; row-gap: 0.75rem; }
+.domov__plosca--kompakt .enanaena__igralec { padding: 0.8rem 0.55rem; }
+.domov__plosca--kompakt .enanaena__avatar {
+  width: 42px;
+  height: 42px;
+  font-size: 1.2rem;
+  margin-bottom: 0.2rem;
+}
+.domov__plosca--kompakt .enanaena__ime { font-size: 0.9rem; }
+.domov__plosca--kompakt .enanaena__klub,
+.domov__plosca--kompakt .enanaena__rating { font-size: 0.78rem; }
+.domov__plosca--kompakt .enanaena__sredina { padding: 0.8rem 0.7rem; min-width: 0; }
+.domov__plosca--kompakt .enanaena__stevilo { font-size: 1.85rem; }
+
+/* Pod ~1150px postane levi stolpec pretesen za tri kartice v vrsti,
+   zato jih strnjen "1 na 1" zlozi navpicno (dokler mreza se ni enostolpcna). */
+@media (max-width: 1150px) and (min-width: 901px) {
+  .domov__plosca--kompakt .enanaena__plosca { grid-template-columns: 1fr; }
+  .domov__plosca--kompakt .enanaena__plosca > * { grid-column: 1; grid-row: auto; }
+  .domov__plosca--kompakt .enanaena__zreb { justify-self: stretch; align-self: auto; }
+}
 
 /* ---------- 11. Rating pred tekmo (ob imenih) ---------- */
 

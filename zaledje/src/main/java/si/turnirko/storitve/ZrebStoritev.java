@@ -61,6 +61,7 @@ public class ZrebStoritev {
     private final SkupinaRepozitorij skupinaRepozitorij;
     private final RatingStanjeRepozitorij ratingStanjeRepozitorij;
     private final IzborStoritev izborStoritev;
+    private final LastnistvoStoritev lastnistvo;
 
     /* Vir nakljucnosti je zamenljiv, da so testi lahko deterministicni. */
     private Random nakljucje = new SecureRandom();
@@ -70,13 +71,15 @@ public class ZrebStoritev {
                         TekmaRepozitorij tekmaRepozitorij,
                         SkupinaRepozitorij skupinaRepozitorij,
                         RatingStanjeRepozitorij ratingStanjeRepozitorij,
-                        IzborStoritev izborStoritev) {
+                        IzborStoritev izborStoritev,
+                        LastnistvoStoritev lastnistvo) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.skupinaRepozitorij = skupinaRepozitorij;
         this.ratingStanjeRepozitorij = ratingStanjeRepozitorij;
         this.izborStoritev = izborStoritev;
+        this.lastnistvo = lastnistvo;
     }
 
     void nastaviNakljucje(Random nakljucje) {
@@ -86,6 +89,7 @@ public class ZrebStoritev {
     /* Izvede zreb za dogodek in ustvari vse tekme (glede na sistem). */
     @Transactional
     public List<Tekma> izvediZreb(Long idDogodka) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
         Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
                 .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
 

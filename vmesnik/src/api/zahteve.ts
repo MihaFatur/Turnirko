@@ -121,6 +121,9 @@ export const racuniApi = {
   seznam: () => api.vrni<RacunIgralcaDto[]>('/racuni'),
   potrdi: (id: number, idIgralec: number) =>
     api.objavi<RacunIgralcaDto>(`/racuni/${id}/potrdi`, { idIgralec }),
+  /* Potrditev organizatorja z (neobveznim) klubom. */
+  potrdiOrganizatorja: (id: number, idKlub: number | null) =>
+    api.objavi<RacunIgralcaDto>(`/racuni/${id}/potrdi-organizatorja`, { idKlub }),
   zavrni: (id: number) => api.objavi<RacunIgralcaDto>(`/racuni/${id}/zavrni`),
   nastaviAktiven: (id: number, vrednost: boolean) =>
     api.objavi<RacunIgralcaDto>(`/racuni/${id}/aktiven?vrednost=${vrednost}`),

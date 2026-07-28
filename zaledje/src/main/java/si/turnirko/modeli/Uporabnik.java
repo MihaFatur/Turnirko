@@ -56,6 +56,14 @@ public class Uporabnik {
     @JoinColumn(name = "id_igralec")
     private Igralec igralec;
 
+    /* Klub, ki mu uporabnik pripada. Uporablja se pri organizatorju: turnirje
+       in lige, ki jih ustvari, sme soupravljati vsak organizator istega kluba.
+       Neobvezen - organizator je lahko brez kluba (takrat upravlja samo svoje).
+       Doloci ga administrator ob potrditvi racuna. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_klub")
+    private Klub klub;
+
     /* Kar je oseba navedla ob registraciji - podlaga administratorju, da
        racun poveze s pravim igralcem. Po potrditvi ostane kot sled. */
     @Column(name = "prijavljeno_ime")
@@ -92,6 +100,12 @@ public class Uporabnik {
         return vloga == Vloga.IGRALEC && status == StatusRacuna.POTRJEN && igralec != null;
     }
 
+    /* Ali je racun potrjen organizator (sme ustvarjati in upravljati svoja
+       tekmovanja). Za razliko od igralca ne potrebuje povezave na sifrant. */
+    public boolean jePotrjenOrganizator() {
+        return vloga == Vloga.ORGANIZATOR && status == StatusRacuna.POTRJEN;
+    }
+
     public Long getId() { return id; }
 
     public String getUporabniskoIme() { return uporabniskoIme; }
@@ -108,6 +122,9 @@ public class Uporabnik {
 
     public Igralec getIgralec() { return igralec; }
     public void setIgralec(Igralec igralec) { this.igralec = igralec; }
+
+    public Klub getKlub() { return klub; }
+    public void setKlub(Klub klub) { this.klub = klub; }
 
     public String getPrijavljenoIme() { return prijavljenoIme; }
     public void setPrijavljenoIme(String prijavljenoIme) { this.prijavljenoIme = prijavljenoIme; }

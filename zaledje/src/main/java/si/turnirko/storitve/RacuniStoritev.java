@@ -52,15 +52,18 @@ public class RacuniStoritev {
 
     // ---------- Registracija in prijava ----------
 
-    /* Registracija igralca. E-posta je hkrati prijavno ime, zato mora biti
-       enolicna. Vrne profil novega (se nepotrjenega) racuna. */
+    /* Registracija osebe (igralca ali organizatorja). E-posta je hkrati
+       prijavno ime, zato mora biti enolicna. Racun nastane v stanju CAKA in
+       sam po sebi ne daje pravice; potrdi ga administrator. Vrne profil novega
+       (se nepotrjenega) racuna. */
     @Transactional
     public UporabnikDto registriraj(RegistracijaVnos v) {
         String email = v.email().trim().toLowerCase(Locale.ROOT);
         if (uporabnikRepozitorij.existsByUporabniskoImeIgnoreCase(email)) {
             throw new DomenskaIzjema("Racun z e-posto " + email + " ze obstaja.");
         }
-        Uporabnik u = new Uporabnik(email, kodirnik.encode(v.geslo()), Vloga.IGRALEC);
+        Vloga vloga = Boolean.TRUE.equals(v.organizator()) ? Vloga.ORGANIZATOR : Vloga.IGRALEC;
+        Uporabnik u = new Uporabnik(email, kodirnik.encode(v.geslo()), vloga);
         u.setStatus(StatusRacuna.CAKA);
         u.setPrijavljenoIme(v.ime().trim());
         u.setPrijavljeniPriimek(v.priimek().trim());
@@ -97,23 +100,29 @@ public class RacuniStoritev {
     @Transactional(readOnly = true)
     public List<RacunIgralcaDto> racuni() {
         List<RacunIgralcaDto> seznam = new ArrayList<>();
-        for (Uporabnik u : uporabnikRepozitorij.najdiRacuneIgralcev()) {
-            seznam.add(RacunIgralcaDto.iz(u,
-                    u.getStatus() == StatusRacuna.CAKA ? predlogi(u) : List.of()));
+        for (Uporabnik u : uporabnikRepozitorij.najdiRacuneOseb()) {
+            // predlogi za povezavo veljajo le pri cakajocem racunu IGRALCA
+            // (organizatorja ne povezujemo z zapisom v sifrantu igralcev)
+            boolean predlagaj = u.getVloga() == Vloga.IGRALEC && u.getStatus() == StatusRacuna.CAKA;
+            seznam.add(RacunIgralcaDto.iz(u, predlagaj ? predlogi(u) : List.of()));
         }
         return seznam;
     }
 
     @Transactional(readOnly = true)
     public long steviloCakajocih() {
-        return uporabnikRepozitorij.countByVlogaAndStatus(Vloga.IGRALEC, StatusRacuna.CAKA);
+        // igralci IN organizatorji, ki cakajo na potrditev
+        return uporabnikRepozitorij.countByStatus(StatusRacuna.CAKA);
     }
 
-    /* Potrditev: racun se poveze z igralcem in s tem dobi dostop do svoje
-       statistike. Igralec, ki racun ze ima, se ne sme povezati se enkrat. */
+    /* Potrditev igralca: racun se poveze z igralcem in s tem dobi dostop do
+       svoje statistike. Igralec, ki racun ze ima, se ne sme povezati se enkrat. */
     @Transactional
     public RacunIgralcaDto potrdi(Long idRacuna, PotrditevRacunaVnos v) {
         Uporabnik u = najdiRacun(idRacuna);
+        if (u.getVloga() != Vloga.IGRALEC) {
+            throw new DomenskaIzjema("Ta racun ni igralski - uporabi potrditev organizatorja.");
+        }
         Igralec igralec = igralecRepozitorij.najdiZVsem(v.idIgralec())
                 .orElseThrow(() -> new NiNajdenoIzjema("Igralec z id " + v.idIgralec() + " ne obstaja."));
         if (igralec.isArhiviran()) {
@@ -124,6 +133,27 @@ public class RacuniStoritev {
             throw new DomenskaIzjema("Igralec " + igralec.polnoIme() + " ima dostop ze dodeljen.");
         }
         u.setIgralec(igralec);
+        u.setStatus(StatusRacuna.POTRJEN);
+        u.setAktiven(true);
+        return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
+    }
+
+    /* Potrditev organizatorja: racun dobi vlogo organizatorja in (neobvezno)
+       pripadnost klubu, po katerem se doloci klubsko soupravljanje tekmovanj.
+       Za razliko od igralca se ne poveze z zapisom v sifrantu igralcev. */
+    @Transactional
+    public RacunIgralcaDto potrdiOrganizatorja(Long idRacuna, Long idKlub) {
+        Uporabnik u = najdiRacun(idRacuna);
+        if (u.getVloga() != Vloga.ORGANIZATOR) {
+            throw new DomenskaIzjema("Ta racun ni organizatorski - uporabi potrditev igralca.");
+        }
+        if (idKlub != null) {
+            Klub klub = klubRepozitorij.findById(idKlub)
+                    .orElseThrow(() -> new NiNajdenoIzjema("Klub z id " + idKlub + " ne obstaja."));
+            u.setKlub(klub);
+        } else {
+            u.setKlub(null); // organizator brez kluba upravlja samo svoja tekmovanja
+        }
         u.setStatus(StatusRacuna.POTRJEN);
         u.setAktiven(true);
         return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
@@ -231,17 +261,19 @@ public class RacuniStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Uporabnik ne obstaja."));
     }
 
+    /* Racun osebe (igralca ali organizatorja); adminovega racuna te poti ne
+       urejajo (admin se ne registrira in ne potrjuje). */
     private Uporabnik najdiRacun(Long id) {
         Uporabnik u = uporabnikRepozitorij.najdiZVsemPoId(id)
                 .orElseThrow(() -> new NiNajdenoIzjema("Racun z id " + id + " ne obstaja."));
-        if (u.getVloga() != Vloga.IGRALEC) {
-            throw new DomenskaIzjema("Ta koncna tocka ureja samo racune igralcev.");
+        if (u.getVloga() == Vloga.ADMIN) {
+            throw new DomenskaIzjema("Administratorskega racuna ta pot ne ureja.");
         }
         return u;
     }
 
     private Uporabnik najdiRacunIgralca(Long idIgralec) {
-        return uporabnikRepozitorij.najdiRacuneIgralcev().stream()
+        return uporabnikRepozitorij.najdiRacuneOseb().stream()
                 .filter(r -> r.getIgralec() != null && r.getIgralec().getId().equals(idIgralec))
                 .findFirst().orElse(null);
     }

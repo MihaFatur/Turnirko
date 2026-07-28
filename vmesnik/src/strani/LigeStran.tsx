@@ -13,7 +13,7 @@ import { ZnackaStatusa } from '../komponente/Znacka'
 
 export function LigeStran() {
   const odjemalec = useQueryClient()
-  const { jeAdmin } = useAvtentikacija()
+  const { smeUstvarjati } = useAvtentikacija()
   const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
 
@@ -21,7 +21,7 @@ export function LigeStran() {
     <section>
       <div className="naslovna-vrstica">
         <h1>Lige</h1>
-        {jeAdmin && (
+        {smeUstvarjati && (
           <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
             + Nova liga
           </button>

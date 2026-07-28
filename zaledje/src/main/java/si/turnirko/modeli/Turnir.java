@@ -53,6 +53,18 @@ public class Turnir {
     @Column(name = "opombe")
     private String opombe;
 
+    /* Lastnistvo: racun, ki je turnir ustvaril, in posnetek njegovega kluba ob
+       nastanku. Po njiju storitve razsodijo, kdo sme urejati - organizator sme
+       svoje turnirje in tiste svojega kluba. Adminovi turnirji nimajo lastnika
+       (oba prazna) in jih upravlja le administrator. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_ustvaril")
+    private Uporabnik ustvaril;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_klub_lastnik")
+    private Klub klubLastnik;
+
     /* Optimisticno zaklepanje - prepreci, da bi si dva socasna
        zapisa tiho prepisala podatke. */
     @Version
@@ -89,6 +101,12 @@ public class Turnir {
 
     public String getOpombe() { return opombe; }
     public void setOpombe(String opombe) { this.opombe = opombe; }
+
+    public Uporabnik getUstvaril() { return ustvaril; }
+    public void setUstvaril(Uporabnik ustvaril) { this.ustvaril = ustvaril; }
+
+    public Klub getKlubLastnik() { return klubLastnik; }
+    public void setKlubLastnik(Klub klubLastnik) { this.klubLastnik = klubLastnik; }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
 }

@@ -26,7 +26,12 @@ public record LigaDto(
         int stNapreduje,
         int stIzpade,
         StatusTekmovanja status,
-        int steviloEkip
+        int steviloEkip,
+        // Lastnistvo (glej TurnirDto) - vmesnik po njiju pokaze urejanje le
+        // lastniku; streznik je zadnja obramba (LastnistvoStoritev).
+        Long idLastnik,
+        Long idKlubLastnik,
+        String klubLastnik
 ) {
 
     public static LigaDto iz(Liga l, int steviloEkip) {
@@ -37,6 +42,9 @@ public record LigaDto(
                 l.isDovoljenoNeodloceno(), l.isPrepovedDvojneRegistracije(), l.isStejeVElo(),
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getId() : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getIme() : null,
-                l.getStNapreduje(), l.getStIzpade(), l.getStatus(), steviloEkip);
+                l.getStNapreduje(), l.getStIzpade(), l.getStatus(), steviloEkip,
+                l.getUstvaril() != null ? l.getUstvaril().getId() : null,
+                l.getKlubLastnik() != null ? l.getKlubLastnik().getId() : null,
+                l.getKlubLastnik() != null ? l.getKlubLastnik().getIme() : null);
     }
 }

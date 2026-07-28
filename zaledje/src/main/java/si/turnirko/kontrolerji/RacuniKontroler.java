@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import si.turnirko.dto.NastavitevGeslaVnos;
+import si.turnirko.dto.PotrditevOrganizatorjaVnos;
 import si.turnirko.dto.PotrditevRacunaVnos;
 import si.turnirko.dto.RacunIgralcaDto;
 import si.turnirko.storitve.RacuniStoritev;
@@ -46,6 +47,13 @@ public class RacuniKontroler {
     public RacunIgralcaDto potrdi(@PathVariable Long id,
                                   @Valid @RequestBody PotrditevRacunaVnos vnos) {
         return racuniStoritev.potrdi(id, vnos);
+    }
+
+    /* Potrditev organizatorja: mu dodeli vlogo in (neobvezni) klub. */
+    @PostMapping("/{id}/potrdi-organizatorja")
+    public RacunIgralcaDto potrdiOrganizatorja(@PathVariable Long id,
+                                               @RequestBody PotrditevOrganizatorjaVnos vnos) {
+        return racuniStoritev.potrdiOrganizatorja(id, vnos.idKlub());
     }
 
     @PostMapping("/{id}/zavrni")

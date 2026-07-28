@@ -37,11 +37,12 @@ public class VarnostneNastavitve {
         return new BCryptPasswordEncoder();
     }
 
-    /* Uporabnike bere iz baze; vloga postane pravica ROLE_ADMIN oz. ROLE_IGRALEC.
+    /* Uporabnike bere iz baze; vloga postane pravica ROLE_ADMIN, ROLE_ORGANIZATOR
+       oz. ROLE_IGRALEC.
 
-       Racun igralca, ki ga administrator se ni potrdil (ali ga je zavrnil),
-       se sme prijaviti - drugace ne bi mogel izvedeti, v kaksnem stanju je -
-       vendar dobi le pravico ROLE_CAKAJOCI, ki ne odpira nicesar razen
+       Racun, ki ga administrator se ni potrdil (ali ga je zavrnil) - naj bo
+       igralec ali organizator -, se sme prijaviti, da izve, v kaksnem stanju
+       je, vendar dobi le pravico ROLE_CAKAJOCI, ki ne odpira nicesar razen
        lastnega profila racuna (/auth/me). */
     @Bean
     UserDetailsService uporabnikiIzBaze(UporabnikRepozitorij repozitorij) {
@@ -58,6 +59,9 @@ public class VarnostneNastavitve {
     private static String pravica(Uporabnik u) {
         if (u.getVloga() == Vloga.ADMIN) {
             return Vloga.ADMIN.name();
+        }
+        if (u.getVloga() == Vloga.ORGANIZATOR) {
+            return u.jePotrjenOrganizator() ? Vloga.ORGANIZATOR.name() : "CAKAJOCI";
         }
         return u.jePotrjenIgralec() ? Vloga.IGRALEC.name() : "CAKAJOCI";
     }
@@ -88,8 +92,9 @@ public class VarnostneNastavitve {
                 .authorizeHttpRequests(dovoljenja -> dovoljenja
                         // predpregled (CORS) mora skozi brez prijave
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // registracija igralca je edina mutacija brez prijave;
-                        // racun nastane v stanju CAKA in sam po sebi ne da pravic
+                        // registracija (igralca ali organizatorja) je edina mutacija
+                        // brez prijave; racun nastane v stanju CAKA in sam po sebi ne
+                        // da nobene pravice, dokler ga administrator ne potrdi
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/registracija").permitAll()
                         // /auth/me sluzi za preverbo poverilnic - zahteva veljavno prijavo
                         .requestMatchers("/api/v1/auth/**").authenticated()
@@ -100,7 +105,17 @@ public class VarnostneNastavitve {
                         .requestMatchers(HttpMethod.GET, "/api/v1/racuni/**").hasRole("ADMIN")
                         // gost sme brati vse ostalo
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-                        // vse spremembe sme samo administrator
+                        // --- od tu naprej samo mutacije (ne-GET) ---
+                        // organizator sme ustvarjati in upravljati turnirje in lige
+                        // (na ravni zapisa lastnistvo preveri LastnistvoStoritev)
+                        .requestMatchers("/api/v1/turnirji/**", "/api/v1/dogodki/**",
+                                "/api/v1/tekme/**", "/api/v1/lige/**", "/api/v1/srecanja/**")
+                                .hasAnyRole("ADMIN", "ORGANIZATOR")
+                        // organizator sme dodati NOVEGA igralca v skupni sifrant
+                        // (samo POST na koren); urejanje/brisanje/rating ostane adminu
+                        .requestMatchers(HttpMethod.POST, "/api/v1/igralci").hasAnyRole("ADMIN", "ORGANIZATOR")
+                        // vse ostale mutacije (igralci PUT/DELETE, klubi, kraji, racuni)
+                        // sme samo administrator
                         .requestMatchers("/api/**").hasRole("ADMIN")
                         .anyRequest().permitAll())
                 .httpBasic(basic -> basic.authenticationEntryPoint(vstopnaTocka))

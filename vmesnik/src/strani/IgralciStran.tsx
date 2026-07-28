@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { igralciApi, klubiApi, krajiApi } from '../api/zahteve'
 import type { IgralecDto, IgralecVnos, IgralnaRoka, Spol } from '../api/tipi'
 import { OZNAKE_IGRALNA_ROKA, OZNAKE_SPOL } from '../api/tipi'
+import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
@@ -17,6 +18,9 @@ const PROVIZORICNO_DO = 10
 
 export function IgralciStran() {
   const odjemalec = useQueryClient()
+  // organizator sme le dodati novega igralca; urejanje, arhiviranje in
+  // postavitev ratinga ostanejo administratorju (streznik je zadnja obramba)
+  const { jeAdmin } = useAvtentikacija()
   const igralci = useQuery({ queryKey: ['igralci'], queryFn: igralciApi.seznam })
 
   const [iskanje, nastaviIskanje] = useState('')
@@ -53,8 +57,14 @@ export function IgralciStran() {
       </div>
 
       <p className="podnaslov">
-        ★ pomeni še provizoričen rating (manj kot {PROVIZORICNO_DO} odigranih tekem). Novincu
-        lahko pred prvo tekmo postaviš vstopni rating namesto privzetega 1000.
+        {jeAdmin ? (
+          <>
+            ★ pomeni še provizoričen rating (manj kot {PROVIZORICNO_DO} odigranih tekem). Novincu
+            lahko pred prvo tekmo postaviš vstopni rating namesto privzetega 1000.
+          </>
+        ) : (
+          'Kot organizator lahko dodaš novega igralca; urejanje in rating ureja administrator.'
+        )}
       </p>
 
       <input
@@ -108,7 +118,7 @@ export function IgralciStran() {
                       )}
                     </span>
                   )}
-                  {igralec.steviloTekem === 0 ? (
+                  {jeAdmin && igralec.steviloTekem === 0 ? (
                     <button
                       className="gumb gumb--majhen"
                       onClick={() => nastaviPostavljanca(igralec)}
@@ -121,15 +131,19 @@ export function IgralciStran() {
                 </td>
                 <td>{igralec.ntzsLicenca ?? '—'}</td>
                 <td className="tabela__dejanja">
-                  <button className="gumb gumb--majhen" onClick={() => nastaviUrejanje(igralec)}>
-                    Uredi
-                  </button>
-                  <button
-                    className="gumb gumb--majhen gumb--nevaren"
-                    onClick={() => nastaviArhiviranca(igralec)}
-                  >
-                    Arhiviraj
-                  </button>
+                  {jeAdmin && (
+                    <>
+                      <button className="gumb gumb--majhen" onClick={() => nastaviUrejanje(igralec)}>
+                        Uredi
+                      </button>
+                      <button
+                        className="gumb gumb--majhen gumb--nevaren"
+                        onClick={() => nastaviArhiviranca(igralec)}
+                      >
+                        Arhiviraj
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

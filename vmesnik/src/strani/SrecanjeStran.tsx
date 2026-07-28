@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { srecanjaApi } from '../api/zahteve'
+import { ligeApi, srecanjaApi } from '../api/zahteve'
 import type {
   IzidTekme,
   MestoVnos,
@@ -20,10 +20,19 @@ import { SpremembaElo } from '../komponente/SpremembaElo'
 export function SrecanjeStran() {
   const { id } = useParams()
   const idSrecanje = Number(id)
-  const { jeAdmin } = useAvtentikacija()
+  const { jeAdmin, jeOrganizator, smemUrejati } = useAvtentikacija()
   const podrobno = useQuery({
     queryKey: ['srecanje', idSrecanje],
     queryFn: () => srecanjaApi.podrobno(idSrecanje),
+  })
+
+  /* Za urejanje potrebujemo lastnistvo lige srecanja; poizvedbo sprozimo le
+     za morebitne urejevalce. */
+  const idLiga = podrobno.data?.srecanje.idLiga
+  const liga = useQuery({
+    queryKey: ['liga', idLiga],
+    queryFn: () => ligeApi.najdi(idLiga!),
+    enabled: idLiga != null && (jeAdmin || jeOrganizator),
   })
 
   if (podrobno.isPending) return <p className="obvestilo">Nalaganje …</p>
@@ -31,8 +40,10 @@ export function SrecanjeStran() {
 
   const p = podrobno.data
   const s = p.srecanje
+  // organizator sme upravljati srecanja svoje (ali klubske) lige, admin vse
+  const smem = jeAdmin || (!!liga.data && smemUrejati(liga.data.idLastnik, liga.data.idKlubLastnik))
   const imaRezultate = p.tekme.some((t) => t.status === 'KONCANA')
-  const lahkoUrejaPostavo = jeAdmin && s.status !== 'KONCANO' && !imaRezultate
+  const lahkoUrejaPostavo = smem && s.status !== 'KONCANO' && !imaRezultate
   /* Listki so smiselni le, ko je postava določena in kaka tekma še čaka. */
   const imaZaTiskanje = p.tekme.some((t) => t.status === 'CAKA')
 
@@ -47,7 +58,7 @@ export function SrecanjeStran() {
       </div>
       <p className="srecanje__meta">{s.kolo}. kolo · {statusOznaka(s.status)}</p>
 
-      {jeAdmin && imaZaTiskanje && (
+      {smem && imaZaTiskanje && (
         <p className="srecanje__dejanja">
           <Link to={`/srecanja/${idSrecanje}/listki`} className="gumb gumb--majhen">
             🖨 Listki
@@ -59,10 +70,10 @@ export function SrecanjeStran() {
 
       {p.tekme.length === 0 ? (
         <p className="obvestilo">
-          Postava še ni določena. {jeAdmin ? 'Določi jo zgoraj.' : 'Čaka na administratorja.'}
+          Postava še ni določena. {smem ? 'Določi jo zgoraj.' : 'Čaka na organizatorja.'}
         </p>
       ) : (
-        <Zapisnik podrobno={p} jeAdmin={jeAdmin} />
+        <Zapisnik podrobno={p} jeAdmin={smem} />
       )}
     </section>
   )

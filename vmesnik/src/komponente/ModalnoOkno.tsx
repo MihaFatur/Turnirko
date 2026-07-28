@@ -1,5 +1,9 @@
-/* Splosno modalno okno; zapre se s klikom na zastor, gumb x ali Escape. */
+/* Splosno modalno okno; zapre se s klikom na zastor, gumb x ali Escape.
+   Izrise se prek portala v document.body, da "position: fixed" zastora vedno
+   meri na okno in ne na morebitnega prednika s transform/filter/backdrop-filter
+   (npr. glava aplikacije), ki bi sicer postal referencni okvir in okno stlacil. */
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface Lastnosti {
   naslov: string
@@ -16,7 +20,7 @@ export function ModalnoOkno({ naslov, onZapri, children }: Lastnosti) {
     return () => window.removeEventListener('keydown', obEscape)
   }, [onZapri])
 
-  return (
+  return createPortal(
     <div className="modal__zastor" onClick={onZapri}>
       <div
         className="modal"
@@ -33,6 +37,7 @@ export function ModalnoOkno({ naslov, onZapri, children }: Lastnosti) {
         </div>
         <div className="modal__telo">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

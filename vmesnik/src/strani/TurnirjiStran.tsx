@@ -13,7 +13,7 @@ import { oblikujObdobje } from '../pomozno/oblikovanje'
 
 export function TurnirjiStran() {
   const odjemalec = useQueryClient()
-  const { jeAdmin } = useAvtentikacija()
+  const { smeUstvarjati } = useAvtentikacija()
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
 
@@ -21,7 +21,7 @@ export function TurnirjiStran() {
     <section>
       <div className="naslovna-vrstica">
         <h1>Turnirji</h1>
-        {jeAdmin && (
+        {smeUstvarjati && (
           <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
             + Nov turnir
           </button>
@@ -51,6 +51,11 @@ export function TurnirjiStran() {
               <p className="kartica__podrobnost">
                 {oblikujObdobje(turnir.datumZacetka, turnir.datumKonca) || 'datum ni določen'}
               </p>
+              {turnir.klubLastnik && (
+                <p className="kartica__podrobnost kartica__organizator">
+                  Organizira: {turnir.klubLastnik}
+                </p>
+              )}
             </Link>
           ))}
         </div>

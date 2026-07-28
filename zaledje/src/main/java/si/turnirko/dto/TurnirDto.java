@@ -14,7 +14,13 @@ public record TurnirDto(
         LocalDate datumZacetka,
         LocalDate datumKonca,
         StatusTekmovanja status,
-        String opombe
+        String opombe,
+        // Lastnistvo: racun, ki je turnir ustvaril, in klub lastnik. Po njiju
+        // vmesnik pokaze urejevalna dejanja le lastniku; streznik je zadnja
+        // obramba (LastnistvoStoritev). idLastnik ni obcutljiv podatek.
+        Long idLastnik,
+        Long idKlubLastnik,
+        String klubLastnik
 ) {
 
     public static TurnirDto iz(Turnir turnir) {
@@ -26,7 +32,10 @@ public record TurnirDto(
                 turnir.getDatumZacetka(),
                 turnir.getDatumKonca(),
                 turnir.getStatus(),
-                turnir.getOpombe()
+                turnir.getOpombe(),
+                turnir.getUstvaril() != null ? turnir.getUstvaril().getId() : null,
+                turnir.getKlubLastnik() != null ? turnir.getKlubLastnik().getId() : null,
+                turnir.getKlubLastnik() != null ? turnir.getKlubLastnik().getIme() : null
         );
     }
 }

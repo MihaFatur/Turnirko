@@ -36,17 +36,20 @@ public class TurnirjiStoritev {
     private final KrajRepozitorij krajRepozitorij;
     private final IgralecRepozitorij igralecRepozitorij;
     private final PrijavaRepozitorij prijavaRepozitorij;
+    private final LastnistvoStoritev lastnistvo;
 
     public TurnirjiStoritev(TurnirRepozitorij turnirRepozitorij,
                             DogodekRepozitorij dogodekRepozitorij,
                             KrajRepozitorij krajRepozitorij,
                             IgralecRepozitorij igralecRepozitorij,
-                            PrijavaRepozitorij prijavaRepozitorij) {
+                            PrijavaRepozitorij prijavaRepozitorij,
+                            LastnistvoStoritev lastnistvo) {
         this.turnirRepozitorij = turnirRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.krajRepozitorij = krajRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
+        this.lastnistvo = lastnistvo;
     }
 
     @Transactional
@@ -62,12 +65,15 @@ public class TurnirjiStoritev {
         turnir.setDatumZacetka(vnos.datumZacetka());
         turnir.setDatumKonca(vnos.datumKonca());
         turnir.setOpombe(vnos.opombe());
+        // zabelezi lastnika (organizator oz. admin, ki ga ustvarja)
+        lastnistvo.oznaciLastnika(turnir);
         // status vedno doloci streznik (PRIPRAVA je privzeti)
         return turnirRepozitorij.save(turnir);
     }
 
     @Transactional
     public Dogodek dodajDogodek(Long idTurnirja, DogodekVnos vnos) {
+        lastnistvo.preveriTurnirPoId(idTurnirja);
         Turnir turnir = najdiTurnir(idTurnirja);
         if (turnir.getStatus() == StatusTekmovanja.ZAKLJUCEN) {
             throw new DomenskaIzjema("Na zakljucen turnir ni mogoce dodajati dogodkov.");
@@ -119,6 +125,7 @@ public class TurnirjiStoritev {
 
     @Transactional
     public Turnir zakljuci(Long idTurnirja) {
+        lastnistvo.preveriTurnirPoId(idTurnirja);
         Turnir turnir = najdiTurnir(idTurnirja);
         if (turnir.getStatus() != StatusTekmovanja.V_TEKU) {
             throw new DomenskaIzjema("Zakljuciti je mogoce samo turnir, ki je v teku.");
@@ -135,6 +142,7 @@ public class TurnirjiStoritev {
     /* Prijavi igralce na dogodek - vse ali nic (transakcija). */
     @Transactional
     public List<Prijava> prijaviIgralce(Long idDogodka, List<Long> idjiIgralcev) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
         Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
                 .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
         if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
@@ -172,6 +180,7 @@ public class TurnirjiStoritev {
     /* Odjava je mozna samo pred zrebom; po zrebu bi pomenila predajo tekem. */
     @Transactional
     public Prijava odjavi(Long idPrijave) {
+        lastnistvo.preveriTurnirPoPrijavi(idPrijave);
         // najdiZIgralcem: kontroler po koncu transakcije bere igralca in klub
         Prijava prijava = prijavaRepozitorij.najdiZIgralcem(idPrijave)
                 .orElseThrow(() -> new NiNajdenoIzjema("Prijava z id " + idPrijave + " ne obstaja."));

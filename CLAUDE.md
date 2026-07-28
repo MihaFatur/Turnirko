@@ -35,11 +35,25 @@
   ga določajo le rezultati. Zabeleži se kot zapis v `rating_zgodovina` **brez
   tekme** (oba `id_tekma`/`id_tekma_srecanja` prazna) — graf profila to
   prenese (glej `ProfilStoritev.graf`).
-- **Avtorizacija:** gost (neprijavljen) sme samo `GET`; vse mutacije zahtevajo
-  `ROLE_ADMIN` (`VarnostneNastavitve`, HTTP Basic, stateless). Gesla samo kot
-  BCrypt zgostitev; začetnega admina ustvari `ZacetniAdmin`. Metodne varnosti
-  (`@PreAuthorize`) ni — pravila so v varnostni verigi, zato jih testi, ki
-  kličejo storitve/kontrolerje neposredno, ne sprožijo.
+- **Avtorizacija in vloge:** štiri vloge — `ADMIN` (vse), `ORGANIZATOR`
+  (ustvarja turnirje/lige in upravlja **samo svoje** oz. klubske), `IGRALEC`
+  (svoj profil) in gost (neprijavljen, samo `GET`). Osnovna raven je v
+  varnostni verigi (`VarnostneNastavitve`, HTTP Basic, stateless): gost samo
+  `GET`; organizator sme na turnirje/lige/dogodke/tekme/srečanja in `POST`
+  igralca; ostale mutacije (šifranti, računi, urejanje/brisanje igralcev) le
+  `ADMIN`. Gesla samo kot BCrypt zgostitev; začetnega admina (privzeto
+  `admin`/`admin`) ustvari `ZacetniAdmin`.
+- **Lastništvo na ravni zapisa** (`LastnistvoStoritev`): ker veriga pozna le
+  vlogo, ne pa cigav je zapis, se lastništvo turnirja/lige preverja **v
+  storitvah**. `turnir`/`liga` imata `id_ustvaril` (racun) in `id_klub_lastnik`
+  (posnetek organizatorjevega kluba ob nastanku); organizator sme urejati
+  svoje (ustvaril == on) ali od svojega kluba (klubLastnik == njegov klub),
+  admin vse. To je **namerna izjema** od »metodne varnosti ni«: gre za navadno
+  kodo v storitvah (ne `@PreAuthorize`), zato jo storitveni testi normalno
+  sprožijo — testi morajo nastaviti `SecurityContext` (glej `LastnistvoTest`).
+  Brez konteksta (interni klic/test) preverba ne omejuje. Organizator se
+  registrira sam (vloga v `RegistracijaVnos`), vlogo in (neobvezni) klub mu
+  potrdi admin (`RacuniStoritev.potrdiOrganizatorja`).
 - **Gesel ni mogoče prebrati** (v bazi je le zgostitev). Zato admin gesla ne
   "vidi", ampak ga računu igralca **nastavi** — po svoji izbiri
   (`RacuniStoritev.nastaviGeslo`) ali naključno (`ponastaviGeslo`) — in ga
@@ -99,11 +113,16 @@
 - Strežniške napake (problem-detail) prikazuje `SporociloNapake`; obrazci ne
   podvajajo domenskih pravil, le vodijo vnos (npr. izbira samo veljavnih izidov).
 - Za nepovratna dejanja uporabi `PotrditvenoOkno`, nikoli `window.confirm`.
-- **Prijava** je v `avtentikacija/AvtentikacijaKontekst`; `useAvtentikacija().jeAdmin`
-  odloča o prikazu urejevalnih dejanj. Strežnik je zadnja obramba (mutacija brez
-  prijave vrne 401), vmesnik dejanja le skrije. Poti `/igralci` in `/sifranti`
-  so za goste zaprte (`SamoAdmin`). `DogodekStran` se izriše glede na sistem
-  (mreža / lestvica / skupine).
+- **Prijava** je v `avtentikacija/AvtentikacijaKontekst`. Za prikaz dejanj:
+  `jeAdmin`, `jeOrganizator`, `smeUstvarjati` (admin ali organizator — gumbi za
+  nov turnir/ligo) in `smemUrejati(idLastnik, idKlubLastnik)` (lastniško
+  urejanje turnirja/lige; admin vse). Strežnik je zadnja obramba (mutacija brez
+  pravice vrne 401/403), vmesnik dejanja le skrije. Podstrani, ki lastništva
+  nimajo pri roki (`DogodekStran`, `SrecanjeStran`), naložijo nadrejeni
+  turnir/ligo (ki nosi lastništvo) le za morebitne urejevalce. `/sifranti` in
+  `/racuni` sta `SamoAdmin`; `/igralci` je `SamoUrejevalec` (organizator sme
+  **dodati** igralca, urejanje/rating ostane adminu). `DogodekStran` se izriše
+  glede na sistem (mreža / lestvica / skupine).
 - **Listki tekem** (natisljivi zapisniki): dve strani, obe **namenoma zunaj
   `Postavitve`** (brez navigacije), da je natis čist; tiska brskalnik
   (`window.print`) — **brez zaledja in nove sheme**, listek je le pogled na

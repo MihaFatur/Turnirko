@@ -87,6 +87,17 @@ public class Liga {
     @Column(name = "status", nullable = false)
     private StatusTekmovanja status = StatusTekmovanja.PRIPRAVA;
 
+    /* Lastnistvo: racun, ki je ligo ustvaril, in posnetek njegovega kluba ob
+       nastanku. Po njiju storitve razsodijo, kdo sme urejati - organizator sme
+       svoje lige in tiste svojega kluba. Adminove lige nimajo lastnika. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_ustvaril")
+    private Uporabnik ustvaril;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_klub_lastnik")
+    private Klub klubLastnik;
+
     @Version
     @Column(name = "verzija", nullable = false)
     private long verzija;
@@ -151,6 +162,12 @@ public class Liga {
 
     public StatusTekmovanja getStatus() { return status; }
     public void setStatus(StatusTekmovanja status) { this.status = status; }
+
+    public Uporabnik getUstvaril() { return ustvaril; }
+    public void setUstvaril(Uporabnik ustvaril) { this.ustvaril = ustvaril; }
+
+    public Klub getKlubLastnik() { return klubLastnik; }
+    public void setKlubLastnik(Klub klubLastnik) { this.klubLastnik = klubLastnik; }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
 }

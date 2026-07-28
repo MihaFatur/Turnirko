@@ -16,7 +16,7 @@ import { ZnackaStatusa } from '../komponente/Znacka'
 export function LigaStran() {
   const { id } = useParams()
   const idLiga = Number(id)
-  const { jeAdmin } = useAvtentikacija()
+  const { smemUrejati } = useAvtentikacija()
 
   const liga = useQuery({ queryKey: ['liga', idLiga], queryFn: () => ligeApi.najdi(idLiga) })
   const srecanja = useQuery({ queryKey: ['srecanja', idLiga], queryFn: () => ligeApi.srecanja(idLiga) })
@@ -25,6 +25,8 @@ export function LigaStran() {
   if (liga.error || !liga.data) return <SporociloNapake napaka={liga.error} />
 
   const l = liga.data
+  // organizator sme urejati svojo (ali klubsko) ligo, admin vse
+  const smem = smemUrejati(l.idLastnik, l.idKlubLastnik)
   const vPripravi = l.status === 'PRIPRAVA'
   const imaRazpored = (srecanja.data?.length ?? 0) > 0
 
@@ -38,14 +40,14 @@ export function LigaStran() {
         <ZnackaStatusa status={l.status} />
       </div>
 
-      <Konfiguracija liga={l} lahkoUreja={vPripravi && jeAdmin} />
+      <Konfiguracija liga={l} lahkoUreja={vPripravi && smem} />
 
-      {vPripravi && jeAdmin && <EkipeUredi idLiga={idLiga} status={l.status} />}
+      {vPripravi && smem && <EkipeUredi idLiga={idLiga} status={l.status} />}
 
       {vPripravi && (
         <p className="obvestilo">
           Liga je v pripravi. Dodaj ekipe in kader, nato generiraj razpored.
-          {!jeAdmin && ' (za urejanje se prijavi kot administrator)'}
+          {!smem && ' (urejate lahko le lige svojega kluba oz. kot administrator)'}
         </p>
       )}
 

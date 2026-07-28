@@ -1,16 +1,18 @@
 /* Skupna postavitev vseh strani: glava z navigacijo, prijava/odjava in
    prostor za vsebino. Nekatere povezave (Igralci, Šifranti) vidi samo
    prijavljeni administrator - gost ima le bralne poglede. */
-import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
-import { PrijavaOkno } from './PrijavaOkno'
+import { UporabniskiMeni } from './UporabniskiMeni'
 
 interface Povezava {
   pot: string
   oznaka: string
   samoAdmin?: boolean
+  /* Vidi administrator ali organizator (npr. sifrant igralcev - organizator
+     sme dodati novega igralca). */
+  samoUrejevalec?: boolean
   samoIgralec?: boolean
 }
 
@@ -21,20 +23,22 @@ const povezave: Povezava[] = [
   { pot: '/lestvica', oznaka: 'Lestvica' },
   { pot: '/dvoboj', oznaka: '1 na 1' },
   { pot: '/moj-profil', oznaka: 'Moj profil', samoIgralec: true },
-  { pot: '/igralci', oznaka: 'Igralci', samoAdmin: true },
+  { pot: '/igralci', oznaka: 'Igralci', samoUrejevalec: true },
   { pot: '/racuni', oznaka: 'Dostopi', samoAdmin: true },
   { pot: '/sifranti', oznaka: 'Šifranti', samoAdmin: true },
 ]
 
 export function Postavitev() {
-  const { uporabnik, jeAdmin, odjava } = useAvtentikacija()
-  const [prijavaOdprta, nastaviPrijavaOdprta] = useState(false)
+  const { uporabnik, jeAdmin, jeOrganizator } = useAvtentikacija()
 
   /* Povezavo do profila vidi vsak prijavljen igralec - tudi tisti, ki še
      čaka na potrditev; tam mu stran pojasni, zakaj profila še ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
   const vidne = povezave.filter(
-    (p) => (!p.samoAdmin || jeAdmin) && (!p.samoIgralec || jePrijavljenIgralec),
+    (p) =>
+      (!p.samoAdmin || jeAdmin) &&
+      (!p.samoUrejevalec || jeAdmin || jeOrganizator) &&
+      (!p.samoIgralec || jePrijavljenIgralec),
   )
 
   return (
@@ -65,36 +69,13 @@ export function Postavitev() {
             ))}
           </nav>
 
-          <div className="glava__uporabnik">
-            {uporabnik ? (
-              <>
-                <span
-                  className="glava__oznaka-vloge"
-                  title={jeAdmin ? 'Prijavljen administrator' : 'Prijavljen igralec'}
-                >
-                  {jeAdmin ? '👤' : '🏓'} {uporabnik.imeIgralca ?? uporabnik.uporabniskoIme}
-                </span>
-                <button className="gumb gumb--majhen" onClick={odjava}>
-                  Odjava
-                </button>
-              </>
-            ) : (
-              <button
-                className="gumb gumb--majhen gumb--glavni"
-                onClick={() => nastaviPrijavaOdprta(true)}
-              >
-                Prijava
-              </button>
-            )}
-          </div>
+          <UporabniskiMeni />
         </div>
       </header>
 
       <main className="vsebina">
         <Outlet />
       </main>
-
-      {prijavaOdprta && <PrijavaOkno onZapri={() => nastaviPrijavaOdprta(false)} />}
     </div>
   )
 }

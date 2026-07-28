@@ -9,13 +9,19 @@ import java.util.List;
 
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.Vloga;
 
 public record RacunIgralcaDto(
         Long id,
         String email,
+        // vloga loci racun igralca od organizatorja (potrjevanje je razlicno)
+        Vloga vloga,
         String prijavljenoIme,
         String prijavljeniPriimek,
         String klubZelja,
+        // potrjen klub organizatorja (pri igralcu prazen)
+        Long idKlub,
+        String klub,
         StatusRacuna status,
         boolean aktiven,
         Long idIgralec,
@@ -28,9 +34,12 @@ public record RacunIgralcaDto(
         return new RacunIgralcaDto(
                 u.getId(),
                 u.getUporabniskoIme(),
+                u.getVloga(),
                 u.getPrijavljenoIme(),
                 u.getPrijavljeniPriimek(),
                 u.getKlubZelja() != null ? u.getKlubZelja().getIme() : null,
+                u.getKlub() != null ? u.getKlub().getId() : null,
+                u.getKlub() != null ? u.getKlub().getIme() : null,
                 u.getStatus(),
                 u.isAktiven(),
                 u.getIgralec() != null ? u.getIgralec().getId() : null,

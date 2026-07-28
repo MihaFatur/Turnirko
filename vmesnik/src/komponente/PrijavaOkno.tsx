@@ -14,8 +14,15 @@ import { ModalnoOkno } from './ModalnoOkno'
 
 type Nacin = 'prijava' | 'registracija'
 
-export function PrijavaOkno({ onZapri }: { onZapri: () => void }) {
-  const [nacin, nastaviNacin] = useState<Nacin>('prijava')
+export function PrijavaOkno({
+  onZapri,
+  zacetniNacin = 'prijava',
+}: {
+  onZapri: () => void
+  /* Zavihek, na katerem se okno odpre (npr. iz menija "Ustvari racun"). */
+  zacetniNacin?: Nacin
+}) {
+  const [nacin, nastaviNacin] = useState<Nacin>(zacetniNacin)
 
   return (
     <ModalnoOkno
@@ -114,6 +121,7 @@ function PrijavaObrazec({ onZapri }: { onZapri: () => void }) {
 
 function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
   const klubi = useQuery({ queryKey: ['klubi'], queryFn: klubiApi.seznam })
+  const [organizator, nastaviOrganizator] = useState(false)
   const [ime, nastaviIme] = useState('')
   const [priimek, nastaviPriimek] = useState('')
   const [idKlub, nastaviKlub] = useState('')
@@ -134,6 +142,7 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
         idKlub: idKlub ? Number(idKlub) : null,
         email: email.trim(),
         geslo,
+        organizator,
       })
       nastaviUspeh(true)
     } catch (e) {
@@ -147,9 +156,10 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
     return (
       <div className="obrazec">
         <p className="obvestilo">
-          Račun je ustvarjen in <strong>čaka na potrditev administratorja</strong>. Ko ga
-          potrdi in poveže s tvojim zapisom v šifrantu igralcev, se prijavi z e-pošto in
-          geslom ter si oglej svoj profil.
+          Račun je ustvarjen in <strong>čaka na potrditev administratorja</strong>.{' '}
+          {organizator
+            ? 'Ko ti dodeli vlogo organizatorja (in klub), se prijavi in začni ustvarjati turnirje ter lige.'
+            : 'Ko ga potrdi in poveže s tvojim zapisom v šifrantu igralcev, se prijavi z e-pošto in geslom ter si oglej svoj profil.'}
         </p>
         <div className="obrazec__gumbi">
           <button type="button" className="gumb gumb--glavni" onClick={onNazaj}>
@@ -162,9 +172,29 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
 
   return (
     <form className="obrazec" onSubmit={obOddaji}>
+      {/* Izbira vrste racuna: igralec vidi svoj profil, organizator vodi
+          tekmovanja. Oba potrdi administrator. */}
+      <div className="zavihki zavihki--tip">
+        <button
+          type="button"
+          className={'zavihki__gumb' + (!organizator ? ' zavihki__gumb--aktiven' : '')}
+          onClick={() => nastaviOrganizator(false)}
+        >
+          Igralec
+        </button>
+        <button
+          type="button"
+          className={'zavihki__gumb' + (organizator ? ' zavihki__gumb--aktiven' : '')}
+          onClick={() => nastaviOrganizator(true)}
+        >
+          Organizator
+        </button>
+      </div>
+
       <p className="modal__podnaslov">
-        Vpiši svoje ime, priimek in klub, da te administrator lahko poveže s pravim
-        zapisom igralca. Dostop do profila dobiš po njegovi potrditvi.
+        {organizator
+          ? 'Registracija organizatorja (klub oz. oseba, ki vodi tekmovanja). Vpiši kontaktno ime in klub, ki ga zastopaš; administrator ti po potrditvi dodeli vlogo in klub.'
+          : 'Vpiši svoje ime, priimek in klub, da te administrator lahko poveže s pravim zapisom igralca. Dostop do profila dobiš po njegovi potrditvi.'}
       </p>
 
       <div className="obrazec__vrstica">
@@ -179,7 +209,7 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
       </div>
 
       <label className="obrazec__polje">
-        <span>Klub</span>
+        <span>{organizator ? 'Klub, ki ga zastopaš' : 'Klub'}</span>
         <select value={idKlub} onChange={(d) => nastaviKlub(d.target.value)}>
           <option value="">— brez oz. ne vem —</option>
           {klubi.data?.map((k) => (

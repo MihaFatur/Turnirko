@@ -20,10 +20,18 @@ const KLJUC_SHRAMBE = 'turnirko-poverilnice'
 interface Avtentikacija {
   uporabnik: UporabnikDto | null
   jeAdmin: boolean
+  /* Prijavljen organizator s potrjenim računom. */
+  jeOrganizator: boolean
   /* Prijavljen igralec s potrjenim in povezanim računom. */
   jeIgralec: boolean
+  /* Sme ustvarjati turnirje in lige (administrator ali organizator). */
+  smeUstvarjati: boolean
   /* Id igralca, čigar profil je "moj"; null za admina in nepotrjene račune. */
   mojIdIgralec: number | null
+  /* Ali prijavljeni sme urejati turnir/ligo z danim lastništvom: administrator
+     vse, organizator svoje (idLastnik) ali od svojega kluba (idKlubLastnik).
+     Streznik je zadnja obramba - to le skrije dejanja, ki bi bila zavrnjena. */
+  smemUrejati: (idLastnik: number | null, idKlubLastnik: number | null) => boolean
   /* Med začetnim preverjanjem shranjenih poverilnic. */
   nalaganje: boolean
   prijava: (uporabniskoIme: string, geslo: string) => Promise<void>
@@ -87,11 +95,28 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     && uporabnik.status === 'POTRJEN'
     && uporabnik.idIgralec !== null
 
+  const jeAdmin = uporabnik?.vloga === 'ADMIN'
+  const jeOrganizator = uporabnik?.vloga === 'ORGANIZATOR' && uporabnik.status === 'POTRJEN'
+
+  /* Ali sme prijavljeni urejati turnir/ligo z danim lastništvom. */
+  function smemUrejati(idLastnik: number | null, idKlubLastnik: number | null): boolean {
+    if (jeAdmin) return true
+    if (!jeOrganizator || !uporabnik) return false
+    if (idLastnik !== null && idLastnik === uporabnik.id) return true
+    if (idKlubLastnik !== null && uporabnik.idKlub !== null && idKlubLastnik === uporabnik.idKlub) {
+      return true
+    }
+    return false
+  }
+
   const vrednost: Avtentikacija = {
     uporabnik,
-    jeAdmin: uporabnik?.vloga === 'ADMIN',
+    jeAdmin,
+    jeOrganizator,
     jeIgralec,
+    smeUstvarjati: jeAdmin || jeOrganizator,
     mojIdIgralec: jeIgralec ? uporabnik!.idIgralec : null,
+    smemUrejati,
     nalaganje,
     prijava,
     odjava,
