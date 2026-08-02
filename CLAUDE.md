@@ -18,6 +18,11 @@
   Testi: `cd zaledje && mvnw test`.
 - Statuse določa strežnik; prehodi stanj se preverjajo v storitvah.
 - Rating se spreminja izključno prek `RatingStoritev` (dnevnik v `rating_zgodovina`).
+- **Štetje v ELO je izbirno na ravni tekmovanja:** `turnir.steje_v_elo` in
+  `liga.steje_v_elo` (oba privzeto `true`). Obračun se sproži le, če zastavica
+  velja — turnir v `TekmaStoritev.vnesiRezultat`
+  (`tekma.getDogodek().getTurnir().isStejeVElo()`), liga v
+  `SrecanjeStoritev` (`liga.isStejeVElo()`); ligaške dvojice ne štejejo nikoli.
 - **Klubski ELO (`EloStoritev`)** ima tri lastnosti, ki jih ne razbij:
   - **dinamični K** glede na `RatingStanje.stTekem` posameznega igralca
     (`kFaktor`: <10 → 48, <30 → 32, sicer 20) — novinec se hitro umesti,
@@ -107,6 +112,31 @@
 
 ## Vmesnik (vmesnik/)
 
+- **Oblikovni sistem je zavezujoč:** `vmesnik/turnirko-profil-redesign/project/DESIGN.md`
+  (značaj »športni zapisnik na papirju«). Če predlog nasprotuje temu dokumentu,
+  se popravi predlog, ne dokument. Ključna pravila: `border-radius: 0` povsod,
+  brez senc (edina izjema je podčrtaj aktivne navigacijske postavke), brez
+  gradientov razen 8 % polnila pod črto grafa, brez emojijev in ikon (edina
+  ikona je logotip), naslovi levo poravnani, 8 px ritem, zadetkovna površina na
+  dotik ≥ 44 px. Barve pomenijo: modra `#0088CE` = dejanje/podatek, zelena
+  `#7BB900` = uspeh/napredovanje, rjasta `#B23A1E` = izguba/napaka/brisanje.
+- **Modra ima dve vrednosti in ju ne smeš zamenjati.** `--barva-glavna`
+  (`#0088CE`) **riše** — črte, palice, polnilo grafa, obroba gumba, fokus; tam
+  ni besedila. Kjer modra postane **podlaga pod besedilom** (glavni gumb,
+  značka »V teku«, blok ELO), velja `--barva-glavna-polna` (`#0071AB`), ker je
+  bela na `#0088CE` samo 3,88:1 in pade WCAG AA za oznake pod 24 px; polna
+  modra da 5,32:1. Ob prehodu miške `--barva-glavna-polna-mocna` (`#005A88`).
+  Drugotno besedilo na modri ploskvi je `--barva-na-glavni-2` (svetlozelena),
+  nikoli siva. Novih polnih ploskev ne slikaj z `--barva-glavna`.
+  Podatke nosijo **vrstice s črtami**, nikoli mreže zaobljenih kartic; pas
+  kazalnikov nadomešča kolofon (oznaka mono ↔ vrednost mono).
+  Natančne makete zaslonov so `*.dc.html` v isti mapi.
+- Pisave (tri družine, nič več): `Bricolage Grotesque` display, `Karla` telo,
+  `IBM Plex Mono` oznake/številke. Lokalno vgrajene prek `@fontsource` v
+  `main.tsx` — brez zunanjih klicev, da vmesnik dela tudi brez interneta v
+  dvorani. Razredi sistema (`.naslov-strani`, `.kolofon`, `.naslovna-vrstica`,
+  `.izbirnik`, `.elo-blok`, `.vrstica` …) so v `vmesnik/src/slog.css`; preden
+  napišeš nov razred, preveri, ali obstoječi zadošča.
 - React + TypeScript (Vite), TanStack Query; brez dodatnih knjižnic brez potrebe.
 - Tipi v `src/api/tipi.ts` morajo zrcaliti DTO-je zaledja — ob spremembi API-ja
   posodobi oboje.
@@ -129,16 +159,22 @@
   podatke, ki že obstajajo:
   - `ListkiStran` (`/dogodki/:id/listki`) — turnirski dogodek; natisne
     **pripravljene tekme** (oba igralca znana, status `PRIPRAVLJENA`/`V_IGRI`;
-    prosti prehodi in `CAKA` odpadejo sami). Gumb »🖨 Listki« na `DogodekStran`
-    se pokaže adminu ob `V_TEKU`.
+    prosti prehodi in `CAKA` odpadejo sami) kot posamične **sodniške listke**
+    (`komponente/Listek`, normaliziran `ListekPodatki`): niz je vrstica, vsak
+    igralec svoj stolpec, spodaj skupni rezultat. Mreža 2 stolpcev s skupnimi
+    robovi (negativni rob = ena črta za rezanje) da **6 listkov na A4**. Gumb
+    »🖨 Listki« na `DogodekStran` se pokaže adminu ob `V_TEKU`. Turnir ima le
+    to eno predlogo (ni izbire).
   - `ListkiSrecanjaStran` (`/srecanja/:id/listki`) — ekipno srečanje; natisne
-    tekme s stanjem `CAKA` (postava je določena, še niso odigrane). Dvojice
-    imajo na strani dva igralca, ekipa je podnaslov, mize ligaška tekma nima.
-    Gumb na `SrecanjeStran` se pokaže adminu, kadar obstaja `CAKA` tekma.
-  - Oba izrisujeta skupno komponento **`komponente/Listek`** (normaliziran
-    `ListekPodatki`). Listek je **črno-bel ne glede na temo** (fiksni `#000/#fff`,
-    ne temo odvisne spremenljivke); sloge in `@media print` (`@page` A4, mreža
-    2 stolpca, `break-inside: avoid`) drži `slog.css`.
+    **en uraden ekipni zapisnik NTZS** (`komponente/ZapisnikEkipnegaDvoboja`)
+    za celotno srečanje: glava, obe ekipi s postavo (A/B/C : X/Y/Z), mreža vseh
+    posamičnih tekem in podnožje (sodniki, vodji, podpisi). Predlogo (varianti
+    `SNTL_1` / `SNTL_23`) izbere liga (`liga.predlogaListka`); varianta določa
+    oznako lige in prisotnost vrstice za delegata NTZS. Na strani je še živ
+    izbirnik variante za ta natis. (Ne uporablja več komponente `Listek`.)
+  - Listki so **črno-beli ne glede na temo** (fiksni `#000/#fff`, ne temo
+    odvisne spremenljivke); sloge in `@media print` (`@page` A4,
+    `break-inside: avoid`, `print-color-adjust: exact`) drži `slog.css`.
 - Preverba pred zaključkom dela: `cd vmesnik && npm run build` (tsc + vite).
 
 ## Kontekst projekta

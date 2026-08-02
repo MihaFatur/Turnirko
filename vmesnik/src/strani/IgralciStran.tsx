@@ -47,32 +47,58 @@ export function IgralciStran() {
     )
   }, [igralci.data, iskanje])
 
+  const vsi = igralci.data ?? []
+  const zRatingom = vsi.filter((i) => i.rating != null).length
+  const klubov = new Set(vsi.map((i) => i.klub?.id).filter((v) => v !== undefined)).size
+
   return (
     <section>
-      <div className="naslovna-vrstica">
-        <h1>Igralci</h1>
-        <button className="gumb gumb--glavni" onClick={() => nastaviUrejanje('nov')}>
-          + Nov igralec
-        </button>
+      <div className="stran-glava stran-glava--dno">
+        <div>
+          <h1 className="naslov-strani">
+            <span className="naslov-strani__nad">Kartoteka</span>
+            <span className="naslov-strani__glavni">Igralci</span>
+          </h1>
+          <p className="uvod">
+            {jeAdmin
+              ? `Klub, igralna roka in datum rojstva vplivajo na kategorije in statistiko. Zvezdica pomeni provizoričen rating (manj kot ${PROVIZORICNO_DO} odigranih tekem).`
+              : 'Kot organizator lahko dodaš novega igralca; urejanje in rating ureja administrator.'}
+          </p>
+        </div>
+        <div>
+          <label className="obrazec__polje">
+            <span>Išči</span>
+            <input
+              className="iskalnik"
+              placeholder="Išči po imenu ali klubu …"
+              value={iskanje}
+              onChange={(dogodek) => nastaviIskanje(dogodek.target.value)}
+            />
+          </label>
+          <div className="stran-glava__dejanja">
+            <button className="gumb gumb--glavni" onClick={() => nastaviUrejanje('nov')}>
+              + Nov igralec
+            </button>
+          </div>
+          {igralci.data && (
+            <div className="stevci">
+              <span className="stevci__postavka">{vsi.length} igralcev</span>
+              <span className="stevci__postavka">{klubov} klubov</span>
+              <span className="stevci__postavka">{zRatingom} z ratingom</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <p className="podnaslov">
-        {jeAdmin ? (
-          <>
-            ★ pomeni še provizoričen rating (manj kot {PROVIZORICNO_DO} odigranih tekem). Novincu
-            lahko pred prvo tekmo postaviš vstopni rating namesto privzetega 1000.
-          </>
-        ) : (
-          'Kot organizator lahko dodaš novega igralca; urejanje in rating ureja administrator.'
-        )}
-      </p>
-
-      <input
-        className="iskalnik"
-        placeholder="Išči po imenu ali klubu …"
-        value={iskanje}
-        onChange={(dogodek) => nastaviIskanje(dogodek.target.value)}
-      />
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Vsi igralci</h2>
+          {igralci.data && (
+            <span className="sekcija__meta">
+              Prikazanih {prikazani.length} od {vsi.length}
+            </span>
+          )}
+        </div>
 
       <SporociloNapake napaka={igralci.error} />
       <SporociloNapake napaka={arhiviranje.error} />
@@ -82,29 +108,40 @@ export function IgralciStran() {
         <p className="obvestilo">Ni še nobenega igralca. Dodaj prvega z gumbom »+ Nov igralec«.</p>
       )}
 
+      {vsi.length > 0 && prikazani.length === 0 && (
+        <p className="obvestilo">Iskanju ne ustreza noben igralec.</p>
+      )}
+
       {prikazani.length > 0 && (
+        <div className="tabela-ovoj">
         <table className="tabela">
           <thead>
             <tr>
-              <th>Igralec</th>
-              <th>Klub</th>
-              <th>Spol</th>
-              <th>Letnik</th>
-              <th>Rating</th>
-              <th>Licenca NTZS</th>
-              <th></th>
+              <th scope="col">Priimek in ime</th>
+              <th scope="col">Klub</th>
+              <th scope="col">Spol</th>
+              <th scope="col">Letnik</th>
+              <th scope="col" className="lestvica__rating">Rating</th>
+              <th scope="col">Licenca NTZS</th>
+              <th scope="col" className="tabela__dejanja"></th>
             </tr>
           </thead>
           <tbody>
             {prikazani.map((igralec) => (
               <tr key={igralec.id}>
-                <td>
-                  <strong>{igralec.priimek}</strong> {igralec.ime}
+                <td className="lestvica__ime">
+                  {igralec.priimek} {igralec.ime}
                 </td>
-                <td>{igralec.klub?.ime ?? '—'}</td>
-                <td>{OZNAKE_SPOL[igralec.spol]}</td>
-                <td>{letnica(igralec.datumRojstva)}</td>
-                <td className="igralec-rating">
+                <td className={igralec.klub ? 'lestvica__klub' : 'lestvica__klub igralec-klub--brez'}>
+                  {igralec.klub?.ime ?? 'brez kluba'}
+                </td>
+                <td className="vrstica__mono">{OZNAKE_SPOL[igralec.spol]}</td>
+                <td className="vrstica__mono">{letnica(igralec.datumRojstva)}</td>
+                <td
+                  className={
+                    'igralec-rating' + (igralec.rating == null ? ' igralec-rating--brez' : '')
+                  }
+                >
                   {igralec.rating != null && (
                     <span>
                       {igralec.rating}
@@ -129,10 +166,10 @@ export function IgralciStran() {
                     igralec.rating == null && '—'
                   )}
                 </td>
-                <td>{igralec.ntzsLicenca ?? '—'}</td>
+                <td className="vrstica__mono">{igralec.ntzsLicenca ?? '—'}</td>
                 <td className="tabela__dejanja">
                   {jeAdmin && (
-                    <>
+                    <span>
                       <button className="gumb gumb--majhen" onClick={() => nastaviUrejanje(igralec)}>
                         Uredi
                       </button>
@@ -142,14 +179,16 @@ export function IgralciStran() {
                       >
                         Arhiviraj
                       </button>
-                    </>
+                    </span>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
+      </div>
 
       {arhiviranec && (
         <PotrditvenoOkno

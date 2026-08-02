@@ -11,7 +11,19 @@ import { SporociloNapake } from '../komponente/SporociloNapake'
 export function SifrantiStran() {
   return (
     <section>
-      <h1>Šifranti</h1>
+      <div className="stran-glava">
+        <div>
+          <h1 className="naslov-strani">
+            <span className="naslov-strani__nad">Osnovni podatki</span>
+            <span className="naslov-strani__glavni">Šifranti</span>
+          </h1>
+          <p className="uvod">
+            Klubi in kraji so podlaga vsemu ostalemu — igralci, ekipe in turnirji se
+            sklicujejo nanje.
+          </p>
+        </div>
+      </div>
+
       <div className="dvostolpicno">
         <KlubiPlosca />
         <KrajiPlosca />
@@ -65,8 +77,15 @@ function KlubiPlosca() {
   }
 
   return (
-    <div className="plosca">
-      <h2>Klubi</h2>
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Klubi</h2>
+        {klubi.data && (
+          <span className="sekcija__meta">
+            {klubi.data.length} {klubovTekst(klubi.data.length)}
+          </span>
+        )}
+      </div>
 
       <form className="obrazec__vrstica obrazec__vrstica--dodajanje" onSubmit={obDodajanju}>
         <input
@@ -208,8 +227,15 @@ function KrajiPlosca() {
   }
 
   return (
-    <div className="plosca">
-      <h2>Kraji</h2>
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Kraji</h2>
+        {kraji.data && (
+          <span className="sekcija__meta">
+            {kraji.data.length} {krajevTekst(kraji.data.length)}
+          </span>
+        )}
+      </div>
 
       <form className="obrazec__vrstica obrazec__vrstica--dodajanje" onSubmit={obDodajanju}>
         <input
@@ -306,4 +332,20 @@ function KrajiPlosca() {
       )}
     </div>
   )
+}
+
+/* Slovnično pravilna oblika besede "klub" glede na število. */
+function klubovTekst(n: number): string {
+  if (n === 1) return 'klub'
+  if (n === 2) return 'kluba'
+  if (n === 3 || n === 4) return 'klubi'
+  return 'klubov'
+}
+
+/* Slovnično pravilna oblika besede "kraj" glede na število. */
+function krajevTekst(n: number): string {
+  if (n === 1) return 'kraj'
+  if (n === 2) return 'kraja'
+  if (n === 3 || n === 4) return 'kraji'
+  return 'krajev'
 }

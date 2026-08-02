@@ -87,7 +87,7 @@ class LenoNalaganjeTest {
         klub = klubRepozitorij.save(new Klub("Testni klub", "TST"));
 
         turnir = turnirjiStoritev.ustvari(
-                new TurnirVnos("Turnir z lenim krajem", 9999, null, null, null, null));
+                new TurnirVnos("Turnir z lenim krajem", 9999, null, null, null, null, null));
         dogodek = turnirjiStoritev.dodajDogodek(turnir.getId(),
                 new DogodekVnos("Clani", SpolKategorija.MESANO, null, 5, null, null, null, null, null));
 

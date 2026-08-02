@@ -20,7 +20,9 @@ export function PotrditvenoOkno({
   onZapri,
 }: Lastnosti) {
   return (
-    <ModalnoOkno naslov={naslov} onZapri={onZapri}>
+    /* Okno je vedno "nevarno": dejanja, ki jih potrjuje, ni mogoce razveljaviti,
+       zato crta pod naslovom in potrditveni gumb nosita rjasto barvo. */
+    <ModalnoOkno naslov={naslov} onZapri={onZapri} nevarno>
       <p className="potrditev__sporocilo">{sporocilo}</p>
       <div className="obrazec__gumbi">
         <button type="button" className="gumb" onClick={onZapri}>
@@ -28,7 +30,7 @@ export function PotrditvenoOkno({
         </button>
         <button
           type="button"
-          className="gumb gumb--glavni"
+          className="gumb gumb--nevaren"
           onClick={() => {
             onPotrdi()
             onZapri()

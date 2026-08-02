@@ -73,6 +73,11 @@ public class Liga {
     @Column(name = "steje_v_elo", nullable = false)
     private boolean stejeVElo = true;
 
+    /* Predloga uradnega ekipnega zapisnika za natis (1. SNTL oz. 2./3. SNTL). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "predloga_listka", nullable = false)
+    private PredlogaLige predlogaListka = PredlogaLige.SNTL_23;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_visja_liga")
     private Liga visjaLiga;
@@ -150,6 +155,9 @@ public class Liga {
 
     public boolean isStejeVElo() { return stejeVElo; }
     public void setStejeVElo(boolean stejeVElo) { this.stejeVElo = stejeVElo; }
+
+    public PredlogaLige getPredlogaListka() { return predlogaListka; }
+    public void setPredlogaListka(PredlogaLige predlogaListka) { this.predlogaListka = predlogaListka; }
 
     public Liga getVisjaLiga() { return visjaLiga; }
     public void setVisjaLiga(Liga visjaLiga) { this.visjaLiga = visjaLiga; }

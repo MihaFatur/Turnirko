@@ -2,7 +2,7 @@
    (glava z navigacijo + vsebina). Strani za urejanje (igralci, šifranti)
    so dostopne samo prijavljenemu administratorju; gost je preusmerjen. */
 import type { ReactElement } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes } from 'react-router-dom'
 
 import { Postavitev } from './komponente/Postavitev'
 import { useAvtentikacija } from './avtentikacija/AvtentikacijaKontekst'
@@ -59,6 +59,41 @@ function MojProfil() {
   return <Navigate to="/lestvica" replace />
 }
 
+/* Neznana pot. Gost pogosto pride po povezavi, ki jo je nekdo delil - zato
+   stran ne sme biti slepa ulica, ampak mora ponuditi poti, ki jih res ima. */
+function StranNeObstaja() {
+  return (
+    <section>
+      <div className="stran-glava stran-glava--ozka">
+        <div>
+          <h1 className="naslov-strani">
+            <span className="naslov-strani__nad">404</span>
+            <span className="naslov-strani__glavni">Te strani ni</span>
+          </h1>
+          <p className="uvod">
+            Povezava je napačna ali pa je bil zapis izbrisan. Iz teh strani prideš do vsega
+            javnega:
+          </p>
+        </div>
+      </div>
+      <div className="stran-glava__dejanja">
+        <Link to="/" className="gumb gumb--glavni">
+          Na pregled
+        </Link>
+        <Link to="/turnirji" className="gumb">
+          Turnirji
+        </Link>
+        <Link to="/lige" className="gumb">
+          Lige
+        </Link>
+        <Link to="/lestvica" className="gumb">
+          Lestvica
+        </Link>
+      </div>
+    </section>
+  )
+}
+
 export function App() {
   return (
     <Routes>
@@ -102,7 +137,7 @@ export function App() {
             </SamoAdmin>
           }
         />
-        <Route path="*" element={<p className="obvestilo">Ta stran ne obstaja.</p>} />
+        <Route path="*" element={<StranNeObstaja />} />
       </Route>
     </Routes>
   )

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200;12..96,400;12..96,600;12..96,800&family=Karla:wght@200;300;400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#DCD8D1;color:#14110F;font-family:Karla,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:#0071AB;text-decoration:none}
+  a:hover{text-decoration:underline}
+  table{border-collapse:collapse}
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:56px;padding:48px">
+
+  <div style="max-width:1240px">
+    <div style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.14em;text-transform:uppercase;color:#5B534D">Turnirko · nov izgled</div>
+    <h1 style="margin:8px 0 0;font:800 40px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Lige in srečanja</h1>
+    <p style="margin:8px 0 0;font:300 16px/1.6 Karla,sans-serif;color:#4b4e48;max-width:64ch;text-wrap:pretty">Seznam lig, ena liga (pravila, ekipe, lestvica, razpored) in ekipno srečanje z postavo ter zapisnikom. Iz <code style="font:400 14px 'IBM Plex Mono',monospace">LigeStran.tsx</code>, <code style="font:400 14px 'IBM Plex Mono',monospace">LigaStran.tsx</code>, <code style="font:400 14px 'IBM Plex Mono',monospace">SrecanjeStran.tsx</code>.</p>
+  </div>
+
+  <div data-screen-label="Lige">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;background:#0088CE;color:#fff;font:700 14px 'IBM Plex Mono',monospace;letter-spacing:0.08em">/lige</span>
+      <span style="font:600 14px Karla,sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:#4b4e48">Seznam lig</span>
+    </div>
+
+    <div style="width:1280px;background:#FBF9F5;color:#14110F">
+      <div style="padding:24px 40px 0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:24px;padding-bottom:8px;border-bottom:1px solid #14110F">
+          <span style="display:flex;align-items:center;gap:10px;font:800 24px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">
+            <svg width="24" height="24" viewBox="0 0 28 28" aria-hidden="true" style="display:block">
+              <path d="M14 25 L18 21" stroke="#14110F" stroke-width="3.2" stroke-linecap="round"></path>
+              <circle cx="12" cy="12" r="8.5" fill="#0088CE"></circle>
+              <circle cx="21" cy="8" r="3.4" fill="#7BB900"></circle>
+            </svg>
+            Turnirko
+          </span>
+          <nav style="display:flex;gap:24px;font:400 15px Karla,sans-serif;color:#5B534D">
+            <span>Domov</span><span>Turnirji</span>
+            <span style="color:#0071AB;font-weight:700;box-shadow:0 6px 0 -4px #0088CE">Lige</span>
+            <span>Lestvica</span><span>1 na 1</span><span>Igralci</span>
+          </nav>
+          <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">SODNIK · NTK SAVINJA</span>
+        </div>
+        <div style="height:3px;background:#14110F;margin-top:2px"></div>
+      </div>
+
+      <div style="padding:48px 40px 0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:40px;align-items:end">
+        <div>
+          <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;line-height:0.88;letter-spacing:-0.035em">
+            <span style="display:block;font-weight:200;font-size:48px;color:#5B534D">Ekipna tekmovanja</span>
+            <span style="display:block;font-weight:800;font-size:88px">Lige</span>
+          </h1>
+          <p style="margin:20px 0 0;font:300 20px/1.5 Karla,sans-serif;color:#332E29;max-width:48ch;text-wrap:pretty">Ekipe, kader in razpored srečanj. Posamične tekme iz lig se lahko štejejo v klubski ELO.</p>
+        </div>
+        <div style="padding-bottom:8px"><span style="padding:14px 20px;background:#0088CE;color:#fff;font:700 15px Karla,sans-serif">+ Nova liga</span></div>
+      </div>
+
+      <div style="padding:48px 40px 64px">
+        <div style="border-top:3px solid #14110F;padding-top:16px;display:flex;align-items:baseline;justify-content:space-between;gap:24px">
+          <h2 style="margin:0;font:800 40px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Vse lige</h2>
+          <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">SEZONA 2025/26</span>
+        </div>
+        <sc-for list="{{ lige }}" as="l" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 160px 200px 152px 112px;align-items:center;gap:24px;padding:20px 0 20px 12px;border-bottom:1px solid #DED7CE;border-left:4px solid {{ l.crta }}">
+            <span><span style="font:700 22px Karla,sans-serif">{{ l.ime }}</span><span style="display:block;font:300 16px Karla,sans-serif;color:#5B534D;margin-top:2px">{{ l.opis }}</span></span>
+            <span style="font:400 15px Karla,sans-serif;color:#5B534D">{{ l.ekipe }}</span>
+            <span style="font:400 15px 'IBM Plex Mono',monospace;color:#5B534D">{{ l.format }}</span>
+            <span style="font:400 15px 'IBM Plex Mono',monospace;color:#5B534D">{{ l.napredek }}</span>
+            <span style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:0.1em;padding:6px 8px;text-align:center;background:{{ l.ozadje }};color:{{ l.barva }}">{{ l.status }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div data-screen-label="Liga">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;background:#0088CE;color:#fff;font:700 14px 'IBM Plex Mono',monospace;letter-spacing:0.08em">/lige/:id</span>
+      <span style="font:600 14px Karla,sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:#4b4e48">Ena liga — pravila, lestvica, razpored</span>
+    </div>
+
+    <div style="width:1280px;background:#FBF9F5;color:#14110F">
+      <div style="padding:24px 40px 0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:24px;padding-bottom:8px;border-bottom:1px solid #14110F">
+          <span style="font:800 24px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Turnirko</span>
+          <nav style="display:flex;gap:24px;font:400 15px Karla,sans-serif;color:#5B534D">
+            <span>Domov</span><span>Turnirji</span>
+            <span style="color:#0071AB;font-weight:700;box-shadow:0 6px 0 -4px #0088CE">Lige</span>
+            <span>Lestvica</span><span>1 na 1</span><span>Igralci</span>
+          </nav>
+          <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">SODNIK · NTK SAVINJA</span>
+        </div>
+        <div style="height:3px;background:#14110F;margin-top:2px"></div>
+      </div>
+
+      <div style="padding:32px 40px 0">
+        <a href="#" style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">← LIGE</a>
+        <div style="margin-top:20px;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:56px;align-items:start">
+          <div>
+            <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;line-height:0.88;letter-spacing:-0.035em">
+              <span style="display:block;font-weight:200;font-size:44px;color:#5B534D">2. slovenska liga</span>
+              <span style="display:block;font-weight:800;font-size:80px">Vzhod</span>
+            </h1>
+            <p style="margin:20px 0 0;font:300 20px/1.5 Karla,sans-serif;color:#332E29">10 ekip · dvokrožno · 9. od 18 kol odigranih</p>
+            <div style="margin-top:32px;display:flex;align-items:center;gap:12px">
+              <span style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:0.1em;padding:8px 10px;background:#0088CE;color:#fff">V TEKU</span>
+              <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">PRAVILA SO ZAKLENJENA — RAZPORED JE ŽE GENERIRAN</span>
+            </div>
+          </div>
+          <div>
+            <div style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:#5B534D;padding-bottom:8px;border-bottom:1px solid #14110F">PRAVILA</div>
+            <sc-for list="{{ pravila }}" as="p" hint-placeholder-count="9">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid #DED7CE">
+                <span style="font:400 15px Karla,sans-serif;color:#5B534D">{{ p.o }}</span>
+                <span style="font:600 15px 'IBM Plex Mono',monospace;text-align:right">{{ p.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:48px 40px 64px;display:flex;flex-direction:column;gap:56px">
+        <div>
+          <div style="border-top:3px solid #14110F;padding-top:16px;display:flex;align-items:baseline;justify-content:space-between;gap:24px">
+            <h2 style="margin:0;font:800 40px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Lestvica</h2>
+            <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">2 NAPREDUJETA · 2 IZPADETA</span>
+          </div>
+          <table style="width:100%;margin-top:16px">
+            <thead>
+              <tr>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500;width:56px">#</th>
+                <th style="text-align:left;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500">EKIPA</th>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500;width:72px">ODIG.</th>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500;width:56px">Z</th>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500;width:56px">N</th>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500;width:56px">P</th>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500;width:96px">TEKME</th>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 12px 8px 0;border-bottom:1px solid #14110F;font-weight:500;width:96px">NIZI</th>
+                <th style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D;padding:8px 0;border-bottom:1px solid #14110F;font-weight:500;width:88px">TOČKE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ ligaLestvica }}" as="v" hint-placeholder-count="10">
+                <tr>
+                  <td style="padding:14px 12px 14px 8px;border-bottom:1px solid #DED7CE;border-left:4px solid {{ v.crta }};text-align:right;font:600 16px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ v.mesto }}</td>
+                  <td style="padding:14px 12px 14px 0;border-bottom:1px solid #DED7CE;font:{{ v.teza }} 18px Karla,sans-serif">{{ v.ekipa }}</td>
+                  <td style="padding:14px 12px 14px 0;border-bottom:1px solid #DED7CE;text-align:right;font:400 15px 'IBM Plex Mono',monospace;color:#5B534D">{{ v.odigrane }}</td>
+                  <td style="padding:14px 12px 14px 0;border-bottom:1px solid #DED7CE;text-align:right;font:500 15px 'IBM Plex Mono',monospace;color:#4E7A00">{{ v.zmage }}</td>
+                  <td style="padding:14px 12px 14px 0;border-bottom:1px solid #DED7CE;text-align:right;font:500 15px 'IBM Plex Mono',monospace;color:#5B534D">{{ v.neodlocene }}</td>
+                  <td style="padding:14px 12px 14px 0;border-bottom:1px solid #DED7CE;text-align:right;font:500 15px 'IBM Plex Mono',monospace;color:#B23A1E">{{ v.porazi }}</td>
+                  <td style="padding:14px 12px 14px 0;border-bottom:1px solid #DED7CE;text-align:right;font:400 15px 'IBM Plex Mono',monospace;color:#5B534D;font-variant-numeric:tabular-nums">{{ v.tekme }}</td>
+                  <td style="padding:14px 12px 14px 0;border-bottom:1px solid #DED7CE;text-align:right;font:400 15px 'IBM Plex Mono',monospace;color:#5B534D;font-variant-numeric:tabular-nums">{{ v.nizi }}</td>
+                  <td style="padding:14px 0;border-bottom:1px solid #DED7CE;text-align:right;font:600 22px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ v.tocke }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;display:flex;gap:24px;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:4px;background:#7BB900;display:block"></span>NAPREDUJE</span>
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:4px;background:#B23A1E;display:block"></span>IZPADE</span>
+          </div>
+        </div>
+
+        <div>
+          <div style="border-top:3px solid #14110F;padding-top:16px;display:flex;align-items:baseline;justify-content:space-between;gap:24px">
+            <h2 style="margin:0;font:800 40px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Razpored</h2>
+            <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">18 KOL</span>
+          </div>
+          <div style="margin-top:24px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:48px">
+            <sc-for list="{{ kola }}" as="k" hint-placeholder-count="2">
+              <div>
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:2px solid #14110F">
+                  <span style="font:800 24px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">{{ k.naslov }}</span>
+                  <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">{{ k.datum }}</span>
+                </div>
+                <sc-for list="{{ k.srecanja }}" as="s" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr);align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #DED7CE">
+                    <span style="text-align:right;font:{{ s.tezaD }} 17px Karla,sans-serif;color:{{ s.barvaD }}">{{ s.domaci }}</span>
+                    <span style="text-align:center;font:600 20px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:{{ s.barvaIzida }};background:{{ s.ozadjeIzida }};padding:4px 0">{{ s.izid }}</span>
+                    <span style="font:{{ s.tezaG }} 17px Karla,sans-serif;color:{{ s.barvaG }}">{{ s.gost }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div data-screen-label="Srečanje">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;background:#0088CE;color:#fff;font:700 14px 'IBM Plex Mono',monospace;letter-spacing:0.08em">/srecanja/:id</span>
+      <span style="font:600 14px Karla,sans-serif;letter-spacing:0.06em;text-transform:uppercase;color:#4b4e48">Ekipno srečanje — postava in zapisnik</span>
+    </div>
+
+    <div style="width:1280px;background:#FBF9F5;color:#14110F">
+      <div style="padding:24px 40px 0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:24px;padding-bottom:8px;border-bottom:1px solid #14110F">
+          <span style="font:800 24px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Turnirko</span>
+          <nav style="display:flex;gap:24px;font:400 15px Karla,sans-serif;color:#5B534D">
+            <span>Domov</span><span>Turnirji</span>
+            <span style="color:#0071AB;font-weight:700;box-shadow:0 6px 0 -4px #0088CE">Lige</span>
+            <span>Lestvica</span><span>1 na 1</span><span>Igralci</span>
+          </nav>
+          <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">SODNIK · NTK SAVINJA</span>
+        </div>
+        <div style="height:3px;background:#14110F;margin-top:2px"></div>
+      </div>
+
+      <div style="padding:32px 40px 0">
+        <a href="#" style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">← 2. SLOVENSKA LIGA – VZHOD</a>
+      </div>
+
+      <div style="margin:24px 40px 0;padding:32px 0;border-top:3px solid #14110F;border-bottom:3px solid #14110F;display:grid;grid-template-columns:minmax(0,1fr) 280px minmax(0,1fr);gap:32px;align-items:center">
+        <div style="text-align:right">
+          <div style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:#5B534D">DOMAČI</div>
+          <div style="margin-top:8px;font:800 48px/0.95 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">NTK Savinja</div>
+          <div style="margin-top:8px;font:300 17px Karla,sans-serif;color:#5B534D">Dvorana Savinja, Žalec</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font:800 96px/0.85 'Bricolage Grotesque',sans-serif;letter-spacing:-0.05em;font-variant-numeric:tabular-nums"><span style="color:#4E7A00">4</span><span style="color:#DED7CE"> : </span><span style="color:#14110F">3</span></div>
+          <div style="margin-top:12px;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">9. KOLO · KONČANO</div>
+          <div style="margin-top:8px;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">21. 6. 2026 · 18.00</div>
+        </div>
+        <div>
+          <div style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:#5B534D">GOSTJE</div>
+          <div style="margin-top:8px;font:800 48px/0.95 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em;color:#5B534D">NTK Maribor</div>
+          <div style="margin-top:8px;font:300 17px Karla,sans-serif;color:#5B534D">2. ekipa</div>
+        </div>
+      </div>
+
+      <div style="padding:48px 40px 64px;display:flex;flex-direction:column;gap:56px">
+        <div>
+          <div style="border-top:3px solid #14110F;padding-top:16px;display:flex;align-items:baseline;justify-content:space-between;gap:24px">
+            <h2 style="margin:0;font:800 40px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Zapisnik</h2>
+            <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">SISTEM SWAYTHLING · NAJBOLJŠI OD 5 NIZOV</span>
+          </div>
+          <sc-for list="{{ zapisnik }}" as="t" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:56px minmax(0,1fr) 112px minmax(0,1fr) 96px;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid #DED7CE;opacity:{{ t.motnost }}">
+              <span style="font:600 16px 'IBM Plex Mono',monospace;color:#5B534D">{{ t.oznaka }}</span>
+              <span style="text-align:right"><span style="font:{{ t.tezaD }} 19px Karla,sans-serif;color:{{ t.barvaD }}">{{ t.domaci }}</span><span style="display:block;font:500 12px 'IBM Plex Mono',monospace;color:{{ t.barvaEloD }};margin-top:2px">{{ t.eloD }}</span></span>
+              <span style="text-align:center;font:800 32px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ t.izid }}</span>
+              <span><span style="font:{{ t.tezaG }} 19px Karla,sans-serif;color:{{ t.barvaG }}">{{ t.gost }}</span><span style="display:block;font:500 12px 'IBM Plex Mono',monospace;color:{{ t.barvaEloG }};margin-top:2px">{{ t.eloG }}</span></span>
+              <span style="text-align:right;font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:{{ t.barvaStatusa }}">{{ t.status }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div>
+          <div style="border-top:3px solid #14110F;padding-top:16px;display:flex;align-items:baseline;justify-content:space-between;gap:24px">
+            <h2 style="margin:0;font:800 40px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Postava</h2>
+            <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:#5B534D">ZAKLENJENA — VNESENI SO REZULTATI</span>
+          </div>
+          <div style="margin-top:24px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:48px">
+            <sc-for list="{{ postave }}" as="p" hint-placeholder-count="2">
+              <div>
+                <div style="font:600 20px Karla,sans-serif;padding-bottom:8px;border-bottom:2px solid #14110F">{{ p.ekipa }}</div>
+                <sc-for list="{{ p.mesta }}" as="m" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:40px minmax(0,1fr) 56px;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #DED7CE">
+                    <span style="font:700 18px 'IBM Plex Mono',monospace;color:#0071AB">{{ m.oznaka }}</span>
+                    <span><span style="font:400 18px Karla,sans-serif">{{ m.ime }}</span><span style="display:block;font:300 14px Karla,sans-serif;color:#5B534D">{{ m.rating }}</span></span>
+                    <span style="text-align:right;font:600 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:{{ m.barvaDvojice }}">{{ m.dvojica }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div>
+          <div style="border-top:3px solid #14110F;padding-top:16px">
+            <h2 style="margin:0;font:800 40px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.03em">Vnos rezultata</h2>
+          </div>
+          <div style="margin-top:24px;display:grid;grid-template-columns:480px minmax(0,1fr);gap:48px;align-items:start">
+            <div style="border:1px solid #14110F;background:#fff">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 20px;border-bottom:1px solid #14110F">
+                <span style="font:800 20px 'Bricolage Grotesque',sans-serif;letter-spacing:-0.02em">Rezultat – tekma A–X</span>
+                <span style="font:500 14px 'IBM Plex Mono',monospace;color:#5B534D">✕</span>
+              </div>
+              <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+                <p style="margin:0;font:300 17px Karla,sans-serif;color:#332E29"><strong style="font-weight:700">Nejc Vrhovnik</strong> proti <strong style="font-weight:700">Aljaž Novak</strong></p>
+                <label style="display:flex;flex-direction:column;gap:8px">
+                  <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">IZID</span>
+                  <span style="padding:12px 14px;border:1px solid #14110F;font:400 17px Karla,sans-serif;display:flex;justify-content:space-between"><span>Odigrano</span><span style="color:#5B534D">▾</span></span>
+                </label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                  <label style="display:flex;flex-direction:column;gap:8px">
+                    <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">NIZI DOMAČI</span>
+                    <span style="padding:12px 14px;border:1px solid #14110F;font:600 20px 'IBM Plex Mono',monospace">3</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;gap:8px">
+                    <span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.08em;color:#5B534D">NIZI GOST</span>
+                    <span style="padding:12px 14px;border:1px solid #14110F;font:600 20px 'IBM Plex Mono',monospace">2</span>
+                  </label>
+                </div>
+                <p style="margin:0;font:300 15px/1.5 Karla,sans-serif;color:#5B534D">Najboljši od 5 nizov (za zmago 3).</p>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                  <span style="padding:12px 20px;border:1px solid #14110F;font:600 15px Karla,sans-serif">Prekliči</span>
+                  <span style="padding:12px 20px;background:#0088CE;color:#fff;font:700 15px Karla,sans-serif">Shrani</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:#5B534D;padding-bottom:8px;border-bottom:1px solid #14110F">POSLEDICE VNOSA</div>
+              <sc-for list="{{ posledice }}" as="p" hint-placeholder-count="4">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #DED7CE">
+                  <span style="font:400 16px Karla,sans-serif;color:#332E29">{{ p.o }}</span>
+                  <span style="font:600 16px 'IBM Plex Mono',monospace;color:{{ p.barva }};white-space:nowrap">{{ p.v }}</span>
+                </div>
+              </sc-for>
+              <p style="margin:16px 0 0;font:300 15px/1.6 Karla,sans-serif;color:#5B534D">Predaja, brez boja in diskvalifikacija se ne štejejo k ELO — v teh primerih vnesi samo zmagovalca.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const st = (s) => {
+      if (s === 'V TEKU') return { ozadje: '#0088CE', barva: '#fff', crta: '#0088CE' };
+      if (s === 'PRIPRAVA') return { ozadje: '#EDE7DF', barva: '#5B534D', crta: '#DED7CE' };
+      return { ozadje: '#EAF4D6', barva: '#4E7A00', crta: '#7BB900' };
+    };
+
+    const lestvicaVir = [
+      { ekipa: 'NTK Maribor 1', odigrane: 9, zmage: 8, neodlocene: 1, porazi: 0, tekme: '54:17', nizi: '168:72', tocke: 25 },
+      { ekipa: 'NTK Ljubljana 2', odigrane: 9, zmage: 7, neodlocene: 0, porazi: 2, tekme: '48:25', nizi: '151:94', tocke: 21 },
+      { ekipa: 'NTK Savinja', odigrane: 9, zmage: 5, neodlocene: 2, porazi: 2, tekme: '41:32', nizi: '134:118', tocke: 17, jaz: true },
+      { ekipa: 'NTK Krka 1', odigrane: 9, zmage: 5, neodlocene: 1, porazi: 3, tekme: '39:34', nizi: '129:121', tocke: 16 },
+      { ekipa: 'NTK Celje', odigrane: 9, zmage: 4, neodlocene: 1, porazi: 4, tekme: '35:38', nizi: '121:130', tocke: 13 },
+      { ekipa: 'NTK Ptuj', odigrane: 9, zmage: 3, neodlocene: 2, porazi: 4, tekme: '33:40', nizi: '116:134', tocke: 11 },
+      { ekipa: 'NTK Slovenj Gradec', odigrane: 9, zmage: 3, neodlocene: 1, porazi: 5, tekme: '31:42', nizi: '112:139', tocke: 10 },
+      { ekipa: 'NTK Murska Sobota', odigrane: 9, zmage: 2, neodlocene: 2, porazi: 5, tekme: '28:45', nizi: '104:148', tocke: 8 },
+      { ekipa: 'NTK Rogaška', odigrane: 9, zmage: 2, neodlocene: 0, porazi: 7, tekme: '24:49', nizi: '96:154', tocke: 6 },
+      { ekipa: 'NTK Šentjur', odigrane: 9, zmage: 1, neodlocene: 0, porazi: 8, tekme: '19:54', nizi: '84:161', tocke: 3 },
+    ];
+
+    const srecanjeBarve = (konec, domZmaga) => ({
+      barvaIzida: konec ? '#14110F' : '#5B534D',
+      ozadjeIzida: konec ? '#EDE7DF' : 'transparent',
+      tezaD: konec && domZmaga ? 700 : 400,
+      tezaG: konec && !domZmaga ? 700 : 400,
+      barvaD: konec && !domZmaga ? '#6E655E' : '#14110F',
+      barvaG: konec && domZmaga ? '#6E655E' : '#14110F',
+    });
+
+    const zapisnikVir = [
+      { oznaka: 'A–X', domaci: 'Nejc Vrhovnik', gost: 'Aljaž Novak', izid: '3:2', eloD: '+11', eloG: '−11', konec: true },
+      { oznaka: 'B–Y', domaci: 'Miha Zorko', gost: 'Luka Berdnik', izid: '1:3', eloD: '−9', eloG: '+9', konec: true },
+      { oznaka: 'C–Z', domaci: 'Žiga Perko', gost: 'Filip Mlakar', izid: '3:0', eloD: '+7', eloG: '−7', konec: true },
+      { oznaka: 'A–Y', domaci: 'Nejc Vrhovnik', gost: 'Luka Berdnik', izid: '3:1', eloD: '+8', eloG: '−8', konec: true },
+      { oznaka: 'B–X', domaci: 'Miha Zorko', gost: 'Aljaž Novak', izid: '0:3', eloD: '−12', eloG: '+12', konec: true },
+      { oznaka: 'C–Y', domaci: 'Žiga Perko', gost: 'Luka Berdnik', izid: '2:3', eloD: '−6', eloG: '+6', konec: true },
+      { oznaka: 'DVO', domaci: 'Vrhovnik / Zorko', gost: 'Novak / Berdnik', izid: '3:1', eloD: '', eloG: '', konec: true },
+      { oznaka: 'A–Z', domaci: 'Nejc Vrhovnik', gost: 'Filip Mlakar', izid: '—', eloD: '', eloG: '', konec: false },
+    ];
+
+    return {
+      lige: [
+        { ime: '2. slovenska liga – vzhod', opis: 'NTZS · članska · dvokrožno', ekipe: '10 ekip', format: 'SWAYTHLING', napredek: '9 / 18 kol', status: 'V TEKU' },
+        { ime: '3. slovenska liga – center', opis: 'NTZS · članska', ekipe: '8 ekip', format: 'SWAYTHLING', napredek: '7 / 14 kol', status: 'V TEKU' },
+        { ime: 'Savinjska klubska liga', opis: 'medklubska · mešano', ekipe: '6 ekip', format: 'CORBILLON', napredek: '4 / 10 kol', status: 'V TEKU' },
+        { ime: 'Zimska liga veteranov', opis: 'veterani 40+', ekipe: '4 ekipe', format: 'CORBILLON', napredek: 'razpored ni generiran', status: 'PRIPRAVA' },
+        { ime: 'Mladinska liga 2024/25', opis: 'do 19 let', ekipe: '9 ekip', format: 'SWAYTHLING', napredek: '18 / 18 kol', status: 'ZAKLJUČENA' },
+      ].map((l) => ({ ...l, ...st(l.status) })),
+      pravila: [
+        { o: 'Format', v: 'Swaythling (4 posam. + dvojice)' },
+        { o: 'Nizi', v: 'najboljši od 5' },
+        { o: 'Konec srečanja', v: 'prvi do 4 zmag' },
+        { o: 'Sistem', v: 'dvokrožno' },
+        { o: 'Točke (Z/N/P)', v: '3 / 1 / 0' },
+        { o: 'Neodločeno', v: 'mogoče' },
+        { o: 'Dvojna registracija', v: 'prepovedana' },
+        { o: 'Šteje v ELO', v: 'da (posamične)' },
+        { o: 'Napreduje / izpade', v: '2 / 2' },
+      ],
+      ligaLestvica: lestvicaVir.map((v, x) => ({
+        mesto: x + 1, ekipa: v.ekipa, odigrane: v.odigrane, zmage: v.zmage,
+        neodlocene: v.neodlocene, porazi: v.porazi, tekme: v.tekme, nizi: v.nizi, tocke: v.tocke,
+        teza: v.jaz ? 700 : 400,
+        crta: x < 2 ? '#7BB900' : x >= lestvicaVir.length - 2 ? '#B23A1E' : 'transparent',
+      })),
+      kola: [
+        {
+          naslov: '9. kolo', datum: '21. 6. 2026',
+          srecanja: [
+            { domaci: 'NTK Savinja', gost: 'NTK Maribor 1', izid: '4 : 3', konec: true, domZmaga: true },
+            { domaci: 'NTK Krka 1', gost: 'NTK Ljubljana 2', izid: '2 : 4', konec: true, domZmaga: false },
+            { domaci: 'NTK Celje', gost: 'NTK Ptuj', izid: '4 : 1', konec: true, domZmaga: true },
+            { domaci: 'NTK Rogaška', gost: 'NTK Šentjur', izid: '4 : 2', konec: true, domZmaga: true },
+            { domaci: 'NTK Slovenj Gradec', gost: 'NTK Murska Sobota', izid: '3 : 3', konec: true, domZmaga: false },
+          ],
+        },
+        {
+          naslov: '10. kolo', datum: '13. 9. 2026',
+          srecanja: [
+            { domaci: 'NTK Maribor 1', gost: 'NTK Krka 1', izid: 'vs', konec: false },
+            { domaci: 'NTK Ljubljana 2', gost: 'NTK Celje', izid: 'vs', konec: false },
+            { domaci: 'NTK Ptuj', gost: 'NTK Savinja', izid: 'vs', konec: false },
+            { domaci: 'NTK Šentjur', gost: 'NTK Slovenj Gradec', izid: 'vs', konec: false },
+            { domaci: 'NTK Murska Sobota', gost: 'NTK Rogaška', izid: 'vs', konec: false },
+          ],
+        },
+      ].map((k) => ({
+        naslov: k.naslov, datum: k.datum,
+        srecanja: k.srecanja.map((s) => ({
+          domaci: s.domaci, gost: s.gost, izid: s.izid, ...srecanjeBarve(s.konec, s.domZmaga),
+        })),
+      })),
+      zapisnik: zapisnikVir.map((t) => {
+        const domZmaga = t.konec && Number(t.izid.split(':')[0]) > Number(t.izid.split(':')[1]);
+        return {
+          oznaka: t.oznaka, domaci: t.domaci, gost: t.gost, izid: t.izid,
+          eloD: t.eloD, eloG: t.eloG,
+          barvaEloD: t.eloD.startsWith('+') ? '#4E7A00' : '#B23A1E',
+          barvaEloG: t.eloG.startsWith('+') ? '#4E7A00' : '#B23A1E',
+          tezaD: domZmaga ? 700 : 400,
+          tezaG: t.konec && !domZmaga ? 700 : 400,
+          barvaD: t.konec && !domZmaga ? '#6E655E' : '#14110F',
+          barvaG: domZmaga ? '#6E655E' : '#14110F',
+          status: t.konec ? 'KONČANA' : 'ČAKA · VNESI',
+          barvaStatusa: t.konec ? '#5B534D' : '#0071AB',
+          motnost: t.konec ? 1 : 0.75,
+        };
+      }),
+      postave: [
+        {
+          ekipa: 'NTK Savinja',
+          mesta: [
+            { oznaka: 'A', ime: 'Nejc Vrhovnik', rating: 'rating 1642', dvojica: '2×' },
+            { oznaka: 'B', ime: 'Miha Zorko', rating: 'rating 1656', dvojica: '2×' },
+            { oznaka: 'C', ime: 'Žiga Perko', rating: 'rating 1604', dvojica: '' },
+            { oznaka: 'D', ime: 'Jure Kastelic', rating: 'brez ratinga', dvojica: '' },
+          ],
+        },
+        {
+          ekipa: 'NTK Maribor 1',
+          mesta: [
+            { oznaka: 'X', ime: 'Aljaž Novak', rating: 'rating 1764', dvojica: '2×' },
+            { oznaka: 'Y', ime: 'Luka Berdnik', rating: 'rating 1677', dvojica: '2×' },
+            { oznaka: 'Z', ime: 'Filip Mlakar', rating: 'rating 1445', dvojica: '' },
+            { oznaka: 'W', ime: 'Nik Zajc', rating: 'rating 1421', dvojica: '' },
+          ],
+        },
+      ].map((p) => ({
+        ekipa: p.ekipa,
+        mesta: p.mesta.map((m) => ({ ...m, barvaDvojice: m.dvojica ? '#0071AB' : '#5B534D' })),
+      })),
+      posledice: [
+        { o: 'Izid srečanja', v: '4 : 3', barva: '#14110F' },
+        { o: 'Točke NTK Savinja', v: '17 → 20', barva: '#4E7A00' },
+        { o: 'ELO Vrhovnik', v: '1631 → 1642', barva: '#4E7A00' },
+        { o: 'ELO Novak', v: '1775 → 1764', barva: '#B23A1E' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

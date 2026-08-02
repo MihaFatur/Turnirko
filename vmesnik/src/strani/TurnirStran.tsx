@@ -11,9 +11,11 @@ import { OZNAKE_SISTEM, OZNAKE_SISTEM_KRATKO, OZNAKE_SPOL_KATEGORIJA } from '../
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
+import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { oblikujDatum, oblikujObdobje } from '../pomozno/oblikovanje'
+import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 
 export function TurnirStran() {
   const { id } = useParams()
@@ -25,9 +27,12 @@ export function TurnirStran() {
     queryKey: ['turnir', idTurnirja],
     queryFn: () => turnirjiApi.najdi(idTurnirja),
   })
+  /* Med turnirjem se seznam dogodkov osvežuje sam: statusi se med dnevom
+     premikajo iz priprave v tek in v zaključek. */
   const dogodki = useQuery({
     queryKey: ['turnir', idTurnirja, 'dogodki'],
     queryFn: () => turnirjiApi.dogodki(idTurnirja),
+    refetchInterval: intervalOsvezevanja(turnir.data?.status),
   })
 
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
@@ -41,8 +46,10 @@ export function TurnirStran() {
     },
   })
 
-  if (turnir.isPending) return <p className="obvestilo">Nalaganje …</p>
-  if (turnir.error) return <SporociloNapake napaka={turnir.error} />
+  if (turnir.isLoading) return <p className="obvestilo">Nalaganje …</p>
+  if (turnir.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (turnir.error) return <NapakaPoizvedbe poizvedba={turnir} kaj="turnirja" />
+  if (!turnir.data) return <p className="obvestilo">Tega turnirja ni (več).</p>
   const podatki = turnir.data!
   // organizator sme upravljati svoj (ali klubski) turnir, admin vse
   const smem = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik)
@@ -56,10 +63,13 @@ export function TurnirStran() {
     <section>
       <Link to="/turnirji" className="povezava-nazaj">← Vsi turnirji</Link>
 
-      <div className="naslovna-vrstica">
+      <div className="stran-glava">
         <div>
-          <h1>{podatki.ime}</h1>
-          <p className="podnaslov">
+          <h1 className="naslov-strani naslov-strani--podstran">
+            <span className="naslov-strani__nad">Turnir</span>
+            <span className="naslov-strani__glavni">{podatki.ime}</span>
+          </h1>
+          <p className="uvod">
             {[
               [podatki.kraj?.ime, podatki.dvorana].filter(Boolean).join(', '),
               oblikujObdobje(podatki.datumZacetka, podatki.datumKonca),
@@ -67,68 +77,121 @@ export function TurnirStran() {
               .filter(Boolean)
               .join(' · ') || 'kraj in datum še nista določena'}
           </p>
+          {podatki.opombe && <p className="opomba-bloka">{podatki.opombe}</p>}
         </div>
-        <div className="naslovna-vrstica__desno">
-          <ZnackaStatusa status={podatki.status} />
-          {smem && podatki.status !== 'ZAKLJUCEN' && vsiDogodkiZakljuceni && (
-            <button
-              className="gumb"
-              disabled={zakljucevanje.isPending}
-              onClick={() => nastaviPotrjujemZakljucek(true)}
-            >
-              Zaključi turnir
-            </button>
-          )}
+        <div>
+          <div className="stran-glava__dejanja">
+            <ZnackaStatusa status={podatki.status} />
+            {smem && podatki.status !== 'ZAKLJUCEN' && (
+              <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
+                + Nov dogodek
+              </button>
+            )}
+            {smem && podatki.status !== 'ZAKLJUCEN' && (
+              <button
+                className="gumb"
+                disabled={zakljucevanje.isPending || !vsiDogodkiZakljuceni}
+                onClick={() => nastaviPotrjujemZakljucek(true)}
+              >
+                Zaključi turnir
+              </button>
+            )}
+            {smem && podatki.status !== 'ZAKLJUCEN' && !vsiDogodkiZakljuceni && (
+              <span className="stran-glava__pogoj">
+                Mogoče šele, ko so zaključeni vsi dogodki
+              </span>
+            )}
+          </div>
+
+          <div className="kolofon">
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">Dogodki</span>
+              <span className="kolofon__vrednost">{dogodki.data?.length ?? '—'}</span>
+            </div>
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">V teku</span>
+              <span className="kolofon__vrednost">
+                {dogodki.data
+                  ? dogodki.data.filter((d) => d.status === 'V_TEKU').length
+                  : '—'}
+              </span>
+            </div>
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">Zaključeni</span>
+              <span className="kolofon__vrednost">
+                {dogodki.data
+                  ? dogodki.data.filter((d) => d.status === 'ZAKLJUCEN').length
+                  : '—'}
+              </span>
+            </div>
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">Šteje v ELO</span>
+              <span className="kolofon__vrednost">{podatki.stejeVElo ? 'da' : 'ne'}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {podatki.opombe && <p className="opombe">{podatki.opombe}</p>}
       <SporociloNapake napaka={zakljucevanje.error} />
 
-      <div className="naslovna-vrstica">
-        <h2>Dogodki</h2>
-        {smem && podatki.status !== 'ZAKLJUCEN' && (
-          <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
-            + Nov dogodek
-          </button>
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Dogodki</h2>
+          {dogodki.data && dogodki.data.length > 0 && (
+            <span className="sekcija__meta">
+              {dogodki.data.length} {tekmovanjTekst(dogodki.data.length)}
+            </span>
+          )}
+        </div>
+
+        <NapakaPoizvedbe poizvedba={dogodki} kaj="dogodkov" />
+        {dogodki.data && dogodki.data.length === 0 && (
+          <p className="obvestilo">
+            Turnir še nima dogodkov. Dogodek je eno tekmovanje — npr. »Člani« ali
+            »Članice do 21 let«. Igralci se prijavljajo na posamezen dogodek.
+          </p>
         )}
-      </div>
 
-      <SporociloNapake napaka={dogodki.error} />
-      {dogodki.data && dogodki.data.length === 0 && (
-        <p className="obvestilo">
-          Turnir še nima dogodkov. Dogodek je eno tekmovanje - npr. »Člani« ali
-          »Članice do 21 let«. Igralci se prijavljajo na posamezen dogodek.
-        </p>
-      )}
-
-      {dogodki.data && dogodki.data.length > 0 && (
-        <div className="kartice">
-          {dogodki.data.map((dogodek) => (
-            <Link to={`/dogodki/${dogodek.id}`} className="kartica" key={dogodek.id}>
-              <div className="kartica__glava">
-                <h2>{dogodek.ime}</h2>
-                <ZnackaStatusa status={dogodek.status} />
-              </div>
-              <p className="kartica__podrobnost">
-                {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
-                {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
-                {` · na ${dogodek.privzetoSteviloNizov} nizov`}
-              </p>
-              <p className="kartica__podrobnost">
+        {dogodki.data && dogodki.data.length > 0 && (
+          <div className="kartice">
+            {dogodki.data.map((dogodek) => (
+              <Link
+                to={`/dogodki/${dogodek.id}`}
+                className="kartica kartica--dogodek"
+                key={dogodek.id}
+              >
+                <span className="kartica__glava">
+                  <span className="kartica__ime">{dogodek.ime}</span>
+                  <span className="kartica__podrobnost">
+                    {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
+                    {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
+                    {` · na ${dogodek.privzetoSteviloNizov} nizov`}
+                  </span>
+                </span>
                 <span className="znacka znacka--sistem">
                   {OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja]}
                 </span>
-              </p>
-              {dogodek.rokPrijave && (
-                <p className="kartica__podrobnost">
-                  rok prijave: {oblikujDatum(dogodek.rokPrijave)}
-                </p>
-              )}
-            </Link>
-          ))}
-        </div>
-      )}
+                <span className="vrstica__mono">
+                  {dogodek.steviloSkupin && dogodek.velikostSkupine
+                    ? `${dogodek.steviloSkupin} skupine po ${dogodek.velikostSkupine}`
+                    : dogodek.rokPrijave
+                      ? `rok prijave ${oblikujDatum(dogodek.rokPrijave)}`
+                      : ''}
+                </span>
+                <span className="vrstica__pod">
+                  {dogodek.prijavnina !== null ? `prijavnina ${dogodek.prijavnina} €` : ''}
+                </span>
+                <ZnackaStatusa status={dogodek.status} />
+              </Link>
+            ))}
+          </div>
+        )}
+
+        <p className="namig">
+          Dogodek je eno tekmovanje — npr. »Člani« ali »Članice do 21 let«. Igralci se
+          prijavljajo na posamezen dogodek.
+        </p>
+      </div>
 
       {potrjujemZakljucek && (
         <PotrditvenoOkno
@@ -140,6 +203,7 @@ export function TurnirStran() {
         />
       )}
 
+      {/* Sklanjanje po številu; vzorec je enak kot pri ekipah na LigeStran. */}
       {odprtObrazec && (
         <NovDogodekOkno
           idTurnirja={idTurnirja}
@@ -151,6 +215,14 @@ export function TurnirStran() {
       )}
     </section>
   )
+}
+
+/* Slovnično pravilna oblika besede "tekmovanje" glede na število. */
+function tekmovanjTekst(n: number): string {
+  if (n === 1) return 'tekmovanje'
+  if (n === 2) return 'tekmovanji'
+  if (n === 3 || n === 4) return 'tekmovanja'
+  return 'tekmovanj'
 }
 
 function NovDogodekOkno({

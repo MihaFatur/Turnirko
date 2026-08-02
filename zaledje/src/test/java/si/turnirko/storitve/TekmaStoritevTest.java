@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,6 +22,7 @@ import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Tekma;
+import si.turnirko.modeli.Turnir;
 
 class TekmaStoritevTest extends IntegracijskiTest {
 
@@ -164,6 +166,22 @@ class TekmaStoritevTest extends IntegracijskiTest {
         assertNotNull(koncana.getZmagovalec());
         assertEquals(false, ratingZgodovinaRepozitorij.existsByTekmaId(tekma.getId()),
                 "w.o. ne sme vplivati na rating");
+    }
+
+    @Test
+    void turnirBrezEloNeObracunaRatinga() {
+        Dogodek dogodek = pripraviDogodek(4);
+        // izklopi ELO na turnirju (organizator to izbere ob ustvarjanju)
+        Turnir turnir = dogodek.getTurnir();
+        turnir.setStejeVElo(false);
+        turnirRepozitorij.save(turnir);
+
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma tekma = prvaPripravljena(dogodek.getId());
+        tekmaStoritev.vnesiRezultat(tekma.getId(), rezultat(3, 0));
+
+        assertFalse(ratingZgodovinaRepozitorij.existsByTekmaId(tekma.getId()),
+                "turnir brez ELO ne sme obracunati klubskega ratinga");
     }
 
     @Test

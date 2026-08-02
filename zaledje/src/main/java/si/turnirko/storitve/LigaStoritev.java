@@ -30,6 +30,7 @@ import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.KaderEkipe;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.PredlogaLige;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
@@ -271,6 +272,7 @@ public class LigaStoritev {
         liga.setDovoljenoNeodloceno(v.dovoljenoNeodloceno() == null || v.dovoljenoNeodloceno());
         liga.setPrepovedDvojneRegistracije(Boolean.TRUE.equals(v.prepovedDvojneRegistracije()));
         liga.setStejeVElo(v.stejeVElo() == null || v.stejeVElo());
+        liga.setPredlogaListka(v.predlogaListka() != null ? v.predlogaListka() : PredlogaLige.SNTL_23);
         liga.setStNapreduje(v.stNapreduje() != null ? Math.max(0, v.stNapreduje()) : 0);
         liga.setStIzpade(v.stIzpade() != null ? Math.max(0, v.stIzpade()) : 0);
         if (v.idVisjaLiga() != null) {

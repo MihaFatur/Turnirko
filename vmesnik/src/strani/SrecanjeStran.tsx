@@ -12,18 +12,23 @@ import type {
   StranEkipe,
   TekmaSrecanjaDto,
 } from '../api/tipi'
+import { OZNAKE_FORMAT } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
+import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { SpremembaElo } from '../komponente/SpremembaElo'
+import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
 
 export function SrecanjeStran() {
   const { id } = useParams()
   const idSrecanje = Number(id)
   const { jeAdmin, jeOrganizator, smemUrejati } = useAvtentikacija()
+  /* Med srečanjem se zapisnik osvežuje sam (gl. DogodekStran). */
   const podrobno = useQuery({
     queryKey: ['srecanje', idSrecanje],
     queryFn: () => srecanjaApi.podrobno(idSrecanje),
+    refetchInterval: (poizvedba) => intervalOsvezevanja(poizvedba.state.data?.srecanje.status),
   })
 
   /* Za urejanje potrebujemo lastnistvo lige srecanja; poizvedbo sprozimo le
@@ -35,8 +40,10 @@ export function SrecanjeStran() {
     enabled: idLiga != null && (jeAdmin || jeOrganizator),
   })
 
-  if (podrobno.isPending) return <p className="obvestilo">Nalaganje …</p>
-  if (podrobno.error || !podrobno.data) return <SporociloNapake napaka={podrobno.error} />
+  if (podrobno.isLoading) return <p className="obvestilo">Nalaganje …</p>
+  if (podrobno.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (podrobno.error) return <NapakaPoizvedbe poizvedba={podrobno} kaj="srečanja" />
+  if (!podrobno.data) return <p className="obvestilo">Tega srečanja ni (več).</p>
 
   const p = podrobno.data
   const s = p.srecanje
@@ -47,34 +54,85 @@ export function SrecanjeStran() {
   /* Listki so smiselni le, ko je postava določena in kaka tekma še čaka. */
   const imaZaTiskanje = p.tekme.some((t) => t.status === 'CAKA')
 
+  const odigrano = p.tekme.length > 0
+  const domVodi = odigrano && s.dobljeneDomaci > s.dobljeneGost
+  const gostVodi = odigrano && s.dobljeneGost > s.dobljeneDomaci
+  const { datum, ura } = razbijCas(s.predvidenZacetek)
+
   return (
     <section className="srecanje">
-      <div className="srecanje__glava">
-        <span className="srecanje__ekipa srecanje__ekipa--desno">{s.domaci}</span>
-        <span className="srecanje__izid">
-          {p.tekme.length > 0 ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : 'vs'}
-        </span>
-        <span className="srecanje__ekipa">{s.gost}</span>
+      <div>
+        <Link to={`/lige/${s.idLiga}`} className="povezava-nazaj">← Liga</Link>
+
+        {/* Maketa nad semaforjem nima naslova, dokument pa mora imeti ime -
+            sicer bralnik zaslona strani ne zna poimenovati. */}
+        <h1 className="samo-za-bralnik">
+          {s.domaci} proti {s.gost}, {s.kolo}. kolo
+        </h1>
+
+        {/* Semafor med dvema debelima crtama: doma levo, gostje desno. */}
+        <div className="srecanje__glava">
+          <div className="srecanje__ekipa srecanje__ekipa--desno">
+            <span className="srecanje__stran-oznaka">Domači</span>
+            <span className="srecanje__ekipa-ime">{s.domaci}</span>
+          </div>
+          <div>
+            <div className="srecanje__izid">
+              {odigrano ? (
+                <>
+                  <span className={domVodi ? 'srecanje__izid-vodi' : undefined}>
+                    {s.dobljeneDomaci}
+                  </span>
+                  <span className="srecanje__izid-locilo"> : </span>
+                  <span className={gostVodi ? 'srecanje__izid-vodi' : undefined}>
+                    {s.dobljeneGost}
+                  </span>
+                </>
+              ) : (
+                'vs'
+              )}
+            </div>
+            <p className="srecanje__meta">
+              {s.kolo}. kolo · {statusOznaka(s.status)}
+              {datum && (
+                <>
+                  <br />
+                  {datum}
+                  {ura && ` · ${ura}`}
+                </>
+              )}
+              {jeVZivo(s.status) && (
+                <>
+                  <br />
+                  Osveženo ob {uraOsvezitve(podrobno.dataUpdatedAt)}
+                </>
+              )}
+            </p>
+          </div>
+          <div className="srecanje__ekipa">
+            <span className="srecanje__stran-oznaka">Gostje</span>
+            <span className="srecanje__ekipa-ime">{s.gost}</span>
+          </div>
+        </div>
+
+        {smem && imaZaTiskanje && (
+          <div className="srecanje__dejanja">
+            <Link to={`/srecanja/${idSrecanje}/listki`} className="gumb">
+              Zapisnik za tisk
+            </Link>
+          </div>
+        )}
       </div>
-      <p className="srecanje__meta">{s.kolo}. kolo · {statusOznaka(s.status)}</p>
-
-      {smem && imaZaTiskanje && (
-        <p className="srecanje__dejanja">
-          <Link to={`/srecanja/${idSrecanje}/listki`} className="gumb gumb--majhen">
-            🖨 Listki
-          </Link>
-        </p>
-      )}
-
-      {lahkoUrejaPostavo && <PostavaUredi podrobno={p} />}
 
       {p.tekme.length === 0 ? (
         <p className="obvestilo">
-          Postava še ni določena. {smem ? 'Določi jo zgoraj.' : 'Čaka na organizatorja.'}
+          Postava še ni določena. {smem ? 'Določi jo spodaj.' : 'Čaka na organizatorja.'}
         </p>
       ) : (
         <Zapisnik podrobno={p} jeAdmin={smem} />
       )}
+
+      {lahkoUrejaPostavo && <PostavaUredi podrobno={p} />}
     </section>
   )
 }
@@ -83,54 +141,92 @@ function statusOznaka(status: string): string {
   return status === 'KONCANO' ? 'končano' : status === 'POTEKA' ? 'poteka' : 'razpored'
 }
 
+/* Iz ISO datuma-casa loci datum (dd. mm. llll) in uro (hh.mm); brez casa vrne
+   prazna niza, da se vrstica ne izpise. */
+function razbijCas(iso: string | null): { datum: string; ura: string } {
+  if (!iso) return { datum: '', ura: '' }
+  const [d, t] = iso.split('T')
+  const deli = d.split('-')
+  const datum = deli.length === 3 ? `${Number(deli[2])}. ${Number(deli[1])}. ${deli[0]}` : ''
+  const ura = t ? t.slice(0, 5).replace(':', '.') : ''
+  return { datum, ura }
+}
+
 function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmin: boolean }) {
   const [urejana, nastaviUrejano] = useState<TekmaSrecanjaDto | null>(null)
   const s = podrobno.srecanje
   const koncano = s.status === 'KONCANO'
 
   return (
-    <div className="plosca">
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Zapisnik</h2>
+        <span className="sekcija__meta">
+          {OZNAKE_FORMAT[podrobno.format]} · najboljši od {podrobno.tekme[0]?.steviloNizov ?? 5} nizov
+        </span>
+      </div>
+
       <div className="tabela-ovoj">
         <table className="tabela srecanje__tabela">
+          <caption className="samo-za-bralnik">Zapisnik srečanja: posamične tekme po vrstnem redu</caption>
           <thead>
             <tr>
-              <th className="lestvica__stevilka">#</th>
-              <th>Domači</th>
-              <th className="lestvica__stevilka">Izid</th>
-              <th>Gost</th>
-              {jeAdmin && !koncano && <th></th>}
+              <th scope="col" className="srecanje__oznaka-glava">Par</th>
+              <th scope="col" className="srecanje__stran-glava">Domači</th>
+              <th scope="col" className="srecanje__izid-glava">Izid</th>
+              <th scope="col">Gost</th>
+              <th scope="col" className="tabela__dejanja">Stanje</th>
             </tr>
           </thead>
           <tbody>
-            {podrobno.tekme.map((t) => (
-              <tr key={t.id} className={t.status === 'NEODIGRANA' ? 'srecanje__vrsta--neodigrana' : undefined}>
-                <td className="lestvica__stevilka srecanje__oznaka">{t.oznaka}</td>
-                <td className={t.zmagovalecStran === 'DOMACI' ? 'srecanje__zmaga' : undefined}>
-                  {imeStrani(t, 'DOMACI')}
-                  <SpremembaElo vrednost={t.spremembaEloDomaci} />
-                </td>
-                <td className="lestvica__stevilka">
-                  {t.status === 'KONCANA'
-                    ? `${t.dobljeniNiziDomaci} : ${t.dobljeniNiziGost}`
-                    : t.status === 'NEODIGRANA'
-                      ? '—'
-                      : jeAdmin && !koncano
-                        ? '·'
-                        : '–'}
-                </td>
-                <td className={t.zmagovalecStran === 'GOST' ? 'srecanje__zmaga' : undefined}>
-                  {imeStrani(t, 'GOST')}
-                  <SpremembaElo vrednost={t.spremembaEloGost} />
-                </td>
-                {jeAdmin && !koncano && (
-                  <td>
-                    {t.status === 'CAKA' && (
-                      <button className="gumb gumb--majhen" onClick={() => nastaviUrejano(t)}>Vnesi</button>
+            {podrobno.tekme.map((t) => {
+              const konec = t.status === 'KONCANA'
+              const domZmaga = t.zmagovalecStran === 'DOMACI'
+              const gostZmaga = t.zmagovalecStran === 'GOST'
+              return (
+                <tr
+                  key={t.id}
+                  className={t.status === 'NEODIGRANA' ? 'srecanje__vrsta--neodigrana' : undefined}
+                >
+                  <td className="srecanje__oznaka">{t.oznaka}</td>
+                  <td
+                    className={
+                      'srecanje__stran-celica' +
+                      (domZmaga ? ' srecanje__zmaga' : gostZmaga ? ' srecanje__poraz' : '')
+                    }
+                  >
+                    {imeStrani(t, 'DOMACI')}
+                    <SpremembaElo vrednost={t.spremembaEloDomaci} />
+                  </td>
+                  <td className="srecanje__izid-tekme">
+                    {konec
+                      ? `${t.dobljeniNiziDomaci}:${t.dobljeniNiziGost}`
+                      : t.status === 'NEODIGRANA'
+                        ? '—'
+                        : '—'}
+                  </td>
+                  <td
+                    className={
+                      gostZmaga ? 'srecanje__zmaga' : domZmaga ? 'srecanje__poraz' : undefined
+                    }
+                  >
+                    {imeStrani(t, 'GOST')}
+                    <SpremembaElo vrednost={t.spremembaEloGost} />
+                  </td>
+                  <td className="tabela__dejanja">
+                    {konec ? (
+                      <span className="srecanje__stanje">Končana</span>
+                    ) : jeAdmin && !koncano && t.status === 'CAKA' ? (
+                      <button className="gumb gumb--majhen" onClick={() => nastaviUrejano(t)}>
+                        Vnesi
+                      </button>
+                    ) : (
+                      <span className="srecanje__stanje srecanje__stanje--caka">Čaka</span>
                     )}
                   </td>
-                )}
-              </tr>
-            ))}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -285,8 +381,11 @@ function PostavaUredi({ podrobno }: { podrobno: SrecanjePodrobnoDto }) {
     (dvojiceD.size === podrobno.stVDvojici && dvojiceG.size === podrobno.stVDvojici)
 
   return (
-    <div className="plosca">
-      <h2>Postava</h2>
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Postava</h2>
+        <span className="sekcija__meta">Določi jo pred prvim rezultatom</span>
+      </div>
       <div className="postava">
         <StranPostava
           naslov={s.domaci}

@@ -1,87 +1,146 @@
-/* Slogi vmesnika Turnirko.
+/* Slogi vmesnika Turnirko — oblikovalski sistem "sportni zapisnik na papirju"
+   (glej turnirko-profil-redesign/project/DESIGN.md).
+
+   Znacaj: rezultati so veliki, vse drugo je tipografija in crte. Nic ne lebdi,
+   nic ne sveti. Zato v celotni datoteki velja:
+     - border-radius je 0 (tudi gumbi, polja, znacke, modalna okna),
+     - box-shadow je prepovedan kot dekoracija (edina izjema je podcrtaj
+       aktivne navigacijske postavke),
+     - gradient samo kot 8 % polnilo pod crto grafa,
+     - vsaka barva besedila na obarvani podlagi je zapisana izrecno,
+     - vsaka mera je veckratnik 8 (izjema: 14-20 px navpicni odmik vrstice).
 
    Organizacija datoteke:
-   1. spremenljivke (svetla + temna tema) in osnove
-   2. postavitev (glava, navigacija, prijava, vsebina)
-   3. skupne komponente (gumbi, znacke, kartice, tabele, obrazci, modal)
-   4. mreza tekmovanja
-   5. lestvice, skupine in seznam tekem
-   6. globalna lestvica in dvoboj (1 na 1)
-   7. razno (podij, obvestila)
-   12. profil igralca, graf ELO in dostopi
-   13. format TOP (jakostni vrstni red, crta reza) */
+    1. spremenljivke (svetla + temna tema) in osnove
+    2. postavitev: masthead, vsebina
+    3. naslov strani, kolofon, naslovi sekcij
+    4. gumbi, znacke, segmentirani izbirnik
+    5. obrazci in polja
+    6. tabele in vrstice podatkov
+    7. modalna okna in sporocila
+    8. seznami tekmovanj (turnirji, lige, dogodki)
+    9. izlocilna mreza in tekme
+   10. lestvice, skupine, podij
+   11. dvoboj (1 na 1) in domaca stran
+   12. profil igralca in graf ELO
+   13. format TOP: jakostni vrstni red, udelezenci
+   14. lige, srecanja, postava
+   15. racuni in igralci
+   16. tisk: sodniski listki in ekipni zapisnik NTZS */
 
-/* ---------- 1. Spremenljivke in osnove ---------- */
+/* ============================================================
+   1. Spremenljivke in osnove
+   ============================================================ */
 
 :root {
-  /* --- Pisavi (lokalno vgrajeni, spremenljivi) ---
-     Archivo za naslove in velike rezultate (sportni znacaj, lahko razsirjen),
-     Manrope za besedilo in tabele (cist, dobre tabularne stevilke). */
-  --pisava-besedilo: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --pisava-naslov: 'Archivo Variable', var(--pisava-besedilo);
+  /* --- Pisave: tri druzine, nic vec ---
+     Lokalno vgrajene (fontsource), da vmesnik deluje brez interneta.
+     Rezerva je samo "sans-serif" oz. "monospace" — brez vmesnih genericnih
+     imen, ki jih DESIGN.md prepoveduje. */
+  --pisava-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', sans-serif;
+  --pisava-telo: 'Karla Variable', Karla, sans-serif;
+  --pisava-mono: 'IBM Plex Mono', monospace;
 
-  /* --- Paleta (svetla tema) ---
-     Osnova mornarsko-modra, glavni poudarek modro-zelena (teal), uporabljena
-     ZADRZANO. Oranzna zogica le kot iskra: "v zivo", zmagovalec, poudarek
-     rezultata - nikjer drugje. */
-  --barva-poudarek: #0a7885;        /* teal: povezave, aktivno, glavni gumbi */
-  --barva-poudarek-temna: #075e69;  /* hover (svetla tema potemni) */
-  --barva-poudarek-blaga: #d9edef;  /* blaga podlaga poudarka */
-  --barva-poudarek-ziv: #12b0bd;    /* zivahen cyan za drobne poudarke, graf */
-  --barva-na-poudarku: #ffffff;     /* besedilo na poudarku (gumbi) */
-  --barva-ink: #0b1f3a;             /* globoka mornarska: semafor, hero */
-  --barva-ink-2: #14315a;
-  --barva-oranzna: #f5601f;         /* iskra */
+  /* --- Tipografska lestvica (skoki ~3x, ne 1,5x) --- */
+  --tip-mono: 12px;
+  --tip-drobno: 14px;
+  --tip-telo: 17px;
+  --tip-vrstica: 18px;
+  --tip-uvod: 20px;
+  --tip-h3: 24px;
+  --tip-h2: 40px;
+  --tip-h1-nad: 48px;
+  --tip-h1: 88px;
+  --tip-rezultat: 96px;
 
-  --barva-ozadje: #edf1f7;
-  --barva-povrsina: #ffffff;
-  --barva-povrsina-2: #f4f7fb;
-  --barva-crta: #dde4ef;
-  --barva-besedilo: #0f1e33;
-  --barva-besedilo-blago: #5c6b82;
+  /* --- Ritem 8 px --- */
+  --r1: 8px;
+  --r2: 16px;
+  --r3: 24px;
+  --r4: 32px;
+  --r5: 40px;
+  --r6: 48px;
+  --r7: 56px;
+  --r8: 64px;
 
-  --barva-napaka-ozadje: #fdecee;
-  --barva-napaka: #c62a3c;
-  --barva-napaka-crta: #f4c7cd;
-  --barva-zmaga-ozadje: #e7f6ec;
-  --barva-napreduje-ozadje: #e6f3f5;
-  --barva-uspeh: #1f9d57;            /* zmaga / pozitiven ELO (locen od teala) */
-  --neg: #d63b47;
+  /* --- Dominantna: modra ---
+     Modra ima dve vlogi in zato dve vrednosti. Ostra #0088CE RISE (crte,
+     palice, polnilo grafa, obroba fokusa) — tam ni besedila, zato je merilo
+     3:1 in ga izpolni. Kjer modra postane PODLAGA POD BESEDILOM (gumb,
+     znacka, blok ELO), je ista bela na #0088CE le 3,88:1 in pade AA za
+     11-15 px oznake; zato polna ploskev uporablja odtenek nize
+     (#0071AB = 5,3:1 z belo). Oko razlike skoraj ne vidi, bralec pa jo.
+     Ne zamenjuj ju: "glavna" rise, "glavna-polna" nosi besedilo. */
+  --barva-glavna: #0088ce;
+  --barva-glavna-polna: #0071ab;
+  --barva-glavna-polna-mocna: #005a88;
+  --barva-glavna-tekst: #0071ab;
+  --barva-glavna-mehko: #eaf3f9;
+  --barva-na-glavni: #ffffff;
+  /* Drugotno besedilo na polni modri (vrh ELO): izpeljano iz zelene
+     poudarka, ne iz sive - siva na barvni ploskvi zveni umazano. */
+  --barva-na-glavni-2: #e8f5c4;
 
-  --senca: 0 1px 2px rgb(11 31 58 / 0.06), 0 2px 8px rgb(11 31 58 / 0.06);
-  --senca-dvig: 0 22px 55px rgb(11 31 58 / 0.30);
-  --zaokrozitev: 14px;
-  --zaokrozitev-s: 9px;
+  /* --- Poudarek: zelena (napredovanje, zmage, znacke, poudarjene crte) ---
+     Crnilo poudarka je za spoznanje temnejse od cistega #4E7A00, ker mora
+     zdrzati tudi na svoji najsvetlejsi podlagi (znacka "Zakljucen"). */
+  --barva-poudarek: #7bb900;
+  --barva-poudarek-tekst: #4a7500;
+  --barva-poudarek-mehko: #eaf4d6;
+  --barva-na-poudarku: #14110f;
+
+  /* --- Semanticno negativno: edini tretji ton (izguba, napaka, brisanje) --- */
+  --barva-negativna: #b23a1e;
+  --barva-negativna-tekst: #8c2b14;
+  --barva-negativna-mehko: #f8e5df;
+
+  /* --- Papir in crnilo --- */
+  --barva-papir: #fbf9f5;
+  --barva-namizje: #dcd8d1;
+  --barva-crnilo: #14110f;
+  --barva-crnilo-2: #332e29;
+  --barva-crnilo-3: #5b534d;
+  --barva-crnilo-4: #6e655e;
+  --barva-crta: #ded7ce;
+  --barva-polnilo: #ede7df;
+  --barva-bela: #ffffff;
+
+  /* Podlaga polja za vnos je "bela" tudi v temni temi (tam potemni). */
+  --sirina-okvirja: 1280px;
 }
 
+/* Temna tema samo z zamenjavo vrednosti — nikoli s podvojenimi pravili. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --barva-poudarek: #2fc2ce;        /* svetlejsi teal za temno podlago */
-    --barva-poudarek-temna: #4ad2dd;  /* hover (temna tema posvetli) */
-    --barva-poudarek-blaga: #103038;
-    --barva-poudarek-ziv: #3fd6e2;
-    --barva-na-poudarku: #06232a;     /* temno besedilo na svetlem tealu */
-    --barva-ink: #0a1a30;
-    --barva-ink-2: #14315a;
-    --barva-oranzna: #ff7a45;
+    /* Polna modra ostane ista kot v svetli temi: natisnjena ploskev je
+       predmet in se z osvetlitvijo prostora ne spreminja. Crnilo pa se -
+       modra crta in modro besedilo v temi posvetlita. */
+    --barva-glavna: #0088ce;
+    --barva-glavna-polna: #0071ab;
+    --barva-glavna-polna-mocna: #005a88;
+    --barva-glavna-tekst: #4fb3e8;
+    --barva-glavna-mehko: #10293a;
+    --barva-na-glavni: #ffffff;
+    --barva-na-glavni-2: #e8f5c4;
 
-    --barva-ozadje: #0a1422;
-    --barva-povrsina: #111f33;
-    --barva-povrsina-2: #0e1a2b;
-    --barva-crta: #26374f;
-    --barva-besedilo: #e7edf6;
-    --barva-besedilo-blago: #90a1ba;
+    --barva-poudarek: #7bb900;
+    --barva-poudarek-tekst: #9fd62e;
+    --barva-poudarek-mehko: #1e2610;
+    --barva-na-poudarku: #12100f;
 
-    --barva-napaka-ozadje: #35171d;
-    --barva-napaka: #ff8a94;
-    --barva-napaka-crta: #7f2530;
-    --barva-zmaga-ozadje: #10301f;
-    --barva-napreduje-ozadje: #0f2b33;
-    --barva-uspeh: #45cc82;
-    --neg: #ff6b78;
+    --barva-negativna: #e0704c;
+    --barva-negativna-tekst: #f0a184;
+    --barva-negativna-mehko: #2f1610;
 
-    --senca: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 10px rgb(0 0 0 / 0.4);
-    --senca-dvig: 0 22px 55px rgb(0 0 0 / 0.62);
+    --barva-papir: #12100f;
+    --barva-namizje: #080706;
+    --barva-crnilo: #f2f0ea;
+    --barva-crnilo-2: #d9d4cb;
+    --barva-crnilo-3: #a79f96;
+    --barva-crnilo-4: #8c847b;
+    --barva-crta: #2a2622;
+    --barva-polnilo: #221e1a;
+    --barva-bela: #1a1714;
   }
 }
 
@@ -89,1808 +148,3727 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  font-family: var(--pisava-besedilo);
-  background: var(--barva-ozadje);
-  color: var(--barva-besedilo);
+  font-family: var(--pisava-telo);
+  font-weight: 400;
+  font-size: var(--tip-telo);
+  background: var(--barva-namizje);
+  color: var(--barva-crnilo);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3 { font-family: var(--pisava-naslov); }
-h1 { font-size: 1.7rem; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
-h2 { font-size: 1.15rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+h1,
+h2,
+h3 {
+  font-family: var(--pisava-display);
+  margin: 0;
+  text-wrap: balance;
+}
 
-a { color: var(--barva-poudarek); }
+h1 {
+  font-size: var(--tip-h2);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
 
-/* ---------- 2. Postavitev ---------- */
+h2 {
+  font-size: var(--tip-h2);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+h3 {
+  font-size: var(--tip-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--barva-glavna-tekst);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Vsa dovoljena gibanja: samo barva/obroba do 120 ms. */
+a,
+.gumb,
+.izbirnik__gumb,
+.glava__povezava,
+.uporabnik-meni__postavka {
+  transition: color 120ms, background-color 120ms, border-color 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* Vidna oznaka fokusa (dostopnost) — pravokotna, brez zaobljenosti. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   2. Postavitev: masthead in vsebina
+   ============================================================ */
+
+.postavitev {
+  max-width: var(--sirina-okvirja);
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--barva-papir);
+  color: var(--barva-crnilo);
+}
 
 .glava {
-  background: color-mix(in srgb, var(--barva-povrsina) 85%, transparent);
-  backdrop-filter: saturate(1.4) blur(10px);
-  -webkit-backdrop-filter: saturate(1.4) blur(10px);
-  border-bottom: 1px solid var(--barva-crta);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  box-shadow: var(--senca);
+  padding: var(--r3) var(--r5) 0;
 }
 
 .glava__vsebina {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1.25rem;
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  height: 62px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r3);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
+}
+
+/* Debela crta pod masthead — nosilni element "zapisnika". */
+.glava::after {
+  content: '';
+  display: block;
+  height: 3px;
+  background: var(--barva-crnilo);
+  margin-top: 2px;
+}
+
+/* Trak brez povezave. Wi-Fi v dvorani pade in podatki obtice; brez tega
+   traku bi zastarela lestvica izgledala kot sveza. Sedi pod debelo crto,
+   ker je stanje zapisnika, ne obvestilo strani. */
+.brez-povezave {
+  padding: 10px var(--r5);
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+  border-bottom: 1px solid var(--barva-negativna);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brez-povezave__pojasnilo {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 400;
 }
 
 .glava__logotip {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-family: var(--pisava-naslov);
+  gap: 10px;
+  font-family: var(--pisava-display);
   font-weight: 800;
-  font-size: 1.2rem;
+  font-size: var(--tip-h3);
   letter-spacing: -0.02em;
-  text-decoration: none;
-  color: var(--barva-besedilo);
+  color: var(--barva-crnilo);
   white-space: nowrap;
 }
 
-/* Lasten znak (lopar + zogica) v glavi. */
-.logo-znak { display: block; flex: none; }
-.logo-znak__zogica { fill: var(--barva-oranzna); }
+.glava__logotip:hover {
+  text-decoration: none;
+}
+
+/* Edina ikona v vmesniku je logotip: lopar (modra) + zogica (zelena). */
+.logo-znak {
+  display: block;
+  flex: none;
+}
+
+.logo-znak__lopar {
+  fill: var(--barva-glavna);
+}
+
+.logo-znak__rocaj {
+  stroke: var(--barva-crnilo);
+}
+
+.logo-znak__zogica {
+  fill: var(--barva-poudarek);
+}
 
 .glava__navigacija {
   display: flex;
-  gap: 0.25rem;
-  flex-wrap: wrap;
+  gap: var(--r3);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--barva-crnilo-3);
 }
 
 .glava__povezava {
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  text-decoration: none;
-  color: var(--barva-besedilo-blago);
-  font-weight: 600;
-  transition: color 0.15s, background 0.15s;
-}
-
-.glava__povezava:hover {
-  color: var(--barva-besedilo);
-  background: var(--barva-povrsina-2);
-}
-
-.glava__povezava--aktivna,
-.glava__povezava--aktivna:hover {
-  color: var(--barva-poudarek);
-  background: var(--barva-poudarek-blaga);
-}
-
-.glava__uporabnik {
-  margin-left: auto;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  color: var(--barva-crnilo-3);
   white-space: nowrap;
 }
 
-/* Okrogel prozilnik z ikono osebe; ob prijavi dobi barvo poudarka. */
-.uporabnik-gumb {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  border: 1px solid var(--barva-crta);
-  background: var(--barva-povrsina);
-  color: var(--barva-besedilo-blago);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+.glava__povezava:hover {
+  color: var(--barva-crnilo);
+  text-decoration: none;
 }
 
-.uporabnik-gumb:hover { border-color: var(--barva-poudarek); color: var(--barva-poudarek); }
+/* Edina dovoljena senca v vmesniku: polni podcrtaj aktivne postavke. */
+.glava__povezava--aktivna,
+.glava__povezava--aktivna:hover {
+  color: var(--barva-glavna-tekst);
+  font-weight: 700;
+  box-shadow: 0 6px 0 -4px var(--barva-glavna);
+}
+
+.glava__kontekst {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.glava__uporabnik {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: var(--r1);
+  white-space: nowrap;
+}
+
+/* Prozilnik uporabnika je besedilo v mono, ne ikona (ikone so prepovedane).
+   Navpicni padding poveca zadetkovno povrsino na 44 px, negativni rob pa
+   izracunano visino vrne nazaj, da osnovna crta ostane poravnana z logotipom. */
+.uporabnik-gumb {
+  border: none;
+  background: none;
+  padding: 14px 0;
+  margin: -14px 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+.uporabnik-gumb:hover {
+  color: var(--barva-glavna-tekst);
+}
 
 .uporabnik-gumb--prijavljen {
-  background: var(--barva-poudarek-blaga);
-  border-color: var(--barva-poudarek);
-  color: var(--barva-poudarek);
+  color: var(--barva-crnilo);
 }
 
 /* Spustni meni pod prozilnikom (poravnan ob desni rob). */
 .uporabnik-meni {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   right: 0;
-  min-width: 224px;
+  min-width: 256px;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.5rem;
-  background: var(--barva-povrsina);
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  box-shadow: var(--senca-dvig);
+  padding: var(--r2);
+  background: var(--barva-papir);
+  border: 1px solid var(--barva-crnilo);
   z-index: 20;
-  /* Glava ima "white-space: nowrap"; v meniju naj se namig lomi normalno. */
   white-space: normal;
 }
 
 .uporabnik-meni__glava {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 0.6rem 0.65rem;
-  margin-bottom: 0.3rem;
-  border-bottom: 1px solid var(--barva-crta);
+  padding-bottom: var(--r1);
+  margin-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
 }
-
-.uporabnik-meni__avatar {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  background: var(--barva-poudarek-blaga);
-  color: var(--barva-poudarek);
-}
-
-.uporabnik-meni__oseba { display: flex; flex-direction: column; min-width: 0; }
 
 .uporabnik-meni__ime {
-  font-family: var(--pisava-naslov);
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block;
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  font-size: var(--tip-h3);
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
 }
 
-.uporabnik-meni__vloga { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
+.uporabnik-meni__vloga {
+  display: block;
+  margin-top: 4px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
 
 .uporabnik-meni__namig {
-  margin: 0.1rem 0 0.35rem;
-  padding: 0 0.6rem;
-  font-size: 0.82rem;
-  color: var(--barva-besedilo-blago);
+  margin: 0 0 var(--r1);
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-3);
 }
 
 .uporabnik-meni__postavka {
   display: block;
   width: 100%;
-  padding: 0.55rem 0.6rem;
+  min-height: 44px;
+  padding: 12px 0;
   border: none;
-  border-radius: var(--zaokrozitev-s);
+  border-bottom: 1px solid var(--barva-crta);
   background: none;
-  color: var(--barva-besedilo);
-  font-family: inherit;
-  font-size: 0.92rem;
+  color: var(--barva-crnilo);
+  font-family: var(--pisava-telo);
+  font-size: 15px;
   font-weight: 600;
   text-align: left;
-  text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
 }
 
-.uporabnik-meni__postavka:hover { background: var(--barva-povrsina-2); color: var(--barva-poudarek); }
-.uporabnik-meni__postavka--nevaren:hover { background: var(--barva-napaka-ozadje); color: var(--barva-napaka); }
-
-/* Na telefonu naj se navigacija drsi vodoravno v eni vrstici (igralci jo
-   uporabljajo na mobilnem), namesto da se lomi v vec vrstic. */
-@media (max-width: 640px) {
-  .glava__vsebina { gap: 0.65rem; padding: 0 0.85rem; }
-  .glava__navigacija {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    mask-image: linear-gradient(90deg, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
-  }
-  .glava__navigacija::-webkit-scrollbar { display: none; }
-  .glava__povezava { padding: 0.35rem 0.7rem; }
-  .glava__oznaka-vloge { max-width: 7rem; overflow: hidden; text-overflow: ellipsis; }
+.uporabnik-meni__postavka:hover {
+  color: var(--barva-glavna-tekst);
+  text-decoration: none;
 }
 
-/* Vidna oznaka fokusa za tipkovnico (dostopnost). */
-.gumb:focus-visible,
-.glava__povezava:focus-visible,
-.glava__logotip:focus-visible,
-.uporabnik-gumb:focus-visible,
-.uporabnik-meni__postavka:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--barva-poudarek);
-  outline-offset: 2px;
-  border-radius: var(--zaokrozitev-s);
+.uporabnik-meni__postavka--nevaren:hover {
+  color: var(--barva-negativna);
 }
 
 .vsebina {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1.5rem 1.25rem 4rem;
+  padding: var(--r6) var(--r5) var(--r8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--r7);
 }
 
-.naslovna-vrstica {
+/* Vsaka stran je en <section>; presledek med sekcijami je 56 px. Skupine
+   sorodnih elementov vedno prek flex/grid z gap — nikoli margin na otrocih. */
+.vsebina > section {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--r7);
+  min-width: 0;
+}
+
+/* ============================================================
+   3. Naslov strani, kolofon, naslovi sekcij
+   ============================================================ */
+
+/* Glava strani: levo naslov, desno blok rezultata ali kolofon. */
+.stran-glava {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: var(--r7);
+  align-items: start;
+}
+
+.stran-glava--dno {
+  align-items: end;
+}
+
+.stran-glava--ozka {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.stran-glava--dejanja {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--r5);
+  align-items: end;
+}
+
+/* Stolpec dejanj v glavi strani: gumbi eden pod drugim, pod njimi pojasnilo,
+   zakaj dejanje (se) ni mogoce. */
+.stran-glava__dejanja {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--r1);
+  margin-bottom: var(--r3);
+}
+
+.stran-glava__pogoj {
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Nadnaslov 200 nad naslovom 800 — skok je ~2x, ne 1,5x. */
+.naslov-strani {
+  font-family: var(--pisava-display);
+  line-height: 0.88;
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+
+.naslov-strani__nad {
+  display: block;
+  font-weight: 200;
+  font-size: var(--tip-h1-nad);
+  color: var(--barva-crnilo-3);
+}
+
+.naslov-strani__glavni {
+  display: block;
+  font-weight: 800;
+  font-size: var(--tip-h1);
+  color: var(--barva-crnilo);
+}
+
+/* Podstran (turnir, liga): za odtenek manjsi par. */
+.naslov-strani--podstran .naslov-strani__nad {
+  font-size: 44px;
+}
+
+.naslov-strani--podstran .naslov-strani__glavni {
+  font-size: 80px;
+}
+
+/* Dogodek: en sam naslov brez nadnaslova. */
+.naslov-strani--enovrsticni {
+  font-weight: 800;
+  font-size: 72px;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+/* Uvodni odstavek pod naslovom. */
+.podnaslov,
+.uvod {
+  margin: 20px 0 0;
+  font-size: var(--tip-uvod);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-2);
+  max-width: 48ch;
+}
+
+/* "align-self: start" ni okras: kot postavka navpicnega flexa bi se povezava
+   raztegnila cez ves stolpec in bi bila klikljiva cela vrstica. */
+.povezava-nazaj,
+.nazaj {
+  display: inline-block;
+  align-self: start;
+  margin-bottom: var(--r3);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.povezava-nazaj:hover,
+.nazaj:hover {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Kolofon: 4-5 vrstic "oznaka mono <-> vrednost mono", locenih s hairline.
+   Nadomesca pas kazalnikov; nikoli mreza kartic s stevilkami. */
+.kolofon {
+  display: flex;
+  flex-direction: column;
+}
+
+.kolofon__vrstica {
+  display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
-  margin: 1.25rem 0 1rem;
+  gap: var(--r2);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.kolofon__oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.kolofon__vrednost {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  text-align: right;
+}
+
+.kolofon__vrednost--poz {
+  color: var(--barva-poudarek-tekst);
+}
+
+.kolofon__vrednost--neg {
+  color: var(--barva-negativna);
+}
+
+/* Vrstica stevcev pod poljem za iskanje: hairline je NAD vrstico. */
+.stevci {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r2);
   flex-wrap: wrap;
+  margin-top: var(--r2);
+  padding-top: 12px;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.stevci__postavka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Naslovna vrstica sekcije: 3 px crta, naslov 40/800 levo, meta desno. */
+.naslovna-vrstica,
+.sekcija__glava {
+  border-top: 3px solid var(--barva-crnilo);
+  padding-top: var(--r2);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r3);
+  flex-wrap: wrap;
+  margin: 0;
 }
 
 .naslovna-vrstica__desno {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--r1);
+  flex-wrap: wrap;
 }
 
-.podnaslov {
-  margin: 0.15rem 0 0;
-  color: var(--barva-besedilo-blago);
+/* Ozji stolpec dobi manjsi naslov sekcije, da se ne tepe s sirino. */
+.sekcija__naslov--manjsi {
+  font-size: 32px;
 }
 
-.povezava-nazaj {
-  display: inline-block;
-  margin-bottom: 0.25rem;
-  text-decoration: none;
-  color: var(--barva-besedilo-blago);
-  font-size: 0.9rem;
+/* Meta ni "nowrap": na ozkem zaslonu se dolga oznaka (npr. format srecanja)
+   sicer razteza cez rob in povzroci vodoravni drsnik celotne strani. */
+.sekcija__meta,
+.plosca__stevec {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  text-align: right;
+  min-width: 0;
 }
 
-.povezava-nazaj:hover { color: var(--barva-poudarek); }
+a.sekcija__meta {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Oznaka, da sklop ni javen. */
+.plosca__zasebno {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+  margin-left: var(--r1);
+}
+
+/* Ploskev sekcije: brez sence in radija, samo zgornja crta. */
+.plosca {
+  background: none;
+  border: none;
+  border-top: 3px solid var(--barva-crnilo);
+  padding: var(--r2) 0 0;
+}
+
+.plosca > h2:first-child {
+  margin-bottom: var(--r2);
+}
+
+/* Ce je znotraj plosce ze naslovna vrstica, druge crte ne rabimo. */
+.plosca > .naslovna-vrstica:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Podnaslov v sekciji: 12 px mono uppercase s hairline. */
+.podnaslov-sekcije,
+.profil__podnaslov {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+  margin: var(--r4) 0 0;
+}
 
 .dvostolpicno {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--r7);
   align-items: start;
 }
 
-/* Lestvica naj bo sirsa od seznama tekem. */
 .dvostolpicno--lestvica {
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
 }
 
-@media (max-width: 800px) {
-  .dvostolpicno,
-  .dvostolpicno--lestvica { grid-template-columns: 1fr; }
+.stolpec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r6);
+  min-width: 0;
 }
 
-.plosca {
-  background: var(--barva-povrsina);
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  box-shadow: var(--senca);
-  padding: 1rem 1.25rem 1.25rem;
-}
+/* ============================================================
+   4. Gumbi, znacke, segmentirani izbirnik
+   ============================================================ */
 
-.plosca .naslovna-vrstica { margin-top: 0; }
-
-/* ---------- 3. Skupne komponente ---------- */
-
+/* Vsak klikljiv element je vsaj 44 px visok. Nikoli padding: 6px na dejanju. */
 .gumb {
-  border: 1px solid var(--barva-crta);
-  background: var(--barva-povrsina);
-  color: var(--barva-besedilo);
-  padding: 0.5rem 1rem;
-  border-radius: var(--zaokrozitev-s);
-  font-family: var(--pisava-besedilo);
-  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 12px var(--r2);
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: none;
+  color: var(--barva-crnilo);
+  font-family: var(--pisava-telo);
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.05s;
 }
 
-.gumb:hover:not(:disabled) { border-color: var(--barva-poudarek); color: var(--barva-poudarek); }
-.gumb:active:not(:disabled) { transform: translateY(1px); }
-.gumb:disabled { opacity: 0.5; cursor: not-allowed; }
+a.gumb {
+  text-decoration: none;
+}
 
+.gumb:hover:not(:disabled) {
+  color: var(--barva-glavna-tekst);
+  border-color: var(--barva-glavna);
+  text-decoration: none;
+}
+
+.gumb:disabled {
+  border-color: var(--barva-crta);
+  color: var(--barva-crnilo-4);
+  cursor: not-allowed;
+}
+
+/* Polnilo je "glavna-polna" (bela besedila zdrzi), obroba pa ostra "glavna":
+   ta tanka svetlejsa crta drzi rob gumba tudi v temni temi, kjer bi se polna
+   modra sicer skoraj zlila s papirjem. */
 .gumb--glavni {
-  background: var(--barva-poudarek);
-  border-color: var(--barva-poudarek);
-  color: var(--barva-na-poudarku);
+  background: var(--barva-glavna-polna);
+  border-color: var(--barva-glavna);
+  color: var(--barva-na-glavni);
+  font-weight: 700;
 }
 
 .gumb--glavni:hover:not(:disabled) {
-  background: var(--barva-poudarek-temna);
-  border-color: var(--barva-poudarek-temna);
-  color: var(--barva-na-poudarku);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--barva-poudarek) 40%, transparent);
+  background: var(--barva-glavna-polna-mocna);
+  border-color: var(--barva-glavna);
+  color: var(--barva-na-glavni);
 }
 
-.gumb--nevaren:hover:not(:disabled) { border-color: var(--barva-napaka); color: var(--barva-napaka); }
+.gumb--glavni:disabled {
+  background: var(--barva-polnilo);
+  border-color: var(--barva-polnilo);
+  color: var(--barva-crnilo-4);
+}
 
-.gumb--majhen { padding: 0.25rem 0.65rem; font-size: 0.8rem; }
+/* Zelen gumb je rezerviran za napredovanje tekmovanja (zreb). */
+.gumb--zreb {
+  background: var(--barva-poudarek);
+  border-color: var(--barva-poudarek);
+  color: var(--barva-na-poudarku);
+  font-weight: 700;
+}
 
-/* Znacke statusov (PRIPRAVA / V_TEKU / ZAKLJUCEN). */
+.gumb--zreb:hover:not(:disabled) {
+  background: var(--barva-poudarek-tekst);
+  border-color: var(--barva-poudarek-tekst);
+  color: var(--barva-bela);
+}
+
+/* Dejanja v vrstici (Uredi, Izbrisi, Geslo): tanka crta, drobno besedilo. */
+.gumb--majhen {
+  padding: 12px var(--r2);
+  border-color: var(--barva-crta);
+  color: var(--barva-crnilo-3);
+  font-size: var(--tip-drobno);
+  font-weight: 500;
+}
+
+.gumb--nevaren {
+  border-color: var(--barva-crta);
+  color: var(--barva-negativna);
+}
+
+.gumb--nevaren:hover:not(:disabled) {
+  border-color: var(--barva-negativna);
+  color: var(--barva-negativna);
+}
+
+/* Kvadratno dejanje 44x44 (premik gor/dol, odstrani). */
+.gumb--kvadrat {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  font-family: var(--pisava-mono);
+  font-size: var(--tip-drobno);
+  font-weight: 500;
+  border-color: var(--barva-crta);
+  color: var(--barva-crnilo-3);
+}
+
+/* Znacka statusa: 11-12 px mono uppercase, polna podlaga, brez radija. */
 .znacka {
   display: inline-block;
-  padding: 0.15rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  padding: 6px var(--r1);
+  border-radius: 0;
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo-3);
+  font: 600 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.znacka--PRIPRAVA { background: #fdf0d6; color: #a76a12; }
-.znacka--V_TEKU { background: #dcfce7; color: #15803d; }
-.znacka--ZAKLJUCEN { background: #e2e8f0; color: #475569; }
-
-/* Statusne znacke v temni temi (svetla ostane zgoraj). */
-@media (prefers-color-scheme: dark) {
-  .znacka--PRIPRAVA { background: #3a2c12; color: #e6b45c; }
-  .znacka--V_TEKU { background: #10301f; color: #56d98a; }
-  .znacka--ZAKLJUCEN { background: #1f2c3f; color: #9fb2c9; }
+.znacka--PRIPRAVA {
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo-3);
 }
 
-/* Znacka sistema tekmovanja. */
+.znacka--V_TEKU {
+  background: var(--barva-glavna-polna);
+  color: var(--barva-na-glavni);
+}
+
+.znacka--ZAKLJUCEN {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.znacka--uspeh {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.znacka--opozorilo {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+}
+
+/* Sistem tekmovanja ni status: nosi ga podcrtana mono oznaka. */
 .znacka--sistem {
-  background: var(--barva-poudarek-blaga);
-  color: var(--barva-poudarek);
+  padding: 0 0 4px;
+  background: none;
+  border-bottom: 2px solid var(--barva-poudarek);
+  color: var(--barva-crnilo);
+  font-size: var(--tip-mono);
+  letter-spacing: 0.08em;
 }
 
-/* Kartice (turnirji, dogodki). */
-.kartice {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
-.kartica {
-  display: block;
-  background: var(--barva-povrsina);
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  box-shadow: var(--senca);
-  padding: 1rem 1.25rem;
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-.kartica:hover {
-  border-color: var(--barva-poudarek);
-  transform: translateY(-1px);
-}
-
-.kartica__glava {
+/* Segmentirani izbirnik (filtri, obdobja grafa). Na ozkem zaslonu se prelomi
+   v vec vrstic, da ne sili strani cez rob. */
+.izbirnik {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.35rem;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
-.kartica__podrobnost {
-  margin: 0.15rem 0;
-  color: var(--barva-besedilo-blago);
-  font-size: 0.9rem;
+.izbirnik__gumb {
+  min-height: 44px;
+  padding: var(--r1) 12px;
+  border: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  color: var(--barva-crnilo-3);
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-/* Tabele. */
+.izbirnik__gumb:hover {
+  color: var(--barva-crnilo);
+  border-color: var(--barva-crnilo);
+}
+
+.izbirnik__gumb--aktiven,
+.izbirnik__gumb--aktiven:hover {
+  background: var(--barva-crnilo);
+  border-color: var(--barva-crnilo);
+  color: var(--barva-papir);
+}
+
+/* Palica napredka: 6 px, brez radija. */
+.palica {
+  display: block;
+  height: 6px;
+  background: var(--barva-polnilo);
+  overflow: hidden;
+}
+
+.palica__polnilo {
+  display: block;
+  height: 100%;
+  background: var(--barva-glavna);
+}
+
+/* ============================================================
+   5. Obrazci in polja
+   ============================================================ */
+
+.obrazec {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.obrazec__vrstica {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.obrazec__vrstica--dodajanje {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  margin-bottom: var(--r3);
+}
+
+.obrazec__polje {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+  min-width: 0;
+}
+
+.obrazec__polje > span,
+.obrazec__skupina legend,
+.obrazec__niz-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+input,
+select,
+textarea {
+  font-family: var(--pisava-telo);
+  font-size: var(--tip-telo);
+  font-weight: 400;
+  padding: 12px 14px;
+  min-height: 44px;
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  width: 100%;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--barva-crnilo-3);
+  font-weight: 300;
+}
+
+input[type='number'] {
+  font-family: var(--pisava-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: -2px;
+}
+
+/* Potrditveno polje je 28 px znotraj vrstice z min-height 44 px. */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  margin: 0 var(--r1) 0 0;
+  accent-color: var(--barva-glavna);
+  flex: none;
+}
+
+.vnos--ozek {
+  max-width: 8rem;
+}
+
+.obrazec__potrditev,
+.obrazec__polje--stikalo {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--r1);
+  min-height: 44px;
+  font-size: 15px;
+}
+
+.obrazec__polje--stikalo input {
+  width: 28px;
+}
+
+.obrazec__radio-skupina {
+  display: flex;
+  flex-direction: column;
+}
+
+.obrazec__radio-skupina label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  gap: var(--r1);
+  font-size: 15px;
+}
+
+.obrazec__skupina,
+.obrazec__sklop {
+  border: none;
+  border-left: 4px solid var(--barva-poudarek);
+  border-radius: 0;
+  background: var(--barva-poudarek-mehko);
+  padding: var(--r2);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.obrazec__skupina legend {
+  padding: 0;
+  margin-bottom: var(--r1);
+}
+
+.obrazec__nizi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+}
+
+.obrazec__niz {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+}
+
+.obrazec__niz input,
+.obrazec__niz select {
+  max-width: 7rem;
+}
+
+.obrazec__niz-oznaka {
+  width: 5rem;
+  flex: none;
+}
+
+.obrazec__gumbi {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--r1);
+  flex-wrap: wrap;
+}
+
+.iskalnik {
+  max-width: none;
+  margin: 0;
+}
+
+/* Seznam z izbirnimi polji (dodajanje igralcev na dogodek). */
+.seznam-izbire {
+  list-style: none;
+  margin: var(--r2) 0 0;
+  padding: 0;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.seznam-izbire label {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  cursor: pointer;
+  font-size: var(--tip-telo);
+}
+
+.seznam-izbire label:hover {
+  color: var(--barva-glavna-tekst);
+}
+
+.seznam-izbire__podrobnost {
+  display: block;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+/* ============================================================
+   6. Tabele in vrstice podatkov
+   ============================================================ */
+
+.tabela-ovoj {
+  overflow-x: auto;
+}
+
 .tabela {
   width: 100%;
   border-collapse: collapse;
-  background: var(--barva-povrsina);
-  font-size: 0.92rem;
-}
-
-section > .tabela {
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  overflow: hidden;
-  box-shadow: var(--senca);
+  background: none;
+  margin-top: var(--r2);
 }
 
 .tabela th {
   text-align: left;
-  font-size: 0.78rem;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--barva-besedilo-blago);
-  padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid var(--barva-crta);
+  color: var(--barva-crnilo-3);
+  padding: var(--r1) var(--r2) var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crnilo);
+  white-space: nowrap;
 }
 
 .tabela td {
-  padding: 0.55rem 0.75rem;
+  padding: 14px var(--r2) 14px 0;
   border-bottom: 1px solid var(--barva-crta);
+  font-size: 16px;
+  vertical-align: middle;
 }
 
-.tabela tr:last-child td { border-bottom: none; }
+/* Tabele z veckratnimi vrsticami v celici (profil, dvoboj) poravnajo na vrh. */
+.tabela--vrh td {
+  vertical-align: top;
+}
 
-.tabela tbody tr { transition: background 0.12s; }
-.tabela tbody tr:hover { background: var(--barva-povrsina-2); }
+.tabela th:last-child,
+.tabela td:last-child {
+  padding-right: 0;
+}
+
+/* Glava stevilskega stolpca stoji desno, tako kot vsebina celice. Razred na
+   <th> mora premagati privzeti "text-align: left" iz .tabela th. */
+.tabela th.lestvica__mesto,
+.tabela th.lestvica__stevilka,
+.tabela th.lestvica__rating,
+.tabela th.lestvica__uspesnost-glava,
+.tabela th--desno {
+  text-align: right;
+}
+
+.tabela th.lestvica__uspesnost-glava {
+  width: 120px;
+}
 
 .tabela__dejanja {
   text-align: right;
   white-space: nowrap;
 }
 
-.tabela__dejanja .gumb { margin-left: 0.35rem; }
-
-.tabela__ozek { width: 5rem; color: var(--barva-besedilo-blago); }
-
-/* Obrazci. */
-.obrazec {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.obrazec__vrstica {
-  display: flex;
-  gap: 0.85rem;
-}
-
-.obrazec__vrstica > * { flex: 1; }
-
-.obrazec__vrstica--dodajanje {
-  margin-bottom: 0.75rem;
-}
-
-.obrazec__vrstica--dodajanje > .gumb { flex: 0 0 auto; }
-
-.obrazec__polje {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 1;
-}
-
-.obrazec__polje > span {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--barva-besedilo-blago);
-}
-
-input, select, textarea {
-  font: inherit;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--barva-crta);
-  border-radius: 8px;
-  background: var(--barva-povrsina);
-  color: var(--barva-besedilo);
-  width: 100%;
-}
-
-input:focus, select:focus, textarea:focus {
-  outline: 2px solid var(--barva-poudarek);
-  outline-offset: -1px;
-}
-
-input[type='checkbox'], input[type='radio'] {
-  width: auto;
-  margin-right: 0.4rem;
-}
-
-.vnos--ozek { max-width: 8rem; }
-
-.obrazec__potrditev {
-  display: flex;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.obrazec__radio-skupina {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding-top: 0.2rem;
-}
-
-.obrazec__nizi {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.obrazec__niz {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.obrazec__niz input, .obrazec__niz select { max-width: 5.5rem; }
-
-.obrazec__niz-oznaka {
-  width: 4rem;
-  font-size: 0.85rem;
-  color: var(--barva-besedilo-blago);
-}
-
-.obrazec__gumbi {
-  display: flex;
+.tabela__dejanja > span,
+.tabela__dejanja > div {
+  display: inline-flex;
+  gap: 4px;
   justify-content: flex-end;
-  gap: 0.6rem;
-  margin-top: 0.25rem;
 }
 
-.iskalnik {
-  max-width: 340px;
-  margin-bottom: 1rem;
+.tabela__dejanja .gumb + .gumb {
+  margin-left: 4px;
 }
 
-/* Seznam z izbirnimi polji (dodajanje igralcev na dogodek). */
-.seznam-izbire {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 420px;
-  overflow-y: auto;
+.tabela__ozek {
+  width: 5rem;
+  color: var(--barva-crnilo-3);
 }
 
-.seznam-izbire li {
+/* Vrstica podatkov: mreza s stalnimi sirinami stolpcev in hairline spodaj. */
+.vrstica {
+  display: grid;
+  align-items: center;
+  gap: var(--r3);
+  padding: var(--r2) 0;
   border-bottom: 1px solid var(--barva-crta);
 }
 
-.seznam-izbire li:last-child { border-bottom: none; }
-
-.seznam-izbire label {
-  display: flex;
-  align-items: center;
-  padding: 0.45rem 0.25rem;
-  cursor: pointer;
+/* Oznacena vrstica dobi 4 px crto v glavni barvi in mehko podlago. */
+.vrstica--oznacena {
+  padding-left: 12px;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
 }
 
-.seznam-izbire label:hover { background: var(--barva-ozadje); }
+.vrstica--utisana {
+  opacity: 0.55;
+}
 
-.seznam-izbire__podrobnost {
+.vrstica__ime {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
+
+.vrstica__pod {
   display: block;
-  font-size: 0.8rem;
-  color: var(--barva-besedilo-blago);
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
 }
 
-/* Modalno okno. */
+.vrstica__mono {
+  font: 400 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.vrstica__stevilo {
+  font: 600 var(--tip-vrstica) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  text-align: right;
+}
+
+.vrstica__dejanja {
+  display: inline-flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+/* Datumski blok na levi strani vrstice (dan nad mesecem). */
+.datum-blok {
+  border-left: 4px solid var(--barva-crta);
+  padding-left: 12px;
+}
+
+.datum-blok--V_TEKU {
+  border-left-color: var(--barva-glavna);
+}
+
+.datum-blok--ZAKLJUCEN {
+  border-left-color: var(--barva-poudarek);
+}
+
+.datum-blok__dan {
+  display: block;
+  font: 600 20px / 1.1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.datum-blok__mesec {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Preprosti seznami brez okvirjev. */
+.seznam-preprost,
+.udelezenci,
+.liga__ekipe,
+.liga__srecanja,
+.domov__seznam,
+.tekme-seznam,
+.izbor,
+.profil__razmerja,
+.delezi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================================
+   7. Modalna okna in sporocila
+   ============================================================ */
+
 .modal__zastor {
   position: fixed;
   inset: 0;
-  background: rgb(6 12 24 / 0.55);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgb(20 17 15 / 0.55);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 4rem 1rem 2rem;
+  padding: var(--r8) var(--r2) var(--r5);
   z-index: 50;
   overflow-y: auto;
 }
 
 .modal {
-  background: var(--barva-povrsina);
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  box-shadow: var(--senca-dvig);
+  background: var(--barva-papir);
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
   width: 100%;
   max-width: 560px;
 }
 
+.modal--siroko {
+  max-width: 720px;
+}
+
 .modal__glava {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--barva-crta);
+  gap: var(--r2);
+  padding: 20px var(--r3);
+  border-bottom: 3px solid var(--barva-crnilo);
+}
+
+.modal__glava h2 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+/* Nepovratno dejanje: glava dobi rjasto crto namesto crne. */
+.modal--nevarno .modal__glava {
+  border-bottom-color: var(--barva-negativna);
 }
 
 .modal__zapri {
   border: none;
   background: none;
-  font-size: 1.5rem;
-  line-height: 1;
+  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
+  font: 500 var(--tip-drobno) / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
   cursor: pointer;
-  color: var(--barva-besedilo-blago);
   width: auto;
 }
 
-.modal__zapri:hover { color: var(--barva-besedilo); }
+.modal__zapri:hover {
+  color: var(--barva-crnilo);
+}
 
-.modal__telo { padding: 1.25rem; }
+.modal__telo {
+  padding: var(--r3);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
 .modal__podnaslov {
-  margin: 0 0 1rem;
-  font-weight: 600;
+  margin: 0;
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  color: var(--barva-crnilo-2);
 }
 
 .modal__namig {
   font-weight: 400;
-  color: var(--barva-besedilo-blago);
-  font-size: 0.85rem;
+  color: var(--barva-crnilo-3);
+  font-size: var(--tip-drobno);
 }
 
-.potrditev__sporocilo { margin: 0 0 1rem; }
+.potrditev__sporocilo {
+  margin: 0;
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-2);
+}
 
-/* Sporocila. */
+/* Sporocila: crta ob levem robu namesto obrobe in radija. */
 .napaka {
-  background: var(--barva-napaka-ozadje);
-  color: var(--barva-napaka);
-  border: 1px solid var(--barva-napaka-crta);
-  border-radius: 8px;
-  padding: 0.6rem 0.85rem;
-  font-size: 0.9rem;
-  margin: 0.5rem 0;
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+  border: none;
+  border-left: 4px solid var(--barva-negativna);
+  border-radius: 0;
+  padding: 12px 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  margin: var(--r1) 0;
+}
+
+/* Napaka pri branju podatkov: poleg opisa vedno tudi pot naprej. Prazen
+   seznam in nedelujoca povezava sta dve razlicni stvari in ju uporabnik
+   mora lociti. */
+.napaka__vrsta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  flex-wrap: wrap;
+}
+
+.napaka__pojasnilo {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+}
+
+.napaka .gumb {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-color: var(--barva-negativna);
+  color: var(--barva-negativna-tekst);
+  font-size: var(--tip-drobno);
+  flex: none;
+}
+
+.napaka .gumb:hover:not(:disabled) {
+  background: var(--barva-negativna);
+  border-color: var(--barva-negativna);
+  color: var(--barva-bela);
+}
+
+/* Vidno samo bralniku zaslona: naslovi strani, ki jih maketa ne kaze, in
+   povzetki tabel. Ni "display: none" - to bi ga skrilo tudi bralniku. */
+.samo-za-bralnik {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .obvestilo {
-  color: var(--barva-besedilo-blago);
-  padding: 1rem 0;
+  color: var(--barva-crnilo-3);
+  font-weight: 300;
+  padding: var(--r2) 0;
+  margin: 0;
+}
+
+.obvestilo--opozorilo {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+  border-left: 4px solid var(--barva-negativna);
+  padding: 12px 14px;
+  font-weight: 400;
 }
 
 .namig {
-  color: var(--barva-besedilo-blago);
-  font-size: 0.85rem;
-  margin: 0.75rem 0 0;
+  color: var(--barva-crnilo-3);
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  margin: var(--r2) 0 0;
+  max-width: 74ch;
 }
 
 .opombe {
-  color: var(--barva-besedilo-blago);
-  font-style: italic;
+  color: var(--barva-crnilo-3);
+  font-weight: 300;
 }
 
-/* ---------- 4. Mreza tekmovanja ---------- */
+/* Poudarjena opomba organizatorja (zelena crta ob mehki podlagi). */
+.opomba-bloka {
+  margin: var(--r2) 0 0;
+  padding: var(--r2) 20px;
+  border-left: 4px solid var(--barva-poudarek);
+  background: var(--barva-poudarek-mehko);
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-2);
+  max-width: 64ch;
+}
+
+/* Zavihka prijava / nov racun. */
+.zavihki {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.zavihki__gumb {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  min-height: 44px;
+  padding: 12px;
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+.zavihki__gumb:hover {
+  color: var(--barva-crnilo);
+}
+
+.zavihki__gumb--aktiven {
+  color: var(--barva-crnilo);
+  border-bottom-color: var(--barva-glavna);
+}
+
+/* ============================================================
+   8. Seznami tekmovanj (turnirji, lige, dogodki)
+   ============================================================ */
+
+.kartice {
+  display: flex;
+  flex-direction: column;
+}
+
+/* "Kartica" v novem sistemu ni kartica, ampak vrstica s crtami. */
+.kartica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px 128px 112px;
+  align-items: center;
+  gap: var(--r3);
+  padding: 20px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  background: none;
+  border-radius: 0;
+  color: var(--barva-crnilo);
+}
+
+.kartica:hover {
+  text-decoration: none;
+  background: var(--barva-glavna-mehko);
+}
+
+/* Vrstica z datumskim blokom na levi (seznam turnirjev). */
+.kartica--z-datumom {
+  grid-template-columns: 88px minmax(0, 1fr) 200px 128px 112px;
+  padding: 20px 0;
+}
+
+/* Vrstica lige: 4 px crta stanja ob levem robu. */
+.kartica--liga {
+  grid-template-columns: minmax(0, 1fr) 160px 200px 152px 112px;
+  padding: 20px 0 20px 12px;
+  border-left: 4px solid var(--barva-crta);
+}
+
+/* Vrstica dogodka znotraj turnirja. */
+.kartica--dogodek {
+  grid-template-columns: minmax(0, 1fr) 200px 200px 128px 112px;
+  padding: 20px 0;
+}
+
+.kartica--PRIPRAVA {
+  border-left-color: var(--barva-crta);
+}
+
+.kartica--V_TEKU {
+  border-left-color: var(--barva-glavna);
+}
+
+.kartica--ZAKLJUCEN {
+  border-left-color: var(--barva-poudarek);
+}
+
+.kartica__glava {
+  min-width: 0;
+}
+
+.kartica__ime {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
+
+.kartica__podrobnost {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.kartica__organizator {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  color: var(--barva-crnilo-3);
+}
+
+@media (max-width: 900px) {
+  .kartica {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--r1);
+  }
+}
+
+/* ============================================================
+   9. Izlocilna mreza in tekme
+   ============================================================ */
 
 .mreza {
   display: flex;
-  gap: 1.5rem;
+  gap: var(--r4);
   overflow-x: auto;
-  padding: 0.5rem 0.25rem 1rem;
+  padding: 0 0 var(--r2);
   align-items: stretch;
+  margin-top: var(--r4);
 }
 
 .mreza__kolo {
   display: flex;
   flex-direction: column;
-  min-width: 230px;
+  flex: 1 0 240px;
+  min-width: 240px;
 }
 
 .mreza__naslov-kola {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--barva-besedilo-blago);
-  margin-bottom: 0.6rem;
-  text-align: center;
+  color: var(--barva-crnilo-3);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
+  text-align: left;
 }
 
-/* Enakomerna porazdelitev tekem po visini poravna pare s sosednjim kolom. */
 .mreza__tekme {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  gap: 0.75rem;
+  gap: var(--r2);
+  padding-top: var(--r2);
   flex: 1;
 }
 
 .tekma {
   position: relative;
-  background: var(--barva-povrsina);
+  background: var(--barva-bela);
   border: 1px solid var(--barva-crta);
-  border-radius: 8px;
-  box-shadow: var(--senca);
-  overflow: hidden;
+  border-left: 4px solid var(--barva-poudarek);
+  border-radius: 0;
 }
 
-.tekma--CAKA { border-style: dashed; opacity: 0.8; }
-.tekma--PRIPRAVLJENA { border-color: var(--barva-poudarek); }
-.tekma--klikljiva { cursor: pointer; }
+.tekma--CAKA {
+  border-left-color: var(--barva-crta);
+}
+
+.tekma--PRIPRAVLJENA {
+  border-left-color: var(--barva-glavna);
+}
+
+.tekma--klikljiva {
+  cursor: pointer;
+}
 
 .tekma--klikljiva:hover {
-  border-color: var(--barva-poudarek);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--barva-poudarek) 30%, transparent);
+  border-color: var(--barva-glavna);
+  border-left-color: var(--barva-glavna);
 }
 
 .tekma__stran {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.45rem 0.65rem;
+  gap: 12px;
+  padding: 10px 14px;
 }
 
-.tekma__stran + .tekma__stran { border-top: 1px solid var(--barva-crta); }
+.tekma__stran + .tekma__stran {
+  border-top: 1px solid var(--barva-polnilo);
+}
 
-.tekma__stran--zmagovalec { background: var(--barva-zmaga-ozadje); }
+/* Zmagovalec je krepek in v polnem crnilu, porazenec pobledi (AA 5.2:1). */
+.tekma__stran--zmagovalec .tekma__ime {
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
 
-.tekma__stran--zmagovalec .tekma__ime { font-weight: 700; }
+.tekma__stran--porazenec .tekma__ime,
+.tekma__stran--porazenec .tekma__nizi {
+  color: var(--barva-crnilo-4);
+}
 
 .tekma__stran--prazna .tekma__ime {
-  color: var(--barva-besedilo-blago);
-  font-style: italic;
-  font-size: 0.85rem;
+  color: var(--barva-crnilo-4);
+  font-weight: 300;
+  font-size: 15px;
 }
 
-.tekma__ime { font-size: 0.9rem; }
+.tekma__ime-vrsta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--r1);
+  min-width: 0;
+}
+
+.tekma__ime {
+  font-size: 16px;
+  color: var(--barva-crnilo);
+}
 
 .tekma__klub {
   display: block;
-  font-size: 0.72rem;
-  color: var(--barva-besedilo-blago);
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
 }
 
 .tekma__nizi {
-  font-weight: 700;
+  font: 600 var(--tip-vrstica) / 1.2 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
-  min-width: 1.1rem;
+  color: var(--barva-crnilo);
+  min-width: 1.2rem;
   text-align: right;
 }
 
+.tekma__desno {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  flex-shrink: 0;
+}
+
+.tekma__rating,
+.tekme-seznam__rating {
+  font: 400 12px / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
 .tekma__izid {
-  position: absolute;
-  right: 0.4rem;
-  bottom: 0.15rem;
-  font-size: 0.68rem;
-  color: var(--barva-oranzna);
-  font-weight: 600;
-}
-
-/* ---------- 5. Lestvice, skupine in seznam tekem ---------- */
-
-.lestvica__mesto {
-  width: 2.2rem;
-  text-align: center;
-  color: var(--barva-besedilo-blago);
-  font-variant-numeric: tabular-nums;
-}
-
-.lestvica__stevilka {
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  width: 3rem;
-}
-
-.lestvica__rating { font-weight: 700; }
-
-.lestvica__klub { color: var(--barva-besedilo-blago); font-size: 0.82rem; }
-
-.lestvica__vrstica--napreduje {
-  background: var(--barva-napreduje-ozadje);
-}
-
-.lestvica__vrstica--napreduje .lestvica__mesto {
-  color: var(--barva-poudarek);
-  font-weight: 700;
-}
-
-/* Odlicja za prve tri (samo globalna razvrstitev - modifikator, da se ne
-   pomesa s "napreduje" v skupinskih lestvicah). */
-.lestvica--razvrstitev tbody tr:nth-child(1) .lestvica__mesto { color: #d4a52a; font-weight: 800; }
-.lestvica--razvrstitev tbody tr:nth-child(2) .lestvica__mesto { color: #97a4b3; font-weight: 800; }
-.lestvica--razvrstitev tbody tr:nth-child(3) .lestvica__mesto { color: #c58a3d; font-weight: 800; }
-
-/* Skupine (sistem skupine + izlocilni). */
-.skupine {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.kolo-skupina { margin-top: 0.5rem; }
-
-.kolo-skupina__naslov {
-  font-size: 0.75rem;
-  font-weight: 700;
+  display: block;
+  padding: 0 14px 8px;
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--barva-besedilo-blago);
-  margin: 0.75rem 0 0.35rem;
+  color: var(--barva-negativna);
 }
 
-/* Seznam tekem (krozni, skupine). */
+/* Seznam tekem (krozni sistem, skupine). */
 .tekme-seznam {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
 }
 
 .tekme-seznam__vrstica {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--barva-crta);
-  border-radius: 8px;
-  background: var(--barva-povrsina-2);
-  font-size: 0.9rem;
+  gap: var(--r1);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: 15px;
 }
 
-.tekme-seznam__vrstica--klikljiva { cursor: pointer; }
+.tekme-seznam__vrstica--klikljiva {
+  cursor: pointer;
+}
 
 .tekme-seznam__vrstica--klikljiva:hover {
-  border-color: var(--barva-poudarek);
+  background: var(--barva-glavna-mehko);
 }
 
-.tekme-seznam__igralec { min-width: 0; }
-.tekme-seznam__igralec:last-of-type { text-align: right; }
-.tekme-seznam__igralec--zmaga { font-weight: 700; }
+.tekme-seznam__igralec {
+  min-width: 0;
+  color: var(--barva-crnilo);
+}
+
+.tekme-seznam__igralec:last-of-type {
+  text-align: right;
+}
+
+.tekme-seznam__igralec--zmaga {
+  font-weight: 700;
+}
 
 .tekme-seznam__rezultat {
-  font-weight: 700;
+  font: 600 16px / 1.2 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--barva-besedilo-blago);
+  color: var(--barva-crnilo);
+  text-align: center;
   white-space: nowrap;
-  padding: 0 0.35rem;
 }
 
 .tekme-seznam__vrstica--klikljiva .tekme-seznam__rezultat {
-  color: var(--barva-oranzna);
-  font-size: 0.78rem;
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
 }
 
 .tekme-seznam__izid {
   grid-column: 1 / -1;
-  text-align: center;
-  font-size: 0.72rem;
-  color: var(--barva-oranzna);
-}
-
-/* ---------- 6. Globalna lestvica in dvoboj (1 na 1) ---------- */
-
-.dvoboj-izbira {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin: 1rem 0 1.5rem;
-}
-
-.dvoboj-izbira__polje { flex: 1; min-width: 220px; }
-
-.dvoboj-izbira__proti {
-  padding-bottom: 0.5rem;
-  color: var(--barva-besedilo-blago);
-  font-weight: 600;
-}
-
-.dvoboj {
-  background: var(--barva-povrsina);
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  box-shadow: var(--senca);
-  overflow: hidden;
-}
-
-/* Semafor: navy hero v obeh temah, zato so barve besedila tu izrecno svetle. */
-.dvoboj__glava {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.75rem 1.25rem;
-  background: linear-gradient(135deg, var(--barva-ink), var(--barva-ink-2));
-  border-bottom: none;
-  color: #eaf1fb;
-}
-
-.dvoboj__igralec { text-align: center; }
-.dvoboj__igralec:first-child { text-align: left; }
-.dvoboj__igralec:last-child { text-align: right; }
-
-.dvoboj__ime { font-family: var(--pisava-naslov); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em; }
-.dvoboj__klub { color: #9db4d6; font-size: 0.85rem; }
-.dvoboj__rating { color: var(--barva-poudarek-ziv); font-size: 0.82rem; font-weight: 700; }
-
-.dvoboj__izid { text-align: center; }
-
-.dvoboj__stevilo {
-  font-family: var(--pisava-naslov);
-  font-size: 2.6rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  display: flex;
-  gap: 0.4rem;
-  justify-content: center;
-  color: #ffffff;
-}
-
-.dvoboj__vodi { color: var(--barva-poudarek-ziv); }
-.dvoboj__crtica { color: #3a5480; }
-
-.dvoboj__oznaka {
-  font-size: 0.72rem;
-  font-weight: 700;
+  font: 500 11px / 1.4 var(--pisava-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #9db4d6;
-  margin-top: 0.4rem;
+  color: var(--barva-negativna);
 }
 
-.dvoboj__tabela { font-size: 0.88rem; }
-.dvoboj__tabela th, .dvoboj__tabela td { padding: 0.5rem 0.75rem; }
-.dvoboj__posebni { color: var(--barva-oranzna); font-size: 0.8rem; }
+.tekme-seznam__rating {
+  margin-left: var(--r1);
+}
 
-/* ---------- 7. Podij ob zakljucenem dogodku ---------- */
+.tekme-seznam__igralec:last-of-type .tekme-seznam__rating {
+  margin-left: 0;
+  margin-right: var(--r1);
+}
 
-.podij {
+/* Sprememba ELO: mono +11 / −11, brez podlage in radija. */
+.sprememba-elo {
+  display: inline-block;
+  font: 600 12px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-left: var(--r1);
+}
+
+.sprememba-elo--poz {
+  color: var(--barva-poudarek-tekst);
+}
+
+.sprememba-elo--neg {
+  color: var(--barva-negativna);
+}
+
+.sprememba-elo--nic {
+  color: var(--barva-crnilo-3);
+}
+
+/* ============================================================
+   10. Lestvice, skupine, podij
+   ============================================================ */
+
+.lestvica__mesto {
+  width: 56px;
+  text-align: right;
+  font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* Prva tri mesta: samo barva, brez odlicij in ikon. */
+.lestvica__mesto--vrh {
+  color: var(--barva-glavna-tekst);
+}
+
+.lestvica__stevilka {
+  width: 72px;
+  text-align: right;
+  font: 500 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.lestvica__rating {
+  width: 96px;
+  text-align: right;
+  font: 600 20px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.lestvica__klub {
+  color: var(--barva-crnilo-3);
+  font-size: 16px;
+  font-weight: 300;
+}
+
+.lestvica__ime {
+  font-size: var(--tip-vrstica);
+  color: var(--barva-crnilo);
+}
+
+.lestvica__zmage {
+  color: var(--barva-poudarek-tekst);
+}
+
+.lestvica__porazi {
+  color: var(--barva-negativna);
+}
+
+.lestvica__locilo {
+  color: var(--barva-crnilo-3);
+}
+
+/* Uspesnost: palica + odstotek v isti celici. */
+.lestvica__uspesnost {
   display: flex;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.lestvica__uspesnost .palica {
+  width: 56px;
+  flex: none;
+}
+
+.lestvica__odstotek {
+  font: 500 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+/* Moja vrstica: mehka podlaga in krepko ime. */
+.lestvica__vrstica--jaz {
+  background: var(--barva-glavna-mehko);
+}
+
+.lestvica__vrstica--jaz .lestvica__ime {
+  font-weight: 700;
+}
+
+/* Napredovanje in izpad: 4 px crta ob levem robu prve celice. */
+.lestvica__vrstica--napreduje td:first-child,
+.lestvica__vrsta--napreduje td:first-child {
+  box-shadow: inset 4px 0 0 var(--barva-poudarek);
+}
+
+.lestvica__vrsta--izpade td:first-child {
+  box-shadow: inset 4px 0 0 var(--barva-negativna);
+}
+
+.legenda {
+  display: flex;
+  gap: var(--r3);
+  margin-top: 12px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.legenda__postavka {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+}
+
+.legenda__znak {
+  display: block;
+  width: 16px;
+  height: 4px;
+  background: var(--barva-crta);
+}
+
+.legenda__znak--napreduje {
+  background: var(--barva-poudarek);
+}
+
+.legenda__znak--izpade {
+  background: var(--barva-negativna);
+}
+
+/* Skupine. */
+.skupine {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: var(--r5);
+  margin-top: var(--r3);
+}
+
+.skupina__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: var(--r1);
+  border-bottom: 2px solid var(--barva-crnilo);
+}
+
+.skupina__naslov {
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.kolo-skupina {
+  margin-top: var(--r3);
+}
+
+.kolo-skupina__naslov {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  margin: var(--r3) 0 var(--r1);
+}
+
+/* Razvrstitev ob koncu dogodka: stolpci, loceni s 4 px crto. */
+.podij {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: 0;
+  margin-top: var(--r3);
 }
 
 .podij__mesto {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  background: var(--barva-povrsina);
-  border: 1px solid var(--barva-crta);
-  border-top: 3px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  box-shadow: var(--senca);
-  padding: 0.7rem 1.1rem;
+  display: block;
+  padding: 0 var(--r3) 0 var(--r3);
+  border-left: 4px solid var(--barva-crta);
+  background: none;
+  border-radius: 0;
 }
 
-/* Odlicja: barvni zgornji rob (in blag preliv za zmagovalca). */
-.podij__mesto:nth-child(1) { border-top-color: #d4a52a; background: color-mix(in srgb, #d4a52a 9%, var(--barva-povrsina)); }
-.podij__mesto:nth-child(2) { border-top-color: #97a4b3; }
-.podij__mesto:nth-child(3) { border-top-color: #c58a3d; }
+.podij__mesto:nth-child(1) {
+  border-left-color: var(--barva-poudarek);
+}
 
-.podij__stevilka { font-size: 1.55rem; line-height: 1; }
-.podij__ime { font-family: var(--pisava-naslov); font-weight: 700; letter-spacing: -0.01em; }
-.podij__klub { color: var(--barva-besedilo-blago); font-size: 0.85rem; }
+.podij__mesto:nth-child(2) {
+  border-left-color: var(--barva-glavna);
+}
 
-/* ---------- 8. Sprememba ELO (znacka +16 / -16) ---------- */
+.podij__stevilka {
+  display: block;
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h1-nad);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--barva-crnilo);
+}
 
-.sprememba-elo {
-  display: inline-block;
-  font-size: 0.7rem;
+.podij__ime {
+  display: block;
+  margin-top: 12px;
+  font-size: var(--tip-uvod);
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  padding: 0.02rem 0.34rem;
-  border-radius: 999px;
-  line-height: 1.5;
-  white-space: nowrap;
+  color: var(--barva-crnilo);
 }
 
-.sprememba-elo--poz { color: var(--barva-uspeh); background: var(--barva-zmaga-ozadje); }
-.sprememba-elo--neg { color: var(--barva-napaka); background: var(--barva-napaka-ozadje); }
-.sprememba-elo--nic { color: var(--barva-besedilo-blago); background: var(--barva-povrsina-2); }
+.podij__klub {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
 
-/* Desni del vrstice v mrezi: znacka ELO ob rezultatu. */
-.tekma__desno {
+/* ============================================================
+   11. Dvoboj (1 na 1) in domaca stran
+   ============================================================ */
+
+.enanaena {
   display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--r6);
 }
 
-/* V seznamu tekem (krozni, skupine) postavi znacko ob ime. */
-.tekme-seznam__igralec .sprememba-elo { margin-left: 0.35rem; }
-.tekme-seznam__igralec:last-of-type .sprememba-elo { margin-left: 0; margin-right: 0.35rem; }
+/* Strnjena razlicica (domaca stran): brez velikih imen, zato je izid manjsi
+   in mreza ozja - da se trije stolpci zmestijo v ozji levi stolpec. */
+.enanaena--strnjen .enanaena__plosca {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--r3);
+  align-items: start;
+  margin-top: var(--r3);
+}
 
-/* ---------- 9. Pripomocek "1 na 1" (widget) ---------- */
+.enanaena--strnjen .enanaena__stevilo {
+  font-size: 56px;
+  margin: var(--r1) 0;
+}
 
-/* Kartice rezultata (vrsta 1) in izbira igralcev (vrsta 2) so v ISTI
-   tristolpcni mrezi, zato je vsak spustni seznam poravnan pod svojo kartico,
-   gumb za nakljucni par pa na sredini pod rezultatom. */
+.enanaena--strnjen .enanaena__sredina {
+  grid-row: 1;
+  align-self: start;
+  padding-top: 20px;
+}
+
+.enanaena--strnjen .enanaena__zreb {
+  grid-row: 2;
+  margin-top: var(--r2);
+}
+
+/* Semafor: dva izbirnika ob strani, velik medsebojni izid na sredini. */
 .enanaena__plosca {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  column-gap: 0.85rem;
-  row-gap: 1rem;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) 200px minmax(0, 1fr);
+  gap: var(--r4);
+  align-items: end;
 }
 
-.enanaena__kartica--1 { grid-column: 1; grid-row: 1; }
-.enanaena__sredina    { grid-column: 2; grid-row: 1; }
-.enanaena__kartica--2 { grid-column: 3; grid-row: 1; }
-.enanaena__polje--1   { grid-column: 1; grid-row: 2; }
-.enanaena__zreb       { grid-column: 2; grid-row: 2; justify-self: center; align-self: end; white-space: nowrap; }
-.enanaena__polje--2   { grid-column: 3; grid-row: 2; }
-
-.enanaena__polje { min-width: 0; }
-
-.enanaena__igralec {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.15rem;
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  padding: 1.1rem 0.85rem;
+.enanaena__kartica--1,
+.enanaena__polje--1 {
+  grid-column: 1;
 }
 
-.enanaena__igralec--vodi {
-  border-color: var(--barva-poudarek);
-  box-shadow: 0 0 0 1px var(--barva-poudarek) inset;
+.enanaena__sredina,
+.enanaena__zreb {
+  grid-column: 2;
 }
 
-.enanaena__avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--barva-poudarek-blaga);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
-  margin-bottom: 0.35rem;
+.enanaena__kartica--2,
+.enanaena__polje--2 {
+  grid-column: 3;
 }
 
-.enanaena__ime { font-family: var(--pisava-naslov); font-weight: 700; font-size: 1.02rem; letter-spacing: -0.01em; }
-.enanaena__klub { color: var(--barva-poudarek); font-size: 0.85rem; font-weight: 600; }
-.enanaena__rating { color: var(--barva-besedilo-blago); font-size: 0.85rem; }
+.enanaena__polje--1 {
+  grid-row: 1;
+}
 
-/* Povezava na podrobno primerjavo, sredinjena znotraj sredinske kartice,
-   čisto pod rezultatom. */
-.enanaena__podrobno { text-align: center; margin-top: 0.35rem; }
-.enanaena__podrobno .domov__vec { font-size: 0.9rem; }
+.enanaena__kartica--1 {
+  grid-row: 2;
+}
 
 .enanaena__sredina {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  grid-row: 1 / span 2;
+  align-self: center;
   text-align: center;
-  gap: 0.25rem;
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  padding: 1.1rem 1.4rem;
-  min-width: 150px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
+.enanaena__polje--2 {
+  grid-row: 1;
+}
+
+.enanaena__kartica--2 {
+  grid-row: 2;
+  text-align: right;
+}
+
+.enanaena__zreb {
+  grid-row: 3;
+  justify-self: center;
+}
+
+.enanaena__polje > span,
 .enanaena__oznaka {
-  font-size: 0.72rem;
-  font-weight: 700;
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--barva-besedilo-blago);
+  color: var(--barva-crnilo-3);
+  margin-bottom: var(--r1);
+}
+
+.enanaena__igralec {
+  display: block;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.enanaena__kartica--2 .enanaena__igralec {
+  text-align: right;
+}
+
+.enanaena__ime {
+  display: block;
+  margin: 20px 0 0;
+  font-family: var(--pisava-display);
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: var(--barva-crnilo);
+}
+
+.enanaena__ime a {
+  color: var(--barva-crnilo);
+}
+
+.enanaena__ime a:hover {
+  color: var(--barva-glavna-tekst);
+  text-decoration: none;
+}
+
+.enanaena__klub,
+.enanaena__rating {
+  display: block;
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--barva-crnilo-3);
 }
 
 .enanaena__stevilo {
-  font-family: var(--pisava-naslov);
-  font-size: 2.5rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
   display: flex;
-  gap: 0.5rem;
   justify-content: center;
-  color: var(--barva-besedilo-blago);
-  line-height: 1.1;
+  gap: 4px;
+  font-family: var(--pisava-display);
+  font-size: var(--tip-rezultat);
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  margin: 12px 0;
 }
 
-.enanaena__vodi { color: var(--barva-poudarek); }
-.enanaena__crtica { color: var(--barva-crta); }
-.enanaena__skupaj { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
-
-.enanaena__tabela { margin-top: 1.25rem; font-size: 0.88rem; }
-.enanaena__tabela th, .enanaena__tabela td { padding: 0.5rem 0.75rem; }
-
-section > .enanaena__tabela {
-  border: 1px solid var(--barva-crta);
-  border-radius: var(--zaokrozitev);
-  overflow: hidden;
-  box-shadow: var(--senca);
+.enanaena__vodi {
+  color: var(--barva-poudarek-tekst);
 }
 
-.enanaena__posebni { color: var(--barva-oranzna); font-size: 0.8rem; }
+.enanaena__izgublja {
+  color: var(--barva-negativna);
+}
 
-/* Oznaka vira vrstice v zgodovini dvoboja: brez nje sta turnirska in ligaška
-   tekma v isti tabeli videti enako. */
+.enanaena__crtica {
+  color: var(--barva-crta);
+}
+
+.enanaena__skupaj {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.enanaena__podrobno {
+  margin-top: var(--r2);
+}
+
 .enanaena__vir {
   display: inline-block;
-  margin-left: 0.4rem;
-  padding: 0.05rem 0.35rem;
-  border: 1px solid var(--barva-crta);
-  border-radius: 999px;
-  background: var(--barva-povrsina-2);
-  color: var(--barva-besedilo-blago);
-  font-size: 0.7rem;
+  margin-left: var(--r1);
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  vertical-align: middle;
+  color: var(--barva-crnilo-3);
 }
 
-.enanaena__elo-celica { white-space: nowrap; }
-.enanaena__elo-locilo { color: var(--barva-besedilo-blago); margin: 0 0.15rem; }
-
-/* Na ozkih zaslonih vse v en stolpec (kartice in izbire druga pod drugo). */
-@media (max-width: 560px) {
-  .enanaena__plosca { grid-template-columns: 1fr; }
-  .enanaena__plosca > * { grid-column: 1; grid-row: auto; }
-  .enanaena__zreb { justify-self: stretch; align-self: auto; }
+.enanaena__posebni {
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-negativna);
 }
 
-/* ---------- 10. Domaca stran (nadzorna plosca) ---------- */
+.enanaena__elo-celica {
+  white-space: nowrap;
+}
 
+.enanaena__elo-locilo {
+  color: var(--barva-crnilo-3);
+  margin: 0 4px;
+}
+
+/* Vodoravna palica razmerja: dve polni barvi, brez prehoda. */
+.razmerje-palica {
+  display: flex;
+  height: 12px;
+  margin-top: var(--r4);
+}
+
+.razmerje-palica__z {
+  display: block;
+  background: var(--barva-poudarek);
+}
+
+.razmerje-palica__p {
+  display: block;
+  background: var(--barva-negativna);
+}
+
+.razmerje-legenda {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Domaca stran. */
 .domov {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--r7);
 }
 
-.domov > .naslovna-vrstica { margin: 0.5rem 0 0; }
-
-/* Nadzorna plosca: levi stolpec (turnirji, lige, strnjen "1 na 1") in desni
-   stolpec z daljso lestvico. Levi je sirsi, ker nosi pripomocek "1 na 1". */
 .domov__mreza {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: var(--r7);
   align-items: start;
 }
 
-/* Levi stolpec zlaga svoje plosce navpicno; "1 na 1" tako pade v spodnji kot. */
 .domov__stolpec {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--r6);
   min-width: 0;
 }
 
-@media (max-width: 900px) {
-  .domov__mreza { grid-template-columns: 1fr; }
-}
-
-.domov__plosca-glava {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
-}
-
 .domov__vec {
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--barva-poudarek);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
   white-space: nowrap;
-}
-
-.domov__vec:hover { text-decoration: underline; }
-
-/* Daljsa lestvica na domaci strani (brez glave, 15 vrstic) v desnem stolpcu. */
-.domov__lestvica { font-size: 0.9rem; }
-.domov__lestvica td { padding: 0.4rem 0.5rem; }
-.domov__lestvica tr:first-child td { border-top: none; }
-
-/* Seznam postavk (turnirji ali lige) na domaci strani. */
-.domov__seznam {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
 }
 
 .domov__postavka {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--barva-crta);
-  border-radius: 8px;
-  background: var(--barva-povrsina-2);
-  text-decoration: none;
-  color: inherit;
-}
-
-.domov__postavka:hover { border-color: var(--barva-poudarek); }
-.domov__postavka-ime { font-weight: 600; min-width: 0; }
-.domov__postavka-desno { display: flex; align-items: center; gap: 0.6rem; white-space: nowrap; }
-.domov__postavka-datum { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
-
-/* Strnjen pripomocek "1 na 1" v ozjem levem stolpcu: manjse kartice,
-   rezultat in razmiki, da se tri-stolpcna postavitev udobno zmesti. */
-.domov__plosca--kompakt .enanaena__plosca { column-gap: 0.6rem; row-gap: 0.75rem; }
-.domov__plosca--kompakt .enanaena__igralec { padding: 0.8rem 0.55rem; }
-.domov__plosca--kompakt .enanaena__avatar {
-  width: 42px;
-  height: 42px;
-  font-size: 1.2rem;
-  margin-bottom: 0.2rem;
-}
-.domov__plosca--kompakt .enanaena__ime { font-size: 0.9rem; }
-.domov__plosca--kompakt .enanaena__klub,
-.domov__plosca--kompakt .enanaena__rating { font-size: 0.78rem; }
-.domov__plosca--kompakt .enanaena__sredina { padding: 0.8rem 0.7rem; min-width: 0; }
-.domov__plosca--kompakt .enanaena__stevilo { font-size: 1.85rem; }
-
-/* Pod ~1150px postane levi stolpec pretesen za tri kartice v vrsti,
-   zato jih strnjen "1 na 1" zlozi navpicno (dokler mreza se ni enostolpcna). */
-@media (max-width: 1150px) and (min-width: 901px) {
-  .domov__plosca--kompakt .enanaena__plosca { grid-template-columns: 1fr; }
-  .domov__plosca--kompakt .enanaena__plosca > * { grid-column: 1; grid-row: auto; }
-  .domov__plosca--kompakt .enanaena__zreb { justify-self: stretch; align-self: auto; }
-}
-
-/* ---------- 11. Rating pred tekmo (ob imenih) ---------- */
-
-/* Rating pred tekmo kot blaga oznaka ob imenu igralca. */
-.tekma__rating,
-.tekme-seznam__rating {
-  font-size: 0.72rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--barva-besedilo-blago);
-}
-
-/* V mrezi je rating v isti vrstici kot ime, klub pa pod njim. */
-.tekma__ime-vrsta {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 20px;
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+  background: none;
+  border-radius: 0;
+  color: var(--barva-crnilo);
 }
 
-.tekme-seznam__rating { margin-left: 0.35rem; }
-.tekme-seznam__igralec:last-of-type .tekme-seznam__rating { margin-left: 0; margin-right: 0.35rem; }
-
-/* ---------- 11. Lige (ekipna tekmovanja) ---------- */
-
-.naslovna-vrstica--tesno { margin-bottom: 0.75rem; }
-.nazaj {
-  display: inline-block;
-  font-size: 0.85rem;
-  color: var(--barva-besedilo-blago);
+.domov__postavka:hover {
   text-decoration: none;
-  margin-bottom: 0.25rem;
+  background: var(--barva-glavna-mehko);
 }
-.nazaj:hover { color: var(--barva-poudarek); }
 
-.tabela-ovoj { overflow-x: auto; }
-
-/* Obrazec: stikala in skupine */
-.obrazec__polje--stikalo {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
+.domov__postavka-ime {
+  min-width: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--barva-crnilo);
 }
-.obrazec__polje--stikalo input { width: auto; }
-.obrazec__skupina {
-  border: 1px solid var(--barva-crta);
-  border-radius: 8px;
-  padding: 0.75rem 0.9rem 0.9rem;
+
+.domov__postavka-kraj {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.domov__postavka-desno {
+  display: contents;
+}
+
+.domov__postavka-datum {
+  font: 500 13px / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+/* Mini lestvica v desnem stolpcu domace strani. */
+.domov__lestvica {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-}
-.obrazec__skupina legend {
-  padding: 0 0.4rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--barva-besedilo-blago);
+  margin-top: var(--r2);
 }
 
-/* Opisna mreza (kljuc: vrednost) za konfiguracijo lige */
-.opis-mreza {
+.domov__lestvica-vrstica {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.6rem 1.25rem;
-  margin: 0;
+  grid-template-columns: 32px minmax(0, 1fr) 56px;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  color: var(--barva-crnilo);
 }
-.opis-mreza__par { display: flex; flex-direction: column; gap: 0.1rem; }
-.opis-mreza__par dt {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--barva-besedilo-blago);
-}
-.opis-mreza__par dd { margin: 0; font-weight: 600; }
 
-.liga { display: flex; flex-direction: column; gap: 1.25rem; }
-.liga__konfig { padding: 1rem 1.1rem; }
-
-.liga__dodaj-ekipo { align-items: flex-end; margin: 0.5rem 0; }
-.liga__dodaj-ekipo select { flex: 1; }
-
-.liga__ekipe { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
-.liga__ekipa {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.7rem;
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-radius: 8px;
-}
-.liga__ekipa-gumbi { display: flex; gap: 0.4rem; }
-.liga__rating { color: var(--barva-besedilo-blago); font-variant-numeric: tabular-nums; }
-
-.liga__kolo { margin-top: 1rem; }
-.liga__kolo-naslov {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--barva-besedilo-blago);
-  margin: 0 0 0.4rem;
-}
-.liga__srecanja { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
-.liga__srecanje {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.8rem;
-  border: 1px solid var(--barva-crta);
-  border-radius: 8px;
+.domov__lestvica-vrstica:hover {
   text-decoration: none;
-  color: inherit;
+  background: var(--barva-glavna-mehko);
 }
-.liga__srecanje:hover { border-color: var(--barva-poudarek); }
-.liga__srecanje-ekipa { min-width: 0; }
-.liga__srecanje-ekipa--desno { text-align: right; }
-.liga__srecanje-izid {
-  font-family: var(--pisava-naslov);
-  font-weight: 700;
+
+.domov__lestvica-mesto {
+  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--barva-besedilo-blago);
-  white-space: nowrap;
+  color: var(--barva-crnilo-3);
 }
 
-.lestvica__vrsta--napreduje td:first-child { box-shadow: inset 3px 0 0 var(--barva-uspeh, #15803d); }
-.lestvica__vrsta--izpade td:first-child { box-shadow: inset 3px 0 0 var(--neg, #dc2626); }
-
-/* Srecanje */
-.srecanje { display: flex; flex-direction: column; gap: 1rem; }
-.srecanje__glava {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 1rem;
-  font-family: var(--pisava-naslov);
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+.domov__lestvica-mesto--vrh {
+  color: var(--barva-glavna-tekst);
 }
-.srecanje__ekipa { min-width: 0; }
-.srecanje__ekipa--desno { text-align: right; }
-.srecanje__izid {
-  font-size: 1.5rem;
+
+.domov__lestvica-ime {
+  font-size: 16px;
+  color: var(--barva-crnilo);
+}
+
+.domov__lestvica-klub {
+  display: block;
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.domov__lestvica-rating {
+  font: 600 16px / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.srecanje__meta { color: var(--barva-besedilo-blago); font-size: 0.9rem; margin: 0; }
-.srecanje__tabela td, .srecanje__tabela th { vertical-align: middle; }
-.srecanje__oznaka { font-weight: 700; color: var(--barva-besedilo-blago); }
-.srecanje__zmaga { font-weight: 700; }
-.srecanje__vrsta--neodigrana { opacity: 0.5; }
-.srecanje__pari { margin: 0 0 0.25rem; }
-
-.postava { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.5rem; }
-.postava__stran h3 { margin: 0 0 0.6rem; font-size: 1rem; }
-.postava__mesto { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-.postava__oznaka {
-  width: 1.6rem;
-  height: 1.6rem;
-  flex: none;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-radius: 6px;
-}
-.postava__mesto select { flex: 1; min-width: 0; }
-.postava__dvojice { display: flex; align-items: center; gap: 0.2rem; font-size: 0.8rem; white-space: nowrap; }
-.postava__dvojice input { width: auto; }
-
-@media (max-width: 560px) {
-  .postava { grid-template-columns: 1fr; }
+  text-align: right;
+  color: var(--barva-crnilo);
 }
 
 /* ============================================================
-   12. Profil igralca, graf ELO in dostopi
+   12. Profil igralca in graf ELO
    ============================================================ */
 
-/* Zavihka prijava / nov račun v prijavnem oknu. */
-.zavihki {
+.profil {
   display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--barva-crta);
-  margin-bottom: 1rem;
-}
-.zavihki__gumb {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 0.5rem 0.75rem;
-  font: inherit;
-  color: var(--barva-besedilo-blago);
-  cursor: pointer;
-}
-.zavihki__gumb:hover { color: var(--barva-besedilo); }
-.zavihki__gumb--aktiven {
-  color: var(--barva-poudarek);
-  border-bottom-color: var(--barva-poudarek);
-  font-weight: 600;
+  flex-direction: column;
+  gap: var(--r7);
 }
 
-.znacka--uspeh { background: var(--barva-zmaga-ozadje); color: var(--barva-uspeh); }
-.znacka--opozorilo { background: #fef3c7; color: #b45309; }
-
-.plosca__stevec {
-  font-size: 0.8rem;
-  font-weight: 400;
-  color: var(--barva-besedilo-blago);
-  margin-left: 0.35rem;
+/* Vrstica nad imenom: mesto na lestvici + percentil. */
+.profil__uvrstitev {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-/* Oznaka, da sklop ni javen - da je meja vidna na prvi pogled. */
-.plosca__zasebno {
-  font-size: 0.7rem;
-  font-weight: 500;
+
+.profil__mesto-znacka {
+  background: var(--barva-poudarek);
+  color: var(--barva-na-poudarku);
+  font: 600 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  padding: 5px 9px;
+}
+
+.profil__percentil {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--barva-besedilo-blago);
-  border: 1px solid var(--barva-crta);
-  border-radius: 999px;
-  padding: 0.1rem 0.45rem;
-  margin-left: 0.5rem;
-  vertical-align: middle;
+  color: var(--barva-crnilo-3);
 }
 
-/* Vrsta velikih številk (rating, zmage, uspešnost ...). */
+/* Ime igralca je naslov strani (nadnaslov = ime, naslov = priimek). */
+.profil__meta {
+  display: flex;
+  gap: var(--r3);
+  margin-top: 20px;
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo-2);
+  flex-wrap: wrap;
+}
+
+.profil__moj {
+  color: var(--barva-glavna-tekst);
+  font-weight: 700;
+}
+
+/* Blok klubskega ELO: edina polna modra ploskev na strani. Nosi 112 px
+   stevilko in 12 px oznake hkrati, zato mora zdrzati mero za drobno
+   besedilo - od tod "glavna-polna" in ne ostra modra. */
+.elo-blok {
+  background: var(--barva-glavna-polna);
+  color: var(--barva-na-glavni);
+  padding: var(--r3);
+}
+
+.elo-blok__oznaka {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--barva-na-glavni);
+}
+
+.elo-blok__vrednost {
+  display: block;
+  margin-top: 12px;
+  font-family: var(--pisava-display);
+  font-size: 112px;
+  font-weight: 800;
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-na-glavni);
+}
+
+.elo-blok__noga {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r2);
+  margin-top: var(--r2);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-na-glavni);
+}
+
+/* Najvisji dosezeni rating: edina beseda na modri ploskvi, ki ni bela -
+   zelena pomeni "najboljse doslej" tudi tu. */
+.elo-blok__vrh {
+  color: var(--barva-na-glavni-2);
+}
+
+/* Okolica na lestvici (mesto pred in za igralcem). */
+.okolica {
+  margin-top: var(--r4);
+  max-width: 520px;
+}
+
+.okolica__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
+}
+
+.okolica__vrstica {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 72px 64px;
+  align-items: baseline;
+  gap: var(--r2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  color: var(--barva-crnilo);
+}
+
+.okolica__vrstica--jaz {
+  padding-left: var(--r1);
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.okolica__vrstica--jaz .okolica__ime {
+  font-weight: 700;
+}
+
+.okolica__mesto {
+  font: 600 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.okolica__ime {
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.okolica__klub {
+  display: block;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.okolica__elo {
+  font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+.okolica__razlika {
+  font: 500 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo-3);
+}
+
+/* Velike stevilke v stolpcih, locene s 1 px crto (nikoli kartice). */
 .profil__kazalniki {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 0.6rem;
-  margin: 0.75rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  margin: var(--r3) 0 0;
 }
+
 .kazalnik {
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-radius: 10px;
-  padding: 0.6rem 0.5rem;
-  text-align: center;
+  padding-left: var(--r3);
+  border-left: 1px solid var(--barva-crta);
+  background: none;
+  border-radius: 0;
+  text-align: left;
 }
-.kazalnik--poudarjen { border-color: var(--barva-poudarek); }
+
+.kazalnik--poudarjen {
+  border-left: 4px solid var(--barva-glavna);
+}
+
 .kazalnik__vrednost {
-  font-family: var(--pisava-naslov);
-  font-size: 1.4rem;
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h1-nad);
   font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  color: var(--barva-crnilo);
 }
-.kazalnik--poudarjen .kazalnik__vrednost { color: var(--barva-poudarek); }
+
 .kazalnik__oznaka {
-  font-size: 0.72rem;
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--barva-besedilo-blago);
-  margin-top: 0.15rem;
+  color: var(--barva-crnilo-3);
 }
 
-.profil__primerjava { color: var(--barva-besedilo-blago); margin: 0 0 1rem; }
-.profil__podnaslov {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--barva-besedilo-blago);
-  margin: 1.1rem 0 0.4rem;
-}
-.profil__opomba { font-size: 0.8rem; color: var(--barva-besedilo-blago); margin: 0.3rem 0; }
-.profil__del { font-size: 0.78rem; color: var(--barva-besedilo-blago); }
-.profil__datum { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.profil__zmaga { color: var(--barva-uspeh); font-weight: 600; }
-.profil__poraz { color: var(--barva-napaka); font-weight: 600; }
-
-.profil__razmerja {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-.profil__razmerja li {
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-radius: 999px;
-  padding: 0.15rem 0.6rem;
-  font-size: 0.85rem;
+.profil__primerjava {
+  margin: var(--r2) 0 0;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-3);
+  max-width: 74ch;
 }
 
-/* Vodoravni stolpci deležev (npr. proti desničarjem). */
-.delezi { list-style: none; margin: 0.3rem 0; padding: 0; }
+.profil__opomba {
+  margin: var(--r2) 0 0;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-3);
+  max-width: 74ch;
+}
+
+.profil__del {
+  display: block;
+  margin-top: 4px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  color: var(--barva-crnilo-3);
+}
+
+.profil__datum {
+  white-space: nowrap;
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* Rezultat tekme v tabeli profila je velika stevilka. */
+.profil__izid {
+  font-family: var(--pisava-display);
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.profil__zmaga {
+  color: var(--barva-poudarek-tekst);
+}
+
+.profil__poraz {
+  color: var(--barva-negativna);
+}
+
+.profil__nasprotnik {
+  font-size: var(--tip-telo);
+  font-weight: 700;
+  color: var(--barva-glavna-tekst);
+}
+
+.profil__klub {
+  display: block;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+/* Delezi: oznaka, odstotek in palica pod njima. */
 .delez {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) 2fr auto;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.22rem 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
 }
-.delez__oznaka { font-size: 0.88rem; }
+
+.delez__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+}
+
+.delez__oznaka {
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.delez__vrednost {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  white-space: nowrap;
+}
+
+.delez__izid {
+  font-weight: 400;
+  color: var(--barva-crnilo-3);
+}
+
 .delez__stolpec {
-  background: var(--barva-povrsina-2);
-  border-radius: 999px;
-  height: 8px;
+  display: block;
+  height: 6px;
+  margin-top: var(--r1);
+  background: var(--barva-polnilo);
+  border-radius: 0;
   overflow: hidden;
 }
+
 .delez__polnilo {
   display: block;
   height: 100%;
-  background: var(--barva-poudarek);
-  border-radius: 999px;
-}
-.delez__vrednost {
-  font-size: 0.82rem;
-  color: var(--barva-besedilo-blago);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  background: var(--barva-glavna);
+  border-radius: 0;
 }
 
+/* Izpostavljeni nasprotniki: zelena crta zgoraj namesto kartice. */
 .profil__izpostavljeni {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.6rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: var(--r4);
+  margin-top: var(--r4);
 }
-.izpostavljen {
-  border: 1px solid var(--barva-crta);
-  border-radius: 10px;
-  padding: 0.6rem 0.7rem;
-}
-.izpostavljen__naslov {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--barva-besedilo-blago);
-}
-.izpostavljen__ime { font-weight: 600; }
-.izpostavljen__opis { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
 
-/* Trak zadnjih izidov. */
-.forma__trak { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.izpostavljen {
+  border: none;
+  border-top: 3px solid var(--barva-poudarek);
+  border-radius: 0;
+  padding: 12px 0 0;
+}
+
+.izpostavljen__naslov {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.izpostavljen__ime {
+  display: block;
+  margin-top: var(--r1);
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+}
+
+.izpostavljen__opis {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-3);
+}
+
+/* Trak zadnjih izidov: polna polja Z/P brez radija. */
+.profil__forma {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+}
+
+.forma__trak {
+  display: flex;
+  gap: 2px;
+  margin-top: var(--r3);
+}
+
 .forma__znak {
-  width: 1.6rem;
-  height: 1.6rem;
+  flex: 1;
+  height: var(--r6);
   display: grid;
   place-items: center;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: 700;
+  border-radius: 0;
+  font: 600 15px / 1 var(--pisava-mono);
 }
-.forma__znak--z { background: var(--barva-zmaga-ozadje); color: var(--barva-uspeh); }
-.forma__znak--p { background: var(--barva-napaka-ozadje); color: var(--barva-napaka); }
+
+.forma__znak--z {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.forma__znak--p {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+}
+
+.forma__opis {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Kazalniki forme kot vrstice oznaka <-> velika stevilka. */
+.forma__kazalnik {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.forma__kazalnik-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.forma__kazalnik-vrednost {
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h2);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+/* Koncni izidi (3:0 x12): polna polja, brez radija. */
+.profil__razmerja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  align-items: center;
+  margin-top: var(--r4);
+}
+
+.profil__razmerja li {
+  padding: var(--r1) 12px;
+  border: none;
+  border-radius: 0;
+  font: 600 15px / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.profil__razmerja .profil__zmaga {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.profil__razmerja .profil__poraz {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+}
+
+.profil__razmerja-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  margin-right: var(--r1);
+}
+
+.profil__stevec-razmerja {
+  font-weight: 400;
+}
+
+/* Trije stolpci razrezov "po tekmovanjih". */
+.profil__razrezi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--r6);
+  margin-top: var(--r3);
+}
 
 /* Graf napredka ELO (lasten SVG). */
-.graf__glava {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+.graf__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-top: var(--r3);
 }
-.graf__obdobja { display: flex; gap: 0.25rem; }
-.graf__stevec { font-size: 0.8rem; color: var(--barva-besedilo-blago); }
-.graf__svg { width: 100%; height: auto; display: block; }
-.graf__mreza { stroke: var(--barva-crta); stroke-width: 1; }
-.graf__os { fill: var(--barva-besedilo-blago); font-size: 11px; }
-.graf__crta { fill: none; stroke: var(--barva-poudarek); stroke-width: 2; stroke-linejoin: round; }
-.graf__ploskev { fill: var(--barva-poudarek); opacity: 0.08; stroke: none; }
-.graf__tocka { stroke: var(--barva-povrsina); stroke-width: 1.5; cursor: pointer; }
-.graf__tocka--plus { fill: var(--barva-uspeh); }
-.graf__tocka--minus { fill: var(--barva-napaka); }
-.graf__tocka--izbrana { stroke: var(--barva-poudarek); stroke-width: 2; }
+
+.graf__mreza {
+  stroke: var(--barva-crta);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
+
+.graf__os {
+  fill: var(--barva-crnilo-3);
+  font-family: var(--pisava-mono);
+  font-size: 12px;
+}
+
+.graf__crta {
+  fill: none;
+  stroke: var(--barva-glavna);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+/* Edini dovoljeni gradient: 8 % polnilo pod crto grafa. */
+.graf__ploskev {
+  fill: var(--barva-glavna);
+  opacity: 0.08;
+  stroke: none;
+}
+
+.graf__tocka {
+  cursor: pointer;
+  stroke: none;
+}
+
+.graf__tocka--plus {
+  fill: var(--barva-poudarek-tekst);
+}
+
+.graf__tocka--minus {
+  fill: var(--barva-negativna);
+}
+
+.graf__tocka--izbrana {
+  stroke: var(--barva-crnilo);
+  stroke-width: 2;
+}
+
 .graf__podrobnost {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--r1);
   flex-wrap: wrap;
-  margin: 0.4rem 0 0;
+  margin: var(--r2) 0 0;
+  font: 400 var(--tip-drobno) / 1.6 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
-}
-.graf__sprememba { font-weight: 600; }
-.graf__sprememba--plus { color: var(--barva-uspeh); }
-.graf__sprememba--minus { color: var(--barva-napaka); }
-.graf__opis { color: var(--barva-besedilo-blago); font-size: 0.85rem; }
-
-/* Zahteve za dostop (administracija). */
-.racun {
-  border: 1px solid var(--barva-crta);
-  border-radius: 10px;
-  padding: 0.7rem 0.8rem;
-  margin-bottom: 0.6rem;
-}
-.racun__glava { display: flex; justify-content: space-between; gap: 0.5rem; }
-.racun__podrobnost { font-size: 0.82rem; color: var(--barva-besedilo-blago); }
-.racun__cas { font-size: 0.8rem; color: var(--barva-besedilo-blago); white-space: nowrap; }
-.racun__izbira { align-items: flex-end; margin-top: 0.6rem; }
-.racun__izbira select { flex: 1; }
-.racun__dejanja { display: flex; gap: 0.3rem; flex-wrap: wrap; }
-.racun__geslo {
-  font-size: 0.8rem;
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
-  margin-top: 0.3rem;
-}
-/* Vgnezdeni obrazec za nastavitev gesla znotraj vrstice računa. */
-.racun__geslo-ured {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  align-items: center;
-  margin-top: 0.3rem;
-  width: 100%;
-}
-.racun__geslo-ured input {
-  flex: 1;
-  min-width: 10rem;
-}
-.racun__geslo code { font-weight: 600; }
-
-/* Rating v seznamu igralcev: število, provizorična zvezdica in postavitev. */
-.igralec-rating {
-  font-variant-numeric: tabular-nums;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.provizoricno {
-  color: var(--barva-oranzna);
-  margin-left: 0.15rem;
-  cursor: help;
+  color: var(--barva-crnilo-3);
 }
 
-@media (max-width: 560px) {
-  .delez { grid-template-columns: 1fr; gap: 0.15rem; }
-  .delez__stolpec { height: 6px; }
+.graf__sprememba {
+  font-weight: 600;
 }
-.racun__namig { font-size: 0.82rem; color: var(--barva-oranzna); margin: 0.4rem 0 0; }
+
+.graf__sprememba--plus {
+  color: var(--barva-poudarek-tekst);
+}
+
+.graf__sprememba--minus {
+  color: var(--barva-negativna);
+}
+
+.graf__opis {
+  color: var(--barva-crnilo-3);
+}
 
 /* ============================================================
-   13. Format TOP: jakostni vrstni red, crta reza in udelezenci
+   13. Format TOP: jakostni vrstni red, udelezenci
    ============================================================ */
 
-/* Sklop nastavitev skupin v obrazcu dogodka. */
-.obrazec__sklop {
-  border: 1px solid var(--barva-crta);
-  border-radius: 8px;
-  padding: 0.75rem;
-  background: var(--barva-povrsina-2);
-}
-.obrazec__sklop .namig { margin-top: 0.5rem; }
-
-.obvestilo--opozorilo {
-  color: var(--barva-oranzna);
-  background: var(--barva-povrsina-2);
-  border: 1px solid var(--barva-crta);
-  border-left: 3px solid var(--barva-oranzna);
-  border-radius: 6px;
-  padding: 0.6rem 0.75rem;
-}
-
 .izbor__povzetek {
-  font-size: 0.85rem;
-  color: var(--barva-besedilo-blago);
-  margin: 0 0 0.75rem;
+  margin: var(--r2) 0 0;
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-2);
 }
 
-/* Seznam po jakosti; stevilcenje izrisemo sami, da se ujema z mesti. */
 .izbor {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  margin-top: var(--r3);
 }
 
 .izbor__vrstica {
-  display: flex;
+  display: grid;
+  grid-template-columns: 44px 32px minmax(0, 1fr) 88px auto;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--barva-crta);
-  border-radius: 6px;
-  background: var(--barva-povrsina);
+  gap: var(--r2);
+  padding: 12px 0 12px 12px;
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid transparent;
+  border-radius: 0;
+  background: none;
+}
+
+.izbor__vrstica--jaz {
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
 }
 
 /* Pod crto reza: vidno zbledelo, a se vedno berljivo. */
 .izbor__vrstica--rezerva {
-  background: var(--barva-povrsina-2);
-  color: var(--barva-besedilo-blago);
+  opacity: 0.55;
 }
 
 .izbor__mesto {
-  min-width: 2.1rem;
+  font: 600 16px / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--barva-besedilo-blago);
-  font-size: 0.85rem;
+  color: var(--barva-crnilo-3);
 }
 
 .izbor__skupina {
-  min-width: 1.4rem;
-  height: 1.4rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  background: var(--barva-poudarek-blaga);
-  color: var(--barva-poudarek-temna);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font: 700 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  color: var(--barva-glavna-tekst);
+  background: none;
+  border-radius: 0;
 }
 
-.izbor__ime { flex: 1; min-width: 0; }
+.izbor__ime {
+  min-width: 0;
+  font-size: var(--tip-vrstica);
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
 
 .izbor__podrobnost {
   display: block;
-  font-size: 0.78rem;
-  color: var(--barva-besedilo-blago);
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
 }
 
-.izbor__gumbi { display: flex; gap: 0.25rem; flex-shrink: 0; }
+.izbor__rating {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+.izbor__rating--brez {
+  color: var(--barva-negativna);
+}
+
+.izbor__gumbi {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
 
 /* Crta reza: kar je pod njo, ne igra. */
 .izbor__crta {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0.5rem 0 0.35rem;
-  color: var(--barva-oranzna);
-  font-size: 0.75rem;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 2px dashed var(--barva-negativna);
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.izbor__crta::before,
-.izbor__crta::after {
-  content: '';
-  flex: 1;
-  border-top: 2px dashed var(--barva-oranzna);
+  color: var(--barva-negativna);
 }
 
-.udelezenci { display: flex; flex-direction: column; gap: 0.25rem; }
+.udelezenci {
+  display: flex;
+  flex-direction: column;
+}
+
 .udelezenci__vrstica {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.3rem 0.5rem;
+  gap: var(--r1);
+  padding: 12px 0;
   border-bottom: 1px solid var(--barva-crta);
 }
-.udelezenci__vrstica:last-child { border-bottom: none; }
 
 .seznam-preprost {
-  list-style: none;
-  margin: 0.4rem 0 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.9rem;
-}
-.seznam-preprost .izbor__podrobnost { display: inline; margin-left: 0.4rem; }
-
-@media (max-width: 560px) {
-  .izbor__vrstica { flex-wrap: wrap; }
-  .izbor__ime { flex-basis: 100%; order: -1; }
+  margin-top: var(--r2);
+  font-size: 16px;
 }
 
-/* ---------- Listki tekem (natis zapisnikov) ----------
-   Listek je črno-bel ne glede na temo (natis na papir), zato tu namenoma
-   ne uporabljamo temo odvisnih spremenljivk, ampak fiksni #000/#fff. */
+.seznam-preprost li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
 
-a.gumb { text-decoration: none; }
+.seznam-preprost .izbor__podrobnost {
+  display: inline;
+  margin-left: var(--r1);
+}
 
-/* Vrstica z gumbom za natis listkov na strani srečanja. */
-.srecanje__dejanja { display: flex; justify-content: center; margin: 0.25rem 0 0.75rem; }
+/* ============================================================
+   14. Lige, srecanja, postava
+   ============================================================ */
 
-/* Orodna vrstica in prazno obvestilo se vidita le na zaslonu, ne na papirju. */
-.zaslon-samo { }
+.liga {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r7);
+}
+
+/* Pravila lige kot kolofon (oznaka <-> vrednost). */
+.opis-mreza {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.opis-mreza__par {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.opis-mreza__par dt {
+  font-size: 15px;
+  color: var(--barva-crnilo-3);
+}
+
+.opis-mreza__par dd {
+  margin: 0;
+  font: 600 15px / 1.4 var(--pisava-mono);
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+.liga__konfig {
+  padding: 0;
+}
+
+/* Naslov "Pravila" stoji v isti vrstici z gumbom za urejanje, zato mu vzamemo
+   zgornji odmik in spodnjo crto (nosi jo ovojna vrstica). */
+.liga__pravila-naslov {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.liga__stanje {
+  margin-top: var(--r4);
+}
+
+.liga__dodaj-ekipo {
+  margin: var(--r3) 0;
+}
+
+.liga__ekipe {
+  display: flex;
+  flex-direction: column;
+}
+
+.liga__ekipa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: 14px 0;
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  font-size: var(--tip-vrstica);
+}
+
+.liga__ekipa-gumbi {
+  display: flex;
+  gap: 4px;
+}
+
+.liga__rating {
+  color: var(--barva-crnilo-3);
+  font-family: var(--pisava-mono);
+  font-size: var(--tip-drobno);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Razpored: kola v dveh stolpcih. */
+.liga__kola {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: var(--r6);
+  margin-top: var(--r3);
+}
+
+.liga__kolo {
+  margin: 0;
+}
+
+.liga__kolo-naslov {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: var(--r1);
+  border-bottom: 2px solid var(--barva-crnilo);
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+  margin: 0;
+  text-transform: none;
+}
+
+.liga__kolo-datum {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.liga__srecanja {
+  display: flex;
+  flex-direction: column;
+}
+
+.liga__srecanje {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--r2);
+  padding: 14px 0;
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-radius: 0;
+  color: var(--barva-crnilo);
+}
+
+.liga__srecanje:hover {
+  text-decoration: none;
+  background: var(--barva-glavna-mehko);
+}
+
+.liga__srecanje-ekipa {
+  min-width: 0;
+  font-size: var(--tip-telo);
+}
+
+.liga__srecanje-ekipa--desno {
+  text-align: right;
+}
+
+.liga__srecanje-ekipa--zmaga {
+  font-weight: 700;
+}
+
+.liga__srecanje-ekipa--poraz {
+  color: var(--barva-crnilo-4);
+}
+
+.liga__srecanje-izid {
+  font: 600 var(--tip-uvod) / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--barva-crnilo);
+  background: var(--barva-polnilo);
+  padding: 4px 0;
+  white-space: nowrap;
+}
+
+.liga__srecanje-izid--caka {
+  background: none;
+  color: var(--barva-crnilo-3);
+}
+
+/* Ekipno srecanje: semafor med tremi debelimi crtami. */
+.srecanje {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r7);
+}
+
+.srecanje__glava {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--r4);
+  padding: var(--r4) 0;
+  border-top: 3px solid var(--barva-crnilo);
+  border-bottom: 3px solid var(--barva-crnilo);
+}
+
+.srecanje__ekipa {
+  min-width: 0;
+}
+
+.srecanje__ekipa--desno {
+  text-align: right;
+}
+
+.srecanje__stran-oznaka {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.srecanje__ekipa-ime {
+  display: block;
+  margin-top: var(--r1);
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h1-nad);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--barva-crnilo);
+}
+
+.srecanje__ekipa-pod {
+  display: block;
+  margin-top: var(--r1);
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.srecanje__izid {
+  text-align: center;
+  font-family: var(--pisava-display);
+  font-size: var(--tip-rezultat);
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  white-space: nowrap;
+}
+
+.srecanje__izid-vodi {
+  color: var(--barva-poudarek-tekst);
+}
+
+.srecanje__izid-locilo {
+  color: var(--barva-crta);
+}
+
+.srecanje__meta {
+  margin: 12px 0 0;
+  font: 500 var(--tip-mono) / 1.6 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  text-align: center;
+}
+
+.srecanje__dejanja {
+  display: flex;
+  gap: var(--r1);
+  justify-content: flex-end;
+}
+
+/* Zapisnik srecanja: oznaka, domaci, izid, gost, status. */
+.srecanje__tabela td,
+.srecanje__tabela th {
+  vertical-align: middle;
+}
+
+.srecanje__oznaka {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.srecanje__zmaga {
+  font-weight: 700;
+}
+
+.srecanje__poraz {
+  color: var(--barva-crnilo-4);
+}
+
+.srecanje__vrsta--neodigrana {
+  opacity: 0.75;
+}
+
+.srecanje__pari {
+  margin: 0 0 4px;
+}
+
+/* Zapisnik: oznaka para, imeni ob izidu na sredini, stanje desno. */
+.srecanje__oznaka-glava,
+.srecanje__oznaka {
+  width: 56px;
+}
+
+.srecanje__stran-glava,
+.srecanje__stran-celica {
+  text-align: right;
+}
+
+.srecanje__izid-glava {
+  width: 112px;
+  text-align: center;
+}
+
+.tabela th.srecanje__izid-glava {
+  text-align: center;
+}
+
+.srecanje__stanje {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.srecanje__stanje--caka {
+  color: var(--barva-glavna-tekst);
+}
+
+.srecanje__izid-tekme {
+  font-family: var(--pisava-display);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--barva-crnilo);
+}
+
+.postava {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: var(--r6);
+  margin-top: var(--r3);
+}
+
+.postava__stran h3 {
+  padding-bottom: var(--r1);
+  border-bottom: 2px solid var(--barva-crnilo);
+  margin: 0;
+  font-family: var(--pisava-telo);
+  font-size: var(--tip-uvod);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.postava__mesto {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--r2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  margin: 0;
+}
+
+.postava__oznaka {
+  width: auto;
+  height: auto;
+  display: block;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font: 700 var(--tip-vrstica) / 1.4 var(--pisava-mono);
+  color: var(--barva-glavna-tekst);
+}
+
+.postava__dvojice {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  min-height: 44px;
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   15. Racuni in igralci
+   ============================================================ */
+
+.racun {
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid var(--barva-crta);
+  border-radius: 0;
+  padding: var(--r2) 0 var(--r2) 12px;
+  margin: 0;
+}
+
+.racun--ADMIN {
+  border-left-color: var(--barva-negativna);
+}
+
+.racun--ORGANIZATOR {
+  border-left-color: var(--barva-glavna);
+}
+
+.racun__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  flex-wrap: wrap;
+}
+
+.racun__uporabnik {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+.racun__podrobnost {
+  display: block;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.racun__vloga {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.racun__vloga--ADMIN {
+  color: var(--barva-negativna);
+}
+
+.racun__vloga--ORGANIZATOR {
+  color: var(--barva-glavna-tekst);
+}
+
+.racun__cas {
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.racun__izbira {
+  margin-top: var(--r2);
+}
+
+.racun__dejanja {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.racun__geslo {
+  margin-top: var(--r1);
+  padding: var(--r1) 12px;
+  border: none;
+  border-left: 4px solid var(--barva-poudarek);
+  border-radius: 0;
+  background: var(--barva-poudarek-mehko);
+  font-family: var(--pisava-mono);
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-2);
+}
+
+.racun__geslo code {
+  font-weight: 600;
+}
+
+.racun__geslo-ured {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  align-items: center;
+  margin-top: var(--r1);
+  width: 100%;
+}
+
+.racun__geslo-ured input {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.racun__namig {
+  margin: var(--r1) 0 0;
+  font-size: var(--tip-drobno);
+  color: var(--barva-negativna);
+}
+
+/* Rating v seznamu igralcev. */
+.igralec-rating {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+  font: 600 var(--tip-vrstica) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.igralec-rating--brez {
+  color: var(--barva-crnilo-4);
+}
+
+/* Provizoricni rating je oznacen z mono zvezdico, ne z ikono. */
+.provizoricno {
+  color: var(--barva-glavna-tekst);
+  cursor: help;
+  font-size: var(--tip-drobno);
+}
+
+.igralec-klub--brez {
+  color: var(--barva-negativna);
+}
+
+/* ============================================================
+   Odzivnost
+   ============================================================ */
+
+@media (max-width: 1100px) {
+  :root {
+    --tip-h1: 72px;
+    --tip-h1-nad: 40px;
+    --tip-rezultat: 72px;
+  }
+
+  .stran-glava,
+  .stran-glava--ozka,
+  .stran-glava--dejanja {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r5);
+  }
+
+  .domov__mreza,
+  .dvostolpicno,
+  .dvostolpicno--lestvica {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .elo-blok__vrednost {
+    font-size: 88px;
+  }
+}
+
+@media (max-width: 900px) {
+  .glava,
+  .vsebina,
+  .brez-povezave {
+    padding-left: var(--r3);
+    padding-right: var(--r3);
+  }
+
+  .glava__vsebina {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+
+  .srecanje__glava {
+    grid-template-columns: minmax(0, 1fr);
+    text-align: left;
+  }
+
+  .srecanje__ekipa--desno {
+    text-align: left;
+  }
+
+  /* Strnjena razlicica (domaca stran) ima svoj, bolj specificen selektor,
+     zato jo je treba nasloviti izrecno - sicer trije stolpci prezivijo tudi
+     na telefonu in vsak dobi 140 px, vsebina pa se razlije cez rob. */
+  .enanaena__plosca,
+  .enanaena--strnjen .enanaena__plosca {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .enanaena__plosca > *,
+  .enanaena--strnjen .enanaena__plosca > * {
+    grid-column: 1;
+    grid-row: auto;
+    text-align: left;
+  }
+
+  .enanaena--strnjen .enanaena__sredina,
+  .enanaena--strnjen .enanaena__zreb {
+    justify-self: start;
+  }
+
+  .enanaena__kartica--2,
+  .enanaena__kartica--2 .enanaena__igralec {
+    text-align: left;
+  }
+
+  .enanaena__stevilo {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --tip-h1: 56px;
+    --tip-h1-nad: 32px;
+    --tip-h2: 32px;
+    --tip-rezultat: 56px;
+  }
+
+  .glava__navigacija {
+    order: 3;
+    width: 100%;
+    gap: var(--r2);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .glava__navigacija::-webkit-scrollbar {
+    display: none;
+  }
+
+  .naslov-strani--enovrsticni {
+    font-size: 48px;
+  }
+
+  /* Par naslova podstrani ima svoji trdi meri (80/44), zato ju je treba
+     zmanjsati izrecno - sicer ime turnirja pri 375 px razbije vrstico. */
+  .naslov-strani--podstran .naslov-strani__glavni {
+    font-size: 56px;
+  }
+
+  .naslov-strani--podstran .naslov-strani__nad {
+    font-size: 32px;
+  }
+
+  .elo-blok__vrednost {
+    font-size: 72px;
+  }
+
+  .izbor__vrstica {
+    grid-template-columns: 40px 28px minmax(0, 1fr) auto;
+    row-gap: var(--r1);
+  }
+
+  .izbor__gumbi {
+    grid-column: 1 / -1;
+  }
+
+  /* Mono meta (datum, kraj, sistem) na telefonu raje preskoci v novo vrsto,
+     kot da se razlije cez rob kartice. */
+  .vrstica__mono {
+    white-space: normal;
+  }
+
+  /* Lestvica mora biti berljiva brez vodoravnega drsenja: odpadeta stolpca,
+     ki ju bralec izpelje sam (odigrane = Z + P) oz. sta le slika ze
+     prikazanega podatka (palica uspesnosti, nizi). Ostane, kar gledalec
+     dejansko isce: mesto, ime, klub, izkupicek, rating. */
+  .lestvica__odigrane,
+  .lestvica__nizi,
+  .lestvica__tekme,
+  .lestvica__uspesnost-glava,
+  .lestvica__uspesnost-celica {
+    display: none;
+  }
+
+  /* Okolica na lestvici: pri 320 px so fiksni stolpci in 16 px vrzeli pojedli
+     vse do 48 px za ime. Stevilke naj zasedejo toliko, kot jih je, ostalo
+     pripada imenu. */
+  .okolica__vrstica {
+    grid-template-columns: 32px minmax(0, 1fr) auto auto;
+    gap: var(--r1);
+  }
+}
+
+/* Najozji telefoni (320 px). Prelomna tocka je vsebinska, ne naprava: pri tej
+   sirini se ime turnirja v naslovu 56 px ne prelomi vec in potisne stran v
+   vodoravno drsenje. Display glas ostane, le za stopnjo tisejsi. */
+@media (max-width: 400px) {
+  :root {
+    --tip-h1: 44px;
+    --tip-h1-nad: 28px;
+    --tip-rezultat: 48px;
+  }
+
+  .naslov-strani__glavni,
+  .naslov-strani--enovrsticni {
+    overflow-wrap: break-word;
+  }
+
+  .naslov-strani--enovrsticni {
+    font-size: 40px;
+  }
+
+  .naslov-strani--podstran .naslov-strani__glavni {
+    font-size: 44px;
+  }
+
+  .naslov-strani--podstran .naslov-strani__nad {
+    font-size: 26px;
+  }
+}
+
+/* Telefon obrnjen v sirino: sirine je dovolj, visine ne. Naslov 72 px bi pojedel
+   petino zaslona, gledalec pa je telefon obrnil prav zato, da vidi vec mreze. */
+@media (max-height: 480px) and (orientation: landscape) {
+  :root {
+    --tip-h1: 48px;
+    --tip-h1-nad: 28px;
+  }
+
+  .naslov-strani--podstran .naslov-strani__glavni,
+  .naslov-strani--enovrsticni {
+    font-size: 48px;
+  }
+
+  .naslov-strani--podstran .naslov-strani__nad {
+    font-size: 28px;
+  }
+
+  .vsebina {
+    padding-top: var(--r4);
+    gap: var(--r5);
+  }
+}
+
+/* Na dotik je vsak cilj vsaj 44 px, tudi navigacija.
+   Merilo je vrsta kazalca, ne sirina zaslona: prst je debel tudi na tablici
+   in na prenosniku z zaslonom na dotik, misjemu kazalcu pa 44 px ni treba
+   jemati prostora tam, kjer je postavitev namenoma tesna. */
+@media (pointer: coarse) {
+  .glava__povezava,
+  .povezava-nazaj,
+  .nazaj {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Drobne mono povezave ("Vsi turnirji →") stojijo v vrstici, poravnani po
+     osnovnici, zato jih ne smemo zvisati - to bi porusilo poravnavo z
+     naslovom. Namesto tega zadetkovno povrsino razsiri nevidni ::after:
+     besedilo ostane, kjer je, prst pa dobi svojih 44 px. */
+  a.sekcija__meta,
+  a.domov__vec,
+  a.lestvica__ime {
+    position: relative;
+  }
+
+  a.sekcija__meta::after,
+  a.domov__vec::after {
+    content: '';
+    position: absolute;
+    inset: -14px -8px;
+  }
+
+  /* V tabeli je razmik med vrsticami manjsi, zato je razsiritev nizja -
+     tako se zadetkovni polji sosednjih imen ne prekrivata. */
+  a.lestvica__ime::after {
+    content: '';
+    position: absolute;
+    inset: -11px -6px;
+  }
+}
+
+/* ============================================================
+   16. Tisk: sodniski listki in ekipni zapisnik NTZS
+   ============================================================
+   Tisk je crno-bel ne glede na temo, zato tu namenoma ne uporabljamo
+   temo odvisnih spremenljivk, ampak fiksni #000/#fff. Brez podlag in
+   sivin — samo 1 px in 2 px crne crte, display 800 za imena, mono za
+   oznake in stevilke. */
+
+.zaslon-samo {
+}
 
 .listki-orodja {
   position: sticky;
@@ -1898,41 +3876,81 @@ a.gumb { text-decoration: none; }
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
-  background: var(--barva-povrsina);
-  border-bottom: 1px solid var(--barva-crta);
-  box-shadow: var(--senca);
+  gap: var(--r2);
+  padding: var(--r2) var(--r5);
+  background: var(--barva-papir);
+  border-bottom: 3px solid var(--barva-crnilo);
 }
+
+/* V lepljivi orodni vrstici je povezava nazaj navpicno poravnana z gumbom. */
+.listki-orodja .povezava-nazaj,
+.listki-orodja .nazaj {
+  margin-bottom: 0;
+}
+
 .listki-orodja__stevec {
   margin-left: auto;
-  color: var(--barva-besedilo-blago);
-  font-size: 0.9rem;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.listki-orodja__izbira {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.listki-orodja__izbira select {
+  width: auto;
 }
 
 .listki-stran {
   max-width: 210mm;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 3rem;
+  padding: var(--r3) var(--r5) var(--r8);
 }
-.listki-naslov h1 { margin: 0; font-size: 1.15rem; }
-.listki-naslov p { margin: 0.2rem 0 1.25rem; color: var(--barva-besedilo-blago); }
 
+.listki-stran--zapisnik {
+  max-width: 210mm;
+}
+
+.listki-naslov h1 {
+  font-size: var(--tip-h3);
+}
+
+.listki-naslov p {
+  margin: 4px 0 var(--r3);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Listki v mrezi 2 stolpcev; robovi sosedov se prekrijejo v eno crto,
+   ki je hkrati crta reza. */
 .listki-mreza {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 6mm;
+  gap: 0;
 }
 
 .listek {
   display: flex;
   flex-direction: column;
-  gap: 1.5mm;
-  padding: 2.5mm 3mm;
-  border: 1.5px solid #000;
-  border-radius: 3px;
+  gap: 3mm;
+  padding: 4mm;
+  border: 1px solid #000;
+  margin: 0 -1px -1px 0;
   background: #fff;
   color: #000;
+  font-family: var(--pisava-telo);
   break-inside: avoid;
 }
 
@@ -1940,83 +3958,356 @@ a.gumb { text-decoration: none; }
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 8.5pt;
-}
-.listek__faza {
-  font-weight: 700;
+  gap: 3mm;
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: #000;
 }
-.listek__meta { color: #333; white-space: nowrap; }
+
+/* Prazna crta za rocni vpis mize: brez min-height bi bila visoka 0 px in bi
+   crta lezala nize od osnovne crte besedila v glavi. */
 .listek__vpis {
   display: inline-block;
   min-width: 9mm;
+  min-height: 11px;
   border-bottom: 1px solid #000;
   text-align: center;
 }
 
-.listek__tabela {
+/* Igralec: ime display 800, klub mono — locena s tanko crto. */
+.listek__igralci {
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+}
+
+.listek__igralec {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 1px solid #000;
+}
+
+.listek__ime {
+  font-family: var(--pisava-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listek__klub {
+  font: 400 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #000;
+  white-space: nowrap;
+}
+
+/* Polja za vpis nizov: prazni pravokotniki 40 px, mreza 5 x 1fr, vrzel 4 px. */
+.listek__nizi {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.listek__niz-polje {
+  height: 40px;
+  border: 1px solid #000;
+}
+
+.listek__noga {
+  display: flex;
+  justify-content: space-between;
+  gap: 3mm;
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #000;
+}
+
+/* ---------- Ekipni zapisnik (uraden NTZS obrazec) ---------- */
+
+.zapisnik {
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+  padding: 4mm;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5mm;
+  font-family: var(--pisava-telo);
+  font-size: 9pt;
+  line-height: 1.25;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.zapisnik__glava {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4mm;
+}
+
+.zapisnik__zveza {
+  font: 500 8pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.zapisnik__naslov {
+  font-family: var(--pisava-display);
+  font-size: 15pt;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.zapisnik__podnaslov {
+  font: 500 8pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.zapisnik__meta {
+  border-collapse: collapse;
+  font: 500 8pt / 1.3 var(--pisava-mono);
+}
+
+.zapisnik__meta th,
+.zapisnik__meta td {
+  border: 1px solid #000;
+  padding: 0.8mm 1.4mm;
+  text-align: left;
+}
+
+.zapisnik__meta th {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.zapisnik__meta .zapisnik__vpis {
+  min-width: 22mm;
+}
+
+.zapisnik__ekipi {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  padding: 1.5mm 0;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+}
+
+.zapisnik__ekipa {
+  flex: 1;
+  font-family: var(--pisava-display);
+  font-size: 14pt;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.zapisnik__ekipa--desno {
+  text-align: right;
+}
+
+.zapisnik__proti {
+  flex: 0 0 auto;
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  font-size: 14pt;
+}
+
+.zapisnik__postave {
+  display: flex;
+  gap: 4mm;
+}
+
+.zapisnik__postava {
+  flex: 1;
+  border-collapse: collapse;
+  font-size: 8.5pt;
+}
+
+.zapisnik__postava caption {
+  caption-side: top;
+  text-align: left;
+  font: 500 8pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-bottom: 0.8mm;
+}
+
+.zapisnik__postava th,
+.zapisnik__postava td {
+  border: 1px solid #000;
+  padding: 1mm 1.5mm;
+}
+
+.zapisnik__postava th {
+  width: 8mm;
+  text-align: center;
+  font-family: var(--pisava-mono);
+  font-weight: 600;
+}
+
+.zapisnik__tekme {
   width: 100%;
   border-collapse: collapse;
   font-size: 8.5pt;
   table-layout: fixed;
 }
-.listek__tabela th,
-.listek__tabela td { border: 1px solid #000; }
-.listek__tabela thead th {
-  padding: 0.6mm;
-  font-weight: 600;
+
+.zapisnik__tekme th,
+.zapisnik__tekme td {
+  border: 1px solid #000;
+  padding: 0.8mm 1mm;
   text-align: center;
-  background: #eee;
+  height: 5.6mm;
 }
-/* Ozka stolpca za nize (posamezni set) in skupno število nizov. */
-.listek__tabela th:not(.listek__igralec-glava):not(.listek__nizi-glava) { width: 7mm; }
-.listek__nizi-glava { width: 10mm; }
-.listek__igralec-glava { text-align: left; padding-left: 1.5mm; }
 
-.listek__igralec { padding: 1mm 1.5mm; line-height: 1.15; }
-.listek__ime {
-  display: block;
-  font-weight: 700;
-  font-size: 9pt;
-  white-space: nowrap;
+.zapisnik__tekme thead th {
+  font: 500 7.5pt / 1.2 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zapisnik__st {
+  width: 6mm;
+  font-family: var(--pisava-mono);
+}
+
+.zapisnik__oznaka {
+  width: 13mm;
+  font-family: var(--pisava-mono);
+  font-weight: 600;
+}
+
+.zapisnik__igralec {
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.listek__klub {
-  display: block;
-  font-size: 7pt;
-  color: #444;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.listek__celica { height: 9mm; }
 
-.listek__noga {
+.zapisnik__niz {
+  width: 6.5mm;
+}
+
+.zapisnik__igre {
+  width: 11mm;
+}
+
+.zapisnik__stanje {
+  width: 13mm;
+}
+
+.zapisnik__izid,
+.zapisnik__sodniki,
+.zapisnik__gledalci,
+.zapisnik__pripombe {
   display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  font: 500 8.5pt / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zapisnik__sodniki {
   justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 8pt;
 }
-.listek__crta {
+
+.zapisnik__crta {
+  flex: 0 0 auto;
   display: inline-block;
-  min-width: 28mm;
+  min-width: 30mm;
   border-bottom: 1px solid #000;
+  align-self: flex-end;
 }
-.listek__crta--kratka { min-width: 20mm; }
+
+.zapisnik__crta--ozka {
+  min-width: 12mm;
+}
+
+.zapisnik__crta--polna {
+  flex: 1 1 auto;
+  min-width: 40mm;
+}
+
+.zapisnik__podpisi {
+  display: flex;
+  gap: 5mm;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.zapisnik__podpis {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 45mm;
+}
+
+.zapisnik__podpis .zapisnik__crta--polna {
+  width: 100%;
+  min-width: 0;
+}
+
+.zapisnik__podpis-naslov {
+  margin-top: 0.8mm;
+  font: 500 7.5pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
 @media print {
-  @page { size: A4 portrait; margin: 10mm; }
-  body { background: #fff; }
-  .zaslon-samo { display: none !important; }
-  .listki-stran { max-width: none; margin: 0; padding: 0; }
-  .listki-naslov h1 { color: #000; }
-  .listki-naslov p { color: #333; }
-  .listki-mreza { gap: 5mm; }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .zaslon-samo {
+    display: none !important;
+  }
+
+  .listki-stran {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .zapisnik {
+    border-width: 1px;
+  }
 }
 
-@media (max-width: 560px) {
-  .listki-mreza { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .listki-mreza {
+    grid-template-columns: 1fr;
+  }
+
+  .listki-stran {
+    padding-left: var(--r3);
+    padding-right: var(--r3);
+  }
+
+  .listki-orodja {
+    padding-left: var(--r3);
+    padding-right: var(--r3);
+    flex-wrap: wrap;
+  }
 }
+

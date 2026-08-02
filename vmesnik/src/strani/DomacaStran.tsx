@@ -1,7 +1,7 @@
-/* Domača (začetna) stran - nadzorna plošča v dveh stolpcih: levo turnirji,
-   lige in strnjen pripomoček "1 na 1", desno pa daljša lestvica igralcev.
-   Vse je bralno in vidno tudi gostom; poglobljeni pogledi so dosegljivi prek
-   povezav. */
+/* Domača (začetna) stran - pregled v dveh stolpcih: levo turnirji, lige in
+   strnjen pripomoček "1 na 1", desno pa daljša lestvica igralcev. V glavi
+   strani stoji kolofon z utripom sezone (koliko tekmovanj teče). Vse je bralno
+   in vidno tudi gostom; poglobljeni pogledi so dosegljivi prek povezav. */
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -17,58 +17,98 @@ export function DomacaStran() {
   const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
   const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
 
+  /* Utrip sezone: štejemo iz podatkov, ki jih stran že naloži - brez dodatnega
+     klica na strežnik. Vrstica se izpiše šele, ko je vrednost znana. */
+  const utrip: { oznaka: string; vrednost: number | null }[] = [
+    {
+      oznaka: 'Turnirji v teku',
+      vrednost: turnirji.data ? turnirji.data.filter((t) => t.status === 'V_TEKU').length : null,
+    },
+    {
+      oznaka: 'Lige v teku',
+      vrednost: lige.data ? lige.data.filter((l) => l.status === 'V_TEKU').length : null,
+    },
+    {
+      oznaka: 'Igralci z ratingom',
+      vrednost: lestvica.data ? lestvica.data.filter((v) => v.rating !== null).length : null,
+    },
+    {
+      oznaka: 'Odigrane tekme',
+      vrednost: lestvica.data
+        ? /* Vsaka tekma nastopa pri obeh igralcih, zato polovica vsote. */
+          Math.round(lestvica.data.reduce((vsota, v) => vsota + v.odigrane, 0) / 2)
+        : null,
+    },
+  ]
+
   return (
     <section className="domov">
-      <div className="naslovna-vrstica">
+      <div className="stran-glava">
         <div>
-          <h1>Pregled</h1>
-          <p className="podnaslov">
-            Namiznoteniški turnirji, žive lestvice in medsebojni izidi na enem mestu.
+          <h1 className="naslov-strani">
+            <span className="naslov-strani__nad">Namizni tenis</span>
+            <span className="naslov-strani__glavni">Pregled</span>
+          </h1>
+          <p className="uvod">
+            Turnirji, žive lestvice in medsebojni izidi na enem mestu.
           </p>
+        </div>
+        <div className="kolofon">
+          {utrip.map((u) => (
+            <div className="kolofon__vrstica" key={u.oznaka}>
+              <span className="kolofon__oznaka">{u.oznaka}</span>
+              <span className="kolofon__vrednost">{u.vrednost ?? '—'}</span>
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="domov__mreza">
         <div className="domov__stolpec">
-          <Plosca naslov="Turnirji" povezava={{ pot: '/turnirji', oznaka: 'Vsi turnirji' }}>
+          <Sekcija naslov="Turnirji" povezava={{ pot: '/turnirji', oznaka: 'Vsi turnirji' }}>
             <TurnirjiPovzetek turnirji={turnirji.data} nalaganje={turnirji.isPending} />
-          </Plosca>
+          </Sekcija>
 
-          <Plosca naslov="Lige" povezava={{ pot: '/lige', oznaka: 'Vse lige' }}>
+          <Sekcija naslov="Lige" povezava={{ pot: '/lige', oznaka: 'Vse lige' }}>
             <LigePovzetek lige={lige.data} nalaganje={lige.isPending} />
-          </Plosca>
+          </Sekcija>
 
-          <Plosca naslov="Ena na ena" kompakt>
+          <Sekcija naslov="Ena na ena" povezava={{ pot: '/dvoboj', oznaka: 'Cel dvoboj' }}>
             <EnaNaEna />
-          </Plosca>
+          </Sekcija>
         </div>
 
-        <Plosca naslov="Lestvica igralcev" povezava={{ pot: '/lestvica', oznaka: 'Cela lestvica' }}>
+        <Sekcija
+          naslov="Lestvica"
+          manjsi
+          povezava={{ pot: '/lestvica', oznaka: 'Cela' }}
+        >
           <MiniLestvica vrstice={lestvica.data} nalaganje={lestvica.isPending} />
-        </Plosca>
+        </Sekcija>
       </div>
     </section>
   )
 }
 
-function Plosca({
+/* Sekcija strani: 3 px črta, naslov 40/800 in mono povezava desno. Desni
+   (ožji) stolpec dobi manjši naslov, da se ne tepe s širino. */
+function Sekcija({
   naslov,
   povezava,
-  kompakt,
+  manjsi,
   children,
 }: {
   naslov: string
   povezava?: { pot: string; oznaka: string }
-  /* Strnjena različica (npr. pripomoček "1 na 1" v ožjem stolpcu). */
-  kompakt?: boolean
+  manjsi?: boolean
   children: ReactNode
 }) {
   return (
-    <div className={'plosca domov__plosca' + (kompakt ? ' domov__plosca--kompakt' : '')}>
-      <div className="domov__plosca-glava">
-        <h2>{naslov}</h2>
+    <div>
+      <div className="naslovna-vrstica">
+        <h2 className={manjsi ? 'sekcija__naslov--manjsi' : undefined}>{naslov}</h2>
         {povezava && (
-          <Link to={povezava.pot} className="domov__vec">
+          <Link to={povezava.pot} className="sekcija__meta">
             {povezava.oznaka} →
           </Link>
         )}
@@ -89,20 +129,29 @@ function MiniLestvica({
   if (!vrstice || vrstice.length === 0) return <p className="obvestilo">Še ni igralcev.</p>
 
   return (
-    <table className="tabela lestvica domov__lestvica lestvica--razvrstitev">
-      <tbody>
-        {vrstice.slice(0, 15).map((v, indeks) => (
-          <tr key={v.idIgralca}>
-            <td className="lestvica__mesto">{indeks + 1}</td>
-            <td>
-              <strong>{v.polnoIme}</strong>
-              {v.klub && <span className="lestvica__klub"> · {v.klub}</span>}
-            </td>
-            <td className="lestvica__stevilka lestvica__rating">{v.rating ?? '—'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="domov__lestvica">
+      {vrstice.slice(0, 15).map((v, indeks) => (
+        <Link
+          to={`/igralci/${v.idIgralca}/profil`}
+          className="domov__lestvica-vrstica"
+          key={v.idIgralca}
+        >
+          {/* Prva tri mesta so modra - edini poudarek v stolpcu mest. */}
+          <span
+            className={
+              'domov__lestvica-mesto' + (indeks < 3 ? ' domov__lestvica-mesto--vrh' : '')
+            }
+          >
+            {indeks + 1}.
+          </span>
+          <span>
+            <span className="domov__lestvica-ime">{v.polnoIme}</span>
+            <span className="domov__lestvica-klub">{v.klub ?? 'brez kluba'}</span>
+          </span>
+          <span className="domov__lestvica-rating">{v.rating ?? '—'}</span>
+        </Link>
+      ))}
+    </div>
   )
 }
 
@@ -117,21 +166,22 @@ function TurnirjiPovzetek({
   if (!turnirji || turnirji.length === 0) return <p className="obvestilo">Ni še turnirjev.</p>
 
   return (
-    <ul className="domov__seznam">
+    <div className="kartice">
       {turnirji.slice(0, 5).map((t) => (
-        <li key={t.id}>
-          <Link to={`/turnirji/${t.id}`} className="domov__postavka">
-            <span className="domov__postavka-ime">{t.ime}</span>
-            <span className="domov__postavka-desno">
-              <span className="domov__postavka-datum">
-                {oblikujObdobje(t.datumZacetka, t.datumKonca) || '—'}
-              </span>
-              <ZnackaStatusa status={t.status} />
+        <Link to={`/turnirji/${t.id}`} className="domov__postavka" key={t.id}>
+          <span className="domov__postavka-ime">
+            {t.ime}
+            <span className="domov__postavka-kraj">
+              {t.kraj?.ime ?? 'kraj še ni določen'}
             </span>
-          </Link>
-        </li>
+          </span>
+          <span className="domov__postavka-datum">
+            {oblikujObdobje(t.datumZacetka, t.datumKonca) || '—'}
+          </span>
+          <ZnackaStatusa status={t.status} />
+        </Link>
       ))}
-    </ul>
+    </div>
   )
 }
 
@@ -146,21 +196,17 @@ function LigePovzetek({
   if (!lige || lige.length === 0) return <p className="obvestilo">Ni še lig.</p>
 
   return (
-    <ul className="domov__seznam">
+    <div className="kartice">
       {lige.slice(0, 5).map((l) => (
-        <li key={l.id}>
-          <Link to={`/lige/${l.id}`} className="domov__postavka">
-            <span className="domov__postavka-ime">{l.ime}</span>
-            <span className="domov__postavka-desno">
-              <span className="domov__postavka-datum">
-                {l.steviloEkip} {ekipTekst(l.steviloEkip)}
-              </span>
-              <ZnackaStatusa status={l.status} />
-            </span>
-          </Link>
-        </li>
+        <Link to={`/lige/${l.id}`} className="domov__postavka" key={l.id}>
+          <span className="domov__postavka-ime">{l.ime}</span>
+          <span className="domov__postavka-datum">
+            {l.steviloEkip} {ekipTekst(l.steviloEkip)}
+          </span>
+          <ZnackaStatusa status={l.status} />
+        </Link>
       ))}
-    </ul>
+    </div>
   )
 }
 

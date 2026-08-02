@@ -13,5 +13,7 @@ public record TurnirVnos(
         String dvorana,
         LocalDate datumZacetka,
         LocalDate datumKonca,
-        String opombe
+        String opombe,
+        // ali tekme turnirja stejejo v klubski ELO; null = privzeto (steje)
+        Boolean stejeVElo
 ) {}

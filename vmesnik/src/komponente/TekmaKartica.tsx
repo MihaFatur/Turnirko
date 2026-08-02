@@ -79,11 +79,20 @@ function Stran({
     )
   }
 
-  const jeZmagovalec =
-    tekma.status === 'KONCANA' && tekma.idZmagovalcaPrijave === udelezenec.idPrijave
+  /* Zmagovalec je krepek v polnem crnilu, porazenec pobledi - tako je izid
+     razberljiv tudi brez branja stevilk. */
+  const koncana = tekma.status === 'KONCANA' && tekma.izidTip !== 'PROSTO'
+  const jeZmagovalec = koncana && tekma.idZmagovalcaPrijave === udelezenec.idPrijave
+  const jePorazenec = koncana && !jeZmagovalec && tekma.idZmagovalcaPrijave !== null
 
   return (
-    <div className={'tekma__stran' + (jeZmagovalec ? ' tekma__stran--zmagovalec' : '')}>
+    <div
+      className={
+        'tekma__stran' +
+        (jeZmagovalec ? ' tekma__stran--zmagovalec' : '') +
+        (jePorazenec ? ' tekma__stran--porazenec' : '')
+      }
+    >
       <span className="tekma__ime">
         <span className="tekma__ime-vrsta">
           {udelezenec.polnoIme}

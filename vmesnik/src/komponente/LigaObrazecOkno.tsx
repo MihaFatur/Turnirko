@@ -6,8 +6,8 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
-import type { FormatSrecanja, LigaDto, LigaVnos, SpolKategorija } from '../api/tipi'
-import { OZNAKE_FORMAT } from '../api/tipi'
+import type { FormatSrecanja, LigaDto, LigaVnos, PredlogaLige, SpolKategorija } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_PREDLOGA_LIGE } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -37,6 +37,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const [dovoljenoNeodloceno, nastaviDovoljenoNeodloceno] = useState(liga?.dovoljenoNeodloceno ?? true)
   const [prepoved, nastaviPrepoved] = useState(liga?.prepovedDvojneRegistracije ?? false)
   const [stejeVElo, nastaviStejeVElo] = useState(liga?.stejeVElo ?? true)
+  const [predloga, nastaviPredlogo] = useState<PredlogaLige>(liga?.predlogaListka ?? 'SNTL_23')
   const [idVisjaLiga, nastaviVisjo] = useState(liga?.idVisjaLiga != null ? String(liga.idVisjaLiga) : '')
   const [stNapreduje, nastaviNapreduje] = useState(liga?.stNapreduje ?? 0)
   const [stIzpade, nastaviIzpade] = useState(liga?.stIzpade ?? 0)
@@ -66,6 +67,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       dovoljenoNeodloceno,
       prepovedDvojneRegistracije: prepoved,
       stejeVElo,
+      predlogaListka: predloga,
       idVisjaLiga: idVisjaLiga ? Number(idVisjaLiga) : null,
       stNapreduje,
       stIzpade,
@@ -166,6 +168,15 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         <label className="obrazec__polje obrazec__polje--stikalo">
           <input type="checkbox" checked={stejeVElo} onChange={(d) => nastaviStejeVElo(d.target.checked)} />
           <span>Posamične tekme štejejo v klubski ELO</span>
+        </label>
+
+        <label className="obrazec__polje">
+          <span>Predloga zapisnika (za natis listkov)</span>
+          <select value={predloga} onChange={(d) => nastaviPredlogo(d.target.value as PredlogaLige)}>
+            {(Object.keys(OZNAKE_PREDLOGA_LIGE) as PredlogaLige[]).map((p) => (
+              <option key={p} value={p}>{OZNAKE_PREDLOGA_LIGE[p]}</option>
+            ))}
+          </select>
         </label>
 
         <fieldset className="obrazec__skupina">

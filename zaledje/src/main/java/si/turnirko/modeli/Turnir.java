@@ -53,6 +53,11 @@ public class Turnir {
     @Column(name = "opombe")
     private String opombe;
 
+    /* Ali tekme turnirja stejejo v klubski ELO (kot pri ligi). Privzeto da;
+       organizator izklopi za prijateljske/rekreacijske turnirje. */
+    @Column(name = "steje_v_elo", nullable = false)
+    private boolean stejeVElo = true;
+
     /* Lastnistvo: racun, ki je turnir ustvaril, in posnetek njegovega kluba ob
        nastanku. Po njiju storitve razsodijo, kdo sme urejati - organizator sme
        svoje turnirje in tiste svojega kluba. Adminovi turnirji nimajo lastnika
@@ -101,6 +106,9 @@ public class Turnir {
 
     public String getOpombe() { return opombe; }
     public void setOpombe(String opombe) { this.opombe = opombe; }
+
+    public boolean isStejeVElo() { return stejeVElo; }
+    public void setStejeVElo(boolean stejeVElo) { this.stejeVElo = stejeVElo; }
 
     public Uporabnik getUstvaril() { return ustvaril; }
     public void setUstvaril(Uporabnik ustvaril) { this.ustvaril = ustvaril; }

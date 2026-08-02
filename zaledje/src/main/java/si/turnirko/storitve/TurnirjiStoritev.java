@@ -65,6 +65,8 @@ public class TurnirjiStoritev {
         turnir.setDatumZacetka(vnos.datumZacetka());
         turnir.setDatumKonca(vnos.datumKonca());
         turnir.setOpombe(vnos.opombe());
+        // null = privzeto (tekme stejejo v ELO)
+        turnir.setStejeVElo(vnos.stejeVElo() == null || vnos.stejeVElo());
         // zabelezi lastnika (organizator oz. admin, ki ga ustvarja)
         lastnistvo.oznaciLastnika(turnir);
         // status vedno doloci streznik (PRIPRAVA je privzeti)

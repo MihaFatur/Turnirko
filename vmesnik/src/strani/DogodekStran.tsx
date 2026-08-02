@@ -19,11 +19,13 @@ import { OZNAKE_SISTEM_KRATKO, OZNAKE_SPOL_KATEGORIJA, OZNAKE_STATUS_PRIJAVE } f
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { Lestvica } from '../komponente/Lestvica'
 import { Mreza } from '../komponente/Mreza'
+import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TekmeSeznam } from '../komponente/TekmeSeznam'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
 import { ZnackaStatusa } from '../komponente/Znacka'
+import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
 
 export function DogodekStran() {
   const { id } = useParams()
@@ -31,9 +33,13 @@ export function DogodekStran() {
   const odjemalec = useQueryClient()
   const { jeAdmin, jeOrganizator, smemUrejati } = useAvtentikacija()
 
+  /* Med tekmovanjem se mreža osvežuje sama - gledalec v dvorani ne sme biti
+     odvisen od ročnega ponovnega nalaganja. Ko je dogodek zaključen ali še v
+     pripravi, se ne osvežuje nič. */
   const mreza = useQuery({
     queryKey: ['dogodek', idDogodka],
     queryFn: () => dogodkiApi.mreza(idDogodka),
+    refetchInterval: (poizvedba) => intervalOsvezevanja(poizvedba.state.data?.dogodek.status),
   })
 
   /* Za urejanje potrebujemo lastnistvo nadrejenega turnirja (dogodek ga sam
@@ -50,8 +56,12 @@ export function DogodekStran() {
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['dogodek', idDogodka] })
 
-  if (mreza.isPending) return <p className="obvestilo">Nalaganje …</p>
-  if (mreza.error) return <SporociloNapake napaka={mreza.error} />
+  /* isLoading, ne isPending: ustavljena poizvedba (brez povezave) ali napaka
+     ne smeta obviseti v večnem "Nalaganje …". */
+  if (mreza.isLoading) return <p className="obvestilo">Nalaganje …</p>
+  if (mreza.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (mreza.error) return <NapakaPoizvedbe poizvedba={mreza} kaj="dogodka" />
+  if (!mreza.data) return <p className="obvestilo">Tega dogodka ni (več).</p>
   const podatki = mreza.data!
   const dogodek = podatki.dogodek
   // organizator sme upravljati dogodke svojega (ali klubskega) turnirja
@@ -64,23 +74,29 @@ export function DogodekStran() {
         ← Nazaj na turnir
       </Link>
 
-      <div className="naslovna-vrstica">
+      {/* Ime dogodka je naslov strani v eni vrstici (72 px), lastnosti pod njim. */}
+      <div className="stran-glava stran-glava--dejanja stran-glava--dno">
         <div>
-          <h1>{dogodek.ime}</h1>
-          <p className="podnaslov">
+          <h1 className="naslov-strani naslov-strani--enovrsticni">{dogodek.ime}</h1>
+          <p className="uvod">
             {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
             {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
-            {` · na ${dogodek.privzetoSteviloNizov} nizov`}
+            {` · na ${dogodek.privzetoSteviloNizov} nizov · `}
+            {OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja].toLowerCase()}
           </p>
         </div>
         <div className="naslovna-vrstica__desno">
           {smem && dogodek.status === 'V_TEKU' && (
-            <Link to={`/dogodki/${idDogodka}/listki`} className="gumb gumb--majhen">
-              🖨 Listki
+            <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
+              Listki za tiskanje
             </Link>
           )}
-          <span className="znacka znacka--sistem">{OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja]}</span>
           <ZnackaStatusa status={dogodek.status} />
+          {/* Ura zadnjega odgovora strežnika: brez nje gledalec ne ve, ali
+              stoji rezultat ali njegova povezava. */}
+          {jeVZivo(dogodek.status) && (
+            <span className="sekcija__meta">Osveženo ob {uraOsvezitve(mreza.dataUpdatedAt)}</span>
+          )}
         </div>
       </div>
 
@@ -123,8 +139,8 @@ function PripravaGost({ podatki }: { podatki: MrezaDto }) {
         <table className="tabela">
           <thead>
             <tr>
-              <th>Igralec</th>
-              <th>Klub</th>
+              <th scope="col">Igralec</th>
+              <th scope="col">Klub</th>
             </tr>
           </thead>
           <tbody>
@@ -174,20 +190,23 @@ function Priprava({
   const zrebOnemogocen = premalo || zadrzek !== null || zreb.isPending
 
   return (
-    <div className="dvostolpicno">
-      <div className="plosca">
+    <div className="dvostolpicno dvostolpicno--lestvica">
+      <div>
         <div className="naslovna-vrstica">
-          <h2>
-            {izbor ? 'Jakostni vrstni red' : 'Prijavljeni'} ({aktivnePrijave.length})
-          </h2>
-          <button
-            className="gumb gumb--glavni"
-            disabled={zrebOnemogocen}
-            title={premalo ? 'Za žreb sta potrebna vsaj 2 igralca.' : (zadrzek ?? undefined)}
-            onClick={() => nastaviPotrjujemZreb(true)}
-          >
-            {zreb.isPending ? 'Žrebam …' : '🎲 Izvedi žreb'}
-          </button>
+          <h2>{izbor ? 'Jakostni vrstni red' : 'Prijavljeni'}</h2>
+          <div className="naslovna-vrstica__desno">
+            <span className="sekcija__meta">
+              {aktivnePrijave.length} {prijavljenihTekst(aktivnePrijave.length)}
+            </span>
+            <button
+              className="gumb gumb--zreb"
+              disabled={zrebOnemogocen}
+              title={premalo ? 'Za žreb sta potrebna vsaj 2 igralca.' : (zadrzek ?? undefined)}
+              onClick={() => nastaviPotrjujemZreb(true)}
+            >
+              {zreb.isPending ? 'Žrebam …' : 'Izvedi žreb'}
+            </button>
+          </div>
         </div>
 
         <SporociloNapake napaka={zreb.error} />
@@ -207,9 +226,9 @@ function Priprava({
           <table className="tabela">
             <thead>
               <tr>
-                <th>Igralec</th>
-                <th>Klub</th>
-                <th></th>
+                <th scope="col">Igralec</th>
+                <th scope="col">Klub</th>
+                <th scope="col"></th>
               </tr>
             </thead>
             <tbody>
@@ -513,16 +532,27 @@ function Tekmovanje({
   const naKlik = koncan ? undefined : naKlikTekme
   const sistem = podatki.dogodek.sistemTekmovanja
 
+  /* Vrstni red sledi poteku tekmovanja: najprej skupine oz. izločilni del,
+     nazadnje razvrstitev - kdo je kje končal, je zaključek, ne uvod. Vsak
+     sistem svoje tekme izpiše sam (po kolih oz. v mreži). */
   return (
     <>
-      {koncan && <Razvrstitev prijave={podatki.prijave} />}
-
       {sistem === 'KROZNI' && <Krozni podatki={podatki} naKlikTekme={naKlik} />}
       {sistem === 'SKUPINE_IZLOCILNI' && <SkupineIzlocilni podatki={podatki} naKlikTekme={naKlik} />}
       {sistem === 'SKUPINE' && <SkupinePoJakosti podatki={podatki} naKlikTekme={naKlik} />}
-      {sistem === 'IZLOCILNI' && <Mreza tekme={podatki.tekme} naKlikTekme={naKlik} />}
+      {sistem === 'IZLOCILNI' && (
+        <div>
+          <div className="naslovna-vrstica">
+            <h2>Izločilna mreža</h2>
+            {naKlik && <span className="sekcija__meta">Klikni tekmo za vnos rezultata</span>}
+          </div>
+          <Mreza tekme={podatki.tekme} naKlikTekme={naKlik} />
+        </div>
+      )}
 
       {sistem === 'SKUPINE' && <Udelezenci podatki={podatki} osvezi={osvezi} jeAdmin={jeAdmin && !koncan} />}
+
+      {koncan && <Razvrstitev prijave={podatki.prijave} />}
 
       {!koncan && naKlik && (
         <p className="namig">
@@ -707,8 +737,18 @@ function SkupineIzlocilni({
   naKlikTekme?: (tekma: TekmaDto) => void
 }) {
   const izlocilne = podatki.tekme.filter((t) => t.faza === 'GLAVNI')
+  const skupinske = podatki.tekme.filter((t) => t.faza === 'SKUPINA')
+  const odigranihSkupinskih = skupinske.filter((t) => t.status === 'KONCANA').length
   return (
     <>
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Skupine</h2>
+          <span className="sekcija__meta">
+            Napredujeta po dva · {odigranihSkupinskih} / {skupinske.length} odigranih
+          </span>
+        </div>
+      </div>
       <div className="skupine">
         {podatki.skupine.map((skupina) => (
           <SkupinaPlosca
@@ -722,6 +762,9 @@ function SkupineIzlocilni({
 
       <div className="naslovna-vrstica">
         <h2>Izločilni del</h2>
+        {izlocilne.length > 0 && naKlikTekme && (
+          <span className="sekcija__meta">Klikni tekmo za vnos rezultata</span>
+        )}
       </div>
       {izlocilne.length === 0 ? (
         <p className="obvestilo">
@@ -744,13 +787,29 @@ function SkupinaPlosca({
   tekme: TekmaDto[]
   naKlikTekme?: (tekma: TekmaDto) => void
 }) {
+  const odigranih = tekme.filter((t) => t.status === 'KONCANA').length
+  /* Tekme so razdeljene po kolih tako kot pri krožnem sistemu: brez tega je
+     skupina osmih igralcev en sam seznam 28 vrstic, iz katerega ni razvidno,
+     kaj je bilo odigrano skupaj in kaj šele pride. */
+  const kola = [...new Set(tekme.map((t) => t.kolo))].sort((a, b) => a - b)
   return (
-    <div className="plosca">
-      <h2>Skupina {skupina.oznaka}</h2>
-      <Lestvica vrstice={skupina.lestvica} napreduje={2} />
-      <div className="kolo-skupina">
-        <TekmeSeznam tekme={tekme} naKlikTekme={naKlikTekme} />
+    <div>
+      <div className="skupina__glava">
+        <span className="skupina__naslov">Skupina {skupina.oznaka}</span>
+        <span className="sekcija__meta">
+          {odigranih} / {tekme.length}
+        </span>
       </div>
+      <Lestvica vrstice={skupina.lestvica} napreduje={2} />
+      {kola.map((kolo) => (
+        <div key={kolo} className="kolo-skupina">
+          <div className="kolo-skupina__naslov">{kolo}. kolo</div>
+          <TekmeSeznam
+            tekme={tekme.filter((t) => t.kolo === kolo)}
+            naKlikTekme={naKlikTekme}
+          />
+        </div>
+      ))}
     </div>
   )
 }
@@ -762,17 +821,29 @@ function Razvrstitev({ prijave }: { prijave: PrijavaDto[] }) {
 
   if (razvrscene.length === 0) return null
 
+  /* Mesta so številke, ne medalje - odličje nosi barva črte ob levem robu. */
   return (
-    <div className="podij">
-      {razvrscene.map((prijava) => (
-        <div className="podij__mesto" key={prijava.id}>
-          <span className="podij__stevilka">
-            {prijava.koncnoMesto === 1 ? '🥇' : prijava.koncnoMesto === 2 ? '🥈' : prijava.koncnoMesto === 3 ? '🥉' : `${prijava.koncnoMesto}.`}
-          </span>
-          <span className="podij__ime">{prijava.polnoIme}</span>
-          {prijava.klub && <span className="podij__klub">{prijava.klub}</span>}
-        </div>
-      ))}
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Razvrstitev</h2>
+      </div>
+      <div className="podij">
+        {razvrscene.map((prijava) => (
+          <div className="podij__mesto" key={prijava.id}>
+            <span className="podij__stevilka">{prijava.koncnoMesto}.</span>
+            <span className="podij__ime">{prijava.polnoIme}</span>
+            <span className="podij__klub">{prijava.klub ?? 'brez kluba'}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
+}
+
+/* Slovnično pravilna oblika besede "prijavljen" glede na število. */
+function prijavljenihTekst(n: number): string {
+  if (n === 1) return 'prijavljen'
+  if (n === 2) return 'prijavljena'
+  if (n === 3 || n === 4) return 'prijavljeni'
+  return 'prijavljenih'
 }

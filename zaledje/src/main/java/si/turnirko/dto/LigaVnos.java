@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import si.turnirko.modeli.FormatSrecanja;
+import si.turnirko.modeli.PredlogaLige;
 import si.turnirko.modeli.SpolKategorija;
 
 public record LigaVnos(
@@ -24,6 +25,8 @@ public record LigaVnos(
         Boolean dovoljenoNeodloceno,
         Boolean prepovedDvojneRegistracije,
         Boolean stejeVElo,
+        // predloga uradnega ekipnega zapisnika; null = privzeto (SNTL_23)
+        PredlogaLige predlogaListka,
         Long idVisjaLiga,
         Integer stNapreduje,
         Integer stIzpade

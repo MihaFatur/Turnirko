@@ -217,7 +217,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
 
     private Long ustvariLigo(FormatSrecanja format, Integer zmagZaSrecanje, boolean dvokrozno) {
         LigaVnos v = new LigaVnos("Test liga", "2025/26", SpolKategorija.MOSKI, format, 5,
-                zmagZaSrecanje, dvokrozno, 2, 1, 0, true, false, true, null, 0, 0);
+                zmagZaSrecanje, dvokrozno, 2, 1, 0, true, false, true, null, null, 0, 0);
         return ligaStoritev.ustvari(v).id();
     }
 

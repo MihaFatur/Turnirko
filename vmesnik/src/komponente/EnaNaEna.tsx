@@ -1,10 +1,10 @@
 /* Pripomoček "1 na 1": medsebojni izid dveh igralcev prek vseh tekmovanj —
    turnirskih tekem in posamičnih tekem ligaških srečanj (dvojice ne štejejo).
-   Kartice rezultata in izbira igralcev so v skupni tristolpčni mreži, zato je
-   vsak spustni seznam poravnan pod svojo kartico, gumb za naključni par pa je
-   na sredini pod rezultatom. Ob prihodu se izžreba naključni par.
-   Uporablja se na domači strani (strnjeno) in na strani 1 na 1 (z zgodovino
-   tekem). Viden vsem (tudi gostom). */
+   Semafor je ena sama mreža: zgoraj izbirnika, pod njima veliki imeni, na
+   sredini pa izid, ki povezuje obe strani; gumb za naključni par stoji pod
+   izidom. Ob prihodu se izžreba naključni par.
+   Uporablja se na domači strani (strnjeno, brez imen in zgodovine) in na
+   strani 1 na 1 (z razmerjem in tabelo tekem). Viden vsem (tudi gostom). */
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -12,11 +12,13 @@ import { useQuery } from '@tanstack/react-query'
 import { igralciApi, statistikaApi } from '../api/zahteve'
 import type { DvobojDto, IgralecDto } from '../api/tipi'
 import { OZNAKE_IZID } from '../api/tipi'
+import { sklonTekem } from '../pomozno/oblikovanje'
 import { SporociloNapake } from './SporociloNapake'
 import { SpremembaElo } from './SpremembaElo'
 
 interface Lastnosti {
-  /* Ali pod karticami pokaži tabelo vseh medsebojnih tekem. */
+  /* Ali pod semaforjem pokaži razmerje in tabelo vseh medsebojnih tekem.
+     Brez tega je pripomoček strnjen (domača stran): le izbirnika in izid. */
   pokaziZgodovino?: boolean
 }
 
@@ -61,76 +63,75 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
   const d = veljavniPar ? dvoboj.data : undefined
 
   return (
-    <div className="enanaena">
+    <div className={'enanaena' + (pokaziZgodovino ? '' : ' enanaena--strnjen')}>
       <SporociloNapake napaka={igralci.error} />
       {veljavniPar && <SporociloNapake napaka={dvoboj.error} />}
       {veljavniPar && dvoboj.isPending && <p className="obvestilo">Nalaganje …</p>}
 
       <div className="enanaena__plosca">
-        {d && (
-          <>
-            <IgralecKartica
-              polozaj="enanaena__kartica--1"
-              idIgralca={d.prvi.id}
-              ime={d.prvi.polnoIme}
-              klub={d.prvi.klub}
-              rating={d.prvi.rating}
-              vodi={d.zmagePrvega > d.zmageDrugega}
-            />
-            <div className="enanaena__sredina">
-              <div className="enanaena__oznaka">Medsebojni rezultat</div>
-              <div className="enanaena__stevilo">
-                <span className={d.zmagePrvega >= d.zmageDrugega ? 'enanaena__vodi' : ''}>
-                  {d.zmagePrvega}
-                </span>
-                <span className="enanaena__crtica">:</span>
-                <span className={d.zmageDrugega >= d.zmagePrvega ? 'enanaena__vodi' : ''}>
-                  {d.zmageDrugega}
-                </span>
-              </div>
-              <div className="enanaena__skupaj">
-                {d.odigrane === 0
-                  ? 'še nista igrala'
-                  : `Skupaj tekem: ${d.odigrane} · nizi ${d.niziPrvega}:${d.niziDrugega}`}
-              </div>
-              {!pokaziZgodovino && (
-                <div className="enanaena__podrobno">
-                  <Link to={`/dvoboj?prvi=${prvi}&drugi=${drugi}`} className="domov__vec">
-                    Podrobna primerjava →
-                  </Link>
-                </div>
-              )}
-            </div>
-            <IgralecKartica
-              polozaj="enanaena__kartica--2"
-              idIgralca={d.drugi.id}
-              ime={d.drugi.polnoIme}
-              klub={d.drugi.klub}
-              rating={d.drugi.rating}
-              vodi={d.zmageDrugega > d.zmagePrvega}
-            />
-          </>
-        )}
-
         <IzbiraIgralca
           polozaj="enanaena__polje--1"
-          oznaka="1. igralec"
+          oznaka="Igralec A"
           igralci={igralci.data ?? []}
           vrednost={prvi}
           izkljuci={drugi}
           naSpremembo={nastaviPrvega}
         />
-        <button className="gumb gumb--glavni enanaena__zreb" onClick={izzrebaj} disabled={premalo}>
-          🎲 Naključno
-        </button>
+        {/* Veliki imeni nosita naslov strani, zato ju strnjena različica izpusti. */}
+        {d && pokaziZgodovino && (
+          <IgralecStran
+            polozaj="enanaena__kartica--1"
+            idIgralca={d.prvi.id}
+            ime={d.prvi.polnoIme}
+            klub={d.prvi.klub}
+            rating={d.prvi.rating}
+          />
+        )}
+
+        {d && (
+          <div className="enanaena__sredina">
+            <div className="enanaena__oznaka">Medsebojno</div>
+            <div className="enanaena__stevilo">
+              <span className={barvaIzida(d.zmagePrvega, d.zmageDrugega)}>{d.zmagePrvega}</span>
+              <span className="enanaena__crtica">:</span>
+              <span className={barvaIzida(d.zmageDrugega, d.zmagePrvega)}>{d.zmageDrugega}</span>
+            </div>
+            <div className="enanaena__skupaj">
+              {d.odigrane === 0
+                ? 'še nista igrala'
+                : `${d.odigrane} ${sklonTekem(d.odigrane)} · ${d.niziPrvega} : ${d.niziDrugega} v nizih`}
+            </div>
+            {!pokaziZgodovino && (
+              <div className="enanaena__podrobno">
+                <Link to={`/dvoboj?prvi=${prvi}&drugi=${drugi}`} className="domov__vec">
+                  Podrobna primerjava →
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
         <IzbiraIgralca
           polozaj="enanaena__polje--2"
-          oznaka="2. igralec"
+          oznaka="Igralec B"
           igralci={igralci.data ?? []}
           vrednost={drugi}
           izkljuci={prvi}
           naSpremembo={nastaviDrugega}
         />
+        {d && pokaziZgodovino && (
+          <IgralecStran
+            polozaj="enanaena__kartica--2"
+            idIgralca={d.drugi.id}
+            ime={d.drugi.polnoIme}
+            klub={d.drugi.klub}
+            rating={d.drugi.rating}
+          />
+        )}
+
+        <button className="gumb gumb--glavni enanaena__zreb" onClick={izzrebaj} disabled={premalo}>
+          Naključni par
+        </button>
       </div>
 
       {prvi !== '' && drugi !== '' && prvi === drugi && (
@@ -141,7 +142,12 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
         <p className="obvestilo">Za primerjavo sta potrebna vsaj dva igralca.</p>
       )}
 
-      {pokaziZgodovino && d && d.tekme.length > 0 && <Zgodovina dvoboj={d} />}
+      {pokaziZgodovino && d && d.tekme.length > 0 && (
+        <>
+          <Razmerje dvoboj={d} />
+          <Zgodovina dvoboj={d} />
+        </>
+      )}
     </div>
   )
 }
@@ -162,9 +168,9 @@ function IzbiraIgralca({
   naSpremembo: (id: number | '') => void
 }) {
   return (
-    <div className={'enanaena__polje ' + polozaj}>
+    <label className={'enanaena__polje ' + polozaj}>
+      <span>{oznaka}</span>
       <select
-        aria-label={oznaka}
         value={vrednost}
         onChange={(d) => naSpremembo(d.target.value === '' ? '' : Number(d.target.value))}
       >
@@ -177,35 +183,98 @@ function IzbiraIgralca({
             </option>
           ))}
       </select>
-    </div>
+    </label>
   )
 }
 
-function IgralecKartica({
+/* Ena stran semaforja: veliko ime in pod njim klub z ratingom v eni vrstici. */
+function IgralecStran({
   polozaj,
   idIgralca,
   ime,
   klub,
   rating,
-  vodi,
 }: {
   polozaj: string
   idIgralca: number
   ime: string
   klub: string | null
   rating: number | null
-  vodi: boolean
 }) {
+  const ratingTekst = rating !== null ? `rating ${rating}` : 'brez ratinga'
+  /* Ime je hkrati naslov te strani semaforja, zato je naslovni element. */
   return (
-    <div className={'enanaena__igralec ' + polozaj + (vodi ? ' enanaena__igralec--vodi' : '')}>
-      <div className="enanaena__avatar">👤</div>
-      <div className="enanaena__ime">
-        <Link to={`/igralci/${idIgralca}/profil`}>{ime}</Link>
+    <div className={polozaj}>
+      <div className="enanaena__igralec">
+        <h2 className="enanaena__ime">
+          <Link to={`/igralci/${idIgralca}/profil`}>{ime}</Link>
+        </h2>
+        <span className="enanaena__klub">{klub ? `${klub} · ${ratingTekst}` : ratingTekst}</span>
       </div>
-      {klub && <div className="enanaena__klub">{klub}</div>}
-      <div className="enanaena__rating">
-        Rating: <strong>{rating !== null ? rating : '—'}</strong>
+    </div>
+  )
+}
+
+/* Razmerje moči: štiri številke in dvobarvna palica deleža zmag. */
+function Razmerje({ dvoboj }: { dvoboj: DvobojDto }) {
+  const { prvi, drugi, odigrane, zmagePrvega, zmageDrugega, niziPrvega, niziDrugega } = dvoboj
+
+  /* Tekma z razliko enega samega niza se je odločila šele v zadnjem nizu —
+     ločenega podatka o odločilnem nizu strežnik ne pošilja. */
+  const odlocilni = dvoboj.tekme.filter(
+    (t) => Math.abs(t.niziPrvega - t.niziDrugega) === 1,
+  ).length
+
+  const delezPrvega = odigrane > 0 ? Math.round((zmagePrvega / odigrane) * 100) : 0
+
+  return (
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Razmerje</h2>
+        <span className="sekcija__meta">Vsa tekmovanja</span>
       </div>
+
+      <div className="profil__kazalniki">
+        <div className="kazalnik">
+          <div className={'kazalnik__vrednost ' + barvaIzida(zmagePrvega, zmageDrugega)}>
+            {zmagePrvega}
+          </div>
+          <div className="kazalnik__oznaka">Zmage · {prvi.polnoIme}</div>
+        </div>
+        <div className="kazalnik">
+          <div className={'kazalnik__vrednost ' + barvaIzida(zmageDrugega, zmagePrvega)}>
+            {zmageDrugega}
+          </div>
+          <div className="kazalnik__oznaka">Zmage · {drugi.polnoIme}</div>
+        </div>
+        <div className="kazalnik">
+          <div className="kazalnik__vrednost">
+            {niziPrvega} : {niziDrugega}
+          </div>
+          <div className="kazalnik__oznaka">Nizi</div>
+        </div>
+        <div className="kazalnik">
+          <div className="kazalnik__vrednost">{odlocilni}</div>
+          <div className="kazalnik__oznaka">V odločilnem nizu</div>
+        </div>
+      </div>
+
+      {odigrane > 0 && (
+        <>
+          <div className="razmerje-palica">
+            <span className="razmerje-palica__z" style={{ width: `${delezPrvega}%` }} />
+            <span className="razmerje-palica__p" style={{ width: `${100 - delezPrvega}%` }} />
+          </div>
+          <div className="razmerje-legenda">
+            <span>
+              {prvi.polnoIme} {delezPrvega} %
+            </span>
+            <span>
+              {drugi.polnoIme} {100 - delezPrvega} %
+            </span>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -213,41 +282,70 @@ function IgralecKartica({
 function Zgodovina({ dvoboj }: { dvoboj: DvobojDto }) {
   const { prvi, drugi } = dvoboj
   return (
-    <table className="tabela enanaena__tabela">
-      <thead>
-        <tr>
-          <th>Tekmovanje</th>
-          <th>Dogodek / kolo</th>
-          <th className="lestvica__stevilka">Rezultat</th>
-          <th className="lestvica__stevilka">ELO</th>
-          <th>Zmagovalec</th>
-        </tr>
-      </thead>
-      <tbody>
-        {dvoboj.tekme.map((t) => (
-          <tr key={(t.ligaska ? 'l' : 't') + t.idTekme}>
-            <td>
-              {t.tekmovanje}
-              {t.ligaska && <span className="enanaena__vir">liga</span>}
-            </td>
-            <td>{t.del}</td>
-            <td className="lestvica__stevilka">
-              {t.niziPrvega}:{t.niziDrugega}
-              {t.izidTip && t.izidTip !== 'IGRANO' && (
-                <span className="enanaena__posebni"> ({OZNAKE_IZID[t.izidTip]})</span>
-              )}
-            </td>
-            <td className="lestvica__stevilka enanaena__elo-celica">
-              <SpremembaElo vrednost={t.spremembaPrvega} />
-              <span className="enanaena__elo-locilo">/</span>
-              <SpremembaElo vrednost={t.spremembaDrugega} />
-            </td>
-            <td>{t.zmagalPrvi ? prvi.polnoIme : drugi.polnoIme}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Odigrane tekme</h2>
+        <span className="sekcija__meta">
+          {dvoboj.tekme.length} {sklonTekem(dvoboj.tekme.length)}
+        </span>
+      </div>
+
+      <div className="tabela-ovoj">
+        <table className="tabela">
+          <caption className="samo-za-bralnik">Vse medsebojne tekme obeh igralcev</caption>
+          <thead>
+            <tr>
+              <th scope="col">Vir</th>
+              <th scope="col">Tekmovanje</th>
+              <th scope="col" className="lestvica__stevilka">Izid</th>
+              <th scope="col" className="lestvica__stevilka">ELO</th>
+              <th scope="col">Zmagovalec</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dvoboj.tekme.map((t) => (
+              <tr key={(t.ligaska ? 'l' : 't') + t.idTekme}>
+                <td>
+                  <span className="enanaena__vir">{t.ligaska ? 'liga' : 'turnir'}</span>
+                </td>
+                <td>
+                  {t.tekmovanje}
+                  <span className="profil__del">{t.del}</span>
+                </td>
+                <td className="lestvica__stevilka">
+                  <span
+                    className={
+                      'profil__izid ' + (t.zmagalPrvi ? 'profil__zmaga' : 'profil__poraz')
+                    }
+                  >
+                    {t.niziPrvega}:{t.niziDrugega}
+                  </span>
+                  {t.izidTip && t.izidTip !== 'IGRANO' && (
+                    <span className="enanaena__posebni"> ({OZNAKE_IZID[t.izidTip]})</span>
+                  )}
+                </td>
+                <td className="lestvica__stevilka enanaena__elo-celica">
+                  <SpremembaElo vrednost={t.spremembaPrvega} />
+                  <span className="enanaena__elo-locilo">/</span>
+                  <SpremembaElo vrednost={t.spremembaDrugega} />
+                </td>
+                <td className={t.zmagalPrvi ? 'profil__zmaga' : 'profil__poraz'}>
+                  {t.zmagalPrvi ? prvi.polnoIme : drugi.polnoIme}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
+}
+
+/* Zelena za vodilno stran, rjasta za zaostajajočo, brez barve ob izenačenju. */
+function barvaIzida(svoje: number, tuje: number): string {
+  if (svoje > tuje) return 'enanaena__vodi'
+  if (svoje < tuje) return 'enanaena__izgublja'
+  return ''
 }
 
 /* Pretvori naslovni parameter (npr. ?prvi=5) v veljaven id igralca ali v prazno. */

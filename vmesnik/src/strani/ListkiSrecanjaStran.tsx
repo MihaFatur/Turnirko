@@ -1,18 +1,18 @@
-/* Natisljivi listki (zapisniki) posamičnih tekem enega ekipnega srečanja.
+/* Natisljivi uraden ekipni zapisnik (NTZS) za eno srecanje lige.
 
-   Enako kot pri turnirjih: pot je zunaj skupne postavitve (brez navigacije),
-   tiska brskalnik (window.print), brez zaledja in nove sheme. Natisnejo se
-   pripravljene tekme srečanja — tiste, kjer je določena postava in še niso
-   odigrane (status CAKA). Pri dvojicah sta na strani dva igralca, pod imenom
-   pa je ekipa. */
-import { useMemo } from 'react'
+   En list na srecanje: mreza vseh posamicnih tekem z imeni, sodnik ga izpolni
+   z roko za mizo. Pot je zunaj skupne postavitve (brez navigacije), tiska
+   brskalnik (window.print), brez zaledja in nove sheme. Predlogo (1. SNTL oz.
+   2./3. SNTL) doloca liga, na tej strani pa jo je mogoce zacasno preklopiti za
+   ta natis. */
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
-import { srecanjaApi } from '../api/zahteve'
-import type { SrecanjePodrobnoDto, TekmaSrecanjaDto } from '../api/tipi'
-import { Listek, type ListekPodatki } from '../komponente/Listek'
-import { sklonListkov } from '../pomozno/oblikovanje'
+import { ligeApi, srecanjaApi } from '../api/zahteve'
+import type { PredlogaLige } from '../api/tipi'
+import { OZNAKE_PREDLOGA_LIGE } from '../api/tipi'
+import { ZapisnikEkipnegaDvoboja } from '../komponente/ZapisnikEkipnegaDvoboja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 
 export function ListkiSrecanjaStran() {
@@ -24,12 +24,22 @@ export function ListkiSrecanjaStran() {
     queryFn: () => srecanjaApi.podrobno(idSrecanje),
   })
 
-  const listki = useMemo(() => pripraviListke(podrobno.data), [podrobno.data])
+  /* Ime, sezona in privzeta predloga so na ligi; srecanje pozna le njen id. */
+  const idLiga = podrobno.data?.srecanje.idLiga
+  const liga = useQuery({
+    queryKey: ['liga', idLiga],
+    queryFn: () => ligeApi.najdi(idLiga!),
+    enabled: idLiga !== undefined,
+  })
+
+  /* null = uporabi privzeto predlogo lige; sicer zacasna izbira za ta natis. */
+  const [varianta, nastaviVarianto] = useState<PredlogaLige | null>(null)
 
   if (podrobno.isPending) return <p className="obvestilo">Nalaganje …</p>
   if (podrobno.error || !podrobno.data) return <SporociloNapake napaka={podrobno.error} />
 
-  const s = podrobno.data.srecanje
+  const izbrana: PredlogaLige = varianta ?? liga.data?.predlogaListka ?? 'SNTL_23'
+  const srecanje = podrobno.data.srecanje
 
   return (
     <>
@@ -37,65 +47,34 @@ export function ListkiSrecanjaStran() {
         <Link to={`/srecanja/${idSrecanje}`} className="povezava-nazaj">
           ← Nazaj na srečanje
         </Link>
-        <span className="listki-orodja__stevec">
-          {listki.length} {sklonListkov(listki.length)}
-        </span>
-        <button
-          className="gumb gumb--glavni"
-          disabled={listki.length === 0}
-          onClick={() => window.print()}
-        >
-          🖨 Natisni
+        <label className="listki-orodja__izbira">
+          Predloga:
+          <select value={izbrana} onChange={(d) => nastaviVarianto(d.target.value as PredlogaLige)}>
+            {(Object.keys(OZNAKE_PREDLOGA_LIGE) as PredlogaLige[]).map((p) => (
+              <option key={p} value={p}>{OZNAKE_PREDLOGA_LIGE[p]}</option>
+            ))}
+          </select>
+        </label>
+        <button className="gumb gumb--glavni" onClick={() => window.print()}>
+          Natisni
         </button>
       </div>
 
-      <div className="listki-stran">
-        <header className="listki-naslov">
+      <div className="listki-stran listki-stran--zapisnik">
+        {/* Naslov je samo za zaslon: natisne se uraden obrazec, ki ima svojo
+            glavo in ne prenese dodatkov nad njo. */}
+        <header className="listki-naslov zaslon-samo">
           <h1>
-            {s.domaci} — {s.gost}
+            {srecanje.domaci} : {srecanje.gost}
           </h1>
-          <p>{s.kolo}. kolo</p>
+          <p>
+            {liga.data ? `${liga.data.ime} · ` : ''}
+            {srecanje.kolo}. kolo
+          </p>
         </header>
 
-        {listki.length === 0 ? (
-          <p className="obvestilo zaslon-samo">
-            Ni pripravljenih tekem za tiskanje. Listki se ustvarijo, ko je
-            določena postava in tekme še niso odigrane.
-          </p>
-        ) : (
-          <div className="listki-mreza">
-            {listki.map(({ id: idTekme, podatki }) => (
-              <Listek key={idTekme} podatki={podatki} />
-            ))}
-          </div>
-        )}
+        <ZapisnikEkipnegaDvoboja podrobno={podrobno.data} liga={liga.data} varianta={izbrana} />
       </div>
     </>
   )
-}
-
-function pripraviListke(
-  podrobno: SrecanjePodrobnoDto | undefined,
-): { id: number; podatki: ListekPodatki }[] {
-  if (!podrobno) return []
-  const s = podrobno.srecanje
-  return podrobno.tekme
-    .filter((t) => t.status === 'CAKA')
-    .sort((a, b) => a.zaporedje - b.zaporedje)
-    .map((t) => ({ id: t.id, podatki: vListek(t, s.domaci, s.gost) }))
-}
-
-function vListek(t: TekmaSrecanjaDto, ekipaDomaci: string, ekipaGost: string): ListekPodatki {
-  /* Pri dvojicah sta na strani dva igralca; oznaka (npr. "A-X" ali "dvojice")
-     je že opisna, dvojica pa razvidna iz dveh imen — zato je ne dopolnjujemo.
-     Mize ligaška tekma nima; prazna črta ostane za ročni vpis. */
-  const domaci = [t.domaci, t.domaci2].filter(Boolean).join(' / ') || '—'
-  const gost = [t.gost, t.gost2].filter(Boolean).join(' / ') || '—'
-  return {
-    oznaka: t.oznaka,
-    steviloNizov: t.steviloNizov,
-    miza: null,
-    stran1: { ime: domaci, podnaslov: ekipaDomaci },
-    stran2: { ime: gost, podnaslov: ekipaGost },
-  }
 }

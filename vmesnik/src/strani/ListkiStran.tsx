@@ -71,7 +71,7 @@ export function ListkiStran() {
           disabled={listki.length === 0}
           onClick={() => window.print()}
         >
-          🖨 Natisni
+          Natisni
         </button>
       </div>
 

@@ -66,6 +66,8 @@ export interface TurnirDto {
   datumKonca: string | null
   status: StatusTekmovanja
   opombe: string | null
+  /* Ali tekme turnirja stejejo v klubski ELO. */
+  stejeVElo: boolean
   /* Lastnistvo: racun, ki je turnir ustvaril, in klub lastnik. Po njiju
      vmesnik pokaze urejanje le lastniku (streznik je zadnja obramba). */
   idLastnik: number | null
@@ -348,6 +350,8 @@ export interface TurnirVnos {
   datumZacetka: string | null
   datumKonca: string | null
   opombe: string | null
+  /* null = privzeto (tekme stejejo v ELO). */
+  stejeVElo: boolean | null
 }
 
 export interface DogodekVnos {
@@ -477,6 +481,14 @@ export const OZNAKE_FORMAT: Record<FormatSrecanja, string> = {
   CORBILLON: 'Corbillon (2 igralca + dvojice)',
 }
 
+/* Predloga uradnega ekipnega zapisnika (NTZS) za natis listkov lige. */
+export type PredlogaLige = 'SNTL_1' | 'SNTL_23'
+
+export const OZNAKE_PREDLOGA_LIGE: Record<PredlogaLige, string> = {
+  SNTL_1: 'Ekipni zapisnik – 1. SNTL',
+  SNTL_23: 'Ekipni zapisnik – 2./3. SNTL',
+}
+
 export interface LigaDto {
   id: number
   ime: string
@@ -492,6 +504,7 @@ export interface LigaDto {
   dovoljenoNeodloceno: boolean
   prepovedDvojneRegistracije: boolean
   stejeVElo: boolean
+  predlogaListka: PredlogaLige
   idVisjaLiga: number | null
   visjaLigaIme: string | null
   stNapreduje: number
@@ -518,6 +531,7 @@ export interface LigaVnos {
   dovoljenoNeodloceno: boolean
   prepovedDvojneRegistracije: boolean
   stejeVElo: boolean
+  predlogaListka: PredlogaLige
   idVisjaLiga: number | null
   stNapreduje: number
   stIzpade: number

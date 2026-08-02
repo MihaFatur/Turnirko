@@ -15,6 +15,8 @@ public record TurnirDto(
         LocalDate datumKonca,
         StatusTekmovanja status,
         String opombe,
+        // ali tekme turnirja stejejo v klubski ELO
+        boolean stejeVElo,
         // Lastnistvo: racun, ki je turnir ustvaril, in klub lastnik. Po njiju
         // vmesnik pokaze urejevalna dejanja le lastniku; streznik je zadnja
         // obramba (LastnistvoStoritev). idLastnik ni obcutljiv podatek.
@@ -33,6 +35,7 @@ public record TurnirDto(
                 turnir.getDatumKonca(),
                 turnir.getStatus(),
                 turnir.getOpombe(),
+                turnir.isStejeVElo(),
                 turnir.getUstvaril() != null ? turnir.getUstvaril().getId() : null,
                 turnir.getKlubLastnik() != null ? turnir.getKlubLastnik().getId() : null,
                 turnir.getKlubLastnik() != null ? turnir.getKlubLastnik().getIme() : null

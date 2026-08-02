@@ -3,6 +3,7 @@ package si.turnirko.dto;
 
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.PredlogaLige;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusTekmovanja;
 
@@ -21,6 +22,7 @@ public record LigaDto(
         boolean dovoljenoNeodloceno,
         boolean prepovedDvojneRegistracije,
         boolean stejeVElo,
+        PredlogaLige predlogaListka,
         Long idVisjaLiga,
         String visjaLigaIme,
         int stNapreduje,
@@ -40,6 +42,7 @@ public record LigaDto(
                 l.getFormatSrecanja(), l.getSteviloNizov(), l.getZmagZaSrecanje(),
                 l.isDvokrozno(), l.getTockeZmaga(), l.getTockeNeodloceno(), l.getTockePoraz(),
                 l.isDovoljenoNeodloceno(), l.isPrepovedDvojneRegistracije(), l.isStejeVElo(),
+                l.getPredlogaListka(),
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getId() : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getIme() : null,
                 l.getStNapreduje(), l.getStIzpade(), l.getStatus(), steviloEkip,

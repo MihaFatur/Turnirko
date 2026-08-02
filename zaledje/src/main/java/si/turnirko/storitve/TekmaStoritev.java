@@ -89,8 +89,10 @@ public class TekmaStoritev {
         tekma.setStatus(StatusTekme.KONCANA);
         tekmaRepozitorij.save(tekma);
 
-        // rating se obracuna samo za dejansko igrane tekme
-        if (izid == IzidTekme.IGRANO || izid == IzidTekme.PREDAJA) {
+        // rating se obracuna samo za dejansko igrane tekme in le, ce turnir
+        // steje v ELO (organizator to izbere ob ustvarjanju; enako kot pri ligi)
+        if ((izid == IzidTekme.IGRANO || izid == IzidTekme.PREDAJA)
+                && tekma.getDogodek().getTurnir().isStejeVElo()) {
             ratingStoritev.obracunajKlubskiElo(tekma);
         }
 

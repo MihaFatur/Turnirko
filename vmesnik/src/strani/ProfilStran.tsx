@@ -1,19 +1,28 @@
 /* Profil igralca s statistiko.
 
-   Javni del (pregled, uvrstitev, graf ELO, seznam tekem) vidi vsak. Zasebne
-   analize (nasprotniki, nizi in točke, forma, konteksti) se naložijo posebej
-   in samo takrat, ko je profil last prijavljenega igralca ali ko gleda
-   administrator — strežnik na ta klic sicer odgovori s 403. */
+   Javni del (uvrstitev, ELO blok, kolofon, graf, seznam tekem) vidi vsak.
+   Zasebne analize (nasprotniki, nizi in točke, forma, konteksti) se naložijo
+   posebej in samo takrat, ko je profil last prijavljenega igralca ali ko gleda
+   administrator — strežnik na ta klic sicer odgovori s 403.
+
+   Okolico na lestvici izračunamo iz globalne lestvice, ki jo vmesnik ima že
+   predpomnjeno (isti ključ kot LestvicaStran) — brez novega klica na strežnik. */
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
-import { profiliApi } from '../api/zahteve'
-import type { Delez, ProfilNasprotnik, TekmaProfila } from '../api/tipi'
+import { profiliApi, statistikaApi } from '../api/zahteve'
+import type {
+  Delez,
+  LestvicaIgralcaDto,
+  ProfilNasprotnik,
+  ProfilZasebnoDto,
+  TekmaProfila,
+} from '../api/tipi'
 import { OZNAKE_IZID } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { GrafElo } from '../komponente/GrafElo'
+import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { SpremembaElo } from '../komponente/SpremembaElo'
 
 export function ProfilStran() {
   const { id } = useParams()
@@ -34,57 +43,128 @@ export function ProfilStran() {
     enabled: smemZasebno && !Number.isNaN(idIgralec),
   })
 
-  if (profil.isPending) return <p className="obvestilo">Nalaganje …</p>
-  if (profil.error || !profil.data) return <SporociloNapake napaka={profil.error} />
+  const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
+
+  /* Merilo je isLoading (= brez podatkov IN zahteva teče), ne isPending:
+     poizvedba brez podatkov, ki ne teče, je ustavljena (npr. brez povezave)
+     ali končana z napako - takrat mora stran to povedati, ne pa do konca sveta
+     kazati "Nalaganje …". */
+  if (profil.isLoading) return <p className="obvestilo">Nalaganje …</p>
+  if (profil.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (profil.error) return <NapakaPoizvedbe poizvedba={profil} kaj="profila" />
+  if (!profil.data) return <p className="obvestilo">Tega igralca ni (več).</p>
 
   const p = profil.data
   const jeMoj = mojIdIgralec === idIgralec
+  const { priimek, ime } = razbijIme(p.glava.polnoIme)
+  const f = zasebno.data?.forma
 
   return (
     <section className="profil">
-      <div className="naslovna-vrstica">
-        <div>
-          <Link to="/lestvica" className="nazaj">← Lestvica</Link>
-          <h1>{p.glava.polnoIme}</h1>
-          <p className="podnaslov">
-            {p.glava.klub ?? 'brez kluba'}
-            {p.glava.igralnaRoka && ` · ${p.glava.igralnaRoka === 'LEVA' ? 'levičar' : 'desničar'}`}
-          </p>
+      <div>
+        <Link to="/lestvica" className="povezava-nazaj">← Lestvica</Link>
+
+        <div className="stran-glava">
+          <div>
+            <div className="profil__uvrstitev">
+              {p.uvrstitev.mesto !== null && (
+                <span className="profil__mesto-znacka">
+                  {p.uvrstitev.mesto}. / {p.uvrstitev.skupajIgralcev}
+                </span>
+              )}
+              {p.uvrstitev.percentil !== null && (
+                <span className="profil__percentil">
+                  Boljši od {p.uvrstitev.percentil} % igralcev z ratingom
+                </span>
+              )}
+            </div>
+
+            <h1 className="naslov-strani">
+              <span className="naslov-strani__nad">{ime}</span>
+              <span className="naslov-strani__glavni">{priimek}</span>
+            </h1>
+
+            <div className="profil__meta">
+              <span>{p.glava.klub ?? 'brez kluba'}</span>
+              {p.glava.igralnaRoka && (
+                <span>{p.glava.igralnaRoka === 'LEVA' ? 'Levičar' : 'Desničar'}</span>
+              )}
+              {jeMoj && <span className="profil__moj">Tvoj profil</span>}
+            </div>
+
+            <Okolica
+              vrstice={lestvica.data}
+              idIgralec={idIgralec}
+              mesto={p.uvrstitev.mesto}
+            />
+          </div>
+
+          <div>
+            <div className="elo-blok">
+              <span className="elo-blok__oznaka">Klubski ELO</span>
+              <span className="elo-blok__vrednost">{p.glava.rating ?? '—'}</span>
+              {f && (
+                <div className="elo-blok__noga">
+                  <span>
+                    {f.spremembaElo30dni === null
+                      ? 'brez tekem v 30 dneh'
+                      : `${f.spremembaElo30dni >= 0 ? '+' : '−'}${Math.abs(f.spremembaElo30dni)} / 30 dni`}
+                  </span>
+                  {f.najvisjiElo !== null && <span className="elo-blok__vrh">vrh {f.najvisjiElo}</span>}
+                </div>
+              )}
+            </div>
+
+            <div className="kolofon">
+              <div className="kolofon__vrstica">
+                <span className="kolofon__oznaka">Mesto</span>
+                <span className="kolofon__vrednost">
+                  {p.uvrstitev.mesto ? `${p.uvrstitev.mesto}. / ${p.uvrstitev.skupajIgralcev}` : '—'}
+                </span>
+              </div>
+              <div className="kolofon__vrstica">
+                <span className="kolofon__oznaka">Odigrane</span>
+                <span className="kolofon__vrednost">{p.pregled.odigrane}</span>
+              </div>
+              <div className="kolofon__vrstica">
+                <span className="kolofon__oznaka">Zmage – porazi</span>
+                <span className="kolofon__vrednost">
+                  {p.pregled.zmage} – {p.pregled.porazi}
+                </span>
+              </div>
+              <div className="kolofon__vrstica">
+                <span className="kolofon__oznaka">Uspešnost</span>
+                <span className="kolofon__vrednost">{p.pregled.odstotekZmag} %</span>
+              </div>
+              {p.uvrstitev.klubskoPovprecje !== null && (
+                <div className="kolofon__vrstica">
+                  <span className="kolofon__oznaka">Klubsko povprečje</span>
+                  <span className="kolofon__vrednost">
+                    {p.uvrstitev.klubskoPovprecje}
+                    {p.glava.rating !== null && (
+                      <>
+                        {' '}
+                        <span
+                          className={
+                            p.glava.rating >= p.uvrstitev.klubskoPovprecje
+                              ? 'kolofon__vrednost--poz'
+                              : 'kolofon__vrednost--neg'
+                          }
+                        >
+                          {p.glava.rating >= p.uvrstitev.klubskoPovprecje ? '+' : '−'}
+                          {Math.abs(p.glava.rating - p.uvrstitev.klubskoPovprecje)}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        {jeMoj && <span className="znacka znacka--uspeh">Moj profil</span>}
       </div>
 
-      <div className="profil__kazalniki">
-        <Kazalnik oznaka="Rating" vrednost={p.glava.rating ?? '—'} poudarjen />
-        <Kazalnik oznaka="Odigrane" vrednost={p.pregled.odigrane} />
-        <Kazalnik oznaka="Zmage" vrednost={p.pregled.zmage} />
-        <Kazalnik oznaka="Porazi" vrednost={p.pregled.porazi} />
-        <Kazalnik oznaka="Uspešnost" vrednost={`${p.pregled.odstotekZmag} %`} />
-        <Kazalnik
-          oznaka="Mesto"
-          vrednost={p.uvrstitev.mesto ? `${p.uvrstitev.mesto}. / ${p.uvrstitev.skupajIgralcev}` : '—'}
-        />
-      </div>
-
-      {(p.uvrstitev.percentil !== null || p.uvrstitev.klubskoPovprecje !== null) && (
-        <p className="profil__primerjava">
-          {p.uvrstitev.percentil !== null && (
-            <>Boljši od <strong>{p.uvrstitev.percentil} %</strong> igralcev z ratingom. </>
-          )}
-          {p.uvrstitev.klubskoPovprecje !== null && p.glava.rating !== null && (
-            <>
-              Povprečje kluba je <strong>{p.uvrstitev.klubskoPovprecje}</strong> (
-              {p.glava.rating >= p.uvrstitev.klubskoPovprecje ? '+' : ''}
-              {p.glava.rating - p.uvrstitev.klubskoPovprecje} zate).
-            </>
-          )}
-        </p>
-      )}
-
-      <div className="plosca">
-        <h2>Napredek ELO</h2>
-        <GrafElo tocke={p.graf} />
-      </div>
+      <GrafElo tocke={p.graf} />
 
       {smemZasebno && zasebno.data && <ZasebniDel podatki={zasebno.data} />}
       {smemZasebno && zasebno.error && <SporociloNapake napaka={zasebno.error} />}
@@ -95,8 +175,11 @@ export function ProfilStran() {
         </p>
       )}
 
-      <div className="plosca">
-        <h2>Odigrane tekme <span className="plosca__stevec">{p.tekme.length}</span></h2>
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Odigrane tekme</h2>
+          <span className="sekcija__meta">{p.tekme.length} skupaj</span>
+        </div>
         {p.tekme.length === 0 ? (
           <p className="obvestilo">Ta igralec še ni odigral nobene tekme.</p>
         ) : (
@@ -107,19 +190,62 @@ export function ProfilStran() {
   )
 }
 
-function Kazalnik({
-  oznaka,
-  vrednost,
-  poudarjen = false,
+/* Igralec pred in za tem igralcem na lestvici — pokaže, koliko točk ELO manjka
+   do naslednjega mesta. Brez lestvice (ali brez uvrstitve) se blok ne izriše. */
+function Okolica({
+  vrstice,
+  idIgralec,
+  mesto,
 }: {
-  oznaka: string
-  vrednost: string | number
-  poudarjen?: boolean
+  vrstice: LestvicaIgralcaDto[] | undefined
+  idIgralec: number
+  mesto: number | null
 }) {
+  if (!vrstice || mesto === null) return null
+  const indeks = vrstice.findIndex((v) => v.idIgralca === idIgralec)
+  if (indeks < 0) return null
+
+  const od = Math.max(0, indeks - 1)
+  const okolica = vrstice.slice(od, indeks + 2).map((v, i) => ({ v, mesto: od + i + 1 }))
+  const jaz = vrstice[indeks]
+  const nad = indeks > 0 ? vrstice[indeks - 1] : null
+  const razlikaNad =
+    nad && nad.rating !== null && jaz.rating !== null ? nad.rating - jaz.rating : null
+
   return (
-    <div className={'kazalnik' + (poudarjen ? ' kazalnik--poudarjen' : '')}>
-      <div className="kazalnik__vrednost">{vrednost}</div>
-      <div className="kazalnik__oznaka">{oznaka}</div>
+    <div className="okolica">
+      <div className="okolica__glava">
+        <span className="profil__percentil">Okolica na lestvici</span>
+        <Link to="/lestvica" className="sekcija__meta">
+          Celotna lestvica →
+        </Link>
+      </div>
+      {okolica.map(({ v, mesto: m }) => {
+        const jeJaz = v.idIgralca === idIgralec
+        const razlika =
+          !jeJaz && v.rating !== null && jaz.rating !== null ? v.rating - jaz.rating : null
+        return (
+          <div
+            className={'okolica__vrstica' + (jeJaz ? ' okolica__vrstica--jaz' : '')}
+            key={v.idIgralca}
+          >
+            <span className="okolica__mesto">{m}.</span>
+            <span>
+              <span className="okolica__ime">{v.polnoIme}</span>
+              <span className="okolica__klub">{v.klub ?? 'brez kluba'}</span>
+            </span>
+            <span className="okolica__elo">{v.rating ?? '—'}</span>
+            <span className="okolica__razlika">
+              {jeJaz ? '—' : razlika === null ? '' : `${razlika > 0 ? '+' : '−'}${Math.abs(razlika)}`}
+            </span>
+          </div>
+        )
+      })}
+      {razlikaNad !== null && razlikaNad > 0 && (
+        <p className="profil__primerjava">
+          Do <strong>{indeks}. mesta</strong> ti manjka {razlikaNad} točk ELO.
+        </p>
+      )}
     </div>
   )
 }
@@ -127,14 +253,15 @@ function Kazalnik({
 function SeznamTekem({ tekme }: { tekme: TekmaProfila[] }) {
   return (
     <div className="tabela-ovoj">
-      <table className="tabela">
+      <table className="tabela tabela--vrh">
+        <caption className="samo-za-bralnik">Odigrane tekme igralca, od najnovejše</caption>
         <thead>
           <tr>
-            <th>Datum</th>
-            <th>Tekmovanje</th>
-            <th>Nasprotnik</th>
-            <th className="lestvica__stevilka">Rezultat</th>
-            <th className="lestvica__stevilka">ELO</th>
+            <th scope="col">Datum</th>
+            <th scope="col">Tekmovanje</th>
+            <th scope="col">Nasprotnik</th>
+            <th scope="col" className="lestvica__stevilka">Rezultat</th>
+            <th scope="col" className="lestvica__rating">ELO</th>
           </tr>
         </thead>
         <tbody>
@@ -144,22 +271,28 @@ function SeznamTekem({ tekme }: { tekme: TekmaProfila[] }) {
               <td>
                 {t.tekmovanje}
                 {t.ligaska && <span className="enanaena__vir">liga</span>}
-                <div className="profil__del">{t.del}</div>
+                <span className="profil__del">{t.del}</span>
               </td>
               <td>
-                <Link to={`/igralci/${t.idNasprotnika}/profil`}>{t.nasprotnik}</Link>
-                {t.klubNasprotnika && <div className="profil__del">{t.klubNasprotnika}</div>}
+                <Link to={`/igralci/${t.idNasprotnika}/profil`} className="profil__nasprotnik">
+                  {t.nasprotnik}
+                </Link>
+                {t.klubNasprotnika && <span className="profil__klub">{t.klubNasprotnika}</span>}
               </td>
               <td className="lestvica__stevilka">
-                <span className={t.zmaga ? 'profil__zmaga' : 'profil__poraz'}>
+                <span
+                  className={
+                    'profil__izid ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')
+                  }
+                >
                   {t.niziZa}:{t.niziProti}
                 </span>
                 {t.izidTip && t.izidTip !== 'IGRANO' && (
                   <span className="enanaena__posebni"> ({OZNAKE_IZID[t.izidTip]})</span>
                 )}
               </td>
-              <td className="lestvica__stevilka">
-                <SpremembaElo vrednost={t.spremembaElo} />
+              <td className="lestvica__rating">
+                <SpremembaVGrafu vrednost={t.spremembaElo} />
               </td>
             </tr>
           ))}
@@ -169,82 +302,104 @@ function SeznamTekem({ tekme }: { tekme: TekmaProfila[] }) {
   )
 }
 
-function ZasebniDel({ podatki }: { podatki: import('../api/tipi').ProfilZasebnoDto }) {
+/* Sprememba ELO v tabeli profila je mono +11 / −11 v barvi izida. */
+function SpremembaVGrafu({ vrednost }: { vrednost: number | null }) {
+  if (vrednost === null) return <span className="profil__del">—</span>
+  const poz = vrednost >= 0
+  return (
+    <span className={'graf__sprememba ' + (poz ? 'graf__sprememba--plus' : 'graf__sprememba--minus')}>
+      {poz ? '+' : '−'}
+      {Math.abs(vrednost)}
+    </span>
+  )
+}
+
+function ZasebniDel({ podatki }: { podatki: ProfilZasebnoDto }) {
   const { nasprotniki, niziInTocke, forma, poTekmovanjih } = podatki
   return (
     <>
-      <div className="plosca">
-        <h2>Forma <span className="plosca__zasebno">samo zate</span></h2>
-        <div className="profil__forma">
-          <div className="forma__trak">
-            {forma.zadnjih10.length === 0 && <span className="obvestilo">Ni še tekem.</span>}
-            {forma.zadnjih10.map((zmaga, i) => (
-              <span key={i} className={'forma__znak ' + (zmaga ? 'forma__znak--z' : 'forma__znak--p')}>
-                {zmaga ? 'Z' : 'P'}
-              </span>
-            ))}
+      <div className="dvostolpicno dvostolpicno--lestvica">
+        <div>
+          <div className="naslovna-vrstica">
+            <h2>Nasprotniki</h2>
+            <span className="plosca__zasebno">Samo zate</span>
           </div>
-          <div className="profil__kazalniki">
-            <Kazalnik
+
+          <div className="podnaslov-sekcije">Po igralni roki</div>
+          <DelezVrstice
+            delezi={[nasprotniki.protiDesnicarjem, nasprotniki.protiLevicarjem, nasprotniki.rokaNeznana]}
+          />
+
+          <div className="podnaslov-sekcije">
+            Po moči nasprotnika · {nasprotniki.tekemZZnanimRatingom} tekem z znanim ratingom
+          </div>
+          <DelezVrstice
+            delezi={[
+              nasprotniki.protiMocnejsim,
+              nasprotniki.protiPodobnim,
+              nasprotniki.protiSibkejsim,
+            ]}
+          />
+
+          <div className="profil__izpostavljeni">
+            <Izpostavljen naslov="Najboljša zmaga" nasprotnik={nasprotniki.najboljsaZmaga} kazeRating />
+            <Izpostavljen naslov="Nemesis" nasprotnik={nasprotniki.nemesis} />
+            <Izpostavljen naslov="Najpogostejši nasprotnik" nasprotnik={nasprotniki.najpogostejsi} />
+          </div>
+
+          {nasprotniki.poKlubih.length > 0 && (
+            <>
+              <div className="podnaslov-sekcije">Po klubih nasprotnika</div>
+              <DelezVrstice delezi={nasprotniki.poKlubih} />
+            </>
+          )}
+        </div>
+
+        <div>
+          <div className="naslovna-vrstica">
+            <h2 className="sekcija__naslov--manjsi">Forma</h2>
+          </div>
+          <div className="profil__forma">
+            <div className="forma__trak">
+              {forma.zadnjih10.length === 0 && <span className="obvestilo">Ni še tekem.</span>}
+              {forma.zadnjih10.map((zmaga, i) => (
+                <span key={i} className={'forma__znak ' + (zmaga ? 'forma__znak--z' : 'forma__znak--p')}>
+                  {zmaga ? 'Z' : 'P'}
+                </span>
+              ))}
+            </div>
+            <span className="forma__opis">Zadnjih 10 tekem · najstarejša levo</span>
+
+            <FormaKazalnik
               oznaka={forma.trenutniNizZmag ? 'Niz zmag' : 'Niz porazov'}
               vrednost={forma.trenutniNiz}
             />
-            <Kazalnik oznaka="Najdaljši niz zmag" vrednost={forma.najdaljsiNizZmag} />
-            <Kazalnik
+            <FormaKazalnik oznaka="Najdaljši niz zmag" vrednost={forma.najdaljsiNizZmag} />
+            <FormaKazalnik
               oznaka="ELO (30 dni)"
               vrednost={
                 forma.spremembaElo30dni === null
                   ? '—'
-                  : (forma.spremembaElo30dni >= 0 ? '+' : '') + forma.spremembaElo30dni
+                  : (forma.spremembaElo30dni >= 0 ? '+' : '−') + Math.abs(forma.spremembaElo30dni)
               }
             />
-            <Kazalnik
-              oznaka="Najvišji ELO"
-              vrednost={forma.najvisjiElo ?? '—'}
-            />
+            <FormaKazalnik oznaka="Najvišji ELO" vrednost={forma.najvisjiElo ?? '—'} />
+
+            {forma.najvisjiEloDatum && (
+              <p className="profil__opomba">
+                Najvišji ELO dosežen {datum(forma.najvisjiEloDatum)}.
+              </p>
+            )}
           </div>
-          {forma.najvisjiEloDatum && (
-            <p className="profil__opomba">Najvišji ELO dosežen {datum(forma.najvisjiEloDatum)}.</p>
-          )}
         </div>
       </div>
 
-      <div className="plosca">
-        <h2>Nasprotniki <span className="plosca__zasebno">samo zate</span></h2>
-        <h3 className="profil__podnaslov">Po igralni roki</h3>
-        <DelezVrstice
-          delezi={[nasprotniki.protiDesnicarjem, nasprotniki.protiLevicarjem, nasprotniki.rokaNeznana]}
-        />
-
-        <h3 className="profil__podnaslov">Po moči nasprotnika</h3>
-        <p className="profil__opomba">
-          Upoštevan je rating nasprotnika v trenutku tekme; takih tekem je{' '}
-          {nasprotniki.tekemZZnanimRatingom}.
-        </p>
-        <DelezVrstice
-          delezi={[
-            nasprotniki.protiMocnejsim,
-            nasprotniki.protiPodobnim,
-            nasprotniki.protiSibkejsim,
-          ]}
-        />
-
-        <div className="profil__izpostavljeni">
-          <Izpostavljen naslov="Najboljša zmaga" nasprotnik={nasprotniki.najboljsaZmaga} kazeRating />
-          <Izpostavljen naslov="Nemesis" nasprotnik={nasprotniki.nemesis} />
-          <Izpostavljen naslov="Najpogostejši nasprotnik" nasprotnik={nasprotniki.najpogostejsi} />
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Nizi in točke</h2>
+          <span className="plosca__zasebno">Samo zate</span>
         </div>
 
-        {nasprotniki.poKlubih.length > 0 && (
-          <>
-            <h3 className="profil__podnaslov">Po klubih nasprotnika</h3>
-            <DelezVrstice delezi={nasprotniki.poKlubih} />
-          </>
-        )}
-      </div>
-
-      <div className="plosca">
-        <h2>Nizi in točke <span className="plosca__zasebno">samo zate</span></h2>
         <div className="profil__kazalniki">
           <Kazalnik oznaka="Dobljeni nizi" vrednost={niziInTocke.dobljeniNizi} />
           <Kazalnik oznaka="Prejeti nizi" vrednost={niziInTocke.prejetiNizi} />
@@ -252,80 +407,108 @@ function ZasebniDel({ podatki }: { podatki: import('../api/tipi').ProfilZasebnoD
             oznaka="Odločilni niz"
             vrednost={`${niziInTocke.odlocilniNiz.zmage}:${niziInTocke.odlocilniNiz.porazi}`}
           />
-          <Kazalnik oznaka="Uspešnost v odl. nizu" vrednost={`${niziInTocke.odlocilniNiz.odstotek} %`} />
+          <Kazalnik
+            oznaka="Uspešnost v odl. nizu"
+            vrednost={`${niziInTocke.odlocilniNiz.odstotek} %`}
+          />
         </div>
 
-        {niziInTocke.razmerja.length > 0 && (
-          <>
-            <h3 className="profil__podnaslov">Končni izidi</h3>
-            <ul className="profil__razmerja">
-              {niziInTocke.razmerja.map((r) => (
-                <li key={r.oznaka + r.zmaga} className={r.zmaga ? 'profil__zmaga' : 'profil__poraz'}>
-                  <strong>{r.oznaka}</strong> ×{r.stevilo}
-                </li>
-              ))}
-            </ul>
-          </>
+        {niziInTocke.tocke.steviloTekem > 0 && (
+          <div className="profil__kazalniki">
+            <Kazalnik oznaka="Osvojene točke" vrednost={niziInTocke.tocke.tockeZa} />
+            <Kazalnik oznaka="Prejete točke" vrednost={niziInTocke.tocke.tockeProti} />
+            <Kazalnik oznaka="Delež točk" vrednost={`${niziInTocke.tocke.odstotekTock} %`} />
+            <Kazalnik oznaka="Povprečje na niz" vrednost={niziInTocke.tocke.povprecjeNaNiz} />
+          </div>
         )}
 
-        <h3 className="profil__podnaslov">Točke</h3>
-        {niziInTocke.tocke.steviloTekem === 0 ? (
-          <p className="obvestilo">
-            Točke po nizih so shranjene samo za turnirske tekme in za zdaj ni nobene take tekme.
-          </p>
-        ) : (
-          <>
-            <div className="profil__kazalniki">
-              <Kazalnik oznaka="Osvojene točke" vrednost={niziInTocke.tocke.tockeZa} />
-              <Kazalnik oznaka="Prejete točke" vrednost={niziInTocke.tocke.tockeProti} />
-              <Kazalnik oznaka="Delež točk" vrednost={`${niziInTocke.tocke.odstotekTock} %`} />
-              <Kazalnik oznaka="Povprečje na niz" vrednost={niziInTocke.tocke.povprecjeNaNiz} />
-            </div>
-            <p className="profil__opomba">
-              Izračunano iz {niziInTocke.tocke.steviloTekem} turnirskih tekem z vpisanimi točkami
-              (ligaška srečanja hranijo samo nize).
-            </p>
-          </>
+        {niziInTocke.razmerja.length > 0 && (
+          <ul className="profil__razmerja">
+            <li className="profil__razmerja-oznaka">Končni izidi</li>
+            {niziInTocke.razmerja.map((r) => (
+              <li key={r.oznaka + r.zmaga} className={r.zmaga ? 'profil__zmaga' : 'profil__poraz'}>
+                {r.oznaka} <span className="profil__stevec-razmerja">×{r.stevilo}</span>
+              </li>
+            ))}
+          </ul>
         )}
+
+        <p className="profil__opomba">
+          {niziInTocke.tocke.steviloTekem === 0
+            ? 'Točke po nizih so shranjene samo za turnirske tekme in za zdaj ni nobene take tekme.'
+            : `Točke po nizih so shranjene samo za turnirske tekme; izračun temelji na ${niziInTocke.tocke.steviloTekem} takih tekmah, ligaška srečanja hranijo samo nize.`}
+        </p>
       </div>
 
-      <div className="plosca">
-        <h2>Po tekmovanjih <span className="plosca__zasebno">samo zate</span></h2>
-        <DelezVrstice delezi={[poTekmovanjih.turnirji, poTekmovanjih.lige]} />
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Po tekmovanjih</h2>
+          <span className="plosca__zasebno">Samo zate</span>
+        </div>
 
-        {(poTekmovanjih.doma.odigrane > 0 || poTekmovanjih.vGosteh.odigrane > 0) && (
-          <>
-            <h3 className="profil__podnaslov">Liga: doma in v gosteh</h3>
-            <DelezVrstice delezi={[poTekmovanjih.doma, poTekmovanjih.vGosteh]} />
-          </>
-        )}
-        {poTekmovanjih.poPoziciji.length > 0 && (
-          <>
-            <h3 className="profil__podnaslov">Po poziciji v postavi</h3>
-            <DelezVrstice delezi={poTekmovanjih.poPoziciji} />
-          </>
-        )}
-        {poTekmovanjih.poFazi.length > 0 && (
-          <>
-            <h3 className="profil__podnaslov">Po fazi turnirja</h3>
-            <DelezVrstice delezi={poTekmovanjih.poFazi} />
-          </>
-        )}
-        {poTekmovanjih.dvojice.odigrane > 0 && (
-          <>
-            <h3 className="profil__podnaslov">Ligaške dvojice</h3>
-            <p className="profil__opomba">Dvojice ne štejejo v ELO ne med posamične zmage.</p>
-            <DelezVrstice delezi={[poTekmovanjih.dvojice]} />
-          </>
-        )}
+        <div className="profil__razrezi">
+          <div>
+            <div className="podnaslov-sekcije">Turnirji in lige</div>
+            <DelezVrstice delezi={[poTekmovanjih.turnirji, poTekmovanjih.lige]} />
+          </div>
+
+          {(poTekmovanjih.doma.odigrane > 0 || poTekmovanjih.vGosteh.odigrane > 0) && (
+            <div>
+              <div className="podnaslov-sekcije">Liga · doma in v gosteh</div>
+              <DelezVrstice delezi={[poTekmovanjih.doma, poTekmovanjih.vGosteh]} />
+            </div>
+          )}
+
+          {poTekmovanjih.poFazi.length > 0 && (
+            <div>
+              <div className="podnaslov-sekcije">Po fazi turnirja</div>
+              <DelezVrstice delezi={poTekmovanjih.poFazi} />
+            </div>
+          )}
+
+          {poTekmovanjih.poPoziciji.length > 0 && (
+            <div>
+              <div className="podnaslov-sekcije">Po poziciji v postavi</div>
+              <DelezVrstice delezi={poTekmovanjih.poPoziciji} />
+            </div>
+          )}
+
+          {poTekmovanjih.dvojice.odigrane > 0 && (
+            <div>
+              <div className="podnaslov-sekcije">Ligaške dvojice</div>
+              <DelezVrstice delezi={[poTekmovanjih.dvojice]} />
+              <p className="profil__opomba">Dvojice ne štejejo v ELO ne med posamične zmage.</p>
+            </div>
+          )}
+        </div>
       </div>
     </>
   )
 }
 
-/* Vodoravni stolpci deležev; prazne skupine izpustimo, da ne motijo.
-   Manjkajoč vnos (neujemanje tipa z DTO-jem zaledja) preskočimo, da napaka
-   ne podre celotne strani. */
+/* Velika številka v stolpcu, ločenem s hairline (nikoli kartica). */
+function Kazalnik({ oznaka, vrednost }: { oznaka: string; vrednost: string | number }) {
+  return (
+    <div className="kazalnik">
+      <div className="kazalnik__vrednost">{vrednost}</div>
+      <div className="kazalnik__oznaka">{oznaka}</div>
+    </div>
+  )
+}
+
+/* Vrstica forme: mono oznaka levo, velika številka desno. */
+function FormaKazalnik({ oznaka, vrednost }: { oznaka: string; vrednost: string | number }) {
+  return (
+    <div className="forma__kazalnik">
+      <span className="forma__kazalnik-oznaka">{oznaka}</span>
+      <span className="forma__kazalnik-vrednost">{vrednost}</span>
+    </div>
+  )
+}
+
+/* Deleži: oznaka in odstotek v isti vrstici, palica pod njima. Prazne skupine
+   izpustimo; manjkajoč vnos (neujemanje s DTO-jem zaledja) preskočimo, da
+   napaka ne podre celotne strani. */
 function DelezVrstice({ delezi }: { delezi: (Delez | undefined)[] }) {
   const vidni = delezi.filter((d): d is Delez => d != null && d.odigrane > 0)
   if (vidni.length === 0) return <p className="obvestilo">Ni podatkov za ta razrez.</p>
@@ -333,12 +516,17 @@ function DelezVrstice({ delezi }: { delezi: (Delez | undefined)[] }) {
     <ul className="delezi">
       {vidni.map((d) => (
         <li key={d.oznaka} className="delez">
-          <span className="delez__oznaka">{d.oznaka}</span>
+          <div className="delez__glava">
+            <span className="delez__oznaka">{d.oznaka}</span>
+            <span className="delez__vrednost">
+              {d.odstotek} %{' '}
+              <span className="delez__izid">
+                {d.zmage}–{d.porazi}
+              </span>
+            </span>
+          </div>
           <span className="delez__stolpec">
             <span className="delez__polnilo" style={{ width: `${d.odstotek}%` }} />
-          </span>
-          <span className="delez__vrednost">
-            {d.zmage}–{d.porazi} <strong>{d.odstotek} %</strong>
           </span>
         </li>
       ))}
@@ -368,6 +556,14 @@ function Izpostavljen({
       </div>
     </div>
   )
+}
+
+/* Zaledje sestavi polno ime kot "Priimek Ime", zato je prva beseda priimek.
+   Naslov strani ga postavi v veliko vrstico, ime pa v nadnaslov. */
+function razbijIme(polnoIme: string): { priimek: string; ime: string } {
+  const presledek = polnoIme.indexOf(' ')
+  if (presledek < 0) return { priimek: polnoIme, ime: '' }
+  return { priimek: polnoIme.slice(0, presledek), ime: polnoIme.slice(presledek + 1) }
 }
 
 function datum(iso: string): string {

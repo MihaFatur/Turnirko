@@ -17,9 +17,11 @@ const OBDOBJA: { kljuc: Obdobje; oznaka: string; meseci: number | null }[] = [
   { kljuc: '3m', oznaka: '3 meseci', meseci: 3 },
 ]
 
-const SIRINA = 720
-const VISINA = 240
-const ROB = { levo: 44, desno: 12, zgoraj: 14, spodaj: 26 }
+/* Risalna ploskev je široka kot vsebinski okvir (1280 px minus 2 x 40 px
+   odmika), da se graf razteza čez celo sekcijo — kot na maketi. */
+const SIRINA = 1120
+const VISINA = 280
+const ROB = { levo: 56, desno: 16, zgoraj: 16, spodaj: 32 }
 
 export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
   const [obdobje, nastaviObdobje] = useState<Obdobje>('vse')
@@ -28,7 +30,14 @@ export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
   const filtrirane = filtrirajPoObdobju(tocke, obdobje)
 
   if (tocke.length === 0) {
-    return <p className="obvestilo">Ni še obračunanih tekem, zato graf ELO še ni na voljo.</p>
+    return (
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Napredek ELO</h2>
+        </div>
+        <p className="obvestilo">Ni še obračunanih tekem, zato graf ELO še ni na voljo.</p>
+      </div>
+    )
   }
 
   const najmanj = Math.min(...filtrirane.map((t) => t.vrednost))
@@ -57,26 +66,30 @@ export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
   const oznakeY = [zgoraj, (zgoraj + spodaj) / 2, spodaj]
   const podrobnost = izbrana !== null ? filtrirane[izbrana] : filtrirane[filtrirane.length - 1]
 
+  /* Izbirnik obdobja stoji v naslovni vrstici sekcije, zato komponenta izriše
+     celo sekcijo — tako je vse v eni vrstici, kot zahteva maketa. */
   return (
     <div className="graf">
-      <div className="graf__glava">
-        <div className="graf__obdobja">
+      <div className="naslovna-vrstica">
+        <h2>Napredek ELO</h2>
+        <div className="izbirnik">
           {OBDOBJA.map((o) => (
             <button
+              type="button"
               key={o.kljuc}
-              className={'gumb gumb--majhen' + (obdobje === o.kljuc ? ' gumb--glavni' : '')}
+              className={
+                'izbirnik__gumb' + (obdobje === o.kljuc ? ' izbirnik__gumb--aktiven' : '')
+              }
               onClick={() => {
                 nastaviObdobje(o.kljuc)
                 nastaviIzbrano(null)
               }}
             >
               {o.oznaka}
+              {obdobje === o.kljuc ? ` · ${filtrirane.length}` : ''}
             </button>
           ))}
         </div>
-        <span className="graf__stevec">
-          {filtrirane.length} {tekemTekst(filtrirane.length)}
-        </span>
       </div>
 
       {filtrirane.length === 0 ? (
@@ -142,19 +155,21 @@ export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
           {podrobnost && (
             <p className="graf__podrobnost">
               <strong>{podrobnost.vrednost}</strong>
+              <span className="graf__opis">·</span>
               <span
                 className={
                   'graf__sprememba' +
                   (podrobnost.sprememba >= 0 ? ' graf__sprememba--plus' : ' graf__sprememba--minus')
                 }
               >
-                {podrobnost.sprememba >= 0 ? '+' : ''}
-                {podrobnost.sprememba}
+                {podrobnost.sprememba >= 0 ? '+' : '−'}
+                {Math.abs(podrobnost.sprememba)}
               </span>
               <span className="graf__opis">
-                {datum(podrobnost.kdaj)}
+                · {datum(podrobnost.kdaj)}
                 {podrobnost.nasprotnik ? ` · proti ${podrobnost.nasprotnik}` : ''}
-                {podrobnost.ligaska ? ' · liga' : ''}
+                {podrobnost.ligaska ? ' · liga' : ''} · vodoravno je zaporedje obračunanih
+                tekem, ne koledar
               </span>
             </p>
           )}
@@ -175,11 +190,4 @@ function filtrirajPoObdobju(tocke: TockaGrafa[], obdobje: Obdobje): TockaGrafa[]
 function datum(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('sl-SI')
-}
-
-function tekemTekst(n: number): string {
-  if (n === 1) return 'tekma'
-  if (n === 2) return 'tekmi'
-  if (n === 3 || n === 4) return 'tekme'
-  return 'tekem'
 }

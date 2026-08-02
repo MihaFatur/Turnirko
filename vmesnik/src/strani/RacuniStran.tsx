@@ -24,21 +24,45 @@ export function RacuniStran() {
 
   return (
     <section>
-      <div className="naslovna-vrstica">
+      <div className="stran-glava stran-glava--ozka">
         <div>
-          <h1>Dostopi</h1>
-          <p className="podnaslov">
-            Igralci in organizatorji se registrirajo sami; dostop odobri administrator —
-            igralca poveže z zapisom v šifrantu, organizatorju dodeli klub.
+          <h1 className="naslov-strani">
+            <span className="naslov-strani__nad">Kdo sme kaj</span>
+            <span className="naslov-strani__glavni">Dostopi</span>
+          </h1>
+          <p className="uvod">
+            Organizator upravlja tekmovanja svojega kluba. Administrator vse. Gost samo bere.
           </p>
         </div>
-        {cakajoci.length > 0 && (
-          <span className="znacka znacka--opozorilo">{cakajoci.length} čaka</span>
-        )}
+        <div className="kolofon">
+          <div className="kolofon__vrstica">
+            <span className="kolofon__oznaka">Računi</span>
+            <span className="kolofon__vrednost">{vsi.length}</span>
+          </div>
+          <div className="kolofon__vrstica">
+            <span className="kolofon__oznaka">Čaka na potrditev</span>
+            <span
+              className={
+                'kolofon__vrednost' + (cakajoci.length > 0 ? ' kolofon__vrednost--neg' : '')
+              }
+            >
+              {cakajoci.length}
+            </span>
+          </div>
+          <div className="kolofon__vrstica">
+            <span className="kolofon__oznaka">Organizatorji</span>
+            <span className="kolofon__vrednost">
+              {vsi.filter((r) => r.vloga === 'ORGANIZATOR').length}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="plosca">
-        <h2>Čaka na potrditev <span className="plosca__stevec">{cakajoci.length}</span></h2>
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Čaka na potrditev</h2>
+          <span className="sekcija__meta">{cakajoci.length} zahtev</span>
+        </div>
         {cakajoci.length === 0 ? (
           <p className="obvestilo">Ni novih zahtev.</p>
         ) : (
@@ -52,8 +76,11 @@ export function RacuniStran() {
         )}
       </div>
 
-      <div className="plosca">
-        <h2>Obstoječi dostopi <span className="plosca__stevec">{ostali.length}</span></h2>
+      <div>
+        <div className="naslovna-vrstica">
+          <h2>Računi</h2>
+          <span className="sekcija__meta">{ostali.length} potrjenih</span>
+        </div>
         {ostali.length === 0 ? (
           <p className="obvestilo">Ni še potrjenih dostopov.</p>
         ) : (
@@ -61,11 +88,11 @@ export function RacuniStran() {
             <table className="tabela">
               <thead>
                 <tr>
-                  <th>E-pošta</th>
-                  <th>Vloga</th>
-                  <th>Igralec / klub</th>
-                  <th>Stanje</th>
-                  <th></th>
+                  <th scope="col">E-pošta</th>
+                  <th scope="col">Vloga</th>
+                  <th scope="col">Igralec / klub</th>
+                  <th scope="col">Stanje</th>
+                  <th scope="col" className="tabela__dejanja"></th>
                 </tr>
               </thead>
               <tbody>
@@ -108,15 +135,20 @@ function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
   })
 
   return (
-    <div className="racun">
+    <div className={`racun racun--${racun.vloga}`}>
       <div className="racun__glava">
         <div>
-          <strong>{racun.prijavljenoIme} {racun.prijavljeniPriimek}</strong>
-          <div className="racun__podrobnost">
+          <span className="racun__uporabnik">
+            {racun.prijavljenoIme} {racun.prijavljeniPriimek}
+          </span>
+          <span className="racun__podrobnost">
             {racun.email}
             {racun.klubZelja && ` · navedel klub: ${racun.klubZelja}`}
-          </div>
+          </span>
         </div>
+        <span className={`racun__vloga racun__vloga--${racun.vloga}`}>
+          {OZNAKE_VLOGA[racun.vloga]}
+        </span>
         <span className="racun__cas">{datum(racun.ustvarjenOb)}</span>
       </div>
 
@@ -209,18 +241,18 @@ function ZahtevaOrganizator({ racun }: { racun: RacunIgralcaDto }) {
   })
 
   return (
-    <div className="racun">
+    <div className="racun racun--ORGANIZATOR">
       <div className="racun__glava">
         <div>
-          <strong>
-            {racun.prijavljenoIme} {racun.prijavljeniPriimek}{' '}
-            <span className="znacka znacka--sistem">organizator</span>
-          </strong>
-          <div className="racun__podrobnost">
+          <span className="racun__uporabnik">
+            {racun.prijavljenoIme} {racun.prijavljeniPriimek}
+          </span>
+          <span className="racun__podrobnost">
             {racun.email}
             {racun.klubZelja && ` · navedel klub: ${racun.klubZelja}`}
-          </div>
+          </span>
         </div>
+        <span className="racun__vloga racun__vloga--ORGANIZATOR">Organizator</span>
         <span className="racun__cas">{datum(racun.ustvarjenOb)}</span>
       </div>
 

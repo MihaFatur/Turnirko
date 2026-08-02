@@ -112,7 +112,7 @@ class LastnistvoTest {
         Uporabnik orgA = organizator("orgA@test", klubA);
 
         prijava("orgA@test");
-        Turnir turnir = turnirjiStoritev.ustvari(new TurnirVnos("Nov turnir", null, null, null, null, null));
+        Turnir turnir = turnirjiStoritev.ustvari(new TurnirVnos("Nov turnir", null, null, null, null, null, null));
 
         assertEquals(orgA.getId(), turnir.getUstvaril().getId());
         assertEquals(klubA.getId(), turnir.getKlubLastnik().getId());
@@ -121,7 +121,7 @@ class LastnistvoTest {
     /* Brez prijave (interni klic/test) preverba ne omejuje; lastnik ostane prazen. */
     @Test
     void brezPrijaveNiOmejitve() {
-        Turnir turnir = turnirjiStoritev.ustvari(new TurnirVnos("Anonimni turnir", null, null, null, null, null));
+        Turnir turnir = turnirjiStoritev.ustvari(new TurnirVnos("Anonimni turnir", null, null, null, null, null, null));
         assertNull(turnir.getUstvaril());
         assertDoesNotThrow(() -> lastnistvo.preveriTurnirPoId(turnir.getId()));
     }

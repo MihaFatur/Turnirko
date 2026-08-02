@@ -26,6 +26,7 @@ export function PrijavaOkno({
 
   return (
     <ModalnoOkno
+      nadnaslov="Turnirko"
       naslov={nacin === 'prijava' ? 'Prijava' : 'Registracija igralca'}
       onZapri={onZapri}
     >
@@ -81,13 +82,8 @@ function PrijavaObrazec({ onZapri }: { onZapri: () => void }) {
 
   return (
     <form className="obrazec" onSubmit={obOddaji}>
-      <p className="modal__podnaslov">
-        Gostje si turnirje, lige, lestvico in rezultate ogledajo brez prijave.
-        Igralci se prijavijo z e-pošto in vidijo svoj profil s statistiko,
-        administrator pa ureja tekmovanja.
-      </p>
       <label className="obrazec__polje">
-        <span>E-pošta ali uporabniško ime</span>
+        <span>Uporabniško ime ali e-pošta</span>
         <input
           value={uporabniskoIme}
           onChange={(d) => nastaviUporabniskoIme(d.target.value)}
@@ -107,14 +103,17 @@ function PrijavaObrazec({ onZapri }: { onZapri: () => void }) {
 
       {napaka && <div className="napaka">{napaka}</div>}
 
-      <div className="obrazec__gumbi">
-        <button type="button" className="gumb" onClick={onZapri}>
-          Prekliči
-        </button>
-        <button type="submit" className="gumb gumb--glavni" disabled={poteka}>
-          {poteka ? 'Prijavljam …' : 'Prijava'}
-        </button>
-      </div>
+      {/* Edino dejanje obrazca: gumb je neposreden otrok .obrazec (flex stolpec),
+          zato se raztegne cez celo sirino okna. Okno se zapre z Escape ali krizem. */}
+      <button type="submit" className="gumb gumb--glavni" disabled={poteka}>
+        {poteka ? 'Prijavljam …' : 'Prijava'}
+      </button>
+
+      <p className="namig">
+        Brez prijave si lahko ogledaš vse turnirje, lige, lestvice in rezultate.
+        Igralci se prijavijo z e-pošto in vidijo svoj profil s statistiko,
+        administrator ureja tekmovanja.
+      </p>
     </form>
   )
 }
@@ -161,11 +160,9 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
             ? 'Ko ti dodeli vlogo organizatorja (in klub), se prijavi in začni ustvarjati turnirje ter lige.'
             : 'Ko ga potrdi in poveže s tvojim zapisom v šifrantu igralcev, se prijavi z e-pošto in geslom ter si oglej svoj profil.'}
         </p>
-        <div className="obrazec__gumbi">
-          <button type="button" className="gumb gumb--glavni" onClick={onNazaj}>
-            Nazaj na prijavo
-          </button>
-        </div>
+        <button type="button" className="gumb gumb--glavni" onClick={onNazaj}>
+          Nazaj na prijavo
+        </button>
       </div>
     )
   }
@@ -174,7 +171,7 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
     <form className="obrazec" onSubmit={obOddaji}>
       {/* Izbira vrste racuna: igralec vidi svoj profil, organizator vodi
           tekmovanja. Oba potrdi administrator. */}
-      <div className="zavihki zavihki--tip">
+      <div className="zavihki">
         <button
           type="button"
           className={'zavihki__gumb' + (!organizator ? ' zavihki__gumb--aktiven' : '')}

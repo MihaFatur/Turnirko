@@ -1,7 +1,8 @@
-/* Uporabniski meni v desnem zgornjem kotu glave: ikona osebe, ki odpre
-   spustni meni. Gost dobi moznost prijave in registracije, prijavljen
-   uporabnik pa svojo identiteto, povezavo do profila in odjavo. Meni se
-   zapre ob kliku zunaj njega ali ob tipki Escape. */
+/* Kontekst uporabnika v desnem kotu masthead-a. V novem oblikovnem sistemu
+   ikon ni: prožilnik je mono oznaka (vloga in klub oz. »GOST«), ki odpre
+   spustni meni. Gost dobi možnost prijave in registracije, prijavljen
+   uporabnik pa svojo identiteto, povezavo do profila in odjavo. Meni se zapre
+   ob kliku zunaj njega ali ob tipki Escape. */
 import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
@@ -10,16 +11,6 @@ import { OZNAKE_VLOGA } from '../api/tipi'
 import { PrijavaOkno } from './PrijavaOkno'
 
 type PrijavaNacin = 'prijava' | 'registracija'
-
-/* Silhueta osebe v currentColor, da se barva ujema s temo in stanjem gumba. */
-function IkonaOseba({ velikost = 22 }: { velikost?: number }) {
-  return (
-    <svg width={velikost} height={velikost} viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8.5" r="3.75" fill="currentColor" />
-      <path d="M5 19.5c0-3.6 3.1-6 7-6s7 2.4 7 6z" fill="currentColor" />
-    </svg>
-  )
-}
 
 export function UporabniskiMeni() {
   const { uporabnik, odjava } = useAvtentikacija()
@@ -48,6 +39,12 @@ export function UporabniskiMeni() {
      potrditev); tam mu stran pojasni, zakaj profila se ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
 
+  /* Oznaka konteksta: vloga in (pri organizatorju) klub — enako kot na
+     maketah »SODNIK · NTK SAVINJA«. */
+  const oznaka = uporabnik
+    ? [OZNAKE_VLOGA[uporabnik.vloga], uporabnik.klub].filter(Boolean).join(' · ')
+    : 'Gost · prijava'
+
   function odpriPrijavo(nacin: PrijavaNacin) {
     nastaviOdprt(false)
     nastaviPrijavaNacin(nacin)
@@ -60,10 +57,9 @@ export function UporabniskiMeni() {
         className={'uporabnik-gumb' + (uporabnik ? ' uporabnik-gumb--prijavljen' : '')}
         aria-haspopup="menu"
         aria-expanded={odprt}
-        aria-label={uporabnik ? 'Uporabniski meni' : 'Prijava'}
         onClick={() => nastaviOdprt((v) => !v)}
       >
-        <IkonaOseba />
+        {oznaka}
       </button>
 
       {odprt && (
@@ -71,16 +67,11 @@ export function UporabniskiMeni() {
           {uporabnik ? (
             <>
               <div className="uporabnik-meni__glava">
-                <span className="uporabnik-meni__avatar">
-                  <IkonaOseba velikost={20} />
+                <span className="uporabnik-meni__ime">
+                  {uporabnik.imeIgralca ?? uporabnik.uporabniskoIme}
                 </span>
-                <span className="uporabnik-meni__oseba">
-                  <span className="uporabnik-meni__ime">
-                    {uporabnik.imeIgralca ?? uporabnik.uporabniskoIme}
-                  </span>
-                  <span className="uporabnik-meni__vloga">
-                    {OZNAKE_VLOGA[uporabnik.vloga]}
-                  </span>
+                <span className="uporabnik-meni__vloga">
+                  {[OZNAKE_VLOGA[uporabnik.vloga], uporabnik.klub].filter(Boolean).join(' · ')}
                 </span>
               </div>
 
@@ -109,7 +100,9 @@ export function UporabniskiMeni() {
             </>
           ) : (
             <>
-              <p className="uporabnik-meni__namig">Ogledujes kot gost — vsebina je vidna brez prijave.</p>
+              <p className="uporabnik-meni__namig">
+                Ogleduješ kot gost — vsa vsebina je vidna brez prijave.
+              </p>
               <button
                 type="button"
                 role="menuitem"
@@ -124,7 +117,7 @@ export function UporabniskiMeni() {
                 className="uporabnik-meni__postavka"
                 onClick={() => odpriPrijavo('registracija')}
               >
-                Ustvari racun
+                Ustvari račun
               </button>
             </>
           )}
