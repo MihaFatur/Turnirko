@@ -4,7 +4,11 @@
 
    Masthead je nosilni vzorec sistema: logotip 24 px display 800 levo,
    navigacija 15 px na sredini, kontekst v mono desno; pod vsem tanka 1 px in
-   nato polna 3 px črta (3 px doda CSS prek .glava::after). */
+   nato polna 3 px črta (nosi ju .glava__crta).
+
+   Zakaj mreža in ne vrsta: na telefonu se navigacija preseli POD debelo črto
+   kot vrstica zavihkov. Z mrežo je to premik enega področja, navigacija pa
+   ostane en sam element - podvojena bi bralniku zaslona brala dvakrat. */
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { onlineManager } from '@tanstack/react-query'
@@ -27,7 +31,10 @@ const povezave: Povezava[] = [
   { pot: '/turnirji', oznaka: 'Turnirji' },
   { pot: '/lige', oznaka: 'Lige' },
   { pot: '/lestvica', oznaka: 'Lestvica' },
-  { pot: '/dvoboj', oznaka: '1 na 1' },
+  /* Poti /dvoboj tu namenoma ni: podrobna primerjava dveh igralcev ni
+     cilj obiska, ampak nadaljevanje - odpre se s pripomocka "1 na 1" na
+     domaci strani, ki s sabo prinese ze izbrani par (?prvi=&drugi=).
+     V navigaciji bi bila prazna vstopna tocka brez izbranih igralcev. */
   { pot: '/moj-profil', oznaka: 'Moj profil', samoIgralec: true },
   { pot: '/igralci', oznaka: 'Igralci', samoUrejevalec: true },
   { pot: '/racuni', oznaka: 'Dostopi', samoAdmin: true },
@@ -63,28 +70,29 @@ export function Postavitev() {
   return (
     <div className="postavitev">
       <header className="glava">
-        <div className="glava__vsebina">
-          <NavLink to="/" className="glava__logotip">
-            <ZnakTurnirko />
-            Turnirko
-          </NavLink>
-          <nav className="glava__navigacija">
-            {vidne.map((povezava) => (
-              <NavLink
-                key={povezava.pot}
-                to={povezava.pot}
-                end={povezava.pot === '/'}
-                className={({ isActive }) =>
-                  'glava__povezava' + (isActive ? ' glava__povezava--aktivna' : '')
-                }
-              >
-                {povezava.oznaka}
-              </NavLink>
-            ))}
-          </nav>
+        <NavLink to="/" className="glava__logotip">
+          <ZnakTurnirko />
+          Turnirko
+        </NavLink>
 
-          <UporabniskiMeni />
-        </div>
+        <UporabniskiMeni />
+
+        <div className="glava__crta" />
+
+        <nav className="glava__navigacija">
+          {vidne.map((povezava) => (
+            <NavLink
+              key={povezava.pot}
+              to={povezava.pot}
+              end={povezava.pot === '/'}
+              className={({ isActive }) =>
+                'glava__povezava' + (isActive ? ' glava__povezava--aktivna' : '')
+              }
+            >
+              {povezava.oznaka}
+            </NavLink>
+          ))}
+        </nav>
       </header>
 
       {!povezan && (
@@ -103,8 +111,9 @@ export function Postavitev() {
   )
 }
 
-/* Edina ikona v vmesniku: lopar v glavni (modri) barvi in žogica v poudarku
-   (zeleni). Barve nosi CSS, da se ujemata z obema temama. */
+/* Edina ikona v vmesniku: štiri poteze zapisnika. Prvi dve sta črnilo, tretja
+   glavna (modra), četrta poudarek (zelena) - odločilni niz. Barve nosi CSS, da
+   se ujemata obe temi in tisk. */
 export function ZnakTurnirko({ velikost = 24 }: { velikost?: number }) {
   return (
     <svg
@@ -114,15 +123,22 @@ export function ZnakTurnirko({ velikost = 24 }: { velikost?: number }) {
       viewBox="0 0 28 28"
       aria-hidden="true"
     >
-      <path
-        className="logo-znak__rocaj"
-        d="M14 25 L18 21"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        fill="none"
+      <rect className="logo-znak__poteza" x="1.5" y="4" width="3" height="20" />
+      <rect className="logo-znak__poteza" x="8.5" y="4" width="3" height="20" />
+      <rect
+        className="logo-znak__poteza logo-znak__poteza--glavna"
+        x="15.5"
+        y="4"
+        width="3"
+        height="20"
       />
-      <circle className="logo-znak__lopar" cx="12" cy="12" r="8.5" />
-      <circle className="logo-znak__zogica" cx="21" cy="8" r="3.4" />
+      <rect
+        className="logo-znak__poteza logo-znak__poteza--izid"
+        x="22.5"
+        y="4"
+        width="3"
+        height="20"
+      />
     </svg>
   )
 }

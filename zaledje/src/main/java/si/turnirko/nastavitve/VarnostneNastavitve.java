@@ -103,6 +103,20 @@ public class VarnostneNastavitve {
                         .requestMatchers(HttpMethod.GET, "/api/v1/igralci/*/profil/zasebno").authenticated()
                         // seznam racunov vsebuje e-poste, zato ni javen kljub temu, da je GET
                         .requestMatchers(HttpMethod.GET, "/api/v1/racuni/**").hasRole("ADMIN")
+                        // sifrant igralcev z osebnimi podatki (datum rojstva, e-posta,
+                        // telefon, naslov, licenca). Organizator jih namenoma NE vidi:
+                        // za vodenje tekmovanja zadosca javni izpis, skupni sifrant pa
+                        // nosi podatke igralcev vseh klubov. Zato ADMIN, ne urejevalec.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/igralci/podrobno", "/api/v1/igralci/*/podrobno")
+                                .hasRole("ADMIN")
+                        // izbor spremljanih lig je osebna nastavitev racuna:
+                        // gost ga nima (svojega si zapomni brskalnik), vsak
+                        // prijavljen pa sme brati IN spreminjati samo svojega -
+                        // zato tu ni vloge, ampak zgolj prijava. Pravilo mora
+                        // stati pred splosnim "GET je javen".
+                        .requestMatchers("/api/v1/domov/moje-lige",
+                                "/api/v1/domov/moje-lige/**").authenticated()
                         // gost sme brati vse ostalo
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                         // --- od tu naprej samo mutacije (ne-GET) ---

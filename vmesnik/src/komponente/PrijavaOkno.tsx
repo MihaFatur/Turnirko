@@ -169,24 +169,20 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
 
   return (
     <form className="obrazec" onSubmit={obOddaji}>
-      {/* Izbira vrste racuna: igralec vidi svoj profil, organizator vodi
-          tekmovanja. Oba potrdi administrator. */}
-      <div className="zavihki">
-        <button
-          type="button"
-          className={'zavihki__gumb' + (!organizator ? ' zavihki__gumb--aktiven' : '')}
-          onClick={() => nastaviOrganizator(false)}
+      {/* Vloga je navadno polje obrazca, ne zavihek: zavihki obljubljajo
+          preklop med dvema pogledoma, tu pa gre za en sam vnos, ki potuje na
+          streznik skupaj z ostalimi. Igralec vidi svoj profil, organizator
+          vodi tekmovanja; oba potrdi administrator. */}
+      <label className="obrazec__polje">
+        <span>Vloga *</span>
+        <select
+          value={organizator ? 'organizator' : 'igralec'}
+          onChange={(d) => nastaviOrganizator(d.target.value === 'organizator')}
         >
-          Igralec
-        </button>
-        <button
-          type="button"
-          className={'zavihki__gumb' + (organizator ? ' zavihki__gumb--aktiven' : '')}
-          onClick={() => nastaviOrganizator(true)}
-        >
-          Organizator
-        </button>
-      </div>
+          <option value="igralec">Igralec</option>
+          <option value="organizator">Organizator</option>
+        </select>
+      </label>
 
       <p className="modal__podnaslov">
         {organizator

@@ -55,4 +55,28 @@ class FormatSrecanjaTest {
         assertTrue(FormatSrecanja.CORBILLON.imaDvojice());
         assertTrue(!FormatSrecanja.CORBILLON.izbiraDvojice(), "pri Corbillon igrata oba igralca");
     }
+
+    /* Savinja je Corbillon z dvojicami na zacetku - razlika je samo v vrstnem
+       redu, zato ju je smiselno primerjati drugo ob drugem. */
+    @Test
+    void savinjaImaDvojicePrve() {
+        List<FormatSrecanja.MestoTekme> r = FormatSrecanja.SAVINJA.razpored();
+        assertEquals(5, r.size());
+        List<String> dejansko = r.stream().map(FormatSrecanja.MestoTekme::oznaka).toList();
+        assertEquals(List.of("dvojice", "A-X", "B-Y", "A-Y", "B-X"), dejansko);
+        assertEquals(TipTekmeSrecanja.DVOJICE, r.get(0).tip());
+
+        assertEquals(2, FormatSrecanja.SAVINJA.getStIgralcev());
+        assertEquals(List.of("A", "B"), FormatSrecanja.SAVINJA.pozicijeDomaci());
+        assertEquals(List.of("X", "Y"), FormatSrecanja.SAVINJA.pozicijeGost());
+        assertTrue(FormatSrecanja.SAVINJA.imaDvojice());
+        assertTrue(!FormatSrecanja.SAVINJA.izbiraDvojice(), "pri Savinji igrata oba igralca");
+        assertEquals(2, FormatSrecanja.SAVINJA.stVDvojici());
+
+        // ista mnozica tekem kot Corbillon, drugacen vrstni red
+        assertEquals(
+                FormatSrecanja.CORBILLON.razpored().stream()
+                        .map(FormatSrecanja.MestoTekme::oznaka).sorted().toList(),
+                dejansko.stream().sorted().toList());
+    }
 }

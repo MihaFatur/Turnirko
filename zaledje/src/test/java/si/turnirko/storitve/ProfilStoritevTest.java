@@ -131,6 +131,52 @@ class ProfilStoritevTest extends IntegracijskiTest {
         assertEquals(4, z.niziInTocke().dobljeniNizi() + z.niziInTocke().prejetiNizi());
     }
 
+    /* Trije razrezi, ki jih uporablja prenovljena stran profila: razsevni graf
+       (rating nasprotnika ob tekmi), mesecni izkupicek proti pricakovanemu in
+       tocke v tesnih nizih. */
+    @Test
+    void zasebnaStatistikaDaPodatkeZaGrafeProfila() {
+        Dogodek dogodek = pripraviDogodek(4);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma tekma = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                .findFirst().orElseThrow();
+        // 3:0 z enim tesnim nizom (12:10) - drugi niz gladek, tretji spet tesen
+        tekmaStoritev.vnesiRezultat(tekma.getId(), new VnosRezultata(null, 3, 0, null,
+                List.of(new VnosRezultata.NizVnos(11, 4),
+                        new VnosRezultata.NizVnos(12, 10),
+                        new VnosRezultata.NizVnos(11, 9))));
+        Igralec zmagovalec = tekma.getPrijava1().getIgralec();
+        Igralec porazenec = tekma.getPrijava2().getIgralec();
+
+        ProfilZasebnoDto z = profilStoritev.zasebno(zmagovalec.getId(), adminIme());
+
+        // razsevni graf: ena pika, rating nasprotnika PRED tekmo je zacetni
+        assertEquals(1, z.razsevni().size());
+        assertEquals(EloStoritev.ZACETNI_RATING, z.razsevni().get(0).ratingNasprotnika());
+        assertTrue(z.razsevni().get(0).zmaga());
+        assertTrue(z.razsevni().get(0).sprememba() > 0);
+
+        // pri enakem ratingu je pricakovana zmaga natanko pol
+        assertEquals(1, z.forma().poMesecih().size());
+        assertEquals(1, z.forma().poMesecih().get(0).zmage());
+        assertEquals(0.5, z.forma().poMesecih().get(0).pricakovaneZmage(), 0.001);
+
+        // brez izgubljenega niza: edina tekma je bila 3:0
+        assertEquals(100, z.niziInTocke().brezIzgubljenegaNiza().odstotek());
+
+        // pod pritiskom: tesna sta 12:10 in 11:9, torej 23 od 42 tock
+        assertEquals(2, z.niziInTocke().tocke().nizovPodPritiskom());
+        assertEquals(Math.round(23 * 100f / 42),
+                z.niziInTocke().tocke().odstotekTockPodPritiskom());
+
+        // nasprotnik vidi zrcalno sliko: poraz in negativna sprememba
+        ProfilZasebnoDto zp = profilStoritev.zasebno(porazenec.getId(), adminIme());
+        assertEquals(0, zp.forma().poMesecih().get(0).zmage());
+        assertTrue(zp.razsevni().get(0).sprememba() < 0);
+        assertEquals(0, zp.niziInTocke().brezIzgubljenegaNiza().odstotek());
+    }
+
     @Test
     void zasebnegaProfilaNeVidiTujIgralec() {
         Tekma tekma = odigrajEnoTekmo(3, 1);

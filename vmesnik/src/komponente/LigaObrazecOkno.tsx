@@ -1,13 +1,17 @@
 /* Obrazec za pravila lige — isti za ustvarjanje in za urejanje, da se možnosti
    ne razhajajo. Kadar je podana obstoječa liga, gre za urejanje (polja so
    prednapolnjena, shrani se s PUT). Strežnik urejanje dovoli samo, dokler je
-   liga v PRIPRAVI; vmesnik gumb v drugih stanjih samo skrije. */
+   liga v PRIPRAVI; vmesnik gumb v drugih stanjih samo skrije.
+
+   Mesta lige v piramidi (višja/nižja liga, napredovanje, izpad) tu namenoma
+   ni: to ni pravilo tekmovanja, ampak opis sezone, in se sme popravljati tudi
+   potem, ko so pravila zaklenjena — ureja ga PrehodiOkno. */
 import { useState, type FormEvent } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
 import type { FormatSrecanja, LigaDto, LigaVnos, PredlogaLige, SpolKategorija } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_PREDLOGA_LIGE } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_PREDLOGA_LIGE, RAZPORED_FORMATA } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -18,17 +22,28 @@ interface Lastnosti {
   onShranjeno: (liga: LigaDto) => void
 }
 
+/* Konec srečanja je izbira dveh pravil, ne prazno polje: »vse tekme« je
+   enakovredna možnost in mora biti napisana, ne uganjena iz praznega vnosa. */
+type KonecSrecanja = 'VSE' | 'PRAG'
+
+/* Privzeti prag = večina tekem (npr. 6 od 10 pri SNTL, 3 od 5 pri Savinji). */
+function vecina(format: FormatSrecanja): number {
+  return Math.floor(RAZPORED_FORMATA[format].length / 2) + 1
+}
+
 export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const urejanje = liga !== undefined
-  const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
 
   const [ime, nastaviIme] = useState(liga?.ime ?? '')
   const [sezona, nastaviSezono] = useState(liga?.sezona ?? '')
   const [spol, nastaviSpol] = useState<SpolKategorija>(liga?.spolKategorija ?? 'MOSKI')
   const [format, nastaviFormat] = useState<FormatSrecanja>(liga?.formatSrecanja ?? 'SNTL')
   const [steviloNizov, nastaviSteviloNizov] = useState(liga?.steviloNizov ?? 5)
-  const [zmagZaSrecanje, nastaviZmag] = useState(
-    liga?.zmagZaSrecanje != null ? String(liga.zmagZaSrecanje) : '',
+  const [konec, nastaviKonec] = useState<KonecSrecanja>(
+    liga?.zmagZaSrecanje != null ? 'PRAG' : 'VSE',
+  )
+  const [prag, nastaviPrag] = useState(
+    liga?.zmagZaSrecanje ?? vecina(liga?.formatSrecanja ?? 'SNTL'),
   )
   const [dvokrozno, nastaviDvokrozno] = useState(liga?.dvokrozno ?? true)
   const [tockeZmaga, nastaviTockeZmaga] = useState(liga?.tockeZmaga ?? 2)
@@ -38,9 +53,15 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const [prepoved, nastaviPrepoved] = useState(liga?.prepovedDvojneRegistracije ?? false)
   const [stejeVElo, nastaviStejeVElo] = useState(liga?.stejeVElo ?? true)
   const [predloga, nastaviPredlogo] = useState<PredlogaLige>(liga?.predlogaListka ?? 'SNTL_23')
-  const [idVisjaLiga, nastaviVisjo] = useState(liga?.idVisjaLiga != null ? String(liga.idVisjaLiga) : '')
-  const [stNapreduje, nastaviNapreduje] = useState(liga?.stNapreduje ?? 0)
-  const [stIzpade, nastaviIzpade] = useState(liga?.stIzpade ?? 0)
+
+  const tekme = RAZPORED_FORMATA[format]
+
+  /* Ob zamenjavi formata se prag prilagodi: mej, večjih od števila tekem,
+     strežnik ne sprejme, tiho poslana napaka pa bi bila nerazumljiva. */
+  function zamenjajFormat(nov: FormatSrecanja) {
+    nastaviFormat(nov)
+    nastaviPrag((p) => Math.min(p, RAZPORED_FORMATA[nov].length))
+  }
 
   const shranjevanje = useMutation({
     mutationFn: (vnos: LigaVnos) =>
@@ -59,7 +80,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       spolKategorija: spol,
       formatSrecanja: format,
       steviloNizov,
-      zmagZaSrecanje: zmagZaSrecanje ? Number(zmagZaSrecanje) : null,
+      zmagZaSrecanje: konec === 'PRAG' ? prag : null,
       dvokrozno,
       tockeZmaga,
       tockeNeodloceno,
@@ -68,14 +89,8 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       prepovedDvojneRegistracije: prepoved,
       stejeVElo,
       predlogaListka: predloga,
-      idVisjaLiga: idVisjaLiga ? Number(idVisjaLiga) : null,
-      stNapreduje,
-      stIzpade,
     })
   }
-
-  /* Liga ne more biti sama sebi nadrejena, zato se pri urejanju ne ponudi. */
-  const mozneVisje = (lige.data ?? []).filter((l) => l.id !== liga?.id)
 
   return (
     <ModalnoOkno naslov={urejanje ? 'Uredi pravila lige' : 'Nova liga'} onZapri={onZapri}>
@@ -111,7 +126,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">
             <span>Format srečanja</span>
-            <select value={format} onChange={(d) => nastaviFormat(d.target.value as FormatSrecanja)}>
+            <select value={format} onChange={(d) => zamenjajFormat(d.target.value as FormatSrecanja)}>
               {(Object.keys(OZNAKE_FORMAT) as FormatSrecanja[]).map((f) => (
                 <option key={f} value={f}>{OZNAKE_FORMAT[f]}</option>
               ))}
@@ -127,17 +142,31 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           </label>
         </div>
 
+        <p className="namig">
+          Vrstni red tekem: {tekme.join(' · ')} ({tekme.length} tekem)
+        </p>
+
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">
-            <span>Prag zmag za konec srečanja</span>
-            <input type="number" min={1} value={zmagZaSrecanje}
-              onChange={(d) => nastaviZmag(d.target.value)} placeholder="prazno = vse tekme" />
+            <span>Konec srečanja</span>
+            <select value={konec} onChange={(d) => nastaviKonec(d.target.value as KonecSrecanja)}>
+              <option value="VSE">Odigrajo se vse tekme</option>
+              <option value="PRAG">Konča se pri pragu zmag</option>
+            </select>
           </label>
-          <label className="obrazec__polje obrazec__polje--stikalo">
-            <input type="checkbox" checked={dvokrozno} onChange={(d) => nastaviDvokrozno(d.target.checked)} />
-            <span>Dvokrožno (doma in v gosteh)</span>
-          </label>
+          {konec === 'PRAG' && (
+            <label className="obrazec__polje">
+              <span>Prag zmag (največ {tekme.length})</span>
+              <input type="number" min={1} max={tekme.length} value={prag}
+                onChange={(d) => nastaviPrag(Number(d.target.value))} required />
+            </label>
+          )}
         </div>
+        <p className="namig">
+          {konec === 'VSE'
+            ? 'Vseh ' + tekme.length + ' tekem se odigra do konca, tudi ko je zmagovalec srečanja že znan — rezultat šteje v razliko tekem in v ELO.'
+            : `Ko ena ekipa doseže ${prag} dobljenih tekem, se srečanje konča; preostale tekme ostanejo neodigrane.`}
+        </p>
 
         <fieldset className="obrazec__skupina">
           <legend>Točkovanje</legend>
@@ -162,6 +191,10 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         </fieldset>
 
         <label className="obrazec__polje obrazec__polje--stikalo">
+          <input type="checkbox" checked={dvokrozno} onChange={(d) => nastaviDvokrozno(d.target.checked)} />
+          <span>Dvokrožno (doma in v gosteh)</span>
+        </label>
+        <label className="obrazec__polje obrazec__polje--stikalo">
           <input type="checkbox" checked={prepoved} onChange={(d) => nastaviPrepoved(d.target.checked)} />
           <span>Prepovej dvojno registracijo (igralec le v eni ekipi lige)</span>
         </label>
@@ -179,28 +212,10 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           </select>
         </label>
 
-        <fieldset className="obrazec__skupina">
-          <legend>Prehodi (neobvezno)</legend>
-          <div className="obrazec__vrstica">
-            <label className="obrazec__polje">
-              <span>Višja liga</span>
-              <select value={idVisjaLiga} onChange={(d) => nastaviVisjo(d.target.value)}>
-                <option value="">— brez —</option>
-                {mozneVisje.map((l) => (
-                  <option key={l.id} value={l.id}>{l.ime}</option>
-                ))}
-              </select>
-            </label>
-            <label className="obrazec__polje">
-              <span>Napreduje</span>
-              <input type="number" min={0} value={stNapreduje} onChange={(d) => nastaviNapreduje(Number(d.target.value))} />
-            </label>
-            <label className="obrazec__polje">
-              <span>Izpade</span>
-              <input type="number" min={0} value={stIzpade} onChange={(d) => nastaviIzpade(Number(d.target.value))} />
-            </label>
-          </div>
-        </fieldset>
+        <p className="namig">
+          Mesto lige v piramidi (višja in nižje lige, napredovanje, izpad) se
+          ureja posebej — na strani lige, tudi ko so pravila že zaklenjena.
+        </p>
 
         <SporociloNapake napaka={shranjevanje.error} />
         <div className="obrazec__gumbi">

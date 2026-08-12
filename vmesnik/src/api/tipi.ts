@@ -36,25 +36,33 @@ export interface KlubDto {
   kratica: string | null
 }
 
+/* Igralec, kot ga vrne javna koncna tocka /igralci (zrcali IgralecJavniDto).
+   Osebnih podatkov namenoma ni - te nosi IgralecPodrobenDto. */
 export interface IgralecDto {
   id: number
   ime: string
   priimek: string
   spol: Spol
-  datumRojstva: string
-  email: string | null
-  telefonskaSt: string | null
   igralnaRoka: IgralnaRoka | null
-  ntzsLicenca: string | null
-  drzavljanstvo: string | null
-  naslov: string | null
-  kraj: KrajDto | null
   klub: KlubDto | null
   /* Trenutni klubski ELO; null, ce igralec se ni odigral nobene tekme. */
   rating: number | null
   /* Število že odigranih ratinških tekem. 0 → mogoče je postaviti začetni
      rating; nizko število → rating je še provizoričen. */
   steviloTekem: number
+}
+
+/* Šifrant z osebnimi podatki (/igralci/podrobno). Strežnik ga vrne samo
+   administratorju; organizator dobi javni izpis, zato mora vsak pogled, ki
+   ta polja riše, biti pripravljen tudi na to, da jih ni. */
+export interface IgralecPodrobenDto extends IgralecDto {
+  datumRojstva: string
+  email: string | null
+  telefonskaSt: string | null
+  ntzsLicenca: string | null
+  drzavljanstvo: string | null
+  naslov: string | null
+  kraj: KrajDto | null
 }
 
 export interface TurnirDto {
@@ -73,6 +81,20 @@ export interface TurnirDto {
   idLastnik: number | null
   idKlubLastnik: number | null
   klubLastnik: string | null
+  /* Stevci cez dogodke turnirja: pas "Danes v dvorani" in kolofon ju bereta
+     brez dodatne poizvedbe. */
+  steviloDogodkov: number
+  dogodkovVTeku: number
+  dogodkovVPripravi: number
+  prijavljenihSkupaj: number
+  odigranihTekem: number
+  vsehTekem: number
+  /* Besedno stanje turnirja za vrstico na domači strani. faza je zapolnjena
+     samo pri turnirju v teku ("skupine", "četrtfinale", "3. kolo"),
+     zmagovalec samo pri zaključenem; zadnjiIzid je "Vrhovnik 3:1 Kramar". */
+  faza: string | null
+  zmagovalec: string | null
+  zadnjiIzid: string | null
 }
 
 export interface DogodekDto {
@@ -90,6 +112,11 @@ export interface DogodekDto {
   prijavnina: number | null
   rokPrijave: string | null
   status: StatusTekmovanja
+  /* Stevci vrstice dogodka: palica napredka je edino, kar loci dogodek
+     z 12 igralci od dogodka s 100. */
+  steviloPrijav: number
+  odigranihTekem: number
+  vsehTekem: number
 }
 
 export interface PrijavaDto {
@@ -276,15 +303,63 @@ export interface PredlogIgralcaDto {
   zeImaRacun: boolean
 }
 
+/* Starostno-spolna kategorija igralca; zaledje jo izpelje iz spola in letnice
+   rojstva (glej KategorijaIgralca.java), zato je ni v šifrantu. */
+export type KategorijaIgralca = 'CLANI' | 'CLANICE' | 'U19' | 'VETERANI'
+
 /* Vrstica globalne lestvice igralcev (po klubskem ELO). */
 export interface LestvicaIgralcaDto {
   idIgralca: number
+  /* Ime in priimek ločena: v stolpcu se igralec bere kot "Jan Petrič",
+     v izbirniku pa abecedno kot "Petrič Jan". */
+  ime: string
+  priimek: string
   polnoIme: string
   klub: string | null
+  idKluba: number | null
   rating: number | null
   odigrane: number
   zmage: number
   porazi: number
+  /* Koliko mest je igralec pridobil (+) ali izgubil (−) v zadnjem mesecu;
+     null, če ga pred mesecem na lestvici še ni bilo. */
+  premik: number | null
+  /* Razlika klubskega ELO proti stanju pred 30 dnevi; null z istim razlogom
+     kot premik. */
+  spremembaRatinga: number | null
+  /* Izpeljana kategorija za filter nad lestvico; null, kadar je ni mogoče
+     določiti. */
+  kategorija: KategorijaIgralca | null
+  /* Do sedem točk klubskega ELO čez zadnjih 12 mesecev (najstarejša prva). */
+  eloZgodovina: number[]
+  /* Lige, v katerih je igralec v kadru katere od ekip (filter "Moje lige"). */
+  idjiLig: number[]
+}
+
+/* Povzetek ene lige za sklop "Moje lige" na domači strani. */
+export interface DomovLigaDto {
+  id: number
+  ime: string
+  sezona: string | null
+  status: StatusTekmovanja
+  odigranihKol: number
+  vsehKol: number
+  vrh: VrhLigeDto[]
+  naslednje: NaslednjeKoloDto | null
+}
+
+export interface VrhLigeDto {
+  mesto: number
+  ekipa: string
+  odigrane: number
+  tocke: number
+}
+
+export interface NaslednjeKoloDto {
+  kolo: number
+  datum: string | null
+  domaci: string
+  gost: string
 }
 
 /* Pregled "1 na 1" med dvema igralcema (izidi z vidika prvega). */
@@ -301,6 +376,10 @@ export interface DvobojDto {
 
 export interface DvobojIgralec {
   id: number
+  /* Veliko ime na semaforju se bere "Nejc Vrhovnik", izbirnik pod njim pa
+     abecedno "Vrhovnik Nejc" — zato oboje. */
+  ime: string
+  priimek: string
   polnoIme: string
   klub: string | null
   rating: number | null
@@ -315,6 +394,8 @@ export interface DvobojTekma {
   tekmovanje: string
   /* Ime dogodka oz. »N. kolo · Domači – Gostje«. */
   del: string
+  /* Začetek turnirja oz. dan odigranega srečanja; null, kadar datuma ni. */
+  datum: string | null
   niziPrvega: number
   niziDrugega: number
   zmagalPrvi: boolean
@@ -460,7 +541,7 @@ export const OZNAKE_SISTEM_KRATKO: Record<SistemTekmovanja, string> = {
   IZLOCILNI: 'Izločilni',
   KROZNI: 'Krožni',
   SKUPINE_IZLOCILNI: 'Skupine + izločilni',
-  SKUPINE: 'Skupine (TOP)',
+  SKUPINE: 'Skupine po jakosti',
 }
 
 /* Koliko dobljenih nizov je potrebnih za zmago (npr. na 5 nizov -> 3). */
@@ -470,7 +551,7 @@ export function nizovZaZmago(steviloNizov: number): number {
 
 /* ---------- Ligaska (ekipna) tekmovanja ---------- */
 
-export type FormatSrecanja = 'SNTL' | 'CORBILLON'
+export type FormatSrecanja = 'SNTL' | 'CORBILLON' | 'SAVINJA'
 export type StranEkipe = 'DOMACI' | 'GOST'
 export type TipTekmeSrecanja = 'DVOJICE' | 'POSAMICNA'
 export type StatusSrecanja = 'RAZPORED' | 'POTEKA' | 'KONCANO'
@@ -479,6 +560,15 @@ export type StatusTekmeSrecanja = 'CAKA' | 'KONCANA' | 'NEODIGRANA'
 export const OZNAKE_FORMAT: Record<FormatSrecanja, string> = {
   SNTL: 'SNTL (3 igralci + dvojice)',
   CORBILLON: 'Corbillon (2 igralca + dvojice)',
+  SAVINJA: 'Savinja liga (2 igralca, dvojice prve)',
+}
+
+/* Vrstni red tekem — kot ga vrne FormatSrecanja.razpored() na strežniku.
+   Obrazec ga izpiše in po njem omeji prag zmag, da ne ponudi nemogoče meje. */
+export const RAZPORED_FORMATA: Record<FormatSrecanja, string[]> = {
+  SNTL: ['dvojice', 'A-X', 'B-Y', 'C-Z', 'B-X', 'A-Z', 'C-Y', 'B-Z', 'C-X', 'A-Y'],
+  CORBILLON: ['A-X', 'B-Y', 'dvojice', 'A-Y', 'B-X'],
+  SAVINJA: ['dvojice', 'A-X', 'B-Y', 'A-Y', 'B-X'],
 }
 
 /* Predloga uradnega ekipnega zapisnika (NTZS) za natis listkov lige. */
@@ -532,7 +622,14 @@ export interface LigaVnos {
   prepovedDvojneRegistracije: boolean
   stejeVElo: boolean
   predlogaListka: PredlogaLige
+}
+
+/* Mesto lige v piramidi. Ločeno od LigaVnos, ker so pravila po generiranju
+   razporeda zaklenjena, povezave med ligami pa ostanejo popravljive.
+   idNizjeLige = null pomeni »ne dotikaj se nižjih lig«. */
+export interface PrehodiVnos {
   idVisjaLiga: number | null
+  idNizjeLige: number[] | null
   stNapreduje: number
   stIzpade: number
 }
@@ -544,6 +641,7 @@ export interface EkipaDto {
   zaporedna: number
   ime: string | null
   prikazanoIme: string
+  steviloKadra: number
 }
 
 export interface EkipaVnos {
@@ -559,6 +657,9 @@ export interface KaderIgralecDto {
   klub: string | null
   vrstniRed: number | null
   rating: number | null
+  /* Bilanca posamičnih tekem igralca v tej ligi (dvojice ne štejejo). */
+  zmage: number
+  porazi: number
 }
 
 export interface KaderVnos {
@@ -726,6 +827,15 @@ export interface ProfilZasebnoDto {
   niziInTocke: ProfilNiziInTocke
   forma: ProfilForma
   poTekmovanjih: ProfilPoTekmovanjih
+  razsevni: RazsevnaTocka[]
+}
+
+/* Ena tekma v razsevnem grafu: rating nasprotnika ob tekmi proti spremembi
+   lastnega ratinga. */
+export interface RazsevnaTocka {
+  ratingNasprotnika: number
+  sprememba: number
+  zmaga: boolean
 }
 
 export interface Delez {
@@ -770,6 +880,8 @@ export interface ProfilNiziInTocke {
   prejetiNizi: number
   razmerja: Razmerje[]
   odlocilniNiz: Delez
+  /* »Zmage« so tu tekme brez izgubljenega niza, »porazi« vse ostale. */
+  brezIzgubljenegaNiza: Delez
   tocke: ProfilTocke
 }
 
@@ -781,6 +893,17 @@ export interface ProfilTocke {
   odstotekTock: number
   povprecjeNaNiz: number
   najvecTockVNizu: number
+  /* Tesni nizi (oba vsaj 9 točk) — približek izida 9:9 in več. */
+  nizovPodPritiskom: number
+  odstotekTockPodPritiskom: number
+}
+
+/* En koledarski mesec: dosežene zmage proti pričakovanim iz ELO nasprotnikov.
+   »mesec« je oblike »2026-04«. */
+export interface ProfilMesec {
+  mesec: string
+  zmage: number
+  pricakovaneZmage: number
 }
 
 export interface ProfilForma {
@@ -792,6 +915,7 @@ export interface ProfilForma {
   spremembaElo30dni: number | null
   najvisjiElo: number | null
   najvisjiEloDatum: string | null
+  poMesecih: ProfilMesec[]
 }
 
 export interface ProfilPoTekmovanjih {

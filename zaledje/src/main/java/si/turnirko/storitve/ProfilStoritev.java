@@ -55,6 +55,9 @@ public class ProfilStoritev {
     /* Meja, od katere naprej velja nasprotnik za mocnejsega oz. sibkejsega. */
     private static final int MEJA_PODOBNIH = 50;
 
+    /* Niz je "tesen", ko sta oba dosegla vsaj toliko tock (izid 9:9 in vec). */
+    private static final int TOCK_ZA_TESEN_NIZ = 9;
+
     private final IgralecRepozitorij igralecRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
@@ -131,7 +134,8 @@ public class ProfilStoritev {
                 nasprotniki(nastopi),
                 niziInTocke(nastopi),
                 forma(idIgralec, nastopi),
-                poTekmovanjih(idIgralec, nastopi));
+                poTekmovanjih(idIgralec, nastopi),
+                razsevni(nastopi));
     }
 
     /* Administrator sme vse; igralec samo svoj profil. */
@@ -434,12 +438,16 @@ public class ProfilStoritev {
 
         Map<String, int[]> razmerja = new LinkedHashMap<>();
         int[] odlocilni = new int[2];
+        int brezIzgube = 0;
         for (Nastop n : nastopi) {
             razmerja.computeIfAbsent(n.niziZa() + ":" + n.niziProti(), k -> new int[2])
                     [n.zmaga() ? 0 : 1]++;
             // odlocilni niz: porazenec je zaostal za natanko en niz
             if (Math.abs(n.niziZa() - n.niziProti()) == 1) {
                 odlocilni[n.zmaga() ? 0 : 1]++;
+            }
+            if (n.niziProti() == 0) {
+                brezIzgube++;
             }
         }
 
@@ -454,6 +462,7 @@ public class ProfilStoritev {
                         .sorted(Comparator.comparingInt(ProfilZasebnoDto.Razmerje::stevilo).reversed())
                         .toList(),
                 Delez.iz("odločilni niz", odlocilni[0], odlocilni[1]),
+                Delez.iz("brez izgubljenega niza", brezIzgube, nastopi.size() - brezIzgube),
                 tocke(nastopi));
     }
 
@@ -466,12 +475,15 @@ public class ProfilStoritev {
             }
         }
         if (turnirske.isEmpty()) {
-            return new ProfilZasebnoDto.Tocke(0, 0, 0, 0, 0, 0);
+            return new ProfilZasebnoDto.Tocke(0, 0, 0, 0, 0, 0, 0, 0);
         }
         int za = 0;
         int proti = 0;
         int nizov = 0;
         int najvec = 0;
+        int tesnihNizov = 0;
+        int tesneZa = 0;
+        int tesneSkupaj = 0;
         java.util.Set<Long> stekmami = new java.util.HashSet<>();
         for (Object[] v : nizRepozitorij.tockeZaTekme(turnirske.keySet())) {
             Long idTekme = ((Number) v[0]).longValue();
@@ -486,12 +498,61 @@ public class ProfilStoritev {
             nizov++;
             najvec = Math.max(najvec, moje);
             stekmami.add(idTekme);
+            if (Math.min(moje, njegove) >= TOCK_ZA_TESEN_NIZ) {
+                tesnihNizov++;
+                tesneZa += moje;
+                tesneSkupaj += moje + njegove;
+            }
         }
         int skupaj = za + proti;
         return new ProfilZasebnoDto.Tocke(stekmami.size(), za, proti,
                 skupaj == 0 ? 0 : Math.round(za * 100f / skupaj),
                 nizov == 0 ? 0 : Math.round(za * 10.0 / nizov) / 10.0,
-                najvec);
+                najvec,
+                tesnihNizov,
+                tesneSkupaj == 0 ? 0 : Math.round(tesneZa * 100f / tesneSkupaj));
+    }
+
+    /* Razsevni graf: samo tekme, pri katerih sta znana oba ratinga ob tekmi in
+       je bila sprememba obracunana - sicer pika nima ne osi x ne osi y. */
+    private static List<ProfilZasebnoDto.RazsevnaTocka> razsevni(List<Nastop> nastopi) {
+        List<ProfilZasebnoDto.RazsevnaTocka> tocke = new ArrayList<>();
+        for (Nastop n : nastopi) {
+            if (n.ratingNasprotnikaPred() != null && n.mojRatingPred() != null
+                    && n.spremembaElo() != null) {
+                tocke.add(new ProfilZasebnoDto.RazsevnaTocka(
+                        n.ratingNasprotnikaPred(), n.spremembaElo(), n.zmaga()));
+            }
+        }
+        return tocke;
+    }
+
+    /* Pricakovane zmage po mesecih: vsota verjetnosti zmage po formuli ELO
+       (1 / (1 + 10^((nasprotnik - jaz) / 400))) cez tekme meseca. Mesec brez
+       tekme z znanima ratingoma v seznam ne pride - prazen stolpec ne pove nic. */
+    private static List<ProfilZasebnoDto.Mesec> poMesecih(List<Nastop> nastopi) {
+        Map<String, double[]> po = new java.util.TreeMap<>();
+        for (Nastop n : nastopi) {
+            if (n.mojRatingPred() == null || n.ratingNasprotnikaPred() == null) {
+                continue;
+            }
+            LocalDate d = n.datum() != null ? n.datum()
+                    : (n.kdaj() != null ? n.kdaj().toLocalDate() : null);
+            if (d == null) {
+                continue;
+            }
+            String kljuc = String.format("%04d-%02d", d.getYear(), d.getMonthValue());
+            double[] v = po.computeIfAbsent(kljuc, k -> new double[2]);
+            if (n.zmaga()) {
+                v[0]++;
+            }
+            v[1] += 1.0 / (1.0 + Math.pow(10,
+                    (n.ratingNasprotnikaPred() - n.mojRatingPred()) / 400.0));
+        }
+        return po.entrySet().stream()
+                .map(e -> new ProfilZasebnoDto.Mesec(e.getKey(), (int) e.getValue()[0],
+                        Math.round(e.getValue()[1] * 100) / 100.0))
+                .toList();
     }
 
     private ProfilZasebnoDto.Forma forma(Long idIgralec, List<Nastop> nastopi) {
@@ -536,7 +597,8 @@ public class ProfilStoritev {
                 najdaljseZmage, najdaljsiPorazi, sprememba30,
                 najvisji != null ? najvisji.getNovaVrednost() : null,
                 najvisji != null && najvisji.getUstvarjenOb() != null
-                        ? najvisji.getUstvarjenOb().toLocalDate() : null);
+                        ? najvisji.getUstvarjenOb().toLocalDate() : null,
+                poMesecih(nastopi));
     }
 
     private ProfilZasebnoDto.PoTekmovanjih poTekmovanjih(Long idIgralec, List<Nastop> nastopi) {

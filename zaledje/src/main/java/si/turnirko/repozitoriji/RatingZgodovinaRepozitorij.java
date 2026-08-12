@@ -1,6 +1,7 @@
 /* Dostop do dnevnika sprememb ratinga. */
 package si.turnirko.repozitoriji;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -38,6 +39,31 @@ public interface RatingZgodovinaRepozitorij extends JpaRepository<RatingZgodovin
             """)
     List<RatingZgodovina> najdiZaIgralca(@Param("idIgralec") Long idIgralec,
                                          @Param("sistem") String sistem);
+
+    /* Dnevnik VSEH igralcev od danega trenutka naprej, od najstarejsega:
+       [idIgralca, kdaj, nova vrednost]. Iz njega lestvica narise crto gibanja
+       ELO ob vrstici - po eno poizvedbo na igralca bi pri stotih igralcih
+       pomenilo sto poizvedb. */
+    @Query("""
+            SELECT z.igralec.id, z.ustvarjenOb, z.novaVrednost
+            FROM RatingZgodovina z
+            WHERE z.sistem = :sistem AND z.ustvarjenOb >= :od
+            ORDER BY z.ustvarjenOb, z.id
+            """)
+    List<Object[]> potekOd(@Param("sistem") String sistem, @Param("od") LocalDateTime od);
+
+    /* Rating vsakega igralca, kakrsen je bil ob danem trenutku (zadnji zapis
+       do takrat): [idIgralca, vrednost]. Zapisi so append-only, zato je
+       najvisji id tudi najnovejsi. Sluzi izracunu premika na lestvici in
+       izhodiscu crte, kadar igralec v zadnjem letu ni igral. */
+    @Query("""
+            SELECT z.igralec.id, z.novaVrednost FROM RatingZgodovina z
+            WHERE z.id IN (
+                SELECT MAX(y.id) FROM RatingZgodovina y
+                WHERE y.sistem = :sistem AND y.ustvarjenOb <= :mejnik
+                GROUP BY y.igralec.id)
+            """)
+    List<Object[]> stanjeOb(@Param("sistem") String sistem, @Param("mejnik") LocalDateTime mejnik);
 
     /* Rating igralcev PRED danimi turnirskimi tekmami (nova vrednost minus
        sprememba). Potrebno za razclenitev "proti mocnejsim/sibkejsim", kjer

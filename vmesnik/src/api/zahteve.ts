@@ -5,10 +5,12 @@ import { api } from './odjemalec'
 import type {
   DogodekDto,
   DogodekVnos,
+  DomovLigaDto,
   DvobojDto,
   EkipaDto,
   EkipaVnos,
   IgralecDto,
+  IgralecPodrobenDto,
   IgralecVnos,
   KaderIgralecDto,
   KaderVnos,
@@ -22,6 +24,7 @@ import type {
   LigaVnos,
   MrezaDto,
   PostavaVnos,
+  PrehodiVnos,
   PrijavaDto,
   ProfilDto,
   ProfilZasebnoDto,
@@ -75,6 +78,9 @@ export const tekmeApi = {
 
 export const igralciApi = {
   seznam: () => api.vrni<IgralecDto[]>('/igralci'),
+  /* Šifrant z osebnimi podatki; strežnik ga da samo administratorju, zato
+     tega ne kliči, dokler ne veš, da je prijavljeni admin (sicer 401). */
+  seznamPodrobno: () => api.vrni<IgralecPodrobenDto[]>('/igralci/podrobno'),
   ustvari: (vnos: IgralecVnos) => api.objavi<IgralecDto>('/igralci', vnos),
   posodobi: (id: number, vnos: IgralecVnos) =>
     api.posodobi<IgralecDto>(`/igralci/${id}`, vnos),
@@ -141,6 +147,11 @@ export const ligeApi = {
   najdi: (id: number) => api.vrni<LigaDto>(`/lige/${id}`),
   ustvari: (vnos: LigaVnos) => api.objavi<LigaDto>('/lige', vnos),
   uredi: (id: number, vnos: LigaVnos) => api.posodobi<LigaDto>(`/lige/${id}`, vnos),
+  /* Mesto v piramidi je ločeno od pravil - ureja se tudi med sezono. Poleg te
+     lige lahko spremeni tudi nižje (povezavo nosijo one), zato po klicu
+     osveži cel seznam lig, ne le te ene. */
+  prehodi: (id: number, vnos: PrehodiVnos) =>
+    api.posodobi<LigaDto>(`/lige/${id}/prehodi`, vnos),
   izbrisi: (id: number) => api.izbrisi(`/lige/${id}`),
 
   ekipe: (id: number) => api.vrni<EkipaDto[]>(`/lige/${id}/ekipe`),
@@ -163,6 +174,19 @@ export const srecanjaApi = {
     api.posodobi<SrecanjePodrobnoDto>(`/srecanja/${id}/postava`, vnos),
   vnesiRezultat: (idTekma: number, vnos: VnosRezultataSrecanja) =>
     api.objavi<TekmaSrecanjaDto>(`/srecanja/tekme/${idTekma}/rezultat`, vnos),
+}
+
+/* Domača stran: povzetki lig in osebni izbor spremljanih lig. */
+export const domovApi = {
+  /* Brez id-jev vrne lige, ki so v teku (gost brez izbora). */
+  lige: (idji: number[]) =>
+    api.vrni<DomovLigaDto[]>(
+      idji.length > 0 ? `/domov/lige?idji=${idji.join(',')}` : '/domov/lige',
+    ),
+  /* Izbor je last računa - gost dobi 401 in ga hrani brskalnik sam. */
+  mojeLige: () => api.vrni<number[]>('/domov/moje-lige'),
+  spremljaj: (idLiga: number) => api.posodobi<number[]>(`/domov/moje-lige/${idLiga}`, undefined),
+  nehajSpremljati: (idLiga: number) => api.izbrisi(`/domov/moje-lige/${idLiga}`),
 }
 
 export const statistikaApi = {

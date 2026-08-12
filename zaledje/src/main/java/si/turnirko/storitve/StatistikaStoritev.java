@@ -10,11 +10,14 @@
 package si.turnirko.storitve;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ import si.turnirko.dto.ZadnjaTekmaDto;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Igralec;
+import si.turnirko.modeli.KategorijaIgralca;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.Srecanje;
@@ -33,26 +37,44 @@ import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
+import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
+import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
 import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
 
 @Service
 public class StatistikaStoritev {
 
+    /* Koliko tock ima crta gibanja ELO ob vrstici lestvice. Sedem je toliko,
+       kolikor jih je pri sirini 140 px se mogoce lociti. */
+    private static final int TOCK_CRTE = 7;
+
+    /* Obdobje, ki ga crta pokriva, in obdobje, cez katero se meri premik
+       mesta. Premik cez mesec je dovolj dolg, da ni sum posamezne tekme, in
+       dovolj kratek, da se se bere kot "kaj se je zgodilo zadnjic". */
+    private static final int MESECEV_CRTE = 12;
+    private static final int DNI_PREMIKA = 30;
+
     private final IgralecRepozitorij igralecRepozitorij;
     private final RatingStanjeRepozitorij ratingStanjeRepozitorij;
+    private final RatingZgodovinaRepozitorij ratingZgodovinaRepozitorij;
+    private final KaderEkipeRepozitorij kaderEkipeRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
     private final SpremembeEloStoritev spremembeEloStoritev;
 
     public StatistikaStoritev(IgralecRepozitorij igralecRepozitorij,
                               RatingStanjeRepozitorij ratingStanjeRepozitorij,
+                              RatingZgodovinaRepozitorij ratingZgodovinaRepozitorij,
+                              KaderEkipeRepozitorij kaderEkipeRepozitorij,
                               TekmaRepozitorij tekmaRepozitorij,
                               TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij,
                               SpremembeEloStoritev spremembeEloStoritev) {
         this.igralecRepozitorij = igralecRepozitorij;
         this.ratingStanjeRepozitorij = ratingStanjeRepozitorij;
+        this.ratingZgodovinaRepozitorij = ratingZgodovinaRepozitorij;
+        this.kaderEkipeRepozitorij = kaderEkipeRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
         this.spremembeEloStoritev = spremembeEloStoritev;
@@ -72,24 +94,169 @@ public class StatistikaStoritev {
         Map<Long, Integer> ratingi = ratingiPoIgralcu(
                 igralci.stream().map(Igralec::getId).toList());
         Map<Long, Stat> stat = statistikaTekem();
+        Map<Long, List<Long>> lige = ligePoIgralcih();
 
+        LocalDateTime zdaj = LocalDateTime.now();
+        Poteki poteki = potekiEla(zdaj);
+        /* Premik je razlika mest, zato potrebuje CELO lestvico izpred meseca -
+           ne le ratingov igralcev, ki so danes na njej. */
+        Map<Long, Integer> mestaPrej = mestaPoRatingu(poteki.predMesecem());
+
+        LocalDate danes = zdaj.toLocalDate();
         List<LestvicaIgralcaDto> lestvica = new ArrayList<>();
         for (Igralec igralec : igralci) {
             Stat s = stat.getOrDefault(igralec.getId(), new Stat());
+            Integer rating = ratingi.get(igralec.getId());
+            /* Delta ratinga je razlika proti istemu stanju, iz katerega se
+               racuna premik mesta - oba stolpca torej merita isto obdobje. */
+            Integer ratingPrej = poteki.predMesecem().get(igralec.getId());
+            Integer sprememba = (rating == null || ratingPrej == null) ? null : rating - ratingPrej;
             lestvica.add(new LestvicaIgralcaDto(
                     igralec.getId(),
+                    igralec.getIme(),
+                    igralec.getPriimek(),
                     igralec.polnoIme(),
                     igralec.getKlub() != null ? igralec.getKlub().getIme() : null,
-                    ratingi.get(igralec.getId()),
-                    s.odigrane, s.zmage, s.porazi));
+                    igralec.getKlub() != null ? igralec.getKlub().getId() : null,
+                    rating,
+                    s.odigrane, s.zmage, s.porazi,
+                    null,
+                    sprememba,
+                    KategorijaIgralca.izpelji(igralec.getSpol(), igralec.getDatumRojstva(), danes),
+                    poteki.crte().getOrDefault(igralec.getId(), List.of()),
+                    lige.getOrDefault(igralec.getId(), List.of())));
         }
 
-        lestvica.sort(Comparator
+        lestvica.sort(primerjavaLestvice());
+
+        /* Premik dopisemo sele zdaj, ko je znano danasnje mesto. */
+        List<LestvicaIgralcaDto> zPremikom = new ArrayList<>(lestvica.size());
+        for (int i = 0; i < lestvica.size(); i++) {
+            LestvicaIgralcaDto v = lestvica.get(i);
+            Integer prej = mestaPrej.get(v.idIgralca());
+            Integer premik = (prej == null || v.rating() == null) ? null : prej - (i + 1);
+            zPremikom.add(new LestvicaIgralcaDto(
+                    v.idIgralca(), v.ime(), v.priimek(), v.polnoIme(), v.klub(), v.idKluba(),
+                    v.rating(), v.odigrane(), v.zmage(), v.porazi(),
+                    premik, v.spremembaRatinga(), v.kategorija(),
+                    v.eloZgodovina(), v.idjiLig()));
+        }
+        return zPremikom;
+    }
+
+    /* Najprej po ratingu (padajoce), potem po zmagah, potem abecedno.
+       Igralci brez ratinga (se niso igrali) so na dnu. */
+    private static Comparator<LestvicaIgralcaDto> primerjavaLestvice() {
+        return Comparator
                 .comparing((LestvicaIgralcaDto v) -> v.rating() == null ? Integer.MIN_VALUE : v.rating())
                 .reversed()
                 .thenComparing(Comparator.comparingInt(LestvicaIgralcaDto::zmage).reversed())
-                .thenComparing(LestvicaIgralcaDto::polnoIme));
-        return lestvica;
+                .thenComparing(LestvicaIgralcaDto::polnoIme);
+    }
+
+    /* Crte gibanja ELO in ratingi izpred meseca - oboje iz istega dnevnika,
+       zato v enem prehodu. */
+    private record Poteki(Map<Long, List<Integer>> crte, Map<Long, Integer> predMesecem) {}
+
+    private Poteki potekiEla(LocalDateTime zdaj) {
+        LocalDateTime zacetekOkna = zdaj.minusMonths(MESECEV_CRTE);
+        LocalDateTime mejnikPremika = zdaj.minusDays(DNI_PREMIKA);
+
+        /* Izhodisce: kdo je ob zacetku okna ze imel rating. Brez tega bi crta
+           igralca, ki v zadnjem letu ni igral, ostala prazna. */
+        Map<Long, Integer> izhodisca = vMapoVrednosti(
+                ratingZgodovinaRepozitorij.stanjeOb(RatingStanje.SISTEM_KLUBSKI_ELO, zacetekOkna));
+
+        Map<Long, List<Object[]>> poIgralcu = new HashMap<>();
+        for (Object[] v : ratingZgodovinaRepozitorij.potekOd(RatingStanje.SISTEM_KLUBSKI_ELO, zacetekOkna)) {
+            poIgralcu.computeIfAbsent(((Number) v[0]).longValue(), k -> new ArrayList<>()).add(v);
+        }
+
+        Map<Long, List<Integer>> crte = new HashMap<>();
+        Map<Long, Integer> predMesecem = new HashMap<>(izhodisca);
+
+        Set<Long> vsi = new HashSet<>(izhodisca.keySet());
+        vsi.addAll(poIgralcu.keySet());
+
+        for (Long idIgralca : vsi) {
+            List<Object[]> zapisi = poIgralcu.getOrDefault(idIgralca, List.of());
+            boolean imaIzhodisce = izhodisca.containsKey(idIgralca);
+
+            /* Vrednosti v oknu: izhodisce (ce ga je) in vsaka zabelezena
+               sprememba. Ena sama vrednost ni gibanje, ampak ravna crta, ki
+               obljublja zgodovino, ki je ni. */
+            List<Integer> vrednosti = new ArrayList<>();
+            if (imaIzhodisce) {
+                vrednosti.add(izhodisca.get(idIgralca));
+            }
+            for (Object[] zapis : zapisi) {
+                vrednosti.add(((Number) zapis[2]).intValue());
+            }
+
+            /* Crta tece po TEKMAH in ne po koledarju. Razlog je v podatkih:
+               ustvarjen_ob v dnevniku ratinga je cas VNOSA, ne cas tekme -
+               klub cesto vnese celo kolo naenkrat. Casovno vzorcenje bi zato
+               celo sezono stisnilo v zadnjo tocko in vsem narisalo ravno crto.
+               Okno "zadnjih 12 mesecev" ostane: doloca, katere tekme so notri. */
+            List<Integer> crta = new ArrayList<>(TOCK_CRTE);
+            if (vrednosti.size() >= 2) {
+                if (vrednosti.size() <= TOCK_CRTE) {
+                    crta.addAll(vrednosti);
+                } else {
+                    for (int i = 0; i < TOCK_CRTE; i++) {
+                        int kje = (int) Math.round(
+                                (double) (vrednosti.size() - 1) * i / (TOCK_CRTE - 1));
+                        crta.add(vrednosti.get(kje));
+                    }
+                }
+            }
+
+            /* Rating izpred meseca beremo iz dnevnika neposredno - vzorcenje
+               crte je pregrobo (tocke so vsak drugi mesec). */
+            Integer prej = izhodisca.get(idIgralca);
+            for (Object[] zapis : zapisi) {
+                if (((LocalDateTime) zapis[1]).isAfter(mejnikPremika)) {
+                    break;
+                }
+                prej = ((Number) zapis[2]).intValue();
+            }
+            if (prej != null) {
+                predMesecem.put(idIgralca, prej);
+            }
+            if (!crta.isEmpty()) {
+                crte.put(idIgralca, crta);
+            }
+        }
+        return new Poteki(crte, predMesecem);
+    }
+
+    /* Iz ratingov izpred meseca zgradi lestvico in vrne mesto vsakega igralca. */
+    private static Map<Long, Integer> mestaPoRatingu(Map<Long, Integer> ratingi) {
+        List<Map.Entry<Long, Integer>> urejeni = new ArrayList<>(ratingi.entrySet());
+        urejeni.sort(Map.Entry.<Long, Integer>comparingByValue().reversed()
+                .thenComparing(Map.Entry.comparingByKey()));
+        Map<Long, Integer> mesta = new HashMap<>();
+        for (int i = 0; i < urejeni.size(); i++) {
+            mesta.put(urejeni.get(i).getKey(), i + 1);
+        }
+        return mesta;
+    }
+
+    private static Map<Long, Integer> vMapoVrednosti(List<Object[]> vrstice) {
+        Map<Long, Integer> mapa = new HashMap<>();
+        for (Object[] v : vrstice) {
+            mapa.put(((Number) v[0]).longValue(), ((Number) v[1]).intValue());
+        }
+        return mapa;
+    }
+
+    private Map<Long, List<Long>> ligePoIgralcih() {
+        Map<Long, List<Long>> lige = new HashMap<>();
+        for (Object[] v : kaderEkipeRepozitorij.ligePoIgralcih()) {
+            lige.computeIfAbsent(((Number) v[0]).longValue(), k -> new ArrayList<>())
+                    .add(((Number) v[1]).longValue());
+        }
+        return lige;
     }
 
     /* Ena vrstica zgodovine dvoboja s kljucem za urejanje. Turnirska tekma nima
@@ -134,13 +301,15 @@ public class StatistikaStoritev {
                 zmageDrugega++;
             }
             Map<Long, SpremembeEloStoritev.ObTekmi> poIgralcu = spremembe.getOrDefault(t.getId(), Map.of());
+            LocalDate kdaj = t.getDogodek().getTurnir().getDatumZacetka();
             vrstice.add(new Vrstica(new DvobojDto.Tekma(
                     t.getId(), false,
                     t.getDogodek().getTurnir().getIme(),
                     t.getDogodek().getIme(),
+                    kdaj,
                     niziPrvi, niziDrugi, zmagalPrvi, t.getIzidTip(),
                     spremembaOrNull(poIgralcu.get(idPrvega)), spremembaOrNull(poIgralcu.get(idDrugega))),
-                    t.getDogodek().getTurnir().getDatumZacetka()));
+                    kdaj));
         }
 
         List<TekmaSrecanja> ligaske = tekmaSrecanjaRepozitorij.najdiDvoboje(idPrvega, idDrugega);
@@ -162,14 +331,16 @@ public class StatistikaStoritev {
             }
             Srecanje s = t.getSrecanje();
             Map<Long, Integer> poIgralcu = ligaskeSpremembe.getOrDefault(t.getId(), Map.of());
+            LocalDate kdaj = s.getOdigranOb() != null ? s.getOdigranOb().toLocalDate() : null;
             vrstice.add(new Vrstica(new DvobojDto.Tekma(
                     t.getId(), true,
                     s.getLiga().getIme(),
                     s.getKolo() + ". kolo · " + s.getEkipaDomaci().prikazanoIme()
                             + " – " + s.getEkipaGost().prikazanoIme(),
+                    kdaj,
                     niziPrvi, niziDrugi, zmagalPrvi, t.getIzidTip(),
                     poIgralcu.get(idPrvega), poIgralcu.get(idDrugega)),
-                    s.getOdigranOb() != null ? s.getOdigranOb().toLocalDate() : null));
+                    kdaj));
         }
 
         // stabilno urejanje: najnovejse prve, vrstice brez datuma na konec
@@ -223,6 +394,8 @@ public class StatistikaStoritev {
     private DvobojDto.Igralec igralecPovzetek(Igralec igralec, Integer rating) {
         return new DvobojDto.Igralec(
                 igralec.getId(),
+                igralec.getIme(),
+                igralec.getPriimek(),
                 igralec.polnoIme(),
                 igralec.getKlub() != null ? igralec.getKlub().getIme() : null,
                 rating);

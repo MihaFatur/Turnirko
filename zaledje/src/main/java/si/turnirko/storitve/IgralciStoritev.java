@@ -3,11 +3,13 @@
 package si.turnirko.storitve;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.IgralecDto;
+import si.turnirko.dto.IgralecJavniDto;
 import si.turnirko.dto.IgralecVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
@@ -39,54 +41,67 @@ public class IgralciStoritev {
         this.ratingStoritev = ratingStoritev;
     }
 
-    /* Seznam aktivnih igralcev s trenutnim klubskim ELO ratingom. */
+    /* Seznam aktivnih igralcev s trenutnim klubskim ELO ratingom, brez
+       osebnih podatkov - to je izpis, ki ga vidi tudi neprijavljen gost. */
     @Transactional(readOnly = true)
-    public List<IgralecDto> seznam() {
+    public List<IgralecJavniDto> seznam() {
+        return izpis(IgralciStoritev::javniDto);
+    }
+
+    /* Isti seznam z osebnimi podatki. Klice ga samo koncna tocka, ki jo
+       varnostna veriga omeji na ADMIN. */
+    @Transactional(readOnly = true)
+    public List<IgralecDto> seznamPodrobno() {
+        return izpis(IgralciStoritev::dto);
+    }
+
+    @Transactional(readOnly = true)
+    public IgralecJavniDto najdi(Long id) {
+        return javniDto(najdiIgralca(id), stanje(id));
+    }
+
+    /* Poln izpis enega igralca - samo za ADMIN (glej seznamPodrobno). */
+    @Transactional(readOnly = true)
+    public IgralecDto najdiPodrobno(Long id) {
+        return dto(najdiIgralca(id), stanje(id));
+    }
+
+    /* Skupno branje seznama: entitete in ratingi se naloziju enkrat, oblika
+       izpisa (javna ali podrobna) pa je parameter. */
+    private <T> List<T> izpis(BiFunction<Igralec, RatingStanje, T> vOblika) {
         List<Igralec> igralci = igralecRepozitorij.najdiAktivne();
         List<Long> idji = igralci.stream().map(Igralec::getId).toList();
         List<RatingStanje> ratingi = ratingStanjeRepozitorij
                 .findByIgralecIdInAndSistem(idji, RatingStanje.SISTEM_KLUBSKI_ELO);
         return igralci.stream()
-                .map(igralec -> dto(igralec, najdiStanje(ratingi, igralec.getId())))
+                .map(igralec -> vOblika.apply(igralec, najdiStanje(ratingi, igralec.getId())))
                 .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public IgralecDto najdi(Long id) {
-        Igralec igralec = najdiIgralca(id);
-        RatingStanje stanje = ratingStanjeRepozitorij
-                .findByIgralecIdAndSistem(id, RatingStanje.SISTEM_KLUBSKI_ELO)
-                .orElse(null);
-        return dto(igralec, stanje);
     }
 
     /* Postavitveni (zacetni) rating: dovoljen le za igralca brez odigranih tekem
        (RatingStoritev preveri to pravilo in zabelezi spremembo v dnevnik). */
+    /* Vsi trije zapisi vracajo javni izpis: vmesnik odgovora ne bere (po
+       shranjevanju osvezi seznam), organizator pa sme ustvariti igralca in
+       mu odgovor ne sme vrniti osebnih podatkov nazaj. */
     @Transactional
-    public IgralecDto nastaviZacetniRating(Long id, int vrednost) {
+    public IgralecJavniDto nastaviZacetniRating(Long id, int vrednost) {
         Igralec igralec = najdiIgralca(id);
         ratingStoritev.nastaviZacetniRating(igralec, vrednost);
-        RatingStanje stanje = ratingStanjeRepozitorij
-                .findByIgralecIdAndSistem(id, RatingStanje.SISTEM_KLUBSKI_ELO)
-                .orElse(null);
-        return dto(igralec, stanje);
+        return javniDto(igralec, stanje(id));
     }
 
     @Transactional
-    public IgralecDto ustvari(IgralecVnos vnos) {
+    public IgralecJavniDto ustvari(IgralecVnos vnos) {
         Igralec igralec = new Igralec();
         prepisi(igralec, vnos);
-        return IgralecDto.iz(igralecRepozitorij.save(igralec), null);
+        return javniDto(igralecRepozitorij.save(igralec), null);
     }
 
     @Transactional
-    public IgralecDto posodobi(Long id, IgralecVnos vnos) {
+    public IgralecJavniDto posodobi(Long id, IgralecVnos vnos) {
         Igralec igralec = najdiIgralca(id);
         prepisi(igralec, vnos);
-        RatingStanje stanje = ratingStanjeRepozitorij
-                .findByIgralecIdAndSistem(id, RatingStanje.SISTEM_KLUBSKI_ELO)
-                .orElse(null);
-        return dto(igralec, stanje);
+        return javniDto(igralec, stanje(id));
     }
 
     /* Namesto brisanja - arhiviranje (zgodovina tekem ostane). */
@@ -133,6 +148,18 @@ public class IgralciStoritev {
         return IgralecDto.iz(igralec,
                 stanje != null ? stanje.getVrednost() : null,
                 stanje != null ? stanje.getStTekem() : 0);
+    }
+
+    private static IgralecJavniDto javniDto(Igralec igralec, RatingStanje stanje) {
+        return IgralecJavniDto.iz(igralec,
+                stanje != null ? stanje.getVrednost() : null,
+                stanje != null ? stanje.getStTekem() : 0);
+    }
+
+    private RatingStanje stanje(Long idIgralca) {
+        return ratingStanjeRepozitorij
+                .findByIgralecIdAndSistem(idIgralca, RatingStanje.SISTEM_KLUBSKI_ELO)
+                .orElse(null);
     }
 
     private RatingStanje najdiStanje(List<RatingStanje> ratingi, Long idIgralca) {

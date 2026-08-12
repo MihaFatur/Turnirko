@@ -2,6 +2,7 @@
 package si.turnirko.kontrolerji;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,8 @@ import si.turnirko.dto.TurnirVnos;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
+import si.turnirko.storitve.PovzetkiStoritev;
+import si.turnirko.storitve.PovzetkiStoritev.StevciDogodka;
 import si.turnirko.storitve.TurnirjiStoritev;
 
 @RestController
@@ -30,31 +33,47 @@ public class TurnirjiKontroler {
     private final TurnirjiStoritev turnirjiStoritev;
     private final TurnirRepozitorij turnirRepozitorij;
     private final DogodekRepozitorij dogodekRepozitorij;
+    private final PovzetkiStoritev povzetkiStoritev;
 
     public TurnirjiKontroler(TurnirjiStoritev turnirjiStoritev,
                              TurnirRepozitorij turnirRepozitorij,
-                             DogodekRepozitorij dogodekRepozitorij) {
+                             DogodekRepozitorij dogodekRepozitorij,
+                             PovzetkiStoritev povzetkiStoritev) {
         this.turnirjiStoritev = turnirjiStoritev;
         this.turnirRepozitorij = turnirRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
+        this.povzetkiStoritev = povzetkiStoritev;
     }
 
     @GetMapping
     public List<TurnirDto> seznam() {
-        return turnirRepozitorij.najdiVseSKrajem()
-                .stream().map(TurnirDto::iz).toList();
+        Map<Long, TurnirDto.Stevci> stevci = povzetkiStoritev.zaVseTurnirje();
+        Map<Long, TurnirDto.Potek> poteki = povzetkiStoritev.potekiVsehTurnirjev();
+        return turnirRepozitorij.najdiVseSKrajem().stream()
+                .map(t -> TurnirDto.iz(t,
+                        stevci.getOrDefault(t.getId(), TurnirDto.Stevci.PRAZNI),
+                        poteki.getOrDefault(t.getId(), TurnirDto.Potek.PRAZEN)))
+                .toList();
     }
 
     @GetMapping("/{id}")
     public TurnirDto najdi(@PathVariable Long id) {
-        return turnirRepozitorij.najdiSKrajem(id).map(TurnirDto::iz)
+        Map<Long, TurnirDto.Potek> poteki = povzetkiStoritev.potekiVsehTurnirjev();
+        return turnirRepozitorij.najdiSKrajem(id)
+                .map(t -> TurnirDto.iz(t, povzetkiStoritev.zaTurnir(id),
+                        poteki.getOrDefault(id, TurnirDto.Potek.PRAZEN)))
                 .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + id + " ne obstaja."));
     }
 
     @GetMapping("/{id}/dogodki")
     public List<DogodekDto> dogodki(@PathVariable Long id) {
-        return dogodekRepozitorij.findByTurnirIdOrderByImeAsc(id)
-                .stream().map(DogodekDto::iz).toList();
+        Map<Long, StevciDogodka> stevci = povzetkiStoritev.zaDogodkeTurnirja(id);
+        return dogodekRepozitorij.findByTurnirIdOrderByIdAsc(id).stream()
+                .map(d -> {
+                    StevciDogodka s = stevci.getOrDefault(d.getId(), StevciDogodka.PRAZNI);
+                    return DogodekDto.iz(d, s.prijav(), s.odigranih(), s.vseh());
+                })
+                .toList();
     }
 
     @PostMapping

@@ -1,0 +1,28 @@
+# Kar se ne sme ali ne rabi znajti v sliki.
+
+# Baza z OSEBNIMI PODATKI - nikoli v sliko (slike se prenasajo in delijo).
+podatki/
+zaledje/podatki/
+*.db
+*.db-*
+*.bak*
+
+# Rezultati prejsnjih prevodov - v sliki se zgradi vse na novo
+target/
+zaledje/target/
+vmesnik/dist/
+vmesnik/node_modules/
+
+# Skrivnosti
+.env
+*.env
+
+# Razvojno okolje in zgodovina
+.git/
+.gitignore
+.idea/
+.vscode/
+.claude/
+.github/
+*.iml
+docs/

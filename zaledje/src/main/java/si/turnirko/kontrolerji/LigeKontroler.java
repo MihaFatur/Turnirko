@@ -25,6 +25,7 @@ import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.LigaDto;
 import si.turnirko.dto.LigaVnos;
+import si.turnirko.dto.PrehodiVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.SrecanjeStoritev;
@@ -62,6 +63,13 @@ public class LigeKontroler {
     @PutMapping("/{id}")
     public LigaDto uredi(@PathVariable Long id, @Valid @RequestBody LigaVnos vnos) {
         return ligaStoritev.uredi(id, vnos);
+    }
+
+    /* Prehodi (mesto v piramidi) so loceni od pravil: pravila se po generiranju
+       razporeda zaklenejo, povezave med ligami pa ostanejo popravljive. */
+    @PutMapping("/{id}/prehodi")
+    public LigaDto nastaviPrehode(@PathVariable Long id, @Valid @RequestBody PrehodiVnos vnos) {
+        return ligaStoritev.nastaviPrehode(id, vnos);
     }
 
     @DeleteMapping("/{id}")

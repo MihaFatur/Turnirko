@@ -100,6 +100,23 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
             """)
     List<TekmaSrecanja> najdiDvojiceZaIgralca(@Param("idIgralec") Long idIgralec);
 
+    /* Izidi vseh odigranih POSAMICNIH tekem ene lige kot [idIgralecDomaci,
+       idIgralecGost, zmagovalecStran] - iz tega se sesteje bilanca vsakega
+       igralca v tej ligi (prikaz kadra pod vrstico lestvice). Dvojice odpadejo
+       iz istega razloga kot pri ELO: para ni mogoce pripisati posamezniku.
+       Vrnemo samo identifikatorje, zato "join fetch" ni potreben; JOIN vseeno
+       zapisemo izrecno, da tekma brez postavljenega igralca izpade. */
+    @Query("""
+            SELECT t.igralecDomaci.id, t.igralecGost.id, t.zmagovalecStran
+            FROM TekmaSrecanja t
+            JOIN t.igralecDomaci JOIN t.igralecGost
+            WHERE t.srecanje.liga.id = :idLiga
+              AND t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
+              AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
+              AND t.zmagovalecStran IS NOT NULL
+            """)
+    List<Object[]> posamicniIzidiLige(@Param("idLiga") Long idLiga);
+
     /* Sestevek dobljenih nizov po srecanjih lige (samo koncane tekme) - za
        kriterij izenacenja "razlika nizov". Vrne [idSrecanja, niziDomaci, niziGost]. */
     @Query("""

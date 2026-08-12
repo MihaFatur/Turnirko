@@ -132,7 +132,7 @@ public class TurnirjiStoritev {
         if (turnir.getStatus() != StatusTekmovanja.V_TEKU) {
             throw new DomenskaIzjema("Zakljuciti je mogoce samo turnir, ki je v teku.");
         }
-        boolean vsiZakljuceni = dogodekRepozitorij.findByTurnirIdOrderByImeAsc(idTurnirja).stream()
+        boolean vsiZakljuceni = dogodekRepozitorij.findByTurnirIdOrderByIdAsc(idTurnirja).stream()
                 .allMatch(dogodek -> dogodek.getStatus() == StatusTekmovanja.ZAKLJUCEN);
         if (!vsiZakljuceni) {
             throw new DomenskaIzjema("Vsi dogodki turnirja se niso zakljuceni.");

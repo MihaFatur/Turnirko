@@ -23,10 +23,21 @@ public record DogodekDto(
         Integer velikostSkupine,
         Double prijavnina,
         LocalDate rokPrijave,
-        StatusTekmovanja status
+        StatusTekmovanja status,
+        /* Stevci za vrstico dogodka: koliko ljudi igra in koliko je odigranega.
+           Palica napredka je edino, kar loci dogodek z 12 igralci od dogodka
+           s 100, zato stojita oba podatka ze v seznamu dogodkov. */
+        int steviloPrijav,
+        int odigranihTekem,
+        int vsehTekem
 ) {
 
+    /* Brez stevcev - za odgovor ob nastanku dogodka, ko jih se ni. */
     public static DogodekDto iz(Dogodek dogodek) {
+        return iz(dogodek, 0, 0, 0);
+    }
+
+    public static DogodekDto iz(Dogodek dogodek, int steviloPrijav, int odigranihTekem, int vsehTekem) {
         return new DogodekDto(
                 dogodek.getId(),
                 dogodek.getTurnir().getId(),
@@ -40,7 +51,10 @@ public record DogodekDto(
                 dogodek.getVelikostSkupine(),
                 dogodek.getPrijavnina(),
                 dogodek.getRokPrijave(),
-                dogodek.getStatus()
+                dogodek.getStatus(),
+                steviloPrijav,
+                odigranihTekem,
+                vsehTekem
         );
     }
 }

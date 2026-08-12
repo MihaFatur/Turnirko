@@ -5,6 +5,14 @@ target/
 podatki/
 *.db
 
+# Skrivnosti streznika (geslo administratorja) - nikoli v git.
+# V repozitoriju ostane samo .env.primer z vzorcem.
+.env
+
+# Dnevniki in varnostne kopije s streznika
+dnevniki/
+kopije/
+
 # Node (vmesnik)
 node_modules/
 dist/

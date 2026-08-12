@@ -9,8 +9,12 @@ package si.turnirko.storitve;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +26,7 @@ import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.LigaDto;
 import si.turnirko.dto.LigaVnos;
+import si.turnirko.dto.PrehodiVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
@@ -39,6 +44,7 @@ import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
+import si.turnirko.storitve.LestvicaLigeStoritev.Bilanca;
 
 @Service
 public class LigaStoritev {
@@ -115,6 +121,67 @@ public class LigaStoritev {
         return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id));
     }
 
+    /* Mesto lige v piramidi (visja liga, nizje lige, koliko napreduje/izpade).
+
+       Namenoma NI del "uredi": pravila lige so po generiranju razporeda
+       zaklenjena, ker bi popravek razveljavil odigrano, povezave med ligami pa
+       na razpored ne vplivajo - so opis sezone in jih je treba smeti popraviti
+       tudi sredi tekmovanja (npr. ko nastane nova nizja liga).
+
+       Nizje lige nosijo povezavo v SVOJEM stolpcu, zato jih tu spreminjamo -
+       in zato mora imeti urejevalec pravico tudi nad njimi. */
+    @Transactional
+    public LigaDto nastaviPrehode(Long id, PrehodiVnos v) {
+        lastnistvo.preveriLigaPoId(id);
+        Liga liga = ligaRepozitorij.findById(id)
+                .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
+
+        liga.setStNapreduje(v.stNapreduje() != null ? Math.max(0, v.stNapreduje()) : 0);
+        liga.setStIzpade(v.stIzpade() != null ? Math.max(0, v.stIzpade()) : 0);
+
+        if (v.idVisjaLiga() != null) {
+            if (v.idVisjaLiga().equals(id)) {
+                throw new NeveljavenVnosIzjema("Liga ne more biti sama sebi nadrejena.");
+            }
+            liga.setVisjaLiga(ligaRepozitorij.findById(v.idVisjaLiga()).orElseThrow(
+                    () -> new NiNajdenoIzjema("Visja liga z id " + v.idVisjaLiga() + " ne obstaja.")));
+        } else {
+            liga.setVisjaLiga(null);
+        }
+
+        List<Liga> spremenjene = new ArrayList<>();
+        spremenjene.add(liga);
+
+        // null = odjemalec nizjih lig ne ureja; prazen seznam = nobene ni
+        if (v.idNizjeLige() != null) {
+            Set<Long> zelene = new LinkedHashSet<>(v.idNizjeLige());
+            if (zelene.contains(id)) {
+                throw new NeveljavenVnosIzjema("Liga ne more biti sama sebi podrejena.");
+            }
+            for (Liga obstojeca : ligaRepozitorij.najdiNizje(id)) {
+                // kar je bilo spodaj in v novem izboru ni vec, se odveze
+                if (!zelene.remove(obstojeca.getId())) {
+                    lastnistvo.preveriLigaPoId(obstojeca.getId());
+                    obstojeca.setVisjaLiga(null);
+                    spremenjene.add(obstojeca);
+                }
+            }
+            for (Long idNizja : zelene) {
+                Liga nizja = ligaRepozitorij.findById(idNizja)
+                        .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idNizja + " ne obstaja."));
+                lastnistvo.preveriLigaPoId(idNizja);
+                nizja.setVisjaLiga(liga);
+                spremenjene.add(nizja);
+            }
+        }
+
+        for (Liga s : spremenjene) {
+            preveriBrezKroga(s);
+        }
+        ligaRepozitorij.saveAll(spremenjene);
+        return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id));
+    }
+
     @Transactional
     public void zbrisi(Long id) {
         lastnistvo.preveriLigaPoId(id);
@@ -134,7 +201,13 @@ public class LigaStoritev {
 
     @Transactional(readOnly = true)
     public List<EkipaDto> ekipe(Long idLiga) {
-        return ekipaRepozitorij.najdiZaLigo(idLiga).stream().map(EkipaDto::iz).toList();
+        Map<Long, Integer> velikostKadra = new HashMap<>();
+        for (Object[] r : kaderRepozitorij.steviloPoEkipah(idLiga)) {
+            velikostKadra.put(((Number) r[0]).longValue(), ((Number) r[1]).intValue());
+        }
+        return ekipaRepozitorij.najdiZaLigo(idLiga).stream()
+                .map(e -> EkipaDto.iz(e, velikostKadra.getOrDefault(e.getId(), 0)))
+                .toList();
     }
 
     @Transactional
@@ -156,7 +229,7 @@ public class LigaStoritev {
         Ekipa ekipa = ekipaRepozitorij.save(new Ekipa(liga, klub, zaporedna,
                 v.ime() != null && !v.ime().isBlank() ? v.ime().trim() : null));
         // za DTO potrebujemo klub (nalozen); ponovno preberi z join fetch
-        return EkipaDto.iz(ekipaRepozitorij.najdiZKlubomInLigo(ekipa.getId()).orElseThrow());
+        return EkipaDto.iz(ekipaRepozitorij.najdiZKlubomInLigo(ekipa.getId()).orElseThrow(), 0);
     }
 
     @Transactional
@@ -171,13 +244,23 @@ public class LigaStoritev {
 
     // ---------- Kader ----------
 
+    /* Kader ekipe z ratingom in bilanco posamicnih tekem v ligi te ekipe.
+       Bilanca je del izpisa kadra pod vrstico lestvice, zato jo priloz(imo) ze
+       tu - vmesnik tako z eno poizvedbo dobi vse, kar razsirjena vrstica pokaze. */
     @Transactional(readOnly = true)
     public List<KaderIgralecDto> kader(Long idEkipa) {
+        Ekipa ekipa = ekipaRepozitorij.najdiZKlubomInLigo(idEkipa)
+                .orElseThrow(() -> new NiNajdenoIzjema("Ekipa z id " + idEkipa + " ne obstaja."));
         List<KaderEkipe> kader = kaderRepozitorij.najdiZaEkipo(idEkipa);
         Map<Long, Integer> ratingi = spremembeEloStoritev.trenutniRatingi(
                 kader.stream().map(k -> k.getIgralec().getId()).toList());
+        Map<Long, Bilanca> bilance = lestvicaLigeStoritev.bilancePosamicnih(ekipa.getLiga().getId());
         return kader.stream()
-                .map(k -> KaderIgralecDto.iz(k, ratingi.get(k.getIgralec().getId())))
+                .map(k -> {
+                    Long idIgralec = k.getIgralec().getId();
+                    Bilanca b = bilance.getOrDefault(idIgralec, Bilanca.PRAZNA);
+                    return KaderIgralecDto.iz(k, ratingi.get(idIgralec), b.zmage(), b.porazi());
+                })
                 .toList();
     }
 
@@ -199,7 +282,9 @@ public class LigaStoritev {
         }
         KaderEkipe vnos = kaderRepozitorij.save(new KaderEkipe(ekipa, igralec, v.vrstniRed()));
         Integer rating = spremembeEloStoritev.trenutniRatingi(List.of(igralec.getId())).get(igralec.getId());
-        return KaderIgralecDto.iz(vnos, rating);
+        /* Kader se ureja samo v pripravi, ko liga se ni odigrala nicesar - bilanca
+           novega clana je zato nujno 0 : 0 in je ni treba sestevati. */
+        return KaderIgralecDto.iz(vnos, rating, 0, 0);
     }
 
     @Transactional
@@ -273,17 +358,19 @@ public class LigaStoritev {
         liga.setPrepovedDvojneRegistracije(Boolean.TRUE.equals(v.prepovedDvojneRegistracije()));
         liga.setStejeVElo(v.stejeVElo() == null || v.stejeVElo());
         liga.setPredlogaListka(v.predlogaListka() != null ? v.predlogaListka() : PredlogaLige.SNTL_23);
-        liga.setStNapreduje(v.stNapreduje() != null ? Math.max(0, v.stNapreduje()) : 0);
-        liga.setStIzpade(v.stIzpade() != null ? Math.max(0, v.stIzpade()) : 0);
-        if (v.idVisjaLiga() != null) {
-            Liga visja = ligaRepozitorij.findById(v.idVisjaLiga())
-                    .orElseThrow(() -> new NiNajdenoIzjema("Visja liga z id " + v.idVisjaLiga() + " ne obstaja."));
-            if (liga.getId() != null && liga.getId().equals(visja.getId())) {
-                throw new NeveljavenVnosIzjema("Liga ne more biti sama sebi nadrejena.");
+    }
+
+    /* Povezave "visja liga" morajo tvoriti drevo. Ce se pri hoji navzgor
+       vrnemo na ze videno ligo, je nastal krog - baza vidi le najkrajsega
+       (liga sama sebi), daljse mora ujeti koda, sicer se izris piramide
+       zavrti v neskoncnost. */
+    private void preveriBrezKroga(Liga zacetek) {
+        Set<Long> videne = new HashSet<>();
+        for (Liga t = zacetek; t != null; t = t.getVisjaLiga()) {
+            if (!videne.add(t.getId())) {
+                throw new NeveljavenVnosIzjema(
+                        "Tako bi se lige povezale v krog - preveri, katera je visja in katera nizja.");
             }
-            liga.setVisjaLiga(visja);
-        } else {
-            liga.setVisjaLiga(null);
         }
     }
 

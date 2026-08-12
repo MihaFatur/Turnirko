@@ -31,6 +31,11 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
             """)
     Optional<Liga> najdiZVisjo(Long id);
 
+    /* Lige, ki kazejo na dano ligo kot na svojo visjo - torej nivo pod njo.
+       Bere jih urejanje prehodov, ko usklajuje izbor nizjih lig. */
+    @Query("SELECT l FROM Liga l WHERE l.visjaLiga.id = :idVisja ORDER BY l.ime")
+    List<Liga> najdiNizje(Long idVisja);
+
     // ---------- Lastnistvo (za preverjanje pravice organizatorja) ----------
 
     @Query("""

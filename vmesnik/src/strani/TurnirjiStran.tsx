@@ -1,17 +1,27 @@
 /* Seznam vseh turnirjev + ustvarjanje novega. Turnir je okvir; tekmovanja
-   znotraj njega so dogodki, zato vrstica nosi le okvirne podatke. */
+   znotraj njega so dogodki, zato vrstica nosi le okvirne podatke.
+
+   Nad seznamom stoji pas "Danes v dvorani": sodnik, ki vodi turnir, mora
+   svojega najti v manj kot sekundi, zato so turnirji v teku loceni od
+   zgodovine in nosijo palico napredka. */
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { krajiApi, turnirjiApi } from '../api/zahteve'
-import type { StatusTekmovanja, TurnirVnos } from '../api/tipi'
+import type { StatusTekmovanja, TurnirDto, TurnirVnos } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { Napredek } from '../komponente/Napredek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { ZnackaStatusa } from '../komponente/Znacka'
-import { datumskiBlok, oblikujObdobje } from '../pomozno/oblikovanje'
+import {
+  datumskiBlok,
+  oblikujObdobje,
+  sklonDogodkov,
+} from '../pomozno/oblikovanje'
+import { intervalOsvezevanja, uraOsvezitve } from '../pomozno/osvezevanje'
 
 /* Segmentirani filter po statusu; "vsi" ni status, zato je poseben. */
 type Filter = 'vsi' | StatusTekmovanja
@@ -26,7 +36,16 @@ const FILTRI: { kljuc: Filter; oznaka: string }[] = [
 export function TurnirjiStran() {
   const odjemalec = useQueryClient()
   const { smeUstvarjati } = useAvtentikacija()
-  const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
+  /* Dokler kateri od turnirjev tece, se seznam osvezuje sam: pas "Danes v
+     dvorani" nosi napredek, ki se med dnevom premika. */
+  const turnirji = useQuery({
+    queryKey: ['turnirji'],
+    queryFn: turnirjiApi.seznam,
+    refetchInterval: (poizvedba) =>
+      poizvedba.state.data?.some((t) => t.status === 'V_TEKU')
+        ? intervalOsvezevanja('V_TEKU')
+        : false,
+  })
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
   const [filter, nastaviFilter] = useState<Filter>('vsi')
 
@@ -35,6 +54,18 @@ export function TurnirjiStran() {
     () => (filter === 'vsi' ? vsi : vsi.filter((t) => t.status === filter)),
     [vsi, filter],
   )
+  const vTeku = useMemo(() => vsi.filter((t) => t.status === 'V_TEKU'), [vsi])
+  /* Stevec ob vsakem filtru: sodnik vidi, koliko je cesa, se preden klikne. */
+  const stevci = useMemo(
+    () => ({
+      vsi: vsi.length,
+      V_TEKU: vTeku.length,
+      PRIPRAVA: vsi.filter((t) => t.status === 'PRIPRAVA').length,
+      ZAKLJUCEN: vsi.filter((t) => t.status === 'ZAKLJUCEN').length,
+    }),
+    [vsi, vTeku],
+  )
+  const osvezenoOb = uraOsvezitve(turnirji.dataUpdatedAt)
 
   return (
     <section>
@@ -57,6 +88,22 @@ export function TurnirjiStran() {
         )}
       </div>
 
+      {/* Brez turnirja v teku se pas ne izrise - prazno stanje bi bilo samo
+          se ena vrstica, ki jo mora sodnik prebrati in preskociti. */}
+      {vTeku.length > 0 && (
+        <div>
+          <div className="naslovna-vrstica">
+            <h2>Danes v dvorani</h2>
+            {osvezenoOb && <span className="sekcija__meta">Osveženo ob {osvezenoOb}</span>}
+          </div>
+          <div className="kartice">
+            {vTeku.map((turnir) => (
+              <VrsticaTurnirja key={turnir.id} turnir={turnir} danes />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <div className="naslovna-vrstica">
           <h2>Vsi turnirji</h2>
@@ -71,8 +118,7 @@ export function TurnirjiStran() {
                   }
                   onClick={() => nastaviFilter(f.kljuc)}
                 >
-                  {f.oznaka}
-                  {f.kljuc === 'vsi' ? ` · ${vsi.length}` : ''}
+                  {f.oznaka} · {stevci[f.kljuc]}
                 </button>
               ))}
             </div>
@@ -93,37 +139,20 @@ export function TurnirjiStran() {
         )}
 
         {prikazani.length > 0 && (
-          <div className="kartice">
-            {prikazani.map((turnir) => {
-              const { dan, mesec } = datumskiBlok(turnir.datumZacetka)
-              return (
-                <Link
-                  to={`/turnirji/${turnir.id}`}
-                  className="kartica kartica--z-datumom"
-                  key={turnir.id}
-                >
-                  <span className={`datum-blok datum-blok--${turnir.status}`}>
-                    <span className="datum-blok__dan">{dan}</span>
-                    <span className="datum-blok__mesec">{mesec}</span>
-                  </span>
-                  <span className="kartica__glava">
-                    <span className="kartica__ime">{turnir.ime}</span>
-                    <span className="kartica__podrobnost">
-                      {[turnir.kraj?.ime, turnir.dvorana].filter(Boolean).join(', ') ||
-                        'kraj še ni določen'}
-                    </span>
-                  </span>
-                  <span className="vrstica__mono">
-                    {oblikujObdobje(turnir.datumZacetka, turnir.datumKonca) || '—'}
-                  </span>
-                  <span className="kartica__organizator">
-                    {turnir.klubLastnik ?? ''}
-                  </span>
-                  <ZnackaStatusa status={turnir.status} />
-                </Link>
-              )
-            })}
-          </div>
+          <>
+            <div className="seznam-glava seznam-glava--turnirji">
+              <span>Začetek</span>
+              <span>Turnir</span>
+              <span>Dogodki</span>
+              <span>Obdobje</span>
+              <span className="seznam-glava__sredinjeno">Status</span>
+            </div>
+            <div className="kartice">
+              {prikazani.map((turnir) => (
+                <VrsticaTurnirja key={turnir.id} turnir={turnir} />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -135,6 +164,60 @@ export function TurnirjiStran() {
       )}
     </section>
   )
+}
+
+/* Ena vrstica seznama turnirjev. Ista mreza stolpcev sluzi obema pasovoma;
+   razlikuje se le tretji stolpec: v pasu "Danes v dvorani" nosi napredek
+   (kar sodnika zanima med turnirjem), v seznamu pa stevilo dogodkov. */
+function VrsticaTurnirja({ turnir, danes = false }: { turnir: TurnirDto; danes?: boolean }) {
+  const { dan, mesec } = datumskiBlok(turnir.datumZacetka)
+  const kraj =
+    [turnir.kraj?.ime, turnir.dvorana].filter(Boolean).join(', ') || 'kraj še ni določen'
+
+  return (
+    <Link
+      to={`/turnirji/${turnir.id}`}
+      className={'kartica kartica--z-datumom' + (danes ? ' kartica--danes' : '')}
+      key={turnir.id}
+    >
+      <span className={`datum-blok datum-blok--${turnir.status}`}>
+        <span className="datum-blok__dan">{dan}</span>
+        <span className="datum-blok__mesec">{mesec}</span>
+      </span>
+      <span className="kartica__glava">
+        <span className="kartica__ime">{turnir.ime}</span>
+        <span className="kartica__podrobnost">
+          {danes ? `${kraj}${stanjeDogodkov(turnir)}` : kraj}
+        </span>
+      </span>
+      {danes ? (
+        <Napredek odigranih={turnir.odigranihTekem} vseh={turnir.vsehTekem} />
+      ) : (
+        <span className="kartica__organizator">
+          {turnir.steviloDogodkov} {sklonDogodkov(turnir.steviloDogodkov)}
+        </span>
+      )}
+      <span className="vrstica__mono">
+        {oblikujObdobje(turnir.datumZacetka, turnir.datumKonca) || '—'}
+      </span>
+      <ZnackaStatusa status={turnir.status} />
+    </Link>
+  )
+}
+
+/* " · 2 dogodka v teku, 3 v pripravi" - dopisano h kraju v pasu "Danes v
+   dvorani". Prazen niz, kadar ni cesa povedati. */
+function stanjeDogodkov(turnir: TurnirDto): string {
+  const deli: string[] = []
+  if (turnir.dogodkovVTeku > 0) {
+    deli.push(
+      `${turnir.dogodkovVTeku} ${sklonDogodkov(turnir.dogodkovVTeku)} v teku`,
+    )
+  }
+  if (turnir.dogodkovVPripravi > 0) {
+    deli.push(`${turnir.dogodkovVPripravi} v pripravi`)
+  }
+  return deli.length > 0 ? ` · ${deli.join(', ')}` : ''
 }
 
 function NovTurnirOkno({

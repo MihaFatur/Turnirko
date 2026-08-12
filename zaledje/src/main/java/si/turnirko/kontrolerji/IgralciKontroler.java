@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import si.turnirko.dto.IgralecDto;
+import si.turnirko.dto.IgralecJavniDto;
 import si.turnirko.dto.IgralecVnos;
 import si.turnirko.dto.ZacetniRatingVnos;
 import si.turnirko.storitve.IgralciStoritev;
@@ -31,32 +32,47 @@ public class IgralciKontroler {
         this.igralciStoritev = igralciStoritev;
     }
 
+    /* Javni seznam brez osebnih podatkov - bere ga tudi gost (izbirniki
+       igralcev, "1 na 1", prijave na turnir). */
     @GetMapping
-    public List<IgralecDto> seznam() {
+    public List<IgralecJavniDto> seznam() {
         return igralciStoritev.seznam();
     }
 
+    /* Sifrant z osebnimi podatki. Varnostna veriga to pot omeji na ADMIN;
+       poti ne zdruzuj z javno, ker bi bila razlika odvisna od ene same
+       pogojne veje namesto od pravila v verigi. */
+    @GetMapping("/podrobno")
+    public List<IgralecDto> seznamPodrobno() {
+        return igralciStoritev.seznamPodrobno();
+    }
+
     @GetMapping("/{id}")
-    public IgralecDto najdi(@PathVariable Long id) {
+    public IgralecJavniDto najdi(@PathVariable Long id) {
         return igralciStoritev.najdi(id);
+    }
+
+    @GetMapping("/{id}/podrobno")
+    public IgralecDto najdiPodrobno(@PathVariable Long id) {
+        return igralciStoritev.najdiPodrobno(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public IgralecDto ustvari(@Valid @RequestBody IgralecVnos vnos) {
+    public IgralecJavniDto ustvari(@Valid @RequestBody IgralecVnos vnos) {
         return igralciStoritev.ustvari(vnos);
     }
 
     @PutMapping("/{id}")
-    public IgralecDto posodobi(@PathVariable Long id, @Valid @RequestBody IgralecVnos vnos) {
+    public IgralecJavniDto posodobi(@PathVariable Long id, @Valid @RequestBody IgralecVnos vnos) {
         return igralciStoritev.posodobi(id, vnos);
     }
 
     /* Postavitveni (zacetni) klubski ELO za novinca - dovoljen le, dokler
        igralec ni odigral nobene ratinske tekme. */
     @PostMapping("/{id}/zacetni-rating")
-    public IgralecDto nastaviZacetniRating(@PathVariable Long id,
-                                           @Valid @RequestBody ZacetniRatingVnos vnos) {
+    public IgralecJavniDto nastaviZacetniRating(@PathVariable Long id,
+                                                @Valid @RequestBody ZacetniRatingVnos vnos) {
         return igralciStoritev.nastaviZacetniRating(id, vnos.vrednost());
     }
 

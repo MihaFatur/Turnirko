@@ -14,6 +14,20 @@
 - Poslovna logika sodi v `storitve`, kontrolerji so tanki adapterji.
 - Navzven gredo samo DTO-ji, nikoli entitete. Osebni podatki (e-pošta, telefon,
   naslov, datum rojstva) ne smejo v javne poglede.
+- **Osebni podatki igralcev so ločeni na ravni tipa, ne pogojne veje.**
+  `IgralecJavniDto` (ime, priimek, spol, roka, klub, rating) je edino, kar
+  vrnejo `GET /igralci`, `GET /igralci/{id}` in *vse* mutacije — te poti so
+  javne oz. odprte tudi organizatorju. Poln `IgralecDto` z osebnimi podatki
+  vračata **samo** `GET /igralci/podrobno` in `GET /igralci/{id}/podrobno`,
+  ki ju varnostna veriga omeji na `ADMIN` (organizator jih namenoma ne vidi:
+  šifrant je skupen vsem klubom). Ne združuj poti in ne dodajaj osebnih polj
+  v javni DTO — pravilo varuje `IgralciZasebnostTest`, ki preverja surovo
+  telo odgovora.
+- **Admin geslo nima privzetka.** Če je baza prazna in
+  `turnirko.admin.privzeto-geslo` ni nastavljen (oz. je krajši od 12 znakov),
+  `ZacetniAdmin` ustavi zagon. Izjema je profil `namizni` (lokalna prenosna
+  različica), ki obdrži `admin`/`admin`. Privzetka ne vračaj v
+  `application.properties`.
 - Vsaka sprememba domenske logike (žreb, rezultati, rating) MORA imeti test.
   Testi: `cd zaledje && mvnw test`.
 - Statuse določa strežnik; prehodi stanj se preverjajo v storitvah.
@@ -23,6 +37,22 @@
   velja — turnir v `TekmaStoritev.vnesiRezultat`
   (`tekma.getDogodek().getTurnir().isStejeVElo()`), liga v
   `SrecanjeStoritev` (`liga.isStejeVElo()`); ligaške dvojice ne štejejo nikoli.
+- **Format srečanja je edini vir vrstnega reda tekem** (`FormatSrecanja.razpored()`):
+  `SNTL` (3 igralci, dvojice prve), `CORBILLON` (2 igralca, dvojice na sredini)
+  in `SAVINJA` (2 igralca, dvojice prve). Baza hrani samo ime, zato je nov
+  format enum + `razpored()` + razširjen `CHECK` stolpca `liga.format_srecanja`
+  z novo migracijo. `zmag_za_srecanje` je `NULL`, kadar se odigrajo **vse**
+  tekme — to je enakovredna izbira in ne »manjkajoča vrednost«, zato jo obrazec
+  napiše, ne pusti praznega polja.
+- **Prehodi lige (mesto v piramidi) niso pravilo tekmovanja.** `id_visja_liga`,
+  `st_napreduje` in `st_izpade` na razpored ne vplivajo, zato jih *ne* ureja
+  `LigaStoritev.uredi` (ta je zaklenjen na `PRIPRAVA`), ampak
+  `nastaviPrehode` (`PUT /lige/{id}/prehodi`) — v vsakem stanju lige. Povezavo
+  je mogoče vpisati z **obeh** strani (višja liga ali seznam nižjih); pri
+  nižjih se piše v **njihov** stolpec, zato se lastništvo preveri tudi zanje,
+  krogi pa se zavrnejo (`preveriBrezKroga`). Piramida na strani lige sledi
+  izključno vpisanim povezavam — **sezona ne filtrira** (prej je in tiho
+  razdrla piramide z drugače zapisano sezono); lige druge sezone so označene.
 - **Klubski ELO (`EloStoritev`)** ima tri lastnosti, ki jih ne razbij:
   - **dinamični K** glede na `RatingStanje.stTekem` posameznega igralca
     (`kFaktor`: <10 → 48, <30 → 32, sicer 20) — novinec se hitro umesti,
@@ -104,6 +134,20 @@
 - Točke po nizih morajo biti v **mogočem vrstnem redu**: tekma se konča v
   trenutku odločitve, zato noben niz ne sme slediti izidu, ko je zmagovalec
   že dosegel dovolj nizov (glej `TekmaStoritev.shraniTockeNizov`).
+- **Spremljane lige so osebna nastavitev računa**, ne zapis o tekmovanju:
+  živijo v `spremljana_liga` (račun + liga) in jih vrača/ureja
+  `/api/v1/domov/moje-lige` (`DomovStoritev`). To je edina pot, kjer sme
+  pisati tudi navaden igralec, zato jo varnostna veriga našteje posebej
+  (`.authenticated()`, brez vloge) — pravilo mora stati **pred** splošnim
+  »GET je javen«. Gost izbora nima; njegov brskalnik si zadnje ogledane lige
+  zapomni sam (`vmesnik/src/pomozno/ogledaneLige.ts`).
+- **Domača stran bere izpeljanke, ne surovih tekem.** `TurnirDto` nosi
+  `faza`/`zmagovalec`/`zadnjiIzid` (izračun v `PovzetkiStoritev`,
+  skupinske poizvedbe — nikoli po ena na turnir), `LestvicaIgralcaDto` pa
+  `premik` (razlika mest proti stanju pred 30 dnevi) in `eloZgodovina`.
+  **Črta ELO teče po tekmah in ne po koledarju**: `ustvarjen_ob` v
+  `rating_zgodovina` je čas VNOSA, ne čas tekme (klub vnese celo kolo
+  naenkrat), zato bi časovno vzorčenje vsem narisalo ravno črto.
 - **Leno nalaganje:** kontrolerji pretvarjajo entitete v DTO-je IZVEN transakcije.
   Vsaka poizvedba, katere rezultat gre v DTO, mora z "join fetch" vnaprej naložiti
   vse povezave, ki jih DTO bere (kraj, igralca, klub) — sicer na pravem strežniku
@@ -137,6 +181,10 @@
   dvorani. Razredi sistema (`.naslov-strani`, `.kolofon`, `.naslovna-vrstica`,
   `.izbirnik`, `.elo-blok`, `.vrstica` …) so v `vmesnik/src/slog.css`; preden
   napišeš nov razred, preveri, ali obstoječi zadošča.
+- **Masthead je mreža (`grid-template-areas`), ne vrsta.** Na telefonu se
+  navigacija preseli pod debelo črto kot vrstica zavihkov; z mrežo je to
+  premik enega področja, navigacija pa ostane en sam element (podvojena bi jo
+  bralnik zaslona bral dvakrat). 1 px in 3 px črto nosi `.glava__crta`.
 - React + TypeScript (Vite), TanStack Query; brez dodatnih knjižnic brez potrebe.
 - Tipi v `src/api/tipi.ts` morajo zrcaliti DTO-je zaledja — ob spremembi API-ja
   posodobi oboje.
@@ -176,6 +224,22 @@
     odvisne spremenljivke); sloge in `@media print` (`@page` A4,
     `break-inside: avoid`, `print-color-adjust: exact`) drži `slog.css`.
 - Preverba pred zaključkom dela: `cd vmesnik && npm run build` (tsc + vite).
+
+## Objava na splet
+
+- Navodilo po korakih je `docs/OBJAVA.md`; datoteke postavitve so v korenu
+  (`Dockerfile`, `compose.yaml`, `Caddyfile`, `.env.primer`) in
+  `skripte/varnostna-kopija.sh`.
+- **Mavnov profil `splet`** (`mvnw -Psplet package`) zgradi vmesnik in ga
+  vloži v isti `.jar`; `SpletniVmesnik` ga postreže in vsako pot, ki ni
+  datoteka in ne začne z `api/`, vrne kot `index.html` (sicer osvežitev na
+  `/turnirji/1` vrne 404). Privzeti prevod ostane brez vmesnika, da je hiter.
+- Profil `splet` (`application-splet.properties`) je za strežnik za Caddyjem:
+  prazen CORS (isti izvor), `forward-headers-strategy`, brez sledi sklada v
+  odgovoru. Vrata 8080 se na strežniku ne objavijo — do aplikacije se pride
+  samo skozi Caddy, torej samo prek HTTPS (HTTP Basic bi bil sicer berljiv).
+- SQLite baze **nikoli ne kopiraj z `cp`** med delovanjem; uporabi
+  `sqlite3 ... ".backup"` (tako dela skripta za varnostne kopije).
 
 ## Kontekst projekta
 

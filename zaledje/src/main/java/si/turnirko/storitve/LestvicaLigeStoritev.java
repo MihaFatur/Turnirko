@@ -22,6 +22,7 @@ import si.turnirko.modeli.Ekipa;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
+import si.turnirko.modeli.StranEkipe;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -170,6 +171,29 @@ public class LestvicaLigeStoritev {
                     v.tocke, cona));
         }
         return rezultat;
+    }
+
+    /* Bilanca posamicnih tekem vsakega igralca v eni ligi (kljuc je id igralca).
+       Sluzi prikazu kadra pod vrstico lestvice: vrstni red kadra je organizatorjev,
+       bilanca pa pove, koliko je posameznik ligi dejansko prinesel. Igralec brez
+       odigrane tekme v zemljevidu ne nastopa - klicatelj ga steje kot 0 : 0. */
+    @Transactional(readOnly = true)
+    public Map<Long, Bilanca> bilancePosamicnih(Long idLiga) {
+        Map<Long, int[]> zbir = new HashMap<>();
+        for (Object[] r : tekmaSrecanjaRepozitorij.posamicniIzidiLige(idLiga)) {
+            Long domaci = ((Number) r[0]).longValue();
+            Long gost = ((Number) r[1]).longValue();
+            boolean zmagalDomaci = r[2] == StranEkipe.DOMACI;
+            zbir.computeIfAbsent(domaci, k -> new int[2])[zmagalDomaci ? 0 : 1]++;
+            zbir.computeIfAbsent(gost, k -> new int[2])[zmagalDomaci ? 1 : 0]++;
+        }
+        Map<Long, Bilanca> bilance = new HashMap<>();
+        zbir.forEach((id, z) -> bilance.put(id, new Bilanca(z[0], z[1])));
+        return bilance;
+    }
+
+    public record Bilanca(int zmage, int porazi) {
+        public static final Bilanca PRAZNA = new Bilanca(0, 0);
     }
 
     /* Zbir za eno ekipo med izracunom lestvice. */

@@ -1,0 +1,42 @@
+# Caddy stoji pred aplikacijo in opravi dve stvari:
+#   1. prekine HTTPS - certifikat od Let's Encrypt pridobi in obnavlja SAM,
+#      brez skript in brez opomnikov v koledarju;
+#   2. zahteve poslje naprej aplikaciji po notranjem omrezju vsebnikov.
+#
+# Zamenjaj turnirko.si s svojo domeno in e-posto. E-posta gre Let's
+# Encryptu za opozorila, ce bi obnavljanje certifikata kdaj odpovedalo.
+
+{
+	email tvoj-email@primer.si
+}
+
+turnirko.si, www.turnirko.si {
+	# Stisnjeni odgovori - v dvorani je mobilno omrezje pogosto slabo,
+	# vmesnik pa je nekaj sto kilobajtov.
+	encode zstd gzip
+
+	# "app" je ime storitve iz compose.yaml; Docker ga razresi v notranji
+	# naslov. Vrata 8080 niso izpostavljena navzven (glej compose.yaml) -
+	# do aplikacije se pride SAMO skozi Caddy, torej samo prek HTTPS.
+	reverse_proxy app:8080
+
+	# Glave, ki brskalniku povejo, cesa naj ne pocne. HSTS pomeni: to
+	# stran odslej odpiraj samo prek HTTPS, tudi ce kdo poslje povezavo
+	# http://. Vklopi ga sele, ko stran deluje - velja eno leto in ga ni
+	# mogoce hitro preklicati.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	# Dnevnik dostopov - ob tezavah je to prvo, kar pogledas.
+	log {
+		output file /var/log/caddy/dostop.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

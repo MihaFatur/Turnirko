@@ -2,6 +2,7 @@
    Vsi izidi (zmage, nizi) so gledani z vidika "prvega" igralca. */
 package si.turnirko.dto;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import si.turnirko.modeli.IzidTekme;
@@ -17,9 +18,13 @@ public record DvobojDto(
         List<Tekma> tekme
 ) {
 
-    /* Osnovni podatki igralca v dvoboju. */
+    /* Osnovni podatki igralca v dvoboju. Ime in priimek sta locena, ker se
+       velik naslov strani semaforja bere "Nejc Vrhovnik", izbirnik pod njim
+       pa abecedno "Vrhovnik Nejc". */
     public record Igralec(
             Long id,
+            String ime,
+            String priimek,
             String polnoIme,
             String klub,
             Integer rating
@@ -35,6 +40,10 @@ public record DvobojDto(
             boolean ligaska,
             String tekmovanje,
             String del,
+            // Kdaj: zacetek turnirja oz. dan, ko je bilo srecanje odigrano.
+            // Prazen, kadar turnir datuma nima - vrstica takrat pokaze le
+            // tekmovanje.
+            LocalDate datum,
             int niziPrvega,
             int niziDrugega,
             boolean zmagalPrvi,

@@ -24,6 +24,70 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
 
     long countByDogodekIdAndStatusNot(Long idDogodek, StatusTekme status);
 
+    /* Napredek po turnirjih: [idTurnir, vseh tekem, odigranih]. Ena skupinska
+       poizvedba za cel seznam turnirjev (brez nje bi pas "Danes v dvorani"
+       delal N+1). Odigrana je tu vsaka koncana tekma - palica meri potek
+       tekmovanja, ne statistike igralca, zato prosti prehod steje. */
+    @Query("""
+            SELECT t.dogodek.turnir.id, COUNT(t),
+                   SUM(CASE WHEN t.status = si.turnirko.modeli.StatusTekme.KONCANA THEN 1 ELSE 0 END)
+            FROM Tekma t
+            GROUP BY t.dogodek.turnir.id
+            """)
+    List<Object[]> stejPoTurnirjih();
+
+    /* Kje se turnirji trenutno igrajo: za vsak (turnir, dogodek, sistem, faza)
+       najnizje se neodigrano kolo in koliko takih tekem je. Iz tega
+       PovzetkiStoritev sestavi besedno fazo turnirja ("skupine",
+       "cetrtfinale", "3. kolo") brez poizvedbe na vsak turnir posebej.
+       Vrne [idTurnir, idDogodek, sistem, faza, najnizje kolo, stevilo]. */
+    @Query("""
+            SELECT t.dogodek.turnir.id, t.dogodek.id, t.dogodek.sistemTekmovanja, t.faza,
+                   MIN(t.kolo), COUNT(t)
+            FROM Tekma t
+            WHERE t.status <> si.turnirko.modeli.StatusTekme.KONCANA
+            GROUP BY t.dogodek.turnir.id, t.dogodek.id, t.dogodek.sistemTekmovanja, t.faza
+            """)
+    List<Object[]> neodigranaKolaPoDogodkih();
+
+    /* Zadnje kolo glavnega (izlocilnega) dela vsakega dogodka: [idDogodek,
+       najvisje kolo]. Sele razlika do njega pove, ali je kolo cetrtfinale ali
+       osmina finala. */
+    @Query("""
+            SELECT t.dogodek.id, MAX(t.kolo) FROM Tekma t
+            WHERE t.faza = si.turnirko.modeli.FazaTekme.GLAVNI
+            GROUP BY t.dogodek.id
+            """)
+    List<Object[]> zadnjaKolaPoDogodkih();
+
+    /* Zadnja dejansko odigrana tekma VSAKEGA turnirja (najvisji id v turnirju),
+       z obema igralcema - vrstica turnirja pokaze "Vrhovnik 3:1 Kramar". */
+    @Query("""
+            SELECT t FROM Tekma t
+            JOIN FETCH t.dogodek d JOIN FETCH d.turnir
+            JOIN FETCH t.prijava1 p1 JOIN FETCH p1.igralec
+            JOIN FETCH t.prijava2 p2 JOIN FETCH p2.igralec
+            LEFT JOIN FETCH t.zmagovalec
+            WHERE t.id IN (
+                SELECT MAX(z.id) FROM Tekma z
+                WHERE z.status = si.turnirko.modeli.StatusTekme.KONCANA
+                  AND (z.izidTip IS NULL OR z.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
+                                                          si.turnirko.modeli.IzidTekme.PREDAJA))
+                  AND z.prijava1 IS NOT NULL AND z.prijava2 IS NOT NULL
+                GROUP BY z.dogodek.turnir.id)
+            """)
+    List<Tekma> najdiZadnjeVsakegaTurnirja();
+
+    /* Isto po dogodkih enega turnirja: [idDogodek, vseh tekem, odigranih]. */
+    @Query("""
+            SELECT t.dogodek.id, COUNT(t),
+                   SUM(CASE WHEN t.status = si.turnirko.modeli.StatusTekme.KONCANA THEN 1 ELSE 0 END)
+            FROM Tekma t
+            WHERE t.dogodek.turnir.id = :idTurnir
+            GROUP BY t.dogodek.id
+            """)
+    List<Object[]> stejPoDogodkihTurnirja(Long idTurnir);
+
     /* Vse tekme dogodka z igralci in klubi v eni poizvedbi, urejene za
        prikaz mreze. Klub mora biti nalozen, ker gre rezultat v DTO
        izven transakcije (glej komentar v TurnirRepozitorij). */

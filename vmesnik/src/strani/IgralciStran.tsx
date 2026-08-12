@@ -4,7 +4,13 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, krajiApi } from '../api/zahteve'
-import type { IgralecDto, IgralecVnos, IgralnaRoka, Spol } from '../api/tipi'
+import type {
+  IgralecDto,
+  IgralecPodrobenDto,
+  IgralecVnos,
+  IgralnaRoka,
+  Spol,
+} from '../api/tipi'
 import { OZNAKE_IGRALNA_ROKA, OZNAKE_SPOL } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
@@ -21,11 +27,18 @@ export function IgralciStran() {
   // organizator sme le dodati novega igralca; urejanje, arhiviranje in
   // postavitev ratinga ostanejo administratorju (streznik je zadnja obramba)
   const { jeAdmin } = useAvtentikacija()
-  const igralci = useQuery({ queryKey: ['igralci'], queryFn: igralciApi.seznam })
+  /* Osebne podatke (letnik, licenca, kontakti) strežnik da samo adminu, zato
+     organizator dobi javni izpis. Ločen ključ, da se odgovora ne mešata v
+     predpomnilniku; invalidacija po ['igralci'] zajame oba. */
+  const igralci = useQuery<IgralecDto[]>({
+    queryKey: ['igralci', jeAdmin ? 'podrobno' : 'javno'],
+    queryFn: jeAdmin ? igralciApi.seznamPodrobno : igralciApi.seznam,
+  })
 
   const [iskanje, nastaviIskanje] = useState('')
-  /* null = obrazec zaprt; 'nov' = nov igralec; sicer igralec za urejanje. */
-  const [urejanje, nastaviUrejanje] = useState<'nov' | IgralecDto | null>(null)
+  /* null = obrazec zaprt; 'nov' = nov igralec; sicer igralec za urejanje
+     (urejati sme le admin, ki ima podroben zapis). */
+  const [urejanje, nastaviUrejanje] = useState<'nov' | IgralecPodrobenDto | null>(null)
   /* Igralec, za katerega cakamo potrditev arhiviranja. */
   const [arhiviranec, nastaviArhiviranca] = useState<IgralecDto | null>(null)
   /* Igralec, ki mu postavljamo začetni rating (le pred prvo tekmo). */
@@ -120,14 +133,20 @@ export function IgralciStran() {
               <th scope="col">Priimek in ime</th>
               <th scope="col">Klub</th>
               <th scope="col">Spol</th>
-              <th scope="col">Letnik</th>
+              {jeAdmin && <th scope="col">Letnik</th>}
               <th scope="col" className="lestvica__rating">Rating</th>
-              <th scope="col">Licenca NTZS</th>
+              {jeAdmin && <th scope="col">Licenca NTZS</th>}
               <th scope="col" className="tabela__dejanja"></th>
             </tr>
           </thead>
           <tbody>
-            {prikazani.map((igralec) => (
+            {prikazani.map((igralec) => {
+              /* Adminu strežnik vrne podroben zapis (glej poizvedbo zgoraj),
+                 organizatorju javnega. Pogojujemo na tej vrednosti in ne na
+                 jeAdmin, da so stolpci z osebnimi podatki in tip, ki jih
+                 nosi, ena in ista odločitev. */
+              const podroben = jeAdmin ? (igralec as IgralecPodrobenDto) : null
+              return (
               <tr key={igralec.id}>
                 <td className="lestvica__ime">
                   {igralec.priimek} {igralec.ime}
@@ -136,7 +155,9 @@ export function IgralciStran() {
                   {igralec.klub?.ime ?? 'brez kluba'}
                 </td>
                 <td className="vrstica__mono">{OZNAKE_SPOL[igralec.spol]}</td>
-                <td className="vrstica__mono">{letnica(igralec.datumRojstva)}</td>
+                {podroben && (
+                  <td className="vrstica__mono">{letnica(podroben.datumRojstva)}</td>
+                )}
                 <td
                   className={
                     'igralec-rating' + (igralec.rating == null ? ' igralec-rating--brez' : '')
@@ -166,11 +187,13 @@ export function IgralciStran() {
                     igralec.rating == null && '—'
                   )}
                 </td>
-                <td className="vrstica__mono">{igralec.ntzsLicenca ?? '—'}</td>
+                {podroben && (
+                  <td className="vrstica__mono">{podroben.ntzsLicenca ?? '—'}</td>
+                )}
                 <td className="tabela__dejanja">
-                  {jeAdmin && (
+                  {podroben && (
                     <span>
-                      <button className="gumb gumb--majhen" onClick={() => nastaviUrejanje(igralec)}>
+                      <button className="gumb gumb--majhen" onClick={() => nastaviUrejanje(podroben)}>
                         Uredi
                       </button>
                       <button
@@ -183,7 +206,8 @@ export function IgralciStran() {
                   )}
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         </div>
@@ -290,7 +314,9 @@ function IgralecOkno({
   onZapri,
   onShranjeno,
 }: {
-  igralec: IgralecDto | null
+  /* null = nov igralec (tega sme dodati tudi organizator, čeprav obstoječih
+     osebnih podatkov ne vidi). Urejanje je vezano na podroben zapis. */
+  igralec: IgralecPodrobenDto | null
   onZapri: () => void
   onShranjeno: () => void
 }) {

@@ -94,4 +94,81 @@
 		</plugins>
 	</build>
 
+	<profiles>
+		<!-- Profil "splet": zgradi vmesnik in ga vlozi v isti .jar kot zaledje.
+		     Rezultat je ENA datoteka, ki strezhe API in stran - brez CORS,
+		     brez locenega gostovanja, brez posebnega streznika za datoteke.
+
+		     Namenoma NI privzet: obicajen razvojni prevod (mvnw test/package)
+		     ostane hiter, vmesnik pa med razvojem tece na Vite (vrata 5173),
+		     ki zna vroce osvezevanje.
+
+		     Uporaba:  mvnw -Psplet package     ->  target/turnirko-zaledje-*.jar -->
+		<profile>
+			<id>splet</id>
+			<build>
+				<plugins>
+					<!-- Node si prenese sam, v target/. Tako je prevod enak na
+					     razvijalcevem racunalniku in v Dockerju, ne glede na to,
+					     kaj je slucajno namesceno na sistemu. -->
+					<plugin>
+						<groupId>com.github.eirslett</groupId>
+						<artifactId>frontend-maven-plugin</artifactId>
+						<version>1.15.1</version>
+						<configuration>
+							<workingDirectory>../vmesnik</workingDirectory>
+							<installDirectory>${project.build.directory}/node</installDirectory>
+						</configuration>
+						<executions>
+							<execution>
+								<id>namesti-node</id>
+								<goals><goal>install-node-and-npm</goal></goals>
+								<configuration>
+									<nodeVersion>v22.20.0</nodeVersion>
+								</configuration>
+							</execution>
+							<execution>
+								<id>namesti-odvisnosti</id>
+								<goals><goal>npm</goal></goals>
+								<configuration>
+									<!-- ci (in ne install) namesti tocno tisto, kar
+									     pise v package-lock.json -->
+									<arguments>ci</arguments>
+								</configuration>
+							</execution>
+							<execution>
+								<id>zgradi-vmesnik</id>
+								<goals><goal>npm</goal></goals>
+								<configuration>
+									<arguments>run build</arguments>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
+					<!-- Zgrajen vmesnik pristane v static/, od koder ga postreze
+					     SpletniVmesnik. -->
+					<plugin>
+						<artifactId>maven-resources-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>vlozi-vmesnik</id>
+								<phase>process-resources</phase>
+								<goals><goal>copy-resources</goal></goals>
+								<configuration>
+									<outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+									<resources>
+										<resource>
+											<directory>../vmesnik/dist</directory>
+										</resource>
+									</resources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>

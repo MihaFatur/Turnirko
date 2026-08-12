@@ -12,8 +12,12 @@
        3. krog:  B-Z, C-X, A-Y
    CORBILLON: 2 igralca + dvojice (mlajse kategorije): A-X, B-Y, dvojice,
        A-Y, B-X.
+   SAVINJA: kot Corbillon (2 igralca + dvojice, oba igrata tudi par), le da so
+       dvojice PRVE in ne na sredini: dvojice, A-X, B-Y, A-Y, B-X. Rekreacijska
+       liga tako zacne z obema igralcema na mizi, brez cakanja na svoj nastop.
 
-   Nove formate dodas tako, da dopolnis enum in metodo razpored(). */
+   Nove formate dodas tako, da dopolnis enum in metodo razpored() (in razsiris
+   CHECK omejitev stolpca liga.format_srecanja z novo migracijo). */
 package si.turnirko.modeli;
 
 import java.util.List;
@@ -21,7 +25,8 @@ import java.util.List;
 public enum FormatSrecanja {
 
     SNTL(3, true, true),
-    CORBILLON(2, true, false);
+    CORBILLON(2, true, false),
+    SAVINJA(2, true, false);
 
     /* Eno mesto (tekma) v srecanju. Pri dvojicah sta domaci/gost null - par
        se dolobi iz postave (igralci z oznako v_dvojici). */
@@ -82,6 +87,12 @@ public enum FormatSrecanja {
                     new MestoTekme(p, "A", "X"),
                     new MestoTekme(p, "B", "Y"),
                     new MestoTekme(d, null, null),
+                    new MestoTekme(p, "A", "Y"),
+                    new MestoTekme(p, "B", "X"));
+            case SAVINJA -> List.of(
+                    new MestoTekme(d, null, null),
+                    new MestoTekme(p, "A", "X"),
+                    new MestoTekme(p, "B", "Y"),
                     new MestoTekme(p, "A", "Y"),
                     new MestoTekme(p, "B", "X"));
         };

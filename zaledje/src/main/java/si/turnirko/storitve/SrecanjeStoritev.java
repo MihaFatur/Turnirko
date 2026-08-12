@@ -48,6 +48,7 @@ import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
+import si.turnirko.storitve.LestvicaLigeStoritev.Bilanca;
 
 @Service
 public class SrecanjeStoritev {
@@ -59,6 +60,7 @@ public class SrecanjeStoritev {
     private final RatingStoritev ratingStoritev;
     private final RatingZgodovinaRepozitorij zgodovinaRepozitorij;
     private final SpremembeEloStoritev spremembeEloStoritev;
+    private final LestvicaLigeStoritev lestvicaLigeStoritev;
     private final LastnistvoStoritev lastnistvo;
 
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
@@ -68,6 +70,7 @@ public class SrecanjeStoritev {
                             RatingStoritev ratingStoritev,
                             RatingZgodovinaRepozitorij zgodovinaRepozitorij,
                             SpremembeEloStoritev spremembeEloStoritev,
+                            LestvicaLigeStoritev lestvicaLigeStoritev,
                             LastnistvoStoritev lastnistvo) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
@@ -76,6 +79,7 @@ public class SrecanjeStoritev {
         this.ratingStoritev = ratingStoritev;
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
         this.spremembeEloStoritev = spremembeEloStoritev;
+        this.lestvicaLigeStoritev = lestvicaLigeStoritev;
         this.lastnistvo = lastnistvo;
     }
 
@@ -102,12 +106,13 @@ public class SrecanjeStoritev {
                         eloZa(delte, t.getId(), t.getIgralecGost())))
                 .toList();
 
+        Map<Long, Bilanca> bilance = lestvicaLigeStoritev.bilancePosamicnih(liga.getId());
         return new SrecanjePodrobnoDto(
                 SrecanjeDto.iz(s), format,
                 format.pozicijeDomaci(), format.pozicijeGost(),
                 format.izbiraDvojice(), format.stVDvojici(),
                 postave, tekmeDto,
-                kader(s.getEkipaDomaci().getId()), kader(s.getEkipaGost().getId()));
+                kader(s.getEkipaDomaci().getId(), bilance), kader(s.getEkipaGost().getId(), bilance));
     }
 
     // ---------- Postava ----------
@@ -372,12 +377,16 @@ public class SrecanjeStoritev {
         return ids;
     }
 
-    private List<KaderIgralecDto> kader(Long idEkipa) {
+    private List<KaderIgralecDto> kader(Long idEkipa, Map<Long, Bilanca> bilance) {
         List<KaderEkipe> kader = kaderRepozitorij.najdiZaEkipo(idEkipa);
         Map<Long, Integer> ratingi = spremembeEloStoritev.trenutniRatingi(
                 kader.stream().map(k -> k.getIgralec().getId()).toList());
         return kader.stream()
-                .map(k -> KaderIgralecDto.iz(k, ratingi.get(k.getIgralec().getId())))
+                .map(k -> {
+                    Long idIgralec = k.getIgralec().getId();
+                    Bilanca b = bilance.getOrDefault(idIgralec, Bilanca.PRAZNA);
+                    return KaderIgralecDto.iz(k, ratingi.get(idIgralec), b.zmage(), b.porazi());
+                })
                 .toList();
     }
 

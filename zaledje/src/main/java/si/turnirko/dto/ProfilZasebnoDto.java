@@ -13,7 +13,11 @@ public record ProfilZasebnoDto(
         Nasprotniki nasprotniki,
         NiziInTocke niziInTocke,
         Forma forma,
-        PoTekmovanjih poTekmovanjih
+        PoTekmovanjih poTekmovanjih,
+        /* Razsevni graf "ELO nasprotnika proti izidu". Rating nasprotnika ob
+           tekmi je sicer javen podatek, a razrez zivi tu, ker pove, proti
+           komu je igralec mocan oziroma sibek - to je analiza, ne rezultat. */
+        List<RazsevnaTocka> razsevni
 ) {
 
     /* Izkupicek ene skupine tekem (npr. "proti desnicarjem", "v gosteh"). */
@@ -66,6 +70,9 @@ public record ProfilZasebnoDto(
             int prejetiNizi,
             List<Razmerje> razmerja,
             Delez odlocilniNiz,
+            /* "Zmage" so tu tekme brez izgubljenega niza, "porazi" vse ostale -
+               Delez je nosilec razmerja, ne izida. */
+            Delez brezIzgubljenegaNiza,
             Tocke tocke
     ) {}
 
@@ -76,8 +83,17 @@ public record ProfilZasebnoDto(
             int tockeProti,
             int odstotekTock,
             double povprecjeNaNiz,
-            int najvecTockVNizu
+            int najvecTockVNizu,
+            /* "Pod pritiskom" = tesni nizi, v katerih sta oba dosegla vsaj 9
+               tock. Tock po posamezni izmenjavi ne hranimo, zato je to
+               najboljsi priblizek izida 9:9 in vec, ki ga podatki dopuscajo. */
+            int nizovPodPritiskom,
+            int odstotekTockPodPritiskom
     ) {}
+
+    /* En koledarski mesec: kolikokrat je igralec zmagal in koliko zmag bi
+       glede na ELO nasprotnikov pricakovali. "mesec" je oblike "2026-04". */
+    public record Mesec(String mesec, int zmage, double pricakovaneZmage) {}
 
     public record Forma(
             /* Zadnjih deset izidov, najnovejsi prvi (true = zmaga). */
@@ -88,8 +104,15 @@ public record ProfilZasebnoDto(
             int najdaljsiNizPorazov,
             Integer spremembaElo30dni,
             Integer najvisjiElo,
-            LocalDate najvisjiEloDatum
+            LocalDate najvisjiEloDatum,
+            /* Od najstarejsega meseca naprej; steti so samo nastopi, pri
+               katerih sta bila znana oba ratinga (sicer pricakovanja ni). */
+            List<Mesec> poMesecih
     ) {}
+
+    /* Ena tekma v razsevnem grafu: rating nasprotnika ob tekmi proti
+       spremembi lastnega ratinga. */
+    public record RazsevnaTocka(int ratingNasprotnika, int sprememba, boolean zmaga) {}
 
     public record PoTekmovanjih(
             Delez turnirji,

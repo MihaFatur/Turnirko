@@ -4,7 +4,13 @@
 
    Vodoravna os je zaporedje obračunanih tekem (ne koledar), ker so tekme
    pogosto zgoščene v turnirske dneve in bi časovno merilo dalo prazne pasove.
-   Datum je izpisan pod prvo in zadnjo točko ter ob izbrani točki. */
+   Datum je izpisan pod prvo in zadnjo točko ter ob izbrani točki.
+
+   Oznake osi so HTML nad risalno ploskvijo, ne <text> v SVG: SVG jih pri
+   raztegu ploskve na širino okvirja skalira skupaj z grafom (12 px bi na
+   1360 px oknu postalo 14,6 px), poleg tega jih na telefonu ni mogoče
+   preprosto skriti. */
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 
 import type { TockaGrafa } from '../api/tipi'
@@ -23,7 +29,10 @@ const SIRINA = 1120
 const VISINA = 280
 const ROB = { levo: 56, desno: 16, zgoraj: 16, spodaj: 32 }
 
-export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
+/* "otroci" so bloki, ki sodijo v isto sekcijo pod graf (npr. pričakovan proti
+   doseženemu izkupičku) — sekcijo namreč izriše ta komponenta, ker izbirnik
+   obdobja stoji v njeni naslovni vrstici. */
+export function GrafElo({ tocke, children }: { tocke: TockaGrafa[]; children?: ReactNode }) {
   const [obdobje, nastaviObdobje] = useState<Obdobje>('vse')
   const [izbrana, nastaviIzbrano] = useState<number | null>(null)
 
@@ -36,6 +45,7 @@ export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
           <h2>Napredek ELO</h2>
         </div>
         <p className="obvestilo">Ni še obračunanih tekem, zato graf ELO še ni na voljo.</p>
+        {children}
       </div>
     )
   }
@@ -96,61 +106,65 @@ export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
         <p className="obvestilo">V izbranem obdobju ni obračunanih tekem.</p>
       ) : (
         <>
-          <svg
-            className="graf__svg"
-            viewBox={`0 0 ${SIRINA} ${VISINA}`}
-            role="img"
-            aria-label="Graf napredka klubskega ELO"
-          >
+          <div className="graf__ovoj">
             {oznakeY.map((v) => (
-              <g key={v}>
+              <span
+                key={v}
+                className="graf__oznaka graf__oznaka--y"
+                style={{ top: `${(y(v) / VISINA) * 100}%` }}
+              >
+                {Math.round(v)}
+              </span>
+            ))}
+            <span className="graf__oznaka graf__oznaka--prvi">{datum(filtrirane[0].kdaj)}</span>
+            {filtrirane.length > 1 && (
+              <span className="graf__oznaka graf__oznaka--zadnji">
+                {datum(filtrirane[filtrirane.length - 1].kdaj)}
+              </span>
+            )}
+            <svg
+              className="graf__svg"
+              viewBox={`0 0 ${SIRINA} ${VISINA}`}
+              role="img"
+              aria-label="Graf napredka klubskega ELO"
+            >
+              {oznakeY.map((v) => (
                 <line
+                  key={v}
                   className="graf__mreza"
                   x1={ROB.levo}
                   x2={SIRINA - ROB.desno}
                   y1={y(v)}
                   y2={y(v)}
                 />
-                <text className="graf__os" x={ROB.levo - 8} y={y(v) + 4} textAnchor="end">
-                  {Math.round(v)}
-                </text>
-              </g>
-            ))}
+              ))}
 
-            {ploskev && <polygon className="graf__ploskev" points={ploskev} />}
-            <polyline className="graf__crta" points={crta} />
+              {ploskev && <polygon className="graf__ploskev" points={ploskev} />}
+              <polyline className="graf__crta" points={crta} />
 
-            {filtrirane.map((t, i) => (
-              <circle
-                key={`${t.ligaska ? 'l' : 't'}${t.idTekme}-${i}`}
-                className={
-                  'graf__tocka' +
-                  (izbrana === i ? ' graf__tocka--izbrana' : '') +
-                  (t.sprememba >= 0 ? ' graf__tocka--plus' : ' graf__tocka--minus')
-                }
-                cx={x(i)}
-                cy={y(t.vrednost)}
-                r={izbrana === i ? 5 : 3.5}
-                onMouseEnter={() => nastaviIzbrano(i)}
-                onFocus={() => nastaviIzbrano(i)}
-                tabIndex={0}
-              >
-                <title>
-                  {datum(t.kdaj)} · {t.vrednost} ({t.sprememba >= 0 ? '+' : ''}
-                  {t.sprememba}){t.nasprotnik ? ` · ${t.nasprotnik}` : ''}
-                </title>
-              </circle>
-            ))}
-
-            <text className="graf__os" x={ROB.levo} y={VISINA - 6}>
-              {datum(filtrirane[0].kdaj)}
-            </text>
-            {filtrirane.length > 1 && (
-              <text className="graf__os" x={SIRINA - ROB.desno} y={VISINA - 6} textAnchor="end">
-                {datum(filtrirane[filtrirane.length - 1].kdaj)}
-              </text>
-            )}
-          </svg>
+              {filtrirane.map((t, i) => (
+                <circle
+                  key={`${t.ligaska ? 'l' : 't'}${t.idTekme}-${i}`}
+                  className={
+                    'graf__tocka' +
+                    (izbrana === i ? ' graf__tocka--izbrana' : '') +
+                    (t.sprememba >= 0 ? ' graf__tocka--plus' : ' graf__tocka--minus')
+                  }
+                  cx={x(i)}
+                  cy={y(t.vrednost)}
+                  r={izbrana === i ? 5 : 3.5}
+                  onMouseEnter={() => nastaviIzbrano(i)}
+                  onFocus={() => nastaviIzbrano(i)}
+                  tabIndex={0}
+                >
+                  <title>
+                    {datum(t.kdaj)} · {t.vrednost} ({t.sprememba >= 0 ? '+' : ''}
+                    {t.sprememba}){t.nasprotnik ? ` · ${t.nasprotnik}` : ''}
+                  </title>
+                </circle>
+              ))}
+            </svg>
+          </div>
 
           {podrobnost && (
             <p className="graf__podrobnost">
@@ -175,6 +189,8 @@ export function GrafElo({ tocke }: { tocke: TockaGrafa[] }) {
           )}
         </>
       )}
+
+      {children}
     </div>
   )
 }

@@ -1,4 +1,9 @@
-/* Vnos (ustvarjanje/urejanje) lige - vsa prilagodljiva konfiguracija. */
+/* Vnos (ustvarjanje/urejanje) lige - pravila tekmovanja.
+
+   Prehodov (visja/nizja liga, napreduje, izpade) tu namenoma NI: pravila so
+   zaklenjena, ko liga ni vec v pripravi, mesto lige v piramidi pa se sme
+   popraviti kadar koli (na razpored ne vpliva). Zanje je PrehodiVnos in svoja
+   koncna tocka. */
 package si.turnirko.dto;
 
 import jakarta.validation.constraints.NotBlank;
@@ -26,8 +31,5 @@ public record LigaVnos(
         Boolean prepovedDvojneRegistracije,
         Boolean stejeVElo,
         // predloga uradnega ekipnega zapisnika; null = privzeto (SNTL_23)
-        PredlogaLige predlogaListka,
-        Long idVisjaLiga,
-        Integer stNapreduje,
-        Integer stIzpade
+        PredlogaLige predlogaListka
 ) {}

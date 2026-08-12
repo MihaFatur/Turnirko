@@ -88,11 +88,20 @@
   --barva-poudarek-tekst: #4a7500;
   --barva-poudarek-mehko: #eaf4d6;
   --barva-na-poudarku: #14110f;
+  /* Vmesna stopnja med mehko in polno: edina raba je toplotna karta koncnih
+     izidov na profilu, kjer gostota crnila pomeni pogostost. Za trojico
+     mehka-srednja-polna sta bili dve stopnji premalo, da bi se pogostost
+     brala brez legende. */
+  --barva-poudarek-srednje: #c6e28a;
 
   /* --- Semanticno negativno: edini tretji ton (izguba, napaka, brisanje) --- */
   --barva-negativna: #b23a1e;
   --barva-negativna-tekst: #8c2b14;
   --barva-negativna-mehko: #f8e5df;
+  --barva-negativna-srednje: #e2a793;
+  /* Besedilo na polni rjasti ploskvi; v temni temi je rjasta svetla, zato
+     tam ni belo, ampak crnilo. */
+  --barva-na-negativni: #ffffff;
 
   /* --- Papir in crnilo --- */
   --barva-papir: #fbf9f5;
@@ -104,6 +113,11 @@
   --barva-crta: #ded7ce;
   --barva-polnilo: #ede7df;
   --barva-bela: #ffffff;
+  /* Podlaga vrstice pod misko na domaci strani: papir za odtenek temnejsi.
+     Modra "glavna-mehko" je tam rezervirana za OZNACENO vrstico (tvojo), zato
+     navadni prehod miske ne sme uporabiti iste barve - sicer je videti, kot
+     da si oznacen vsak, cez kogar potegnes miska. */
+  --barva-vrstica-hover: #f3efe9;
 
   /* Podlaga polja za vnos je "bela" tudi v temni temi (tam potemni). */
   --sirina-okvirja: 1280px;
@@ -126,11 +140,14 @@
     --barva-poudarek: #7bb900;
     --barva-poudarek-tekst: #9fd62e;
     --barva-poudarek-mehko: #1e2610;
+    --barva-poudarek-srednje: #3f5c14;
     --barva-na-poudarku: #12100f;
 
     --barva-negativna: #e0704c;
     --barva-negativna-tekst: #f0a184;
     --barva-negativna-mehko: #2f1610;
+    --barva-negativna-srednje: #6b2a18;
+    --barva-na-negativni: #12100f;
 
     --barva-papir: #12100f;
     --barva-namizje: #080706;
@@ -141,6 +158,7 @@
     --barva-crta: #2a2622;
     --barva-polnilo: #221e1a;
     --barva-bela: #1a1714;
+    --barva-vrstica-hover: #1c1917;
   }
 }
 
@@ -244,26 +262,36 @@ textarea:focus-visible,
   color: var(--barva-crnilo);
 }
 
+/* Masthead je mreza in ne vrsta: na telefonu se navigacija preseli POD debelo
+   crto kot vrstica zavihkov, in to je premik enega samega podrocja. Z vrsto bi
+   morala biti navigacija v izvorni kodi dvakrat (bralnik zaslona bi jo bral
+   dvakrat), z mrezo je en sam element. */
 .glava {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'logotip navigacija uporabnik'
+    'crta    crta       crta';
+  align-items: baseline;
+  column-gap: var(--r3);
   padding: var(--r3) var(--r5) 0;
 }
 
-.glava__vsebina {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--r3);
-  padding-bottom: var(--r1);
-  border-bottom: 1px solid var(--barva-crnilo);
+/* Tanka in za njo debela crta pod mastheadom — nosilni element "zapisnika".
+   Odmik 8 px nad njo je nekdanji padding-bottom vrstice. */
+.glava__crta {
+  grid-area: crta;
+  align-self: stretch;
+  margin-top: var(--r1);
+  padding-top: 2px;
+  border-top: 1px solid var(--barva-crnilo);
 }
 
-/* Debela crta pod masthead — nosilni element "zapisnika". */
-.glava::after {
+.glava__crta::after {
   content: '';
   display: block;
   height: 3px;
   background: var(--barva-crnilo);
-  margin-top: 2px;
 }
 
 /* Trak brez povezave. Wi-Fi v dvorani pade in podatki obtice; brez tega
@@ -286,6 +314,7 @@ textarea:focus-visible,
 }
 
 .glava__logotip {
+  grid-area: logotip;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -301,25 +330,27 @@ textarea:focus-visible,
   text-decoration: none;
 }
 
-/* Edina ikona v vmesniku je logotip: lopar (modra) + zogica (zelena). */
+/* Edina ikona v vmesniku je logotip: stiri poteze niza. */
 .logo-znak {
   display: block;
   flex: none;
 }
 
-.logo-znak__lopar {
+.logo-znak__poteza {
+  fill: var(--barva-crnilo);
+}
+
+.logo-znak__poteza--glavna {
   fill: var(--barva-glavna);
 }
 
-.logo-znak__rocaj {
-  stroke: var(--barva-crnilo);
-}
-
-.logo-znak__zogica {
+.logo-znak__poteza--izid {
   fill: var(--barva-poudarek);
 }
 
 .glava__navigacija {
+  grid-area: navigacija;
+  justify-self: center;
   display: flex;
   gap: var(--r3);
   font-size: 15px;
@@ -354,6 +385,8 @@ textarea:focus-visible,
 }
 
 .glava__uporabnik {
+  grid-area: uporabnik;
+  justify-self: end;
   position: relative;
   display: flex;
   align-items: baseline;
@@ -508,6 +541,23 @@ textarea:focus-visible,
   margin-bottom: var(--r3);
 }
 
+/* Dve enakovredni dejanji drug ob drugem (glava lige): vsako pol sirine, odmika
+   pod njima ni - blok stanja ga nosi sam. */
+.stran-glava__dejanja--vrsta {
+  flex-direction: row;
+  margin-bottom: 0;
+}
+
+.stran-glava__dejanja--vrsta > .gumb {
+  flex: 1;
+}
+
+/* Znacka statusa je oznaka in ne gumb: v stolpcu dejanj se ne razteza cez
+   vso sirino, ampak stoji ob levem robu. */
+.stran-glava__dejanja > .znacka {
+  align-self: flex-start;
+}
+
 .stran-glava__pogoj {
   font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
   letter-spacing: 0.06em;
@@ -563,6 +613,12 @@ textarea:focus-visible,
   line-height: 1.5;
   color: var(--barva-crnilo-2);
   max-width: 48ch;
+}
+
+/* Uvod, ki stoji tesno pod naslovom (glava lige je poravnana po dnu, zato je
+   vsak dodaten piksel pod naslovom viden kot razmaknjena vrstica). */
+.uvod--tesno {
+  margin-top: var(--r2);
 }
 
 /* "align-self: start" ni okras: kot postavka navpicnega flexa bi se povezava
@@ -729,6 +785,7 @@ a.sekcija__meta {
 .dvostolpicno--lestvica {
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
 }
+
 
 .stolpec {
   display: flex;
@@ -1053,6 +1110,13 @@ input[type='radio'] {
   font-size: 15px;
 }
 
+/* Seznam, ki lahko naraste (npr. vse lige): drsi znotraj sebe, da gumbi
+   obrazca ostanejo v vidnem delu okna. */
+.obrazec__radio-skupina--drsna {
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
 .obrazec__skupina,
 .obrazec__sklop {
   border: none;
@@ -1305,9 +1369,7 @@ input[type='radio'] {
 .liga__srecanja,
 .domov__seznam,
 .tekme-seznam,
-.izbor,
-.profil__razmerja,
-.delezi {
+.izbor {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1564,10 +1626,31 @@ input[type='radio'] {
   background: var(--barva-glavna-mehko);
 }
 
-/* Vrstica z datumskim blokom na levi (seznam turnirjev). */
+/* Vrstica z datumskim blokom na levi (seznam turnirjev). Stolpci so isti kot
+   v pasu "Danes v dvorani" in v glavi stolpcev - vse tri mreze morajo stati
+   druga nad drugo, sicer glava ne pove, kaj je pod njo. */
+.kartica--z-datumom,
+.kartica--danes,
+.seznam-glava--turnirji {
+  grid-template-columns: 88px minmax(0, 1fr) 232px 168px 112px;
+}
+
 .kartica--z-datumom {
-  grid-template-columns: 88px minmax(0, 1fr) 200px 128px 112px;
   padding: 20px 0;
+}
+
+/* Pas "Danes v dvorani": ena vrstica, ki jo sodnik isce prva. 4 px crta in
+   mehka podlaga nosita poudarek, zato datumski blok svoje crte nima. */
+.kartica--danes {
+  padding: var(--r3) 0 var(--r3) 12px;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  margin-top: var(--r2);
+}
+
+.kartica--danes .datum-blok {
+  border-left: none;
+  padding-left: 0;
 }
 
 /* Vrstica lige: 4 px crta stanja ob levem robu. */
@@ -1577,10 +1660,26 @@ input[type='radio'] {
   border-left: 4px solid var(--barva-crta);
 }
 
-/* Vrstica dogodka znotraj turnirja. */
+/* Vrstica dogodka znotraj turnirja: 4 px crta statusa, palica napredka. */
+.kartica--dogodek,
+.seznam-glava--dogodki {
+  grid-template-columns: minmax(0, 1fr) 200px 200px 232px 112px;
+}
+
 .kartica--dogodek {
-  grid-template-columns: minmax(0, 1fr) 200px 200px 128px 112px;
-  padding: 20px 0;
+  padding: var(--r3) 0 var(--r3) 12px;
+  border-left: 4px solid var(--barva-crta);
+}
+
+/* Sistem tekmovanja ni znacka, ampak podcrtana oznaka - v mrezi bi se sicer
+   raztegnila cez cel stolpec in podcrtaj z njo. */
+.kartica--dogodek > .znacka--sistem {
+  justify-self: start;
+}
+
+/* Znacka statusa je zadnji stolpec in ga zapolni; besedilo je sredinjeno. */
+.kartica > .znacka {
+  text-align: center;
 }
 
 .kartica--PRIPRAVA {
@@ -1618,13 +1717,72 @@ input[type='radio'] {
   display: block;
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--barva-crnilo-3);
+}
+
+/* Obdobje ("11. 4. 2026 – 12. 4. 2026") je za svoj stolpec predolgo in se
+   prelomi v dve vrstici; brez tega bi zlezlo cez znacko statusa. */
+.kartica .vrstica__mono {
+  white-space: normal;
+}
+
+/* Glava stolpcev seznama: mono 12 verzalke, 1 px crta crnila spodaj.
+   Mrezo stolpcev prevzame od vrstic prek modifikatorja (--turnirji, --dogodki). */
+.seznam-glava {
+  display: grid;
+  align-items: baseline;
+  gap: var(--r3);
+  padding: 12px 0 var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  margin-top: var(--r2);
+}
+
+.seznam-glava__sredinjeno {
+  text-align: center;
+}
+
+.seznam-glava__desno {
+  text-align: right;
+}
+
+/* Napredek v vrstici: mono oznaka nad 6 px palico. Palica je edino, kar loci
+   dogodek z 12 igralci od dogodka s 100, zato stoji v vrstici in ne v kolofonu. */
+.napredek {
+  display: block;
+  min-width: 0;
+}
+
+.napredek__oznaka {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.napredek .palica {
+  margin-top: var(--r1);
+}
+
+/* Koncan dogodek: palica je polna in zelena (napredovanje je doseglo konec). */
+.palica__polnilo--koncan {
+  background: var(--barva-poudarek);
 }
 
 @media (max-width: 900px) {
   .kartica {
     grid-template-columns: minmax(0, 1fr) auto;
     row-gap: var(--r1);
+  }
+
+  /* Glava stolpcev opisuje mrezo, ki je na ozkem zaslonu ni vec. */
+  .seznam-glava {
+    display: none;
   }
 }
 
@@ -1692,6 +1850,16 @@ input[type='radio'] {
   border-left-color: var(--barva-glavna);
 }
 
+/* Krmar nad mrezo: gumbi kol levo, opomba o osvetlitvi poti desno. */
+.mreza-krmar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r3);
+  flex-wrap: wrap;
+  margin-top: var(--r3);
+}
+
 .tekma__stran {
   display: flex;
   align-items: center;
@@ -1702,6 +1870,15 @@ input[type='radio'] {
 
 .tekma__stran + .tekma__stran {
   border-top: 1px solid var(--barva-polnilo);
+}
+
+/* Pot igralca skozi mrezo: prehod miske (ali dotik) nad imenom osvetli VSE
+   pojavitve istega igralca v vseh kolih, zato se pot prebere brez klika.
+   Inset crta ob strani vrstice je edina dovoljena senca poleg podcrtaja
+   navigacije (glej DESIGN.md, razdelek 5). */
+.tekma__stran--osvetljena {
+  background: var(--barva-glavna-mehko);
+  box-shadow: inset 4px 0 0 var(--barva-glavna);
 }
 
 /* Zmagovalec je krepek in v polnem crnilu, porazenec pobledi (AA 5.2:1). */
@@ -1823,6 +2000,20 @@ input[type='radio'] {
   color: var(--barva-glavna-tekst);
 }
 
+/* Neodigrana tekma: crtica v onemogoceni barvi - nic se ni zgodilo. */
+.tekme-seznam__rezultat--prazen {
+  color: var(--barva-crnilo-4);
+}
+
+/* Tekma, ki tece prav zdaj: beseda namesto rezultata, ki ga se ni.
+   Specificnost mora premagati pravilo za klikljivo vrstico zgoraj. */
+.tekme-seznam__vrstica .tekme-seznam__rezultat--v-igri {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
 .tekme-seznam__izid {
   grid-column: 1 / -1;
   font: 500 11px / 1.4 var(--pisava-mono);
@@ -1835,7 +2026,14 @@ input[type='radio'] {
   margin-left: var(--r1);
 }
 
+/* Desni igralec bere od desne proti levi (ime, rating, sprememba ELO), zato
+   se odmiki zrcalijo - sicer se "-41" in "1730" zlepita v eno stevilo. */
 .tekme-seznam__igralec:last-of-type .tekme-seznam__rating {
+  margin-left: 0;
+  margin-right: var(--r1);
+}
+
+.tekme-seznam__igralec:last-of-type .sprememba-elo {
   margin-left: 0;
   margin-right: var(--r1);
 }
@@ -1913,8 +2111,10 @@ input[type='radio'] {
   color: var(--barva-negativna);
 }
 
+/* Locilo je nevtralno in mora biti svetlejse od stevilk okoli sebe, sicer se
+   bere kot podatek in ne kot presledek med zmagami in porazi. */
 .lestvica__locilo {
-  color: var(--barva-crnilo-3);
+  color: var(--barva-crnilo-4);
 }
 
 /* Uspesnost: palica + odstotek v isti celici. */
@@ -1938,6 +2138,191 @@ input[type='radio'] {
   color: var(--barva-crnilo);
 }
 
+/* --- Globalna lestvica igralcev (stran /lestvica) ---
+   Edina tabela s fiksno postavitvijo. Razlog je prostor: sedem stolpcev se je
+   pri samodejni sirini prekrivalo, dolgo ime pa je potiskalo stevilke. S
+   <colgroup> ima vsak stolpec svojo sirino, ime in klub pa se odrezeta. */
+.lestvica--globalna {
+  width: 100%;
+  min-width: 1200px;
+  table-layout: fixed;
+  margin-top: 0;
+}
+
+.lestvica-ovoj {
+  margin-top: var(--r3);
+}
+
+/* Lepljiva glava se veze na najblizji drsni vsebnik. ".tabela-ovoj" je zaradi
+   "overflow-x: auto" tak vsebnik, ceprav se navpicno nikoli ne premakne -
+   glava bi zato obstala v njem in odsla z oknom. Pri 1280 px gre tabela
+   (1200 px) v okvir natanko, zato drsnika tam ne rabimo in glava se prime
+   okna. Pod 1280 px je vodoravni drsnik nujen in glava tam ni lepljiva -
+   tega z eno tabelo ni mogoce imeti oboje. */
+@media (min-width: 1280px) {
+  .lestvica-ovoj {
+    overflow: visible;
+  }
+}
+
+.lestvica--globalna thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* Neprosojna podlaga: skozi lepljivo glavo se vrstice ne smejo videti. */
+  background: var(--barva-papir);
+}
+
+.lestvica__stolpec--mesto {
+  width: 56px;
+}
+
+.lestvica__stolpec--gibanje {
+  width: 64px;
+}
+
+/* Stolpec igralca sirine namenoma nima - pobere ves preostanek. */
+.lestvica__stolpec--klub {
+  width: 280px;
+}
+
+.lestvica__stolpec--izid {
+  width: 112px;
+}
+
+.lestvica__stolpec--rating {
+  width: 104px;
+}
+
+.lestvica__stolpec--delta {
+  width: 88px;
+}
+
+/* Glave stolpcev stojijo tako kot vsebina celic; razred na <th> mora premagati
+   privzeti "text-align: left" iz ".tabela th". */
+.lestvica--globalna th.lestvica__mesto,
+.lestvica--globalna th.lestvica__stevilka,
+.lestvica--globalna th.lestvica__rating,
+.lestvica--globalna th.lestvica__delta {
+  text-align: right;
+}
+
+.lestvica--globalna th.lestvica__gibanje {
+  text-align: center;
+}
+
+.lestvica--globalna .lestvica__igralec,
+.lestvica--globalna .lestvica__klub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Velikosti so zapisane na ravni celice, ker je ".tabela td" (16 px) mocnejsi
+   od razredov stolpcev - brez tega bi cela tabela ostala 16 px in bi se
+   tipografska lestvica (mesto 17, rating 20, delta 15, gibanje 14) izgubila. */
+.lestvica--globalna td.lestvica__mesto {
+  font-size: 17px;
+}
+
+.lestvica--globalna td.lestvica__gibanje {
+  font-size: 14px;
+}
+
+.lestvica--globalna td.lestvica__stevilka {
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.lestvica--globalna td.lestvica__rating {
+  font-size: 20px;
+}
+
+.lestvica--globalna td.lestvica__delta {
+  font-size: 15px;
+}
+
+/* Gibanje mesta: "↑3" / "↓2" / "–". */
+.lestvica__gibanje {
+  text-align: center;
+  font: 500 14px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Sprememba ratinga cez 30 dni: "+34" / "−31" / "±0". */
+.lestvica__delta {
+  text-align: right;
+  font: 500 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Oba stolpca merita isto obdobje, zato imata isto barvno lestvico. Barva ni
+   edini nosilec pomena - smer pove ze znak (puscica oz. predznak). */
+.lestvica__gibanje--gor,
+.lestvica__delta--gor {
+  color: var(--barva-poudarek-tekst);
+}
+
+.lestvica__gibanje--dol,
+.lestvica__delta--dol {
+  color: var(--barva-negativna);
+}
+
+.lestvica__gibanje--brez,
+.lestvica__delta--brez {
+  color: var(--barva-crnilo-4);
+}
+
+/* Pas filtrov nad tabelo: kategorija levo, merilo desno ob robu. */
+.lestvica__filtri {
+  margin-top: var(--r3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--r3) var(--r4);
+  align-items: end;
+}
+
+.lestvica__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+  min-width: 0;
+}
+
+/* Merilo ostane ob desnem robu tudi, kadar kategorij ni in je prvi stolpec
+   prazen. */
+.lestvica__filter--merilo {
+  grid-column: 2;
+}
+
+.lestvica__filter--merilo .lestvica__filter-oznaka {
+  text-align: right;
+}
+
+.lestvica__filter--merilo .izbirnik {
+  justify-content: flex-end;
+}
+
+.lestvica__filter-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Opomba pod tabelo: brez nje sta stolpca "Gib." in "Δ" dvoumna. */
+.lestvica__opomba {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--barva-crta);
+  text-align: right;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
 /* Moja vrstica: mehka podlaga in krepko ime. */
 .lestvica__vrstica--jaz {
   background: var(--barva-glavna-mehko);
@@ -1955,6 +2340,72 @@ input[type='radio'] {
 
 .lestvica__vrsta--izpade td:first-child {
   box-shadow: inset 4px 0 0 var(--barva-negativna);
+}
+
+/* Ime ekipe je gumb, ker vrstica razpre kader: videti mora kot besedilo, delati
+   pa kot dejanje (tipkovnica, bralnik zaslona). */
+.lestvica__ekipa {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font-family: var(--pisava-telo);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lestvica__ekipa .lestvica__ime {
+  font-weight: 400;
+}
+
+.lestvica__kader-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+  white-space: nowrap;
+}
+
+/* Odprta vrstica: mehka podlaga in krepko ime - kader pod njo spada k njej. */
+.lestvica__vrsta--odprta {
+  background: var(--barva-glavna-mehko);
+}
+
+.lestvica__vrsta--odprta .lestvica__ime {
+  font-weight: 700;
+}
+
+/* Forma: do pet znakov zadnjih srecanj, najstarejsi levo. Znak je znacka brez
+   radija; N ostane pri privzeti (nevtralni) podlagi. */
+.lestvica__forma {
+  display: flex;
+  gap: 4px;
+}
+
+.lestvica__forma-znak {
+  position: relative;
+  display: inline-block;
+  width: 20px;
+  padding: 3px 0;
+  text-align: center;
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo-3);
+  font: 600 11px / 1.2 var(--pisava-mono);
+}
+
+.lestvica__forma-znak--Z {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.lestvica__forma-znak--P {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
 }
 
 .legenda {
@@ -1988,7 +2439,119 @@ input[type='radio'] {
   background: var(--barva-negativna);
 }
 
-/* Skupine. */
+/* --- Skupine kot zlozljive vrstice ---
+   Pri 100 prijavljenih je skupin 25. Cel seznam mora biti viden naenkrat,
+   zato je skupina vrstica in ne plosca; odprta je vedno najvec ena. */
+.skupine-seznam {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Glava stolpcev nad skupinami stoji nad 4 px crto vrstice, zato ima isti
+   levi odmik kot vrstica. */
+.seznam-glava--skupine {
+  grid-template-columns: 64px minmax(0, 1fr) 96px;
+  gap: var(--r2);
+  padding-left: 12px;
+}
+
+/* Vrstica je gumb, ker odpira vsebino: videti mora kot vrstica, delati pa kot
+   dejanje (tipkovnica, bralnik zaslona). */
+.skupina-vrstica {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: var(--r2);
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 0 12px 12px;
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--barva-crnilo);
+  font-family: var(--pisava-telo);
+  text-align: left;
+  cursor: pointer;
+}
+
+.skupina-vrstica:hover {
+  background: var(--barva-glavna-mehko);
+}
+
+.skupina-vrstica--odprta,
+.skupina-vrstica--odprta:hover {
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.skupina-vrstica__oznaka {
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+}
+
+.skupina-vrstica__igralci {
+  font-size: var(--tip-telo);
+  font-weight: 400;
+  color: var(--barva-crnilo-2);
+}
+
+.skupina-vrstica__gumb {
+  text-align: right;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
+/* Vsebina odprte skupine stoji pod vrstico in nosi njeno podlago. */
+.skupina-vsebina {
+  padding: var(--r3) 0 var(--r4) 12px;
+  border-bottom: 1px solid var(--barva-crta);
+  background: var(--barva-glavna-mehko);
+}
+
+.skupina-vsebina__stolpci {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--r5);
+  padding: 0 var(--r3);
+}
+
+/* Lestvica v odprti skupini: sest stolpcev polne lestvice bi bilo tu prevec -
+   ostane, kar odloca o napredovanju (mesto, ime, zmage, porazi, nizi). */
+.lestvica--skupina {
+  margin-top: 0;
+}
+
+.lestvica--skupina .lestvica__mesto,
+.lestvica--skupina .lestvica__stevilka {
+  width: 44px;
+}
+
+.lestvica--skupina .lestvica__nizi {
+  width: 72px;
+}
+
+.lestvica--skupina td {
+  padding: 12px var(--r2) 12px 0;
+  font-size: var(--tip-telo);
+}
+
+/* Tekme skupine po kolih: prvo kolo se drzi glave stolpca lestvice. */
+.skupina-vsebina .kolo-skupina:first-child {
+  margin-top: 0;
+}
+
+.skupina-vsebina .kolo-skupina__naslov {
+  margin-top: var(--r2);
+}
+
+/* Skupine kot plosce (starejsi prikaz formata TOP). */
 .skupine {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
@@ -2074,6 +2637,195 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
+/* --- Koncni vrstni red zakljucenega dogodka ---
+   Vsi udelezenci v dveh (pri vec kot 40 v treh) stolpcih, da gre cel razpored
+   na en zaslon brez stranicenja. */
+.vrstni-red {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--r7);
+  margin-top: var(--r2);
+}
+
+.vrstni-red--trije {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.vrstni-red__vrstica {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 88px 72px;
+  align-items: center;
+  gap: var(--r2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.vrstni-red__mesto {
+  text-align: right;
+  font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.vrstni-red__ime {
+  min-width: 0;
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.vrstni-red__klub {
+  display: block;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.vrstni-red__izkupicek {
+  text-align: right;
+  font: 500 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.vrstni-red__elo {
+  text-align: right;
+  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.vrstni-red__elo--poz {
+  color: var(--barva-poudarek-tekst);
+}
+
+.vrstni-red__elo--neg {
+  color: var(--barva-negativna);
+}
+
+/* --- Seznam prijavljenih (priprava, udelezenci) ---
+   Cilj je 100 prijavljenih na enem zaslonu prenosnika brez stranicenja: do 24
+   en stolpec, 25-120 dva, nad 120 trije. Iskanje in filter kluba delujeta na
+   celoten seznam in ga znova razpolovita, zato se stolpci vedno enako napolnijo. */
+.prijavljeni {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--r7);
+  margin-top: var(--r4);
+}
+
+.prijavljeni--en {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.prijavljeni--trije {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.prijava-vrstica {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 64px;
+  align-items: baseline;
+  gap: 12px;
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.prijava-vrstica--glava {
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.prijava-vrstica__mesto,
+.prijava-vrstica__rating {
+  text-align: right;
+  font: 500 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.prijava-vrstica--glava .prijava-vrstica__mesto,
+.prijava-vrstica--glava .prijava-vrstica__rating {
+  font: inherit;
+}
+
+.prijava-vrstica__ime {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--barva-crnilo);
+}
+
+.prijava-vrstica__klub {
+  color: var(--barva-crnilo-3);
+  font-weight: 300;
+  font-size: var(--tip-drobno);
+}
+
+/* Dejanje ob vrstici (odjava, odstop) dobi svoj stolpec, da ime ostane
+   poravnano. Dejanje je mono oznaka in ne gumb z obrobo: 44 px visok gumb bi
+   vrstico podvojil in 100 prijavljenih ne bi slo vec na en zaslon. Prst dobi
+   svojih 44 px prek nevidnega ::after (glej razdelek Odzivnost). */
+.prijava-vrstica--z-dejanjem {
+  grid-template-columns: 44px minmax(0, 1fr) 64px 72px;
+  align-items: baseline;
+}
+
+.prijava-vrstica__dejanje {
+  position: relative;
+  justify-self: end;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  /* V mirovanju drugotna barva: sto rdecih oznak v stolpcu bi vleklo oko z
+     imen. Rjasta (pomen "nepovratno") se prizge sele ob prehodu miske. */
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+.prijava-vrstica__dejanje:hover {
+  color: var(--barva-negativna);
+  text-decoration: underline;
+}
+
+/* Polje za iskanje v naslovni vrstici sekcije. */
+.iskalnik--kratek {
+  width: 240px;
+  max-width: 100%;
+}
+
+/* --- Podnavigacija dogodka ---
+   Lepljiv pas pod glavo strani: gumbi pogleda levo, povzetek desno. Sega cez
+   ves okvir vsebine, zato negativni rob izniciti odmik .vsebine. */
+.podnavigacija {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 calc(var(--r5) * -1);
+  padding: 12px var(--r5);
+  background: var(--barva-papir);
+  border-top: 3px solid var(--barva-crnilo);
+  border-bottom: 1px solid var(--barva-crta);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r3);
+  flex-wrap: wrap;
+}
+
+.podnavigacija__povzetek {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
 /* ============================================================
    11. Dvoboj (1 na 1) in domaca stran
    ============================================================ */
@@ -2084,117 +2836,62 @@ input[type='radio'] {
   gap: var(--r6);
 }
 
-/* Strnjena razlicica (domaca stran): brez velikih imen, zato je izid manjsi
-   in mreza ozja - da se trije stolpci zmestijo v ozji levi stolpec. */
-.enanaena--strnjen .enanaena__plosca {
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: var(--r3);
+/* Semafor: levo in desno stran igralca, na sredini med navpicnima crtama
+   medsebojni izid. Sredinski stolpec ima trdo sirino, ker nosi rezultat v
+   96 px - ce bi se ozil, bi se stevilka lomila prej kot imeni ob njej. */
+.enanaena__plosca {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px minmax(0, 1fr);
+  /* Med vrstama ni vrzeli: izid in blok pod njim sta en sam sredinski stolpec
+     in njuni navpicni crti se morata stikati. */
+  gap: 0 var(--r4);
   align-items: start;
   margin-top: var(--r3);
 }
 
-.enanaena--strnjen .enanaena__stevilo {
-  font-size: 56px;
-  margin: var(--r1) 0;
-}
-
-.enanaena--strnjen .enanaena__sredina {
+.enanaena__stran {
   grid-row: 1;
-  align-self: start;
-  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
-.enanaena--strnjen .enanaena__zreb {
-  grid-row: 2;
-  margin-top: var(--r2);
-}
-
-/* Semafor: dva izbirnika ob strani, velik medsebojni izid na sredini. */
-.enanaena__plosca {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 200px minmax(0, 1fr);
-  gap: var(--r4);
-  align-items: end;
-}
-
-.enanaena__kartica--1,
-.enanaena__polje--1 {
+.enanaena__stran--1 {
   grid-column: 1;
 }
 
-.enanaena__sredina,
-.enanaena__zreb {
-  grid-column: 2;
-}
-
-.enanaena__kartica--2,
-.enanaena__polje--2 {
+.enanaena__stran--2 {
   grid-column: 3;
 }
 
-.enanaena__polje--1 {
-  grid-row: 1;
-}
-
-.enanaena__kartica--1 {
-  grid-row: 2;
-}
-
-.enanaena__sredina {
-  grid-row: 1 / span 2;
-  align-self: center;
-  text-align: center;
-  background: none;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-}
-
-.enanaena__polje--2 {
-  grid-row: 1;
-}
-
-.enanaena__kartica--2 {
-  grid-row: 2;
+/* Desna stran je zrcalna: znak, ime in vrstica pod njim se poravnajo ob
+   sredinsko crto, ne ob rob strani. */
+.enanaena__stran--2 {
+  align-items: flex-end;
   text-align: right;
 }
 
-.enanaena__zreb {
-  grid-row: 3;
-  justify-self: center;
-}
-
-.enanaena__polje > span,
-.enanaena__oznaka {
+/* Znak igralca (glava in rame) je oznaka strani semaforja in ne ikona namesto
+   besede - ime stoji tik pod njim. Barve nosi CSS, da drzi tudi v temni temi. */
+.enanaena__znak {
   display: block;
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-  margin-bottom: var(--r1);
+  fill: none;
+  stroke: var(--barva-crnilo);
+  stroke-width: 2;
 }
 
-.enanaena__igralec {
-  display: block;
-  background: none;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  text-align: left;
-}
-
-.enanaena__kartica--2 .enanaena__igralec {
-  text-align: right;
-}
-
+/* Ime se skrci, kadar je stolpec ozek ali priimek dolg: pri fiksnih 48 px je
+   "Vrhovnik-Kramar" segel cez rob stolpca. */
 .enanaena__ime {
   display: block;
-  margin: 20px 0 0;
+  margin: var(--r2) 0 0;
   font-family: var(--pisava-display);
-  font-size: 56px;
+  font-size: clamp(28px, 3.7vw, 48px);
   font-weight: 800;
   line-height: 0.9;
   letter-spacing: -0.04em;
+  text-wrap: balance;
   color: var(--barva-crnilo);
 }
 
@@ -2207,8 +2904,29 @@ input[type='radio'] {
   text-decoration: none;
 }
 
-.enanaena__klub,
-.enanaena__rating {
+/* Izbirnik stoji POD imenom: ime je vsebina, izbirnik pa orodje, s katerim jo
+   zamenjas - obratni vrstni red je bralcu ponujal kontrolnik, preden je vedel,
+   koga gleda. */
+.enanaena__polje {
+  display: block;
+  width: 100%;
+  margin-top: var(--r2);
+}
+
+.enanaena__polje select {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  font-family: var(--pisava-telo);
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.enanaena__meta {
   display: block;
   margin-top: 12px;
   font-size: 16px;
@@ -2216,10 +2934,44 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
+/* Sredina je razdeljena na dvoje: izid stoji v prvi vrsti med imenoma, seznam
+   tekem in gumb pa v drugi pod njim. Na telefonu se druga vrsta razlije cez
+   vso sirino, izid pa ostane, kjer je - z enim samim elementom to ne bi slo,
+   ker otrok ne more iz svojega stolpca. */
+.enanaena__izid {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+  min-width: 0;
+  text-align: center;
+  border-left: 1px solid var(--barva-crta);
+  border-right: 1px solid var(--barva-crta);
+  padding: 0 var(--r3);
+}
+
+.enanaena__spodaj {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  text-align: center;
+  border-left: 1px solid var(--barva-crta);
+  border-right: 1px solid var(--barva-crta);
+  padding: 0 var(--r3);
+}
+
+.enanaena__oznaka {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
 .enanaena__stevilo {
   display: flex;
   justify-content: center;
   gap: 4px;
+  margin: 12px 0;
   font-family: var(--pisava-display);
   font-size: var(--tip-rezultat);
   font-weight: 800;
@@ -2227,7 +2979,6 @@ input[type='radio'] {
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo);
-  margin: 12px 0;
 }
 
 .enanaena__vodi {
@@ -2250,8 +3001,120 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
+/* Zadnje medsebojne tekme pod izidom: datum in tekmovanje levo, izid desno.
+   Levo poravnano znotraj sredinjenega stolpca - stolpec izidov se mora brati
+   navpicno. */
+.enanaena__zadnje {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+  margin-top: 20px;
+  text-align: left;
+}
+
+.enanaena__zadnja {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--barva-crta);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Edina pot do strani /dvoboj (v navigaciji je ni), zato mora biti vidna
+   kot dejanje - mono velike crke v modri, z zadetkovno povrsino 44 px. */
 .enanaena__podrobno {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-top: var(--r2);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+  white-space: nowrap;
+}
+
+.enanaena__podrobno:hover {
+  color: var(--barva-glavna-polna-mocna);
+}
+
+/* Naklucni par je pripomocek za raziskovanje in ne glavno dejanje pogleda,
+   zato stoji pod hairline na dnu sredinskega stolpca - ne nad izidom. */
+.enanaena__noga {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--r1);
+  margin-top: var(--r2);
+  padding-top: var(--r2);
+  border-top: 1px solid var(--barva-crta);
+}
+
+.enanaena__zreb {
+  width: 100%;
+}
+
+/* Vrstice odigranih tekem (stran dvoboja). Sirini stolpcev sta fiksni, da
+   se izidi poravnajo v navpicnico in jih je mogoce brati kot stolpec. */
+.dvoboj-tekme {
+  list-style: none;
+  margin: var(--r3) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.dvoboj-tekma {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 200px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--r3);
+  padding: 16px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.dvoboj-tekma__kaj {
+  min-width: 0;
+  font-size: 17px;
+}
+
+/* Izid nosi tezo vrstice: bralec v stolpcu isce, kdo je zmagal in kako
+   gladko. Zato display 32 px in ne 15 px v celici tabele. */
+.dvoboj-tekma__izid {
+  font-family: var(--pisava-display);
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dvoboj-tekma__zmagovalec {
+  min-width: 0;
+  font-weight: 600;
+  font-size: 17px;
+  text-align: right;
+}
+
+/* ELO stoji ob izidu v isti vrstici in ne pod njim: pod izidom je bil
+   najvisji stolpec vrstice in je vsako tekmo raztegnil za 15 px, pri
+   dvajsetih tekmah pa je to cel zaslon praznine. */
+.dvoboj-tekma__elo {
+  display: inline-block;
+  margin-left: var(--r1);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* V vrstici je oznaka vira samostojen stolpec, zato brez levega odmika,
+   ki ga potrebuje le takrat, ko stoji za imenom tekmovanja. */
+.dvoboj-tekma > .enanaena__vir {
+  margin-left: 0;
 }
 
 .enanaena__vir {
@@ -2306,101 +3169,310 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
-/* Domaca stran. */
-.domov {
+/* Domaca stran: styri sklopi enega zapisnika. Presledek med njimi je 48 px in
+   ne 56 px kot drugod - sklopa Turnirji in Moje lige stojita drug ob drugem in
+   sta brana kot ena vrsta, zato bi 56 px pod njima naredilo luknjo. */
+/* Selektor je dvorazredni namenoma: ".vsebina > section" nosi 56 px vrzel in
+   bi bil sicer bolj dolocen od same ".domov". */
+.vsebina > .domov {
   display: flex;
   flex-direction: column;
-  gap: var(--r7);
+  gap: var(--r6);
 }
 
-.domov__mreza {
+/* Domaca stran se zacne z vsebino in ne s povzetkom o sebi, zato je prvi
+   sklop blize crti pod mastheadom kot naslov na drugih straneh. */
+.vsebina:has(.domov) {
+  padding-top: var(--r5);
+}
+
+/* Prva vrsta strani je edina dvostolpicna; oba stolpca sta enako siroka, ker
+   sta enakovredna (kaj se igra / kaj spremljam). */
+.domov__vrh {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--r7);
   align-items: start;
 }
 
-.domov__stolpec {
-  display: flex;
-  flex-direction: column;
-  gap: var(--r6);
+.domov__sklop {
   min-width: 0;
 }
 
-.domov__vec {
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--barva-glavna-tekst);
-  white-space: nowrap;
+.domov__seznam {
+  padding-top: var(--r1);
 }
 
-.domov__postavka {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: baseline;
-  gap: 20px;
+/* Prazno stanje in pojasnilo: mono oznaka, ne odstavek - vrstica pove, da
+   podatka ni, in ne zacne pogovora. */
+.domov__prazno {
+  margin: var(--r2) 0 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Nalaganje: vrstice v visini pravih, brez vrtavk - stran se ob prihodu
+   podatkov ne sme premakniti. */
+.domov__skelet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: var(--r2);
+}
+
+.domov__skelet-vrstica {
+  display: block;
+  height: 44px;
+  background: var(--barva-polnilo);
+}
+
+/* --- Turnirji --- */
+
+.domov__turnir {
+  display: block;
   padding: var(--r2) 0;
   border-bottom: 1px solid var(--barva-crta);
-  background: none;
-  border-radius: 0;
   color: var(--barva-crnilo);
 }
 
-.domov__postavka:hover {
+.domov__turnir:hover {
   text-decoration: none;
-  background: var(--barva-glavna-mehko);
+  background: var(--barva-vrstica-hover);
 }
 
-.domov__postavka-ime {
+.domov__turnir-glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+}
+
+.domov__turnir-ime {
   min-width: 0;
   font-size: 19px;
   font-weight: 700;
   color: var(--barva-crnilo);
 }
 
-.domov__postavka-kraj {
+.domov__turnir-opis {
   display: block;
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 15px;
   font-weight: 300;
   color: var(--barva-crnilo-3);
 }
 
-.domov__postavka-desno {
-  display: contents;
+.domov__turnir .palica {
+  margin-top: 12px;
 }
 
-.domov__postavka-datum {
-  font: 500 13px / 1.4 var(--pisava-mono);
+.domov__turnir-stanje {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r2);
+  margin-top: 6px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Moje lige --- */
+
+.domov__liga {
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.domov__liga-glava {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+}
+
+.domov__liga-naslov {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--r1);
+  min-width: 0;
+}
+
+/* Kvadratek "spremljam": poln zelen = da, prazen z obrobo = ne. Sam je 16 px,
+   ker stoji ob imenu in ne v vrstici dejanj; prst dobi svojih 44 px prek
+   nevidnega ::after, ne da bi kvadratek zrasel. */
+.domov__kljukica {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--barva-crnilo-3);
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.domov__kljukica::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+}
+
+.domov__kljukica--polna {
+  background: var(--barva-poudarek);
+  border-color: var(--barva-poudarek-tekst);
+}
+
+.domov__liga-ime {
+  min-width: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
+
+.domov__liga-kolo {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--barva-crnilo-3);
   white-space: nowrap;
 }
 
-/* Mini lestvica v desnem stolpcu domace strani. */
-.domov__lestvica {
+.domov__ekipe {
+  margin-top: 12px;
+}
+
+.domov__ekipe-vrstica {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 40px 40px;
+  gap: 12px;
+  align-items: baseline;
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.domov__ekipe-vrstica--glava {
+  padding: 0 0 6px;
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.domov__ekipe-vrstica--glava > span:nth-child(3),
+.domov__ekipe-vrstica--glava > span:nth-child(4) {
+  text-align: right;
+}
+
+.domov__ekipe-mesto {
+  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-glavna-tekst);
+}
+
+.domov__ekipe-ime {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--barva-crnilo);
+}
+
+.domov__ekipe-odigrane {
+  font: 500 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo-3);
+}
+
+.domov__ekipe-tocke {
+  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+.domov__liga-noga {
+  margin-top: 10px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.domov__liga-dodaj {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.domov__liga-dodaj .gumb {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Vabilo k dodajanju lige ni prazno stanje, ampak stavek - zato telo in ne
+   mono oznaka. */
+.domov__namig {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Lestvica --- */
+
+.domov__cela {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: 12px;
+}
+
+.domov__lestvica {
   margin-top: var(--r2);
 }
 
 .domov__lestvica-vrstica {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 56px;
-  align-items: baseline;
-  gap: 12px;
-  padding: 10px 0;
+  grid-template-columns: 44px 44px minmax(0, 1fr) 220px 140px 96px;
+  gap: var(--r2);
+  align-items: center;
+  padding: 14px 0;
   border-bottom: 1px solid var(--barva-crta);
   color: var(--barva-crnilo);
 }
 
-.domov__lestvica-vrstica:hover {
+a.domov__lestvica-vrstica:hover {
   text-decoration: none;
+  background: var(--barva-vrstica-hover);
+}
+
+.domov__lestvica-vrstica--glava {
+  align-items: baseline;
+  padding: 0 0 var(--r1);
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Oznacena (tvoja) vrstica: 4 px modra ob levem robu in mehka modra podlaga.
+   Negativni rob potegne poudarek cez odmik mreze, da crta stoji ob robu
+   vsebine in ne v stolpcu mest. */
+a.domov__lestvica-vrstica--jaz {
+  margin-left: calc(var(--r2) * -1);
+  padding-left: 12px;
+  border-left: 4px solid var(--barva-glavna);
   background: var(--barva-glavna-mehko);
 }
 
 .domov__lestvica-mesto {
-  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font: 600 16px / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo-3);
 }
@@ -2409,23 +3481,69 @@ input[type='radio'] {
   color: var(--barva-glavna-tekst);
 }
 
-.domov__lestvica-ime {
-  font-size: 16px;
+/* Premik mesta v zadnjem mesecu; puscica je znak in ne ikona, besedno
+   razlicico nosi aria-label. */
+.domov__premik {
+  font: 500 13px / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.domov__premik--gor {
+  color: var(--barva-poudarek-tekst);
+}
+
+.domov__premik--dol {
+  color: var(--barva-negativna);
+}
+
+.domov__lestvica-igralec {
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--barva-crnilo);
 }
 
+.domov__oznaka-jaz {
+  margin-left: var(--r1);
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
 .domov__lestvica-klub {
-  display: block;
-  font-size: 13px;
+  min-width: 0;
+  font-size: 16px;
   font-weight: 300;
   color: var(--barva-crnilo-3);
 }
 
+/* Crta gibanja ELO: brez osi in oznak, ob vrstici pove samo smer. */
+.domov__elo {
+  display: block;
+  justify-self: center;
+}
+
+.domov__elo polyline {
+  fill: none;
+  stroke: var(--barva-glavna);
+  stroke-width: 1.5;
+}
+
+.domov__elo-glava {
+  text-align: center;
+}
+
 .domov__lestvica-rating {
-  font: 600 16px / 1.4 var(--pisava-mono);
+  font: 600 18px / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--barva-crnilo);
+}
+
+.domov__desno {
+  text-align: right;
 }
 
 /* ============================================================
@@ -2522,10 +3640,22 @@ input[type='radio'] {
   color: var(--barva-na-glavni-2);
 }
 
-/* Okolica na lestvici (mesto pred in za igralcem). */
+/* Kolofon pod blokom ELO: 24 px, da se vrstice ne dotikajo polne ploskve. */
+.elo-blok + .kolofon {
+  margin-top: var(--r3);
+}
+
+/* Podnaslovi na profilu stojijo 40 px pod prejsnjim blokom (drugod 32 px) -
+   sekcije so tu daljse in podnaslov mora biti razlocno njihov zacetek. */
+.profil .podnaslov-sekcije {
+  margin-top: var(--r5);
+}
+
+/* Okolica na lestvici (mesto pred in za igralcem). Od prenove stoji v desnem
+   stolpcu sekcije Forma, zato je brez lastnega odmika in brez najvecje sirine -
+   sirino ji doloca stolpec. */
 .okolica {
-  margin-top: var(--r4);
-  max-width: 520px;
+  margin-top: 0;
 }
 
 .okolica__glava {
@@ -2596,12 +3726,26 @@ input[type='radio'] {
   margin: var(--r3) 0 0;
 }
 
+/* Trojka pod imenom igralca: odigrane, izkupicek, uspesnost. */
+.profil__povzetek {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--r5);
+}
+
 .kazalnik {
   padding-left: var(--r3);
   border-left: 1px solid var(--barva-crta);
   background: none;
   border-radius: 0;
   text-align: left;
+}
+
+/* Prvi stolpec v nizu nima leve crte - crta je locilo med stolpcema, ne okvir. */
+.kazalnik--prvi {
+  padding-left: 0;
+  padding-right: var(--r3);
+  border-left: none;
 }
 
 .kazalnik--poudarjen {
@@ -2644,36 +3788,26 @@ input[type='radio'] {
   max-width: 74ch;
 }
 
-.profil__del {
-  display: block;
-  margin-top: 4px;
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.06em;
-  color: var(--barva-crnilo-3);
-}
-
-.profil__datum {
-  white-space: nowrap;
-  font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--barva-crnilo-3);
-}
-
-/* Rezultat tekme v tabeli profila je velika stevilka. */
-.profil__izid {
-  font-family: var(--pisava-display);
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-
 .profil__zmaga {
   color: var(--barva-poudarek-tekst);
 }
 
 .profil__poraz {
   color: var(--barva-negativna);
+}
+
+/* Izenacena medsebojna bilanca ni ne uspeh ne izguba - torej brez barve. */
+.profil__izenaceno {
+  color: var(--barva-crnilo-3);
+}
+
+/* Del tekmovanja pod imenom (uporablja ga se seznam medsebojnih tekem). */
+.profil__del {
+  display: block;
+  margin-top: 4px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  color: var(--barva-crnilo-3);
 }
 
 .profil__nasprotnik {
@@ -2689,50 +3823,27 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
-/* Delezi: oznaka, odstotek in palica pod njima. */
-.delez {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--barva-crta);
-}
-
-.delez__glava {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--r2);
-}
-
-.delez__oznaka {
-  font-size: var(--tip-telo);
-  color: var(--barva-crnilo);
-}
-
-.delez__vrednost {
-  font: 600 16px / 1.4 var(--pisava-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--barva-crnilo);
-  white-space: nowrap;
-}
-
-.delez__izid {
-  font-weight: 400;
-  color: var(--barva-crnilo-3);
-}
-
-.delez__stolpec {
+/* Os 0-100 % brez polnila. Nadomesca polnjene vodoravne palice: te so po
+   dolzini tekmovale med sabo in dale vtis, da je dolga palica "vec podatkov".
+   Tu je pomembna samo lega oznacbe glede na polovico, zato je crta enako
+   dolga povsod. */
+.os {
   display: block;
-  height: 6px;
-  margin-top: var(--r1);
-  background: var(--barva-polnilo);
-  border-radius: 0;
-  overflow: hidden;
+  height: 14px;
 }
 
-.delez__polnilo {
-  display: block;
-  height: 100%;
-  background: var(--barva-glavna);
-  border-radius: 0;
+.os__crta,
+.os__polovica {
+  stroke: var(--barva-crta);
+  stroke-width: 1;
+}
+
+.os__znak {
+  fill: var(--barva-crnilo);
+}
+
+.os__znak--neg {
+  fill: var(--barva-negativna);
 }
 
 /* Izpostavljeni nasprotniki: zelena crta zgoraj namesto kartice. */
@@ -2776,17 +3887,91 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
-/* Trak zadnjih izidov: polna polja Z/P brez radija. */
-.profil__forma {
-  display: flex;
-  flex-direction: column;
-  gap: var(--r1);
+/* Sekcija Forma: levo trak in kolobar, desno okolica na lestvici. */
+.forma {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: var(--r7);
+  align-items: start;
+  margin-top: var(--r3);
 }
 
+/* Trak zadnjih izidov: polna polja Z/P brez radija. */
 .forma__trak {
   display: flex;
   gap: 2px;
-  margin-top: var(--r3);
+}
+
+/* Pod trakom: opis levo, bilanca desno. */
+.forma__legenda {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r2);
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.forma__povzetek {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--r5);
+  align-items: center;
+  margin-top: var(--r5);
+}
+
+/* Kolobar deleza zmag. Stevilka in oznaka sta HTML nad SVG in ne <text> v
+   njem: SVG bi ju ob raztegu ploskve skaliral skupaj z grafiko. */
+.kolobar {
+  position: relative;
+  width: 160px;
+  height: 160px;
+}
+
+.kolobar__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.kolobar__podlaga {
+  fill: none;
+  stroke: var(--barva-polnilo);
+  stroke-width: 18;
+}
+
+.kolobar__lok {
+  fill: none;
+  stroke: var(--barva-poudarek);
+  stroke-width: 18;
+}
+
+.kolobar__sredina {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.kolobar__vrednost {
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h2);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.kolobar__oznaka {
+  margin-top: 4px;
+  font: 500 11px / 1 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
 }
 
 .forma__znak {
@@ -2806,13 +3991,6 @@ input[type='radio'] {
 .forma__znak--p {
   background: var(--barva-negativna-mehko);
   color: var(--barva-negativna-tekst);
-}
-
-.forma__opis {
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
 }
 
 /* Kazalniki forme kot vrstice oznaka <-> velika stevilka. */
@@ -2842,59 +4020,522 @@ input[type='radio'] {
   color: var(--barva-crnilo);
 }
 
-/* Koncni izidi (3:0 x12): polna polja, brez radija. */
-.profil__razmerja {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--r1);
+/* ---- Nasprotniki: medsebojne bilance s sparkline ---- */
+
+.h2h__vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 120px 88px 72px;
   align-items: center;
-  margin-top: var(--r4);
+  gap: var(--r2);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
 }
 
-.profil__razmerja li {
-  padding: var(--r1) 12px;
-  border: none;
-  border-radius: 0;
-  font: 600 15px / 1.2 var(--pisava-mono);
+.h2h__vrstica--glava {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.h2h__desno {
+  text-align: right;
+}
+
+.h2h__sredina {
+  text-align: center;
+}
+
+.h2h__bilanca {
+  font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
-.profil__razmerja .profil__zmaga {
-  background: var(--barva-poudarek-mehko);
-  color: var(--barva-poudarek-tekst);
+.h2h__elo {
+  font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
 }
 
-.profil__razmerja .profil__poraz {
-  background: var(--barva-negativna-mehko);
-  color: var(--barva-negativna-tekst);
+.h2h__skupaj {
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo-3);
 }
 
-.profil__razmerja-oznaka {
+/* Sparkline nima merila: pomembna je samo smer, zato tudi ni oznak osi. */
+.sparkline {
+  display: block;
+  width: 120px;
+  height: 28px;
+}
+
+.sparkline__os {
+  stroke: var(--barva-crta);
+  stroke-width: 1;
+}
+
+.sparkline__crta {
+  fill: none;
+  stroke: var(--barva-glavna);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* Zadnja pika prevzame barvo skupne bilance (.profil__zmaga / --poraz). */
+.sparkline__zadnja {
+  fill: currentColor;
+}
+
+/* ---- Nasprotniki: razsevni graf ELO nasprotnika proti izidu ---- */
+
+.razsevni {
+  position: relative;
+  margin-top: var(--r2);
+}
+
+.razsevni__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.razsevni__nicla {
+  stroke: var(--barva-crnilo);
+  stroke-width: 1;
+}
+
+.razsevni__meja {
+  stroke: var(--barva-glavna);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.razsevni__tocka {
+  opacity: 0.85;
+}
+
+.razsevni__tocka--z {
+  fill: var(--barva-poudarek-tekst);
+}
+
+.razsevni__tocka--p {
+  fill: var(--barva-negativna);
+}
+
+.razsevni__moj {
+  position: absolute;
+  top: 2%;
+  font: 500 11px / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
+.razsevni__os-x {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.razsevni__os-y {
+  position: absolute;
+  left: 0;
+  width: 4%;
+  text-align: right;
+  transform: translateY(-50%);
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* ---- Nizi in tocke ---- */
+
+/* Podnaslov skupine brez lastnega odmika: odmik nosi mreza, v kateri stoji. */
+.razrez__naslov {
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--barva-crnilo-3);
-  margin-right: var(--r1);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+  margin: 0;
 }
 
-.profil__stevec-razmerja {
-  font-weight: 400;
+.razrez__naslov--sekcija {
+  margin-top: var(--r4);
 }
 
-/* Trije stolpci razrezov "po tekmovanjih". */
-.profil__razrezi {
+/* Toplotna karta koncnih izidov: gostota crnila je pogostost. Barva besedila
+   je zapisana izrecno pri vsaki stopnji - na polni zeleni je crnilo, na polni
+   rjasti pa besedilo na negativni ploskvi. */
+.toplotna {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-  gap: var(--r6);
+  grid-template-columns: repeat(var(--stolpcev, 6), minmax(0, 1fr));
+  gap: var(--r1);
+  margin-top: var(--r2);
+}
+
+.toplotna__celica {
+  height: 112px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.toplotna__celica--z.toplotna__celica--polna {
+  background: var(--barva-poudarek);
+  color: var(--barva-na-poudarku);
+}
+
+.toplotna__celica--z.toplotna__celica--srednja {
+  background: var(--barva-poudarek-srednje);
+  color: var(--barva-poudarek-tekst);
+}
+
+.toplotna__celica--z.toplotna__celica--mehka {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.toplotna__celica--p.toplotna__celica--polna {
+  background: var(--barva-negativna);
+  color: var(--barva-na-negativni);
+}
+
+.toplotna__celica--p.toplotna__celica--srednja {
+  background: var(--barva-negativna-srednje);
+  color: var(--barva-negativna-tekst);
+}
+
+.toplotna__celica--p.toplotna__celica--mehka {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+}
+
+.toplotna__izid {
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h2);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+.toplotna__stevec {
+  margin-top: var(--r1);
+  font: 600 13px / 1 var(--pisava-mono);
+  color: inherit;
+}
+
+.toplotna__delez {
+  margin-top: var(--r1);
+  text-align: center;
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.toplotna__opis {
+  text-align: center;
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.nizi__stolpca {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--r7);
+  align-items: start;
+  margin-top: var(--r5);
+}
+
+.nizi__kazalniki {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: var(--r3);
 }
 
-/* Graf napredka ELO (lasten SVG). */
+.nizi__tocke {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: var(--r4);
+  margin-top: var(--r3);
+}
+
+.pritisk__vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px 88px;
+  align-items: center;
+  gap: var(--r2);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.pritisk__oznaka {
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.pritisk__vrednost {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+/* ---- Razrezi ---- */
+
+.razrezi {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--r7);
+  margin-top: var(--r4);
+}
+
+.razrez__vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 80px 160px 56px;
+  align-items: center;
+  gap: var(--r2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.razrez__vrstica--glava {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razrez__desno {
+  text-align: right;
+}
+
+.razrez__sredina {
+  text-align: center;
+}
+
+.razrez__oznaka {
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.razrez__tekem {
+  font: 400 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo-3);
+}
+
+.razrez__izid {
+  font: 500 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+.razrez__odstotek {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+/* ---- Odigrane tekme ---- */
+
+.tekme-mreza {
+  margin-top: var(--r3);
+}
+
+.tekma-vrstica {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) minmax(0, 1fr) 128px 96px;
+  align-items: center;
+  gap: var(--r2);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.tekma-vrstica--glava {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.tekma-vrstica__desno {
+  text-align: right;
+}
+
+.tekma-vrstica__datum {
+  white-space: nowrap;
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.tekma-vrstica__ime {
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.tekma-vrstica__del {
+  display: block;
+  margin-top: 4px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  color: var(--barva-crnilo-3);
+}
+
+.tekma-vrstica__izid {
+  text-align: right;
+  font-family: var(--pisava-display);
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tekma-vrstica__elo {
+  text-align: right;
+  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Napredek ELO: pricakovan proti dosezenemu izkupicku ---- */
+
+.izkupicek {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--r7);
+  align-items: start;
+  margin-top: var(--r3);
+}
+
+.izkupicek__graf {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.izkupicek__os {
+  stroke: var(--barva-crnilo);
+  stroke-width: 1;
+}
+
+.izkupicek__stolpec {
+  fill: var(--barva-glavna-polna);
+}
+
+/* Pricakovani izkupicek je crta cez stolpec, ne drugi stolpec: dva stolpca
+   drug ob drugem bi brala kot dva podatka, tu pa gre za eno mero in njeno
+   pricakovano vrednost. */
+.izkupicek__pricakovano {
+  stroke: var(--barva-crnilo);
+  stroke-width: 2;
+}
+
+.izkupicek__oznake {
+  position: relative;
+  height: var(--r5);
+  margin-top: var(--r1);
+}
+
+.izkupicek__oznaka {
+  position: absolute;
+  transform: translateX(-50%);
+  text-align: center;
+  font: 500 11px / 1.5 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  color: var(--barva-crnilo-3);
+}
+
+.izkupicek__razlika {
+  display: block;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.izkupicek__razlika--plus {
+  color: var(--barva-poudarek-tekst);
+}
+
+.izkupicek__razlika--minus {
+  color: var(--barva-negativna);
+}
+
+.izkupicek__vrstica {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.izkupicek__naziv {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.izkupicek__vsota {
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h2);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.izkupicek__vsota--plus {
+  color: var(--barva-poudarek-tekst);
+}
+
+.izkupicek__vsota--minus {
+  color: var(--barva-negativna);
+}
+
+.izkupicek__opis {
+  margin: var(--r2) 0 0;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-3);
+  max-width: 46ch;
+}
+
+/* Graf napredka ELO (lasten SVG). Oznake osi so HTML nad ploskvijo, zato je
+   ovoj referenca za njihovo absolutno lego. */
+.graf__ovoj {
+  position: relative;
+  margin-top: var(--r3);
+}
+
 .graf__svg {
   width: 100%;
   height: auto;
   display: block;
-  margin-top: var(--r3);
 }
 
 .graf__mreza {
@@ -2903,10 +4544,28 @@ input[type='radio'] {
   stroke-dasharray: 2 5;
 }
 
-.graf__os {
-  fill: var(--barva-crnilo-3);
-  font-family: var(--pisava-mono);
-  font-size: 12px;
+.graf__oznaka {
+  position: absolute;
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.graf__oznaka--y {
+  left: 0;
+  width: 4%;
+  text-align: right;
+  transform: translateY(-50%);
+}
+
+.graf__oznaka--prvi {
+  left: 5%;
+  bottom: 2px;
+}
+
+.graf__oznaka--zadnji {
+  right: 1.4%;
+  bottom: 2px;
 }
 
 .graf__crta {
@@ -3135,24 +4794,291 @@ input[type='radio'] {
   color: var(--barva-crnilo);
 }
 
-.liga__konfig {
-  padding: 0;
-}
-
-/* Naslov "Pravila" stoji v isti vrstici z gumbom za urejanje, zato mu vzamemo
-   zgornji odmik in spodnjo crto (nosi jo ovojna vrstica). */
-.liga__pravila-naslov {
+/* Podnaslov, ki stoji v vrstici z meta podatkom: crto in odmik nosi ovojna
+   vrstica, ne podnaslov sam. */
+.liga__podnaslov--vrstica {
   margin: 0;
   padding-bottom: 0;
   border-bottom: none;
 }
 
-.liga__stanje {
+/* Kratka opomba v modalnem oknu (zakaj so pravila zaklenjena). */
+.liga__pravila-opomba {
+  margin: 0 0 var(--r2);
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-2);
+}
+
+.liga__pravila-dejanje {
+  display: flex;
+  margin-bottom: var(--r2);
+}
+
+/* --- Glava strani: stanje lige, napredek, dejanji --- */
+
+.liga__stanje-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Oznaka <-> vrednost nad palico napredka; crto nosi palica, zato tu ni obrobe. */
+.liga__napredek {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding-bottom: 6px;
+}
+
+/* Zavihki so samo za telefon: v sirokem pogledu sta lestvica in razpored oba
+   vidna, zato jih tam ni. Prizge jih prelomna tocka 720 px. */
+.liga__zavihki {
+  display: none;
+  margin-top: var(--r3);
+}
+
+/* --- Piramida sezone --- */
+
+/* Kam liga vodi in od kod nanjo napredujejo: ena vrstica na nivo. Tekoca liga
+   ni povezava, ampak polna ploskev - "tu si". */
+.liga__piramida {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--barva-crnilo);
+  padding-top: var(--r2);
+}
+
+.liga__piramida-glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r3);
+  padding-bottom: 12px;
+}
+
+.liga__piramida-vrstica {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 200px;
+  align-items: center;
+  gap: var(--r3);
+  padding: 12px 0;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.liga__piramida-nivo {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.liga__piramida-lige {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  min-width: 0;
+}
+
+.liga__piramida-liga {
+  padding: var(--r1) 12px;
+  font-size: 15px;
+  color: var(--barva-glavna-tekst);
+  white-space: nowrap;
+}
+
+/* Barva besedila je izrecna, ker ploskev ni papir. */
+.liga__piramida-liga--tukaj {
+  background: var(--barva-crnilo);
+  color: var(--barva-papir);
+  font-weight: 700;
+}
+
+.liga__piramida-tok {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--barva-crnilo-3);
+}
+
+.liga__piramida-tok--napredek {
+  color: var(--barva-poudarek-tekst);
+}
+
+.liga__piramida-tok--izpad {
+  color: var(--barva-negativna-tekst);
+}
+
+/* --- Lestvica lige --- */
+
+/* Sirine stolpcev so trde, da stevilke stojijo v stolpcu tudi pri ligi s 16+
+   ekipami; ime dobi ves preostanek in se prelomi samo, kadar ga res mora. */
+.liga__lestvica .lestvica__odigrane {
+  width: 64px;
+}
+
+.liga__lestvica .lestvica__izkupicek {
+  width: 56px;
+}
+
+.liga__lestvica .lestvica__tekme {
+  width: 88px;
+}
+
+.liga__lestvica .lestvica__nizi {
+  width: 96px;
+}
+
+.liga__lestvica .lestvica__forma-glava,
+.liga__lestvica .lestvica__forma-celica {
+  width: 132px;
+}
+
+.liga__lestvica .lestvica__rating {
+  width: 88px;
+}
+
+/* ".tabela td" postavi 16 px in po specificnosti premaga velikost iz razredov
+   ".lestvica__*", zato jo je treba za to tabelo zapisati mocneje. Hierarhija je
+   bistvo lestvice: mesto 17, stevilke 15, tocke 20 - stolpec, ki odloca, mora
+   biti najvecji. */
+.liga__lestvica td.lestvica__mesto {
+  font-size: var(--tip-telo);
+}
+
+.liga__lestvica td.lestvica__stevilka {
+  font-size: 15px;
+}
+
+.liga__lestvica td.lestvica__rating {
+  font-size: var(--tip-uvod);
+}
+
+/* Cela vrstica je klikljiva (razpre kader), zato tudi kazalec pove, da je. */
+.liga__lestvica tbody tr {
+  cursor: pointer;
+}
+
+.liga__lestvica tbody tr:hover .lestvica__kader-oznaka {
+  color: var(--barva-crnilo);
+}
+
+/* --- Kader pod vrstico lestvice --- */
+
+.lestvica__kader-vrsta td {
+  padding: 0;
+}
+
+/* Blok kadra je oznacena vrstica podatkov: 4 px modra crta in mehka podlaga. */
+.liga__kader {
+  padding: var(--r2) 20px;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.liga__kader-glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.liga__kader-naslov {
+  font-size: var(--tip-vrstica);
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
+
+.liga__kader-vrstica {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 88px 88px;
+  align-items: baseline;
+  gap: var(--r2);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.liga__kader-mesto,
+.liga__kader-rating {
+  font: 500 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.liga__kader-rating {
+  text-align: right;
+}
+
+.liga__kader-ime {
+  min-width: 0;
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.liga__kader-bilanca {
+  font: 600 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+/* --- Play-off (predvidena faza) --- */
+
+.liga__playoff {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--r7);
   margin-top: var(--r4);
 }
 
+.liga__playoff-vrstica {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--r2);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.liga__playoff-faza {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.liga__playoff-par {
+  display: block;
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+}
+
+.liga__playoff-kandidat {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Ekipe in kader --- */
+
 .liga__dodaj-ekipo {
   margin: var(--r3) 0;
+}
+
+/* Zreb je zeleni gumb (napredovanje tekmovanja), urejanje pravil tanka crta. */
+.liga__priprava-dejanja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  margin-top: var(--r3);
 }
 
 .liga__ekipe {
@@ -3173,8 +5099,23 @@ input[type='radio'] {
   font-size: var(--tip-vrstica);
 }
 
+/* Vrstica ekipe kot gumb (razpre kader ekipe v oknu). */
+.liga__ekipa--klikljiva {
+  width: 100%;
+  min-height: 44px;
+  font-family: var(--pisava-telo);
+  color: var(--barva-crnilo);
+  text-align: left;
+  cursor: pointer;
+}
+
+.liga__ekipa--klikljiva:hover {
+  background: var(--barva-glavna-mehko);
+}
+
 .liga__ekipa-gumbi {
   display: flex;
+  align-items: center;
   gap: 4px;
 }
 
@@ -3185,16 +5126,85 @@ input[type='radio'] {
   font-variant-numeric: tabular-nums;
 }
 
-/* Razpored: kola v dveh stolpcih. */
-.liga__kola {
+/* --- Razpored: listanje po kolih --- */
+
+/* Krmar kola: prejsnje / kolo z datumom / naslednje, pod njim 2 px crta. */
+.liga__krmar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-  gap: var(--r6);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--r2);
+  margin-top: var(--r3);
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--barva-crnilo);
+}
+
+.liga__krmar-sredina {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--r2);
+  min-width: 0;
+}
+
+.liga__krmar-kolo {
+  font-family: var(--pisava-display);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+  white-space: nowrap;
+}
+
+.liga__krmar .sekcija__meta {
+  text-align: center;
+}
+
+/* Trak vseh kol: kvadratki 44 x 44, odigrana s polnilom, izbrano polna modra. */
+.liga__trak {
   margin-top: var(--r3);
 }
 
-.liga__kolo {
-  margin: 0;
+.liga__trak .podnaslov-sekcije {
+  margin-top: 0;
+}
+
+.liga__trak-kol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.liga__trak-gumb {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  color: var(--barva-crnilo-3);
+  font: 500 var(--tip-drobno) / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.liga__trak-gumb--odigrano {
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo);
+}
+
+.liga__trak-gumb:hover {
+  border-color: var(--barva-crnilo);
+  color: var(--barva-crnilo);
+}
+
+.liga__trak-gumb--izbrano,
+.liga__trak-gumb--izbrano:hover {
+  background: var(--barva-glavna-polna);
+  border-color: var(--barva-glavna);
+  color: var(--barva-na-glavni);
 }
 
 .liga__kolo-naslov {
@@ -3225,12 +5235,14 @@ input[type='radio'] {
   flex-direction: column;
 }
 
+/* Srecanje izbranega kola: domaci desno poravnan, izid na sredini kot zig,
+   gost levo, skrajno desno mono povezava na zapisnik oz. postavo. */
 .liga__srecanje {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr) 120px;
   align-items: center;
-  gap: var(--r2);
-  padding: 14px 0;
+  gap: var(--r3);
+  padding: var(--r2) 0;
   border: none;
   border-bottom: 1px solid var(--barva-crta);
   border-radius: 0;
@@ -3244,7 +5256,16 @@ input[type='radio'] {
 
 .liga__srecanje-ekipa {
   min-width: 0;
-  font-size: var(--tip-telo);
+  font-size: var(--tip-uvod);
+}
+
+.liga__srecanje-dejanje {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--barva-glavna-tekst);
+  white-space: nowrap;
 }
 
 .liga__srecanje-ekipa--desno {
@@ -3260,12 +5281,12 @@ input[type='radio'] {
 }
 
 .liga__srecanje-izid {
-  font: 600 var(--tip-uvod) / 1.2 var(--pisava-mono);
+  font: 600 var(--tip-h3) / 1.2 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   text-align: center;
   color: var(--barva-crnilo);
   background: var(--barva-polnilo);
-  padding: 4px 0;
+  padding: 6px 0;
   white-space: nowrap;
 }
 
@@ -3632,14 +5653,44 @@ input[type='radio'] {
     gap: var(--r5);
   }
 
-  .domov__mreza,
+  .domov__vrh,
   .dvostolpicno,
   .dvostolpicno--lestvica {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* Lestvica brez stolpca s crto ELO: 140 px je pri ozjem oknu prostor, ki ga
+     ime in klub potrebujeta bolj kot slika smeri. */
+  .domov__lestvica-vrstica {
+    grid-template-columns: 44px 44px minmax(0, 1fr) 180px 96px;
+  }
+
+  .domov__elo,
+  .domov__elo-glava {
+    display: none;
+  }
+
+  /* Odprta skupina preide na en stolpec: lestvica zgoraj, tekme pod njo. */
+  .skupina-vsebina__stolpci {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r3);
+  }
+
   .elo-blok__vrednost {
     font-size: 88px;
+  }
+}
+
+/* Tablica in ozko okno: dve imeni s klubom pod 1024 px ne gresta vec drug ob
+   drugem, zato seznam prijavljenih pade na en stolpec. */
+@media (max-width: 1023px) {
+  .prijavljeni,
+  .prijavljeni--trije {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vrstni-red--trije {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -3651,9 +5702,11 @@ input[type='radio'] {
     padding-right: var(--r3);
   }
 
-  .glava__vsebina {
-    flex-wrap: wrap;
-    row-gap: 12px;
+  /* Lepljiv pas sega cez ves okvir vsebine, zato mora negativni rob slediti
+     ozjemu odmiku .vsebine. */
+  .podnavigacija {
+    margin: 0 calc(var(--r3) * -1);
+    padding: 12px var(--r3);
   }
 
   .srecanje__glava {
@@ -3665,33 +5718,316 @@ input[type='radio'] {
     text-align: left;
   }
 
-  /* Strnjena razlicica (domaca stran) ima svoj, bolj specificen selektor,
-     zato jo je treba nasloviti izrecno - sicer trije stolpci prezivijo tudi
-     na telefonu in vsak dobi 140 px, vsebina pa se razlije cez rob. */
-  .enanaena__plosca,
-  .enanaena--strnjen .enanaena__plosca {
+  /* Semafor ostane simetricen tudi v ozkem oknu - v en stolpec zlozena
+     "A proti B" ni vec semafor, ampak dva seznama. Ozi se sredina, ker je
+     edina, ki ima trdo sirino. */
+  .enanaena__plosca {
+    grid-template-columns: minmax(0, 1fr) 200px minmax(0, 1fr);
+    gap: 0 20px;
+  }
+
+  .enanaena__izid,
+  .enanaena__spodaj {
+    padding-left: var(--r2);
+    padding-right: var(--r2);
+  }
+
+  .dvoboj-tekma__zmagovalec {
+    text-align: left;
+  }
+
+  /* Vrstica tekme se zlozi navzdol: zgoraj vir in tekmovanje, pod njima
+     izid s spremembo ELO, spodaj zmagovalec. Stirje stolpci bi dali vsakemu
+     ~70 px, izid s spremembo ELO pa potrebuje 120 px in bi sicer zlezel cez
+     ime zmagovalca. */
+  .dvoboj-tekma {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: var(--r1) var(--r2);
+  }
+
+  .dvoboj-tekma__izid,
+  .dvoboj-tekma__zmagovalec {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .dvoboj-tekma__izid {
+    font-size: 28px;
+  }
+}
+
+/* Liga na telefonu. Prelomna tocka je vsebinska: pod 720 px lestvica z desetimi
+   stolpci ne gre vec brez vodoravnega drsenja, tri sekcije eno pod drugo pa
+   naredijo stran, po kateri gledalec samo drsi. Zato:
+     - glava v en stolpec (naslov 40 / nadnaslov 24),
+     - trije zavihki: lestvica, razpored, pravila,
+     - lestvica na stiri stolpce (mesto, ekipa, forma, tocke) - odpade, kar
+       bralec izpelje sam,
+     - forma brez crk, samo kvadratki (crka ostane za bralnik zaslona),
+     - krmar kola kot trije enaki gumbi v vrsti. */
+@media (max-width: 720px) {
+  .liga .naslov-strani--podstran .naslov-strani__glavni {
+    font-size: 40px;
+  }
+
+  .liga .naslov-strani--podstran .naslov-strani__nad {
+    font-size: 24px;
+  }
+
+  .liga__zavihki {
+    display: flex;
+  }
+
+  .liga__zavihki .izbirnik__gumb {
+    flex: 1;
+    padding: var(--r1) 4px;
+    letter-spacing: 0.08em;
+  }
+
+  .liga__sekcija--skrita {
+    display: none;
+  }
+
+  .liga__lestvica .lestvica__odigrane,
+  .liga__lestvica .lestvica__izkupicek,
+  .liga__lestvica .lestvica__tekme,
+  .liga__lestvica .lestvica__nizi {
+    display: none;
+  }
+
+  .liga__lestvica th,
+  .liga__lestvica td {
+    padding-right: var(--r1);
+  }
+
+  .liga__lestvica .lestvica__mesto {
+    width: 28px;
+  }
+
+  .liga__lestvica .lestvica__forma-glava,
+  .liga__lestvica .lestvica__forma-celica {
+    width: 72px;
+  }
+
+  .liga__lestvica .lestvica__rating {
+    width: 40px;
+  }
+
+  .lestvica__forma {
+    gap: 3px;
+  }
+
+  .lestvica__forma-znak {
+    width: 12px;
+    height: 12px;
+    padding: 0;
+  }
+
+  /* Crka je skrita ocesu, ne bralniku zaslona (isto kot .samo-za-bralnik). */
+  .lestvica__forma-crka {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .liga__krmar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .liga__krmar-kolo {
+    font-size: var(--tip-h3);
+  }
+
+  .liga__srecanje {
+    grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr);
+    gap: var(--r1);
+  }
+
+  /* Vrstica srecanja vodi na zapisnik ze cela, zato mono povezava lahko odpade. */
+  .liga__srecanje-dejanje {
+    display: none;
+  }
+
+  .liga__srecanje-ekipa {
+    font-size: 15px;
+  }
+
+  .liga__srecanje-izid {
+    font-size: var(--tip-telo);
+  }
+
+  .liga__piramida-vrstica {
     grid-template-columns: minmax(0, 1fr);
+    gap: var(--r1);
   }
 
-  .enanaena__plosca > *,
-  .enanaena--strnjen .enanaena__plosca > * {
+  .liga__piramida-tok {
+    text-align: left;
+  }
+
+  .liga__playoff {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r5);
+  }
+
+  .liga__kader {
+    padding: 12px;
+  }
+
+  .liga__kader-vrstica {
+    grid-template-columns: 28px minmax(0, 1fr) 64px 64px;
+    gap: var(--r1);
+  }
+}
+
+/* Profil na telefonu. Prelomna tocka je vsebinska: pod 768 px nobena od
+   dvostolpicnih mrez profila (forma + okolica, pritisk + tocke, stirje
+   razrezi) ne obdrzi obeh stolpcev berljivih, tabele s petimi stolpci pa
+   zahtevajo vodoravno drsenje. Zato:
+     - sekcije se zlozijo v en stolpec, razmik med njimi 32 px,
+     - grafi ostanejo, odpadejo pa oznake osi (crta pove smer, stevilke ne),
+     - osi razrezov odpadejo - odstotek ob njih je isti podatek,
+     - tabela tekem se sesede v dve vrstici: ime, pod njim datum in
+       tekmovanje, izid desno. */
+@media (max-width: 768px) {
+  .profil {
+    gap: var(--r4);
+  }
+
+  .forma,
+  .izkupicek,
+  .nizi__stolpca,
+  .razrezi {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r5);
+  }
+
+  .profil__povzetek .kazalnik {
+    padding-left: var(--r2);
+  }
+
+  .profil__povzetek .kazalnik--prvi {
+    padding-left: 0;
+    padding-right: var(--r2);
+  }
+
+  .graf__oznaka,
+  .razsevni__os-x,
+  .razsevni__os-y {
+    display: none;
+  }
+
+  .forma__znak {
+    height: 36px;
+  }
+
+  .forma__povzetek {
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: var(--r2);
+    margin-top: var(--r3);
+  }
+
+  .kolobar {
+    width: 120px;
+    height: 120px;
+  }
+
+  .kolobar__vrednost {
+    font-size: 28px;
+  }
+
+  /* Gibanje in skupno stevilo tekem odpadeta; bilanca in ELO povesta isto
+     zgodbo v treh stolpcih. */
+  .h2h__vrstica {
+    grid-template-columns: minmax(0, 1fr) 72px 72px;
+    gap: var(--r1);
+  }
+
+  .h2h__sredina,
+  .sparkline,
+  .h2h__vrstica > :last-child {
+    display: none;
+  }
+
+  .toplotna {
+    grid-template-columns: repeat(var(--stolpcev-ozko, 3), minmax(0, 1fr));
+  }
+
+  .toplotna__celica {
+    height: 88px;
+  }
+
+  .toplotna__izid {
+    font-size: 28px;
+  }
+
+  .pritisk__vrstica {
+    grid-template-columns: minmax(0, 1fr) 72px;
+  }
+
+  .razrez__vrstica {
+    grid-template-columns: minmax(0, 1fr) 48px 64px 56px;
+    gap: var(--r1);
+  }
+
+  .razrez__sredina,
+  .pritisk__vrstica .os,
+  .razrez__vrstica .os {
+    display: none;
+  }
+
+  .tekma-vrstica {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 2px var(--r1);
+    padding: 12px 0;
+  }
+
+  .tekma-vrstica--glava {
+    display: none;
+  }
+
+  .tekma-vrstica__nasprotnik {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+
+  .tekma-vrstica__datum {
     grid-column: 1;
-    grid-row: auto;
-    text-align: left;
+    grid-row: 2;
   }
 
-  .enanaena--strnjen .enanaena__sredina,
-  .enanaena--strnjen .enanaena__zreb {
-    justify-self: start;
+  .tekma-vrstica__tekmovanje {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
   }
 
-  .enanaena__kartica--2,
-  .enanaena__kartica--2 .enanaena__igralec {
-    text-align: left;
+  /* Datum in tekmovanje sta v isti vrstici dva podatka, zato ju loci pika. */
+  .tekma-vrstica__tekmovanje::before {
+    content: '·\00a0';
+    color: var(--barva-crnilo-3);
   }
 
-  .enanaena__stevilo {
-    justify-content: flex-start;
+  .tekma-vrstica__ime {
+    font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
+    color: var(--barva-crnilo-3);
+  }
+
+  .tekma-vrstica__izid {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    align-self: center;
+    font-size: 28px;
+  }
+
+  .tekma-vrstica__del,
+  .tekma-vrstica__elo,
+  .tekma-vrstica__nasprotnik .profil__klub {
+    display: none;
   }
 }
 
@@ -3703,10 +6039,26 @@ input[type='radio'] {
     --tip-rezultat: 56px;
   }
 
+  /* Na telefonu masthead ostane ena vrsta (logotip + kdo si), navigacija pa
+     se preseli POD debelo crto kot vrstica zavihkov v mono - tam je vodoravno
+     drsna in ne krajsa imena. */
+  .glava {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'logotip    uporabnik'
+      'crta       crta'
+      'navigacija navigacija';
+    padding: var(--r2) 20px 0;
+  }
+
   .glava__navigacija {
-    order: 3;
-    width: 100%;
+    justify-self: stretch;
     gap: var(--r2);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--barva-crta);
+    font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -3715,8 +6067,119 @@ input[type='radio'] {
     display: none;
   }
 
+  /* Podcrtaj aktivne postavke je v vrstici zavihkov odvec - vrstica je
+     ze sama zase pas, barva pa pove dovolj. */
+  .glava__povezava--aktivna,
+  .glava__povezava--aktivna:hover {
+    box-shadow: none;
+    font-weight: 600;
+  }
+
+  .vsebina,
+  .brez-povezave {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
   .naslov-strani--enovrsticni {
-    font-size: 48px;
+    font-size: 44px;
+  }
+
+  /* Glava se na telefonu skrci: logotip 20 px. */
+  .glava__logotip {
+    font-size: var(--tip-uvod);
+  }
+
+  /* Podnavigacija in gumbi kol ostanejo v eni vrsti in drsijo vodoravno;
+     prelom v dve vrstici bi lepljivemu pasu vzel tretjino zaslona. */
+  .podnavigacija {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .podnavigacija .izbirnik,
+  .mreza-krmar .izbirnik {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .podnavigacija .izbirnik::-webkit-scrollbar,
+  .mreza-krmar .izbirnik::-webkit-scrollbar,
+  .podnavigacija::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Povzetek pod pasom bi pas podvojil v visino; na telefonu ga nadomesti
+     ze podatek v vrstici skupine. */
+  .podnavigacija__povzetek,
+  .mreza-krmar__opomba {
+    display: none;
+  }
+
+  /* Vrstica skupine se ne prelomi - odpade samo prostor, ki ga ni.
+     (Glava stolpcev je pod 900 px ze skrita.) */
+  .skupina-vrstica {
+    grid-template-columns: 40px minmax(0, 1fr) 72px;
+    gap: 12px;
+  }
+
+  .skupina-vrstica__oznaka {
+    font-size: 22px;
+  }
+
+  .skupina-vrstica__igralci {
+    font-size: 16px;
+  }
+
+  .skupina-vsebina {
+    padding: var(--r2) 12px var(--r3);
+  }
+
+  .skupina-vsebina__stolpci {
+    padding: 0;
+  }
+
+  /* V odprti skupini na telefonu ostanejo mesto, ime, zmage in nizi; porazi
+     so razlika, ki jo bralec izpelje sam. Nizi so tu vsebina, zato jih je
+     treba vrniti nazaj iz splosnega pravila nekaj vrstic nize. */
+  .lestvica--skupina .lestvica__stolpec-p {
+    display: none;
+  }
+
+  .lestvica--skupina .lestvica__nizi {
+    display: table-cell;
+    width: 56px;
+  }
+
+  .lestvica--skupina .lestvica__mesto,
+  .lestvica--skupina .lestvica__stevilka {
+    width: 32px;
+  }
+
+  .lestvica--skupina td {
+    padding: 10px var(--r1) 10px 0;
+    font-size: 15px;
+  }
+
+  /* Izlocilni del ostane vodoravno drsen, le stolpci so ozji in klub odpade. */
+  .mreza__kolo {
+    flex: 0 0 232px;
+    min-width: 232px;
+  }
+
+  .mreza {
+    gap: var(--r2);
+  }
+
+  .tekma__klub {
+    display: none;
+  }
+
+  .vrstni-red__vrstica {
+    grid-template-columns: 44px minmax(0, 1fr) 72px 56px;
+    gap: var(--r1);
   }
 
   /* Par naslova podstrani ima svoji trdi meri (80/44), zato ju je treba
@@ -3760,12 +6223,230 @@ input[type='radio'] {
     display: none;
   }
 
+  /* Isto merilo na globalni lestvici: "Gib." in "Δ 30 dni" sta kontekst in ne
+     podatek, ki ga gledalec isce - na telefonu odpadeta, da tabela ne rabi
+     vodoravnega drsenja. S tem odpade tudi fiksna postavitev: ostali stolpci
+     si sirino razdelijo po vsebini. */
+  .lestvica__gibanje,
+  .lestvica__delta {
+    display: none;
+  }
+
+  .lestvica--globalna {
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .lestvica--globalna col {
+    width: auto;
+  }
+
+  /* Brez fiksne postavitve odrez nima smisla: naj se dolgo ime in klub raje
+     prelomita v dve vrsti, kot da bi tabelo potisnila cez rob zaslona in
+     rating (edini razlog te strani) odrinila v vodoravni drsnik. */
+  .lestvica--globalna .lestvica__igralec,
+  .lestvica--globalna .lestvica__klub {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  /* Na telefonu je stolpcev pet in vsak piksel steje: rating pade z 20 na 17,
+     razmerje pa s 16 na 15 - oba ostaneta najvecji stevilki v vrstici. */
+  .lestvica--globalna td.lestvica__rating {
+    font-size: 17px;
+  }
+
+  .lestvica--globalna td.lestvica__stevilka {
+    font-size: 15px;
+  }
+
+  /* Filtra drug pod drugim; merilo se takrat poravna levo, kot kategorija. */
+  .lestvica__filtri {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r2);
+  }
+
+  .lestvica__filter--merilo {
+    grid-column: 1;
+  }
+
+  .lestvica__filter--merilo .lestvica__filter-oznaka {
+    text-align: left;
+  }
+
+  .lestvica__filter--merilo .izbirnik {
+    justify-content: flex-start;
+  }
+
   /* Okolica na lestvici: pri 320 px so fiksni stolpci in 16 px vrzeli pojedli
      vse do 48 px za ime. Stevilke naj zasedejo toliko, kot jih je, ostalo
      pripada imenu. */
   .okolica__vrstica {
     grid-template-columns: 32px minmax(0, 1fr) auto auto;
     gap: var(--r1);
+  }
+
+  /* --- Domaca stran na telefonu --- */
+
+  /* Presledek med sklopi se skrci na 32 px: na zaslonu, po katerem se drsi,
+     je 48 px praznine med sklopoma ze cel palec potega. */
+  .vsebina > .domov {
+    gap: var(--r4);
+  }
+
+  .domov__vrh {
+    gap: var(--r4);
+  }
+
+  /* Naslovi sklopov na telefonu 28 px (drugod ostane 32 px iz --tip-h2). */
+  .domov h2 {
+    font-size: 28px;
+  }
+
+  /* Napredek in zadnji izid drug pod drugim: v eni vrsti se pri 350 px oba
+     podatka prelomita vsak zase in vrstica postane blok. */
+  .domov__turnir-stanje {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Filtri in povezava dobijo svojo vrsto pod naslovom; povezava se skrci na
+     "Cela →", da gre vse skupaj v eno vrstico. */
+  .domov__sklop .naslovna-vrstica__desno {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .domov__sklop .izbirnik__gumb {
+    padding: var(--r1);
+    letter-spacing: 0.06em;
+  }
+
+  .domov__cela {
+    margin-left: 0;
+  }
+
+  .domov__cela-dolgo {
+    display: none;
+  }
+
+  /* Lestvica na stiri stolpce: mesto, premik, igralec s klubom v drugi
+     vrstici, rating. Klub in crta ELO sta odpadla - klub se pod imenom bere
+     enako dobro, crta pa pri 390 px ni vec crta. */
+  .domov__lestvica-vrstica {
+    grid-template-columns: 28px 20px minmax(0, 1fr) 56px;
+    gap: 10px;
+    padding: 10px 0;
+  }
+
+  .domov__lestvica-vrstica--glava {
+    display: none;
+  }
+
+  .domov__lestvica-klub {
+    grid-column: 3;
+    grid-row: 2;
+    font-size: 13px;
+  }
+
+  .domov__lestvica-igralec {
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  a.domov__lestvica-vrstica--jaz {
+    margin-left: -12px;
+    padding-left: 12px;
+  }
+
+  a.domov__lestvica-vrstica--jaz .domov__lestvica-igralec {
+    font-weight: 600;
+  }
+
+  .domov__lestvica-mesto,
+  .domov__lestvica-rating {
+    font-size: 16px;
+  }
+
+  .domov__premik {
+    font-size: 12px;
+  }
+
+  /* --- Ena na ena na telefonu --- */
+
+  .enanaena__plosca {
+    grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr);
+    gap: 20px 12px;
+  }
+
+  /* Navpicni crti sta pri 96 px sredini le se dva navpicna robova okrog
+     stevilke; izid drzi sredino sam. */
+  .enanaena__izid {
+    border: none;
+    padding: 28px 0 0;
+  }
+
+  .enanaena__spodaj {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border: none;
+    padding: 0;
+    text-align: left;
+  }
+
+  .enanaena__oznaka--siroko,
+  .enanaena__nizi,
+  .enanaena__meta--siroko {
+    display: none;
+  }
+
+  .enanaena__znak {
+    width: 28px;
+    height: 28px;
+    stroke-width: 2.4;
+  }
+
+  .enanaena__ime {
+    margin-top: var(--r1);
+    font-size: 22px;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+  }
+
+  .enanaena__polje {
+    margin-top: 10px;
+  }
+
+  .enanaena__polje select {
+    padding: 0 var(--r1);
+    font-size: 15px;
+  }
+
+  .enanaena__meta {
+    margin-top: var(--r1);
+    font: 500 11px / 1.4 var(--pisava-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .enanaena__stevilo {
+    font-size: 48px;
+    margin: 0;
+  }
+
+  .enanaena__skupaj {
+    margin-top: var(--r1);
+    font-size: 11px;
+  }
+
+  .enanaena__zadnje {
+    margin-top: 20px;
+  }
+
+  .enanaena__noga {
+    align-items: stretch;
+    text-align: left;
   }
 }
 
@@ -3844,7 +6525,8 @@ input[type='radio'] {
   }
 
   a.sekcija__meta::after,
-  a.domov__vec::after {
+  a.domov__vec::after,
+  .prijava-vrstica__dejanje::after {
     content: '';
     position: absolute;
     inset: -14px -8px;
@@ -3856,6 +6538,19 @@ input[type='radio'] {
     content: '';
     position: absolute;
     inset: -11px -6px;
+  }
+
+  /* Ime lige v piramidi je ploskev z natancno doloceno visino (34 px), ker je
+     tekoca liga crn zig in bi 44 px iz njega naredilo blok. Prst zato dobi
+     svojih 44 px prek nevidnega ::after, ploskev pa ostane, kakor je. */
+  a.liga__piramida-liga {
+    position: relative;
+  }
+
+  a.liga__piramida-liga::after {
+    content: '';
+    position: absolute;
+    inset: -5px 0;
   }
 }
 
@@ -4291,6 +6986,19 @@ input[type='radio'] {
 
   .zapisnik {
     border-width: 1px;
+  }
+
+  /* Tisk je enobarven: tri poteze so polne, cetrta (odlocilni niz) ostane
+     samo obrisana, da se razlika ohrani tudi brez barve. */
+  .logo-znak__poteza,
+  .logo-znak__poteza--glavna {
+    fill: #000;
+  }
+
+  .logo-znak__poteza--izid {
+    fill: none;
+    stroke: #000;
+    stroke-width: 1;
   }
 }
 

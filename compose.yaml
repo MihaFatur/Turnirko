@@ -1,0 +1,60 @@
+# Celotna postavitev na strezniku: aplikacija + Caddy (HTTPS).
+# Zagon:  docker compose up -d --build
+# Dnevnik: docker compose logs -f app
+#
+# Pred prvim zagonom naredi datoteko .env po vzoru .env.primer.
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+
+    # Vrat NAMENOMA ne objavljamo na strezniku (ni "ports:"). Aplikacija je
+    # dosegljiva samo Caddyju po notranjem omrezju. Ce bi tu pisalo
+    # "8080:8080", bi bila stran dosegljiva tudi prek http://IP:8080, torej
+    # mimo HTTPS - in HTTP Basic prijava bi sla po zici v berljivi obliki.
+    expose:
+      - "8080"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: splet
+      SPRING_DATASOURCE_URL: jdbc:sqlite:/podatki/turnirko.db
+      # Brez tega se aplikacija ob PRAZNI bazi noce zagnati (namerno).
+      # Ko admin ze obstaja, vrednost ni vec v rabi.
+      TURNIRKO_ADMIN_PRIVZETO_GESLO: ${TURNIRKO_ADMIN_GESLO:?nastavi TURNIRKO_ADMIN_GESLO v .env}
+
+    volumes:
+      # Baza lezi na strezniku, ne v vsebniku - tako prezivi vsako
+      # posodobitev aplikacije. Mapa mora pripadati uporabniku 10001
+      # iz slike:  sudo chown -R 10001:10001 podatki
+      - ./podatki:/podatki
+
+    # Ce se aplikacija sesuje, naj jo Docker znova zazene, a ne v nedogled.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/api/v1/klubi > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"    # potreben za preverbo lastnistva domene (Let's Encrypt)
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Tu Caddy hrani pridobljene certifikate. Brez tega bi jih ob vsakem
+      # ponovnem zagonu zahteval znova in bi hitro naletel na omejitve
+      # Let's Encrypta.
+      - caddy_podatki:/data
+      - caddy_nastavitve:/config
+      - ./dnevniki:/var/log/caddy
+    depends_on:
+      - app
+
+volumes:
+  caddy_podatki:
+  caddy_nastavitve:

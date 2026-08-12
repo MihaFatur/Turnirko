@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="32" height="32" role="img" aria-label="Turnirko">
+  <!-- Samostojna datoteka ne vidi slog.css, zato barvi papirja in crnila nosi
+       ta <style>; vrednosti so iste kot zetona v obeh temah. -->
+  <style>
+    .podlaga { fill: #FBF9F5; }
+    .poteza { fill: #14110F; }
+    @media (prefers-color-scheme: dark) {
+      .podlaga { fill: #12100F; }
+      .poteza { fill: #F2F0EA; }
+    }
+  </style>
+  <rect class="podlaga" x="0" y="0" width="28" height="28"></rect>
+  <rect class="poteza" x="1.5" y="4" width="3" height="20"></rect>
+  <rect class="poteza" x="8.5" y="4" width="3" height="20"></rect>
+  <rect x="15.5" y="4" width="3" height="20" fill="#0088CE"></rect>
+  <rect x="22.5" y="4" width="3" height="20" fill="#7BB900"></rect>
+</svg>

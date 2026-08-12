@@ -39,10 +39,12 @@ export function UporabniskiMeni() {
      potrditev); tam mu stran pojasni, zakaj profila se ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
 
-  /* Oznaka konteksta: vloga in (pri organizatorju) klub — enako kot na
-     maketah »SODNIK · NTK SAVINJA«. */
+  /* Oznaka konteksta je IME osebe, ne njena vloga: v kotu zapisnika stoji,
+     kdo ga vodi (»NEJC VRHOVNIK«). Vloga in klub sta v glavi spustnega
+     menija, kjer je zanju prostor. Račun brez povezanega igralca (admin,
+     organizator) se predstavi s prijavnim imenom. */
   const oznaka = uporabnik
-    ? [OZNAKE_VLOGA[uporabnik.vloga], uporabnik.klub].filter(Boolean).join(' · ')
+    ? (uporabnik.imeIgralca ?? uporabnik.uporabniskoIme)
     : 'Gost · prijava'
 
   function odpriPrijavo(nacin: PrijavaNacin) {

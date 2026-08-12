@@ -32,6 +32,7 @@ import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.Skupina;
+import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
@@ -90,10 +91,18 @@ public class DogodkiKontroler {
     public MrezaDto mreza(@PathVariable Long id) {
         Dogodek dogodekEntiteta = dogodekRepozitorij.najdiSTurnirjem(id)
                 .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + id + " ne obstaja."));
-        DogodekDto dogodek = DogodekDto.iz(dogodekEntiteta);
 
         List<Prijava> prijaveEntitete = prijavaRepozitorij.najdiZaDogodek(id);
         List<Tekma> tekmeEntitete = tekmaRepozitorij.najdiZaDogodek(id);
+
+        // Stevci vrstice dogodka: sesteti iz ze prenesenih seznamov, brez
+        // dodatne poizvedbe. Odjavljeni ne igrajo, zato ne stejejo.
+        int steviloPrijav = (int) prijaveEntitete.stream()
+                .filter(p -> p.getStatus() != Prijava.StatusPrijave.ODJAVLJEN).count();
+        int odigranihTekem = (int) tekmeEntitete.stream()
+                .filter(t -> t.getStatus() == StatusTekme.KONCANA).count();
+        DogodekDto dogodek = DogodekDto.iz(
+                dogodekEntiteta, steviloPrijav, odigranihTekem, tekmeEntitete.size());
 
         boolean poJakosti = dogodekEntiteta.getSistemTekmovanja() == SistemTekmovanja.SKUPINE;
         if (poJakosti) {
