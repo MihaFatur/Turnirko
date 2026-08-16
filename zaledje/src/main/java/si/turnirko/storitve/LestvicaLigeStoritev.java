@@ -1,6 +1,7 @@
-/* Izracun lestvice lige iz koncanih srecanj.
+/* Izracun lestvic lige iz koncanih srecanj: ekipne (glavne) ter lestvic
+   posameznikov in dvojic, ki tecejo SAMO po tekmah te lige.
 
-   Kriteriji izenacenja (potrjen vrstni red): tocke -> medsebojni izid ->
+   Kriteriji izenacenja ekipne lestvice (potrjen vrstni red): tocke -> medsebojni izid ->
    razlika posamicnih tekem -> razlika nizov -> ime. Medsebojni izid je
    izracunan parno (tocke, ki sta jih izenaceni ekipi osvojili druga proti
    drugi) - tocno za dvojno izenacenje, za vec ekip je hevristika (natancni
@@ -9,20 +10,26 @@
 package si.turnirko.storitve;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import si.turnirko.dto.LestvicaDvojiceDto;
 import si.turnirko.dto.LestvicaEkipeDto;
+import si.turnirko.dto.LestvicaIgralcaLigeDto;
 import si.turnirko.modeli.Ekipa;
+import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StranEkipe;
+import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -53,7 +60,9 @@ public class LestvicaLigeStoritev {
 
         Map<Long, Vrstica> agg = new LinkedHashMap<>();
         for (Ekipa e : ekipaRepozitorij.najdiZaLigo(idLiga)) {
-            agg.put(e.getId(), new Vrstica(e.getId(), e.prikazanoIme(), e.getKlub().getIme()));
+            // prosta ekipa kluba nima - stolpec ostane prazen
+            agg.put(e.getId(), new Vrstica(e.getId(), e.prikazanoIme(),
+                    e.jeProsta() ? null : e.getKlub().getIme()));
         }
 
         List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(idLiga);
@@ -194,6 +203,166 @@ public class LestvicaLigeStoritev {
 
     public record Bilanca(int zmage, int porazi) {
         public static final Bilanca PRAZNA = new Bilanca(0, 0);
+    }
+
+    // ---------- Lestvici posameznikov in dvojic v ligi ----------
+
+    /* Najboljsi posamezniki te lige. Steje SAMO posamicne tekme te lige - ne
+       ratinga (ta tece cez vsa tekmovanja) in ne dvojic (izida para ni mogoce
+       pripisati enemu igralcu, zato imajo svojo lestvico).
+
+       Igralec brez odigrane tekme na lestvici ne nastopa: kdo je v kadru, pove
+       kader pod vrstico ekipe, tu pa vrstica brez tekme nima izkupicka. */
+    @Transactional(readOnly = true)
+    public List<LestvicaIgralcaLigeDto> lestvicaIgralcev(Long idLiga) {
+        Map<Long, Izkupicek> po = new LinkedHashMap<>();
+        for (TekmaSrecanja t : tekmaSrecanjaRepozitorij.najdiPosamicneLige(idLiga)) {
+            boolean zmagalDomaci = t.getZmagovalecStran() == StranEkipe.DOMACI;
+            Srecanje s = t.getSrecanje();
+            po.computeIfAbsent(t.getIgralecDomaci().getId(),
+                            k -> new Izkupicek(List.of(t.getIgralecDomaci())))
+                    .dodaj(s.getEkipaDomaci().prikazanoIme(), zmagalDomaci,
+                            t.getDobljeniNiziDomaci(), t.getDobljeniNiziGost());
+            po.computeIfAbsent(t.getIgralecGost().getId(),
+                            k -> new Izkupicek(List.of(t.getIgralecGost())))
+                    .dodaj(s.getEkipaGost().prikazanoIme(), !zmagalDomaci,
+                            t.getDobljeniNiziGost(), t.getDobljeniNiziDomaci());
+        }
+
+        List<Izkupicek> vrstice = new ArrayList<>(po.values());
+        vrstice.sort(PO_IZKUPICKU);
+        List<LestvicaIgralcaLigeDto> rezultat = new ArrayList<>(vrstice.size());
+        for (int i = 0; i < vrstice.size(); i++) {
+            Izkupicek v = vrstice.get(i);
+            Igralec igralec = v.igralci.get(0);
+            rezultat.add(new LestvicaIgralcaLigeDto(
+                    i + 1, igralec.getId(), igralec.polnoIme(), v.ekipa(),
+                    v.odigrane, v.zmage, v.porazi, v.odstotek(),
+                    v.niziZa, v.niziProti));
+        }
+        return rezultat;
+    }
+
+    /* Najboljse dvojice te lige. Enota je par in ne igralec, zato se izid pripise
+       obema skupaj; ista dva igralca sta ista dvojica tudi, ko igrata v gosteh
+       (glej Par). Tekma, pri kateri par ni v celoti postavljen, v poizvedbo ne
+       pride - dvojice brez obeh imen ni. */
+    @Transactional(readOnly = true)
+    public List<LestvicaDvojiceDto> lestvicaDvojic(Long idLiga) {
+        Map<Par, Izkupicek> po = new LinkedHashMap<>();
+        for (TekmaSrecanja t : tekmaSrecanjaRepozitorij.najdiDvojiceLige(idLiga)) {
+            boolean zmagalDomaci = t.getZmagovalecStran() == StranEkipe.DOMACI;
+            Srecanje s = t.getSrecanje();
+            dodajPar(po, t.getIgralecDomaci(), t.getIgralecDomaci2(),
+                    s.getEkipaDomaci().prikazanoIme(), zmagalDomaci,
+                    t.getDobljeniNiziDomaci(), t.getDobljeniNiziGost());
+            dodajPar(po, t.getIgralecGost(), t.getIgralecGost2(),
+                    s.getEkipaGost().prikazanoIme(), !zmagalDomaci,
+                    t.getDobljeniNiziGost(), t.getDobljeniNiziDomaci());
+        }
+
+        List<Izkupicek> vrstice = new ArrayList<>(po.values());
+        vrstice.sort(PO_IZKUPICKU);
+        List<LestvicaDvojiceDto> rezultat = new ArrayList<>(vrstice.size());
+        for (int i = 0; i < vrstice.size(); i++) {
+            Izkupicek v = vrstice.get(i);
+            Igralec prvi = v.igralci.get(0);
+            Igralec drugi = v.igralci.get(1);
+            rezultat.add(new LestvicaDvojiceDto(
+                    i + 1,
+                    prvi.getId(), prvi.polnoIme(),
+                    drugi.getId(), drugi.polnoIme(),
+                    v.ekipa(), v.odigrane, v.zmage, v.porazi, v.odstotek(),
+                    v.niziZa, v.niziProti));
+        }
+        return rezultat;
+    }
+
+    private static void dodajPar(Map<Par, Izkupicek> po, Igralec a, Igralec b,
+                                 String ekipa, boolean zmaga, int za, int proti) {
+        po.computeIfAbsent(Par.iz(a, b), k -> new Izkupicek(vrstniRedVParu(a, b)))
+                .dodaj(ekipa, zmaga, za, proti);
+    }
+
+    /* Par se zapise vedno enako - abecedno, ne po strani ali mestu v postavi. */
+    private static List<Igralec> vrstniRedVParu(Igralec a, Igralec b) {
+        return a.polnoIme().compareToIgnoreCase(b.polnoIme()) <= 0
+                ? List.of(a, b) : List.of(b, a);
+    }
+
+    /* Merilo obeh lestvic: najprej zmage, ob izenacenju uspesnost, nato razlika
+       nizov in ime. Uspesnost je drugo in ne prvo merilo, ker liga ni turnir -
+       kdor je odigral vec kol, mora stati pred tistim, ki ima 100 % iz ene same
+       tekme. Deleza primerjamo navzkrizno (zmage x tuje odigrane), da o vrstnem
+       redu ne odloca zaokrozeni odstotek iz prikaza. */
+    private static final Comparator<Izkupicek> PO_IZKUPICKU = (x, y) -> {
+        if (x.zmage != y.zmage) {
+            return Integer.compare(y.zmage, x.zmage);
+        }
+        long xu = (long) x.zmage * y.odigrane;
+        long yu = (long) y.zmage * x.odigrane;
+        if (xu != yu) {
+            return Long.compare(yu, xu);
+        }
+        int xr = x.niziZa - x.niziProti;
+        int yr = y.niziZa - y.niziProti;
+        if (xr != yr) {
+            return Integer.compare(yr, xr);
+        }
+        return x.ime.compareToIgnoreCase(y.ime);
+    };
+
+    /* Kljuc dvojice: ista dva igralca sta ista dvojica ne glede na to, na kateri
+       strani sta igrala in v kaksnem zaporedju sta zapisana v postavi - zato sta
+       identifikatorja urejena po velikosti. */
+    private record Par(Long manjsi, Long vecji) {
+        static Par iz(Igralec a, Igralec b) {
+            return a.getId() <= b.getId()
+                    ? new Par(a.getId(), b.getId())
+                    : new Par(b.getId(), a.getId());
+        }
+    }
+
+    /* Zbir nastopov ene tekmovalne enote v eni ligi: igralca (en clan) ali
+       dvojice (dva). Ekip je lahko vec, kadar liga dovoli dvojno registracijo,
+       zato jih stejemo in vrstica pokaze najpogostejso. */
+    private static final class Izkupicek {
+        final List<Igralec> igralci;
+        final String ime;
+        final Map<String, Integer> ekipe = new LinkedHashMap<>();
+        int odigrane;
+        int zmage;
+        int porazi;
+        int niziZa;
+        int niziProti;
+
+        Izkupicek(List<Igralec> igralci) {
+            this.igralci = igralci;
+            this.ime = igralci.stream().map(Igralec::polnoIme).collect(Collectors.joining(" / "));
+        }
+
+        void dodaj(String ekipa, boolean zmaga, int za, int proti) {
+            odigrane++;
+            if (zmaga) {
+                zmage++;
+            } else {
+                porazi++;
+            }
+            niziZa += za;
+            niziProti += proti;
+            ekipe.merge(ekipa, 1, Integer::sum);
+        }
+
+        String ekipa() {
+            return ekipe.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse(null);
+        }
+
+        int odstotek() {
+            return odigrane == 0 ? 0 : Math.round(zmage * 100f / odigrane);
+        }
     }
 
     /* Zbir za eno ekipo med izracunom lestvice. */

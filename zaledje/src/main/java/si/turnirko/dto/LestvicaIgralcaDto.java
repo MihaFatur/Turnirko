@@ -10,6 +10,7 @@ package si.turnirko.dto;
 import java.util.List;
 
 import si.turnirko.modeli.KategorijaIgralca;
+import si.turnirko.modeli.Spol;
 
 public record LestvicaIgralcaDto(
         Long idIgralca,
@@ -30,8 +31,15 @@ public record LestvicaIgralcaDto(
         // Razlika klubskega ELO proti stanju pred 30 dnevi; null z istim
         // razlogom kot premik (pred mesecem ratinga se ni bilo).
         Integer spremembaRatinga,
-        // Starostno-spolna kategorija (izpeljana, glej KategorijaIgralca) za
-        // filter nad lestvico; null, kadar je ni mogoce dolociti.
+        // Spol in starostno-spolna kategorija (izpeljana, glej
+        // KategorijaIgralca) za filtre nad lestvico; oba sta lahko null, kadar
+        // ju ni mogoce dolociti.
+        //
+        // Zakaj oboje, ceprav kategorija spol ze nosi: nosi ga SAMO pri
+        // clanih (CLANI/CLANICE), pri U19 in VETERANIH pa se izgubi. Filtra
+        // "vse zenske" torej iz kategorije ni mogoce sestaviti, zato gre spol
+        // zraven - javen je tako ali tako (glej IgralecJavniDto).
+        Spol spol,
         KategorijaIgralca kategorija,
         // Do sedem tock klubskega ELO iz zadnjih 12 mesecev (najstarejsa prva)
         // za crto ob vrstici; tocke sledijo TEKMAM, ne koledarju (glej

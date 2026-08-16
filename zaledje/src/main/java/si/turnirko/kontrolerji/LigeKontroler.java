@@ -22,11 +22,14 @@ import si.turnirko.dto.EkipaDto;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
+import si.turnirko.dto.LestvicaDvojiceDto;
 import si.turnirko.dto.LestvicaEkipeDto;
+import si.turnirko.dto.LestvicaIgralcaLigeDto;
 import si.turnirko.dto.LigaDto;
 import si.turnirko.dto.LigaVnos;
 import si.turnirko.dto.PrehodiVnos;
 import si.turnirko.dto.SrecanjeDto;
+import si.turnirko.dto.TerminiVnos;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.SrecanjeStoritev;
 
@@ -70,6 +73,13 @@ public class LigeKontroler {
     @PutMapping("/{id}/prehodi")
     public LigaDto nastaviPrehode(@PathVariable Long id, @Valid @RequestBody PrehodiVnos vnos) {
         return ligaStoritev.nastaviPrehode(id, vnos);
+    }
+
+    /* Termini kol - iz istega razloga loceni od pravil: kolo se prestavi tudi
+       sredi sezone. Odgovor so vsa srecanja lige, ker se je spremenil razpored. */
+    @PutMapping("/{id}/termini")
+    public List<SrecanjeDto> nastaviTermine(@PathVariable Long id, @Valid @RequestBody TerminiVnos vnos) {
+        return ligaStoritev.nastaviTermine(id, vnos);
     }
 
     @DeleteMapping("/{id}")
@@ -132,5 +142,17 @@ public class LigeKontroler {
     @GetMapping("/{id}/lestvica")
     public List<LestvicaEkipeDto> lestvica(@PathVariable Long id) {
         return ligaStoritev.lestvica(id);
+    }
+
+    /* Lestvici posameznikov in dvojic te lige. Loceni koncni tocki in ne del
+       /lestvica: stran ju nalozi sele, ko gledalec sklop odpre. */
+    @GetMapping("/{id}/lestvica-igralcev")
+    public List<LestvicaIgralcaLigeDto> lestvicaIgralcev(@PathVariable Long id) {
+        return ligaStoritev.lestvicaIgralcev(id);
+    }
+
+    @GetMapping("/{id}/lestvica-dvojic")
+    public List<LestvicaDvojiceDto> lestvicaDvojic(@PathVariable Long id) {
+        return ligaStoritev.lestvicaDvojic(id);
     }
 }

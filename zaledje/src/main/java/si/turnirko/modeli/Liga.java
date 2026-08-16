@@ -7,6 +7,7 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -77,6 +78,18 @@ public class Liga {
     @Enumerated(EnumType.STRING)
     @Column(name = "predloga_listka", nullable = false)
     private PredlogaLige predlogaListka = PredlogaLige.SNTL_23;
+
+    /* Seme terminov: kdaj se igra prvo kolo in na koliko dni sledijo naslednja.
+       Iz njiju se ob generiranju razporeda izracunajo predvideni zacetki
+       srecanj; kasnejsi rocni popravki posameznih kol semena ne spremenijo
+       (prestavljeno kolo ne sme prestaviti vseh naslednjih). Ura velja za celo
+       kolo, 00:00 pomeni "ura ni dolocena". */
+    @Convert(converter = CasKotBesedilo.class)
+    @Column(name = "zacetek_prvega_kola")
+    private LocalDateTime zacetekPrvegaKola;
+
+    @Column(name = "razmik_dni")
+    private Integer razmikDni;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_visja_liga")
@@ -158,6 +171,12 @@ public class Liga {
 
     public PredlogaLige getPredlogaListka() { return predlogaListka; }
     public void setPredlogaListka(PredlogaLige predlogaListka) { this.predlogaListka = predlogaListka; }
+
+    public LocalDateTime getZacetekPrvegaKola() { return zacetekPrvegaKola; }
+    public void setZacetekPrvegaKola(LocalDateTime zacetekPrvegaKola) { this.zacetekPrvegaKola = zacetekPrvegaKola; }
+
+    public Integer getRazmikDni() { return razmikDni; }
+    public void setRazmikDni(Integer razmikDni) { this.razmikDni = razmikDni; }
 
     public Liga getVisjaLiga() { return visjaLiga; }
     public void setVisjaLiga(Liga visjaLiga) { this.visjaLiga = visjaLiga; }

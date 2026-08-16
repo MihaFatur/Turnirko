@@ -6,6 +6,7 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -52,6 +53,9 @@ public class Srecanje {
     @Column(name = "status", nullable = false)
     private StatusSrecanja status = StatusSrecanja.RAZPORED;
 
+    /* Termin kola z uro; gonilnik bi jo brez pretvornika odrezal (glej
+       CasKotBesedilo). */
+    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "predviden_zacetek")
     private LocalDateTime predvidenZacetek;
 

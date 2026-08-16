@@ -327,8 +327,11 @@ export interface LestvicaIgralcaDto {
   /* Razlika klubskega ELO proti stanju pred 30 dnevi; null z istim razlogom
      kot premik. */
   spremembaRatinga: number | null
-  /* Izpeljana kategorija za filter nad lestvico; null, kadar je ni mogoče
-     določiti. */
+  /* Spol in izpeljana kategorija za filtra nad lestvico; oba sta lahko null.
+     Spol je zraven, ker ga kategorija nosi samo pri članih (pri U19 in
+     veteranih se izgubi) — brez njega filtra »vse igralke« ni mogoče
+     sestaviti. */
+  spol: Spol | null
   kategorija: KategorijaIgralca | null
   /* Do sedem točk klubskega ELO čez zadnjih 12 mesecev (najstarejša prva). */
   eloZgodovina: number[]
@@ -544,6 +547,15 @@ export const OZNAKE_SISTEM_KRATKO: Record<SistemTekmovanja, string> = {
   SKUPINE: 'Skupine po jakosti',
 }
 
+/* Še krajše oznake za mono vrstico telefona, kjer sistem deli 350 px s
+   številom prijav in odigranostjo ("Skup + izl · 8 skupin po 4 · 42/61"). */
+export const OZNAKE_SISTEM_MOBI: Record<SistemTekmovanja, string> = {
+  IZLOCILNI: 'Izločilni',
+  KROZNI: 'Krožni',
+  SKUPINE_IZLOCILNI: 'Skup + izl',
+  SKUPINE: 'Skupine',
+}
+
 /* Koliko dobljenih nizov je potrebnih za zmago (npr. na 5 nizov -> 3). */
 export function nizovZaZmago(steviloNizov: number): number {
   return Math.floor(steviloNizov / 2) + 1
@@ -551,7 +563,9 @@ export function nizovZaZmago(steviloNizov: number): number {
 
 /* ---------- Ligaska (ekipna) tekmovanja ---------- */
 
-export type FormatSrecanja = 'SNTL' | 'CORBILLON' | 'SAVINJA'
+export type FormatSrecanja =
+  | 'SNTL' | 'SNTL_PRVA' | 'SNTL_DVOJICE_SEDMA' | 'SNTL_PRVA_DVOJICE_CETRTA'
+  | 'SNTL_BREZ_DVOJIC' | 'OLIMPIJSKI' | 'CORBILLON' | 'SAVINJA'
 export type StranEkipe = 'DOMACI' | 'GOST'
 export type TipTekmeSrecanja = 'DVOJICE' | 'POSAMICNA'
 export type StatusSrecanja = 'RAZPORED' | 'POTEKA' | 'KONCANO'
@@ -559,6 +573,11 @@ export type StatusTekmeSrecanja = 'CAKA' | 'KONCANA' | 'NEODIGRANA'
 
 export const OZNAKE_FORMAT: Record<FormatSrecanja, string> = {
   SNTL: 'SNTL (3 igralci + dvojice)',
+  SNTL_PRVA: 'SNTL 1. liga (dvojice + 6)',
+  SNTL_DVOJICE_SEDMA: 'SNTL, dvojice sedma tekma',
+  SNTL_PRVA_DVOJICE_CETRTA: 'SNTL 1. liga, dvojice četrta tekma',
+  SNTL_BREZ_DVOJIC: 'SNTL brez dvojic (9 posamičnih)',
+  OLIMPIJSKI: 'Olimpijski (3 igralci, 5 posamičnih)',
   CORBILLON: 'Corbillon (2 igralca + dvojice)',
   SAVINJA: 'Savinja liga (2 igralca, dvojice prve)',
 }
@@ -567,6 +586,12 @@ export const OZNAKE_FORMAT: Record<FormatSrecanja, string> = {
    Obrazec ga izpiše in po njem omeji prag zmag, da ne ponudi nemogoče meje. */
 export const RAZPORED_FORMATA: Record<FormatSrecanja, string[]> = {
   SNTL: ['dvojice', 'A-X', 'B-Y', 'C-Z', 'B-X', 'A-Z', 'C-Y', 'B-Z', 'C-X', 'A-Y'],
+  SNTL_PRVA: ['dvojice', 'B-X', 'A-Z', 'C-Y', 'B-Z', 'C-X', 'A-Y'],
+  SNTL_DVOJICE_SEDMA:
+    ['A-X', 'B-Y', 'C-Z', 'B-X', 'A-Z', 'C-Y', 'dvojice', 'B-Z', 'C-X', 'A-Y'],
+  SNTL_PRVA_DVOJICE_CETRTA: ['B-X', 'A-Z', 'C-Y', 'dvojice', 'B-Z', 'C-X', 'A-Y'],
+  SNTL_BREZ_DVOJIC: ['A-X', 'B-Y', 'C-Z', 'B-X', 'A-Z', 'C-Y', 'B-Z', 'C-X', 'A-Y'],
+  OLIMPIJSKI: ['A-X', 'B-Y', 'C-Z', 'A-Y', 'B-X'],
   CORBILLON: ['A-X', 'B-Y', 'dvojice', 'A-Y', 'B-X'],
   SAVINJA: ['dvojice', 'A-X', 'B-Y', 'A-Y', 'B-X'],
 }
@@ -595,12 +620,22 @@ export interface LigaDto {
   prepovedDvojneRegistracije: boolean
   stejeVElo: boolean
   predlogaListka: PredlogaLige
+  /* Seme terminov: kdaj se igra prvo kolo (ISO datum-čas; ura velja za celo
+     kolo, 00:00 = ura ni določena) in na koliko dni sledijo naslednja. Iz njiju
+     zaledje ob žrebu izračuna predvidene začetke srečanj. */
+  zacetekPrvegaKola: string | null
+  razmikDni: number | null
   idVisjaLiga: number | null
   visjaLigaIme: string | null
   stNapreduje: number
   stIzpade: number
   status: StatusTekmovanja
   steviloEkip: number
+  /* Napredek lige: koliko kol ima razpored in koliko jih je odigranih (kolo je
+     odigrano, ko je končano vsako njegovo srečanje). Vrstica lige na telefonu
+     iz tega izpiše »7. od 18 kol« in palico; brez razporeda sta oba 0. */
+  odigranihKol: number
+  steviloKol: number
   /* Lastnistvo (glej TurnirDto). */
   idLastnik: number | null
   idKlubLastnik: number | null
@@ -622,6 +657,18 @@ export interface LigaVnos {
   prepovedDvojneRegistracije: boolean
   stejeVElo: boolean
   predlogaListka: PredlogaLige
+  /* Termini se vpišejo že ob ustvarjanju lige, ko ekip (in s tem števila kol)
+     še ni — zato seme in ne seznam datumov. null = terminov ni. */
+  zacetekPrvegaKola: string | null
+  razmikDni: number | null
+}
+
+/* Ročni termini kol. Ločeno od LigaVnos iz istega razloga kot PrehodiVnos:
+   pravila se po žrebu zaklenejo, kolo pa se sme prestaviti tudi sredi sezone.
+   Termin je last kola — vsa srečanja kola dobijo isti začetek; kolo, ki ga
+   seznam ne našteje, ostane nedotaknjeno, kolo z zacetek = null termin izgubi. */
+export interface TerminiVnos {
+  kola: { kolo: number; zacetek: string | null }[]
 }
 
 /* Mesto lige v piramidi. Ločeno od LigaVnos, ker so pravila po generiranju
@@ -634,18 +681,21 @@ export interface PrehodiVnos {
   stIzpade: number
 }
 
+/* Klub je prazen pri »prosti« ekipi — zasedbi, ki v registru klubov nima
+   zapisa in nastopa samo v tej ligi. */
 export interface EkipaDto {
   id: number
-  idKlub: number
-  klub: string
+  idKlub: number | null
+  klub: string | null
   zaporedna: number
   ime: string | null
   prikazanoIme: string
   steviloKadra: number
 }
 
+/* idKlub = null pomeni prosto ekipo; takrat je ime obvezno. */
 export interface EkipaVnos {
-  idKlub: number
+  idKlub: number | null
   zaporedna: number | null
   ime: string | null
 }
@@ -671,7 +721,8 @@ export interface LestvicaEkipeDto {
   mesto: number
   idEkipa: number
   ekipa: string
-  klub: string
+  /* Prazen pri prosti ekipi (brez kluba). */
+  klub: string | null
   odigrane: number
   zmage: number
   neodlocene: number
@@ -684,6 +735,40 @@ export interface LestvicaEkipeDto {
   razlikaNizi: number
   tocke: number
   cona: 'NAPREDUJE' | 'IZPADE' | null
+}
+
+/* Vrstica lestvice posameznikov ZNOTRAJ lige. Ratinga ni: ta teče čez vsa
+   tekmovanja, tu pa štejejo samo posamične tekme te lige. Merilo so zmage,
+   ob izenačenju uspešnost in razlika nizov (glej LestvicaLigeStoritev). */
+export interface LestvicaIgralcaLigeDto {
+  mesto: number
+  idIgralec: number
+  polnoIme: string
+  /* Ekipa, za katero je v tej ligi največkrat nastopil. */
+  ekipa: string | null
+  odigrane: number
+  zmage: number
+  porazi: number
+  odstotek: number
+  dobljeniNizi: number
+  prejetiNizi: number
+}
+
+/* Vrstica lestvice dvojic v ligi. Par je ena tekmovalna enota - ista dva
+   igralca sta ista dvojica ne glede na stran; imeni sta urejeni abecedno. */
+export interface LestvicaDvojiceDto {
+  mesto: number
+  idPrvi: number
+  prvi: string
+  idDrugi: number
+  drugi: string
+  ekipa: string | null
+  odigrane: number
+  zmage: number
+  porazi: number
+  odstotek: number
+  dobljeniNizi: number
+  prejetiNizi: number
 }
 
 export interface SrecanjeDto {

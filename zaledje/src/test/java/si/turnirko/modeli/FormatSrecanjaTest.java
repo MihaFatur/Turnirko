@@ -45,6 +45,112 @@ class FormatSrecanjaTest {
         assertEquals(2, FormatSrecanja.SNTL.stVDvojici());
     }
 
+    /* 1. SNTL moski: dvojice + samo 6 posamicnih. Vsak igralec odigra DVA od
+       treh nasprotnikov - to je bistvena razlika proti SNTL in edino, kar
+       preprecuje, da bi ligo vodili po napacnem razporedu. */
+    @Test
+    void sntlPrvaImaSestPosamicnihInVsakIgralecDvaNasprotnika() {
+        List<FormatSrecanja.MestoTekme> r = FormatSrecanja.SNTL_PRVA.razpored();
+        assertEquals(7, r.size(), "SNTL_PRVA: dvojice + 6 posamicnih");
+
+        assertEquals(TipTekmeSrecanja.DVOJICE, r.get(0).tip());
+        List<String> dejansko = r.stream().map(FormatSrecanja.MestoTekme::oznaka).toList();
+        assertEquals(List.of("dvojice", "B-X", "A-Z", "C-Y", "B-Z", "C-X", "A-Y"), dejansko);
+
+        // vsako mesto (domace in gostujoce) nastopi natanko dvakrat
+        for (String mesto : List.of("A", "B", "C", "X", "Y", "Z")) {
+            long nastopov = r.stream()
+                    .filter(m -> m.tip() == TipTekmeSrecanja.POSAMICNA)
+                    .filter(m -> mesto.equals(m.domaci()) || mesto.equals(m.gost()))
+                    .count();
+            assertEquals(2, nastopov, "mesto " + mesto + " odigra dve posamicni tekmi");
+        }
+        assertEquals(3, FormatSrecanja.SNTL_PRVA.getStIgralcev());
+        assertTrue(FormatSrecanja.SNTL_PRVA.imaDvojice());
+        assertEquals(4, FormatSrecanja.SNTL_PRVA.stTekem() / 2 + 1, "srecanje se konca pri 4 zmagah");
+    }
+
+    /* 1. SNTL zenske: isti razpored kot SNTL, samo brez dvojic. */
+    @Test
+    void sntlBrezDvojicJeSntlBrezPrveTekme() {
+        List<FormatSrecanja.MestoTekme> r = FormatSrecanja.SNTL_BREZ_DVOJIC.razpored();
+        assertEquals(9, r.size(), "SNTL_BREZ_DVOJIC: samo 9 posamicnih");
+
+        assertTrue(r.stream().noneMatch(m -> m.tip() == TipTekmeSrecanja.DVOJICE),
+                "v tem formatu dvojic sploh ni");
+        assertTrue(!FormatSrecanja.SNTL_BREZ_DVOJIC.imaDvojice());
+        assertEquals(0, FormatSrecanja.SNTL_BREZ_DVOJIC.stVDvojici());
+
+        // enak vrstni red kot SNTL, le brez uvodnih dvojic
+        List<String> brezDvojic = FormatSrecanja.SNTL.razpored().stream()
+                .filter(m -> m.tip() == TipTekmeSrecanja.POSAMICNA)
+                .map(FormatSrecanja.MestoTekme::oznaka).toList();
+        assertEquals(brezDvojic, r.stream().map(FormatSrecanja.MestoTekme::oznaka).toList());
+    }
+
+    /* Olimpijski sistem (ekipni DP mladincev in kadetov): trije igralci, brez
+       dvojic, najvec pet tekem. Ni skrajsava SNTL_BREZ_DVOJIC - ze cetrta
+       tekma je druga (A-Y namesto B-X) in prav to razlikovanje je edino, po
+       cemer uvoz loci format lige iz odigranega razporeda. */
+    @Test
+    void olimpijskiJePetTekemBrezDvojic() {
+        List<FormatSrecanja.MestoTekme> r = FormatSrecanja.OLIMPIJSKI.razpored();
+        assertEquals(List.of("A-X", "B-Y", "C-Z", "A-Y", "B-X"),
+                r.stream().map(FormatSrecanja.MestoTekme::oznaka).toList());
+
+        assertEquals(3, FormatSrecanja.OLIMPIJSKI.getStIgralcev());
+        assertTrue(!FormatSrecanja.OLIMPIJSKI.imaDvojice());
+        assertEquals(0, FormatSrecanja.OLIMPIJSKI.stVDvojici());
+        assertEquals(3, FormatSrecanja.OLIMPIJSKI.stTekem() / 2 + 1, "srecanje se konca pri 3 zmagah");
+
+        // C in Z odigrata po eno tekmo, ostali po dve - zato tudi ni razpored
+        // "vsak z vsakim"
+        assertEquals(1, r.stream().filter(m -> "C".equals(m.domaci())).count());
+        assertEquals(1, r.stream().filter(m -> "Z".equals(m.gost())).count());
+
+        // razlika proti SNTL_BREZ_DVOJIC je ze pri cetrti tekmi
+        List<String> sntl = FormatSrecanja.SNTL_BREZ_DVOJIC.razpored().stream()
+                .map(FormatSrecanja.MestoTekme::oznaka).toList();
+        assertEquals(sntl.subList(0, 3),
+                r.stream().map(FormatSrecanja.MestoTekme::oznaka).toList().subList(0, 3));
+        assertTrue(!sntl.get(3).equals(r.get(3).oznaka()),
+                "cetrta tekma loci olimpijski sistem od SNTL brez dvojic");
+    }
+
+    /* Sezona 2022/23: isti posamicni razpored kot SNTL oz. SNTL_PRVA, le da
+       dvojice ne odprejo srecanja. Tega ni mogoce zapisati kot skrajsavo
+       obstojecih formatov, zato sta svoja. */
+    @Test
+    void sntlSezone2022ImaDvojiceZnotrajRazporeda() {
+        List<String> desetTekem = FormatSrecanja.SNTL_DVOJICE_SEDMA.razpored().stream()
+                .map(FormatSrecanja.MestoTekme::oznaka).toList();
+        assertEquals(List.of("A-X", "B-Y", "C-Z", "B-X", "A-Z", "C-Y", "dvojice", "B-Z", "C-X", "A-Y"),
+                desetTekem);
+        assertEquals(TipTekmeSrecanja.DVOJICE,
+                FormatSrecanja.SNTL_DVOJICE_SEDMA.razpored().get(6).tip());
+
+        List<String> sedemTekem = FormatSrecanja.SNTL_PRVA_DVOJICE_CETRTA.razpored().stream()
+                .map(FormatSrecanja.MestoTekme::oznaka).toList();
+        assertEquals(List.of("B-X", "A-Z", "C-Y", "dvojice", "B-Z", "C-X", "A-Y"), sedemTekem);
+
+        // posamicne tekme so iste in v istem vrstnem redu kot pri SNTL oz.
+        // SNTL_PRVA - premaknejo se samo dvojice
+        for (FormatSrecanja[] par : new FormatSrecanja[][] {
+                { FormatSrecanja.SNTL, FormatSrecanja.SNTL_DVOJICE_SEDMA },
+                { FormatSrecanja.SNTL_PRVA, FormatSrecanja.SNTL_PRVA_DVOJICE_CETRTA } }) {
+            assertEquals(brezDvojic(par[0]), brezDvojic(par[1]),
+                    par[1] + " ima iste posamicne tekme kot " + par[0]);
+            assertEquals(par[0].stTekem(), par[1].stTekem());
+            assertTrue(par[1].imaDvojice() && par[1].izbiraDvojice());
+        }
+    }
+
+    private static List<String> brezDvojic(FormatSrecanja format) {
+        return format.razpored().stream()
+                .filter(m -> m.tip() == TipTekmeSrecanja.POSAMICNA)
+                .map(FormatSrecanja.MestoTekme::oznaka).toList();
+    }
+
     @Test
     void corbillonImaDvojiceNaSredini() {
         List<FormatSrecanja.MestoTekme> r = FormatSrecanja.CORBILLON.razpored();

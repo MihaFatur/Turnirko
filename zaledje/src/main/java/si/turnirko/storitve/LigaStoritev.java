@@ -7,6 +7,7 @@
    ze generiran razpored ne razveljavi. */
 package si.turnirko.storitve;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,10 +25,14 @@ import si.turnirko.dto.EkipaDto;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
+import si.turnirko.dto.LestvicaDvojiceDto;
 import si.turnirko.dto.LestvicaEkipeDto;
+import si.turnirko.dto.LestvicaIgralcaLigeDto;
 import si.turnirko.dto.LigaDto;
 import si.turnirko.dto.LigaVnos;
 import si.turnirko.dto.PrehodiVnos;
+import si.turnirko.dto.SrecanjeDto;
+import si.turnirko.dto.TerminiVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
@@ -86,8 +92,13 @@ public class LigaStoritev {
 
     @Transactional(readOnly = true)
     public List<LigaDto> vse() {
+        Map<Long, Kola> kola = kolaPoLigah();
         return ligaRepozitorij.najdiVse().stream()
-                .map(l -> LigaDto.iz(l, (int) ekipaRepozitorij.countByLigaId(l.getId())))
+                .map(l -> {
+                    Kola k = kola.getOrDefault(l.getId(), Kola.PRAZNA);
+                    return LigaDto.iz(l, (int) ekipaRepozitorij.countByLigaId(l.getId()),
+                            k.odigranih(), k.vseh());
+                })
                 .toList();
     }
 
@@ -95,7 +106,37 @@ public class LigaStoritev {
     public LigaDto najdi(Long id) {
         Liga l = ligaRepozitorij.najdiZVisjo(id)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
-        return LigaDto.iz(l, (int) ekipaRepozitorij.countByLigaId(id));
+        Kola k = presteji(srecanjeRepozitorij.stanjeKol(id), 1);
+        return LigaDto.iz(l, (int) ekipaRepozitorij.countByLigaId(id), k.odigranih(), k.vseh());
+    }
+
+    /* Koliko kol ima liga in koliko jih je odigranih. */
+    private record Kola(int odigranih, int vseh) {
+        static final Kola PRAZNA = new Kola(0, 0);
+    }
+
+    private Map<Long, Kola> kolaPoLigah() {
+        Map<Long, List<Object[]>> poLigah = new HashMap<>();
+        for (Object[] r : srecanjeRepozitorij.stanjeKolPoLigah()) {
+            poLigah.computeIfAbsent(((Number) r[0]).longValue(), k -> new ArrayList<>()).add(r);
+        }
+        Map<Long, Kola> rezultat = new HashMap<>();
+        poLigah.forEach((idLiga, vrstice) -> rezultat.put(idLiga, presteji(vrstice, 2)));
+        return rezultat;
+    }
+
+    /* Vrstice so [.., srecanj, koncanih]; "odmik" pove, kje se v vrstici
+       zacneta stevili (skupinska poizvedba cez vse lige ima spredaj se id). */
+    private static Kola presteji(List<Object[]> vrstice, int odmik) {
+        int odigranih = 0;
+        for (Object[] r : vrstice) {
+            long srecanj = ((Number) r[odmik]).longValue();
+            long koncanih = ((Number) r[odmik + 1]).longValue();
+            if (srecanj > 0 && srecanj == koncanih) {
+                odigranih++;
+            }
+        }
+        return new Kola(odigranih, vrstice.size());
     }
 
     @Transactional
@@ -179,7 +220,52 @@ public class LigaStoritev {
             preveriBrezKroga(s);
         }
         ligaRepozitorij.saveAll(spremenjene);
-        return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id));
+        /* Prehode je mogoce urejati tudi sredi sezone, zato tu kol ne smemo
+           zanemariti - odgovor je isti pogled kot pri najdi(). */
+        Kola k = presteji(srecanjeRepozitorij.stanjeKol(id), 1);
+        return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id), k.odigranih(), k.vseh());
+    }
+
+    /* Rocni termini kol: kolo je dan, zato dobijo vsa njegova srecanja isti
+       zacetek. Kot prehodi in za razliko od pravil to NI zaklenjeno s
+       stanjem lige - kolo se prestavi tudi sredi sezone.
+
+       Seme (zacetek prvega kola, razmik) ostane, kakrsno je bilo: opisuje
+       nacrt ob nastanku lige in je privzetek za polnjenje v vmesniku, ne pa
+       zapis o tem, kdaj se kolo dejansko igra. */
+    @Transactional
+    public List<SrecanjeDto> nastaviTermine(Long id, TerminiVnos v) {
+        lastnistvo.preveriLigaPoId(id);
+        if (!ligaRepozitorij.existsById(id)) {
+            throw new NiNajdenoIzjema("Liga z id " + id + " ne obstaja.");
+        }
+        Map<Integer, LocalDateTime> poKolih = new HashMap<>();
+        Set<Integer> nasteta = new HashSet<>();
+        for (TerminiVnos.TerminKola t : v.kola()) {
+            if (!nasteta.add(t.kolo())) {
+                throw new NeveljavenVnosIzjema("Kolo " + t.kolo() + " je v seznamu dvakrat.");
+            }
+            // null je veljaven vnos (kolo termin izgubi), zato loceno od "kolo ni nasteto"
+            poKolih.put(t.kolo(), t.zacetek());
+        }
+
+        List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(id);
+        if (srecanja.isEmpty()) {
+            throw new DomenskaIzjema("Termine je mogoce vpisati sele, ko je razpored generiran.");
+        }
+        Set<Integer> obstojeca = srecanja.stream().map(Srecanje::getKolo).collect(Collectors.toSet());
+        for (Integer kolo : nasteta) {
+            if (!obstojeca.contains(kolo)) {
+                throw new NeveljavenVnosIzjema("Liga nima " + kolo + ". kola.");
+            }
+        }
+        for (Srecanje s : srecanja) {
+            if (poKolih.containsKey(s.getKolo())) {
+                s.setPredvidenZacetek(poKolih.get(s.getKolo()));
+            }
+        }
+        srecanjeRepozitorij.saveAll(srecanja);
+        return srecanja.stream().map(SrecanjeDto::iz).toList();
     }
 
     @Transactional
@@ -210,24 +296,52 @@ public class LigaStoritev {
                 .toList();
     }
 
+    /* Ekipo je mogoce prijaviti na dva nacina:
+
+       KLUBSKA (idKlub izpolnjen) - nastop kluba iz registra; zaporedna jo loci
+       od drugih ekip istega kluba, ime je neobvezno.
+
+       PROSTA (idKlub prazen) - zasedba, ki kluba nima in ga ne bo dobila
+       (rekreacijske, medpodjetniske lige). Zivi samo v tej ligi, zato registra
+       klubov ne zasuje z enkratnimi zapisi; poimenuje jo lastno ime, ki je
+       zato obvezno. Kader ostane skupen register igralcev - prosta je ekipa,
+       ne igralci. */
     @Transactional
     public EkipaDto dodajEkipo(Long idLiga, EkipaVnos v) {
         lastnistvo.preveriLigaPoId(idLiga);
         Liga liga = ligaRepozitorij.findById(idLiga)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja."));
         preveriVPripravi(liga);
-        Klub klub = klubRepozitorij.findById(v.idKlub())
-                .orElseThrow(() -> new NiNajdenoIzjema("Klub z id " + v.idKlub() + " ne obstaja."));
 
-        int zaporedna = v.zaporedna() != null ? v.zaporedna() : naslednjaZaporedna(idLiga, klub.getId());
-        if (zaporedna < 1) {
-            throw new NeveljavenVnosIzjema("Zaporedna stevilka ekipe mora biti vsaj 1.");
+        String ime = v.ime() != null && !v.ime().isBlank() ? v.ime().trim() : null;
+        List<Ekipa> obstojece = ekipaRepozitorij.najdiZaLigo(idLiga);
+
+        Klub klub = null;
+        int zaporedna = 1;
+        if (v.idKlub() != null) {
+            klub = klubRepozitorij.findById(v.idKlub())
+                    .orElseThrow(() -> new NiNajdenoIzjema("Klub z id " + v.idKlub() + " ne obstaja."));
+            zaporedna = v.zaporedna() != null ? v.zaporedna() : naslednjaZaporedna(obstojece, klub.getId());
+            if (zaporedna < 1) {
+                throw new NeveljavenVnosIzjema("Zaporedna stevilka ekipe mora biti vsaj 1.");
+            }
+            if (ekipaRepozitorij.existsByLigaIdAndKlubIdAndZaporedna(idLiga, klub.getId(), zaporedna)) {
+                throw new DomenskaIzjema("Ekipa " + klub.getIme() + " " + zaporedna + " v tej ligi ze obstaja.");
+            }
+        } else if (ime == null) {
+            throw new NeveljavenVnosIzjema("Ekipa brez kluba mora imeti ime.");
         }
-        if (ekipaRepozitorij.existsByLigaIdAndKlubIdAndZaporedna(idLiga, klub.getId(), zaporedna)) {
-            throw new DomenskaIzjema("Ekipa " + klub.getIme() + " " + zaporedna + " v tej ligi ze obstaja.");
+
+        /* V razporedu, na lestvici in v zapisniku se ekipi locita samo po
+           prikazanem imenu - dve enaki bi bili gledalcu nelocljivi. Zato se
+           preveri prikazano ime in ne le (klub, zaporedna): odslej ima lastno
+           ime lahko tudi klubska ekipa in trk je mogoc cez oba tipa. */
+        String prikazano = ime != null ? ime : klub.getIme() + " " + zaporedna;
+        if (obstojece.stream().anyMatch(e -> e.prikazanoIme().equalsIgnoreCase(prikazano))) {
+            throw new DomenskaIzjema("Ekipa \"" + prikazano + "\" v tej ligi ze obstaja.");
         }
-        Ekipa ekipa = ekipaRepozitorij.save(new Ekipa(liga, klub, zaporedna,
-                v.ime() != null && !v.ime().isBlank() ? v.ime().trim() : null));
+
+        Ekipa ekipa = ekipaRepozitorij.save(new Ekipa(liga, klub, zaporedna, ime));
         // za DTO potrebujemo klub (nalozen); ponovno preberi z join fetch
         return EkipaDto.iz(ekipaRepozitorij.najdiZKlubomInLigo(ekipa.getId()).orElseThrow(), 0);
     }
@@ -318,6 +432,11 @@ public class LigaStoritev {
         for (RazporedStoritev.Par par : razporedStoritev.razpored(ekipe.size(), liga.isDvokrozno())) {
             srecanja.add(new Srecanje(liga, par.kolo(), ekipe.get(par.domaci()), ekipe.get(par.gost())));
         }
+        /* Sele tu je znano, koliko kol liga ima, zato se datumi iz semena
+           (zacetek prvega kola + razmik) izracunajo ob zrebu in ne ob vpisu. */
+        for (Srecanje s : srecanja) {
+            s.setPredvidenZacetek(terminKola(liga, s.getKolo()));
+        }
         srecanjeRepozitorij.saveAll(srecanja);
 
         liga.setStatus(StatusTekmovanja.V_TEKU);
@@ -327,6 +446,18 @@ public class LigaStoritev {
     @Transactional(readOnly = true)
     public List<LestvicaEkipeDto> lestvica(Long idLiga) {
         return lestvicaLigeStoritev.lestvica(idLiga);
+    }
+
+    /* Lestvici posameznikov in dvojic te lige - obe stejeta samo tekme te lige
+       (glej LestvicaLigeStoritev). */
+    @Transactional(readOnly = true)
+    public List<LestvicaIgralcaLigeDto> lestvicaIgralcev(Long idLiga) {
+        return lestvicaLigeStoritev.lestvicaIgralcev(idLiga);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LestvicaDvojiceDto> lestvicaDvojic(Long idLiga) {
+        return lestvicaLigeStoritev.lestvicaDvojic(idLiga);
     }
 
     // ---------- Pomozno ----------
@@ -344,6 +475,9 @@ public class LigaStoritev {
                         + v.formatSrecanja().stTekem() + ").");
             }
         }
+        if (v.razmikDni() != null && (v.razmikDni() < 1 || v.razmikDni() > 365)) {
+            throw new NeveljavenVnosIzjema("Razmik med koli mora biti med 1 in 365 dnevi.");
+        }
         liga.setIme(v.ime().trim());
         liga.setSezona(v.sezona() != null && !v.sezona().isBlank() ? v.sezona().trim() : null);
         liga.setSpolKategorija(v.spolKategorija());
@@ -358,6 +492,25 @@ public class LigaStoritev {
         liga.setPrepovedDvojneRegistracije(Boolean.TRUE.equals(v.prepovedDvojneRegistracije()));
         liga.setStejeVElo(v.stejeVElo() == null || v.stejeVElo());
         liga.setPredlogaListka(v.predlogaListka() != null ? v.predlogaListka() : PredlogaLige.SNTL_23);
+        liga.setZacetekPrvegaKola(v.zacetekPrvegaKola());
+        /* Razmik brez datuma prvega kola ne pomeni nicesar, datum brez razmika
+           pa je najpogostejsi primer (tedenska liga) - zato se privzame teden
+           in ne zavrne vnos. */
+        liga.setRazmikDni(v.zacetekPrvegaKola() == null
+                ? null
+                : (v.razmikDni() != null ? v.razmikDni() : PRIVZET_RAZMIK_DNI));
+    }
+
+    /* Privzeti razmik med koli: liga se praviloma igra tedensko. */
+    public static final int PRIVZET_RAZMIK_DNI = 7;
+
+    /* Predviden zacetek n-tega kola po semenu lige; brez semena termina ni. */
+    private static LocalDateTime terminKola(Liga liga, int kolo) {
+        if (liga.getZacetekPrvegaKola() == null) {
+            return null;
+        }
+        int razmik = liga.getRazmikDni() != null ? liga.getRazmikDni() : PRIVZET_RAZMIK_DNI;
+        return liga.getZacetekPrvegaKola().plusDays((long) (kolo - 1) * razmik);
     }
 
     /* Povezave "visja liga" morajo tvoriti drevo. Ce se pri hoji navzgor
@@ -380,9 +533,11 @@ public class LigaStoritev {
         }
     }
 
-    private int naslednjaZaporedna(Long idLiga, Long idKlub) {
-        int najvecja = ekipaRepozitorij.najdiZaLigo(idLiga).stream()
-                .filter(e -> e.getKlub().getId().equals(idKlub))
+    /* Prve proste zaporedne stevilke kluba med ze prijavljenimi ekipami lige.
+       Proste ekipe se ne stejejo - te kluba nimajo. */
+    private static int naslednjaZaporedna(List<Ekipa> obstojece, Long idKlub) {
+        int najvecja = obstojece.stream()
+                .filter(e -> !e.jeProsta() && e.getKlub().getId().equals(idKlub))
                 .mapToInt(Ekipa::getZaporedna)
                 .max().orElse(0);
         return najvecja + 1;

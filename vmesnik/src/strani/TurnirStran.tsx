@@ -1,34 +1,52 @@
 /* Stran enega turnirja: osnovni podatki, seznam dogodkov (tekmovanj)
    in dodajanje novega dogodka. Turnir se lahko zakljuci sele, ko so
-   zakljuceni vsi njegovi dogodki - to pravilo preverja zaledje. */
+   zakljuceni vsi njegovi dogodki - to pravilo preverja zaledje.
+
+   Na telefonu je glava kompaktna (naslov 32 px namesto 80), stiri vrstice
+   kolofona so mreza 2 x 2, dejanja urejevalca pa so v lepljivi glavi: gost in
+   igralec (uporabnik st. 1) pridemo po kategorije, ne po gumbe. Pogoj za
+   zakljucek turnirja je tam onemogocena postavka s pojasnilom in ne posebna
+   vrstica v verzalkah pred vsebino. */
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { turnirjiApi } from '../api/zahteve'
 import type { DogodekDto, DogodekVnos, SistemTekmovanja, SpolKategorija } from '../api/tipi'
-import { OZNAKE_SISTEM, OZNAKE_SISTEM_KRATKO, OZNAKE_SPOL_KATEGORIJA } from '../api/tipi'
+import {
+  OZNAKE_SISTEM,
+  OZNAKE_SISTEM_KRATKO,
+  OZNAKE_SISTEM_MOBI,
+  OZNAKE_SPOL_KATEGORIJA,
+} from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { GlavaDejanja, useNazaj } from '../komponente/GlavaTelefona'
+import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
-import { Napredek } from '../komponente/Napredek'
+import { Napredek, PalicaMobi } from '../komponente/Napredek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { ZnackaStatusa } from '../komponente/Znacka'
+import { StatusMobi, ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import {
   oblikujObdobje,
+  oblikujObdobjeKratko,
   sklonNizov,
+  sklonPrijav,
   sklonPrijavljenih,
   sklonSkupin,
   sklonTekmovanj,
 } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
+import { useTelefon } from '../pomozno/telefon'
 
 export function TurnirStran() {
   const { id } = useParams()
   const idTurnirja = Number(id)
   const odjemalec = useQueryClient()
   const { smemUrejati } = useAvtentikacija()
+  const jeTelefon = useTelefon()
+  useNazaj('/turnirji', 'Turnirji')
 
   const turnir = useQuery({
     queryKey: ['turnir', idTurnirja],
@@ -66,6 +84,141 @@ export function TurnirStran() {
     (dogodki.data?.length ?? 0) > 0 &&
     dogodki.data!.every((dogodek) => dogodek.status === 'ZAKLJUCEN')
 
+  const seUreja = smem && podatki.status !== 'ZAKLJUCEN'
+  const kraj = [podatki.kraj?.ime, podatki.dvorana].filter(Boolean).join(', ')
+
+  /* Okni (nov dogodek, potrditev zakljucka) sta na obeh sirinah isti. */
+  const okna = (
+    <>
+      {potrjujemZakljucek && (
+        <PotrditvenoOkno
+          naslov="Zaključek turnirja"
+          sporocilo="Zaključenega turnirja ni mogoče znova odpreti. Zaključim turnir?"
+          besedaPotrditve="Zaključi turnir"
+          onPotrdi={() => zakljucevanje.mutate()}
+          onZapri={() => nastaviPotrjujemZakljucek(false)}
+        />
+      )}
+
+      {odprtObrazec && (
+        <NovDogodekOkno
+          idTurnirja={idTurnirja}
+          onZapri={() => nastaviOdprtObrazec(false)}
+          onShranjeno={() =>
+            odjemalec.invalidateQueries({ queryKey: ['turnir', idTurnirja, 'dogodki'] })
+          }
+        />
+      )}
+    </>
+  )
+
+  if (jeTelefon) {
+    return (
+      <section className="stran-mobi--tesna">
+        <GlavaDejanja>
+          {seUreja && (
+            <button
+              type="button"
+              className="glava-telefon__gumb"
+              onClick={() => nastaviOdprtObrazec(true)}
+            >
+              + Dogodek
+            </button>
+          )}
+          {seUreja && (
+            <MeniDejanj naslov="Dejanja turnirja">
+              {(zapri) => (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="uporabnik-meni__postavka"
+                  disabled={zakljucevanje.isPending || !vsiDogodkiZakljuceni}
+                  onClick={() => {
+                    zapri()
+                    nastaviPotrjujemZakljucek(true)
+                  }}
+                >
+                  Zaključi turnir
+                  {!vsiDogodkiZakljuceni && (
+                    <span className="uporabnik-meni__pojasnilo">
+                      Mogoče šele, ko so zaključeni vsi dogodki
+                    </span>
+                  )}
+                </button>
+              )}
+            </MeniDejanj>
+          )}
+        </GlavaDejanja>
+
+        <div>
+          <div className="naslov-mobi__vrsta">
+            <span className="naslov-mobi__nad">Turnir</span>
+            <ZnackaVNaslovu status={podatki.status} />
+          </div>
+          <h1 className="naslov-mobi naslov-mobi--podstran">{podatki.ime}</h1>
+          <p className="naslov-mobi__meta">
+            {[oblikujObdobjeKratko(podatki.datumZacetka, podatki.datumKonca, true), kraj]
+              .filter(Boolean)
+              .join(' · ') || 'kraj in datum še nista določena'}
+          </p>
+          {podatki.opombe && <p className="opomba-bloka">{podatki.opombe}</p>}
+        </div>
+
+        {/* Kolofon 2 x 2: stiri vrstice oznaka <-> vrednost so na telefonu
+            zasedle pol zaslona, mreza pove isto v polovici visine. */}
+        <div className="kolofon kolofon--mreza">
+          <div className="kolofon__vrstica">
+            <span className="kolofon__oznaka">Prijavljenih</span>
+            <span className="kolofon__vrednost">{podatki.prijavljenihSkupaj}</span>
+          </div>
+          <div className="kolofon__vrstica">
+            <span className="kolofon__oznaka">Odigranih</span>
+            <span className="kolofon__vrednost">
+              {podatki.odigranihTekem} / {podatki.vsehTekem}
+            </span>
+          </div>
+          <div className="kolofon__vrstica">
+            <span className="kolofon__oznaka">Dogodki</span>
+            <span className="kolofon__vrednost">{podatki.steviloDogodkov}</span>
+          </div>
+          <div className="kolofon__vrstica">
+            <span className="kolofon__oznaka">Šteje v ELO</span>
+            <span className="kolofon__vrednost">{podatki.stejeVElo ? 'da' : 'ne'}</span>
+          </div>
+        </div>
+
+        <SporociloNapake napaka={zakljucevanje.error} />
+
+        <div>
+          <div className="naslovna-mobi">
+            <h2>Kategorije</h2>
+            {dogodki.data && dogodki.data.length > 0 && (
+              <span className="naslovna-mobi__stevec">{dogodki.data.length}</span>
+            )}
+          </div>
+
+          <NapakaPoizvedbe poizvedba={dogodki} kaj="dogodkov" />
+          {dogodki.data && dogodki.data.length === 0 && (
+            <p className="obvestilo">
+              Turnir še nima dogodkov. Dogodek je eno tekmovanje — npr. »Člani« ali
+              »Članice do 21 let«. Igralci se prijavljajo na posamezen dogodek.
+            </p>
+          )}
+
+          {dogodki.data && dogodki.data.length > 0 && (
+            <div className="seznam-mobi seznam-mobi--odmik">
+              {dogodki.data.map((dogodek) => (
+                <VrsticaKategorije key={dogodek.id} dogodek={dogodek} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {okna}
+      </section>
+    )
+  }
+
   return (
     <section>
       <Link to="/turnirji" className="povezava-nazaj">← Vsi turnirji</Link>
@@ -77,10 +230,7 @@ export function TurnirStran() {
             <span className="naslov-strani__glavni">{podatki.ime}</span>
           </h1>
           <p className="uvod">
-            {[
-              [podatki.kraj?.ime, podatki.dvorana].filter(Boolean).join(', '),
-              oblikujObdobje(podatki.datumZacetka, podatki.datumKonca),
-            ]
+            {[kraj, oblikujObdobje(podatki.datumZacetka, podatki.datumKonca)]
               .filter(Boolean)
               .join(' · ') || 'kraj in datum še nista določena'}
           </p>
@@ -205,27 +355,38 @@ export function TurnirStran() {
         )}
       </div>
 
-      {potrjujemZakljucek && (
-        <PotrditvenoOkno
-          naslov="Zaključek turnirja"
-          sporocilo="Zaključenega turnirja ni mogoče znova odpreti. Zaključim turnir?"
-          besedaPotrditve="Zaključi turnir"
-          onPotrdi={() => zakljucevanje.mutate()}
-          onZapri={() => nastaviPotrjujemZakljucek(false)}
-        />
-      )}
-
-      {/* Sklanjanje po številu; vzorec je enak kot pri ekipah na LigeStran. */}
-      {odprtObrazec && (
-        <NovDogodekOkno
-          idTurnirja={idTurnirja}
-          onZapri={() => nastaviOdprtObrazec(false)}
-          onShranjeno={() =>
-            odjemalec.invalidateQueries({ queryKey: ['turnir', idTurnirja, 'dogodki'] })
-          }
-        />
-      )}
+      {okna}
     </section>
+  )
+}
+
+/* Vrstica kategorije na telefonu (~72 px): ime in ena mono vrstica
+   "sistem · prijave · odigranost". Namig "Dogodek je eno tekmovanje ..." tu
+   ne stoji - pri petih kategorijah bi zasedel prostor ene od njih; na
+   namizju ostane. */
+function VrsticaKategorije({ dogodek }: { dogodek: DogodekDto }) {
+  const meta = [
+    OZNAKE_SISTEM_MOBI[dogodek.sistemTekmovanja],
+    opisPrijavKratko(dogodek),
+    dogodek.vsehTekem > 0
+      ? `${dogodek.odigranihTekem}/${dogodek.vsehTekem}`
+      : 'žreb še ni izveden',
+  ].join(' · ')
+
+  return (
+    <Link
+      to={`/dogodki/${dogodek.id}`}
+      className={`vrstica-mobi vrstica-mobi--brez-datuma vrstica-mobi--${dogodek.status}`}
+    >
+      <span className="vrstica-mobi__telo">
+        <span className="vrstica-mobi__ime">{dogodek.ime}</span>
+        <span className="vrstica-mobi__meta">{meta}</span>
+        {dogodek.status === 'V_TEKU' && (
+          <PalicaMobi odigranih={dogodek.odigranihTekem} vseh={dogodek.vsehTekem} />
+        )}
+      </span>
+      <StatusMobi status={dogodek.status} />
+    </Link>
   )
 }
 
@@ -236,6 +397,14 @@ function opisPrijav(dogodek: DogodekDto): string {
     return `${dogodek.steviloSkupin} ${sklonSkupin(dogodek.steviloSkupin)} po ${dogodek.velikostSkupine}`
   }
   return `${dogodek.steviloPrijav} ${sklonPrijavljenih(dogodek.steviloPrijav)}`
+}
+
+/* Isto v mono vrstici telefona: "12 prijav" namesto "12 prijavljenih". */
+function opisPrijavKratko(dogodek: DogodekDto): string {
+  if (dogodek.steviloSkupin && dogodek.velikostSkupine) {
+    return `${dogodek.steviloSkupin} ${sklonSkupin(dogodek.steviloSkupin)} po ${dogodek.velikostSkupine}`
+  }
+  return `${dogodek.steviloPrijav} ${sklonPrijav(dogodek.steviloPrijav)}`
 }
 
 function NovDogodekOkno({

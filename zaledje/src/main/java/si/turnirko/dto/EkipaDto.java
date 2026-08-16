@@ -1,4 +1,6 @@
-/* Ekipa v ligi - izpis (s stevilom igralcev v kadru za seznam ekip). */
+/* Ekipa v ligi - izpis (s stevilom igralcev v kadru za seznam ekip).
+   Klub je prazen pri prosti ekipi (nastopa samo v tej ligi, v registru
+   klubov je ni). */
 package si.turnirko.dto;
 
 import si.turnirko.modeli.Ekipa;
@@ -16,8 +18,8 @@ public record EkipaDto(
     public static EkipaDto iz(Ekipa e, int steviloKadra) {
         return new EkipaDto(
                 e.getId(),
-                e.getKlub().getId(),
-                e.getKlub().getIme(),
+                e.jeProsta() ? null : e.getKlub().getId(),
+                e.jeProsta() ? null : e.getKlub().getIme(),
                 e.getZaporedna(),
                 e.getIme(),
                 e.prikazanoIme(),

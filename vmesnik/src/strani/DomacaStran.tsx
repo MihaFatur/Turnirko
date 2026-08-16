@@ -7,17 +7,19 @@
    spremljanje lig je edino dejanje in zahteva prijavo. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { domovApi, ligeApi, statistikaApi, turnirjiApi } from '../api/zahteve'
 import type { DomovLigaDto, LestvicaIgralcaDto, TurnirDto } from '../api/tipi'
 import { EnaNaEna } from '../komponente/EnaNaEna'
+import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
+import { IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PrijavaOkno } from '../komponente/PrijavaOkno'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { oblikujDanKratekMesec, oblikujDatum, sklonIgralcev } from '../pomozno/oblikovanje'
-import { ogledaneLige } from '../pomozno/ogledaneLige'
+import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 
 /* Koliko vrstic nosi posamezen sklop. Domača stran je povzetek: kdor hoče
    več, gre po povezavi v glavi sklopa. */
@@ -26,17 +28,11 @@ const IGRALCEV = 8
 
 type FilterLestvice = 'vsi' | 'mojeLige' | 'mojKlub'
 
-/* Preklop spremljanja ene lige; "spremljam" je stanje PRED klikom. */
-interface PreklopLige {
-  id: number
-  spremljam: boolean
-}
-
 export function DomacaStran() {
   const { uporabnik, mojIdIgralec } = useAvtentikacija()
-  const odjemalec = useQueryClient()
   const [filter, nastaviFilter] = useState<FilterLestvice>('vsi')
   const [prijavaOdprta, nastaviPrijavaOdprta] = useState(false)
+  const [izborOdprt, nastaviIzborOdprt] = useState(false)
 
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
   const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
@@ -44,47 +40,12 @@ export function DomacaStran() {
 
   /* Izbor lig je last računa; gost ga nima, zato mu sklop pokaže lige, ki si
      jih je nazadnje ogledal (zapomni si jih njegov brskalnik). */
-  const mojeLige = useQuery({
-    queryKey: ['moje-lige'],
-    queryFn: domovApi.mojeLige,
-    enabled: uporabnik !== null,
-  })
-  const spremljane = uporabnik ? (mojeLige.data ?? []) : ogledaneLige()
+  const { jePrijavljen, spremljane, preklopi } = useSpremljanjeLig()
 
   const povzetkiLig = useQuery({
     queryKey: ['domov-lige', spremljane],
     queryFn: () => domovApi.lige(spremljane),
   })
-
-  /* Optimistična posodobitev: kvadratek se prevesi takoj, ob napaki se izbor
-     povrne na zadnje potrjeno stanje strežnika. */
-  const preklop = useMutation<void, unknown, PreklopLige, { prejsnje: number[] }>({
-    mutationFn: async ({ id, spremljam }) => {
-      if (spremljam) await domovApi.nehajSpremljati(id)
-      else await domovApi.spremljaj(id)
-    },
-    onMutate: async ({ id, spremljam }) => {
-      await odjemalec.cancelQueries({ queryKey: ['moje-lige'] })
-      const prejsnje = odjemalec.getQueryData<number[]>(['moje-lige']) ?? []
-      odjemalec.setQueryData<number[]>(
-        ['moje-lige'],
-        spremljam ? prejsnje.filter((v) => v !== id) : [...prejsnje, id],
-      )
-      return { prejsnje }
-    },
-    onError: (_napaka, _vnos, kontekst) => {
-      if (kontekst) odjemalec.setQueryData(['moje-lige'], kontekst.prejsnje)
-    },
-    onSettled: () => odjemalec.invalidateQueries({ queryKey: ['moje-lige'] }),
-  })
-
-  function preklopiLigo(id: number) {
-    if (!uporabnik) {
-      nastaviPrijavaOdprta(true)
-      return
-    }
-    preklop.mutate({ id, spremljam: spremljane.includes(id) })
-  }
 
   /* Vrstni red na domači strani je vrstni red dogajanja: kar teče, je zgoraj. */
   const prikazaniTurnirji = useMemo(() => razvrstiTurnirje(turnirji.data), [turnirji.data])
@@ -124,34 +85,68 @@ export function DomacaStran() {
 
         <div className="domov__sklop">
           <div className="naslovna-vrstica">
-            <h2>Moje lige</h2>
-            <Link to="/lige" className="sekcija__meta">
-              Uredi izbor →
-            </Link>
+            <h2>{jePrijavljen ? 'Moje lige' : 'Lige'}</h2>
+            {/* Izbor je nastavitev domače strani, zato okno in ne pot na
+                /lige — tam vrstica lige vodi v ligo in preklopa ne nosi.
+                Gost izbora nima; njemu pot do prijave pove vrstica pod
+                seznamom, zato je tu ne ponavljamo. */}
+            {jePrijavljen && (
+              <button
+                type="button"
+                className="sekcija__meta"
+                onClick={() => nastaviIzborOdprt(true)}
+              >
+                Uredi izbor →
+              </button>
+            )}
           </div>
           <NapakaPoizvedbe poizvedba={povzetkiLig} kaj="lig" />
           {povzetkiLig.isPending && <Skelet vrstic={3} />}
           {povzetkiLig.data && povzetkiLig.data.length === 0 && (
-            <p className="domov__prazno">Ne spremljaš še nobene lige.</p>
+            <p className="domov__prazno">
+              {jePrijavljen ? 'Ne spremljaš še nobene lige.' : 'Nobena liga ne teče.'}
+            </p>
           )}
           <div className="domov__seznam">
             {(povzetkiLig.data ?? []).map((liga) => (
               <KarticaLige
                 liga={liga}
                 key={liga.id}
-                spremljam={spremljane.includes(liga.id)}
-                naPreklop={() => preklopiLigo(liga.id)}
+                /* Kvadratek je preklop računa; gost ga nima, zato ga tudi ne
+                   vidi — namesto njega dobi vabilo k prijavi pod seznamom. */
+                spremljam={jePrijavljen ? spremljane.includes(liga.id) : null}
+                naPreklop={() => preklopi(liga.id)}
               />
             ))}
-            {nespremljanihVTeku > 0 && (
+            {jePrijavljen ? (
+              nespremljanihVTeku > 0 && (
+                <div className="domov__liga-dodaj">
+                  <span className="domov__namig">
+                    Ne spremljaš {nespremljanihVTeku} {sklonLig(nespremljanihVTeku)}, ki
+                    {nespremljanihVTeku === 1 ? ' je' : ' so'} v teku.
+                  </span>
+                  <button
+                    type="button"
+                    className="gumb gumb--majhen"
+                    onClick={() => nastaviIzborOdprt(true)}
+                  >
+                    Dodaj ligo
+                  </button>
+                </div>
+              )
+            ) : (
               <div className="domov__liga-dodaj">
                 <span className="domov__namig">
-                  Ne spremljaš {nespremljanihVTeku} {sklonLig(nespremljanihVTeku)}, ki
-                  {nespremljanihVTeku === 1 ? ' je' : ' so'} v teku.
+                  Prijavljeni računi si izberejo lige, ki jih spremljajo — te so potem
+                  vedno tukaj.
                 </span>
-                <Link to="/lige" className="gumb gumb--majhen">
-                  Dodaj ligo
-                </Link>
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => nastaviPrijavaOdprta(true)}
+                >
+                  Prijava
+                </button>
               </div>
             )}
           </div>
@@ -178,6 +173,8 @@ export function DomacaStran() {
       {prijavaOdprta && (
         <PrijavaOkno zacetniNacin="prijava" onZapri={() => nastaviPrijavaOdprta(false)} />
       )}
+
+      {izborOdprt && <IzborLigOkno onZapri={() => nastaviIzborOdprt(false)} />}
     </section>
   )
 }
@@ -251,20 +248,22 @@ function KarticaLige({
   naPreklop,
 }: {
   liga: DomovLigaDto
-  spremljam: boolean
+  /* null = gost; izbor je last računa, zato kvadratka sploh ne izrišemo. */
+  spremljam: boolean | null
   naPreklop: () => void
 }) {
   return (
     <div className="domov__liga">
       <div className="domov__liga-glava">
         <span className="domov__liga-naslov">
-          <button
-            type="button"
-            className={'domov__kljukica' + (spremljam ? ' domov__kljukica--polna' : '')}
-            aria-pressed={spremljam}
-            aria-label={spremljam ? `Nehaj spremljati ${liga.ime}` : `Spremljaj ${liga.ime}`}
-            onClick={naPreklop}
-          />
+          {spremljam !== null && (
+            <GumbSpremljanja
+              ime={liga.ime}
+              slog="kvadratek"
+              spremljam={spremljam}
+              naPreklop={naPreklop}
+            />
+          )}
           <Link to={`/lige/${liga.id}`} className="domov__liga-ime">
             {liga.ime}
           </Link>

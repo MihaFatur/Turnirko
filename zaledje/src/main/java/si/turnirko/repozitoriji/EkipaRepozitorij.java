@@ -1,5 +1,6 @@
 /* Dostop do ekip. Klub se nalozi vnaprej (join fetch), ker ga bere DTO
-   (prikazano ime ekipe) izven transakcije. */
+   (prikazano ime ekipe) izven transakcije. Vez je LEVA: prosta ekipa kluba
+   nima in bi jo notranji stik tiho izpustil iz razporeda in lestvice. */
 package si.turnirko.repozitoriji;
 
 import java.util.List;
@@ -12,14 +13,16 @@ import si.turnirko.modeli.Ekipa;
 
 public interface EkipaRepozitorij extends JpaRepository<Ekipa, Long> {
 
+    /* Razvrsca po imenu kluba, prosto ekipo pa po njenem lastnem imenu, da se
+       oba tipa v seznamu prepletata po abecedi in ne v dveh kupih. */
     @Query("""
-            SELECT e FROM Ekipa e JOIN FETCH e.klub
+            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub k
             WHERE e.liga.id = :idLiga
-            ORDER BY e.klub.ime, e.zaporedna
+            ORDER BY COALESCE(k.ime, e.ime), e.zaporedna
             """)
     List<Ekipa> najdiZaLigo(Long idLiga);
 
-    @Query("SELECT e FROM Ekipa e JOIN FETCH e.klub JOIN FETCH e.liga WHERE e.id = :id")
+    @Query("SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub JOIN FETCH e.liga WHERE e.id = :id")
     Optional<Ekipa> najdiZKlubomInLigo(Long id);
 
     boolean existsByLigaIdAndKlubIdAndZaporedna(Long idLiga, Long idKlub, int zaporedna);

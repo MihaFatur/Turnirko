@@ -10,8 +10,13 @@
        in odprte vse hkrati bi bile nekaj tisoč vrstic,
      - Izločilni del - mreža se ne izriše cela, izbrano kolo je prvi stolpec,
      - Udeleženci - kdo igra, kdo je rezerva in kdo je odstopil.
-   Zaključen dogodek najprej pokaže razvrstitev in končni vrstni red, pod
-   njima pa isti pogledi, da ostane zgodovina dosegljiva.
+   Zaključen dogodek pokaže še »Končno razvrstitev« - ENO sekcijo, v kateri so
+   prva tri mesta poudarjena na vrhu istega seznama (prej sta bili dve sekciji
+   in ista imena je bilo treba prebrati dvakrat).
+
+   Na telefonu se naslov in pas pogledov preselita v lepljivo glavo, končna
+   razvrstitev pa je zavihek in ne blok nad pasom - sicer bi moral gledalec
+   prevoziti cel seznam, preden bi prišel do zavihkov.
 
    Vnos rezultata je mogoč samo administratorju (oz. lastniku turnirja). */
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -22,7 +27,9 @@ import { dogodkiApi, igralciApi, turnirjiApi } from '../api/zahteve'
 import type { IzborDto, MrezaDto, PrijavaDto, SkupinaDto, TekmaDto } from '../api/tipi'
 import { OZNAKE_SISTEM_KRATKO, OZNAKE_SPOL_KATEGORIJA, OZNAKE_STATUS_PRIJAVE } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { GlavaDejanja, GlavaNaslov, useNazaj } from '../komponente/GlavaTelefona'
 import { Lestvica } from '../komponente/Lestvica'
+import { MeniDejanj } from '../komponente/MeniDejanj'
 import { Mreza, kolaMreze } from '../komponente/Mreza'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import {
@@ -35,7 +42,7 @@ import { SkupinaVrstica } from '../komponente/SkupinaVrstica'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TekmeSeznam } from '../komponente/TekmeSeznam'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
-import { ZnackaStatusa } from '../komponente/Znacka'
+import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import {
   imeKolaKratko,
   sklonIgralcev,
@@ -44,12 +51,14 @@ import {
   sklonSkupin,
 } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
+import { useTelefon } from '../pomozno/telefon'
 
 export function DogodekStran() {
   const { id } = useParams()
   const idDogodka = Number(id)
   const odjemalec = useQueryClient()
-  const { jeAdmin, jeOrganizator, smemUrejati } = useAvtentikacija()
+  const { jeAdmin, smemUrejati } = useAvtentikacija()
+  const jeTelefon = useTelefon()
 
   /* Med tekmovanjem se mreža osvežuje sama - gledalec v dvorani ne sme biti
      odvisen od ročnega ponovnega nalaganja. Ko je dogodek zaključen ali še v
@@ -60,13 +69,15 @@ export function DogodekStran() {
     refetchInterval: (poizvedba) => intervalOsvezevanja(poizvedba.state.data?.dogodek.status),
   })
 
-  /* Za urejanje potrebujemo lastnistvo nadrejenega turnirja (dogodek ga sam
-     ne nosi); poizvedbo sprozimo le za morebitne urejevalce. */
+  /* Nadrejeni turnir nosi dvoje, kar dogodek sam ne: lastnistvo (za urejanje)
+     in svoje ime - to na telefonu stoji v puscici nazaj, zato ga potrebuje
+     tudi gost. Poizvedba je ista kot na strani turnirja, torej je odgovor
+     najveckrat ze v predpomnilniku. */
   const idTurnir = mreza.data?.dogodek.idTurnir
   const turnir = useQuery({
     queryKey: ['turnir', idTurnir],
     queryFn: () => turnirjiApi.najdi(idTurnir!),
-    enabled: idTurnir != null && (jeAdmin || jeOrganizator),
+    enabled: idTurnir != null,
   })
 
   /* Tekma, za katero je odprto okno za vnos rezultata. */
@@ -82,6 +93,8 @@ export function DogodekStran() {
       nastaviPotrjujemZreb(false)
     },
   })
+
+  useNazaj(idTurnir ? `/turnirji/${idTurnir}` : '/turnirji', turnir.data?.ime ?? 'Turnir')
 
   /* isLoading, ne isPending: ustavljena poizvedba (brez povezave) ali napaka
      ne smeta obviseti v večnem "Nalaganje …". */
@@ -102,53 +115,128 @@ export function DogodekStran() {
   const zadrzek = podatki.izbor?.zadrzek ?? null
   const zrebOnemogocen = aktivnePrijave.length < 2 || zadrzek !== null || zreb.isPending
 
+  /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
+     stavku; enak vrstni red na obeh širinah. */
+  const lastnosti = [
+    OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija],
+    dogodek.starostnaKategorija,
+    OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja].toLowerCase(),
+    `na ${dogodek.privzetoSteviloNizov} ${sklonNizov(dogodek.privzetoSteviloNizov)}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <section>
-      <Link to={`/turnirji/${dogodek.idTurnir}`} className="povezava-nazaj">
-        ← Nazaj na turnir
-      </Link>
+      {jeTelefon ? (
+        <>
+          <GlavaDejanja>
+            {/* Žreb je dejanje, ki dogodek požene - edino, ki ostane vidno;
+                vse drugo gre pod tri pike. */}
+            {smem && vPripravi && (
+              <button
+                type="button"
+                className="glava-telefon__gumb glava-telefon__gumb--zreb"
+                disabled={zrebOnemogocen}
+                onClick={() => nastaviPotrjujemZreb(true)}
+              >
+                {zreb.isPending ? 'Žrebam …' : 'Žreb'}
+              </button>
+            )}
+            <MeniDejanj naslov="Podrobnosti in dejanja kategorije">
+              {(zapri) => (
+                <>
+                  {/* Lastnosti dogodka so v glavi ene same vrstice odrezane;
+                      tu stojijo cele. */}
+                  <div className="uporabnik-meni__glava">
+                    <span className="uporabnik-meni__ime">{dogodek.ime}</span>
+                    <span className="uporabnik-meni__vloga">{lastnosti}</span>
+                  </div>
+                  {jeVZivo(dogodek.status) && (
+                    <p className="uporabnik-meni__namig">
+                      Osveženo ob {uraOsvezitve(mreza.dataUpdatedAt)}
+                    </p>
+                  )}
+                  {smem && vPripravi && zrebOnemogocen && (
+                    <p className="uporabnik-meni__namig">
+                      {aktivnePrijave.length < 2
+                        ? 'Za žreb sta potrebna vsaj 2 igralca.'
+                        : zadrzek}
+                    </p>
+                  )}
+                  {smem && dogodek.status === 'V_TEKU' && (
+                    <Link
+                      to={`/dogodki/${idDogodka}/listki`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Listki za tiskanje
+                    </Link>
+                  )}
+                </>
+              )}
+            </MeniDejanj>
+          </GlavaDejanja>
 
-      {/* Ime dogodka je naslov strani v eni vrstici (72 px), lastnosti pod njim. */}
-      <div className="stran-glava stran-glava--dejanja stran-glava--dno">
-        <div>
-          <h1 className="naslov-strani naslov-strani--enovrsticni">{dogodek.ime}</h1>
-          <p className="uvod">
-            {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
-            {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
-            {` · na ${dogodek.privzetoSteviloNizov} ${sklonNizov(dogodek.privzetoSteviloNizov)} · `}
-            {OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja].toLowerCase()}
-          </p>
-        </div>
-        <div className="naslovna-vrstica__desno">
-          {smem && dogodek.status === 'V_TEKU' && (
-            <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
-              Listki za tiskanje
-            </Link>
-          )}
-          <ZnackaStatusa status={dogodek.status} />
-          {/* Žreb je dejanje, ki dogodek požene - zato stoji ob znački
-              statusa in ne skrit v seznamu prijav. */}
-          {smem && vPripravi && (
-            <button
-              className="gumb gumb--zreb"
-              disabled={zrebOnemogocen}
-              title={
-                aktivnePrijave.length < 2
-                  ? 'Za žreb sta potrebna vsaj 2 igralca.'
-                  : (zadrzek ?? undefined)
-              }
-              onClick={() => nastaviPotrjujemZreb(true)}
-            >
-              {zreb.isPending ? 'Žrebam …' : 'Izvedi žreb'}
-            </button>
-          )}
-          {/* Ura zadnjega odgovora strežnika: brez nje gledalec ne ve, ali
-              stoji rezultat ali njegova povezava. */}
-          {jeVZivo(dogodek.status) && (
-            <span className="sekcija__meta">Osveženo ob {uraOsvezitve(mreza.dataUpdatedAt)}</span>
-          )}
-        </div>
-      </div>
+          {/* Naslovni blok ostane v lepljivi glavi: pri drsenju po razvrstitvi
+              mora biti ves čas vidno, katera kategorija se gleda. */}
+          <GlavaNaslov>
+            <div className="glava-telefon__naslov">
+              <div className="naslov-mobi__vrsta">
+                <h1 className="naslov-mobi naslov-mobi--kategorija">{dogodek.ime}</h1>
+                <ZnackaVNaslovu status={dogodek.status} />
+              </div>
+              <p className="naslov-mobi__meta naslov-mobi__meta--tesno">{lastnosti}</p>
+            </div>
+          </GlavaNaslov>
+        </>
+      ) : (
+        <>
+          <Link to={`/turnirji/${dogodek.idTurnir}`} className="povezava-nazaj">
+            ← Nazaj na turnir
+          </Link>
+
+          {/* Ime dogodka je naslov strani v eni vrstici (72 px), lastnosti pod njim. */}
+          <div className="stran-glava stran-glava--dejanja stran-glava--dno">
+            <div>
+              <h1 className="naslov-strani naslov-strani--enovrsticni">{dogodek.ime}</h1>
+              <p className="uvod">{lastnosti}</p>
+            </div>
+            <div className="naslovna-vrstica__desno">
+              {smem && dogodek.status === 'V_TEKU' && (
+                <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
+                  Listki za tiskanje
+                </Link>
+              )}
+              <ZnackaStatusa status={dogodek.status} />
+              {/* Žreb je dejanje, ki dogodek požene - zato stoji ob znački
+                  statusa in ne skrit v seznamu prijav. */}
+              {smem && vPripravi && (
+                <button
+                  className="gumb gumb--zreb"
+                  disabled={zrebOnemogocen}
+                  title={
+                    aktivnePrijave.length < 2
+                      ? 'Za žreb sta potrebna vsaj 2 igralca.'
+                      : (zadrzek ?? undefined)
+                  }
+                  onClick={() => nastaviPotrjujemZreb(true)}
+                >
+                  {zreb.isPending ? 'Žrebam …' : 'Izvedi žreb'}
+                </button>
+              )}
+              {/* Ura zadnjega odgovora strežnika: brez nje gledalec ne ve, ali
+                  stoji rezultat ali njegova povezava. */}
+              {jeVZivo(dogodek.status) && (
+                <span className="sekcija__meta">
+                  Osveženo ob {uraOsvezitve(mreza.dataUpdatedAt)}
+                </span>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       <SporociloNapake napaka={zreb.error} />
 
@@ -688,34 +776,66 @@ function Tekmovanje({
   osvezi: () => void
   jeAdmin: boolean
 }) {
+  const jeTelefon = useTelefon()
   const koncan = podatki.dogodek.status === 'ZAKLJUCEN'
   const naKlik = koncan ? undefined : naKlikTekme
   const sistem = podatki.dogodek.sistemTekmovanja
   const izlocilne = podatki.tekme.filter((t) => t.faza === 'GLAVNI')
+  const skupinske = podatki.tekme.filter((t) => t.faza === 'SKUPINA')
+  const razvrscenih = podatki.prijave.filter((p) => p.koncnoMesto !== null).length
+  const aktivnih = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN').length
+
+  /* Na telefonu je koncna razvrstitev SVOJ zavihek in ne blok nad pasom: nad
+     njim bi moral gledalec prevoziti cel seznam, preden bi prisel do zavihkov.
+     Pri kroznem sistemu takrat zavihek "Razvrstitev" (ziva lestvica) odpade -
+     koncna razvrstitev je ista lestvica, le dokoncna, in dva enako imenovana
+     zavihka ne povesta, po cem se razlikujeta. */
+  const zakljucekVZavihku = jeTelefon && koncan && razvrscenih > 0
 
   /* Pas pogledov se odloca po tem, kaj dogodek DEJANSKO ima, in ne po sistemu:
      tako se dogodek s sistemom, ki ga podnavigacija ne pozna, izrise brez
      napake in pokaze samo obstojece poglede. */
   const pogledi = useMemo<PogledGumb[]>(() => {
     const seznam: PogledGumb[] = []
-    if (podatki.skupine.length > 0 || podatki.lestvica.length > 0) {
+    if (zakljucekVZavihku) {
+      seznam.push({ kljuc: 'zakljucek', oznaka: 'Razvrstitev' })
+    }
+    if (
+      (podatki.skupine.length > 0 || podatki.lestvica.length > 0) &&
+      !(zakljucekVZavihku && sistem === 'KROZNI')
+    ) {
       seznam.push({
         kljuc: 'skupine',
         oznaka: sistem === 'KROZNI' ? 'Razvrstitev' : 'Skupine',
       })
     }
+    /* Pri kroznem sistemu stojijo tekme na namizju ob lestvici; pri 390 px
+       dva stolpca nista dva stolpca, zato dobijo svoj zavihek. */
+    if (jeTelefon && sistem === 'KROZNI' && skupinske.length > 0) {
+      seznam.push({ kljuc: 'tekme', oznaka: 'Tekme', stevec: skupinske.length })
+    }
     if (izlocilne.length > 0 || sistem === 'IZLOCILNI' || sistem === 'SKUPINE_IZLOCILNI') {
       seznam.push({ kljuc: 'mreza', oznaka: 'Izločilni del' })
     }
     if (podatki.prijave.length > 0) {
-      seznam.push({ kljuc: 'udelezenci', oznaka: 'Udeleženci' })
+      seznam.push({ kljuc: 'udelezenci', oznaka: 'Udeleženci', stevec: aktivnih })
     }
     return seznam
-  }, [podatki.skupine.length, podatki.lestvica.length, podatki.prijave.length, izlocilne.length, sistem])
+  }, [
+    podatki.skupine.length,
+    podatki.lestvica.length,
+    podatki.prijave.length,
+    izlocilne.length,
+    skupinske.length,
+    aktivnih,
+    sistem,
+    jeTelefon,
+    zakljucekVZavihku,
+  ])
 
   const [pogled, nastaviPogled] = useState<PogledDogodka | null>(null)
-  /* Privzeti pogled je prvi obstojeci; ce izbrani izgine (npr. po odstopu),
-     pas ne sme ostati prazen. */
+  /* Privzeti pogled je prvi obstojeci; ce izbrani izgine (npr. po odstopu ali
+     ob prehodu na sirsi zaslon), pas ne sme ostati prazen. */
   const izbrani = pogled && pogledi.some((p) => p.kljuc === pogled)
     ? pogled
     : pogledi[0]?.kljuc ?? 'udelezenci'
@@ -732,7 +852,7 @@ function Tekmovanje({
 
   return (
     <>
-      {koncan && <Zakljucek podatki={podatki} />}
+      {koncan && !zakljucekVZavihku && <Zakljucek podatki={podatki} />}
 
       <PodnavigacijaDogodka
         pogledi={pogledi}
@@ -741,12 +861,20 @@ function Tekmovanje({
         povzetek={povzetek}
       />
 
+      {izbrani === 'zakljucek' && <Zakljucek podatki={podatki} />}
+
       {izbrani === 'skupine' &&
         (sistem === 'KROZNI' ? (
-          <Krozni podatki={podatki} naKlikTekme={naKlik} />
+          jeTelefon ? (
+            <Lestvica vrstice={podatki.lestvica} />
+          ) : (
+            <Krozni podatki={podatki} naKlikTekme={naKlik} />
+          )
         ) : (
           <Skupine podatki={podatki} naKlikTekme={naKlik} />
         ))}
+
+      {izbrani === 'tekme' && <TekmePoKolih tekme={skupinske} naKlikTekme={naKlik} />}
 
       {izbrani === 'mreza' && <IzlocilniDel tekme={izlocilne} naKlikTekme={naKlik} />}
 
@@ -1036,7 +1164,6 @@ function Krozni({
   naKlikTekme?: (tekma: TekmaDto) => void
 }) {
   const skupinske = podatki.tekme.filter((t) => t.faza === 'SKUPINA')
-  const kola = [...new Set(skupinske.map((t) => t.kolo))].sort((a, b) => a - b)
   return (
     <div className="dvostolpicno dvostolpicno--lestvica">
       <div className="plosca">
@@ -1045,17 +1172,32 @@ function Krozni({
       </div>
       <div className="plosca">
         <h2 className="sekcija__naslov--manjsi">Tekme</h2>
-        {kola.map((kolo) => (
-          <div key={kolo} className="kolo-skupina">
-            <div className="kolo-skupina__naslov">{kolo}. kolo</div>
-            <TekmeSeznam
-              tekme={skupinske.filter((t) => t.kolo === kolo)}
-              naKlikTekme={naKlikTekme}
-            />
-          </div>
-        ))}
+        <TekmePoKolih tekme={skupinske} naKlikTekme={naKlikTekme} />
       </div>
     </div>
+  )
+}
+
+/* Tekme, razdeljene po kolih. Brez tega je krožni sistem z 12 igralci en sam
+   seznam 66 vrstic, iz katerega ni razvidno, kaj je bilo odigrano skupaj.
+   Na telefonu je to samostojen pogled (zavihek »Tekme«). */
+function TekmePoKolih({
+  tekme,
+  naKlikTekme,
+}: {
+  tekme: TekmaDto[]
+  naKlikTekme?: (tekma: TekmaDto) => void
+}) {
+  const kola = [...new Set(tekme.map((t) => t.kolo))].sort((a, b) => a - b)
+  return (
+    <>
+      {kola.map((kolo) => (
+        <div key={kolo} className="kolo-skupina">
+          <div className="kolo-skupina__naslov">{kolo}. kolo</div>
+          <TekmeSeznam tekme={tekme.filter((t) => t.kolo === kolo)} naKlikTekme={naKlikTekme} />
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -1098,7 +1240,19 @@ function bilancePrijav(tekme: TekmaDto[]): Map<number, Bilanca> {
   return bilance
 }
 
+/* "+38" / "−18" / "—" - sprememba klubskega ELO čez cel dogodek. */
+function oznakaElo(elo: number | null): string {
+  if (elo === null) return '—'
+  return elo > 0 ? `+${elo}` : elo < 0 ? `−${Math.abs(elo)}` : '0'
+}
+
+function razredElo(elo: number | null, osnova: string): string {
+  if (elo === null || elo === 0) return osnova
+  return osnova + (elo > 0 ? ` ${osnova}--poz` : ` ${osnova}--neg`)
+}
+
 function Zakljucek({ podatki }: { podatki: MrezaDto }) {
+  const jeTelefon = useTelefon()
   const razvrscene = useMemo(
     () =>
       podatki.prijave
@@ -1110,39 +1264,52 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
 
   if (razvrscene.length === 0) return null
 
-  const podij = razvrscene.slice(0, 3)
+  const vrh = razvrscene.slice(0, 3)
+  const ostali = razvrscene.slice(3)
   /* Pri 24 igralcih je to 12 vrstic na stolpec; nad 40 gredo trije stolpci. */
-  const stolpcev = razvrscene.length > 40 ? 3 : 2
-  const stolpci = razdeli(razvrscene, stolpcev)
+  const stolpcev = ostali.length > 40 ? 3 : 2
+  const stolpci = razdeli(ostali, stolpcev)
+  /* V ozki vrstici telefona je "11–0" en podatek, na namizju "11 – 0". */
+  const locilo = jeTelefon ? '–' : ' – '
 
   return (
-    <>
-      <div>
-        <div className="naslovna-vrstica">
-          <h2>Razvrstitev</h2>
-        </div>
-        {/* Mesta so številke, ne medalje - odličje nosi barva črte ob levem robu. */}
-        <div className="podij">
-          {podij.map((prijava) => (
-            <div className="podij__mesto" key={prijava.id}>
-              <span className="podij__stevilka">{prijava.koncnoMesto}.</span>
-              <span className="podij__ime">{prijava.polnoIme}</span>
-              <span className="podij__klub">
-                {prijava.klub ?? 'brez kluba'}
-                {prijava.rating !== null && ` · ${prijava.rating}`}
-              </span>
-            </div>
-          ))}
-        </div>
+    <div>
+      <div className={jeTelefon ? 'naslovna-mobi naslovna-mobi--brez-crte' : 'naslovna-vrstica'}>
+        <h2>Končna razvrstitev</h2>
+        <span className={jeTelefon ? 'naslovna-mobi__stevec naslovna-mobi__stevec--drobno' : 'sekcija__meta'}>
+          {razvrscene.length} {sklonIgralcev(razvrscene.length)}
+          {!jeTelefon && ' · bilanca · ELO'}
+        </span>
       </div>
 
-      <div>
-        <div className="naslovna-vrstica">
-          <h2>Končni vrstni red</h2>
-          <span className="sekcija__meta">
-            {razvrscene.length} {sklonIgralcev(razvrscene.length)}
-          </span>
-        </div>
+      {/* Mesta so številke, ne medalje - odličje nosi barva črte ob levem robu
+          (zelena zmagovalec, modra drugi, črnilo tretji). */}
+      <div className={'razvrstitev__vrh' + (vrh.length === 2 ? ' razvrstitev__vrh--dve' : '')}>
+        {vrh.map((prijava, indeks) => {
+          const bilanca = bilance.get(prijava.id)
+          const elo = bilanca?.elo ?? null
+          return (
+            <div className={`razvrstitev__mesto razvrstitev__mesto--${indeks + 1}`} key={prijava.id}>
+              <span className="razvrstitev__stevilka">{prijava.koncnoMesto}</span>
+              <span className="razvrstitev__oseba">
+                <span className="razvrstitev__ime">{prijava.polnoIme}</span>
+                <span className="razvrstitev__klub">
+                  {prijava.klub ?? 'brez kluba'}
+                  {prijava.rating !== null && ` · ${prijava.rating}`}
+                </span>
+              </span>
+              <span className="razvrstitev__izid">
+                <span className="razvrstitev__bilanca">
+                  {bilanca ? `${bilanca.zmage}${locilo}${bilanca.porazi}` : '—'}
+                </span>
+                <span className={razredElo(elo, 'razvrstitev__elo')}>{oznakaElo(elo)}</span>
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {ostali.length > 0 && (
         <div className={'vrstni-red' + (stolpcev === 3 ? ' vrstni-red--trije' : '')}>
           {stolpci.map((stolpec, indeks) => (
             <div key={indeks}>
@@ -1151,7 +1318,10 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
                 const elo = bilanca?.elo ?? null
                 return (
                   <div className="vrstni-red__vrstica" key={prijava.id}>
-                    <span className="vrstni-red__mesto">{prijava.koncnoMesto}.</span>
+                    <span className="vrstni-red__mesto">
+                      {prijava.koncnoMesto}
+                      {!jeTelefon && '.'}
+                    </span>
                     <span className="vrstni-red__ime">
                       {prijava.polnoIme}
                       <span className="vrstni-red__klub">
@@ -1159,24 +1329,16 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
                       </span>
                     </span>
                     <span className="vrstni-red__izkupicek">
-                      {bilanca ? `${bilanca.zmage} – ${bilanca.porazi}` : '—'}
+                      {bilanca ? `${bilanca.zmage}${locilo}${bilanca.porazi}` : '—'}
                     </span>
-                    <span
-                      className={
-                        'vrstni-red__elo' +
-                        (elo !== null && elo > 0 ? ' vrstni-red__elo--poz' : '') +
-                        (elo !== null && elo < 0 ? ' vrstni-red__elo--neg' : '')
-                      }
-                    >
-                      {elo === null ? '—' : elo > 0 ? `+${elo}` : `−${Math.abs(elo)}`}
-                    </span>
+                    <span className={razredElo(elo, 'vrstni-red__elo')}>{oznakaElo(elo)}</span>
                   </div>
                 )
               })}
             </div>
           ))}
         </div>
-      </div>
-    </>
+      )}
+    </div>
   )
 }

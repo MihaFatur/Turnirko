@@ -1,61 +1,137 @@
 /* Globalna lestvica igralcev po klubskem ELO ratingu, z razmerjem
-   zmag in porazov prek vseh dogodkov. Vidna vsem (tudi gostom). */
+   zmag in porazov prek vseh dogodkov. Vidna vsem (tudi gostom).
+
+   Na telefonu je vrstica DRUGO drevo in ne ožja tabela: sedem stolpcev se je
+   pri 390 px ali odrezalo ali prelomilo. Tu je vrstica mreža treh stolpcev -
+   mesto, ime z mono vrstico »klub · Z–P · gibanje« in rating kot največja
+   številka ob desnem robu. Stolpec »Δ 30 dni« odpade, ker isto pove gibanje.
+
+   Nad seznamom je odpadlo vse, kar je prvo vrstico razvrstitve potiskalo na
+   ~620 px: uvodni odstavek, stalno polje iskanja, pas števcev in osem gumbov
+   filtra v štirih vrstah. Ostane ena vrstica krmil (gumb »Filtriraj« in izbor
+   razvrstitve), iskanje pa je preklopnik v lepljivi glavi.
+
+   Starost in spol sta LOČENI merili in ne en pas kategorij. Kategorija
+   (»Člani/Članice/U19/Veterani«) spol nosi samo pri članih — pri mladincih in
+   veteranih se izgubi, zato iz nje vprašanja »vse igralke« ni bilo mogoče
+   sestaviti. Zdaj sta to dve skupini in »članice« sta preprosto starost
+   Člani + spol Ženske; spol za to nosi LestvicaIgralcaDto (javen je tako ali
+   tako, glej IgralecJavniDto). Tretja skupina je klub.
+
+   Iskanje po imenu ni skupina filtra, ampak zoži seznam PRED njim — števci ob
+   merilih so tako vedno števci tega, kar gledalec vidi. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { statistikaApi } from '../api/zahteve'
-import type { KategorijaIgralca, LestvicaIgralcaDto } from '../api/tipi'
+import type { LestvicaIgralcaDto } from '../api/tipi'
+import {
+  KrmilaSeznama,
+  poSeznamu,
+  useFiltri,
+  type Razvrstitev,
+  type SkupinaFiltra,
+} from '../komponente/Filtri'
+import { GlavaDejanja, GlavaNaslov } from '../komponente/GlavaTelefona'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { useTelefon } from '../pomozno/telefon'
 
-type Merilo = 'rating' | 'uspesnost' | 'odigrane'
-type IzbranaKategorija = KategorijaIgralca | 'VSI'
+/* Vrstica lestvice z mestom. Mesto se pripne PRED filtriranjem, da ostane
+   pravo tudi v zoženem seznamu (med igralkami so mesta 4, 9, 13 in ne 1, 2,
+   3); pri drugih merilih razvrstitve pa mesto po ratingu ne pomeni nič, zato
+   se takrat prešteje znova (glej prikazani). */
+interface Vrstica {
+  igralec: LestvicaIgralcaDto
+  mesto: number
+}
 
-const MERILA: { kljuc: Merilo; oznaka: string }[] = [
-  { kljuc: 'rating', oznaka: 'Rating' },
-  { kljuc: 'uspesnost', oznaka: 'Uspešnost' },
-  { kljuc: 'odigrane', oznaka: 'Odigrane' },
+const SKUPINE: SkupinaFiltra<Vrstica>[] = [
+  {
+    kljuc: 'starost',
+    oznaka: 'Starost',
+    vrednost: ({ igralec }) => (igralec.kategorija === null ? null : starost(igralec)),
+    napis: (v) => OZNAKE_STAROSTI[v] ?? v,
+    vrstniRed: poSeznamu(['U19', 'CLANSKA', 'VETERANI']),
+  },
+  {
+    kljuc: 'spol',
+    oznaka: 'Spol',
+    vrednost: ({ igralec }) => igralec.spol,
+    napis: (v) => (v === 'MOSKI' ? 'Moški' : 'Ženske'),
+    vrstniRed: poSeznamu(['MOSKI', 'ZENSKI']),
+  },
+  { kljuc: 'klub', oznaka: 'Klub', vrednost: ({ igralec }) => igralec.klub },
 ]
 
-/* Napisi in vrstni red gumbov kategorij. Katere se pokažejo, določijo podatki
-   (spodaj) — tu je samo, kako se berejo in v kakšnem zaporedju stojijo. */
-const KATEGORIJE: { kljuc: KategorijaIgralca; oznaka: string }[] = [
-  { kljuc: 'CLANI', oznaka: 'Člani' },
-  { kljuc: 'CLANICE', oznaka: 'Članice' },
-  { kljuc: 'U19', oznaka: 'U19' },
-  { kljuc: 'VETERANI', oznaka: 'Veterani' },
+/* Starostna skupina brez spola. Izpelje se iz kategorije, ki jo računa
+   strežnik (KategorijaIgralca) — datuma rojstva vmesnik nima in ga tudi ne
+   sme imeti, ker je osebni podatek. */
+const OZNAKE_STAROSTI: Record<string, string> = {
+  U19: 'Mladinci (do 19)',
+  CLANSKA: 'Člani (19–39)',
+  VETERANI: 'Veterani (40+)',
+}
+
+function starost(igralec: LestvicaIgralcaDto): string | null {
+  if (igralec.kategorija === 'U19') return 'U19'
+  if (igralec.kategorija === 'VETERANI') return 'VETERANI'
+  return igralec.kategorija === null ? null : 'CLANSKA'
+}
+
+const RAZVRSTITVE: Razvrstitev<Vrstica>[] = [
+  /* Rating je vrstni red strežnika (mesto), ne ponovljena primerjava: tam
+     odloča tudi izenačenje po zmagah in abecedi. */
+  { kljuc: 'rating', oznaka: 'Rating', primerjaj: (a, b) => a.mesto - b.mesto },
+  {
+    kljuc: 'uspesnost',
+    oznaka: 'Uspešnost',
+    primerjaj: (a, b) => uspesnost(b.igralec) - uspesnost(a.igralec) || a.mesto - b.mesto,
+  },
+  {
+    kljuc: 'odigrane',
+    oznaka: 'Odigrane',
+    primerjaj: (a, b) => b.igralec.odigrane - a.igralec.odigrane || a.mesto - b.mesto,
+  },
+  {
+    kljuc: 'priimek',
+    oznaka: 'Priimek (A–Ž)',
+    primerjaj: (a, b) =>
+      a.igralec.priimek.localeCompare(b.igralec.priimek, 'sl') ||
+      a.igralec.ime.localeCompare(b.igralec.ime, 'sl'),
+  },
 ]
 
 export function LestvicaStran() {
   const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
   const { mojIdIgralec } = useAvtentikacija()
+  const jeTelefon = useTelefon()
   const [iskanje, nastaviIskanje] = useState('')
-  const [kategorija, nastaviKategorijo] = useState<IzbranaKategorija>('VSI')
-  const [merilo, nastaviMerilo] = useState<Merilo>('rating')
+  /* Iskanje na telefonu živi v stanju strani in ne v naslovu: je opravilo
+     enega obiska, ne stanje, ki bi ga kdo delil s povezavo. */
+  const [iskanjeOdprto, nastaviIskanjeOdprto] = useState(false)
 
-  /* Mesto pripnemo pred filtriranjem, da ostane pravo tudi v zoženem seznamu
-     (v kategoriji "Članice" so mesta 4, 9, 13 in ne 1, 2, 3). Pri drugih
-     merilih mesto po ratingu ne pomeni nič, zato se takrat prešteva znova. */
-  const prikazani = useMemo(() => {
+  const najdeni = useMemo(() => {
     const vse = (lestvica.data ?? []).map((igralec, indeks) => ({ igralec, mesto: indeks + 1 }))
-    const iskano = iskanje.trim().toLowerCase()
-    const izbrani = vse
-      .filter(({ igralec }) => kategorija === 'VSI' || igralec.kategorija === kategorija)
-      .filter(
-        ({ igralec }) =>
-          !iskano || `${igralec.polnoIme} ${igralec.klub ?? ''}`.toLowerCase().includes(iskano),
-      )
-    if (merilo === 'rating') return izbrani
-    return izbrani
-      .slice()
-      .sort((a, b) =>
-        merilo === 'uspesnost'
-          ? uspesnost(b.igralec) - uspesnost(a.igralec)
-          : b.igralec.odigrane - a.igralec.odigrane,
-      )
-      .map(({ igralec }, indeks) => ({ igralec, mesto: indeks + 1 }))
-  }, [lestvica.data, iskanje, kategorija, merilo])
+    const iskano = iskanje.trim().toLocaleLowerCase('sl')
+    if (!iskano) return vse
+    return vse.filter(({ igralec }) =>
+      `${igralec.polnoIme} ${igralec.klub ?? ''}`.toLocaleLowerCase('sl').includes(iskano),
+    )
+  }, [lestvica.data, iskanje])
+
+  const filtri = useFiltri(najdeni, SKUPINE, RAZVRSTITVE)
+
+  /* Mesto po ratingu ostane globalno; pri vsakem drugem merilu se prešteje
+     znova, ker »4. po uspešnosti« ni isto kot »4. po ratingu«. */
+  const prikazani = useMemo(
+    () =>
+      filtri.razvrstitev === 'rating'
+        ? filtri.prikazani
+        : filtri.prikazani.map(({ igralec }, indeks) => ({ igralec, mesto: indeks + 1 })),
+    [filtri.prikazani, filtri.razvrstitev],
+  )
 
   const vseh = lestvica.data?.length ?? 0
   const klubov = useMemo(
@@ -63,17 +139,141 @@ export function LestvicaStran() {
     [lestvica.data],
   )
 
-  /* Ponujene so samo kategorije, ki v podatkih res obstajajo; če jih ni
-     nobene, pas gumbov odpade v celoti. */
-  const ponujeneKategorije = useMemo(() => {
-    const najdene = new Set((lestvica.data ?? []).map((v) => v.kategorija))
-    return KATEGORIJE.filter((k) => najdene.has(k.kljuc))
-  }, [lestvica.data])
+  const krmila = (
+    <KrmilaSeznama
+      stanje={filtri}
+      razvrstitve={RAZVRSTITVE}
+      naslovOkna="Lestvica"
+      imeZadetkov={sklonIgralcev}
+    />
+  )
 
-  const imeKategorije = KATEGORIJE.find((k) => k.kljuc === kategorija)?.oznaka
   const opisTabele =
     'Lestvica igralcev po klubskem ratingu ELO' +
-    (imeKategorije ? ` — kategorija ${imeKategorije}` : '')
+    (filtri.zetoni.length > 0
+      ? ` — izbrano: ${filtri.zetoni.map((z) => `${z.oznaka} ${z.napis}`).join(', ')}`
+      : '')
+
+  /* Stanja, ki jih rišemo enako na obeh širinah. */
+  const stanje = (
+    <>
+      <NapakaPoizvedbe poizvedba={lestvica} kaj="lestvice" />
+      {lestvica.isPending && <p className="obvestilo">Nalaganje …</p>}
+
+      {lestvica.data && lestvica.data.length === 0 && (
+        <p className="obvestilo">Še ni igralcev.</p>
+      )}
+
+      {vseh > 0 && prikazani.length === 0 && (
+        <p className="obvestilo">
+          {najdeni.length === 0 ? (
+            'Iskanju ne ustreza noben igralec.'
+          ) : (
+            <>
+              Izbranim merilom ne ustreza noben igralec.{' '}
+              <button type="button" className="povezava-gumb" onClick={filtri.pocisti}>
+                Počisti filtre
+              </button>
+            </>
+          )}
+        </p>
+      )}
+    </>
+  )
+
+  const namig = (
+    <p className="namig">
+      Igralci brez obračunane tekme še niso na lestvici. Ime igralca vodi na profil s
+      statistiko.
+    </p>
+  )
+
+  if (jeTelefon) {
+    /* Preklic izbriše iskanje in pas zapre: pas, ki ostane odprt s praznim
+       poljem, gledalcu jemlje 68 px zaslona za nič. */
+    const zapriIskanje = () => {
+      nastaviIskanje('')
+      nastaviIskanjeOdprto(false)
+    }
+    const zozeno = filtri.steviloIzbranih > 0 || iskanje.trim() !== ''
+
+    return (
+      <section className="stran-mobi--lestvica">
+        <GlavaDejanja>
+          <button
+            type="button"
+            className="glava-telefon__gumb glava-telefon__gumb--preklop"
+            aria-pressed={iskanjeOdprto}
+            onClick={() => (iskanjeOdprto ? zapriIskanje() : nastaviIskanjeOdprto(true))}
+          >
+            Išči
+          </button>
+        </GlavaDejanja>
+
+        {iskanjeOdprto && (
+          <GlavaNaslov>
+            <div className="iskanje-mobi">
+              <input
+                className="iskalnik"
+                /* Pas se odpre na gledalčevo dejanje, zato tipkovnica sme
+                   priti z njim - drugega opravila v pasu ni. */
+                autoFocus
+                aria-label="Išči po imenu ali klubu"
+                placeholder="Išči po imenu ali klubu …"
+                value={iskanje}
+                onChange={(dogodek) => nastaviIskanje(dogodek.target.value)}
+              />
+              <button type="button" className="iskanje-mobi__preklic" onClick={zapriIskanje}>
+                Prekliči
+              </button>
+            </div>
+          </GlavaNaslov>
+        )}
+
+        <div>
+          <span className="naslov-mobi__nad">Klubski ELO</span>
+          <h1 className="naslov-mobi naslov-mobi--seznam">Lestvica</h1>
+
+          {vseh > 0 && krmila}
+        </div>
+
+        <div>
+          <div className="naslovna-mobi">
+            <h2>Razvrstitev</h2>
+            {lestvica.data && (
+              <span className="naslovna-mobi__stevec naslovna-mobi__stevec--drobno">
+                {zozeno
+                  ? `Prikazanih ${prikazani.length} od ${vseh}`
+                  : `${vseh} ${sklonIgralcev(vseh)} · ${klubov} ${sklonKlubov(klubov)}`}
+              </span>
+            )}
+          </div>
+
+          {stanje}
+
+          {prikazani.length > 0 && (
+            <>
+              <div className="lestvica-mobi">
+                {prikazani.map(({ igralec, mesto }) => (
+                  <VrsticaLestviceMobi
+                    key={igralec.idIgralca}
+                    igralec={igralec}
+                    mesto={mesto}
+                    jaz={igralec.idIgralca === mojIdIgralec}
+                  />
+                ))}
+              </div>
+              <p className="lestvica-mobi__opomba">
+                Gibanje in Δ: primerjava s stanjem pred 30 dnevi
+              </p>
+            </>
+          )}
+
+          {namig}
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section>
@@ -117,58 +317,9 @@ export function LestvicaStran() {
           )}
         </div>
 
-        <NapakaPoizvedbe poizvedba={lestvica} kaj="lestvice" />
-        {lestvica.isPending && <p className="obvestilo">Nalaganje …</p>}
+        {vseh > 0 && krmila}
 
-        {vseh > 0 && (
-          <div className="lestvica__filtri">
-            {ponujeneKategorije.length > 0 && (
-              <div className="lestvica__filter">
-                <span className="lestvica__filter-oznaka">Kategorija</span>
-                <div className="izbirnik" role="group" aria-label="Kategorija">
-                  <FilterGumb
-                    oznaka="Vsi"
-                    aktiven={kategorija === 'VSI'}
-                    naKlik={() => nastaviKategorijo('VSI')}
-                  />
-                  {ponujeneKategorije.map((k) => (
-                    <FilterGumb
-                      key={k.kljuc}
-                      oznaka={k.oznaka}
-                      aktiven={kategorija === k.kljuc}
-                      naKlik={() => nastaviKategorijo(k.kljuc)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="lestvica__filter lestvica__filter--merilo">
-              <span className="lestvica__filter-oznaka">Razvrsti po</span>
-              <div className="izbirnik" role="group" aria-label="Razvrsti po">
-                {MERILA.map((m) => (
-                  <FilterGumb
-                    key={m.kljuc}
-                    oznaka={m.oznaka}
-                    aktiven={merilo === m.kljuc}
-                    naKlik={() => nastaviMerilo(m.kljuc)}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {lestvica.data && lestvica.data.length === 0 && (
-          <p className="obvestilo">Še ni igralcev.</p>
-        )}
-
-        {vseh > 0 && prikazani.length === 0 && (
-          <p className="obvestilo">
-            {iskanje.trim()
-              ? 'Iskanju ne ustreza noben igralec.'
-              : 'Nobenega igralca v tej kategoriji.'}
-          </p>
-        )}
+        {stanje}
 
         {prikazani.length > 0 && (
           <>
@@ -246,35 +397,52 @@ export function LestvicaStran() {
           </>
         )}
 
-        <p className="namig">
-          Igralci brez obračunane tekme še niso na lestvici. Ime igralca vodi na profil s
-          statistiko.
-        </p>
+        {namig}
       </div>
     </section>
   )
 }
 
-/* Gumb pasu filtrov: aria-pressed pove bralniku zaslona, kaj je izbrano —
-   črna ploskev je za to samo vidni znak. */
-function FilterGumb({
-  oznaka,
-  aktiven,
-  naKlik,
+/* Vrstica lestvice na telefonu: mesto, ime, mono "klub · Z–P · gibanje" in
+   rating kot največja številka ob desnem robu.
+
+   Puščica ni edini nosilec pomena - barvo in smer podvoji opis iz gibanje(),
+   ki ga prebere bralnik zaslona. */
+function VrsticaLestviceMobi({
+  igralec,
+  mesto,
+  jaz,
 }: {
-  oznaka: string
-  aktiven: boolean
-  naKlik: () => void
+  igralec: LestvicaIgralcaDto
+  mesto: number
+  jaz: boolean
 }) {
+  const gib = gibanje(igralec.premik)
+
   return (
-    <button
-      type="button"
-      className={'izbirnik__gumb' + (aktiven ? ' izbirnik__gumb--aktiven' : '')}
-      aria-pressed={aktiven}
-      onClick={naKlik}
+    <div
+      className={
+        'lestvica-mobi__vrstica' + (jaz ? ' lestvica-mobi__vrstica--jaz' : '')
+      }
     >
-      {oznaka}
-    </button>
+      <span
+        className={
+          'lestvica-mobi__mesto' + (mesto <= 3 ? ' lestvica-mobi__mesto--vrh' : '')
+        }
+      >
+        {mesto}
+      </span>
+      <Link to={`/igralci/${igralec.idIgralca}/profil`} className="lestvica-mobi__ime">
+        {igralec.polnoIme}
+      </Link>
+      <span className="lestvica-mobi__meta">
+        {igralec.klub ?? '—'} · {igralec.zmage}–{igralec.porazi} ·{' '}
+        <span className={`lestvica-mobi__gib--${gib.smer}`} aria-label={gib.opis}>
+          {gib.zapis}
+        </span>
+      </span>
+      <span className="lestvica-mobi__rating">{igralec.rating ?? '—'}</span>
+    </div>
   )
 }
 

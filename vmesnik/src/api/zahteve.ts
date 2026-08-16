@@ -18,8 +18,10 @@ import type {
   KlubVnos,
   KrajDto,
   KrajVnos,
+  LestvicaDvojiceDto,
   LestvicaEkipeDto,
   LestvicaIgralcaDto,
+  LestvicaIgralcaLigeDto,
   LigaDto,
   LigaVnos,
   MrezaDto,
@@ -35,6 +37,7 @@ import type {
   SrecanjePodrobnoDto,
   TekmaDto,
   TekmaSrecanjaDto,
+  TerminiVnos,
   TurnirDto,
   TurnirVnos,
   UporabnikDto,
@@ -152,6 +155,10 @@ export const ligeApi = {
      osveži cel seznam lig, ne le te ene. */
   prehodi: (id: number, vnos: PrehodiVnos) =>
     api.posodobi<LigaDto>(`/lige/${id}/prehodi`, vnos),
+  /* Termini kol - prav tako ločeni od pravil (kolo se prestavi tudi sredi
+     sezone). Odgovor so vsa srečanja lige, ker se je spremenil razpored. */
+  termini: (id: number, vnos: TerminiVnos) =>
+    api.posodobi<SrecanjeDto[]>(`/lige/${id}/termini`, vnos),
   izbrisi: (id: number) => api.izbrisi(`/lige/${id}`),
 
   ekipe: (id: number) => api.vrni<EkipaDto[]>(`/lige/${id}/ekipe`),
@@ -166,6 +173,12 @@ export const ligeApi = {
   generirajRazpored: (id: number) => api.objavi<SrecanjeDto[]>(`/lige/${id}/razpored`),
   srecanja: (id: number) => api.vrni<SrecanjeDto[]>(`/lige/${id}/srecanja`),
   lestvica: (id: number) => api.vrni<LestvicaEkipeDto[]>(`/lige/${id}/lestvica`),
+  /* Lestvici posameznikov in dvojic te lige. Ločeni poti, ker ju stran naloži
+     šele, ko gledalec sklop odpre. */
+  lestvicaIgralcev: (id: number) =>
+    api.vrni<LestvicaIgralcaLigeDto[]>(`/lige/${id}/lestvica-igralcev`),
+  lestvicaDvojic: (id: number) =>
+    api.vrni<LestvicaDvojiceDto[]>(`/lige/${id}/lestvica-dvojic`),
 }
 
 export const srecanjaApi = {

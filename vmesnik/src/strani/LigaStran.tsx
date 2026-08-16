@@ -17,15 +17,27 @@ import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
 import type { EkipaDto, LestvicaEkipeDto, LigaDto, SrecanjeDto } from '../api/tipi'
 import { OZNAKE_FORMAT, OZNAKE_SPOL_KATEGORIJA } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import {
+  GlavaDejanja,
+  GlavaNaslov,
+  GlavaZavihki,
+  useNazaj,
+} from '../komponente/GlavaTelefona'
+import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
+import { LestviceLige } from '../komponente/LestviceLige'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
+import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { ZnackaStatusa } from '../komponente/Znacka'
-import { oblikujDanMesec, oblikujDatum } from '../pomozno/oblikovanje'
+import { TerminiOkno } from '../komponente/TerminiOkno'
+import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
+import { oblikujDanMesec, oblikujTermin } from '../pomozno/oblikovanje'
 import { zabeleziOgledLige } from '../pomozno/ogledaneLige'
+import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
+import { useTelefon } from '../pomozno/telefon'
 
 /* Faza tekmovanja v ligi. Play-off je v postavitvi predviden kot zavihek, a ga
    podatkovni model lige (še) ne pozna - glej PRIKAZI_PLAYOFF. */
@@ -45,6 +57,11 @@ export function LigaStran() {
   const { id } = useParams()
   const idLiga = Number(id)
   const { smemUrejati } = useAvtentikacija()
+  const jeTelefon = useTelefon()
+  /* Na telefonu glava strani ni nosila konteksta (samo logotip), ker stran
+     kavlja ni klicala - gledalec ni imel poti nazaj na seznam lig. Kontekst
+     uporabnika ob puščici ostane: liga glavnega dejanja v glavi nima. */
+  useNazaj('/lige', 'Lige', true)
 
   const liga = useQuery({ queryKey: ['liga', idLiga], queryFn: () => ligeApi.najdi(idLiga) })
   /* Dokler liga teče, se razpored osvežuje sam - rezultati srečanj prihajajo
@@ -66,7 +83,13 @@ export function LigaStran() {
   const [ekipeOdprte, nastaviEkipeOdprte] = useState(false)
   const [obrazecOdprt, nastaviObrazecOdprt] = useState(false)
   const [prehodiOdprti, nastaviPrehodiOdprte] = useState(false)
+  const [terminiOdprti, nastaviTerminiOdprte] = useState(false)
   const [mobilniPogled, nastaviMobilniPogled] = useState<MobilniPogled>('LESTVICA')
+
+  /* Ligo se spremlja tam, kjer se jo najde — sicer bi moral gledalec izbor
+     sestavljati po spominu v oknu na domači strani. Gost izbora nima, zato
+     preklopa ne vidi (njegov brskalnik si to ligo tako ali tako zapomni). */
+  const { jePrijavljen, spremljam, preklopi } = useSpremljanjeLig()
 
   const odjemalec = useQueryClient()
 
@@ -115,6 +138,277 @@ export function LigaStran() {
   const razsiriKader = (idEkipa: number) =>
     nastaviOdprtoEkipo(odprtaEkipa === idEkipa ? null : idEkipa)
 
+  /* Okna so ista na obeh širinah - razlikuje se le, od kod se odprejo
+     (na telefonu iz zavihka »Pravila« oz. menija »⋯«). */
+  const okna = (
+    <>
+      {pravilaOdprta && (
+        <PravilaOkno
+          liga={l}
+          lahkoUreja={vPripravi && smem}
+          smemUrejatiPrehode={smem}
+          nizje={nizjeLige(l, lige.data ?? [])}
+          onUredi={() => {
+            nastaviPravilaOdprta(false)
+            nastaviObrazecOdprt(true)
+          }}
+          onUrediPrehode={() => {
+            nastaviPravilaOdprta(false)
+            nastaviPrehodiOdprte(true)
+          }}
+          onZapri={() => nastaviPravilaOdprta(false)}
+        />
+      )}
+
+      {/* Prehodi niso pravilo tekmovanja, ampak opis sezone - zato jih sme
+          lastnik urejati tudi po žrebu, ko so pravila že zaklenjena. */}
+      {prehodiOdprti && (
+        <PrehodiOkno
+          liga={l}
+          vse={lige.data ?? []}
+          onZapri={() => nastaviPrehodiOdprte(false)}
+          onShranjeno={() => {
+            odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
+            /* Spremenile so se lahko tudi nižje lige, zato cel seznam. */
+            odjemalec.invalidateQueries({ queryKey: ['lige'] })
+          }}
+        />
+      )}
+
+      {ekipeOdprte && (
+        <EkipeKaderOkno idLiga={idLiga} onZapri={() => nastaviEkipeOdprte(false)} />
+      )}
+
+      {/* Termini prav tako niso pravilo tekmovanja: kolo se prestavi tudi
+          sredi sezone, ko so pravila že zaklenjena. */}
+      {terminiOdprti && (
+        <TerminiOkno
+          liga={l}
+          srecanja={vsa}
+          onZapri={() => nastaviTerminiOdprte(false)}
+          onShranjeno={() => {
+            odjemalec.invalidateQueries({ queryKey: ['srecanja', idLiga] })
+            /* Glava strani nosi »naslednje kolo <datum>«, domača stran pa
+               povzetek lige - oba berta iste termine. */
+            odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
+            odjemalec.invalidateQueries({ queryKey: ['domov-lige'] })
+          }}
+        />
+      )}
+
+      {obrazecOdprt && (
+        <LigaObrazecOkno
+          liga={l}
+          onZapri={() => nastaviObrazecOdprt(false)}
+          onShranjeno={() => {
+            odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
+            odjemalec.invalidateQueries({ queryKey: ['lige'] })
+          }}
+        />
+      )}
+    </>
+  )
+
+  if (jeTelefon) {
+    const delez = imaRazpored ? Math.round((odigranihKol / kola.length) * 100) : 0
+    /* »Liga · 2025/26 · moški« - sezona je prosto besedilo, zato je ne
+       opremljamo s predpono. */
+    const nadnaslov = [
+      'Liga',
+      l.sezona,
+      OZNAKE_SPOL_KATEGORIJA[l.spolKategorija].toLowerCase(),
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
+    return (
+      <section className={'liga' + (imaRazpored ? ' stran-mobi--zavihki' : '')}>
+        {/* Glavnega dejanja liga nima, zato gre vse urejevalsko pod »⋯«:
+            gumba »Pravila« in »Ekipe in kader« sta se s tem umaknila izpod
+            naslova, kjer sta lestvico potiskala pod rob zaslona. Preklop
+            spremljanja pa ni urejanje (sme ga vsak prijavljen) in je premalo
+            globoko za meni — stoji ob njem. */}
+        <GlavaDejanja>
+          {jePrijavljen && (
+            <GumbSpremljanja
+              ime={l.ime}
+              slog="glava"
+              spremljam={spremljam(idLiga)}
+              naPreklop={() => preklopi(idLiga)}
+            />
+          )}
+          {smem && (
+            <MeniDejanj naslov="Dejanja lige">
+              {(zapri) => (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    disabled={vPripravi}
+                    onClick={() => {
+                      zapri()
+                      nastaviEkipeOdprte(true)
+                    }}
+                  >
+                    Ekipe in kader
+                    {vPripravi && (
+                      <span className="uporabnik-meni__pojasnilo">
+                        V pripravi jih ureja sekcija na strani
+                      </span>
+                    )}
+                  </button>
+                  {/* Termini se za razliko od pravil ne zaklenejo - kolo se
+                      prestavi tudi sredi sezone - a seznama kol pred žrebom
+                      ni; do takrat jih nosi obrazec lige (prvo kolo + razmik). */}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    disabled={!imaRazpored}
+                    onClick={() => {
+                      zapri()
+                      nastaviTerminiOdprte(true)
+                    }}
+                  >
+                    Termini kol
+                    {!imaRazpored && (
+                      <span className="uporabnik-meni__pojasnilo">
+                        Na voljo, ko je razpored generiran
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    disabled={!vPripravi}
+                    onClick={() => {
+                      zapri()
+                      nastaviObrazecOdprt(true)
+                    }}
+                  >
+                    Uredi pravila
+                    {!vPripravi && (
+                      <span className="uporabnik-meni__pojasnilo">
+                        Zaklenjeno, ker je razpored generiran
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+            </MeniDejanj>
+          )}
+        </GlavaDejanja>
+
+        {/* Ime, stanje in napredek ostanejo na zaslonu med drsenjem po
+            lestvici - pri 390 px je sicer po nekaj potegih vseeno, katero
+            ligo gledaš. */}
+        <GlavaNaslov>
+          <div className="glava-telefon__naslov">
+            <span className="naslov-mobi__nad">{nadnaslov}</span>
+            <div className="naslov-mobi__vrsta naslov-mobi__vrsta--odmik">
+              <h1 className="naslov-mobi naslov-mobi--ena-vrsta">{l.ime}</h1>
+              <ZnackaVNaslovu status={l.status} />
+            </div>
+            <div className="liga-mobi__stanje">
+              <span>{stanjeMobi(l, vsa, kola, odigranihKol, naslednjeKolo)}</span>
+              {imaRazpored && <span className="liga-mobi__delez">{delez} %</span>}
+            </div>
+            {imaRazpored && (
+              <span className="palica palica--tanka">
+                <span className="palica__polnilo" style={{ width: `${delez}%` }} />
+              </span>
+            )}
+          </div>
+        </GlavaNaslov>
+
+        {imaRazpored && (
+          <GlavaZavihki>
+            <div className="podnavigacija podnavigacija--telefon podnavigacija--enakomerna">
+              <button
+                type="button"
+                className={
+                  'izbirnik__gumb' +
+                  (mobilniPogled === 'LESTVICA' ? ' izbirnik__gumb--aktiven' : '')
+                }
+                aria-pressed={mobilniPogled === 'LESTVICA'}
+                onClick={() => nastaviMobilniPogled('LESTVICA')}
+              >
+                Lestvica
+              </button>
+              <button
+                type="button"
+                className={
+                  'izbirnik__gumb' +
+                  (mobilniPogled === 'RAZPORED' ? ' izbirnik__gumb--aktiven' : '')
+                }
+                aria-pressed={mobilniPogled === 'RAZPORED'}
+                onClick={() => nastaviMobilniPogled('RAZPORED')}
+              >
+                Razpored
+              </button>
+              {/* Pravila niso pogled, ampak referenca - zato okno in ne
+                  zavihek z vsebino. */}
+              <button
+                type="button"
+                className="izbirnik__gumb"
+                onClick={() => nastaviPravilaOdprta(true)}
+              >
+                Pravila
+              </button>
+            </div>
+          </GlavaZavihki>
+        )}
+
+        {vPripravi && smem && (
+          <EkipeUredi
+            idLiga={idLiga}
+            steviloEkip={l.steviloEkip}
+            onUrediPravila={() => nastaviObrazecOdprt(true)}
+          />
+        )}
+
+        {vPripravi && !smem && (
+          <p className="obvestilo">
+            Liga je v pripravi. Ekipe in kader ureja organizator, razpored pride po žrebu.
+          </p>
+        )}
+
+        {imaRazpored && mobilniPogled === 'LESTVICA' && (
+          <>
+            <LestvicaMobi
+              idLiga={idLiga}
+              liga={l}
+              srecanja={vsa}
+              nivoji={nivojiPiramide}
+              odprtaEkipa={odprtaEkipa}
+              onPreklopiKader={razsiriKader}
+            />
+            {/* Piramida je kontekst in ne stanje tekmovanja, zato na telefonu
+                stoji na koncu zavihka in ne nad lestvico. */}
+            {kaziPiramido && <Piramida liga={l} nivoji={nivojiPiramide} />}
+            {/* Osebni izkupički so drugo branje iste lige - zato zaprta sklopa
+                na dnu zavihka z lestvico in ne svoj zavihek. */}
+            <LestviceLige idLiga={idLiga} jeTelefon />
+          </>
+        )}
+
+        {imaRazpored && mobilniPogled === 'RAZPORED' && (
+          <RazporedMobi
+            srecanja={vsa}
+            kola={kola}
+            kolo={kolo}
+            koloOdigrano={koloOdigrano}
+            onKolo={nastaviKolo}
+          />
+        )}
+
+        {okna}
+      </section>
+    )
+  }
+
   return (
     <section className="liga">
       <div>
@@ -157,6 +451,16 @@ export function LigaStran() {
             )}
 
             <div className="stran-glava__dejanja stran-glava__dejanja--vrsta">
+              {/* Spremljanje ni urejanje: sme ga vsak prijavljen, zato stoji
+                  pred urejevalskimi gumbi. Označena liga je nato na domači
+                  strani. */}
+              {jePrijavljen && (
+                <GumbSpremljanja
+                  ime={l.ime}
+                  spremljam={spremljam(idLiga)}
+                  naPreklop={() => preklopi(idLiga)}
+                />
+              )}
               <button type="button" className="gumb" onClick={() => nastaviPravilaOdprta(true)}>
                 Pravila
               </button>
@@ -169,6 +473,17 @@ export function LigaStran() {
                   onClick={() => nastaviEkipeOdprte(true)}
                 >
                   Ekipe in kader
+                </button>
+              )}
+              {/* Seznam kol obstaja šele po žrebu; pred njim termine nosi
+                  obrazec lige (prvo kolo + razmik). */}
+              {smem && imaRazpored && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => nastaviTerminiOdprte(true)}
+                >
+                  Termini
                 </button>
               )}
             </div>
@@ -284,56 +599,14 @@ export function LigaStran() {
               onKolo={nastaviKolo}
             />
           </div>
+
+          {/* Zaprta sklopa na dnu strani: lestvica lige so ekipe, osebni
+              izkupički pa drugo branje - zato pod njo in ne v zavihku. */}
+          <LestviceLige idLiga={idLiga} jeTelefon={false} />
         </>
       )}
 
-      {pravilaOdprta && (
-        <PravilaOkno
-          liga={l}
-          lahkoUreja={vPripravi && smem}
-          smemUrejatiPrehode={smem}
-          nizje={nizjeLige(l, lige.data ?? [])}
-          onUredi={() => {
-            nastaviPravilaOdprta(false)
-            nastaviObrazecOdprt(true)
-          }}
-          onUrediPrehode={() => {
-            nastaviPravilaOdprta(false)
-            nastaviPrehodiOdprte(true)
-          }}
-          onZapri={() => nastaviPravilaOdprta(false)}
-        />
-      )}
-
-      {/* Prehodi niso pravilo tekmovanja, ampak opis sezone - zato jih sme
-          lastnik urejati tudi po žrebu, ko so pravila že zaklenjena. */}
-      {prehodiOdprti && (
-        <PrehodiOkno
-          liga={l}
-          vse={lige.data ?? []}
-          onZapri={() => nastaviPrehodiOdprte(false)}
-          onShranjeno={() => {
-            odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
-            /* Spremenile so se lahko tudi nižje lige, zato cel seznam. */
-            odjemalec.invalidateQueries({ queryKey: ['lige'] })
-          }}
-        />
-      )}
-
-      {ekipeOdprte && (
-        <EkipeKaderOkno idLiga={idLiga} onZapri={() => nastaviEkipeOdprte(false)} />
-      )}
-
-      {obrazecOdprt && (
-        <LigaObrazecOkno
-          liga={l}
-          onZapri={() => nastaviObrazecOdprt(false)}
-          onShranjeno={() => {
-            odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
-            odjemalec.invalidateQueries({ queryKey: ['lige'] })
-          }}
-        />
-      )}
+      {okna}
     </section>
   )
 }
@@ -361,11 +634,46 @@ function stanjeLige(
   return datum ? `Naslednje kolo ${oblikujDanMesec(datum)}` : `Naslednje ${naslednjeKolo}. kolo`
 }
 
-/* Datum kola vzamemo iz prvega srečanja, ki ga ima (termini posameznih srečanj
-   se lahko razlikujejo, kolo pa se v razporedu bere kot en dan). */
+/* Ista vrsta na telefonu, a z napredkom spredaj: v lepljivi glavi je ena sama
+   mono vrstica, zato mora nositi oboje - koliko kol je za nami in kdaj je
+   naslednje. Uvod (»10 ekip · dvokrožno«) na telefonu odpade: ekipe prešteje
+   lestvica pod njim, sistem pa je v pravilih. */
+function stanjeMobi(
+  liga: LigaDto,
+  srecanja: SrecanjeDto[],
+  kola: number[],
+  odigranihKol: number,
+  naslednjeKolo: number | null,
+): string {
+  if (srecanja.length === 0) return 'Razpored ni generiran'
+  if (liga.status === 'ZAKLJUCEN' || naslednjeKolo == null) {
+    const datum = datumKola(srecanja, kola[kola.length - 1])
+    return datum ? `Končano ${oblikujDanMesec(datum)}` : 'Vsa kola odigrana'
+  }
+  const potek = `${odigranihKol}. od ${kola.length} kol`
+  const datum = datumKola(srecanja, naslednjeKolo)
+  return datum ? `${potek} · naslednje ${oblikujDanMesec(datum)}` : potek
+}
+
+/* Termin kola vzamemo iz prvega srečanja, ki ga ima: kolo se odigra en dan,
+   zato vsa njegova srečanja nosijo isti čas (piše ga zaledje iz semena lige
+   oz. ročnega popravka v TerminiOkno). */
+function terminKola(srecanja: SrecanjeDto[], kolo: number): string | null {
+  return srecanja.find((x) => x.kolo === kolo && x.predvidenZacetek)?.predvidenZacetek ?? null
+}
+
 function datumKola(srecanja: SrecanjeDto[], kolo: number): string | null {
-  const s = srecanja.find((x) => x.kolo === kolo && x.predvidenZacetek)
-  return s?.predvidenZacetek?.slice(0, 10) ?? null
+  return terminKola(srecanja, kolo)?.slice(0, 10) ?? null
+}
+
+/* Kaj piše ob številki kola v razporedu. Kolo, ki šele pride, nosi termin —
+   »kdaj se to igra« je edino, kar gledalec ob neodigranem kolu išče; beseda
+   »razpored« ni povedala nič. Ostane samo, kadar termina ni (organizator ga
+   ni vpisal). Odigrano kolo obdrži oznako, datum pa mu je kontekst. */
+function metaKola(srecanja: SrecanjeDto[], kolo: number, odigrano: boolean): string {
+  const termin = oblikujTermin(terminKola(srecanja, kolo))
+  if (odigrano) return [termin, 'odigrano'].filter(Boolean).join(' · ')
+  return termin || 'razpored'
 }
 
 /* ---------- Piramida sezone ---------- */
@@ -656,6 +964,104 @@ function Lestvica({
   )
 }
 
+/* Ista lestvica na telefonu. Namizna tabela ima deset stolpcev (odigrane,
+   Z/N/P, tekme, nizi ...) - pri 390 px se prebere le prvih nekaj, ostali pa
+   vrstico raztegnejo. Tu ostanejo mesto, ime, bilanca s formo in točke;
+   podrobnosti so v zapisniku srečanja.
+
+   Ločenega gumba »Kader ▾« ni: vrstica je gumb in kader razpre pod sabo -
+   dve zadetkovni površini v 390 px vrstici sta ena preveč. */
+function LestvicaMobi({
+  idLiga,
+  liga,
+  srecanja,
+  nivoji,
+  odprtaEkipa,
+  onPreklopiKader,
+}: LestvicaLastnosti) {
+  const lestvica = useQuery({
+    queryKey: ['lestvica', idLiga],
+    queryFn: () => ligeApi.lestvica(idLiga),
+  })
+  const vrstice = lestvica.data ?? []
+  const cilji = ciljneLige(liga, nivoji)
+
+  return (
+    <div>
+      {/* Zavihki nad vsebino že režejo pas, zato naslovna vrstica brez črte. */}
+      <div className="naslovna-mobi naslovna-mobi--brez-crte">
+        <h2>Lestvica</h2>
+        {vrstice.length > 0 && (
+          <span className="naslovna-mobi__stevec naslovna-mobi__stevec--drobno">
+            {vrstice.length} {ekipTekst(vrstice.length)} · Zadnjih 5
+          </span>
+        )}
+      </div>
+
+      {lestvica.isPending && <p className="obvestilo">Nalaganje lestvice …</p>}
+      <NapakaPoizvedbe poizvedba={lestvica} kaj="lestvice" />
+
+      {vrstice.length > 0 && (
+        <div className="lestvica-mobi">
+          {vrstice.map((v) => {
+            const odprta = odprtaEkipa === v.idEkipa
+            const cona = v.cona ? v.cona.toLowerCase() : null
+            return (
+              <Fragment key={v.idEkipa}>
+                <button
+                  type="button"
+                  className={
+                    'lestvica-mobi__vrstica lestvica-mobi__vrstica--ekipa' +
+                    (cona ? ` lestvica-mobi__vrstica--${cona}` : '') +
+                    (odprta ? ' lestvica-mobi__vrstica--odprta' : '')
+                  }
+                  aria-expanded={odprta}
+                  onClick={() => onPreklopiKader(v.idEkipa)}
+                >
+                  <span
+                    className={
+                      'lestvica-mobi__mesto lestvica-mobi__mesto--ekipa' +
+                      (cona ? ` lestvica-mobi__mesto--${cona}` : '')
+                    }
+                  >
+                    {v.mesto}
+                  </span>
+                  <span className="lestvica-mobi__ime">{v.ekipa}</span>
+                  <span className="lestvica-mobi__izkupicek">
+                    <span className="lestvica-mobi__bilanca">
+                      {v.zmage}-{v.neodlocene}-{v.porazi}
+                    </span>
+                    <Forma znaki={forma(v.idEkipa, srecanja)} />
+                  </span>
+                  <span className="lestvica-mobi__tocke">{v.tocke}</span>
+                </button>
+                {odprta && <Kader idEkipa={v.idEkipa} ekipa={v.ekipa} />}
+              </Fragment>
+            )
+          })}
+        </div>
+      )}
+
+      {vrstice.length > 0 && (liga.stNapreduje > 0 || liga.stIzpade > 0) && (
+        <div className="legenda legenda--mobi">
+          {liga.stNapreduje > 0 && (
+            <span className="legenda__postavka">
+              <span className="legenda__znak legenda__znak--napreduje" />
+              {cilji.visja ? `Napreduje v ${cilji.visja}` : 'Napreduje'}
+            </span>
+          )}
+          {liga.stIzpade > 0 && (
+            <span className="legenda__postavka">
+              <span className="legenda__znak legenda__znak--izpade" />
+              {cilji.nizja ? `Izpade v ${cilji.nizja}` : 'Izpade'}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function vrsticaRazred(v: LestvicaEkipeDto, odprta: boolean): string {
   return (
     'lestvica__vrsta' +
@@ -853,10 +1259,11 @@ function Razpored({
 }: RazporedLastnosti) {
   const mesto = kola.indexOf(kolo)
   const vKolu = srecanja.filter((s) => s.kolo === kolo)
-  const datum = datumKola(srecanja, kolo)
-  const meta = [datum ? oblikujDatum(datum) : null, koloOdigrano(kolo) ? 'odigrano' : 'razpored']
-    .filter(Boolean)
-    .join(' · ')
+  const odigrano = koloOdigrano(kolo)
+  const meta = metaKola(srecanja, kolo, odigrano)
+  /* Termin kola, ki šele pride, je poudarjen - to je vprašanje, s katerim
+     gledalec pride na razpored. */
+  const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
 
   return (
     <div>
@@ -878,7 +1285,9 @@ function Razpored({
         </button>
         <span className="liga__krmar-sredina">
           <span className="liga__krmar-kolo">{kolo}. kolo</span>
-          <span className="sekcija__meta">{meta}</span>
+          <span className={'sekcija__meta' + (poudarjenTermin ? ' liga__kolo-termin' : '')}>
+            {meta}
+          </span>
         </span>
         <button
           type="button"
@@ -941,6 +1350,10 @@ function Razpored({
                 (k === kolo ? ' liga__trak-gumb--izbrano' : '')
               }
               aria-current={k === kolo ? 'true' : undefined}
+              /* Gumb je samo številka; termin mora do bralnika zaslona in do
+                 miške priti tu, sicer je trak brez pomena. */
+              aria-label={`${k}. kolo — ${metaKola(srecanja, k, koloOdigrano(k))}`}
+              title={metaKola(srecanja, k, koloOdigrano(k))}
               onClick={() => onKolo(k)}
             >
               {k}
@@ -949,6 +1362,115 @@ function Razpored({
         </div>
       </div>
     </div>
+  )
+}
+
+/* Isti razpored na telefonu. Krmar kola je tri celice (← / kolo z datumom /
+   →) namesto treh gumbov z besedilom: »Prejšnje« in »Naslednje« sta pri
+   390 px pojedla ves prostor, smer pa nosi že puščica. Naslova »Razpored« ni
+   - pove ga zavihek, ki je pripeljal sem. */
+function RazporedMobi({
+  srecanja,
+  kola,
+  kolo,
+  koloOdigrano,
+  onKolo,
+}: Omit<RazporedLastnosti, 'odigranihKol'>) {
+  const mesto = kola.indexOf(kolo)
+  const vKolu = srecanja.filter((s) => s.kolo === kolo)
+  const odigrano = koloOdigrano(kolo)
+  const meta = metaKola(srecanja, kolo, odigrano)
+  const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
+
+  return (
+    <>
+      <div>
+        <div className="liga-mobi__krmar">
+          <button
+            type="button"
+            className="liga-mobi__krmar-gumb"
+            aria-label="Prejšnje kolo"
+            disabled={mesto <= 0}
+            onClick={() => onKolo(kola[mesto - 1])}
+          >
+            ←
+          </button>
+          <span className="liga-mobi__krmar-sredina">
+            <span className="liga-mobi__kolo">{kolo}. kolo</span>
+            <span
+              className={
+                'liga-mobi__kolo-meta' + (poudarjenTermin ? ' liga__kolo-termin' : '')
+              }
+            >
+              {meta}
+            </span>
+          </span>
+          <button
+            type="button"
+            className="liga-mobi__krmar-gumb"
+            aria-label="Naslednje kolo"
+            disabled={mesto < 0 || mesto >= kola.length - 1}
+            onClick={() => onKolo(kola[mesto + 1])}
+          >
+            →
+          </button>
+        </div>
+
+        <div className="liga-mobi__srecanja">
+          {vKolu.map((s) => {
+            const konec = s.status === 'KONCANO'
+            const domZmaga = konec && s.dobljeneDomaci > s.dobljeneGost
+            const gostZmaga = konec && s.dobljeneGost > s.dobljeneDomaci
+            return (
+              <Link key={s.id} to={`/srecanja/${s.id}`} className="liga-mobi__srecanje">
+                <span
+                  className={
+                    'liga-mobi__ekipa liga-mobi__ekipa--desno' +
+                    (gostZmaga ? ' liga-mobi__ekipa--poraz' : '')
+                  }
+                >
+                  {s.domaci}
+                </span>
+                <span
+                  className={'liga-mobi__izid' + (konec ? '' : ' liga-mobi__izid--caka')}
+                >
+                  {konec ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : 'vs'}
+                </span>
+                <span
+                  className={
+                    'liga-mobi__ekipa' + (domZmaga ? ' liga-mobi__ekipa--poraz' : '')
+                  }
+                >
+                  {s.gost}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <span className="liga-mobi__trak-naslov">Vsa kola</span>
+        <div className="liga-mobi__trak">
+          {kola.map((k) => (
+            <button
+              type="button"
+              key={k}
+              className={
+                'liga-mobi__trak-gumb' +
+                (koloOdigrano(k) ? ' liga-mobi__trak-gumb--odigrano' : '') +
+                (k === kolo ? ' liga-mobi__trak-gumb--izbrano' : '')
+              }
+              aria-current={k === kolo ? 'true' : undefined}
+              aria-label={`${k}. kolo — ${metaKola(srecanja, k, koloOdigrano(k))}`}
+              onClick={() => onKolo(k)}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -1024,6 +1546,19 @@ function PravilaOkno({
 
 /* ---------- Ekipe in kader ---------- */
 
+/* Ime ekipe z oznako pod njim. Oznaka se izpiše samo, kadar kaj pove:
+   pri klubski ekipi z lastnim imenom klub (sicer JE ime že klub), pri prosti
+   pa to, da klub nima — sicer bi bila v seznamu videti kot vsaka druga. */
+function ImeEkipe({ ekipa }: { ekipa: EkipaDto }) {
+  const oznaka = ekipa.klub === null ? 'prosta ekipa' : ekipa.ime ? ekipa.klub : null
+  return (
+    <span className="liga__ekipa-ime">
+      <span>{ekipa.prikazanoIme}</span>
+      {oznaka && <span className="liga__ekipa-oznaka">{oznaka}</span>}
+    </span>
+  )
+}
+
 /* Pogled ekip za ligo, ki že teče: kader je takrat zaklenjen (strežnik ga v
    drugih stanjih ne spusti), zato okno samo pokaže, kdo je prijavljen. */
 function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => void }) {
@@ -1045,7 +1580,7 @@ function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => vo
                 aria-expanded={odprta === e.id}
                 onClick={() => nastaviOdprto(odprta === e.id ? null : e.id)}
               >
-                <span>{e.prikazanoIme}</span>
+                <ImeEkipe ekipa={e} />
                 <span className="sekcija__meta">
                   {kaderTekst(e.steviloKadra)} {odprta === e.id ? '▴' : '▾'}
                 </span>
@@ -1075,15 +1610,28 @@ function EkipeUredi({
   const odjemalec = useQueryClient()
   const ekipe = useQuery({ queryKey: ['ekipe', idLiga], queryFn: () => ligeApi.ekipe(idLiga) })
   const klubi = useQuery({ queryKey: ['klubi'], queryFn: klubiApi.seznam })
+  /* Vrsta ekipe je odločitev pred vnosom: klubska se izbere iz registra,
+     prosta se poimenuje sama in v register klubov ne pride. */
+  const [nacin, nastaviNacin] = useState<'klub' | 'prosta'>('klub')
   const [idKlub, nastaviKlub] = useState('')
+  const [ime, nastaviIme] = useState('')
   const [urejanKader, nastaviUrejanKader] = useState<EkipaDto | null>(null)
 
   const osveziEkipe = () => odjemalec.invalidateQueries({ queryKey: ['ekipe', idLiga] })
   const osveziLigo = () => odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
 
+  /* Ime je pri prosti ekipi edino poimenovanje (strežnik zahteva vsaj dva
+     znaka), pri klubski pa neobvezen nadomestek za »Klub N«. */
+  const lahkoDodam = nacin === 'klub' ? idKlub !== '' : ime.trim().length >= 2
+
   const dodaj = useMutation({
-    mutationFn: () => ligeApi.dodajEkipo(idLiga, { idKlub: Number(idKlub), zaporedna: null, ime: null }),
-    onSuccess: () => { osveziEkipe(); osveziLigo(); nastaviKlub('') },
+    mutationFn: () =>
+      ligeApi.dodajEkipo(idLiga, {
+        idKlub: nacin === 'klub' ? Number(idKlub) : null,
+        zaporedna: null,
+        ime: ime.trim() || null,
+      }),
+    onSuccess: () => { osveziEkipe(); osveziLigo(); nastaviKlub(''); nastaviIme('') },
   })
   const odstrani = useMutation({
     mutationFn: (idEkipa: number) => ligeApi.odstraniEkipo(idEkipa),
@@ -1105,17 +1653,62 @@ function EkipeUredi({
         <span className="sekcija__meta">{steviloEkip} od najmanj 2</span>
       </div>
 
-      <div className="obrazec__vrstica liga__dodaj-ekipo">
-        <select value={idKlub} onChange={(d) => nastaviKlub(d.target.value)}>
-          <option value="">— izberi klub —</option>
-          {klubi.data?.map((k) => (
-            <option key={k.id} value={k.id}>{k.ime}</option>
-          ))}
-        </select>
-        <button className="gumb" disabled={!idKlub || dodaj.isPending} onClick={() => dodaj.mutate()}>
-          + Dodaj ekipo
+      <div className="izbirnik liga__nacin-ekipe" role="group" aria-label="Vrsta ekipe">
+        <button
+          type="button"
+          className={'izbirnik__gumb' + (nacin === 'klub' ? ' izbirnik__gumb--aktiven' : '')}
+          aria-pressed={nacin === 'klub'}
+          onClick={() => nastaviNacin('klub')}
+        >
+          Iz registra
+        </button>
+        <button
+          type="button"
+          className={'izbirnik__gumb' + (nacin === 'prosta' ? ' izbirnik__gumb--aktiven' : '')}
+          aria-pressed={nacin === 'prosta'}
+          onClick={() => nastaviNacin('prosta')}
+        >
+          Prosta ekipa
         </button>
       </div>
+
+      <form
+        className="obrazec__vrstica liga__dodaj-ekipo"
+        onSubmit={(d) => {
+          d.preventDefault()
+          if (lahkoDodam && !dodaj.isPending) dodaj.mutate()
+        }}
+      >
+        {nacin === 'klub' && (
+          <label className="obrazec__polje">
+            <span>Klub</span>
+            <select value={idKlub} onChange={(d) => nastaviKlub(d.target.value)}>
+              <option value="">— izberi klub —</option>
+              {klubi.data?.map((k) => (
+                <option key={k.id} value={k.id}>{k.ime}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="obrazec__polje">
+          <span>{nacin === 'klub' ? 'Ime ekipe (neobvezno)' : 'Ime ekipe'}</span>
+          <input
+            value={ime}
+            maxLength={60}
+            onChange={(d) => nastaviIme(d.target.value)}
+            placeholder={nacin === 'klub' ? 'sicer klub in številka' : 'npr. Kuhinja'}
+          />
+        </label>
+        <button className="gumb" type="submit" disabled={!lahkoDodam || dodaj.isPending}>
+          + Dodaj ekipo
+        </button>
+      </form>
+      {nacin === 'prosta' && (
+        <p className="namig">
+          Prosta ekipa nastopa samo v tej ligi in v register klubov ne pride. Kader ji sestaviš
+          iz igralcev registra, enako kot klubski.
+        </p>
+      )}
       <SporociloNapake napaka={dodaj.error} />
 
       {ekipe.data && ekipe.data.length === 0 && <p className="obvestilo">Ni še ekip.</p>}
@@ -1123,7 +1716,7 @@ function EkipeUredi({
         <ul className="liga__ekipe">
           {ekipe.data.map((e) => (
             <li key={e.id} className="liga__ekipa">
-              <span>{e.prikazanoIme}</span>
+              <ImeEkipe ekipa={e} />
               <span className="liga__ekipa-gumbi">
                 <span className="sekcija__meta">{kaderTekst(e.steviloKadra)}</span>
                 <button className="gumb gumb--majhen" onClick={() => nastaviUrejanKader(e)}>Kader</button>

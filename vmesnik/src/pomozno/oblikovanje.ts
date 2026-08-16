@@ -32,12 +32,64 @@ const KRATKI_MESECI = [
   'jul', 'avg', 'sep', 'okt', 'nov', 'dec',
 ]
 
+const DNEVI = ['ned', 'pon', 'tor', 'sre', 'čet', 'pet', 'sob']
+
+/* Termin kola iz ISO datuma-časa: "ned, 12. okt · 18.00".
+
+   Dan v tednu je spredaj, ker gledalec kolo išče po dnevu ("naslednjo nedeljo")
+   in ne po datumu. Ura 00:00 pomeni, da je organizator ni vpisal — takrat
+   odpade, ne izpiše se "0.00". Letnica ni v izpisu: sezona stoji v nadnaslovu,
+   v vrstici kola pa je odveč. */
+export function oblikujTermin(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const [d, t] = iso.split('T')
+  const [leto, mesec, dan] = d.split('-').map(Number)
+  if (!leto || !mesec || !dan) return ''
+  /* UTC, da poletni/zimski čas datuma ne premakne za dan nazaj. */
+  const dnevVTednu = DNEVI[new Date(Date.UTC(leto, mesec - 1, dan)).getUTCDay()] ?? ''
+  const datum = `${dnevVTednu}, ${dan}. ${KRATKI_MESECI[mesec - 1] ?? ''}`
+  const ura = t ? t.slice(0, 5) : ''
+  return ura && ura !== '00:00' ? `${datum} · ${ura.replace(':', '.')}` : datum
+}
+
 /* Obdobje turnirja: en datum, "od - do" ali prazen niz. */
 export function oblikujObdobje(zacetek: string | null, konec: string | null): string {
   const od = oblikujDatum(zacetek)
   const dokler = oblikujDatum(konec)
   if (od && dokler && od !== dokler) return `${od} – ${dokler}`
   return od || dokler
+}
+
+/* Obdobje v mono vrstici telefona: "5. 9.", "13.–14. 8.", "30. 8. – 1. 9."
+   Kadar sta datuma v istem mesecu, se ponovi samo dan - v vrstico gresta
+   obdobje IN kraj, za dva cela datuma pa prostora ni. Letnica je privzeto
+   odvec (seznam je tekoc), na strani turnirja pa jo zahtevamo izrecno. */
+export function oblikujObdobjeKratko(
+  zacetek: string | null,
+  konec: string | null,
+  zLetom = false,
+): string {
+  const od = razstaviDatum(zacetek)
+  const dokler = razstaviDatum(konec)
+  const letnica = (leto: number) => (zLetom ? ` ${leto}` : '')
+
+  if (od && dokler && (od.leto !== dokler.leto || od.mesec !== dokler.mesec || od.dan !== dokler.dan)) {
+    if (od.leto === dokler.leto && od.mesec === dokler.mesec) {
+      return `${od.dan}.–${dokler.dan}. ${od.mesec}.${letnica(od.leto)}`
+    }
+    const prvi = `${od.dan}. ${od.mesec}.${od.leto !== dokler.leto ? ` ${od.leto}` : ''}`
+    return `${prvi} – ${dokler.dan}. ${dokler.mesec}.${letnica(dokler.leto)}`
+  }
+
+  const en = od ?? dokler
+  return en ? `${en.dan}. ${en.mesec}.${letnica(en.leto)}` : ''
+}
+
+function razstaviDatum(datum: string | null): { leto: number; mesec: number; dan: number } | null {
+  if (!datum) return null
+  const [leto, mesec, dan] = datum.split('-').map(Number)
+  if (!leto || !mesec || !dan) return null
+  return { leto, mesec, dan }
 }
 
 /* Datumski blok v seznamu (dan nad kratico meseca). Brez datuma vrne crtico,
@@ -55,6 +107,21 @@ export function datumskiBlok(datum: string | null): { dan: string; mesec: string
 export function oznakaMeseca(mesec: string): string {
   const st = Number(mesec.split('-')[1])
   return MESECI[st - 1] ?? mesec
+}
+
+/* Sezona, ki ji pripada datum: "2025-10-04" -> "2025/26", "2026-04-19" ->
+   "2025/26". Turnir sezone ne nosi kot polje (nosi jo liga), filter nad
+   seznamom pa jo potrebuje - sicer bi gledalec 326 uvozenih turnirjev lahko
+   locil samo po posameznem datumu.
+
+   Rez je 1. julij: uvozena zgodovina NTZS se zacne najprej sredi septembra in
+   konca najkasneje sredi junija, zato skozi rez ne pade nobeno tekmovanje.
+   Brez datuma sezone ni - turnir tak preprosto ni v nobeni skupini. */
+export function sezonaIzDatuma(datum: string | null | undefined): string | null {
+  const razstavljen = razstaviDatum(datum ?? null)
+  if (!razstavljen) return null
+  const zacetna = razstavljen.mesec >= 7 ? razstavljen.leto : razstavljen.leto - 1
+  return `${zacetna}/${String((zacetna + 1) % 100).padStart(2, '0')}`
 }
 
 /* Letnica rojstva iz datuma "YYYY-MM-DD". */
@@ -113,6 +180,11 @@ export function sklonDogodkov(n: number): string {
 
 export function sklonPrijavljenih(n: number): string {
   return sklon(n, 'prijavljen', 'prijavljena', 'prijavljeni', 'prijavljenih')
+}
+
+/* "12 prijav" - v mono vrstici telefona je krajse od "12 prijavljenih". */
+export function sklonPrijav(n: number): string {
+  return sklon(n, 'prijava', 'prijavi', 'prijave', 'prijav')
 }
 
 export function sklonTekmovanj(n: number): string {

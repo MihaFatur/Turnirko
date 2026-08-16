@@ -5,10 +5,13 @@ package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -16,18 +19,24 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 import si.turnirko.dto.DvobojDto;
 import si.turnirko.dto.EkipaDto;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
+import si.turnirko.dto.LestvicaDvojiceDto;
 import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.LestvicaIgralcaDto;
+import si.turnirko.dto.LestvicaIgralcaLigeDto;
 import si.turnirko.dto.LigaVnos;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.TekmaSrecanjaDto;
+import si.turnirko.dto.TerminiVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
@@ -44,6 +53,8 @@ class LigaSrecanjeTest extends IntegracijskiTest {
     @Autowired private LigaStoritev ligaStoritev;
     @Autowired private SrecanjeStoritev srecanjeStoritev;
     @Autowired private KlubRepozitorij klubRepozitorij;
+    /* Za preverbe, ki morajo res do baze in ne le do predpomnilnika seje. */
+    @PersistenceContext private EntityManager seja;
 
     @Test
     void dvokroznoRazporedZaStiriEkipe() {
@@ -55,6 +66,121 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         List<SrecanjeDto> srecanja = srecanjeStoritev.zaLigo(liga);
         assertEquals(12, srecanja.size(), "4 ekipe dvokrozno -> 12 srecanj");
         assertEquals(6, srecanja.stream().mapToInt(SrecanjeDto::kolo).max().orElse(0));
+    }
+
+    /* Seme (zacetek prvega kola + razmik) se vpise ze ob ustvarjanju lige, ko
+       ekip se ni - datumi kol nastanejo sele ob zrebu, ko je znano, koliko kol
+       liga ima. */
+    @Test
+    void terminiKolSeIzracunajoObZrebu() {
+        LocalDateTime prvo = LocalDateTime.of(2026, 10, 4, 18, 0);
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, true, prvo, 7);
+        for (int i = 1; i <= 4; i++) {
+            dodajEkipoSKadrom(liga, "Klub " + i, 3);
+        }
+        ligaStoritev.generirajRazpored(liga);
+
+        Map<Integer, LocalDateTime> termini = terminiPoKolih(liga);
+        assertEquals(6, termini.size(), "4 ekipe dvokrozno -> 6 kol");
+        assertEquals(prvo, termini.get(1));
+        assertEquals(prvo.plusDays(14), termini.get(3), "tretje kolo je dva razmika za prvim");
+        assertEquals(prvo.plusDays(35), termini.get(6));
+    }
+
+    /* Ura mora prezivet zapis v bazo. Gonilnik sqlite-jdbc pozna eno samo
+       obliko za datume in casovne zige ("yyyy-MM-dd"), zato vsakemu zigu uro
+       odreze - zato ima stolpec pretvornik CasKotBesedilo. Test brez praznjenja
+       seje tega ne bi ujel: entiteta bi prisla iz predpomnilnika transakcije in
+       ura bi "obstala", ceprav je v bazi ni. */
+    @Test
+    void uraTerminaPrezivizapisVBazo() {
+        LocalDateTime prvo = LocalDateTime.of(2026, 10, 4, 18, 30);
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, false, prvo, 7);
+        dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+
+        seja.flush();
+        seja.clear();
+
+        assertEquals(prvo, srecanjeStoritev.zaLigo(liga).get(0).predvidenZacetek());
+        assertEquals(prvo, ligaStoritev.najdi(liga).zacetekPrvegaKola());
+    }
+
+    /* Brez semena razpored terminov nima - takrat vmesnik pri kolu se naprej
+       izpise "razpored" in ne datuma. */
+    @Test
+    void brezSemenaSrecanjaNimajoTermina() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, false);
+        dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+
+        assertTrue(srecanjeStoritev.zaLigo(liga).stream()
+                .allMatch(s -> s.predvidenZacetek() == null));
+    }
+
+    /* Rocni popravek je last kola: prestavljeno kolo ne sme premakniti
+       naslednjih (ta so ze objavljena). Vpisati ga je mogoce tudi, ko liga ze
+       tece - zreb jo je postavil v V_TEKU. */
+    @Test
+    void rocniTerminPrestaviSamoSvojeKolo() {
+        LocalDateTime prvo = LocalDateTime.of(2026, 10, 4, 18, 0);
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, true, prvo, 7);
+        for (int i = 1; i <= 4; i++) {
+            dodajEkipoSKadrom(liga, "Klub " + i, 3);
+        }
+        ligaStoritev.generirajRazpored(liga);
+
+        LocalDateTime prestavljeno = LocalDateTime.of(2026, 10, 14, 19, 30);
+        ligaStoritev.nastaviTermine(liga, new TerminiVnos(List.of(
+                new TerminiVnos.TerminKola(2, prestavljeno))));
+
+        Map<Integer, LocalDateTime> termini = terminiPoKolih(liga);
+        assertEquals(prestavljeno, termini.get(2));
+        assertEquals(prvo, termini.get(1), "prvo kolo ostane");
+        assertEquals(prvo.plusDays(14), termini.get(3), "naslednja kola se ne premaknejo");
+    }
+
+    /* Kolo sme termin tudi izgubiti (zacetek null) - to ni "nedotaknjeno
+       kolo", ampak izbris termina. */
+    @Test
+    void terminKolaJeMogoceIzbrisati() {
+        LocalDateTime prvo = LocalDateTime.of(2026, 10, 4, 18, 0);
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, false, prvo, 7);
+        dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+
+        ligaStoritev.nastaviTermine(liga, new TerminiVnos(List.of(
+                new TerminiVnos.TerminKola(1, null))));
+
+        assertTrue(srecanjeStoritev.zaLigo(liga).stream()
+                .allMatch(s -> s.predvidenZacetek() == null));
+    }
+
+    @Test
+    void terminNeobstojecegaKolaSeZavrne() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, false);
+        dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+
+        TerminiVnos vnos = new TerminiVnos(List.of(
+                new TerminiVnos.TerminKola(9, LocalDateTime.of(2026, 10, 4, 18, 0))));
+        assertThrows(NeveljavenVnosIzjema.class, () -> ligaStoritev.nastaviTermine(liga, vnos));
+    }
+
+    /* Vsa srecanja kola se igrajo isti dan, zato dobijo isti zacetek. */
+    private Map<Integer, LocalDateTime> terminiPoKolih(Long idLiga) {
+        Map<Integer, LocalDateTime> poKolih = new LinkedHashMap<>();
+        for (SrecanjeDto s : srecanjeStoritev.zaLigo(idLiga)) {
+            LocalDateTime prej = poKolih.put(s.kolo(), s.predvidenZacetek());
+            if (prej != null) {
+                assertEquals(prej, s.predvidenZacetek(), "srecanja istega kola imajo isti termin");
+            }
+        }
+        return poKolih;
     }
 
     @Test
@@ -251,6 +377,137 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         assertEquals(0, doma.get(idC).porazi());
     }
 
+    /* Lestvica posameznikov lige steje SAMO posamicne tekme te lige. Dvojice so
+       tu dobljene, njun drugi igralec pa je svojo posamicno tekmo izgubil - ce
+       bi dvojice stele, bi imel zmago. */
+    @Test
+    void lestvicaIgralcevStejeSamoPosamicneTekmeTeLige() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, false);
+        dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+        SrecanjeDto srecanje = srecanjeStoritev.zaLigo(liga).get(0);
+        nastaviPostavo(srecanje.id());
+
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje.id());
+        // dvojice domacim, A-X domacim (3:1), B-Y gostom (1:3)
+        srecanjeStoritev.vnesiRezultat(p.tekme().get(0).id(),
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+        srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(),
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+        srecanjeStoritev.vnesiRezultat(p.tekme().get(2).id(),
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null));
+
+        Long idA = p.kaderDomaci().get(0).idIgralec();
+        Long idB = p.kaderDomaci().get(1).idIgralec();
+        Long idC = p.kaderDomaci().get(2).idIgralec();
+        Map<Long, LestvicaIgralcaLigeDto> po = ligaStoritev.lestvicaIgralcev(liga).stream()
+                .collect(Collectors.toMap(LestvicaIgralcaLigeDto::idIgralec, v -> v));
+
+        assertEquals(4, po.size(), "na lestvici so samo igralci z odigrano posamicno tekmo");
+        assertFalse(po.containsKey(idC), "C ni igral, zato vrstice nima");
+        assertEquals(1, po.get(idA).zmage());
+        assertEquals(0, po.get(idA).porazi());
+        assertEquals(100, po.get(idA).odstotek());
+        assertEquals(3, po.get(idA).dobljeniNizi());
+        assertEquals(1, po.get(idA).prejetiNizi());
+        assertEquals(0, po.get(idB).zmage(), "dvojice ne smejo steti med zmage posameznika");
+        assertEquals(1, po.get(idB).porazi());
+    }
+
+    /* Merilo lestvice so zmage; sele ob izenacenju odloca uspesnost. Igralec z
+       dvema zmagama iz treh tekem mora biti pred tistim z eno samo zmago iz ene
+       tekme (100 %), sicer bi vrh lestvice zasedel, kdor je igral najmanj. */
+    @Test
+    void lestvicaIgralcevUrediPoZmagahInSeleNatoPoUspesnosti() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, true);
+        Long ekipaA = dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+
+        /* Postava jemlje kader po vrstnem redu, zato prvi in drugi clan ekipe A
+           vselej stojita na prvem oz. drugem mestu svoje strani. */
+        List<KaderIgralecDto> kaderA = ligaStoritev.kader(ekipaA);
+        Long prviA = kaderA.get(0).idIgralec();
+        Long drugiA = kaderA.get(1).idIgralec();
+
+        List<SrecanjeDto> srecanja = srecanjeStoritev.zaLigo(liga);
+        for (int i = 0; i < srecanja.size(); i++) {
+            SrecanjeDto s = srecanja.get(i);
+            nastaviPostavo(s.id());
+            SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(s.id());
+            boolean aDoma = s.idEkipaDomaci().equals(ekipaA);
+            // prvi clan ekipe A dobi svojo tekmo v obeh srecanjih
+            srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(), izid(aDoma));
+            // drugi clan pa samo v prvem - ena zmaga iz ene same tekme
+            if (i == 0) {
+                srecanjeStoritev.vnesiRezultat(p.tekme().get(2).id(), izid(aDoma));
+            }
+        }
+
+        List<LestvicaIgralcaLigeDto> lestvica = ligaStoritev.lestvicaIgralcev(liga);
+        LestvicaIgralcaLigeDto prvi = lestvica.get(0);
+        assertEquals(prviA, prvi.idIgralec(), "dve zmagi sta pred eno zmago s 100 %");
+        assertEquals(1, prvi.mesto());
+        assertEquals(2, prvi.zmage());
+        assertEquals(2, prvi.odigrane());
+        assertEquals(100, prvi.odstotek());
+        LestvicaIgralcaLigeDto drugi = lestvica.get(1);
+        assertEquals(drugiA, drugi.idIgralec());
+        assertEquals(1, drugi.zmage(), "prav tako 100 %, a iz ene same tekme");
+        assertEquals(100, drugi.odstotek());
+    }
+
+    /* Dvojica je ista dvojica tudi, ko igra v gosteh: dvokrozna liga postavi
+       isti par enkrat kot domaci in enkrat kot gost, na lestvici pa mora ostati
+       ena sama vrstica z obema tekmama. */
+    @Test
+    void lestvicaDvojicZdruziParNeGledeNaStran() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, true);
+        Long ekipaA = dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+
+        List<SrecanjeDto> srecanja = srecanjeStoritev.zaLigo(liga);
+        assertEquals(2, srecanja.size(), "dve ekipi dvokrozno -> dve srecanji");
+        for (SrecanjeDto s : srecanja) {
+            nastaviPostavo(s.id());
+            SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(s.id());
+            // dvojice (prva tekma po SNTL) dobi vselej par ekipe A
+            srecanjeStoritev.vnesiRezultat(p.tekme().get(0).id(),
+                    izid(s.idEkipaDomaci().equals(ekipaA)));
+        }
+
+        List<LestvicaDvojiceDto> dvojice = ligaStoritev.lestvicaDvojic(liga);
+        assertEquals(2, dvojice.size(), "dva para, vsak z eno vrstico");
+        LestvicaDvojiceDto prva = dvojice.get(0);
+        assertEquals(1, prva.mesto());
+        assertEquals(2, prva.odigrane(), "obe tekmi para stejeta v isto vrstico");
+        assertEquals(2, prva.zmage());
+        assertEquals(0, prva.porazi());
+        assertEquals(100, prva.odstotek());
+        assertEquals(6, prva.dobljeniNizi());
+        assertEquals(2, prva.prejetiNizi());
+        assertNotEquals(prva.idPrvi(), prva.idDrugi(), "par sta dva razlicna igralca");
+        assertEquals(0, dvojice.get(1).zmage());
+        assertEquals(2, dvojice.get(1).porazi());
+    }
+
+    /* Posamicne tekme na lestvico dvojic ne smejo - in obratno. Sicer bi
+       najboljsa dvojica postal par, ki dvojic sploh ni igral. */
+    @Test
+    void lestvicaDvojicNeStejePosamicnihTekem() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL, null);
+        nastaviPostavo(srecanje);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(),  // A-X
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+
+        assertTrue(ligaStoritev.lestvicaDvojic(p.srecanje().idLiga()).isEmpty(),
+                "brez odigranih dvojic je lestvica dvojic prazna");
+        assertEquals(2, ligaStoritev.lestvicaIgralcev(p.srecanje().idLiga()).size());
+    }
+
     /* Seznam ekip nosi velikost kadra, da vrstica ekipe ne potrebuje svoje
        poizvedbe na kader. */
     @Test
@@ -287,9 +544,22 @@ class LigaSrecanjeTest extends IntegracijskiTest {
 
     // ---------- pomozne metode ----------
 
+    /* Izid 3:1 za tisto stran, ki naj tekmo dobi. Pri dvokrozni ligi ista ekipa
+       enkrat gostuje, zato je "kdo je zmagal" odvisen od strani in ne od izida. */
+    private static si.turnirko.dto.VnosRezultataSrecanja izid(boolean zmagaDomacih) {
+        return new si.turnirko.dto.VnosRezultataSrecanja(
+                null, zmagaDomacih ? 3 : 1, zmagaDomacih ? 1 : 3, null);
+    }
+
     private Long ustvariLigo(FormatSrecanja format, Integer zmagZaSrecanje, boolean dvokrozno) {
+        return ustvariLigo(format, zmagZaSrecanje, dvokrozno, null, null);
+    }
+
+    private Long ustvariLigo(FormatSrecanja format, Integer zmagZaSrecanje, boolean dvokrozno,
+                             LocalDateTime zacetekPrvegaKola, Integer razmikDni) {
         LigaVnos v = new LigaVnos("Test liga", "2025/26", SpolKategorija.MOSKI, format, 5,
-                zmagZaSrecanje, dvokrozno, 2, 1, 0, true, false, true, null);
+                zmagZaSrecanje, dvokrozno, 2, 1, 0, true, false, true, null,
+                zacetekPrvegaKola, razmikDni);
         return ligaStoritev.ustvari(v).id();
     }
 

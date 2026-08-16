@@ -31,6 +31,9 @@ function vecina(format: FormatSrecanja): number {
   return Math.floor(RAZPORED_FORMATA[format].length / 2) + 1
 }
 
+/* Liga se praviloma igra tedensko (isto privzeto kot v zaledju). */
+const PRIVZET_RAZMIK = 7
+
 export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const urejanje = liga !== undefined
 
@@ -53,6 +56,16 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const [prepoved, nastaviPrepoved] = useState(liga?.prepovedDvojneRegistracije ?? false)
   const [stejeVElo, nastaviStejeVElo] = useState(liga?.stejeVElo ?? true)
   const [predloga, nastaviPredlogo] = useState<PredlogaLige>(liga?.predlogaListka ?? 'SNTL_23')
+  /* Termini so seme, ne seznam datumov: ekip (in s tem števila kol) ob
+     ustvarjanju še ni. Datume vsem kolom izračuna žreb, ročno popravljanje po
+     kolih pride kasneje (TerminiOkno na strani lige). */
+  const [datumPrvega, nastaviDatumPrvega] = useState(
+    liga?.zacetekPrvegaKola?.slice(0, 10) ?? '',
+  )
+  const [uraPrvega, nastaviUroPrvega] = useState(
+    liga?.zacetekPrvegaKola?.slice(11, 16) ?? '',
+  )
+  const [razmik, nastaviRazmik] = useState(liga?.razmikDni ?? PRIVZET_RAZMIK)
 
   const tekme = RAZPORED_FORMATA[format]
 
@@ -89,6 +102,10 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       prepovedDvojneRegistracije: prepoved,
       stejeVElo,
       predlogaListka: predloga,
+      /* Brez datuma prvega kola terminov ni; ura je neobvezna (00:00 pomeni
+         »ura ni določena« in se v razporedu ne izpiše). */
+      zacetekPrvegaKola: datumPrvega ? `${datumPrvega}T${uraPrvega || '00:00'}` : null,
+      razmikDni: datumPrvega ? razmik : null,
     })
   }
 
@@ -167,6 +184,33 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             ? 'Vseh ' + tekme.length + ' tekem se odigra do konca, tudi ko je zmagovalec srečanja že znan — rezultat šteje v razliko tekem in v ELO.'
             : `Ko ena ekipa doseže ${prag} dobljenih tekem, se srečanje konča; preostale tekme ostanejo neodigrane.`}
         </p>
+
+        <fieldset className="obrazec__skupina">
+          <legend>Termini kol</legend>
+          <div className="obrazec__vrstica">
+            <label className="obrazec__polje">
+              <span>Prvo kolo</span>
+              <input type="date" value={datumPrvega}
+                onChange={(d) => nastaviDatumPrvega(d.target.value)} />
+            </label>
+            <label className="obrazec__polje">
+              <span>Ura</span>
+              <input type="time" value={uraPrvega}
+                onChange={(d) => nastaviUroPrvega(d.target.value)} />
+            </label>
+            <label className="obrazec__polje">
+              <span>Na koliko dni</span>
+              <input type="number" min={1} max={365} value={razmik}
+                disabled={!datumPrvega}
+                onChange={(d) => nastaviRazmik(Number(d.target.value))} />
+            </label>
+          </div>
+          <p className="namig">
+            {datumPrvega
+              ? `Vsako kolo se odigra ${razmik === 7 ? 'teden' : `${razmik} dni`} za prejšnjim; datumi se zapišejo ob generiranju razporeda, ko je znano, koliko kol liga ima. Posamezno kolo je pozneje mogoče prestaviti — na strani lige pod »Termini«.`
+              : 'Brez datuma prvega kola razpored pri neodigranih kolih ne pokaže dneva, ampak samo oznako »razpored«. Datume je mogoče vpisati tudi pozneje — na strani lige pod »Termini«.'}
+          </p>
+        </fieldset>
 
         <fieldset className="obrazec__skupina">
           <legend>Točkovanje</legend>

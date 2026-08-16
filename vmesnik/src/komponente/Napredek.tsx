@@ -13,6 +13,29 @@ interface Lastnosti {
   koncan?: boolean
 }
 
+/* Napredek v enovrsticni vrstici telefona: samo 4 px palica, brez mono
+   oznake - stevilka "42/61" je ze del mono vrstice pod imenom in bi jo palica
+   z oznako podvojila. Izrise se samo pri tekmovanju, ki tece; pri pripravi in
+   zakljucku palica ne pove nic, kar ne bi povedal ze status. */
+export function PalicaMobi({
+  odigranih,
+  vseh,
+  naModri = false,
+}: {
+  odigranih: number
+  vseh: number
+  /* Pas "Danes v dvorani" stoji na modri ploskvi - tam je podlaga palice
+     bela, ker bi se sivo polnilo z njo zlilo. */
+  naModri?: boolean
+}) {
+  const delez = vseh > 0 ? Math.round((odigranih / vseh) * 100) : 0
+  return (
+    <span className={'palica palica--tanka' + (naModri ? ' palica--na-modri' : '')}>
+      <span className="palica__polnilo" style={{ width: `${delez}%` }} />
+    </span>
+  )
+}
+
 export function Napredek({ odigranih, vseh, koncan = false }: Lastnosti) {
   const delez = vseh > 0 ? Math.round((odigranih / vseh) * 100) : 0
   return (

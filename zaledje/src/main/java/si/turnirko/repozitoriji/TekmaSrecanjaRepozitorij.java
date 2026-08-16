@@ -1,5 +1,7 @@
 /* Dostop do posamicnih tekem srecanja. Vsi (do stirje) igralci se nalozijo
-   vnaprej, ker jih bere DTO (zapisnik srecanja) izven transakcije. */
+   vnaprej, ker jih bere DTO (zapisnik srecanja) izven transakcije. Vez ekipe
+   na klub je LEVA: prosta ekipa kluba nima in notranji stik bi vse njene tekme
+   izpustil iz profilov in lestvic. */
 package si.turnirko.repozitoriji;
 
 import java.util.List;
@@ -53,8 +55,8 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
     @Query("""
             SELECT t FROM TekmaSrecanja t
             JOIN FETCH t.srecanje s JOIN FETCH s.liga
-            JOIN FETCH s.ekipaDomaci ed JOIN FETCH ed.klub
-            JOIN FETCH s.ekipaGost eg JOIN FETCH eg.klub
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             JOIN FETCH t.igralecDomaci JOIN FETCH t.igralecGost
             WHERE t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
               AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
@@ -70,8 +72,8 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
     @Query("""
             SELECT t FROM TekmaSrecanja t
             JOIN FETCH t.srecanje s JOIN FETCH s.liga
-            JOIN FETCH s.ekipaDomaci ed JOIN FETCH ed.klub
-            JOIN FETCH s.ekipaGost eg JOIN FETCH eg.klub
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             JOIN FETCH t.igralecDomaci id LEFT JOIN FETCH id.klub
             JOIN FETCH t.igralecGost ig LEFT JOIN FETCH ig.klub
             WHERE t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
@@ -87,8 +89,8 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
     @Query("""
             SELECT t FROM TekmaSrecanja t
             JOIN FETCH t.srecanje s JOIN FETCH s.liga
-            JOIN FETCH s.ekipaDomaci ed JOIN FETCH ed.klub
-            JOIN FETCH s.ekipaGost eg JOIN FETCH eg.klub
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             LEFT JOIN FETCH t.igralecDomaci LEFT JOIN FETCH t.igralecDomaci2
             LEFT JOIN FETCH t.igralecGost LEFT JOIN FETCH t.igralecGost2
             WHERE t.tip = si.turnirko.modeli.TipTekmeSrecanja.DVOJICE
@@ -116,6 +118,41 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
               AND t.zmagovalecStran IS NOT NULL
             """)
     List<Object[]> posamicniIzidiLige(@Param("idLiga") Long idLiga);
+
+    /* Odigrane POSAMICNE tekme ene lige s celim kontekstom vrstice (oba igralca
+       in obe ekipi) - za lestvico posameznikov te lige. Loceno od
+       posamicniIzidiLige, ki vraca same identifikatorje: tam gre za sestevek
+       bilanc, tu pa vrstica pokaze ime igralca in ekipo, za katero je nastopal.
+       Nizi so v sami tekmi, zato dodatne poizvedbe ni. */
+    @Query("""
+            SELECT t FROM TekmaSrecanja t
+            JOIN FETCH t.srecanje s
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
+            JOIN FETCH t.igralecDomaci JOIN FETCH t.igralecGost
+            WHERE s.liga.id = :idLiga
+              AND t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
+              AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
+              AND t.zmagovalecStran IS NOT NULL
+            """)
+    List<TekmaSrecanja> najdiPosamicneLige(@Param("idLiga") Long idLiga);
+
+    /* Odigrane tekme DVOJIC ene lige - za lestvico dvojic. Vsi stirje igralci so
+       vezani z navadnim "join fetch" (in ne "left"), zato tekma, pri kateri par
+       ni v celoti postavljen, izpade sama: brez obeh imen dvojice ni. */
+    @Query("""
+            SELECT t FROM TekmaSrecanja t
+            JOIN FETCH t.srecanje s
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
+            JOIN FETCH t.igralecDomaci JOIN FETCH t.igralecDomaci2
+            JOIN FETCH t.igralecGost JOIN FETCH t.igralecGost2
+            WHERE s.liga.id = :idLiga
+              AND t.tip = si.turnirko.modeli.TipTekmeSrecanja.DVOJICE
+              AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
+              AND t.zmagovalecStran IS NOT NULL
+            """)
+    List<TekmaSrecanja> najdiDvojiceLige(@Param("idLiga") Long idLiga);
 
     /* Sestevek dobljenih nizov po srecanjih lige (samo koncane tekme) - za
        kriterij izenacenja "razlika nizov". Vrne [idSrecanja, niziDomaci, niziGost]. */

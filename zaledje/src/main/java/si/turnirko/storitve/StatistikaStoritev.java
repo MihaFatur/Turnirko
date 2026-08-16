@@ -122,6 +122,7 @@ public class StatistikaStoritev {
                     s.odigrane, s.zmage, s.porazi,
                     null,
                     sprememba,
+                    igralec.getSpol(),
                     KategorijaIgralca.izpelji(igralec.getSpol(), igralec.getDatumRojstva(), danes),
                     poteki.crte().getOrDefault(igralec.getId(), List.of()),
                     lige.getOrDefault(igralec.getId(), List.of())));
@@ -138,7 +139,7 @@ public class StatistikaStoritev {
             zPremikom.add(new LestvicaIgralcaDto(
                     v.idIgralca(), v.ime(), v.priimek(), v.polnoIme(), v.klub(), v.idKluba(),
                     v.rating(), v.odigrane(), v.zmage(), v.porazi(),
-                    premik, v.spremembaRatinga(), v.kategorija(),
+                    premik, v.spremembaRatinga(), v.spol(), v.kategorija(),
                     v.eloZgodovina(), v.idjiLig()));
         }
         return zPremikom;

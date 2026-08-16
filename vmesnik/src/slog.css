@@ -119,6 +119,11 @@
      da si oznacen vsak, cez kogar potegnes miska. */
   --barva-vrstica-hover: #f3efe9;
 
+  /* Zastor pod predalom "Vec". Ne sme biti izpeljan iz crnila: v temni temi je
+     crnilo SVETLO in bi vsebino pod predalom posvetlil namesto zatemnil. V
+     temi je tudi gostejsi - 28 % crne cez skoraj crn papir se ne vidi. */
+  --barva-zastor: rgb(20 17 15 / 0.28);
+
   /* Podlaga polja za vnos je "bela" tudi v temni temi (tam potemni). */
   --sirina-okvirja: 1280px;
 }
@@ -159,6 +164,7 @@
     --barva-polnilo: #221e1a;
     --barva-bela: #1a1714;
     --barva-vrstica-hover: #1c1917;
+    --barva-zastor: rgb(0 0 0 / 0.62);
   }
 }
 
@@ -736,6 +742,21 @@ a.sekcija__meta {
   color: var(--barva-glavna-tekst);
 }
 
+/* Meta, ki ni pot naprej, ampak dejanje ("Uredi izbor →" odpre okno). Videz
+   je isti kot pri povezavi - gledalcu je vseeno, kaj se zgodi pod pokrovom -
+   zato gumb odvrzemo do besedila. */
+button.sekcija__meta {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--barva-glavna-tekst);
+  cursor: pointer;
+}
+
+button.sekcija__meta:hover {
+  text-decoration: underline;
+}
+
 /* Oznaka, da sklop ni javen. */
 .plosca__zasebno {
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
@@ -900,6 +921,96 @@ a.gumb {
   color: var(--barva-crnilo-3);
 }
 
+/* --- Preklop spremljanja lige --- */
+
+/* Kvadratek "spremljam": poln zelen = da, prazen z obrobo = ne. Isti znak
+   nosi pomen v sklopu "Moje lige", v oknu za urejanje izbora in na strani
+   lige - ikone so prepovedane, zato mora biti znak povsod isti. Kvadratek je
+   16 px, ker stoji ob imenu in ne v vrstici dejanj. */
+.kljukica {
+  display: block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--barva-crnilo-3);
+  background: none;
+}
+
+.kljukica--polna {
+  background: var(--barva-poudarek);
+  border-color: var(--barva-poudarek-tekst);
+}
+
+/* Kvadratek sam kot gumb (ob imenu lige). Prst dobi svojih 44 px prek
+   nevidnega ::after, ne da bi kvadratek zrasel in podrl poravnavo z imenom. */
+.kljukica-gumb {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.kljukica-gumb::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+}
+
+/* Kvadratek z oznako v vrstici dejanj (stran lige). Mere in obroba so kot pri
+   .gumb, ker stoji tik ob njem ("Pravila") in morata brati kot par. Ploskve
+   nima niti takrat, ko je liga izbrana - to pove kvadratek; polna zelena
+   ploskev bi tekmovala z znacko statusa tik nad njo. */
+.spremljanje {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 12px var(--r2);
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: none;
+  color: var(--barva-crnilo);
+  font: 600 15px / 1.2 var(--pisava-telo);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.spremljanje:hover:not(:disabled) {
+  border-color: var(--barva-glavna);
+  color: var(--barva-glavna-tekst);
+}
+
+/* Lepljiva glava telefona meri 56 px, zato je vidna visina 36 px; prst dobi
+   svojih 44 px prek nevidnega ::after - isti prijem kot .glava-telefon__gumb. */
+.spremljanje--glava {
+  position: relative;
+  min-height: 36px;
+  gap: var(--r1);
+  padding: 8px 10px;
+  border-color: var(--barva-crnilo);
+  color: var(--barva-crnilo);
+  font: 600 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.spremljanje--glava::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
 /* Znacka statusa: 11-12 px mono uppercase, polna podlaga, brez radija. */
 .znacka {
   display: inline-block;
@@ -980,6 +1091,222 @@ a.gumb {
   background: var(--barva-crnilo);
   border-color: var(--barva-crnilo);
   color: var(--barva-papir);
+}
+
+/* --- Krmila nad seznamom: filter in razvrstitev --- */
+
+/* Ena vrstica nad vsakim seznamom (turnirji, lige, lestvica): gumb, ki odpre
+   okno z merili, in nativni izbor razvrstitve. Ista vrstica sluzi namizju in
+   telefonu - razlika je samo v tem, koliko prostora dobi izbor (glej
+   prelomno tocko 640 px). */
+.krmila {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* Gumb filtra je enak .gumb, le da nosi stevec: mono crka, ker je stevilka.
+   Ne uporablja razreda .gumb, ker mora biti ozji od dejanj strani in stati v
+   isti vrsti kot izbor razvrstitve. */
+.krmila__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--r1);
+  flex: none;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: none;
+  color: var(--barva-crnilo);
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.krmila__filter:hover {
+  border-color: var(--barva-glavna);
+  color: var(--barva-glavna-tekst);
+}
+
+/* Izbran filter je stanje in ne dejanje, zato ploskev in ne le debelejsa
+   crta: gledalec mora ze s kota ocesa videti, da seznam ni cel. Modra je
+   polna (nosi belo besedilo), enako kot glavni gumb. */
+.krmila__filter--aktiven,
+.krmila__filter--aktiven:hover {
+  background: var(--barva-glavna-polna);
+  border-color: var(--barva-glavna);
+  color: var(--barva-na-glavni);
+}
+
+.krmila__stevec {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  background: var(--barva-na-glavni);
+  color: var(--barva-glavna-polna);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Nativni izbor kot gumb: naprava ga izrise kot svoj seznam in ne kot spustni
+   meni cez vsebino. Polje lezi cez oznako in je nevidno - brez tega bi bil
+   gumb sirok toliko kot NAJDALJSA postavka in ne toliko kot izbrana. */
+.krmilo-izbor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 30px 10px 12px;
+  border: 1px solid var(--barva-crta);
+}
+
+.krmilo-izbor__oznaka {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Razvrsti:" pove, kaj izbrana vrednost pomeni; brez nje je gumb "Rating"
+   ob gumbu "Filtriraj" videti kot drugi filter. */
+.krmilo-izbor__predpona {
+  color: var(--barva-crnilo-3);
+}
+
+/* Puscica stoji ob desnem robu in ne za besedilom: raztegnjen izbor bi jo
+   sicer pustil sredi prazne ploskve. Desni odmik 30 px zanjo rezervira prostor. */
+.krmilo-izbor__puscica {
+  position: absolute;
+  right: 12px;
+  color: var(--barva-crnilo-3);
+}
+
+.krmilo-izbor__polje {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  appearance: none;
+  border: none;
+  border-radius: 0;
+  background: none;
+  opacity: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Dodatek strani ob krmilih (ura osvezitve) gre na drugi konec vrstice. */
+.krmila__desno {
+  margin-left: auto;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Zetoni izbranih meril --- */
+
+/* Kaj je izbrano, mora stati na strani in ne samo v oknu, ki ga je gledalec
+   ze zaprl: filter, ki ga ne vidis, je past. Vsak zeton se odstrani sam,
+   zadnji v vrsti pocisti vse. */
+.zetoni {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  flex-wrap: wrap;
+  margin-top: var(--r1);
+}
+
+.zeton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--r1);
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--barva-crta);
+  border-left: 3px solid var(--barva-glavna);
+  border-radius: 0;
+  background: var(--barva-glavna-mehko);
+  color: var(--barva-crnilo);
+  font-family: var(--pisava-telo);
+  font-size: var(--tip-drobno);
+  line-height: 1.2;
+  cursor: pointer;
+  width: auto;
+}
+
+/* Zeton je nizji od 44 px (36 px), ker jih je lahko pet v vrsti in bi sicer
+   pojedli dve vrsti zaslona. Prst dobi svojih 44 px prek nevidnega ::after -
+   isti prijem kot pri kvadratku spremljanja. */
+.zeton::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.zeton:hover {
+  border-color: var(--barva-glavna);
+}
+
+.zeton__oznaka {
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.zeton__vrednost {
+  font-weight: 600;
+}
+
+.zeton__odstrani {
+  font-family: var(--pisava-mono);
+  font-size: 11px;
+  color: var(--barva-crnilo-3);
+}
+
+.zeton:hover .zeton__odstrani {
+  color: var(--barva-negativna);
+}
+
+/* "Pocisti vse" ni gumb z obrobo: stoji ob zetonih in bi kot ploskev tekmoval
+   z njimi, ceprav je redkejse dejanje. */
+.zetoni__pocisti,
+.povezava-gumb {
+  min-height: 36px;
+  padding: 0 var(--r1);
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--barva-glavna-tekst);
+  font-family: var(--pisava-telo);
+  font-size: var(--tip-drobno);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  width: auto;
+}
+
+.zetoni__pocisti:hover,
+.povezava-gumb:hover {
+  color: var(--barva-crnilo);
 }
 
 /* Palica napredka: 6 px, brez radija. */
@@ -1167,6 +1494,97 @@ input[type='radio'] {
 .iskalnik {
   max-width: none;
   margin: 0;
+}
+
+/* Termini kol (TerminiOkno): ena vrstica na kolo - oznaka, datum, ura.
+   Seznam lahko naraste na 30 kol, zato drsi znotraj sebe, da gumba
+   "Shrani"/"Prekliči" ostaneta v vidnem delu okna. */
+.termini {
+  display: flex;
+  flex-direction: column;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.termini__vrstica {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 8rem;
+  align-items: center;
+  gap: 12px;
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.termini__kolo {
+  font: 600 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.termini__oznaka {
+  display: block;
+  font-weight: 500;
+  color: var(--barva-crnilo-3);
+}
+
+.termini__polje {
+  display: block;
+  min-width: 0;
+}
+
+.termini__polnilo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.termini__polnilo-gumbi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+}
+
+/* Na telefonu se vrstica stisne (ozja oznaka in ura), ostane pa ENOVRSTICNA:
+   zlozena vrstica je bila 123 px visoka in seznam 30 kol je narasel cez ves
+   zaslon. Seznam takrat tudi NE drsi sam - gnezden drsnik na dotik pozre
+   potezo; okno je ena sama drsna ploskev. */
+@media (max-width: 480px) {
+  .termini {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .termini__vrstica {
+    grid-template-columns: 3.5rem minmax(0, 1fr) 5rem;
+    gap: 8px;
+  }
+
+  .termini__kolo {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .termini__vrstica input {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* Gumba koledarja in ure vzameta ~24 px vsak; pri treh poljih v 390 px
+     vrstici to pomeni odrezano letnico oz. minute ("18:0("). Na telefonu ju
+     ne rabimo - dotik na polje odpre domaci izbirnik tudi brez njiju. */
+  .termini__vrstica input::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
+  /* Polnilo: datum cez celo sirino, ura in razmik pod njim v paru. */
+  .termini__polnilo {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .termini__polnilo > :first-child {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Seznam z izbirnimi polji (dodajanje igralcev na dogodek). */
@@ -1418,6 +1836,18 @@ input[type='radio'] {
   letter-spacing: -0.03em;
 }
 
+/* Mono nadnaslov nad naslovom okna ("Uredi izbor" nad "Moje lige"). Sloga ni
+   imel in se je izpisal v isti vrsti kot naslov ("Uredi izborMoje lige"); iste
+   mere kot nadnaslov strani, le da je tu tudi vrstica sama. */
+.modal__nad {
+  display: block;
+  margin-bottom: 6px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
 /* Nepovratno dejanje: glava dobi rjasto crto namesto crne. */
 .modal--nevarno .modal__glava {
   border-bottom-color: var(--barva-negativna);
@@ -1457,6 +1887,274 @@ input[type='radio'] {
   font-weight: 400;
   color: var(--barva-crnilo-3);
   font-size: var(--tip-drobno);
+}
+
+/* --- Okno "Uredi izbor lig" --- */
+
+/* Okno izbora je edino, ki mora stati v zaslonu v celoti: seznam lahko naraste
+   na vse uvozene sezone (stotine lig). Zato je prav TO okno stolpec z zgornjo
+   mejo v visini zaslona (minus odmika zastora), telo pa ne drsi - drsi samo
+   seznam. Sicer bi telefon dobil dva drsnika enega v drugem, gumba "Koncano"
+   pa ne bi bilo videti. */
+.modal:has(.izbor-lig) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--r8) - var(--r5));
+}
+
+.modal:has(.izbor-lig) .modal__telo {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.izbor-lig {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.izbor-lig__iskanje input {
+  width: 100%;
+}
+
+.izbor-lig__skupina + .izbor-lig__skupina {
+  margin-top: var(--r3);
+}
+
+/* Naslov skupine ostane na zaslonu med drsenjem: pri stotih ligah je sicer
+   ze po dveh potegih vseeno, ali gledas "V teku" ali "Zakljucene". */
+.izbor-lig__naslov {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  margin: 0;
+  padding: 10px 0 6px;
+  background: var(--barva-papir);
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 600 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.izbor-lig__stevec {
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* Zadetkovna povrsina je cela vrstica in ne le kvadratek: na telefonu se v
+   16 px kvadratek ne zadene, ime pa tece cez ves zaslon. Vrstica je zato gumb
+   - klik kamorkoli preklopi spremljanje. */
+.izbor-lig__vrstica {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: var(--r1) 0;
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.izbor-lig__vrstica:hover {
+  background: var(--barva-vrstica-hover);
+}
+
+/* Izbrana liga dobi 3 px zeleno crto ob levem robu - isti jezik kot oznacena
+   vrstica lestvice, le da je tam modra (jaz) in tu zelena (spremljam). */
+.izbor-lig__vrstica--izbrana {
+  padding-left: 9px;
+  border-left: 3px solid var(--barva-poudarek);
+}
+
+.izbor-lig__telo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.izbor-lig__ime {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+.izbor-lig__meta {
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.izbor-lig__vec {
+  width: 100%;
+  margin-top: var(--r2);
+}
+
+.izbor-lig__noga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  flex-wrap: wrap;
+}
+
+.izbor-lig__stanje {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Okno "Filtriraj po" --- */
+
+/* Isti prijem kot pri oknu za izbor lig: okno je stolpec v visini zaslona,
+   drsi samo seznam meril, glava in noga sta vedno vidni. Meril je lahko pet
+   skupin po deset vrstic, na telefonu pa mora gumb "Pokazi N" ostati pod
+   palcem. */
+.modal:has(.filtri) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--r8) - var(--r5));
+}
+
+.modal:has(.filtri) .modal__telo {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.filtri {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.filtri__skupina + .filtri__skupina {
+  margin-top: var(--r3);
+}
+
+/* Naslov skupine ostane na zaslonu med drsenjem: pri sestih sezonah in
+   sestdesetih klubih je sicer ze po dveh potegih vseeno, kaj odkljukas. */
+.filtri__naslov {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  margin: 0;
+  padding: 10px 0 6px;
+  background: var(--barva-papir);
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 600 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.filtri__izbranih {
+  color: var(--barva-glavna-tekst);
+  font-weight: 500;
+}
+
+.filtri__iskanje {
+  display: block;
+  margin: var(--r1) 0;
+}
+
+.filtri__iskanje input {
+  width: 100%;
+  min-height: 40px;
+  padding: var(--r1) 12px;
+  font-size: 15px;
+}
+
+/* Zadetkovna povrsina je cela vrstica in ne le kvadratek - isto pravilo kot
+   pri izboru lig. */
+.filtri__vrstica {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--r1) 0;
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.filtri__vrstica:hover {
+  background: var(--barva-vrstica-hover);
+}
+
+/* Izbrano merilo dobi 3 px modro crto ob levem robu; modra zato, ker je
+   filter podatek in ne uspeh (zelena je rezervirana za spremljanje). */
+.filtri__vrstica--izbrana {
+  padding-left: 9px;
+  border-left: 3px solid var(--barva-glavna);
+}
+
+.filtri__ime {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--barva-crnilo);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stevec pove, koliko zadetkov merilo prinese ob ze izbranih ostalih - zato
+   je mono in poravnan desno, kot vsaka stevilka v sistemu. */
+.filtri__stevec {
+  flex: none;
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: var(--barva-crnilo-3);
+}
+
+.filtri__prazno {
+  margin: 12px 0;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
+}
+
+.filtri__vec {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.filtri__noga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  flex-wrap: wrap;
+}
+
+/* Gumb "Pokazi N turnirjev" je glavno dejanje in sme rasti; "Pocisti" ostane
+   ozek, ker je izhod v sili in ne pot naprej. */
+.filtri__noga .gumb--glavni {
+  flex: 1 1 auto;
 }
 
 .potrditev__sporocilo {
@@ -2274,43 +2972,6 @@ input[type='radio'] {
   color: var(--barva-crnilo-4);
 }
 
-/* Pas filtrov nad tabelo: kategorija levo, merilo desno ob robu. */
-.lestvica__filtri {
-  margin-top: var(--r3);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--r3) var(--r4);
-  align-items: end;
-}
-
-.lestvica__filter {
-  display: flex;
-  flex-direction: column;
-  gap: var(--r1);
-  min-width: 0;
-}
-
-/* Merilo ostane ob desnem robu tudi, kadar kategorij ni in je prvi stolpec
-   prazen. */
-.lestvica__filter--merilo {
-  grid-column: 2;
-}
-
-.lestvica__filter--merilo .lestvica__filter-oznaka {
-  text-align: right;
-}
-
-.lestvica__filter--merilo .izbirnik {
-  justify-content: flex-end;
-}
-
-.lestvica__filter-oznaka {
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-}
-
 /* Opomba pod tabelo: brez nje sta stolpca "Gib." in "Δ" dvoumna. */
 .lestvica__opomba {
   margin: 12px 0 0;
@@ -2587,49 +3248,73 @@ input[type='radio'] {
   margin: var(--r3) 0 var(--r1);
 }
 
-/* Razvrstitev ob koncu dogodka: stolpci, loceni s 4 px crto. */
-.podij {
+/* --- Koncna razvrstitev zakljucenega dogodka: ENA sekcija ---
+   Prej sta bili dve: "Razvrstitev" s podijem in "Koncni vrstni red" s celim
+   seznamom - ista imena je moral bralec prebrati dvakrat, zavihek
+   "Razvrstitev" pa je isto lestvico pokazal se tretjic. Zdaj so prva tri
+   mesta na vrhu ISTEGA seznama, poudarjena z velikim zapisom in barvo crte
+   (zelena zmagovalec, modra drugi, crnilo tretji), od cetrtega naprej pa
+   tece obicajna vrstica vrstnega reda. */
+.razvrstitev__vrh {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   margin-top: var(--r3);
 }
 
-.podij__mesto {
+/* Izlocilni sistem dodeli samo prvo in drugo mesto (za tretje se ne igra),
+   zato bi tretji stolpec ostal prazna tretjina. */
+.razvrstitev__vrh--dve {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.razvrstitev__mesto {
   display: block;
-  padding: 0 var(--r3) 0 var(--r3);
-  border-left: 4px solid var(--barva-crta);
-  background: none;
+  padding: var(--r2) var(--r3);
+  border-left: 4px solid var(--barva-crnilo);
   border-radius: 0;
+  color: var(--barva-crnilo);
 }
 
-.podij__mesto:nth-child(1) {
+.razvrstitev__mesto--1 {
   border-left-color: var(--barva-poudarek);
+  background: var(--barva-poudarek-mehko);
 }
 
-.podij__mesto:nth-child(2) {
+.razvrstitev__mesto--2 {
   border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
 }
 
-.podij__stevilka {
+/* Mesto je stevilka in ne medalja: odlicje nosita velikost in barva crte. */
+.razvrstitev__stevilka {
   display: block;
   font-family: var(--pisava-display);
-  font-size: var(--tip-h1-nad);
+  font-size: var(--tip-h2);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.04em;
   color: var(--barva-crnilo);
 }
 
-.podij__ime {
+.razvrstitev__stevilka::after {
+  content: '.';
+}
+
+.razvrstitev__oseba {
   display: block;
   margin-top: 12px;
+  min-width: 0;
+}
+
+.razvrstitev__ime {
+  display: block;
   font-size: var(--tip-uvod);
   font-weight: 700;
   color: var(--barva-crnilo);
 }
 
-.podij__klub {
+.razvrstitev__klub {
   display: block;
   margin-top: 2px;
   font-size: 15px;
@@ -2637,8 +3322,41 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
-/* --- Koncni vrstni red zakljucenega dogodka ---
-   Vsi udelezenci v dveh (pri vec kot 40 v treh) stolpcih, da gre cel razpored
+/* Klub prevzame barvo mesta - drugotni podatek, ki nosi isto sporocilo kot
+   crta ob robu, brez druge oznake. */
+.razvrstitev__mesto--1 .razvrstitev__klub {
+  color: var(--barva-poudarek-tekst);
+}
+
+.razvrstitev__mesto--2 .razvrstitev__klub {
+  color: var(--barva-glavna-tekst);
+}
+
+.razvrstitev__izid {
+  display: block;
+  margin-top: var(--r1);
+  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+/* Bilanca in ELO sta na namizju en podatek v vrsti ("11 – 0 · +38"), na
+   telefonu pa drug pod drugim - piko zato nosi CSS in ne besedilo. */
+.razvrstitev__elo::before {
+  content: ' · ';
+  color: var(--barva-crnilo);
+}
+
+.razvrstitev__elo--poz {
+  color: var(--barva-poudarek-tekst);
+}
+
+.razvrstitev__elo--neg {
+  color: var(--barva-negativna);
+}
+
+/* --- Mesta od cetrtega naprej ---
+   Na namizju v dveh (pri vec kot 40 v treh) stolpcih, da gre cel razpored
    na en zaslon brez stranicenja. */
 .vrstni-red {
   display: grid;
@@ -3298,32 +4016,6 @@ input[type='radio'] {
   align-items: center;
   gap: var(--r1);
   min-width: 0;
-}
-
-/* Kvadratek "spremljam": poln zelen = da, prazen z obrobo = ne. Sam je 16 px,
-   ker stoji ob imenu in ne v vrstici dejanj; prst dobi svojih 44 px prek
-   nevidnega ::after, ne da bi kvadratek zrasel. */
-.domov__kljukica {
-  position: relative;
-  flex: none;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border: 1px solid var(--barva-crnilo-3);
-  border-radius: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.domov__kljukica::after {
-  content: '';
-  position: absolute;
-  inset: -14px;
-}
-
-.domov__kljukica--polna {
-  background: var(--barva-poudarek);
-  border-color: var(--barva-poudarek-tekst);
 }
 
 .domov__liga-ime {
@@ -5067,10 +5759,115 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
+/* --- Zlozljiva sekcija (lestvici posameznikov in dvojic na dnu lige) --- */
+
+/* Sklop, ki stoji zaprt: glava je vrstica z rezom (3 px crta, kot vsak naslov
+   sekcije), le da je gumb. Cela vrstica je zadetkovna povrsina, zato na dotik
+   ni treba meriti v znak. */
+.lestvice-lige {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r4);
+}
+
+.zlozljiva__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--r2) 0;
+  border: none;
+  border-top: 3px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zlozljiva__naslov {
+  font: 800 var(--tip-h3) / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+}
+
+.zlozljiva__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+/* Edini graficni del glave; ikone sistem ne pozna, beseda "Odpri" pa bi ob
+   naslovu tekmovala z njim. */
+.zlozljiva__znak {
+  font-size: 14px;
+  color: var(--barva-glavna-tekst);
+}
+
+.zlozljiva__glava:hover .zlozljiva__meta,
+.zlozljiva__glava:hover .zlozljiva__naslov {
+  color: var(--barva-glavna-tekst);
+}
+
+.zlozljiva__vsebina {
+  padding-bottom: var(--r1);
+}
+
+/* Koliko vrstic je v sklopu - stoji nad lestvico, ker je merilo pod njo. */
+.zlozljiva__stevec {
+  margin: 0 0 var(--r2);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Stevilcni stolpci imajo trde sirine, da stojijo v stolpcu tudi pri ligi z
+   veliko igralci; ime in ekipa si delita preostanek. */
+.lestvice-lige__tabela .lestvica__stevilka {
+  width: 88px;
+}
+
+.lestvice-lige__tabela .lestvica__rating {
+  width: 88px;
+}
+
+.lestvice-lige__tabela td.lestvica__rating {
+  font-size: var(--tip-uvod);
+}
+
+.lestvice-lige__tabela .lestvica__klub {
+  width: 200px;
+}
+
+/* Dvojica je ena enota: dve imeni z locilom v isti vrstici. */
+.lestvice-lige__par {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.lestvice-lige__vezaj {
+  color: var(--barva-crnilo-4);
+}
+
 /* --- Ekipe in kader --- */
 
+/* Preklop "Iz registra / Prosta ekipa" nad obrazcem za dodajanje ekipe:
+   izbira vrste ekipe je odlocitev PRED vnosom, zato stoji nad njim. */
+.liga__nacin-ekipe {
+  margin-top: var(--r3);
+}
+
 .liga__dodaj-ekipo {
-  margin: var(--r3) 0;
+  margin: var(--r2) 0 var(--r3);
 }
 
 /* Zreb je zeleni gumb (napredovanje tekmovanja), urejanje pravil tanka crta. */
@@ -5111,6 +5908,22 @@ a.domov__lestvica-vrstica--jaz {
 
 .liga__ekipa--klikljiva:hover {
   background: var(--barva-glavna-mehko);
+}
+
+/* Ime ekipe z oznako pod njim (klub oz. "prosta ekipa"). Stolpec in ne ena
+   vrstica: oznaka je drugotna in ne sme jemati sirine imenu. */
+.liga__ekipa-ime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.liga__ekipa-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
 }
 
 .liga__ekipa-gumbi {
@@ -6039,41 +6852,10 @@ a.domov__lestvica-vrstica--jaz {
     --tip-rezultat: 56px;
   }
 
-  /* Na telefonu masthead ostane ena vrsta (logotip + kdo si), navigacija pa
-     se preseli POD debelo crto kot vrstica zavihkov v mono - tam je vodoravno
-     drsna in ne krajsa imena. */
-  .glava {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'logotip    uporabnik'
-      'crta       crta'
-      'navigacija navigacija';
-    padding: var(--r2) 20px 0;
-  }
-
-  .glava__navigacija {
-    justify-self: stretch;
-    gap: var(--r2);
-    padding: 12px 0;
-    border-bottom: 1px solid var(--barva-crta);
-    font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .glava__navigacija::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Podcrtaj aktivne postavke je v vrstici zavihkov odvec - vrstica je
-     ze sama zase pas, barva pa pove dovolj. */
-  .glava__povezava--aktivna,
-  .glava__povezava--aktivna:hover {
-    box-shadow: none;
-    font-weight: 600;
-  }
+  /* Masthead z vodoravno drsno vrstico zavihkov se na telefonu ne izrise vec:
+     navigacijo je prevzela spodnja vrstica, glavo pa .glava-telefon (razdelek
+     17). Pravil za .glava, .glava__navigacija in .glava__povezava tu zato ni -
+     Postavitev tistega drevesa pod 640 px sploh ne izrise. */
 
   .vsebina,
   .brez-povezave {
@@ -6083,11 +6865,6 @@ a.domov__lestvica-vrstica--jaz {
 
   .naslov-strani--enovrsticni {
     font-size: 44px;
-  }
-
-  /* Glava se na telefonu skrci: logotip 20 px. */
-  .glava__logotip {
-    font-size: var(--tip-uvod);
   }
 
   /* Podnavigacija in gumbi kol ostanejo v eni vrsti in drsijo vodoravno;
@@ -6259,24 +7036,6 @@ a.domov__lestvica-vrstica--jaz {
 
   .lestvica--globalna td.lestvica__stevilka {
     font-size: 15px;
-  }
-
-  /* Filtra drug pod drugim; merilo se takrat poravna levo, kot kategorija. */
-  .lestvica__filtri {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--r2);
-  }
-
-  .lestvica__filter--merilo {
-    grid-column: 1;
-  }
-
-  .lestvica__filter--merilo .lestvica__filter-oznaka {
-    text-align: left;
-  }
-
-  .lestvica__filter--merilo .izbirnik {
-    justify-content: flex-start;
   }
 
   /* Okolica na lestvici: pri 320 px so fiksni stolpci in 16 px vrzeli pojedli
@@ -6519,12 +7278,14 @@ a.domov__lestvica-vrstica--jaz {
      naslovom. Namesto tega zadetkovno povrsino razsiri nevidni ::after:
      besedilo ostane, kjer je, prst pa dobi svojih 44 px. */
   a.sekcija__meta,
+  button.sekcija__meta,
   a.domov__vec,
   a.lestvica__ime {
     position: relative;
   }
 
   a.sekcija__meta::after,
+  button.sekcija__meta::after,
   a.domov__vec::after,
   .prijava-vrstica__dejanje::after {
     content: '';
@@ -7016,6 +7777,1416 @@ a.domov__lestvica-vrstica--jaz {
     padding-left: var(--r3);
     padding-right: var(--r3);
     flex-wrap: wrap;
+  }
+}
+
+/* ============================================================
+   17. Telefon: lepljiva glava, spodnja vrstica, enovrsticni seznami
+   ============================================================
+   Na telefonu je bila navigacija vodoravno drsna vrstica zavihkov v glavi -
+   polovica postavk je bila zunaj zaslona. Zamenja jo SPODNJA VRSTICA, glava
+   pa nosi kontekst (nazaj, dejanja urejevalca) in ostane lepljiva.
+
+   Vrstice seznamov so se pri 390 px sesule v dvostolpicno mrezo, visoko
+   130-150 px; tu so enovrsticne (68-72 px), ker gledalec isce ime in stanje,
+   ne vseh stolpcev namizja.
+
+   Elemente tega razdelka izrise Postavitev oz. stran SAMO na telefonu (glej
+   pomozno/telefon.ts), zato vecina pravil ne rabi medijske poizvedbe -
+   elementov nad 640 px sploh ni. Medijsko poizvedbo imajo le pravila, ki
+   spreminjajo obstojece razrede (kolofon, vrstni red, razvrstitev).
+
+   Razdelek je zadnji v datoteki namenoma: pravila telefona morajo prevladati
+   nad splosnimi, ne da bi jim bilo treba vecati specificnosti. */
+
+/* --- Lepljiva glava --- */
+
+.glava-telefon {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--barva-papir);
+}
+
+.glava-telefon__vrsta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 56px;
+  padding: 0 20px;
+}
+
+/* Logotip v telefonski glavi je 20 px (na namizju 24) in znak 22 px. */
+.glava-telefon .glava__logotip {
+  gap: var(--r1);
+  font-size: var(--tip-uvod);
+}
+
+.glava-telefon__nazaj {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  min-width: 0;
+  min-height: 44px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.glava-telefon__nazaj:hover {
+  text-decoration: none;
+  color: var(--barva-glavna-tekst);
+}
+
+.glava-telefon__puscica {
+  flex: none;
+  font-size: 15px;
+  color: var(--barva-crnilo);
+}
+
+.glava-telefon__oznaka {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glava-telefon__desno {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.glava-telefon__dejanja {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Prazen cilj portala (stran brez dejanj) ne sme jesti 12 px vrzeli. */
+.glava-telefon__dejanja:empty {
+  display: none;
+}
+
+/* Tanka in za njo debela crta - isti nosilni element kot na namizju. */
+.glava-telefon__crta {
+  border-top: 1px solid var(--barva-crnilo);
+  padding-top: 2px;
+}
+
+.glava-telefon__crta::after {
+  content: '';
+  display: block;
+  height: 3px;
+  background: var(--barva-crnilo);
+}
+
+/* Glavno dejanje strani v glavi ("+ Turnir", "+ Dogodek", "Zreb"). Vidna
+   visina je 36 px, da pas ostane 56 px; prst dobi svojih 44 px prek
+   nevidnega ::after - isti prijem kot pri dejanju v vrstici prijave. */
+.glava-telefon__gumb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--barva-glavna);
+  border-radius: 0;
+  background: var(--barva-glavna-polna);
+  color: var(--barva-na-glavni);
+  font: 600 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.glava-telefon__gumb::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* Preklopnik in ne dejanje ("Isci" na lestvici): prozorna ploskev z obrobo
+   crnila. Ko je iskanje odprto, dobi polno crno ploskev - isti zapis kot
+   aktiven gumb izbirnika, da je stikalo prepoznavno tudi brez barve. */
+.glava-telefon__gumb--preklop {
+  border-color: var(--barva-crnilo);
+  background: none;
+  color: var(--barva-crnilo);
+}
+
+.glava-telefon__gumb--preklop[aria-pressed='true'] {
+  background: var(--barva-crnilo);
+  color: var(--barva-papir);
+}
+
+/* Zelena je rezervirana za napredovanje tekmovanja (zreb). */
+.glava-telefon__gumb--zreb {
+  border-color: var(--barva-poudarek);
+  background: var(--barva-poudarek);
+  color: var(--barva-na-poudarku);
+}
+
+.glava-telefon__gumb:disabled {
+  border-color: var(--barva-crta);
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo-4);
+  cursor: not-allowed;
+}
+
+/* Naslovni blok, ki ga stran vlozi POD debelo crto (stran kategorije).
+   Ostane na zaslonu med drsenjem, ker pove, kaj se gleda. */
+.glava-telefon__naslov {
+  padding: 12px 20px 0;
+}
+
+/* --- Meni "..." s preostalimi dejanji --- */
+
+.meni-dejanj {
+  position: relative;
+  display: flex;
+}
+
+.meni-dejanj__gumb {
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  color: var(--barva-crnilo);
+  cursor: pointer;
+}
+
+.meni-dejanj__gumb:hover {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Onemogocena postavka nosi pojasnilo, zakaj dejanje (se) ni mogoce. */
+.uporabnik-meni__postavka:disabled {
+  color: var(--barva-crnilo-4);
+  cursor: not-allowed;
+}
+
+.uporabnik-meni__pojasnilo {
+  display: block;
+  margin-top: 2px;
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-4);
+  white-space: normal;
+}
+
+/* --- Spodnja vrstica --- */
+
+.spodnja-vrstica {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: var(--barva-papir);
+  border-top: 3px solid var(--barva-crnilo);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Gost in igralec vidita stiri postavke - "Vec" je predal urejevalca. */
+.spodnja-vrstica--stiri {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.spodnja-vrstica__postavka {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+.spodnja-vrstica__postavka:hover {
+  text-decoration: none;
+  color: var(--barva-crnilo);
+}
+
+/* Aktivna postavka: modra crta sede NA debelo crto (negativni rob), da je
+   vrh vrstice ena sama poteza in ne dve druga nad drugo. */
+.spodnja-vrstica__postavka--aktivna,
+.spodnja-vrstica__postavka--aktivna:hover {
+  margin-top: -3px;
+  border-top: 3px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  font-weight: 600;
+  color: var(--barva-glavna-tekst);
+}
+
+/* --- Predal "Vec" --- */
+
+.predal__zastor {
+  position: fixed;
+  inset: 0;
+  z-index: 14;
+  background: var(--barva-zastor);
+}
+
+/* Predal sedi NAD spodnjo vrstico (60 px + 3 px crta), da ostane vidno,
+   katera postavka ga je odprla. */
+.predal {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(63px + env(safe-area-inset-bottom, 0px));
+  z-index: 16;
+  background: var(--barva-papir);
+  border-top: 3px solid var(--barva-crnilo);
+  padding: var(--r2) 20px var(--r1);
+}
+
+.predal__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.predal__glava h2 {
+  font-size: var(--tip-h3);
+}
+
+.predal__zapri {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+.predal__postavke {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--r1);
+}
+
+.predal__postavka {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* 52 px vsebine + 2 x 12 px odmika: predal ima pet postavk kvecjemu, zato
+     je vrstica lahko udobna - palec meri z dna zaslona navzgor. */
+  min-height: 76px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: var(--tip-telo);
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+.predal__postavka:hover {
+  text-decoration: none;
+  color: var(--barva-glavna-tekst);
+}
+
+.predal__kontekst {
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+/* Cakajoci dostopi so edino, kar v predalu terja dejanje - zato rjasto. */
+.predal__kontekst--nujno {
+  color: var(--barva-negativna);
+}
+
+.predal__opomba {
+  margin: 12px 0 4px;
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-4);
+}
+
+/* --- Vsebina pod lepljivo glavo --- */
+
+/* 96 px spodaj = 60 px vrstica + 36 px zraka, da zadnja vrstica seznama ni
+   pod navigacijo. Presledek med sklopi je 32 px: na zaslonu, po katerem se
+   drsi, je 56 px praznine cel palec potega. */
+.vsebina--telefon {
+  padding: 20px 20px calc(96px + env(safe-area-inset-bottom, 0px));
+  gap: var(--r4);
+}
+
+.vsebina--telefon > section {
+  gap: var(--r4);
+}
+
+/* Podstran s kolofonom pod naslovom: 32 px med naslovom in mrezo kazalnikov
+   je tam ze prazna vrstica, ker kolofon nosi svojo zgornjo crto. */
+.vsebina--telefon > .stran-mobi--tesna {
+  gap: 28px;
+}
+
+/* --- Naslov strani na telefonu --- */
+
+/* Nadnaslov ni vec display 200 v veliki meri, ampak mono oznaka: naslov 36 px
+   pod njim mora spraviti prvo vrstico seznama na zaslon brez drsenja. */
+.naslov-mobi__nad {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.naslov-mobi__vrsta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.naslov-mobi {
+  margin: 0;
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--barva-crnilo);
+}
+
+/* Seznam (Turnirji): 36 px pod mono nadnaslovom. */
+.naslov-mobi--seznam {
+  margin-top: 4px;
+  font-size: 36px;
+  line-height: 0.95;
+}
+
+/* Podstran (turnir): ime se sme prelomiti, ker je lahko dolgo. */
+.naslov-mobi--podstran {
+  margin-top: 6px;
+  font-size: 32px;
+  line-height: 0.98;
+  overflow-wrap: break-word;
+}
+
+/* Kategorija: naslov stoji v lepljivi glavi ob znacki, zato ena vrstica. */
+.naslov-mobi--kategorija {
+  min-width: 0;
+  font-size: 26px;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Naslov podstrani, ki stoji V lepljivi glavi ob znacki (liga): 32 px kot
+   podstran, a v eni vrstici - prelom bi znacko potisnil pod ime in pas bi
+   zrasel cez polovico zaslona. Odmik nosi vrsta in ne naslov: sicer bi
+   znacka ob njem plavala nekaj pikslov previsoko. */
+.naslov-mobi--ena-vrsta {
+  min-width: 0;
+  font-size: 32px;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.naslov-mobi__vrsta--odmik {
+  margin-top: 6px;
+}
+
+.naslov-mobi__meta {
+  margin: 10px 0 0;
+  font: 500 13px / 1.5 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  color: var(--barva-crnilo-3);
+}
+
+.naslov-mobi__meta--tesno {
+  margin-top: 6px;
+  font-size: var(--tip-mono);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+
+/* --- Naslovna vrstica sekcije na telefonu --- */
+
+.naslovna-mobi {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 3px solid var(--barva-crnilo);
+  padding-top: 10px;
+}
+
+/* Sekcija, ki ji krmilo strani (zavihki) ze stoji tik nad njo: druga crta bi
+   bila dva zapisa istega reza. */
+.naslovna-mobi--brez-crte {
+  border-top: none;
+  padding-top: 0;
+}
+
+.naslovna-mobi h2 {
+  font-size: var(--tip-h3);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.naslovna-mobi__stevec {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+/* Daljsi stevec ("96 igralcev · 12 klubov") ob naslovu ostane v isti vrsti
+   kot naslov; pri 360 px se sme odrezati, da ne potisne strani cez rob. */
+.naslovna-mobi__stevec--drobno {
+  min-width: 0;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Enovrsticne vrstice seznamov --- */
+
+.seznam-mobi {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Seznam, ki mu naslovna vrstica stoji tik nad njim (kategorije turnirja). */
+.seznam-mobi--odmik {
+  margin-top: 10px;
+}
+
+/* Vrstica turnirja (~68 px): datum, ime, obdobje s krajem, status. */
+.vrstica-mobi {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 12px 0 12px 10px;
+  border-left: 4px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+  color: var(--barva-crnilo);
+}
+
+.vrstica-mobi:hover {
+  text-decoration: none;
+}
+
+/* Vrstica kategorije (~72 px) nima datuma - dan je last turnirja. */
+.vrstica-mobi--brez-datuma {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.vrstica-mobi--V_TEKU {
+  border-left-color: var(--barva-glavna);
+}
+
+.vrstica-mobi--ZAKLJUCEN {
+  border-left-color: var(--barva-poudarek);
+}
+
+/* Pas "Danes v dvorani": modra ploskev je poudarek, zato brez spodnje crte. */
+.vrstica-mobi--danes {
+  margin-top: 10px;
+  padding-right: 12px;
+  border-bottom: none;
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.vrstica-mobi__datum {
+  display: block;
+  text-align: center;
+}
+
+.vrstica-mobi__dan {
+  display: block;
+  font: 600 18px / 1.05 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.vrstica-mobi__mesec {
+  display: block;
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.vrstica-mobi__telo {
+  min-width: 0;
+}
+
+.vrstica-mobi__ime {
+  display: block;
+  font-size: var(--tip-telo);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ime kategorije je kratko in se sme preliti v drugo vrstico. */
+.vrstica-mobi--brez-datuma .vrstica-mobi__ime {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.vrstica-mobi__meta {
+  display: block;
+  margin-top: 3px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sistem, prijave in odigranost so trije podatki - naj se prelomijo, kot
+   morajo; odrez bi vzel prav odigranost, ki gledalca zanima. */
+.vrstica-mobi--brez-datuma .vrstica-mobi__meta {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* Palica na telefonu 4 px (na namizju 6): vrstica je nizja. */
+.palica--tanka {
+  height: 4px;
+  margin-top: 6px;
+}
+
+/* Na modri ploskvi je podlaga palice bela - polnilo iz --barva-polnilo bi se
+   z njo zlilo. */
+.palica--na-modri {
+  background: var(--barva-bela);
+}
+
+/* Status na koncu vrstice: polna znacka samo za "V teku", sicer barvna
+   mono oznaka (polna ploskev za vsako vrstico bi bila pas znack). */
+.status-mobi {
+  font: 600 10px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.status-mobi--ZAKLJUCEN {
+  color: var(--barva-poudarek-tekst);
+}
+
+.znacka--drobna {
+  padding: 5px 7px;
+  font-size: 10px;
+}
+
+.znacka--v-naslovu {
+  padding: 4px 7px;
+  font-size: 10px;
+}
+
+/* --- Zavihki kategorije pod glavo --- */
+
+/* Pas je bil na telefonu pod ~1400 px vsebine; tu je takoj pod naslovom,
+   torej krmilo strani stoji NAD vsebino, ki jo krmili. */
+.podnavigacija--telefon {
+  position: static;
+  z-index: auto;
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0 20px 10px;
+  border-top: none;
+  border-bottom: 1px solid var(--barva-crta);
+  background: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.podnavigacija--telefon::-webkit-scrollbar {
+  display: none;
+}
+
+.podnavigacija--telefon .izbirnik__gumb {
+  min-height: 40px;
+  padding: var(--r1) 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+/* Trije zavihki lige (Lestvica · Razpored · Pravila) si razdelijo sirino:
+   vsi so hkrati na zaslonu, zato pas ne rabi drsenja - vodoravno drsenje
+   je tisto, kar je na telefonu skrivalo polovico postavk. */
+.podnavigacija--enakomerna {
+  overflow-x: visible;
+}
+
+.podnavigacija--enakomerna .izbirnik__gumb {
+  flex: 1;
+}
+
+/* --- Vrstica lige (/lige) --- */
+
+/* Ime, sezona s kolom in status. Stevilo ekip, format srecanja in "1 ↑ · 2 ↓"
+   so odpadli - dobijo se na strani lige. Namizna mreza petih stolpcev je pri
+   390 px vrstico raztegnila na ~150 px in znacko pahnila v tretjo vrsto. */
+.vrstica-mobi--liga {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Prva vrstica pasu "V teku" (liga, ki jo gledalec najbrz isce): modra
+   ploskev je poudarek, zato brez spodnje crte. Odmika ne nosi - seznam ga
+   ima ze sam (.seznam-mobi--odmik). */
+.vrstica-mobi--poudarjena {
+  padding-right: 12px;
+  border-bottom: none;
+  background: var(--barva-glavna-mehko);
+}
+
+/* --- Vrstica lestvice (/lestvica in lestvica lige) ---
+   Namizna tabela ima sedem stolpcev; pri 390 px se je vsak od njih ali
+   odrezal ali prelomil. Tu je vrstica mreza treh stolpcev, kjer sta ime in
+   mono meta drug pod drugim, stevilka (rating oz. tocke) pa je najvecji
+   zapis ob desnem robu - to gledalec isce. */
+
+.lestvica-mobi {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--r1);
+}
+
+.lestvica-mobi__vrstica {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.lestvica-mobi__mesto {
+  grid-row: 1 / span 2;
+  font: 600 var(--tip-telo) / 1.1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo-3);
+}
+
+/* Prva tri mesta so modra - edini poudarek v stolpcu mest (isto kot v
+   namizni tabeli). */
+.lestvica-mobi__mesto--vrh {
+  color: var(--barva-glavna-tekst);
+}
+
+.lestvica-mobi__ime {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  font-size: var(--tip-telo);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--barva-crnilo);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lestvica-mobi__ime:hover {
+  text-decoration: none;
+  color: var(--barva-glavna-tekst);
+}
+
+/* Dvojica je edina vrstica z dvema imenoma: v 390 px pas ne gresta z odrezom
+   (drug igralec bi izginil za tremi pikami), zato se tu edini prelomita v dve
+   vrstici. Vsako ime je svoja povezava na profil, zato blok in ne besedilo. */
+.lestvica-mobi__ime--par {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: visible;
+  white-space: normal;
+}
+
+.lestvice-lige__ime {
+  font-size: var(--tip-telo);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--barva-crnilo);
+}
+
+.lestvice-lige__ime:hover {
+  text-decoration: none;
+  color: var(--barva-glavna-tekst);
+}
+
+/* Zlozljiva sekcija na ozkem zaslonu: naslov ostane 24 px, meta pa se stisne,
+   da gre z njim v eno vrsto tudi pri 390 px. Meje se drzi CSS in ne useTelefon,
+   ker gre za mero in ne za drugacno vsebino. */
+@media (max-width: 640px) {
+  .zlozljiva__glava {
+    padding: 12px 0;
+  }
+
+  .zlozljiva__meta {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+}
+
+/* "NTK Savinja · 41–12 · ↑2" - klub, izkupicek in gibanje v eni mono vrstici.
+   Stolpec "Δ 30 dni" na telefonu odpade: gibanje pove isto v manj znakih. */
+.lestvica-mobi__meta {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  margin-top: 2px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  color: var(--barva-crnilo-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lestvica-mobi__gib--gor {
+  color: var(--barva-poudarek-tekst);
+}
+
+.lestvica-mobi__gib--dol {
+  color: var(--barva-negativna-tekst);
+}
+
+.lestvica-mobi__rating {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  font: 600 26px / 1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Moja vrstica: 4 px modra crta sega cez levi rob vsebine (negativni rob),
+   ploskev pa nadomesti spodnjo crto - dve oznaki iste vrstice bi bili dva
+   zapisa istega reza. */
+.lestvica-mobi__vrstica--jaz {
+  margin-left: -12px;
+  padding: 11px 8px 11px 12px;
+  border-bottom: none;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.lestvica-mobi__vrstica--jaz .lestvica-mobi__rating {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Opomba pod lestvico: kaj primerjata gibanje in Δ. */
+.lestvica-mobi__opomba {
+  margin: 12px 0 0;
+  font: 500 11px / 1.5 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-4);
+}
+
+/* Pas iskanja pod debelo crto. Odpre se sele na klik "Isci" - stalno polje
+   nad lestvico je stalo 60 px zaslona, iskanje pa je redko opravilo. */
+.iskanje-mobi {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.iskanje-mobi .iskalnik {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.iskanje-mobi__preklic {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* --- Vrstica ekipe v lestvici lige (/lige/:id) ---
+   Ozja od igralcevih (mesta so enomestna, tock je malo), vrstica pa je gumb:
+   klik razpre kader POD njo. Locenega gumba "Kader ▾" tu ni - v 390 px pasu
+   bi jedel prostor imenu. */
+.lestvica-mobi__vrstica--ekipa {
+  width: 100%;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  padding: 10px 0 10px 8px;
+  border: none;
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  color: var(--barva-crnilo);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lestvica-mobi__vrstica--napreduje {
+  border-left-color: var(--barva-poudarek);
+}
+
+.lestvica-mobi__vrstica--izpade {
+  border-left-color: var(--barva-negativna);
+}
+
+.lestvica-mobi__vrstica--odprta {
+  background: var(--barva-glavna-mehko);
+}
+
+.lestvica-mobi__mesto--ekipa {
+  font-size: 15px;
+}
+
+.lestvica-mobi__mesto--napreduje {
+  color: var(--barva-poudarek-tekst);
+}
+
+.lestvica-mobi__mesto--izpade {
+  color: var(--barva-negativna-tekst);
+}
+
+/* Bilanca "6-1-0" in forma zadnjih petih v eni vrsti pod imenom. */
+.lestvica-mobi__izkupicek {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.lestvica-mobi__bilanca {
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.lestvica-mobi__tocke {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  font: 600 24px / 1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Kader pod odprto vrstico: pri 390 px se ime ekipe in mono opomba v eni
+   vrsti ne izideta, zato gre opomba pod naslov. */
+.lestvica-mobi .liga__kader-glava {
+  display: block;
+}
+
+.lestvica-mobi .liga__kader-naslov {
+  display: block;
+  font-size: var(--tip-telo);
+}
+
+/* Legenda cone: 11 px in 12 px vrzeli, da gresta obe postavki v eno vrsto. */
+.legenda--mobi {
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+/* --- Podstran lige: stanje v glavi, krmar kola, srecanja, trak --- */
+
+/* Vrsta pod naslovom lige: levo kolo in datum, desno odigrani delez. Pod njo
+   4 px palica - ista poteza kot v vrstici seznama. */
+.liga-mobi__stanje {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+}
+
+.liga-mobi__delez {
+  font-weight: 600;
+  color: var(--barva-crnilo);
+  white-space: nowrap;
+}
+
+/* Krmar kola: dve kvadratni tipki in kolo z datumom med njima. Besedili
+   "Prejsnje" / "Naslednje" odpadeta - smer nosi puscica, sproscen prostor pa
+   dobi datum, ki gledalca zanima. */
+.liga-mobi__krmar {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--barva-crnilo);
+}
+
+.liga-mobi__krmar-gumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: none;
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  color: var(--barva-crnilo);
+  cursor: pointer;
+}
+
+.liga-mobi__krmar-gumb:disabled {
+  border-color: var(--barva-crta);
+  color: var(--barva-crnilo-3);
+  cursor: not-allowed;
+}
+
+.liga-mobi__krmar-sredina {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.liga-mobi__kolo {
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.liga-mobi__kolo-meta {
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Pri kolu, ki sele pride, je termin edino, kar gledalec isce ("kdaj se to
+   igra?") - zato ni siv pripis kot ostala meta, ampak polno crnilo. Barve
+   ne dodajamo: modra v tem sistemu rise crte, ne besedila. */
+.liga__kolo-termin {
+  color: var(--barva-crnilo);
+  font-weight: 600;
+}
+
+.liga-mobi__kolo-meta.liga__kolo-termin {
+  font-size: 12px;
+}
+
+.liga-mobi__srecanja {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Domaci desno, gost levo, izid v sredini - kot na tabli v dvorani. Mono
+   povezava "Zapisnik / Postava" odpade: na srecanje vodi vrstica cela. */
+.liga-mobi__srecanje {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  color: var(--barva-crnilo);
+}
+
+.liga-mobi__srecanje:hover {
+  text-decoration: none;
+}
+
+.liga-mobi__ekipa {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.liga-mobi__ekipa--desno {
+  text-align: right;
+}
+
+.liga-mobi__ekipa--poraz {
+  color: var(--barva-crnilo-4);
+}
+
+.liga-mobi__izid {
+  padding: 6px 0;
+  background: var(--barva-polnilo);
+  font: 600 15px / 1.2 var(--pisava-mono);
+  text-align: center;
+}
+
+/* Nerazporejeno srecanje ("vs") ni izid, zato brez ploskve. */
+.liga-mobi__izid--caka {
+  padding: 0;
+  background: none;
+  color: var(--barva-crnilo-3);
+}
+
+.liga-mobi__trak-naslov {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.liga-mobi__trak {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+/* Vidna tipka je 40 px (na namizju 44), da gre osem kol v eno vrsto; prst
+   dobi svojih 44 px prek nevidnega ::after - isti prijem kot pri
+   .glava-telefon__gumb. */
+.liga-mobi__trak-gumb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 var(--r1);
+  border: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  font: 500 14px / 1.2 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+.liga-mobi__trak-gumb::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+.liga-mobi__trak-gumb--odigrano {
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo);
+}
+
+.liga-mobi__trak-gumb--izbrano,
+.liga-mobi__trak-gumb--izbrano.liga-mobi__trak-gumb--odigrano {
+  border-color: var(--barva-glavna);
+  background: var(--barva-glavna-polna);
+  color: var(--barva-na-glavni);
+}
+
+/* --- Odmiki strani, ki imajo krmilo v lepljivi glavi --- */
+
+/* Pas zavihkov nosi pod sabo svojih 10 px, zato je nad prvo vsebino 16 in ne
+   20 px; sklopa v zavihku sta 16 px narazen - zavihek je en pogled in ne
+   trije sklopi zapored, kot na vstopnem seznamu. */
+.vsebina--telefon:has(> .stran-mobi--zavihki) {
+  padding-top: var(--r2);
+}
+
+.vsebina--telefon > .stran-mobi--zavihki {
+  gap: var(--r2);
+}
+
+/* Lestvica ima en sam sklop pod naslovom, zato je razmik 24 in ne 32 px -
+   prva vrstica razvrstitve pride s tem se na zaslon. */
+.vsebina--telefon > .stran-mobi--lestvica {
+  gap: var(--r3);
+}
+
+/* Ime v vrstici lestvice je edini klikljiv del (vrstica sama ni povezava -
+   vodi na profil in ne na lestvico), zato prst dobi svojih 44 px prek
+   nevidnega ::after; besedilo ostane, kjer je. */
+@media (pointer: coarse) {
+  a.lestvica-mobi__ime {
+    position: relative;
+  }
+
+  a.lestvica-mobi__ime::after {
+    content: '';
+    position: absolute;
+    inset: -12px -8px;
+  }
+}
+
+/* ============================================================
+   Prilagoditve obstojecih razredov na telefonu
+   ============================================================ */
+
+@media (max-width: 640px) {
+  /* --- Krmila seznama na telefonu --- */
+
+  /* Gumb filtra obdrzi svojo sirino, izbor razvrstitve pojede ostanek vrstice
+     in po potrebi odreze napis ("Razvrsti: Sezona (najnovejsa)" pri 390 px ne
+     obstaja). Oba ostaneta v ISTI vrsti: dve vrsti krmil sta bili tisto, kar
+     je prvo vrstico seznama potiskalo pod rob zaslona. */
+  .krmila {
+    flex-wrap: nowrap;
+  }
+
+  .krmilo-izbor {
+    flex: 1 1 auto;
+    padding-right: 26px;
+  }
+
+  .krmilo-izbor__puscica {
+    right: 10px;
+  }
+
+  /* Predpona "Razvrsti:" ostane tudi pri 390 px: brez nje je krmilo z napisom
+     "Rating" tik ob gumbu "Filtriraj" videti kot drugi filter. Zato so napisi
+     razvrstitev kratki (dve besedi), presezek pa odreze ellipsis - odrezan
+     dolg napis je manjse zlo kot izgubljen pomen krmila. */
+
+  /* Okno z merili je na telefonu cel zaslon in ne skatla sredi njega: skupin
+     je pet, seznam klubov dolg, gumb "Pokazi N" pa mora ostati pod palcem.
+     Zastor brez odmika, okno brez obrobe - roba zaslona sta oba. */
+  .modal__zastor:has(.filtri) {
+    padding: 0;
+  }
+
+  .modal:has(.filtri) {
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: none;
+  }
+
+  .modal:has(.filtri) .modal__glava {
+    padding: var(--r2);
+  }
+
+  .modal:has(.filtri) .modal__telo {
+    padding: var(--r2);
+  }
+
+  /* Noga v en stolpec, glavno dejanje SPODAJ: "Pokazi 42 turnirjev" je tisto,
+     za kar gledalec okno zapira, in mora biti pod palcem. "Pocisti" stoji nad
+     njim - redkejse in nezelene po pomoti. */
+  .filtri__noga {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Kolofon turnirja: stiri vrstice oznaka <-> vrednost so zasedle pol
+     zaslona. Mreza 2 x 2 pove isto v polovici visine. */
+  .kolofon--mreza {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid var(--barva-crnilo);
+  }
+
+  .kolofon--mreza .kolofon__vrstica {
+    display: block;
+    padding: 10px 12px 10px 0;
+  }
+
+  .kolofon--mreza .kolofon__vrstica:nth-child(even) {
+    padding: 10px 0 10px 12px;
+    border-left: 1px solid var(--barva-crta);
+  }
+
+  /* Oznaka mora biti blok: kot vrstični element bi njeno vrstico merila
+     osnovna višina celice (17 px / 1.5), ne njena lastna 11 px / 1.3 - in
+     celica bi bila za 11 px previsoka. */
+  .kolofon--mreza .kolofon__oznaka {
+    display: block;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .kolofon--mreza .kolofon__vrednost {
+    display: block;
+    margin-top: 2px;
+    font-size: 20px;
+    line-height: 1.2;
+    text-align: left;
+  }
+
+  /* Koncna razvrstitev: prva tri mesta so na telefonu vrstice iste mreze kot
+     ostala, le vecje - trije stolpci podija pri 390 px ne obstajajo. */
+  .razvrstitev__vrh,
+  .razvrstitev__vrh--dve {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 20px;
+  }
+
+  .razvrstitev__mesto {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+    padding: 14px 0 14px 10px;
+    border-bottom: 1px solid var(--barva-crta);
+  }
+
+  .razvrstitev__stevilka {
+    font-size: 26px;
+  }
+
+  /* Pika za stevilko je namizna tipografija ("1."); v ozki mrezi je stolpec
+     34 px in pika je samo se en znak. */
+  .razvrstitev__stevilka::after {
+    content: none;
+  }
+
+  .razvrstitev__oseba {
+    margin-top: 0;
+    min-width: 0;
+  }
+
+  .razvrstitev__ime {
+    font-size: 19px;
+    line-height: 1.15;
+  }
+
+  .razvrstitev__klub {
+    font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  }
+
+  .razvrstitev__izid {
+    margin-top: 0;
+    text-align: right;
+  }
+
+  .razvrstitev__bilanca {
+    display: block;
+    font-size: var(--tip-drobno);
+  }
+
+  .razvrstitev__elo {
+    display: block;
+    font-size: var(--tip-mono);
+  }
+
+  .razvrstitev__elo::before {
+    content: none;
+  }
+
+  /* Mesta od cetrtega naprej: en stolpec, izkupicek in ELO drug pod drugim
+     ob desnem robu. Mreza je ista kot pri prvih treh, zato se stevilke,
+     imena in izidi berejo navzdol po isti navpicnici. */
+  .vrstni-red {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin-top: 0;
+  }
+
+  .vrstni-red--trije {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vrstni-red__vrstica {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 0;
+    padding: 11px 0 11px 14px;
+  }
+
+  .vrstni-red__mesto {
+    grid-row: 1 / span 2;
+    font-size: 15px;
+  }
+
+  .vrstni-red__ime {
+    grid-row: 1 / span 2;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .vrstni-red__klub {
+    font: 400 11px / 1.4 var(--pisava-mono);
+    color: var(--barva-crnilo-4);
+  }
+
+  .vrstni-red__izkupicek {
+    grid-column: 3;
+    grid-row: 1;
+    font-size: 13px;
+    color: var(--barva-crnilo-2);
+  }
+
+  .vrstni-red__elo {
+    grid-column: 3;
+    grid-row: 2;
+    font-size: 11px;
+  }
+
+  /* Vrstica ekipe v pripravi lige: ime, velikost kadra in dva gumba se pri
+     390 px v eno vrsto ne zlozijo - ime bi se stisnilo na nekaj znakov. Zato
+     gredo dejanja pod ime in obdrzijo svojih 44 px. */
+  .liga__ekipa {
+    flex-wrap: wrap;
+  }
+
+  .liga__ekipa-gumbi {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 

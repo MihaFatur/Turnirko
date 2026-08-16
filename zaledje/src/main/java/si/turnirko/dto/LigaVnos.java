@@ -6,6 +6,8 @@
    koncna tocka. */
 package si.turnirko.dto;
 
+import java.time.LocalDateTime;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -31,5 +33,11 @@ public record LigaVnos(
         Boolean prepovedDvojneRegistracije,
         Boolean stejeVElo,
         // predloga uradnega ekipnega zapisnika; null = privzeto (SNTL_23)
-        PredlogaLige predlogaListka
+        PredlogaLige predlogaListka,
+        // seme terminov: kdaj se igra prvo kolo (ura velja za celo kolo,
+        // 00:00 = ura ni dolocena) in na koliko dni sledijo naslednja.
+        // null = terminov ni; datumi kol se izracunajo sele ob generiranju
+        // razporeda, ko je znano, koliko kol liga sploh ima
+        LocalDateTime zacetekPrvegaKola,
+        Integer razmikDni
 ) {}
