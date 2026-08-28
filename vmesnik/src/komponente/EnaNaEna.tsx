@@ -1,14 +1,14 @@
 /* Pripomoček "Ena na ena": medsebojni izid dveh igralcev prek vseh tekmovanj —
    turnirskih tekem in posamičnih tekem ligaških srečanj (dvojice ne štejejo).
 
-   Zgradba je simetrična kot semafor: levo in desno stran igralca (ime, izbirnik
-   in vrstica s klubom, mestom in ratingom), na sredini pa med navpičnima
+   Zgradba je simetrična kot semafor: levo in desno stran igralca (ime, iskalno
+   polje in vrstica s klubom, mestom in ratingom), na sredini pa med navpičnima
    črtama medsebojni izid, seznam zadnjih tekem in gumb za nov naključni par.
    Ob prihodu se izžreba naključni par.
 
    Uporablja se na domači strani (s tremi zadnjimi tekmami) in na strani
    dvoboja (tam sta pod semaforjem še razmerje in vse tekme). Viden vsem. */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -22,6 +22,10 @@ import { SpremembaElo } from './SpremembaElo'
 /* Koliko medsebojnih tekem pokaže strnjena različica. Več jih vrstica ne
    prenese - do ostalih vodi povezava pod seznamom. */
 const TEKEM_V_POVZETKU = 3
+
+/* Koliko predlogov pokaže iskalno polje igralca. Osem je toliko, kolikor jih
+   na telefonu gre na zaslon, ne da bi seznam sam po sebi drsel. */
+const NAJVEC_PREDLOGOV = 8
 
 interface Lastnosti {
   /* Ali pod semaforjem pokaži razmerje in tabelo vseh medsebojnih tekem.
@@ -45,14 +49,44 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
     steviloIzParametra(iskalniParametri.get('drugi')),
   )
 
-  /* Če igralca nista prišla iz naslova, ob prvem nalaganju izberi naključni par. */
+  /* Naključni par izbere strežnik, ker samo ta ve, kdo je s kom že igral -
+     par brez medsebojne tekme pokaže 0 : 0 in o igralcih ne pove ničesar.
+
+     Žreb teče MIMO TanStack Queryja, v navadnem stanju komponente. Poizvedba
+     ne pride v poštev - predpomnjena bi ob vsakem kliku vrnila isti par -
+     useMutation pa se pri žrebu ob priklopu zlomi: StrictMode učinke podvoji
+     (naročnina → odjava → naročnina), ob odjavi se opazovalec odklopi od
+     tekoče mutacije in se nazaj NE pripne. Odgovor tako še pride (par se
+     zamenja), stanje opazovalca pa za vedno obtiči na "isPending" in gumb
+     ostane onemogočen. Zadene prav VRNITEV na domačo stran, kjer je seznam
+     igralcev že v predpomnilniku in žreb steče že v prvem učinku. */
+  const [zrebTece, nastaviZrebTece] = useState(false)
+  const [napakaZreba, nastaviNapakoZreba] = useState<unknown>(null)
+
+  const izzrebaj = useCallback(async () => {
+    nastaviZrebTece(true)
+    nastaviNapakoZreba(null)
+    try {
+      const par = await statistikaApi.nakljucniPar()
+      nastaviPrvega(par.prvi)
+      nastaviDrugega(par.drugi)
+    } catch (napaka) {
+      nastaviNapakoZreba(napaka)
+    } finally {
+      nastaviZrebTece(false)
+    }
+  }, [])
+
+  /* Če igralca nista prišla iz naslova, ob prvem nalaganju izžrebaj par.
+     Zastavica varuje pred drugim žrebom: seznam igralcev se lahko osveži,
+     obiskovalčeva izbira pa se ob tem ne sme povoziti. */
+  const zeIzzrebano = useRef(false)
   useEffect(() => {
-    const seznam = igralci.data
-    if (!seznam || seznam.length < 2 || prvi !== '' || drugi !== '') return
-    const [a, b] = dvaNakljucna(seznam)
-    nastaviPrvega(a.id)
-    nastaviDrugega(b.id)
-  }, [igralci.data, prvi, drugi])
+    if (zeIzzrebano.current || prvi !== '' || drugi !== '') return
+    if ((igralci.data?.length ?? 0) < 2) return
+    zeIzzrebano.current = true
+    void izzrebaj()
+  }, [igralci.data, prvi, drugi, izzrebaj])
 
   const veljavniPar = prvi !== '' && drugi !== '' && prvi !== drugi
 
@@ -69,13 +103,6 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
     return zemljevid
   }, [lestvica.data])
 
-  function izzrebaj() {
-    if (!igralci.data || igralci.data.length < 2) return
-    const [a, b] = dvaNakljucna(igralci.data)
-    nastaviPrvega(a.id)
-    nastaviDrugega(b.id)
-  }
-
   const premalo = (igralci.data?.length ?? 0) < 2
   const d = veljavniPar ? dvoboj.data : undefined
   const seznam = igralci.data ?? []
@@ -84,6 +111,7 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
     <div className={'enanaena' + (pokaziZgodovino ? '' : ' enanaena--strnjen')}>
       <SporociloNapake napaka={igralci.error} />
       {veljavniPar && <SporociloNapake napaka={dvoboj.error} />}
+      <SporociloNapake napaka={napakaZreba} />
 
       <div className="enanaena__plosca">
         <StranIgralca
@@ -101,9 +129,15 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
             ostane med imenoma, seznam tekem in gumb pa se preselita pod
             semafor, kjer imata celo širino. */}
         <div className="enanaena__izid">
-          <div className="enanaena__oznaka enanaena__oznaka--siroko">
-            Medsebojno · vsa tekmovanja
-          </div>
+          {/* Na domači strani oznake nad izidom ni: sklop ima naslov »Ena na
+              ena«, pod številko pa piše, koliko tekem in kakšni nizi so za
+              njo - vrstica verzalk je le še eno drobno besedilo nad velikim
+              rezultatom. Na strani dvoboja naslova sklopa ni, zato tam ostane. */}
+          {pokaziZgodovino && (
+            <div className="enanaena__oznaka enanaena__oznaka--siroko">
+              Medsebojno · vsa tekmovanja
+            </div>
+          )}
           <div className="enanaena__stevilo">
             <span className={barvaIzida(d?.zmagePrvega, d?.zmageDrugega)}>
               {d ? d.zmagePrvega : '–'}
@@ -156,13 +190,14 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
           )}
 
           {/* Naključni par je pripomoček za raziskovanje in ne glavno dejanje
-              pogleda, zato stoji pod črto na dnu sredinskega stolpca. */}
+              pogleda, zato stoji pod črto na dnu sredinskega stolpca. Napis na
+              gumbu pove vse - oznaka nad njim je na domači strani odveč. */}
           <div className="enanaena__noga">
-            <span className="enanaena__oznaka">Naključni par</span>
+            {pokaziZgodovino && <span className="enanaena__oznaka">Naključni par</span>}
             <button
               className="gumb gumb--majhen enanaena__zreb"
-              onClick={izzrebaj}
-              disabled={premalo}
+              onClick={() => void izzrebaj()}
+              disabled={premalo || zrebTece}
             >
               Zamenjaj par
             </button>
@@ -199,7 +234,7 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
   )
 }
 
-/* Ena stran semaforja: znak, veliko ime, izbirnik in vrstica s klubom,
+/* Ena stran semaforja: znak, veliko ime, iskalno polje in vrstica s klubom,
    mestom na lestvici in ratingom. Podatki pridejo iz šifranta igralcev, da
    stolpec stoji tudi, dokler se medsebojni izid še nalaga. */
 function StranIgralca({
@@ -222,7 +257,7 @@ function StranIgralca({
   vrednost: number | ''
   izkljuci: number | ''
   mesto: number | undefined
-  naSpremembo: (id: number | '') => void
+  naSpremembo: (id: number) => void
 }) {
   const igralec = vrednost === '' ? undefined : igralci.find((i) => i.id === vrednost)
   const Ime = kotNaslov ? 'h2' : 'div'
@@ -239,28 +274,166 @@ function StranIgralca({
           '—'
         )}
       </Ime>
-      <label className="enanaena__polje">
-        <span className="samo-za-bralnik">{oznaka}</span>
-        <select
-          value={vrednost}
-          onChange={(d) => naSpremembo(d.target.value === '' ? '' : Number(d.target.value))}
-        >
-          <option value="">— izberi —</option>
-          {igralci
-            .filter((i) => i.id !== izkljuci)
-            .map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.priimek} {i.ime}
-              </option>
-            ))}
-        </select>
-      </label>
+      <IzbirnikIgralca
+        oznaka={oznaka}
+        igralci={igralci}
+        izkljuci={izkljuci}
+        naSpremembo={naSpremembo}
+      />
       <div className="enanaena__meta">
         {/* Na telefonu od te vrstice ostane samo rating: klub in mesto sta v
             96 px širokem stolpcu tri vrstice besedila. */}
         <span className="enanaena__meta--siroko">{predRatingom(igralec, mesto)}</span>
         {igralec && (igralec.rating !== null ? igralec.rating : '—')}
       </div>
+    </div>
+  )
+}
+
+/* Iskalno polje s predlogi (combobox) namesto spustnega seznama: po uvozu
+   zgodovine NTZS je v šifrantu več tisoč igralcev in seznama ni bilo mogoče
+   prevrteti do imena. Vpiše se del imena, pod poljem pa se izpišejo zadetki.
+
+   Ujemanje teče po besedah in ne po začetku niza: »miha« najde vse Mihe (tudi
+   po imenu, ne le po priimku), »novak ana« pa Novak Ano ne glede na vrstni
+   red vpisanega. Ob imenu stoji klub - brez njega soimenjakov ni mogoče
+   ločiti, teh pa je v šifrantu cele države precej.
+
+   Tipkovnica: gor/dol izbira med predlogi, Enter potrdi, Escape zapre.
+   Fokus ves čas ostane v polju (vzorec combobox), zato predlogi niso gumbi,
+   ampak postavke, na katere kaže aria-activedescendant. */
+function IzbirnikIgralca({
+  oznaka,
+  igralci,
+  izkljuci,
+  naSpremembo,
+}: {
+  oznaka: string
+  igralci: IgralecDto[]
+  /* Igralec z druge strani semaforja: sam s sabo se nihče ne primerja. */
+  izkljuci: number | ''
+  naSpremembo: (id: number) => void
+}) {
+  const [iskanje, nastaviIskanje] = useState('')
+  const [odprt, nastaviOdprt] = useState(false)
+  const [oznacen, nastaviOznacen] = useState(0)
+  const ovoj = useRef<HTMLDivElement>(null)
+  const idSeznama = useId()
+
+  const zadetki = useMemo(() => {
+    const besede = zaIskanje(iskanje).split(/\s+/).filter(Boolean)
+    if (besede.length === 0) return []
+    return igralci
+      .filter((i) => i.id !== izkljuci)
+      .filter((i) => {
+        const ime = zaIskanje(`${i.priimek} ${i.ime}`)
+        return besede.every((beseda) => ime.includes(beseda))
+      })
+      .slice(0, NAJVEC_PREDLOGOV)
+  }, [igralci, izkljuci, iskanje])
+
+  /* Zapre se ob kliku zunaj in ob Escape - isto kot meni dejanj. Zapiranje ob
+     izgubi fokusa (blur) ne pride v poštev: sprožilo bi se PRED klikom na
+     predlog in ta klik bi padel v prazno. */
+  useEffect(() => {
+    if (!odprt) return
+    function obKliku(dogodek: MouseEvent) {
+      if (ovoj.current && !ovoj.current.contains(dogodek.target as Node)) nastaviOdprt(false)
+    }
+    function obTipki(dogodek: globalThis.KeyboardEvent) {
+      if (dogodek.key === 'Escape') nastaviOdprt(false)
+    }
+    document.addEventListener('mousedown', obKliku)
+    document.addEventListener('keydown', obTipki)
+    return () => {
+      document.removeEventListener('mousedown', obKliku)
+      document.removeEventListener('keydown', obTipki)
+    }
+  }, [odprt])
+
+  function izberi(id: number) {
+    naSpremembo(id)
+    /* Polje se izprazni: izbranega igralca nosi veliko ime nad njim, polje pa
+       je iskalnik za naslednjo zamenjavo. */
+    nastaviIskanje('')
+    nastaviOdprt(false)
+    nastaviOznacen(0)
+  }
+
+  function obTipki(dogodek: KeyboardEvent<HTMLInputElement>) {
+    if (dogodek.key === 'ArrowDown' || dogodek.key === 'ArrowUp') {
+      if (zadetki.length === 0) return
+      dogodek.preventDefault()
+      nastaviOdprt(true)
+      nastaviOznacen((prej) => {
+        const naslednji = dogodek.key === 'ArrowDown' ? prej + 1 : prej - 1
+        return (naslednji + zadetki.length) % zadetki.length
+      })
+      return
+    }
+    if (dogodek.key === 'Enter' && odprt && zadetki[oznacen]) {
+      // brez tega bi Enter poslal obrazec, v katerem polje morda stoji
+      dogodek.preventDefault()
+      izberi(zadetki[oznacen].id)
+    }
+  }
+
+  const iscemo = odprt && iskanje.trim() !== ''
+
+  return (
+    <div className="enanaena__polje" ref={ovoj}>
+      <label>
+        <span className="samo-za-bralnik">{oznaka}</span>
+        <input
+          type="text"
+          role="combobox"
+          autoComplete="off"
+          placeholder="Vpiši ime"
+          aria-expanded={iscemo && zadetki.length > 0}
+          aria-controls={idSeznama}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            iscemo && zadetki[oznacen] ? `${idSeznama}-${oznacen}` : undefined
+          }
+          value={iskanje}
+          onChange={(dogodek) => {
+            nastaviIskanje(dogodek.target.value)
+            nastaviOznacen(0)
+            nastaviOdprt(true)
+          }}
+          onFocus={() => nastaviOdprt(true)}
+          onKeyDown={obTipki}
+        />
+      </label>
+
+      {iscemo && zadetki.length > 0 && (
+        <ul className="enanaena__predlogi" id={idSeznama} role="listbox" aria-label={oznaka}>
+          {zadetki.map((igralec, indeks) => (
+            <li
+              key={igralec.id}
+              id={`${idSeznama}-${indeks}`}
+              role="option"
+              aria-selected={indeks === oznacen}
+              className={
+                'enanaena__predlog' + (indeks === oznacen ? ' enanaena__predlog--oznacen' : '')
+              }
+              onMouseEnter={() => nastaviOznacen(indeks)}
+              onClick={() => izberi(igralec.id)}
+            >
+              <span className="enanaena__predlog-ime">
+                {igralec.priimek} {igralec.ime}
+              </span>
+              {igralec.klub && (
+                <span className="enanaena__predlog-klub">{igralec.klub.ime}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {iscemo && zadetki.length === 0 && (
+        <p className="enanaena__predlogi enanaena__brez-zadetka">Ni zadetka</p>
+      )}
     </div>
   )
 }
@@ -421,6 +594,16 @@ function barvaIzida(svoje: number | undefined, tuje: number | undefined): string
   return ''
 }
 
+/* Niz, pripravljen za primerjavo v iskalniku: male črke brez šumnikov.
+   Brez odstranjenih strešic »krizan« ne najde Križana — na telefonu jih po
+   imenu išče malokdo, v dvorani pa nihče. */
+function zaIskanje(v: string): string {
+  return v
+    .toLocaleLowerCase('sl')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+}
+
 /* Začetnica priimka zmagovalca ob izidu ("3:1 V"). */
 function zacetnica(priimek: string): string {
   return priimek.slice(0, 1).toUpperCase()
@@ -431,12 +614,4 @@ function steviloIzParametra(v: string | null): number | '' {
   if (v === null) return ''
   const n = Number(v)
   return Number.isInteger(n) && n > 0 ? n : ''
-}
-
-/* Dva različna naključna igralca s seznama. */
-function dvaNakljucna(seznam: IgralecDto[]): [IgralecDto, IgralecDto] {
-  const a = Math.floor(Math.random() * seznam.length)
-  let b = Math.floor(Math.random() * seznam.length)
-  while (b === a) b = Math.floor(Math.random() * seznam.length)
-  return [seznam[a], seznam[b]]
 }

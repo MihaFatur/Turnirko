@@ -16,6 +16,7 @@ import type {
   KaderVnos,
   KlubDto,
   KlubVnos,
+  KoledarVnosDto,
   KrajDto,
   KrajVnos,
   LestvicaDvojiceDto,
@@ -25,6 +26,7 @@ import type {
   LigaDto,
   LigaVnos,
   MrezaDto,
+  NakljucniParDto,
   PostavaVnos,
   PrehodiVnos,
   PrijavaDto,
@@ -206,6 +208,16 @@ export const statistikaApi = {
   lestvica: () => api.vrni<LestvicaIgralcaDto[]>('/lestvica'),
   dvoboj: (prvi: number, drugi: number) =>
     api.vrni<DvobojDto>(`/dvoboj?prvi=${prvi}&drugi=${drugi}`),
+  /* Naključni par, ki ima za sabo vsaj eno medsebojno tekmo — izbor je na
+     strežniku, ker samo ta ve, kdo je s kom že igral. */
+  nakljucniPar: () => api.vrni<NakljucniParDto>('/dvoboj/nakljucni'),
   zadnjeTekme: (koliko = 8) =>
     api.vrni<ZadnjaTekmaDto[]>(`/zadnje-tekme?koliko=${koliko}`),
+}
+
+/* Koledar: turnirji in kola lig v danem obdobju, urejeni po datumu.
+   Obdobje je vključno na obeh straneh in sme obsegati največ leto dni. */
+export const koledarApi = {
+  obdobje: (od: string, doKdaj: string) =>
+    api.vrni<KoledarVnosDto[]>(`/koledar?od=${od}&do=${doKdaj}`),
 }

@@ -38,10 +38,11 @@ import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { useTelefon } from '../pomozno/telefon'
 
-/* Vrstica lestvice z mestom. Mesto se pripne PRED filtriranjem, da ostane
-   pravo tudi v zoženem seznamu (med igralkami so mesta 4, 9, 13 in ne 1, 2,
-   3); pri drugih merilih razvrstitve pa mesto po ratingu ne pomeni nič, zato
-   se takrat prešteje znova (glej prikazani). */
+/* Vrstica lestvice z mestom. Mesto se pripne PRED filtriranjem — a samo zato,
+   ker je vrstni red strežnika (v njem odločajo tudi izenačenja po zmagah in
+   abecedi) in ga potrebujeta merilo »Rating« ter izenačenje pri drugih
+   merilih. Gledalcu se ne izpiše: prikazani seznam se oštevilči znova (glej
+   prikazani). */
 interface Vrstica {
   igralec: LestvicaIgralcaDto
   mesto: number
@@ -123,14 +124,15 @@ export function LestvicaStran() {
 
   const filtri = useFiltri(najdeni, SKUPINE, RAZVRSTITVE)
 
-  /* Mesto po ratingu ostane globalno; pri vsakem drugem merilu se prešteje
-     znova, ker »4. po uspešnosti« ni isto kot »4. po ratingu«. */
+  /* Prikazani seznam se VEDNO prešteje od 1 naprej: številka pove mesto v tem,
+     kar gledalec gleda. Filter »U19«, ki se je začel pri 35., je bral kot izsek
+     sredine lestvice — koliko mladincev je pred tem igralcem, pa je bilo treba
+     šteti na roke. Isto velja za razvrstitev po drugem merilu: »4. po
+     uspešnosti« ni »4. po ratingu«. Globalno mesto ostane v vrstici (Vrstica),
+     ker po njem teče razvrščanje. */
   const prikazani = useMemo(
-    () =>
-      filtri.razvrstitev === 'rating'
-        ? filtri.prikazani
-        : filtri.prikazani.map(({ igralec }, indeks) => ({ igralec, mesto: indeks + 1 })),
-    [filtri.prikazani, filtri.razvrstitev],
+    () => filtri.prikazani.map(({ igralec }, indeks) => ({ igralec, mesto: indeks + 1 })),
+    [filtri.prikazani],
   )
 
   const vseh = lestvica.data?.length ?? 0

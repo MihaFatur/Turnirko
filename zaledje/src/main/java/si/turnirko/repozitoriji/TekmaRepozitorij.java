@@ -150,6 +150,40 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             """)
     List<Tekma> najdiDvoboje(Long prvi, Long drugi);
 
+    /* Idji aktivnih igralcev z vsaj eno odigrano turnirsko tekmo - prva
+       polovica zreba nakljucnega para na domaci strani. Entitetni stik
+       (JOIN Prijava p ON ...) zajame obe strani tekme v ENI poizvedbi;
+       loceni poizvedbi za prijava1 in prijava2 bi bili ista poizvedba dvakrat.
+
+       Merilo odigranosti mora biti isto kot v najdiDvoboje - sicer bi zreb
+       ponudil par, ki mu pregled "1 na 1" pokaze 0 : 0. */
+    @Query("""
+            SELECT DISTINCT i.id FROM Tekma t
+            JOIN Prijava p ON p = t.prijava1 OR p = t.prijava2
+            JOIN p.igralec i
+            WHERE t.status = si.turnirko.modeli.StatusTekme.KONCANA
+              AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
+                                                     si.turnirko.modeli.IzidTekme.PREDAJA))
+              AND i.arhiviran = false
+            """)
+    List<Long> idjiZOdigranoTekmo();
+
+    /* Idji aktivnih igralcev, s katerimi je dani igralec ze odigral turnirsko
+       tekmo - druga polovica zreba. Obe strani morata biti aktivni: para z
+       arhiviranim igralcem semafor ne zna izpisati. */
+    @Query("""
+            SELECT DISTINCT CASE WHEN i1.id = :id THEN i2.id ELSE i1.id END
+            FROM Tekma t
+            JOIN t.prijava1 p1 JOIN p1.igralec i1
+            JOIN t.prijava2 p2 JOIN p2.igralec i2
+            WHERE t.status = si.turnirko.modeli.StatusTekme.KONCANA
+              AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
+                                                     si.turnirko.modeli.IzidTekme.PREDAJA))
+              AND (i1.id = :id OR i2.id = :id)
+              AND i1.arhiviran = false AND i2.arhiviran = false
+            """)
+    List<Long> nasprotniki(Long id);
+
     /* Zadnje dejansko odigrane tekme cez vse dogodke (najnovejse prve),
        z igralci, klubi, dogodkom in turnirjem - za "Zadnji rezultati".
        Stevilo omeji Pageable (npr. prvih 8). */

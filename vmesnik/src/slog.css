@@ -21,7 +21,7 @@
     8. seznami tekmovanj (turnirji, lige, dogodki)
     9. izlocilna mreza in tekme
    10. lestvice, skupine, podij
-   11. dvoboj (1 na 1) in domaca stran
+   11. dvoboj (1 na 1), domaca stran in koledar
    12. profil igralca in graf ELO
    13. format TOP: jakostni vrstni red, udelezenci
    14. lige, srecanja, postava
@@ -119,6 +119,29 @@
      da si oznacen vsak, cez kogar potegnes miska. */
   --barva-vrstica-hover: #f3efe9;
 
+  /* --- Paleta koledarja: dva pomenska tona ---
+     Edino mesto v vmesniku, kjer barva ne pomeni STANJA, ampak VRSTO
+     tekmovanja: moder pas je turnir, zelen ligasko kolo. Koledar je pogled po
+     dnevih in v isti soboti se igra pet lig in dva turnirja - z eno barvo so
+     vsi dnevi enaki in vprasanje "kaj od tega je turnir" nima odgovora. Zato
+     je to izrecna izjema od pravila "ena dominantna + en poudarek"
+     (DESIGN.md, razdelek 2), omejena na koledar.
+
+     Kar izjema NE razveljavi:
+     - tona sta dva in pomenita VRSTO, ne identitete tekmovanja; prej jih je
+       bilo sest, dodeljenih po vrstnem redu pojavitve, in barva je bila last
+       pogleda - zato je pod mrezo morala stati legenda z imeni;
+     - barva ni nikoli edini nosilec podatka (WCAG 1.4.1): pod mrezo stoji
+       kljuc (Turnir - Ligasko kolo - Odigrano), seznam ob njej pa vsako
+       tekmovanje izpise z imenom;
+     - vijolicne in indigo tudi tu ni;
+     - ton je vedno le PLOSKEV (pas cez dneve, levi rob vrstice) in nikoli
+       podlaga pod besedilom, zato je merilo 3:1 proti papirju - oba sta nad
+       3,7:1;
+     - oba sta hisna modra in zelena, da koledar ostane isti vmesnik. */
+  --barva-ton-1: #0071ab;
+  --barva-ton-2: #5a8a00;
+
   /* Zastor pod predalom "Vec". Ne sme biti izpeljan iz crnila: v temni temi je
      crnilo SVETLO in bi vsebino pod predalom posvetlil namesto zatemnil. V
      temi je tudi gostejsi - 28 % crne cez skoraj crn papir se ne vidi. */
@@ -164,6 +187,11 @@
     --barva-polnilo: #221e1a;
     --barva-bela: #1a1714;
     --barva-vrstica-hover: #1c1917;
+
+    /* Toni koledarja posvetlijo kot vse drugo crnilo; polne ploskve pri njih
+       ni, zato tu ni loceno "risoce" in "polne" razlicice. */
+    --barva-ton-1: #4fb3e8;
+    --barva-ton-2: #9fd62e;
     --barva-zastor: rgb(0 0 0 / 0.62);
   }
 }
@@ -336,7 +364,9 @@ textarea:focus-visible,
   text-decoration: none;
 }
 
-/* Edina ikona v vmesniku je logotip: stiri poteze niza. */
+/* Edina ikona v vsebini vmesnika je logotip: stiri poteze niza. (Druga in
+   zadnja izjema je spodnja navigacijska vrstica na telefonu - glej razdelek
+   17.) */
 .logo-znak {
   display: block;
   flex: none;
@@ -400,7 +430,8 @@ textarea:focus-visible,
   white-space: nowrap;
 }
 
-/* Prozilnik uporabnika je besedilo v mono, ne ikona (ikone so prepovedane).
+/* Prozilnik uporabnika je besedilo v mono, ne ikona (ikone so prepovedane
+   povsod razen v spodnji vrstici na telefonu - glej razdelek 17).
    Navpicni padding poveca zadetkovno povrsino na 44 px, negativni rob pa
    izracunano visino vrne nazaj, da osnovna crta ostane poravnana z logotipom. */
 .uporabnik-gumb {
@@ -1208,6 +1239,33 @@ a.gumb {
   opacity: 0;
   font: inherit;
   cursor: pointer;
+}
+
+/* Zunanje krmilo v vrstici se ne krci: na 390 px bi mu stevec ob robu vzel
+   toliko, da bi se "Lige" prelomilo v svojo vrsto pod "Vse". Raje se v novo
+   vrsto prelomi stevec - ta je poved in ne krmilo. */
+.krmila .izbirnik {
+  flex: none;
+}
+
+/* Imena skupin, ki ostanejo v oknu z merili (koledar). Napoved in ne krmilo:
+   povedo, po cem se sploh da filtrirati, preden gledalec odpre okno. Na
+   telefonu odpadejo - tam bi vzela celo vrsto in nic ne bi ponudila. */
+.krmila__skupine {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  flex-wrap: wrap;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.krmila__locilo {
+  width: 1px;
+  height: var(--r3);
+  background: var(--barva-crta);
 }
 
 /* Dodatek strani ob krmilih (ura osvezitve) gre na drugi konec vrstice. */
@@ -3622,16 +3680,21 @@ input[type='radio'] {
   text-decoration: none;
 }
 
-/* Izbirnik stoji POD imenom: ime je vsebina, izbirnik pa orodje, s katerim jo
-   zamenjas - obratni vrstni red je bralcu ponujal kontrolnik, preden je vedel,
-   koga gleda. */
+/* Iskalno polje stoji POD imenom: ime je vsebina, polje pa orodje, s katerim
+   jo zamenjas - obratni vrstni red je bralcu ponujal kontrolnik, preden je
+   vedel, koga gleda. Ovoj je sidro za predloge, ki lezijo cez vsebino. */
 .enanaena__polje {
+  position: relative;
   display: block;
   width: 100%;
   margin-top: var(--r2);
 }
 
-.enanaena__polje select {
+.enanaena__polje label {
+  display: block;
+}
+
+.enanaena__polje input {
   width: 100%;
   height: 44px;
   padding: 0 12px;
@@ -3642,6 +3705,82 @@ input[type='radio'] {
   font-family: var(--pisava-telo);
   font-size: 17px;
   font-weight: 400;
+}
+
+/* Predlogi lezijo CEZ vsebino pod poljem in je ne premikajo: semafor, ki bi
+   ob vsakem vtipkanem znaku poskocil, bi bral kot napaka. Sirina je vsaj
+   240 px - v 96 px sirokem stolpcu na telefonu se ime in klub ne zlozita. */
+.enanaena__predlogi {
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 0;
+  z-index: 20;
+  width: 100%;
+  min-width: 240px;
+  max-width: 100vw;
+  /* Osem vrstic po 50 px: toliko, kolikor jih polje sploh ponudi, zato do
+     drsenja v seznamu praviloma ne pride. */
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--barva-papir);
+  border: 1px solid var(--barva-crnilo);
+  text-align: left;
+}
+
+/* Desna stran semaforja je zrcalna, zato se predlogi sirijo v levo - sicer
+   bi pri ozkem stolpcu zlezli cez desni rob zaslona. */
+.enanaena__stran--2 .enanaena__predlogi {
+  left: auto;
+  right: 0;
+}
+
+.enanaena__predlog {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--barva-crta);
+  cursor: pointer;
+}
+
+.enanaena__predlog:last-child {
+  border-bottom: 0;
+}
+
+/* Oznacen je predlog pod misko IN tisti, na katerem stoji tipkovnica -
+   obojega ne locujemo, ker je v vsakem trenutku oznacen natanko en. */
+.enanaena__predlog--oznacen {
+  background: var(--barva-glavna-mehko);
+}
+
+.enanaena__predlog-ime {
+  font-size: var(--tip-drobno);
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+/* Klub loci soimenjaka, zato je tu - a imena klubov so dolga
+   ("Namiznoteniski klub Fuzinar Ravne na Koroskem") in bi vsako drugo vrstico
+   raztegnila cez tri vrste. Zato ostane v eni vrstici in se odreze. */
+.enanaena__predlog-klub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.enanaena__brez-zadetka {
+  padding: 12px;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
 }
 
 .enanaena__meta {
@@ -3665,6 +3804,18 @@ input[type='radio'] {
   border-left: 1px solid var(--barva-crta);
   border-right: 1px solid var(--barva-crta);
   padding: 0 var(--r3);
+}
+
+/* Na domaci strani (strnjena razlicica) se sredinski stolpec nadaljuje v
+   seznam zadnjih medsebojnih tekem, zato izid sede na DNO svoje vrste in ne
+   na vrh: stevilka in vrstica pod njo tako pripadata istemu bloku kot tekme.
+   Prazen prostor, ki ga pusti visja stran igralca, se zbere nad izidom -
+   prej je stolpec presekal na pol in izid je visel sam zase. */
+.enanaena--strnjen .enanaena__izid {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: var(--r3);
 }
 
 .enanaena__spodaj {
@@ -4236,6 +4387,463 @@ a.domov__lestvica-vrstica--jaz {
 
 .domov__desno {
   text-align: right;
+}
+
+/* --- Koledar: mreza meseca, kljuc tonov, vrstica vnosa ------------------
+
+   Mreza NI vec tabela: vecdnevni turnir je EN pas cez dneve
+   (grid-column: N / span M), tabela pa cez celice ne zna risati. Bralnik
+   zaslona dobi isto branje kot prej prek role="table"/"row"/"cell" - "sreda,
+   15" in ne "15".
+
+   Ton vnosa pride v pas in v levi rob vrstice prek --ton-vnosa, ki ga postavi
+   komponenta (slogTona). Tona sta odslej DVA in pomenska: moder je turnir,
+   zelen ligasko kolo (pomozno/koledar.ts, tonVnosa). CSS ne ve, katero
+   tekmovanje je katero - ve samo, da je ton ploskev.
+
+   Mere mreze zivijo v spremenljivkah in ne v podvojenih pravilih: ista mreza
+   sluzi celi strani (92 px celica), sklopu na domaci strani (58 px) in
+   telefonu (60 px), razlika je samo v stevilkah. */
+
+.koledar {
+  /* Cela stran na namizju. Sklop in telefon zamenjata vrednosti, nikoli
+     pravil. */
+  --koledar-visina: 92px;
+  --koledar-odmik: 6px;
+  --koledar-vrzel: 4px;
+  --koledar-stevilka: var(--tip-mono);
+  --koledar-vrh-trakov: 30px;
+  --koledar-trak: 7px;
+  --koledar-razmik-trakov: 5px;
+  --koledar-imena-odmik: var(--r1);
+  --koledar-imena: var(--tip-mono);
+  --koledar-imena-razmik: 0.1em;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+.koledar--sklop {
+  --koledar-visina: 58px;
+  --koledar-odmik: 4px;
+  --koledar-vrzel: 2px;
+  --koledar-stevilka: 11px;
+  --koledar-vrh-trakov: 26px;
+  --koledar-trak: 5px;
+  --koledar-razmik-trakov: 3px;
+  --koledar-imena-odmik: 6px;
+  --koledar-imena: 11px;
+  --koledar-imena-razmik: 0.08em;
+
+  gap: 12px;
+}
+
+/* Glava meseca. Puscici sta samo tam, kjer se lista (cela stran); na domaci
+   strani je mesec vedno tekoci, zato ime stoji levo in ob njem stevec. */
+.koledar__glava {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r1);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.koledar--sklop .koledar__glava {
+  align-items: baseline;
+}
+
+.koledar__mesec {
+  flex: 1;
+  min-width: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--barva-crnilo);
+}
+
+/* Brez puscic ob sebi ime ni na sredini nicesar - takrat je levo, kot vsak
+   drug naslov v sistemu. */
+.koledar--sklop .koledar__mesec {
+  text-align: left;
+}
+
+.koledar__stevec {
+  flex: none;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Pot nazaj v tekoci mesec; stoji ob imenu meseca in ne med puscicama, ker ni
+   korak, ampak skok. */
+.koledar__danes {
+  flex: none;
+}
+
+.koledar__krmar {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--barva-crta);
+  background: none;
+  color: var(--barva-glavna-tekst);
+  font: 400 var(--tip-vrstica) / 1 var(--pisava-telo);
+  cursor: pointer;
+}
+
+.koledar__krmar:hover {
+  border-color: var(--barva-glavna);
+}
+
+.koledar__imena {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding-bottom: var(--koledar-imena-odmik);
+}
+
+.koledar__ime-dneva {
+  font: 500 var(--koledar-imena) / 1.4 var(--pisava-mono);
+  letter-spacing: var(--koledar-imena-razmik);
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--barva-crnilo-3);
+}
+
+/* Teden je mreza sedmih celic IN podlaga za pas trakov nad njimi; ta je
+   absoluten, zato mora biti teden position: relative. */
+.koledar__teden {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* Crte samo desno in spodaj: gornji rob mreze nosi ze vrsta z imeni dni, levi
+   pa prva celica v vrstici. Tako mesec, ki se ne zacne v ponedeljek, nima
+   crte tam, kjer dneva ni. */
+/* Visina je na CELICI in ne na gumbu v njej: gumb bi jo meril brez crte pod
+   sabo in vsaka vrsta bi bila piksel visja od mere (92 px je 92 px, crta
+   vkljucno). Gumb se raztegne sam (align-items: stretch). */
+.koledar__celica {
+  display: flex;
+  min-width: 0;
+  min-height: var(--koledar-visina);
+  border-right: 1px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.koledar__celica:first-child:not(.koledar__celica--prazna) {
+  border-left: 1px solid var(--barva-crta);
+}
+
+/* Dan pred prvim v mesecu in za zadnjim: prazna celica brez crt, da mesec
+   dobi obliko in se ne bere kot polna preproga. */
+.koledar__celica--prazna {
+  border-color: transparent;
+}
+
+/* Konec tedna je podlozen kot na natisnjenem koledarju: v namiznem tenisu se
+   igra ob sobotah in nedeljah in oko mora soboto najti brez stetja stolpcev. */
+.koledar__celica--vikend {
+  background: var(--barva-polnilo);
+}
+
+.koledar__celica--izbran {
+  background: var(--barva-glavna-mehko);
+}
+
+/* Vsebina celice. Visino nosi celica; ta se je le drzi, hkrati pa je
+   zadetkovna povrsina na dotik in prostor za pasove trakov nad njo (glej
+   --koledar-vrh-trakov). */
+.koledar__dan {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--koledar-vrzel);
+  width: 100%;
+  padding: var(--koledar-odmik);
+  border: 0;
+  background: none;
+  font-family: var(--pisava-mono);
+  text-align: left;
+}
+
+.koledar__dan--klik {
+  cursor: pointer;
+}
+
+.koledar__dan--klik:hover {
+  background: var(--barva-vrstica-hover);
+}
+
+.koledar__stevilka {
+  font: 500 var(--koledar-stevilka) / 1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.koledar__celica--izbran .koledar__stevilka {
+  color: var(--barva-crnilo);
+}
+
+/* Danes je polna crnilna ploskev, kot znacka: debelejsa obroba celice bi se v
+   mrezi crt izgubila. */
+.koledar__stevilka--danes {
+  padding: 3px 6px;
+  background: var(--barva-crnilo);
+  color: var(--barva-papir);
+  font-weight: 600;
+}
+
+/* Pas trakov: lastna mreza sedmih stolpcev NAD celicami. Vrstica je visoka
+   natanko en trak, zato pas N sedi v vrstici N. Klike prepusca celicam pod
+   sabo, razen na traku samem - ta ima svoj title z imenom tekmovanja. */
+.koledar__trakovi {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--koledar-vrh-trakov);
+  bottom: var(--koledar-odmik);
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: var(--koledar-trak);
+  row-gap: var(--koledar-razmik-trakov);
+  pointer-events: none;
+}
+
+/* Vodoravni 3 px odmik je edino, kar loci trakova sosednjih dni - crta celice
+   pod njim je pretanka, da bi jo videl skozi ploskev. */
+.koledar__trak {
+  margin: 0 3px;
+  min-width: 0;
+  background: var(--ton-vnosa);
+  pointer-events: auto;
+}
+
+/* Odigrano zbledi, da prihajajoce izstopa brez druge barve. */
+.koledar__trak--pretekel {
+  opacity: 0.32;
+}
+
+.koledar__vec {
+  font: 500 11px / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Kljuc pod mrezo ---
+   Nadomesca legendo z imeni tekmovanj. Ta je rasla s pogledom (en mesec
+   uvozene zgodovine ima tudi sestnajst tekmovanj) in je zavzela vec prostora
+   kot mreza sama; kljuc ima vedno dve ali tri postavke.
+
+   Ni seznam povezav: ton pomeni VRSTO in ne enega tekmovanja, zato ni kam
+   klikniti. Imena nosi seznam ob mrezi. */
+.koledar-kljuc {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--r2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.koledar-kljuc--poln {
+  gap: 20px;
+  padding-top: 4px;
+}
+
+.koledar-kljuc__postavka {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.koledar-kljuc--poln .koledar-kljuc__postavka {
+  gap: var(--r1);
+  font-size: var(--tip-mono);
+  letter-spacing: 0.1em;
+}
+
+/* Ploskev je natanko trak iz mreze in ne kvadratek: kljuc mora kazati isto
+   obliko, kot jo gledalec isce nad njim. */
+.koledar-kljuc__ploskev {
+  flex: none;
+  width: 14px;
+  height: 5px;
+  background: var(--ton-vnosa);
+}
+
+.koledar-kljuc--poln .koledar-kljuc__ploskev {
+  width: 16px;
+  height: 7px;
+}
+
+.koledar-kljuc__ploskev--odigrano {
+  opacity: 0.32;
+}
+
+/* --- Vrstica vnosa ---
+   Ton nosi LEVI ROB celotnega vnosa (in ne le povezave), da so pari kola pod
+   njo del istega bloka - isti vzorec kot oznacena vrstica drugod v sistemu. */
+.koledar-vnos {
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid var(--ton-vnosa);
+}
+
+/* Odigrano zbledi: brez tega prihajajoce in odigrano izgledata enako in
+   gledalec mora vsako vrstico prebrati, preden ve, katera ga zadeva. */
+.koledar-vnos--odigran {
+  opacity: 0.62;
+}
+
+.koledar-vnos__vrstica {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--r2);
+  min-height: 64px;
+  padding: var(--r1) var(--r1) var(--r1) var(--r2);
+  color: var(--barva-crnilo);
+}
+
+.koledar-vnos__vrstica:hover {
+  background: var(--barva-vrstica-hover);
+  text-decoration: none;
+}
+
+.koledar-vnos__datum {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.koledar-vnos__dan {
+  font: 800 var(--tip-h3) / 1 var(--pisava-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+}
+
+.koledar-vnos__mesec {
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  color: var(--barva-crnilo-3);
+}
+
+.koledar-vnos__telo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.koledar-vnos__ime {
+  font: 600 var(--tip-vrstica) / 1.3 var(--pisava-telo);
+  color: var(--barva-crnilo);
+}
+
+.koledar-vnos__meta {
+  font: 400 var(--tip-mono) / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* Pari kola: zamaknjeni pod ime (sirina datumskega bloka in oba odmika), da
+   se berejo kot njegov del in ne kot nov seznam. */
+.koledar-vnos__pari {
+  margin: 0;
+  padding: 0 var(--r1) var(--r1) calc(44px + var(--r2) + var(--r2));
+  list-style: none;
+}
+
+.koledar-vnos__par {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  min-height: 44px;
+  border-top: 1px solid var(--barva-crta);
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-telo);
+  color: var(--barva-crnilo-2);
+}
+
+.koledar-vnos__proti {
+  font-family: var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Sklop na domaci strani ---
+   Mreza levo, "Naslednje" desno. Mreza je ozja kot na strani koledarja (420
+   proti 620 px) in njene celice nizje: tu je pregled meseca, podrobnosti
+   pripadajo celotnemu koledarju. */
+.domov__koledar {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: var(--r7);
+  align-items: start;
+  margin-top: var(--r3);
+}
+
+.domov__koledar-mreza,
+.domov__koledar-naslednje {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  min-width: 0;
+}
+
+.domov__koledar-naslednje > .podnaslov-sekcije {
+  margin-top: 0;
+}
+
+/* Gumb ne sme cez cel stolpec: na namizju meri "Naslednje" 780 px in gumb cez
+   vso to sirino je pas in ne dejanje. Na telefonu se raztegne (razdelek
+   odzivnosti) - tam je edina zadetkovna povrsina v cel koledar, ker meta v
+   glavi sklopa meri 12 px. */
+.domov__koledar-gumb {
+  align-self: start;
+  margin-top: var(--r1);
+}
+
+/* --- Cela stran koledarja ---
+   Mreza je 620 px in ne 420 px: prostor, ki ga je sprostila legenda pod njo,
+   je dobila mreza sama - v sirsi celici gre trak cez cel dan in pas cez cel
+   turnir. */
+.koledar-stran {
+  display: grid;
+  grid-template-columns: minmax(0, 620px) minmax(0, 1fr);
+  gap: var(--r5);
+  align-items: start;
+  margin-top: var(--r3);
+}
+
+.koledar-stran__mreza,
+.koledar-stran__seznam {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  min-width: 0;
+}
+
+/* Pot do preostalih vnosov meseca na telefonu (glej NA_TELEFONU v
+   KoledarStran). Ne cez vso sirino - dejanje je in ne pas. */
+.koledar-stran__vec {
+  align-self: start;
+  margin-top: var(--r2);
+}
+
+.koledar-dan > .podnaslov-sekcije {
+  margin-top: 0;
+}
+
+.koledar-dan + .koledar-dan {
+  margin-top: var(--r3);
 }
 
 /* ============================================================
@@ -5064,6 +5672,19 @@ a.domov__lestvica-vrstica--jaz {
   border-bottom: 1px solid var(--barva-crta);
 }
 
+/* Vrstica, na katero je gledalec skocil s tocke grafa ELO. Modra crta ob robu
+   in mehka podlaga sta ista jezika kot .kazalnik--poudarjen in
+   .vrstica-mobi--poudarjena. Negativni rob iznici notranji odmik, da skok
+   vsebine vrstice ne premakne v stran. */
+.tekma-vrstica--poudarjena {
+  border-left: 4px solid var(--barva-glavna);
+  padding-left: 12px;
+  padding-right: 16px;
+  margin-left: -16px;
+  margin-right: -16px;
+  background: var(--barva-glavna-mehko);
+}
+
 .tekma-vrstica--glava {
   padding: 12px 0;
   border-bottom: 1px solid var(--barva-crnilo);
@@ -5317,6 +5938,25 @@ a.domov__lestvica-vrstica--jaz {
 
 .graf__opis {
   color: var(--barva-crnilo-3);
+}
+
+/* "V seznam tekem": tocka grafa je na telefonu nekaj pikslov siroka, zato je
+   to edina zadetkovna povrsina te poti, ki drzi 44 px. Gumb je odvrzen do
+   besedila - isti dogovor kot button.sekcija__meta. */
+.graf__skok {
+  border: none;
+  background: none;
+  padding: 12px 0;
+  margin: -12px 0;
+  min-height: 44px;
+  font: 500 var(--tip-drobno) / 1.6 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-glavna-tekst);
+  cursor: pointer;
+}
+
+.graf__skok:hover {
+  text-decoration: underline;
 }
 
 /* ============================================================
@@ -6453,6 +7093,21 @@ a.domov__lestvica-vrstica--jaz {
    ============================================================ */
 
 @media (max-width: 1100px) {
+
+  /* Koledar: pod 1100 px mreza in seznam ne gresta vec drug ob drugem - pri
+     620 px mrezi ostane seznamu manj, kot potrebuje ime tekmovanja. */
+  .domov__koledar,
+  .koledar-stran {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r4);
+  }
+
+  /* Mreza brez sosednjega stolpca ne sme cez celo sirino: 1000 px sirok mesec
+     je sedem stolpcev po 140 px in ob njih prazen papir. */
+  .domov__koledar-mreza,
+  .koledar-stran__mreza {
+    max-width: 620px;
+  }
   :root {
     --tip-h1: 72px;
     --tip-h1-nad: 40px;
@@ -6845,6 +7500,67 @@ a.domov__lestvica-vrstica--jaz {
 }
 
 @media (max-width: 640px) {
+
+  /* Koledar na telefonu: sedem stolpcev v 350 px pomeni 50 px stolpec, zato
+     se skrcijo VSE mere mreze - trakovi so edini razlog zanjo in morajo
+     ostati vidni. Pravilo stoji ZA .koledar--sklop, zato njegove vrednosti
+     povozi tudi tam (sklop na telefonu ni ozji od strani). */
+  .koledar,
+  .koledar--sklop {
+    --koledar-visina: 60px;
+    --koledar-odmik: 4px;
+    --koledar-vrzel: 2px;
+    --koledar-stevilka: 11px;
+    --koledar-vrh-trakov: 28px;
+    --koledar-trak: 5px;
+    --koledar-razmik-trakov: 3px;
+    --koledar-imena-odmik: 6px;
+    --koledar-imena: 11px;
+    --koledar-imena-razmik: 0.06em;
+
+    gap: 12px;
+  }
+
+  /* Imena dni so na sredini stolpca: pri 50 px stolpcu levo poravnan "NED"
+     stoji tam, kjer se zacne stolpec, in ne nad njegovimi stevilkami. */
+  .koledar__ime-dneva {
+    text-align: center;
+  }
+
+  .domov__koledar-mreza,
+  .koledar-stran__mreza {
+    max-width: none;
+  }
+
+  /* Imena preostalih skupin filtra bi na 390 px vzela celo vrsto in nic ne bi
+     ponudila - do meril vodi gumb "Filtriraj" v isti vrsti. */
+  .krmila__skupine {
+    display: none;
+  }
+
+  /* Znacka statusa gre v svojo vrsto pod ime: v 350 px se datumski blok, ime
+     in znacka ne zlozijo v eno. */
+  .koledar-vnos__vrstica {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: var(--r1);
+    padding-left: var(--r1);
+  }
+
+  .koledar-vnos__vrstica > .znacka {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .koledar-vnos__pari {
+    padding-left: calc(40px + var(--r1) + var(--r1));
+  }
+
+  /* Gumb v cel koledar je na telefonu edina zadetkovna povrsina te poti (meta
+     v glavi sklopa meri 12 px), zato cez vso sirino. */
+  .domov__koledar-gumb {
+    align-self: stretch;
+  }
+
   :root {
     --tip-h1: 56px;
     --tip-h1-nad: 32px;
@@ -7178,7 +7894,7 @@ a.domov__lestvica-vrstica--jaz {
     margin-top: 10px;
   }
 
-  .enanaena__polje select {
+  .enanaena__polje input {
     padding: 0 var(--r1);
     font-size: 15px;
   }
@@ -7797,7 +8513,10 @@ a.domov__lestvica-vrstica--jaz {
    spreminjajo obstojece razrede (kolofon, vrstni red, razvrstitev).
 
    Razdelek je zadnji v datoteki namenoma: pravila telefona morajo prevladati
-   nad splosnimi, ne da bi jim bilo treba vecati specificnosti. */
+   nad splosnimi, ne da bi jim bilo treba vecati specificnosti.
+
+   Tu je tudi edina odobrena izjema od prepovedi ikon in od meje 120 ms za
+   gibanje - obe sta omejeni na spodnjo vrstico in pojasnjeni nad njo. */
 
 /* --- Lepljiva glava --- */
 
@@ -7989,6 +8708,19 @@ a.domov__lestvica-vrstica--jaz {
 
 /* --- Spodnja vrstica --- */
 
+/* IZJEMA OD HISNEGA ZAPISA, ODOBRENA IN OMEJENA NA TA RAZDELEK.
+   Dvoje, kar drugod v vmesniku ni dovoljeno:
+   1. IKONE (DESIGN.md, razdelek 5, tocka 9 - "edina ikona je logotip"):
+      postavke spodnje vrstice nosijo ikono in ne besede. Pet mono oznak je
+      pri 390 px zaseglo cel stolpec, ikona pa je v pasu, ki ga palec bere v
+      pol sekunde, hitrejsa od branja. Oznaka ostane v drevesu skrita v
+      .samo-za-bralnik, zato bralnik zaslona ni na slabsem.
+   2. GIBANJE, DALJSE OD 120 ms (DESIGN.md, tocka 12): modra poteza ZDRSNE s
+      prejsnjega stolpca na novega v 260 ms. To je isti premik podcrtaja
+      navigacije, ki ga zapis dovoljuje - le da je viden, ker je pot dolga.
+   Nikjer drugje (glava, gumbi, meniji, predal "Vec") ikon in daljsih
+   prehodov ne dodajaj. */
+
 .spodnja-vrstica {
   position: fixed;
   left: 0;
@@ -8007,19 +8739,47 @@ a.domov__lestvica-vrstica--jaz {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* Modra poteza aktivnega stolpca. Je SKUPEN element in ne rob postavke -
+   samo tako lahko zdrsne s stolpca na stolpec, namesto da bi na enem
+   ugasnila in na drugem vzniknila. Sede NA debelo crto (top: -3px), da je
+   vrh vrstice ena sama poteza in ne dve druga nad drugo.
+   Premika se transform (kompozitorska lastnost, brez preracuna postavitve);
+   sirina je delez vrstice, zato jo pri stirih postavkah samo prestavimo. */
+.spodnja-vrstica__poteza {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 20%;
+  height: 3px;
+  background: var(--barva-glavna);
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.spodnja-vrstica--stiri .spodnja-vrstica__poteza {
+  width: 25%;
+}
+
+/* Pot ni v nobenem sklopu (moj profil, sifranti): poteza se skrije, a ostane
+   na zadnjem znanem stolpcu. Brez animacije - crta, ki bi se zabrisala, bi
+   izgledala kot nalaganje. */
+.spodnja-vrstica__poteza--skrita {
+  opacity: 0;
+}
+
+/* 56 px je visina glave telefona: vrstici zaslon zgoraj in spodaj zapreta
+   enako debela pasova. Brez oznake pod ikono je to se vedno dalec cez 44 px
+   zadetkovne povrsine. */
 .spodnja-vrstica__postavka {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 60px;
+  min-height: 56px;
   border: none;
   border-radius: 0;
   background: none;
-  font: 500 11px / 1.2 var(--pisava-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--barva-crnilo-3);
   cursor: pointer;
+  transition: background 260ms ease, color 260ms ease;
 }
 
 .spodnja-vrstica__postavka:hover {
@@ -8027,15 +8787,23 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo);
 }
 
-/* Aktivna postavka: modra crta sede NA debelo crto (negativni rob), da je
-   vrh vrstice ena sama poteza in ne dve druga nad drugo. */
+/* Aktivna postavka: mehka modra ploskev in modra ikona. Crte tu ni - nosi
+   jo drsna poteza. */
 .spodnja-vrstica__postavka--aktivna,
 .spodnja-vrstica__postavka--aktivna:hover {
-  margin-top: -3px;
-  border-top: 3px solid var(--barva-glavna);
   background: var(--barva-glavna-mehko);
-  font-weight: 600;
   color: var(--barva-glavna-tekst);
+}
+
+.spodnja-vrstica__ikona {
+  display: flex;
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Ikona aktivnega zavihka se dvigne za 2 px - proti potezi, ki je pravkar
+   prisla nadnjo. */
+.spodnja-vrstica__postavka--aktivna .spodnja-vrstica__ikona {
+  transform: translateY(-2px);
 }
 
 /* --- Predal "Vec" --- */
@@ -8047,13 +8815,13 @@ a.domov__lestvica-vrstica--jaz {
   background: var(--barva-zastor);
 }
 
-/* Predal sedi NAD spodnjo vrstico (60 px + 3 px crta), da ostane vidno,
+/* Predal sedi NAD spodnjo vrstico (56 px + 3 px crta), da ostane vidno,
    katera postavka ga je odprla. */
 .predal {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(63px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(59px + env(safe-area-inset-bottom, 0px));
   z-index: 16;
   background: var(--barva-papir);
   border-top: 3px solid var(--barva-crnilo);
@@ -8133,11 +8901,11 @@ a.domov__lestvica-vrstica--jaz {
 
 /* --- Vsebina pod lepljivo glavo --- */
 
-/* 96 px spodaj = 60 px vrstica + 36 px zraka, da zadnja vrstica seznama ni
+/* 92 px spodaj = 56 px vrstica + 36 px zraka, da zadnja vrstica seznama ni
    pod navigacijo. Presledek med sklopi je 32 px: na zaslonu, po katerem se
    drsi, je 56 px praznine cel palec potega. */
 .vsebina--telefon {
-  padding: 20px 20px calc(96px + env(safe-area-inset-bottom, 0px));
+  padding: 20px 20px calc(92px + env(safe-area-inset-bottom, 0px));
   gap: var(--r4);
 }
 
@@ -8988,6 +9756,13 @@ a.domov__lestvica-vrstica--jaz {
     flex-wrap: nowrap;
   }
 
+  /* Izjema: vrstica z zunanjim krmilom (koledar) ima tri dele in v 350 px gre
+     samo dvoje. Prelomi se stevec - ta je poved in ne krmilo, zato sme v
+     drugo vrsto. */
+  .krmila--zavita {
+    flex-wrap: wrap;
+  }
+
   .krmilo-izbor {
     flex: 1 1 auto;
     padding-right: 26px;
@@ -9189,4 +9964,3 @@ a.domov__lestvica-vrstica--jaz {
     justify-content: flex-end;
   }
 }
-

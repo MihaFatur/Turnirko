@@ -14,8 +14,13 @@
    VRSTICA (Domov · Turnirji · Lige · Lestvica · Več) - palec do nje pride brez
    drsenja. Glava nad vsebino nosi kontekst (nazaj, dejanja urejevalca), strani
    pa vanjo vlagajo svoje skozi GlavaTelefona. »Več« je predal z urejevalskimi
-   stranmi; gost in igralec vidita štiri postavke, ker ostalih nimata. */
-import { useEffect, useMemo, useRef, useState } from 'react'
+   stranmi; gost in igralec vidita štiri postavke, ker ostalih nimata.
+
+   Postavke spodnje vrstice nosijo IKONO in ne besede - namerna izjema od
+   hišnega pravila (glej IkoneNavigacije.tsx). Oznaka ostane v drevesu za
+   bralnik zaslona, kje si pa oko prebere iz modre poteze, ki ob zamenjavi
+   zavihka zdrsne nad novi stolpec. */
+import { type ComponentType, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { onlineManager, useQuery } from '@tanstack/react-query'
@@ -24,6 +29,13 @@ import { igralciApi, racuniApi } from '../api/zahteve'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { useTelefon } from '../pomozno/telefon'
 import { GlavaTelefonaKontekst, type Nazaj } from './GlavaTelefona'
+import {
+  IkonaDomov,
+  IkonaLestvica,
+  IkonaLige,
+  IkonaTurnirji,
+  IkonaVec,
+} from './IkoneNavigacije'
 import { UporabniskiMeni } from './UporabniskiMeni'
 
 interface Povezava {
@@ -54,6 +66,16 @@ const povezave: Povezava[] = [
 /* Prve stiri postavke spodnje vrstice so iste za vse - to so poti, po katerih
    pride gledalec do tekmovanja. Peta ("Vec") je predal in ne povezava. */
 const spodnjePovezave: Povezava[] = povezave.slice(0, 4)
+
+/* Ikona postavke stoji ob poti in ne v Povezavi: ikone imajo samo stiri
+   postavke spodnje vrstice, namizna navigacija je besedilna in bi polje
+   nosila prazno. */
+const spodnjeIkone: Record<string, ComponentType> = {
+  '/': IkonaDomov,
+  '/turnirji': IkonaTurnirji,
+  '/lige': IkonaLige,
+  '/lestvica': IkonaLestvica,
+}
 
 /* Podstrani, ki v spodnji vrstici pripadajo sklopu, a nimajo njegove poti:
    kategorija je del turnirja, srecanje del lige. Brez tega bi gledalec ob
@@ -117,6 +139,20 @@ export function Postavitev() {
   useEffect(() => {
     if (!jeTelefon) nastaviOdprtVec(false)
   }, [jeTelefon])
+
+  /* Kateri stolpec spodnje vrstice nosi modro potezo. Odprt predal prevlada
+     (kot pri ozadju postavke): dokler je "Več" odprt, si v njem in ne na
+     strani pod njim. -1 pomeni, da pot ni v nobenem sklopu (npr. moj profil,
+     šifranti). */
+  const indeksAktivne = odprtVec
+    ? spodnjePovezave.length
+    : spodnjePovezave.findIndex((p) => jeVSklopu(p.pot, naslov))
+
+  /* Poteza se ob odhodu s sklopa samo skrije, ostane pa tam, kjer je bila:
+     če bi skočila na prvi stolpec, bi ob vrnitvi zdrsnila z napačnega konca
+     vrstice in gledalcu pokazala pot, po kateri ni šel. */
+  const zadnjiIndeks = useRef(0)
+  if (indeksAktivne >= 0) zadnjiIndeks.current = indeksAktivne
 
   return (
     <GlavaTelefonaKontekst.Provider value={glava}>
@@ -201,20 +237,41 @@ export function Postavitev() {
             }
             aria-label="Glavna navigacija"
           >
-            {spodnjePovezave.map((povezava) => (
-              <NavLink
-                key={povezava.pot}
-                to={povezava.pot}
-                className={
-                  'spodnja-vrstica__postavka' +
-                  (!odprtVec && jeVSklopu(povezava.pot, naslov)
-                    ? ' spodnja-vrstica__postavka--aktivna'
-                    : '')
-                }
-              >
-                {povezava.oznaka}
-              </NavLink>
-            ))}
+            {/* Poteza je en sam element in ne rob aktivne postavke - le tako
+                lahko zdrsne s stolpca na stolpec namesto da bi preskočila. */}
+            <span
+              className={
+                'spodnja-vrstica__poteza' +
+                (indeksAktivne < 0 ? ' spodnja-vrstica__poteza--skrita' : '')
+              }
+              aria-hidden="true"
+              style={{ transform: `translateX(${zadnjiIndeks.current * 100}%)` }}
+            />
+
+            {spodnjePovezave.map((povezava, indeks) => {
+              const Ikona = spodnjeIkone[povezava.pot]
+              return (
+                <NavLink
+                  key={povezava.pot}
+                  to={povezava.pot}
+                  end={povezava.pot === '/'}
+                  className={
+                    'spodnja-vrstica__postavka' +
+                    (indeksAktivne === indeks
+                      ? ' spodnja-vrstica__postavka--aktivna'
+                      : '')
+                  }
+                >
+                  <span className="spodnja-vrstica__ikona">
+                    <Ikona />
+                  </span>
+                  {/* Ikona sama nima imena; oznaka ostane v drevesu, da jo
+                      bralnik zaslona in glasovno krmiljenje najdeta. */}
+                  <span className="samo-za-bralnik">{povezava.oznaka}</span>
+                </NavLink>
+              )
+            })}
+
             {jeUrejevalec && (
               <button
                 type="button"
@@ -226,7 +283,10 @@ export function Postavitev() {
                 aria-expanded={odprtVec}
                 onClick={() => nastaviOdprtVec((prej) => !prej)}
               >
-                Več
+                <span className="spodnja-vrstica__ikona">
+                  <IkonaVec />
+                </span>
+                <span className="samo-za-bralnik">Več</span>
               </button>
             )}
           </nav>

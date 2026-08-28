@@ -39,6 +39,11 @@ export interface SkupinaFiltra<T> {
   napis?: (vrednost: string) => string
   /* Vrstni red moznosti; privzeto po pogostosti navzdol (glej PO_POGOSTOSTI). */
   vrstniRed?: (a: MoznostFiltra, b: MoznostFiltra) => number
+  /* Skupino krmili LASTNO krmilo nad seznamom (koledar: segmentirani izbirnik
+     Vse / Turnirji / Lige), zato je v oknu z merili in med zetoni ni - dve
+     krmili za isto merilo eno vrsto narazen sta past in ne udobje. Stanje
+     ostane v istem izboru, da ni vzporednega. */
+  zunanja?: boolean
 }
 
 export interface MoznostFiltra {
@@ -135,7 +140,7 @@ export function useFiltri<T>(
         if (vrednost !== null) stetje.get(s.kljuc)?.add(vrednost)
       }
     }
-    return skupine.filter((s) => (stetje.get(s.kljuc)?.size ?? 0) >= 2)
+    return skupine.filter((s) => !s.zunanja && (stetje.get(s.kljuc)?.size ?? 0) >= 2)
   }, [postavke, skupine])
 
   const moznosti: Skupina[] = useMemo(
@@ -167,12 +172,14 @@ export function useFiltri<T>(
   const zetoni = useMemo(
     () =>
       skupine.flatMap((s) =>
-        (izbor[s.kljuc] ?? []).map((vrednost) => ({
-          skupina: s.kljuc,
-          oznaka: s.oznaka,
-          vrednost,
-          napis: s.napis?.(vrednost) ?? vrednost,
-        })),
+        s.zunanja
+          ? []
+          : (izbor[s.kljuc] ?? []).map((vrednost) => ({
+              skupina: s.kljuc,
+              oznaka: s.oznaka,
+              vrednost,
+              napis: s.napis?.(vrednost) ?? vrednost,
+            })),
       ),
     [skupine, izbor],
   )
@@ -190,6 +197,18 @@ export function useFiltri<T>(
     })
   }
 
+  /* Celoten izbor ene skupine naenkrat - za zunanje krmilo, kjer so moznosti
+     izkljucujoce ("Vse / Turnirji / Lige") in preklop ene vrednosti ne bi
+     odstranil druge. */
+  function nastaviSkupino(kljucSkupine: string, vrednosti: string[]) {
+    nastaviIzbor((prej) => {
+      const naslednji = { ...prej }
+      if (vrednosti.length === 0) delete naslednji[kljucSkupine]
+      else naslednji[kljucSkupine] = vrednosti
+      return naslednji
+    })
+  }
+
   return {
     izbor,
     zetoni,
@@ -199,6 +218,7 @@ export function useFiltri<T>(
     razvrstitev,
     nastaviRazvrstitev,
     preklopi,
+    nastaviSkupino,
     pocisti: () => nastaviIzbor({}),
   }
 }
@@ -212,6 +232,7 @@ export function KrmilaSeznama<T>({
   razvrstitve,
   naslovOkna,
   imeZadetkov,
+  poFiltru,
   desno,
 }: {
   stanje: StanjeFiltrov<T>
@@ -220,6 +241,9 @@ export function KrmilaSeznama<T>({
   naslovOkna: string
   /* Ime zadetkov v mnozini za gumb "Pokaži 42 turnirjev". */
   imeZadetkov: (n: number) => string
+  /* Zunanje krmilo takoj za gumbom filtra (koledar: izbirnik vrste). Stoji v
+     ISTI vrsti in ne nad njo, ker je del istega vprasanja "kaj vidim". */
+  poFiltru?: React.ReactNode
   desno?: React.ReactNode
 }) {
   const [odprto, nastaviOdprto] = useState(false)
@@ -228,7 +252,9 @@ export function KrmilaSeznama<T>({
 
   return (
     <>
-      <div className="krmila">
+      {/* Z zunanjim krmilom so v vrsti trije deli in na 390 px se v eno ne
+          zlozijo - takrat se sme prelomiti (glej .krmila--zavita). */}
+      <div className={'krmila' + (poFiltru ? ' krmila--zavita' : '')}>
         {/* Gumb nosi stevilo izbranih meril, ne njihovih imen: imena so v
             zetonih pod njim, tu bi jih bilo pri treh filtrih ze cez dve
             vrsti. Ce ni izbrano nic, ostane sam napis. */}
@@ -249,6 +275,8 @@ export function KrmilaSeznama<T>({
             )}
           </button>
         )}
+
+        {poFiltru}
 
         {razvrstitve.length > 1 && (
           <label className="krmilo-izbor">

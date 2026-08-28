@@ -1127,7 +1127,11 @@ function Forma({ znaki }: { znaki: ZnakForme[] }) {
   )
 }
 
-/* Kader se naloži šele, ko vrstico odpreš (poizvedba se ne sproži prej). */
+/* Kader se naloži šele, ko vrstico odpreš (poizvedba se ne sproži prej).
+
+   Vrstni red je strežnikov (LigaStoritev.kader): največ zmag za to ekipo v tej
+   ligi na vrhu, zato je številka pred imenom mesto po izkupičku in ne
+   organizatorjev vrstni red. */
 function Kader({ idEkipa, ekipa }: { idEkipa: number; ekipa: string }) {
   const kader = useQuery({ queryKey: ['kader', idEkipa], queryFn: () => ligeApi.kader(idEkipa) })
 
@@ -1135,7 +1139,7 @@ function Kader({ idEkipa, ekipa }: { idEkipa: number; ekipa: string }) {
     <div className="liga__kader">
       <div className="liga__kader-glava">
         <span className="liga__kader-naslov">Kader — {ekipa}</span>
-        <span className="sekcija__meta">Rating · bilanca posamičnih tekem</span>
+        <span className="sekcija__meta">Po zmagah v ligi · rating · bilanca</span>
       </div>
       {kader.isPending && <p className="obvestilo">Nalaganje kadra …</p>}
       <NapakaPoizvedbe poizvedba={kader} kaj="kadra" />

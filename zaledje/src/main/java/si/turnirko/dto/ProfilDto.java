@@ -50,14 +50,20 @@ public record ProfilDto(
             Integer klubskoPovprecje
     ) {}
 
-    /* Ena tocka grafa ELO: stanje po tekmi in kaj ga je povzrocilo. */
+    /* Ena tocka grafa ELO: stanje po tekmi in kaj ga je povzrocilo.
+       "tekmovanje" in "del" sta ista zapisa kot v seznamu tekem (ime turnirja
+       oz. lige in dogodek oz. kolo s parom ekip) - graf in seznam morata ob
+       skoku s tocke na vrstico povedati isto. Kadar sta prazna, tocka nima
+       para v seznamu tekem (postavitveni rating) in skok ni mogoc. */
     public record TockaGrafa(
             LocalDateTime kdaj,
             int vrednost,
             int sprememba,
             Long idTekme,
             boolean ligaska,
-            String nasprotnik
+            String nasprotnik,
+            String tekmovanje,
+            String del
     ) {}
 
     /* Ena odigrana tekma z vidika lastnika profila (nizi "za : proti"). */

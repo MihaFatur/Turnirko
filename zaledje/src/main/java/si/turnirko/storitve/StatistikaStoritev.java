@@ -13,10 +13,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.DvobojDto;
 import si.turnirko.dto.LestvicaIgralcaDto;
+import si.turnirko.dto.NakljucniParDto;
 import si.turnirko.dto.ZadnjaTekmaDto;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
@@ -56,6 +60,11 @@ public class StatistikaStoritev {
     private static final int MESECEV_CRTE = 12;
     private static final int DNI_PREMIKA = 30;
 
+    /* Koliko igralcev poskusi zreb nakljucnega para, preden odneha. Drugega
+       poskusa potrebuje samo v redkem primeru, ko so vsi nasprotniki
+       izzrebanega igralca arhivirani. */
+    private static final int POSKUSOV_ZREBA = 10;
+
     private final IgralecRepozitorij igralecRepozitorij;
     private final RatingStanjeRepozitorij ratingStanjeRepozitorij;
     private final RatingZgodovinaRepozitorij ratingZgodovinaRepozitorij;
@@ -63,6 +72,10 @@ public class StatistikaStoritev {
     private final TekmaRepozitorij tekmaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
     private final SpremembeEloStoritev spremembeEloStoritev;
+
+    /* Vir nakljucja je zamenljiv, da je zreb para v testu ponovljiv -
+       isto kot pri zrebu tekmovanja (ZrebStoritev.nastaviNakljucje). */
+    private Random nakljucje = new Random();
 
     public StatistikaStoritev(IgralecRepozitorij igralecRepozitorij,
                               RatingStanjeRepozitorij ratingStanjeRepozitorij,
@@ -78,6 +91,10 @@ public class StatistikaStoritev {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
         this.spremembeEloStoritev = spremembeEloStoritev;
+    }
+
+    void nastaviNakljucje(Random nakljucje) {
+        this.nakljucje = nakljucje;
     }
 
     /* Vmesni sestevek tekem enega igralca. */
@@ -353,6 +370,57 @@ public class StatistikaStoritev {
                 igralecPovzetek(prvi, ratingi.get(idPrvega)),
                 igralecPovzetek(drugi, ratingi.get(idDrugega)),
                 tekme.size(), zmagePrvega, zmageDrugega, niziPrvega, niziDrugega, tekme);
+    }
+
+    /* Nakljucni par za semafor "1 na 1" na domaci strani.
+
+       Merilo je, da sta se igralca ZE srecala: izid 0 : 0 o njiju ne pove
+       nicesar, pripomocek za raziskovanje pa mora vsakic postreci z zgodbo.
+       Zato se najprej izzreba igralec z vsaj eno odigrano tekmo, zatem pa
+       nasprotnik IZMED tistih, s katerimi je ta ze igral.
+
+       Zreb tece po IGRALCIH in ne po tekmah: enakomerno izbrana tekma bi
+       vlekla iste najbolj dejavne igralce, ker teh je v seznamu tekem
+       najvec. Steje oboje - turnirske in posamicne ligaske tekme -, tako
+       kot medsebojni izid sam.
+
+       Kadar medsebojnih tekem se ni (nova namestitev), zreb vrne kar dva
+       aktivna igralca: prazen semafor je manj skodljiv od napake. */
+    @Transactional(readOnly = true)
+    public NakljucniParDto nakljucniPar() {
+        Set<Long> zTekmo = new LinkedHashSet<>(tekmaRepozitorij.idjiZOdigranoTekmo());
+        zTekmo.addAll(tekmaSrecanjaRepozitorij.idjiZOdigranoTekmo());
+
+        List<Long> kandidati = new ArrayList<>(zTekmo);
+        Collections.shuffle(kandidati, nakljucje);
+
+        for (int i = 0; i < kandidati.size() && i < POSKUSOV_ZREBA; i++) {
+            Long id = kandidati.get(i);
+            Set<Long> nasprotniki = new LinkedHashSet<>(tekmaRepozitorij.nasprotniki(id));
+            nasprotniki.addAll(tekmaSrecanjaRepozitorij.nasprotniki(id));
+            if (!nasprotniki.isEmpty()) {
+                List<Long> izbira = new ArrayList<>(nasprotniki);
+                return new NakljucniParDto(id, izbira.get(nakljucje.nextInt(izbira.size())));
+            }
+        }
+        return parBrezMedsebojnih();
+    }
+
+    /* Zasilni izhod zreba: dva razlicna aktivna igralca, ki morda nista nikoli
+       igrala. Doleti novo namestitev in bazo, kjer so vsi nasprotniki
+       izzrebanih igralcev arhivirani. */
+    private NakljucniParDto parBrezMedsebojnih() {
+        List<Igralec> aktivni = igralecRepozitorij.najdiAktivne();
+        if (aktivni.size() < 2) {
+            throw new NiNajdenoIzjema("Za nakljucni par sta potrebna vsaj dva igralca.");
+        }
+        int prvi = nakljucje.nextInt(aktivni.size());
+        // drugi se zreba iz seznama brez prvega, da zreb ne vrne istega igralca dvakrat
+        int drugi = nakljucje.nextInt(aktivni.size() - 1);
+        if (drugi >= prvi) {
+            drugi++;
+        }
+        return new NakljucniParDto(aktivni.get(prvi).getId(), aktivni.get(drugi).getId());
     }
 
     /* Zadnje odigrane tekme cez vse dogodke (najnovejse prve) s spremembo

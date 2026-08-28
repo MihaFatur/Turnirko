@@ -67,6 +67,36 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
             """)
     List<TekmaSrecanja> najdiDvoboje(@Param("prvi") Long prvi, @Param("drugi") Long drugi);
 
+    /* Idji aktivnih igralcev z vsaj eno odigrano posamicno ligasko tekmo -
+       prva polovica zreba nakljucnega para na domaci strani. Entitetni stik
+       (JOIN Igralec i ON ...) zajame obe strani tekme v ENI poizvedbi.
+
+       Merilo odigranosti mora biti isto kot v najdiDvoboje - sicer bi zreb
+       ponudil par, ki mu pregled "1 na 1" pokaze 0 : 0. */
+    @Query("""
+            SELECT DISTINCT i.id FROM TekmaSrecanja t
+            JOIN Igralec i ON i = t.igralecDomaci OR i = t.igralecGost
+            WHERE t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
+              AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
+              AND t.zmagovalecStran IS NOT NULL
+              AND i.arhiviran = false
+            """)
+    List<Long> idjiZOdigranoTekmo();
+
+    /* Idji aktivnih igralcev, s katerimi je dani igralec ze odigral posamicno
+       ligasko tekmo - druga polovica zreba. */
+    @Query("""
+            SELECT DISTINCT CASE WHEN d.id = :id THEN g.id ELSE d.id END
+            FROM TekmaSrecanja t
+            JOIN t.igralecDomaci d JOIN t.igralecGost g
+            WHERE t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
+              AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
+              AND t.zmagovalecStran IS NOT NULL
+              AND (d.id = :id OR g.id = :id)
+              AND d.arhiviran = false AND g.arhiviran = false
+            """)
+    List<Long> nasprotniki(@Param("id") Long id);
+
     /* Vse odigrane POSAMICNE ligaske tekme enega igralca (doma ali v gosteh),
        najnovejse prve - za profil igralca. */
     @Query("""
@@ -102,17 +132,22 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
             """)
     List<TekmaSrecanja> najdiDvojiceZaIgralca(@Param("idIgralec") Long idIgralec);
 
-    /* Izidi vseh odigranih POSAMICNIH tekem ene lige kot [idIgralecDomaci,
-       idIgralecGost, zmagovalecStran] - iz tega se sesteje bilanca vsakega
-       igralca v tej ligi (prikaz kadra pod vrstico lestvice). Dvojice odpadejo
-       iz istega razloga kot pri ELO: para ni mogoce pripisati posamezniku.
+    /* Izidi vseh odigranih POSAMICNIH tekem ene lige kot [idEkipaDomaci,
+       idEkipaGost, idIgralecDomaci, idIgralecGost, zmagovalecStran] - iz tega
+       se sesteje bilanca vsakega igralca PRI EKIPI, za katero je nastopil
+       (prikaz kadra pod vrstico lestvice). Ekipi sta v izbiri zato, ker sme
+       liga brez prepovedi dvojne registracije istega igralca voditi v dveh
+       kadrih, njegov izkupicek pa tam ni isti. Dvojice odpadejo iz istega
+       razloga kot pri ELO: para ni mogoce pripisati posamezniku.
        Vrnemo samo identifikatorje, zato "join fetch" ni potreben; JOIN vseeno
        zapisemo izrecno, da tekma brez postavljenega igralca izpade. */
     @Query("""
-            SELECT t.igralecDomaci.id, t.igralecGost.id, t.zmagovalecStran
+            SELECT s.ekipaDomaci.id, s.ekipaGost.id,
+                   t.igralecDomaci.id, t.igralecGost.id, t.zmagovalecStran
             FROM TekmaSrecanja t
+            JOIN t.srecanje s
             JOIN t.igralecDomaci JOIN t.igralecGost
-            WHERE t.srecanje.liga.id = :idLiga
+            WHERE s.liga.id = :idLiga
               AND t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
               AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
               AND t.zmagovalecStran IS NOT NULL

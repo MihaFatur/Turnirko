@@ -4,6 +4,7 @@
    razporeda - glej ProstaEkipaTest.prostaInKlubskaEkipaVIstiLigi. */
 package si.turnirko.repozitoriji;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,27 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
     Optional<Srecanje> najdiPodrobno(Long id);
 
     boolean existsByLigaId(Long idLiga);
+
+    /* Srecanja s terminom v obdobju - vir koledarja. Poleg ekip nalozi tudi
+       ligo z njenim klubom lastnikom, ker vnos koledarja izpise ime lige,
+       sezono in klub.
+
+       Meji sta casovni in ne datumski, ker stolpec nosi tudi uro (pretvornik
+       CasKotBesedilo). Klicatelj ju namenoma razsiri za dan na vsako stran in
+       nato natancno omeji po datumu: v starih bazah so zapisi brez ure
+       ("2026-10-04"), ti pa so pri primerjavi nizov krajsi od "2026-10-04T00:00"
+       in bi na prvi dan obdobja odpadli. */
+    @Query("""
+            SELECT s FROM Srecanje s
+            JOIN FETCH s.liga l LEFT JOIN FETCH l.klubLastnik
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
+            WHERE s.predvidenZacetek IS NOT NULL
+              AND s.predvidenZacetek >= :od
+              AND s.predvidenZacetek < :doKdaj
+            ORDER BY s.predvidenZacetek, s.liga.id, s.kolo, s.id
+            """)
+    List<Srecanje> najdiVObdobju(LocalDateTime od, LocalDateTime doKdaj);
 
     /* Stanje kol po ligah: ena vrstica na (liga, kolo) - koliko srecanj ima
        in koliko jih je koncanih. [idLiga, kolo, srecanj, koncanih].

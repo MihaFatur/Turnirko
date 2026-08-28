@@ -1,6 +1,12 @@
-/* Domača (začetna) stran: štirje sklopi enega samega zapisnika — Turnirji in
-   Moje lige drug ob drugem, pod njima lestvica čez vso širino in na dnu
-   medsebojni izid dveh igralcev.
+/* Domača (začetna) stran: pet sklopov enega samega zapisnika — na vrhu
+   Turnirji in Moje lige drug ob drugem, pod njima lestvica čez vso širino,
+   nato koledar tekočega meseca in na dnu medsebojni izid dveh igralcev.
+
+   Koledar stoji pod lestvico in ne na vrhu: mreža meseca je najvišji sklop
+   strani in gledalec je pred njo videl same črte, preden je prišel do imena.
+   Vprašanje »kdaj je naslednji turnir« mu odgovori tudi vrstica »Naslednje«
+   ob mreži, do katere zdaj pride z eno stranjo drsenja. Sam sklop je v
+   komponente/KoledarSklop.
 
    Vrstice s sezono in števci pod mastheadom namenoma ni: stran naj se začne z
    vsebino, ne s povzetkom o sebi. Vse je bralno in vidno tudi gostom;
@@ -13,6 +19,7 @@ import { domovApi, ligeApi, statistikaApi, turnirjiApi } from '../api/zahteve'
 import type { DomovLigaDto, LestvicaIgralcaDto, TurnirDto } from '../api/tipi'
 import { EnaNaEna } from '../komponente/EnaNaEna'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
+import { KoledarSklop } from '../komponente/KoledarSklop'
 import { IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PrijavaOkno } from '../komponente/PrijavaOkno'
@@ -162,6 +169,8 @@ export function DomacaStran() {
         mojIdKluba={mojIdKluba}
         spremljane={spremljane}
       />
+
+      <KoledarSklop />
 
       <div className="domov__sklop">
         <div className="naslovna-vrstica">

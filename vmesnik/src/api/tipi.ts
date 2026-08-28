@@ -365,6 +365,13 @@ export interface NaslednjeKoloDto {
   gost: string
 }
 
+/* Naključni par za semafor »1 na 1«. Strežnik jamči, da sta igralca med sabo
+   že odigrala vsaj eno tekmo (izjema je baza brez odigranih tekem). */
+export interface NakljucniParDto {
+  prvi: number
+  drugi: number
+}
+
 /* Pregled "1 na 1" med dvema igralcema (izidi z vidika prvega). */
 export interface DvobojDto {
   prvi: DvobojIgralec
@@ -888,6 +895,10 @@ export interface TockaGrafa {
   idTekme: number | null
   ligaska: boolean
   nasprotnik: string | null
+  /* Ime turnirja oz. lige in del (dogodek oz. kolo s parom ekip) — enak zapis
+     kot v TekmaProfila. Prazna, kadar točka nima para v seznamu tekem. */
+  tekmovanje: string | null
+  del: string | null
 }
 
 export interface TekmaProfila {
@@ -1011,4 +1022,37 @@ export interface ProfilPoTekmovanjih {
   poPoziciji: Delez[]
   poFazi: Delez[]
   dvojice: Delez
+}
+
+/* ---------- Koledar ---------- */
+
+export type VrstaKoledarja = 'TURNIR' | 'LIGA'
+
+/* Kdo igra v enem srečanju kola. */
+export interface KoledarPar {
+  idSrecanje: number
+  domaci: string
+  gost: string
+}
+
+/* En vnos koledarja: turnir ali ENO KOLO lige (in ne posamezno srečanje —
+   termin je last kola, zato bi se ime lige v istem dnevu ponovilo petkrat).
+   Turnir lahko traja več dni: takrat sta »datum« in »datumKonca« različna in
+   koledar označi ves razpon. */
+export interface KoledarVnosDto {
+  vrsta: VrstaKoledarja
+  /* Id turnirja oz. lige — iz njega vmesnik sestavi pot in barvo vnosa. */
+  id: number
+  ime: string
+  datum: string
+  datumKonca: string
+  /* Termin kola z uro (samo liga); 00:00 pomeni, da ura ni določena. */
+  zacetek: string | null
+  kolo: number | null
+  kraj: string | null
+  dvorana: string | null
+  sezona: string | null
+  klub: string | null
+  status: StatusTekmovanja
+  srecanja: KoledarPar[]
 }

@@ -199,6 +199,35 @@
   števila tekem ni. Posamične tekme in dvojice sta **ločena seznama** (izida
   para ni mogoče pripisati posamezniku — isto pravilo kot pri ELO), dvojica pa
   je **neurejen par**: ista igralca so ista dvojica doma in v gosteh.
+- **Kader pod vrstico lestvice je razvrščen po izkupičku, kader za postavo ne.**
+  `LigaStoritev.kader` (`GET /lige/ekipe/{id}/kader`) vrne igralce po **zmagah
+  za to ekipo v tej ligi** navzdol, ob izenačenju po manj porazih; ostalo
+  razreši stabilnost razvrščanja, ki ohrani organizatorjev vrstni red in
+  abecedo iz `KaderEkipeRepozitorij.najdiZaEkipo` (v pripravi so bilance 0 : 0,
+  zato je izpis tam nespremenjen). Vprašanje odprte vrstice lestvice je »kdo
+  ekipo nosi«. `SrecanjeStoritev.kader` (kadra v `SrecanjePodrobnoDto`) te
+  razvrstitve **ne deli** — tam mesta A/B/C sledijo organizatorjevemu vrstnemu
+  redu in bi drugačen vrstni red premešal postavo.
+  Bilanca je bilanca **pri tisti ekipi** in ne v celi ligi:
+  `LestvicaLigeStoritev.bilancePosamicnih` vrne `BilanceLige` s ključem
+  (ekipa, igralec), ker sme liga brez `prepoved_dvojne_registracije` istega
+  igralca voditi v dveh kadrih — njegov izkupiček pa tam ni isti (regresija:
+  `bilancaKadraStejeSamoTekmeZaTistoEkipo`).
+- **Koledar je pogled po DNEVIH in ne po tekmovanjih** (`KoledarStoritev`,
+  `GET /api/v1/koledar?od=&do=`, javen kot ostali GET-i). Nove sheme ne
+  potrebuje — bere datume turnirjev in termine kol, ki že obstajajo. Trije
+  premisleki, ki jih ne razbij:
+  - **Zrnatost ligaškega vnosa je KOLO, ne srečanje.** Termin je last kola
+    (`nastaviTermine`), zato bi vnos na srečanje isto ligo v istem dnevu
+    izpisal petkrat; pari kola gredo v `srecanja` istega vnosa. V ključu
+    zbiranja je vseeno tudi DAN — posamično prestavljeno srečanje sodi na svoj
+    dan in ne k ostalim.
+  - **Meji poizvedbe srečanj sta za dan širši od obdobja**, natančno omeji šele
+    Java po datumu. `predviden_zacetek` je besedilo (`CasKotBesedilo`) in stari
+    zapisi brez ure (`2026-10-04`) so pri primerjavi nizov krajši od
+    `2026-10-04T00:00` — na prvi dan obdobja bi odpadli.
+  - **Vrstni red vnosov je datum, nato ime.** Vmesnik iz njega izpelje vrstni
+    red trakov v tednu in vrstic v seznamu, zato mora biti med klici enak.
 - **Domača stran bere izpeljanke, ne surovih tekem.** `TurnirDto` nosi
   `faza`/`zmagovalec`/`zadnjiIzid` (izračun v `PovzetkiStoritev`,
   skupinske poizvedbe — nikoli po ena na turnir), `LestvicaIgralcaDto` pa
@@ -206,6 +235,15 @@
   **Črta ELO teče po tekmah in ne po koledarju**: `ustvarjen_ob` v
   `rating_zgodovina` je čas VNOSA, ne čas tekme (klub vnese celo kolo
   naenkrat), zato bi časovno vzorčenje vsem narisalo ravno črto.
+- **Naključni par v sklopu »Ena na ena« ima vsaj eno medsebojno tekmo**
+  (`StatistikaStoritev.nakljucniPar`, `GET /dvoboj/nakljucni`): izid 0 : 0 o
+  igralcih ne pove ničesar. Žreb teče po **igralcih** in ne po tekmah —
+  najprej igralec z odigrano tekmo, nato nasprotnik *izmed njegovih*;
+  enakomerno izbrana tekma bi vlekla iste najbolj dejavne igralce, ker jih je
+  v seznamu tekem največ. Merilo odigranosti v `idjiZOdigranoTekmo` in
+  `nasprotniki` (obe tabeli) mora ostati **isto kot v `najdiDvoboje`** — sicer
+  žreb ponudi par, ki mu pregled »1 na 1« izpiše 0 : 0. Kadar odigranih tekem
+  ni (nova namestitev), žreb vrne kar dva aktivna igralca.
 - **Leno nalaganje:** kontrolerji pretvarjajo entitete v DTO-je IZVEN transakcije.
   Vsaka poizvedba, katere rezultat gre v DTO, mora z "join fetch" vnaprej naložiti
   vse povezave, ki jih DTO bere (kraj, igralca, klub) — sicer na pravem strežniku
@@ -218,9 +256,10 @@
   (značaj »športni zapisnik na papirju«). Če predlog nasprotuje temu dokumentu,
   se popravi predlog, ne dokument. Ključna pravila: `border-radius: 0` povsod,
   brez senc (edina izjema je podčrtaj aktivne navigacijske postavke), brez
-  gradientov razen 8 % polnila pod črto grafa, brez emojijev in ikon (edina
-  ikona je logotip), naslovi levo poravnani, 8 px ritem, zadetkovna površina na
-  dotik ≥ 44 px. Barve pomenijo: modra `#0088CE` = dejanje/podatek, zelena
+  gradientov razen 8 % polnila pod črto grafa, brez emojijev in ikon (edini
+  ikoni sta logotip in postavke spodnje vrstice na telefonu — odobrena izjema,
+  glej DESIGN.md, točki 9 in 12), naslovi levo poravnani, 8 px ritem,
+  zadetkovna površina na dotik ≥ 44 px. Barve pomenijo: modra `#0088CE` = dejanje/podatek, zelena
   `#7BB900` = uspeh/napredovanje, rjasta `#B23A1E` = izguba/napaka/brisanje.
 - **Modra ima dve vrednosti in ju ne smeš zamenjati.** `--barva-glavna`
   (`#0088CE`) **riše** — črte, palice, polnilo grafa, obroba gumba, fokus; tam
@@ -300,9 +339,56 @@
   - **Lestvica loči starost in spol.** `KategorijaIgralca` spol nosi samo pri
     članih (pri U19 in veteranih se izgubi), zato ga `LestvicaIgralcaDto`
     vrača posebej (`spol`) — brez tega filtra »vse igralke« ni mogoče
-    sestaviti. Mesto na lestvici se pripne **pred** filtriranjem (v zoženem
-    seznamu so mesta 4, 9, 13), pri razvrstitvi po drugem merilu pa se
-    prešteje znova.
+    sestaviti. **Prikazani seznam se vedno oštevilči od 1 naprej** — številka
+    pove mesto v tem, kar gledalec gleda, ne v celi lestvici. Filter »U19«,
+    ki se je začel pri 35., se je bral kot izsek sredine, koliko mladincev je
+    pred tem igralcem, pa je bilo treba šteti na roke. Globalno mesto po
+    ratingu v vrstici (`Vrstica.mesto`) vseeno ostane: po njem teče
+    razvrstitev »Rating« in izenačenja pri drugih merilih — a se ne izpiše.
+- **Barva v koledarju pove, katere VRSTE je tekmovanje — in to je edina taka
+  raba barve v vmesniku.** Dva tona (`--barva-ton-1` turnir, `--barva-ton-2`
+  ligaško kolo) so izrecna izjema od DESIGN.md, zapisana tam v razdelku
+  »Paleta koledarja«; pogoji izjeme veljajo vsi hkrati in nova barvna raba
+  drugod ostane prepovedana. Pravila, ki jih ne razbij:
+  - **Ton je pomen, ne identiteta.** `tonVnosa` (`pomozno/koledar.ts`) je
+    `vrsta === 'TURNIR' ? 1 : 2` in nič več. Prej je bilo tonov šest in so se
+    dodeljevali po vrstnem redu pojavitve — barva je bila last POGLEDA in ne
+    lige, zato je pod mrežo morala stati legenda z imeni. Ta je rasla s
+    pogledom (en mesec uvožene zgodovine ima tudi šestnajst tekmovanj) in je
+    zavzela več prostora kot mreža sama. **Legende ni več**; nadomešča jo
+    stalni ključ (`KljucKoledarja`: Turnir · Ligaško kolo · Odigrano), katero
+    tekmovanje je katero pa pove seznam ob mreži.
+  - **Mreža so divi z `role="table"`, ne `<table>`.** Večdnevni turnir je EN
+    pas čez dneve (`.koledar__trak`, `grid-column: N / span M`) in tabela čez
+    celice ne zna risati. Teden je `position: relative` mreža sedmih celic,
+    nad njo pa absolutno pozicioniran pas trakov (`.koledar__trakovi`).
+    Branje bralnika zaslona ostane isto prek `role="table"/"row"/"cell"`.
+  - **Razporeditev trakov v pasove je čista funkcija** (`trakoviTedna`):
+    presek vnosa s tednom, razvrstitev po razponu navzdol (dolgi pasovi
+    zgoraj, sicer se kratki zataknejo pod njimi) in požrešna razporeditev v
+    prvi prosti pas. Kar v `najvecPasov` ne gre (4 na strani, 3 v sklopu in na
+    telefonu), se **prešteje in izpiše kot »+N«** v vsakem dnevu, ki ga
+    zaseda — tiho odrezan trak bi pomenil dan, ki v mreži trdi, da je prazen.
+  - **Odigrano zbledi, ne spremeni barve**: trak `opacity: 0.32`, vrstica
+    seznama `0.62`. Brez tega prihajajoče in odigrano izgledata enako.
+  - **Mere mreže so spremenljivke, ne podvojena pravila.** Ista mreža služi
+    strani (92 px celica), sklopu na domači strani (`.koledar--sklop`, 58 px)
+    in telefonu (60 px); razlika so samo vrednosti `--koledar-*` v `slog.css`.
+  - **Vrsto krmili segmentirani izbirnik nad mrežo, ne okno z merili.**
+    Skupina `vrsta` je v `SKUPINE` označena `zunanja: true` — stanje ostane v
+    istem izboru `useFiltri` (nič vzporednega), a je v oknu in med žetoni ni.
+    Dve krmili za isto merilo eno vrsto narazen sta past.
+  - **Sklop na domači strani naloži štiri mesece, mreža pa kaže enega.** Sklop
+    »Naslednje« mora imeti kaj pokazati tudi v mesecu brez tekmovanj (poletni
+    premor), sicer je koledar tam prazen kvadrat brez pojasnila. Listanje po
+    mesecih (in s tem po uvoženi zgodovini) pripada `/koledar`, ne sklopu.
+    Sklop stoji **pod Lestvico in nad »1 na 1«**: mreža meseca kot najvišji
+    sklop strani je bila stena črt, preden je gledalec prišel do imena.
+  - **Izbrani dan živi v naslovu (`/koledar?dan=2026-10-04`), filtri v stanju
+    strani.** Dan je kraj, do katerega vodi povezava z domače strani in ki ga
+    je smiselno deliti; filter je pogled nanj — isto pravilo kot pri iskanju na
+    lestvici. Pari kola se izpišejo **samo pri izbranem dnevu**: cel mesec z
+    devetimi ligami bi jih naštel nekaj sto.
 - **Izbor spremljanih lig ureja `IzborLigOkno`, ne stran `/lige`.** Izbor je
   nastavitev domače strani in ne pot v ligo, zato »Uredi izbor« odpre okno —
   gledalec ostane, kjer je, in takoj vidi, kaj se je spremenilo; na `/lige` je
@@ -316,6 +402,30 @@
   Preklop sam je povsod isti znak — `GumbSpremljanja` (zelen kvadratek
   `.kljukica`), v treh okvirjih: sam ob imenu, kot gumb v vrstici dejanj strani
   lige in stisnjen v lepljivi glavi telefona.
+- **Točka grafa ELO in vrstica v »Odigrane tekme« sta ista tekma.** Zato
+  `TockaGrafa` nosi poleg nasprotnika tudi `tekmovanje` in `del` — isti zapis
+  kot `TekmaProfila` (`ProfilStoritev.graf` ju prepiše iz istega `Nastopa`) —
+  in klik na točko skoči na to vrstico. Brez imena tekmovanja skok ELO ne
+  pove ničesar: isti nasprotnik se v seznamu ponovi tudi desetkrat, ker igra
+  v ligi in na turnirjih. Vez drži par `(idTekme, ligaska)`: turnirske in
+  ligaške tekme imajo ločeni zaporedji id-jev, zato je ključ vrstice
+  `tekma-t12` / `tekma-l7` (`kljucTekme` v `ProfilStran`). Točka brez
+  `tekmovanja` para v seznamu nima (postavitveni rating) in ni klikljiva.
+  Skok je **mehak samo na kratke razdalje** — pri uvoženi zgodovini je seznam
+  dolg 80 000 px in mehko drsenje čez to je zabrisan blisk, ne pot. Ker je
+  točka na telefonu široka nekaj pikslov, dejanje podvaja gumb »V seznam
+  tekem« v vrstici pod grafom (edina zadetkovna površina te poti s 44 px).
+- **Igralca v sklopu »Ena na ena« se izbereta z vpisom imena, ne s spustnim
+  seznamom** (`IzbirnikIgralca` v `EnaNaEna.tsx`): po uvozu zgodovine je v
+  šifrantu več tisoč igralcev in `<select>` je bil neuporaben. Ujemanje je
+  **brez šumnikov in po besedah** (»krizan« najde Križana, »novak ana« pa
+  Novak Ano) — iskalnik, ki zahteva strešico, v dvorani ne pomaga. Klub stoji
+  ob imenu, ker se soimenjaka drugače ne ločita; predlogi ležijo **čez**
+  vsebino (absolutno), da vsak vtipkani znak ne premika semaforja, in so na
+  desni strani zrcalno usidrani (`.enanaena__stran--2`). Oznaki »Medsebojno ·
+  vsa tekmovanja« in »Naključni par« sta samo v razširjeni različici
+  (`pokaziZgodovino`, stran dvoboja); na domači strani ju nadomesti naslov
+  sklopa.
 - **Prijava** je v `avtentikacija/AvtentikacijaKontekst`. Za prikaz dejanj:
   `jeAdmin`, `jeOrganizator`, `smeUstvarjati` (admin ali organizator — gumbi za
   nov turnir/ligo) in `smemUrejati(idLastnik, idKlubLastnik)` (lastniško

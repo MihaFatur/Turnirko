@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import si.turnirko.dto.DvobojDto;
 import si.turnirko.dto.LestvicaIgralcaDto;
+import si.turnirko.dto.NakljucniParDto;
 import si.turnirko.dto.ZadnjaTekmaDto;
 import si.turnirko.storitve.StatistikaStoritev;
 
@@ -34,6 +35,13 @@ public class StatistikaKontroler {
     @GetMapping("/dvoboj")
     public DvobojDto dvoboj(@RequestParam Long prvi, @RequestParam Long drugi) {
         return statistikaStoritev.dvoboj(prvi, drugi);
+    }
+
+    /* Nakljucni par za semafor "1 na 1": igralca, ki sta ze igrala drug proti
+       drugemu (dokler je v bazi vsaj ena odigrana tekma). */
+    @GetMapping("/dvoboj/nakljucni")
+    public NakljucniParDto nakljucniPar() {
+        return statistikaStoritev.nakljucniPar();
     }
 
     /* Zadnje odigrane tekme cez vse dogodke - za "Zadnji rezultati" na

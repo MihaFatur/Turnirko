@@ -6,6 +6,7 @@
    LazyInitializationException. */
 package si.turnirko.repozitoriji;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +35,23 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             WHERE t.id = :id
             """)
     Optional<Turnir> najdiSKrajem(Long id);
+
+    /* Turnirji, ki se dotikajo obdobja - dovolj je, da vanj sega en sam dan.
+       Turnir brez datuma zacetka v koledar ne sodi (nekaj takih je v uvozeni
+       zgodovini); tak ostane le v seznamu turnirjev.
+
+       COALESCE, ker je datum konca neobvezen: enodnevni turnir ima samo
+       zacetek in bi se s praznim koncem iz vsakega obdobja izpustil. */
+    @Query("""
+            SELECT t FROM Turnir t
+            LEFT JOIN FETCH t.kraj
+            LEFT JOIN FETCH t.klubLastnik
+            WHERE t.datumZacetka IS NOT NULL
+              AND t.datumZacetka <= :doKdaj
+              AND COALESCE(t.datumKonca, t.datumZacetka) >= :od
+            ORDER BY t.datumZacetka, t.id
+            """)
+    List<Turnir> najdiVObdobju(LocalDate od, LocalDate doKdaj);
 
     // ---------- Lastnistvo (za preverjanje pravice organizatorja) ----------
     // Vse variante nalozijo ustvaril + klubLastnik; po njiju LastnistvoStoritev

@@ -15,6 +15,7 @@ import { IgralciStran } from './strani/IgralciStran'
 import { SifrantiStran } from './strani/SifrantiStran'
 import { LestvicaStran } from './strani/LestvicaStran'
 import { DvobojStran } from './strani/DvobojStran'
+import { KoledarStran } from './strani/KoledarStran'
 import { LigeStran } from './strani/LigeStran'
 import { LigaStran } from './strani/LigaStran'
 import { SrecanjeStran } from './strani/SrecanjeStran'
@@ -111,6 +112,7 @@ export function App() {
         <Route path="/srecanja/:id" element={<SrecanjeStran />} />
         <Route path="/lestvica" element={<LestvicaStran />} />
         <Route path="/dvoboj" element={<DvobojStran />} />
+        <Route path="/koledar" element={<KoledarStran />} />
         <Route path="/igralci/:id/profil" element={<ProfilStran />} />
         <Route path="/moj-profil" element={<MojProfil />} />
         <Route

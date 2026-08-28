@@ -95,6 +95,27 @@ class ProfilStoritevTest extends IntegracijskiTest {
         assertTrue(porazenec.graf().get(0).sprememba() < 0);
     }
 
+    /* Vmesnik s tocke grafa skoci na vrstico iste tekme v seznamu spodaj. Ta
+       pot stoji na tem, da tocka nosi ISTI par (idTekme, ligaska) in isti
+       zapis tekmovanja kot vrstica - sicer skok cilja ne najde, gledalec pa
+       ob tocki ne izve, na katerem turnirju oziroma v kateri ligi je bila
+       tekma odigrana. */
+    @Test
+    void tockaGrafaKazeNaIstoTekmoKotVrsticaSeznama() {
+        Tekma tekma = odigrajEnoTekmo(3, 1);
+        ProfilDto profil = profilStoritev.profil(tekma.getPrijava1().getIgralec().getId());
+
+        ProfilDto.TekmaProfila vrstica = profil.tekme().get(0);
+        ProfilDto.TockaGrafa tocka = profil.graf().get(0);
+
+        assertNotNull(tocka.tekmovanje());
+        assertEquals(vrstica.idTekme(), tocka.idTekme());
+        assertEquals(vrstica.ligaska(), tocka.ligaska());
+        assertEquals(vrstica.tekmovanje(), tocka.tekmovanje());
+        assertEquals(vrstica.del(), tocka.del());
+        assertEquals(vrstica.nasprotnik(), tocka.nasprotnik());
+    }
+
     @Test
     void uvrstitevIzracunaMestoInPercentil() {
         Tekma tekma = odigrajEnoTekmo(3, 0);

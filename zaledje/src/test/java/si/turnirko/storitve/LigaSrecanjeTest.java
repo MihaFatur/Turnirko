@@ -377,6 +377,74 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         assertEquals(0, doma.get(idC).porazi());
     }
 
+    /* Kader pod vrstico lestvice je razvrscen po izkupicku za TO ekipo v tej
+       ligi in ne po organizatorjevem vrstnem redu: vprasanje odprte vrstice je
+       "kdo ekipo nosi". C je v kadru zadnji (vrstni red 3), a edini z zmago,
+       zato mora biti prvi; A in B sta izenacena (0 : 1) in obdrzita svoj
+       vrstni red. Postava srecanja te razvrstitve NE deli - tam mesta A/B/C
+       dolocajo vrstni red kadra. */
+    @Test
+    void kaderJeRazvrscenPoZmagahZaEkipo() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL, null);
+        nastaviPostavo(srecanje);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        Long idA = p.kaderDomaci().get(0).idIgralec();
+        Long idB = p.kaderDomaci().get(1).idIgralec();
+        Long idC = p.kaderDomaci().get(2).idIgralec();
+
+        // A-X in B-Y gostom, C-Z domacim
+        srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(),
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null));
+        srecanjeStoritev.vnesiRezultat(p.tekme().get(2).id(),
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null));
+        srecanjeStoritev.vnesiRezultat(p.tekme().get(3).id(),
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+
+        List<Long> vrstniRed = ligaStoritev.kader(p.srecanje().idEkipaDomaci()).stream()
+                .map(KaderIgralecDto::idIgralec).toList();
+        assertEquals(List.of(idC, idA, idB), vrstniRed,
+                "zmagovalec na vrh, izenacena ohranita organizatorjev vrstni red");
+
+        assertEquals(List.of(idA, idB, idC),
+                srecanjeStoritev.podrobno(srecanje).kaderDomaci().stream()
+                        .map(KaderIgralecDto::idIgralec).toList(),
+                "postava mora ostati v organizatorjevem vrstnem redu (mesta A/B/C)");
+    }
+
+    /* Bilanca kadra je bilanca PRI TEJ ekipi in ne v celi ligi. Liga brez
+       prepovedi dvojne registracije sme istega igralca voditi v dveh kadrih -
+       tam je za eno ekipo zmagal, za drugo izgubil, zato mora biti pri prvi na
+       vrhu in pri drugi na dnu. */
+    @Test
+    void bilancaKadraStejeSamoTekmeZaTistoEkipo() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, false);
+        Long ekipaA = dodajEkipoSKadrom(liga, "Klub A", 3);
+        Long ekipaB = dodajEkipoSKadrom(liga, "Klub B", 3);
+        Long ekipaC = dodajEkipoSKadrom(liga, "Klub C", 3);
+        /* Vrstni red 1 in priimek pred ostalimi ga postavita na celo obeh
+           kadrov (ORDER BY vrstni_red, priimek), zato ga nastaviPostavo obakrat
+           uvrsti na prvo mesto (A oz. X). */
+        Igralec dvojni = noviIgralec("Dvojno", "Aaadvojni");
+        ligaStoritev.dodajVKader(ekipaA, new KaderVnos(dvojni.getId(), 1));
+        ligaStoritev.dodajVKader(ekipaB, new KaderVnos(dvojni.getId(), 1));
+        ligaStoritev.generirajRazpored(liga);
+
+        odigrajPrvoPosamicno(najdiSrecanje(liga, ekipaA, ekipaC), ekipaA, true);
+        odigrajPrvoPosamicno(najdiSrecanje(liga, ekipaB, ekipaC), ekipaB, false);
+
+        List<KaderIgralecDto> kaderA = ligaStoritev.kader(ekipaA);
+        assertEquals(dvojni.getId(), kaderA.get(0).idIgralec(), "za ekipo A je edini z zmago");
+        assertEquals(1, kaderA.get(0).zmage());
+        assertEquals(0, kaderA.get(0).porazi(), "poraz pri drugi ekipi se ne sme pristeti");
+
+        List<KaderIgralecDto> kaderB = ligaStoritev.kader(ekipaB);
+        assertEquals(dvojni.getId(), kaderB.get(kaderB.size() - 1).idIgralec(),
+                "za ekipo B je edini s porazom, zato gre na dno");
+        assertEquals(0, kaderB.get(kaderB.size() - 1).zmage(),
+                "zmaga pri drugi ekipi se ne sme pristeti");
+        assertEquals(1, kaderB.get(kaderB.size() - 1).porazi());
+    }
+
     /* Lestvica posameznikov lige steje SAMO posamicne tekme te lige. Dvojice so
        tu dobljene, njun drugi igralec pa je svojo posamicno tekmo izgubil - ce
        bi dvojice stele, bi imel zmago. */
@@ -600,5 +668,27 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         }
         srecanjeStoritev.nastaviPostavo(idSrecanje, new PostavaVnos(mesta));
         assertFalse(srecanjeStoritev.podrobno(idSrecanje).tekme().isEmpty());
+    }
+
+    /* Srecanje dveh dolocenih ekip - ne glede na to, katera je domaca. */
+    private Long najdiSrecanje(Long idLiga, Long ekipa1, Long ekipa2) {
+        return srecanjeStoritev.zaLigo(idLiga).stream()
+                .filter(s -> List.of(s.idEkipaDomaci(), s.idEkipaGost())
+                        .containsAll(List.of(ekipa1, ekipa2)))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("srecanja teh dveh ekip ni"))
+                .id();
+    }
+
+    /* Postavi obe ekipi in odigra prvo posamicno tekmo (mesti A-X); izid se
+       zapise tako, da jo ekipa "zmagovalka" dobi oz. izgubi. */
+    private void odigrajPrvoPosamicno(Long idSrecanje, Long idEkipa, boolean zmaga) {
+        nastaviPostavo(idSrecanje);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(idSrecanje);
+        boolean domaca = p.srecanje().idEkipaDomaci().equals(idEkipa);
+        boolean zmagaDomacih = domaca == zmaga;
+        TekmaSrecanjaDto prva = p.tekme().get(1); // za dvojicami: A-X
+        srecanjeStoritev.vnesiRezultat(prva.id(), new si.turnirko.dto.VnosRezultataSrecanja(
+                null, zmagaDomacih ? 3 : 1, zmagaDomacih ? 1 : 3, null));
     }
 }

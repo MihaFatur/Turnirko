@@ -300,8 +300,11 @@ public class ProfilStoritev {
         return new ProfilDto.Uvrstitev(mesto, skupaj, percentil, klubskoPovprecje);
     }
 
-    /* Graf napredka: dnevnik ratinga od najstarejsega, obogaten z imenom
-       nasprotnika, da je ob tocki jasno, katera tekma jo je povzrocila. */
+    /* Graf napredka: dnevnik ratinga od najstarejsega, obogaten z nasprotnikom
+       in tekmovanjem, da je ob tocki jasno, katera tekma jo je povzrocila -
+       ime nasprotnika samo pove, kdo, ne pa kje. Podatki so prepisani iz
+       istega Nastopa kot vrstica v seznamu tekem, zato se zapisa ujemata in
+       tocka lahko kaze na vrstico. */
     private List<ProfilDto.TockaGrafa> graf(Long idIgralec, List<Nastop> nastopi) {
         Map<String, Nastop> poKljucu = new HashMap<>();
         for (Nastop n : nastopi) {
@@ -317,7 +320,9 @@ public class ProfilStoritev {
             tocke.add(new ProfilDto.TockaGrafa(
                     z.getUstvarjenOb(), z.getNovaVrednost(), z.getSprememba(),
                     idTekme, ligaska,
-                    n != null ? n.nasprotnik().polnoIme() : null));
+                    n != null ? n.nasprotnik().polnoIme() : null,
+                    n != null ? n.tekmovanje() : null,
+                    n != null ? n.del() : null));
         }
         return tocke;
     }

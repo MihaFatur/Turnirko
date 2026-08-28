@@ -99,6 +99,48 @@ običajno besedilo **14 px**. Zadetkovna površina na dotik nikoli pod **44 px**
 }
 ```
 
+### Paleta koledarja — edina izjema
+
+Koledar (sklop na domači strani in stran `/koledar`) barvo uporablja drugače kot
+ves preostali vmesnik: tam ne pomeni **stanja**, ampak **vrsto tekmovanja**.
+Razlog je vsebinski, ne okrasni — v isti soboti se igra pet lig in dva turnirja
+in vprašanje »kaj od tega je turnir« z eno samo barvo nima odgovora, ker so
+takrat vsi dnevi enaki.
+
+```css
+/* dva pomenska tona; samo koledar, nikjer drugje */
+--barva-ton-1: #0071AB;  /* hišna modra  — turnir       */
+--barva-ton-2: #5A8A00;  /* hišna zelena — ligaško kolo */
+```
+
+Pogoji izjeme — vsi veljajo, sicer izjema pade:
+
+1. **Samo koledar.** Nove ploskve drugod se še naprej slikajo z modro, zeleno in
+   rjasto; ton ni na voljo kot »tretja barva znamke«.
+2. **Ton je vedno le ploskev** — pas čez dneve v mreži, levi rob vrstice,
+   ploskev v ključu. Nikoli podlaga pod besedilom, zato je merilo kontrasta 3:1
+   proti papirju (oba sta nad 3,7:1) in ne 4,5:1.
+3. **Barva ni nikoli edini nosilec podatka** (WCAG 1.4.1): pod vsako mrežo stoji
+   ključ (Turnir · Ligaško kolo · Odigrano), seznam ob mreži pa vsako
+   tekmovanje izpiše z imenom.
+4. **Tona sta dva in pomenita vrsto, ne identitete.** Prej jih je bilo šest in
+   so se dodeljevali po vrstnem redu pojavitve — barva je bila last POGLEDA in
+   ne lige, zato je pod mrežo morala stati legenda z imeni. Ta je rasla s
+   pogledom (en mesec uvožene zgodovine ima tudi šestnajst tekmovanj) in je
+   zavzela več prostora kot mreža sama. Katero tekmovanje je katero, odslej
+   pove seznam ob mreži; mreža pove, kdaj se igra in kaj je to.
+5. **Vijolične in indigo tudi tu ni.**
+6. Tona sta hišna modra in zelena, da koledar ostane isti vmesnik.
+
+Dodeljevanje tonov ni v CSS, ampak v `vmesnik/src/pomozno/koledar.ts`
+(`tonVnosa`): `TURNIR` → ton 1, `LIGA` → ton 2. Ker je ton pomen in ne
+identiteta, ga ni treba nikjer razlagati z imeni — ključ pod mrežo je stalen in
+ne raste s številom tekmovanj.
+
+**Odigrano zbledi, ne spremeni barve.** Trak tekmovanja, ki je mimo, ima
+`opacity: 0.32`, njegova vrstica v seznamu `0.62`. To ni tretji ton: motnost
+pove »to je isto, samo že za nami«, prihajajoče pa izstopi brez nove barve.
+
 ### Temna tema
 
 Ohrani se prek `@media (prefers-color-scheme: dark)` — samo z **zamenjavo
@@ -118,7 +160,8 @@ ki stoji na drugačni podlagi kot koren.
 - **Tretja barva v znamki.** `--barva-negativna` je semantična, ne dekorativna;
   ne uporabljaj je za poudarke, ki niso poraz, napaka ali brisanje.
 - Barvanje »zaradi živosti«. Barva pomeni: modra = dejanje/podatek, zelena =
-  uspeh/napredovanje, rjasta = izguba/nevarnost. Nič drugega.
+  uspeh/napredovanje, rjasta = izguba/nevarnost. Nič drugega. Edina izjema so
+  toni koledarja (razdelek »Paleta koledarja«) in ta velja samo tam.
 - Emoji kot ikone (🥇, 🎲, 🖨). Namesto njih beseda ali mesto v tipografiji.
 
 ---
@@ -172,6 +215,7 @@ primitivi sistema.** Preden napišeš nov razred, preveri, ali obstoječi zadoš
 | `.srecanje__glava`, `.srecanje__izid`, `.srecanje__tabela`, `.srecanje__zmaga` | ekipno srečanje |
 | `.liga__kolo`, `.liga__srecanja`, `.liga__srecanje`, `.liga__ekipe`, `.opis-mreza` | liga |
 | `.podij`, `.udelezenci`, `.seznam-izbire`, `.seznam-preprost`, `.kolo-skupina` | razvrstitev, udeleženci, seznami |
+| `.koledar`, `.koledar__teden`, `.koledar__celica`, `.koledar__dan`, `.koledar__trakovi`, `.koledar__trak`, `.koledar-kljuc`, `.koledar-vnos` | koledar: mreža meseca, pasovi tekmovanj, ključ tonov, vrstica tekmovanja |
 
 ### React komponente — uvozi jih, ne pisati znova
 
@@ -189,6 +233,9 @@ import { Mreza }                  from '../komponente/Mreza'
 import { TekmeSeznam }            from '../komponente/TekmeSeznam'
 import { TekmaKartica }           from '../komponente/TekmaKartica'
 import { EnaNaEna }               from '../komponente/EnaNaEna'
+import { MrezaMeseca }            from '../komponente/Koledar'
+import { KljucKoledarja }        from '../komponente/Koledar'
+import { VrsticaKoledarja }       from '../komponente/Koledar'
 import { GrafElo }                from '../komponente/GrafElo'
 import { SpremembaElo }           from '../komponente/SpremembaElo'
 import { UporabniskiMeni }        from '../komponente/UporabniskiMeni'
@@ -243,12 +290,24 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
 6. **Generične pisave** iz seznama v razdelku 1.
 7. **Pilulasti gumbi in značke** (`border-radius: 999px`).
 8. **Emoji** v vmesniku.
-9. **Ikone, ki nadomeščajo besedo.** Edina ikona v vmesniku je logotip.
+9. **Ikone, ki nadomeščajo besedo.** Edina ikona v vsebini vmesnika je logotip.
    Namesto ikone uporabi besedo ali mono oznako.
+   *Edina odobrena izjema: spodnja navigacijska vrstica na telefonu*
+   (`.spodnja-vrstica`, ≤ 640 px). Tam so postavke ikone brez oznak — pet mono
+   besed je pri 390 px zaseglo cel stolpec, ikona pa je v pasu, ki ga palec
+   bere v pol sekunde, hitrejša od branja. Oznake ostanejo v drevesu
+   (`.samo-za-bralnik`). Ikone so iz zbirke Lucide, 22 px, poteza 1.75,
+   `currentColor`. Nikjer drugje — v glavi, gumbih, menijih, predalu »Več« —
+   ikon ni.
 10. **`color: inherit` na obarvani podlagi** — barvo besedila zapiši izrecno.
 11. **Novi razredi za obstoječ vzorec.** Najprej poglej razdelek 4.
 12. **Animacije stanja »zaradi lepšega«.** Dovoljen je samo `transition` barve
     ali obrobe do `120ms`, in premik podčrtaja navigacije.
+    *Izjema, vezana na točko 9:* v spodnji vrstici na telefonu modra poteza
+    **zdrsne** s prejšnjega stolpca na novega — `transform` 260 ms
+    `cubic-bezier(.2,.8,.2,1)`, z njo ploskev in barva postavke (260 ms `ease`)
+    in dvig aktivne ikone za 2 px. Daljši čas je tu premik podčrtaja, ki ga
+    točka že dovoljuje; viden je samo zato, ker je pot dolga cel stolpec.
 
 ---
 

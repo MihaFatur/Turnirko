@@ -51,6 +51,7 @@ import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 import si.turnirko.storitve.LestvicaLigeStoritev.Bilanca;
+import si.turnirko.storitve.LestvicaLigeStoritev.BilanceLige;
 
 @Service
 public class LigaStoritev {
@@ -358,9 +359,18 @@ public class LigaStoritev {
 
     // ---------- Kader ----------
 
-    /* Kader ekipe z ratingom in bilanco posamicnih tekem v ligi te ekipe.
-       Bilanca je del izpisa kadra pod vrstico lestvice, zato jo priloz(imo) ze
-       tu - vmesnik tako z eno poizvedbo dobi vse, kar razsirjena vrstica pokaze. */
+    /* Kader ekipe z ratingom in bilanco posamicnih tekem, ki jih je igralec
+       odigral ZA TO ekipo v tej ligi. Bilanca je del izpisa kadra pod vrstico
+       lestvice, zato jo prilozimo ze tu - vmesnik z eno poizvedbo dobi vse, kar
+       razsirjena vrstica pokaze.
+
+       Vrstni red je izkupicek in ne organizatorjev seznam: kader se odpre pod
+       vrstico lestvice, kjer je vprasanje "kdo ekipo nosi", zato gredo zmage v
+       tej ligi na vrh. Ob enakih zmagah odloca manj porazov (pri enakih zmagah
+       je to isto kot boljsa uspesnost), nato organizatorjev vrstni red in
+       abeceda - v pripravi, ko so bilance se 0 : 0, je izpis zato tak kot prej.
+       Postava srecanja tega vrstnega reda NE deli (glej SrecanjeStoritev.kader):
+       tam mesta A/B/C dolocajo vrstni red kadra in ne izkupicek. */
     @Transactional(readOnly = true)
     public List<KaderIgralecDto> kader(Long idEkipa) {
         Ekipa ekipa = ekipaRepozitorij.najdiZKlubomInLigo(idEkipa)
@@ -368,13 +378,17 @@ public class LigaStoritev {
         List<KaderEkipe> kader = kaderRepozitorij.najdiZaEkipo(idEkipa);
         Map<Long, Integer> ratingi = spremembeEloStoritev.trenutniRatingi(
                 kader.stream().map(k -> k.getIgralec().getId()).toList());
-        Map<Long, Bilanca> bilance = lestvicaLigeStoritev.bilancePosamicnih(ekipa.getLiga().getId());
+        BilanceLige bilance = lestvicaLigeStoritev.bilancePosamicnih(ekipa.getLiga().getId());
+        /* Seznam iz repozitorija je ze urejen po vrstnem redu in abecedi, zato
+           stabilno razvrscanje po izkupicku ta dva kljuca ohrani kot zadnji. */
         return kader.stream()
                 .map(k -> {
                     Long idIgralec = k.getIgralec().getId();
-                    Bilanca b = bilance.getOrDefault(idIgralec, Bilanca.PRAZNA);
+                    Bilanca b = bilance.za(idEkipa, idIgralec);
                     return KaderIgralecDto.iz(k, ratingi.get(idIgralec), b.zmage(), b.porazi());
                 })
+                .sorted(Comparator.comparingInt(KaderIgralecDto::zmage).reversed()
+                        .thenComparingInt(KaderIgralecDto::porazi))
                 .toList();
     }
 

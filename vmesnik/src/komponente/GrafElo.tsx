@@ -6,6 +6,10 @@
    pogosto zgoščene v turnirske dneve in bi časovno merilo dalo prazne pasove.
    Datum je izpisan pod prvo in zadnjo točko ter ob izbrani točki.
 
+   Točka ni le prikaz: pove, s kom in na katerem tekmovanju je bila tekma
+   odigrana, ob kliku pa stran skoči na to vrstico v seznamu tekem (prop
+   "naTekmo"). Sicer je iz skoka ELO nemogoče ugotoviti, kaj ga je povzročilo.
+
    Oznake osi so HTML nad risalno ploskvijo, ne <text> v SVG: SVG jih pri
    raztegu ploskve na širino okvirja skalira skupaj z grafom (12 px bi na
    1360 px oknu postalo 14,6 px), poleg tega jih na telefonu ni mogoče
@@ -31,8 +35,21 @@ const ROB = { levo: 56, desno: 16, zgoraj: 16, spodaj: 32 }
 
 /* "otroci" so bloki, ki sodijo v isto sekcijo pod graf (npr. pričakovan proti
    doseženemu izkupičku) — sekcijo namreč izriše ta komponenta, ker izbirnik
-   obdobja stoji v njeni naslovni vrstici. */
-export function GrafElo({ tocke, children }: { tocke: TockaGrafa[]; children?: ReactNode }) {
+   obdobja stoji v njeni naslovni vrstici.
+
+   "naTekmo" pokliče stran, ko gledalec klikne točko: graf pove, katera tekma
+   je to, skok po seznamu tekem pa je stvar strani (graf ne ve, kje na strani
+   seznam je). Točka brez tekmovanja para v seznamu nima (postavitveni rating),
+   zato ni klikljiva. */
+export function GrafElo({
+  tocke,
+  naTekmo,
+  children,
+}: {
+  tocke: TockaGrafa[]
+  naTekmo?: (idTekme: number, ligaska: boolean) => void
+  children?: ReactNode
+}) {
   const [obdobje, nastaviObdobje] = useState<Obdobje>('vse')
   const [izbrana, nastaviIzbrano] = useState<number | null>(null)
 
@@ -75,6 +92,10 @@ export function GrafElo({ tocke, children }: { tocke: TockaGrafa[]; children?: R
 
   const oznakeY = [zgoraj, (zgoraj + spodaj) / 2, spodaj]
   const podrobnost = izbrana !== null ? filtrirane[izbrana] : filtrirane[filtrirane.length - 1]
+
+  const skok = (t: TockaGrafa) => (naTekmo && t.idTekme !== null && t.tekmovanje !== null
+    ? () => naTekmo(t.idTekme as number, t.ligaska)
+    : null)
 
   /* Izbirnik obdobja stoji v naslovni vrstici sekcije, zato komponenta izriše
      celo sekcijo — tako je vse v eni vrstici, kot zahteva maketa. */
@@ -142,27 +163,40 @@ export function GrafElo({ tocke, children }: { tocke: TockaGrafa[]; children?: R
               {ploskev && <polygon className="graf__ploskev" points={ploskev} />}
               <polyline className="graf__crta" points={crta} />
 
-              {filtrirane.map((t, i) => (
-                <circle
-                  key={`${t.ligaska ? 'l' : 't'}${t.idTekme}-${i}`}
-                  className={
-                    'graf__tocka' +
-                    (izbrana === i ? ' graf__tocka--izbrana' : '') +
-                    (t.sprememba >= 0 ? ' graf__tocka--plus' : ' graf__tocka--minus')
-                  }
-                  cx={x(i)}
-                  cy={y(t.vrednost)}
-                  r={izbrana === i ? 5 : 3.5}
-                  onMouseEnter={() => nastaviIzbrano(i)}
-                  onFocus={() => nastaviIzbrano(i)}
-                  tabIndex={0}
-                >
-                  <title>
-                    {datum(t.kdaj)} · {t.vrednost} ({t.sprememba >= 0 ? '+' : ''}
-                    {t.sprememba}){t.nasprotnik ? ` · ${t.nasprotnik}` : ''}
-                  </title>
-                </circle>
-              ))}
+              {filtrirane.map((t, i) => {
+                const naKlik = skok(t)
+                return (
+                  <circle
+                    key={`${t.ligaska ? 'l' : 't'}${t.idTekme}-${i}`}
+                    className={
+                      'graf__tocka' +
+                      (izbrana === i ? ' graf__tocka--izbrana' : '') +
+                      (t.sprememba >= 0 ? ' graf__tocka--plus' : ' graf__tocka--minus')
+                    }
+                    cx={x(i)}
+                    cy={y(t.vrednost)}
+                    r={izbrana === i ? 5 : 3.5}
+                    onMouseEnter={() => nastaviIzbrano(i)}
+                    onFocus={() => nastaviIzbrano(i)}
+                    onClick={naKlik ?? undefined}
+                    onKeyDown={
+                      naKlik
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              naKlik()
+                            }
+                          }
+                        : undefined
+                    }
+                    role={naKlik ? 'button' : undefined}
+                    aria-label={naKlik ? `Pokaži tekmo v seznamu: ${opisTocke(t)}` : undefined}
+                    tabIndex={0}
+                  >
+                    <title>{opisTocke(t)}</title>
+                  </circle>
+                )
+              })}
             </svg>
           </div>
 
@@ -182,8 +216,25 @@ export function GrafElo({ tocke, children }: { tocke: TockaGrafa[]; children?: R
               <span className="graf__opis">
                 · {datum(podrobnost.kdaj)}
                 {podrobnost.nasprotnik ? ` · proti ${podrobnost.nasprotnik}` : ''}
-                {podrobnost.ligaska ? ' · liga' : ''} · vodoravno je zaporedje obračunanih
-                tekem, ne koledar
+                {/* Del (dogodek oz. kolo s parom ekip) je samo v namigu in v
+                    vrstici seznama: imena uvoženih turnirjev so dolga cel
+                    stavek in bi vrstico na telefonu raztegnila čez pol
+                    zaslona. */}
+                {podrobnost.tekmovanje
+                  ? ` · ${podrobnost.tekmovanje}`
+                  : podrobnost.ligaska
+                    ? ' · liga'
+                    : ''}
+              </span>
+              {/* Gumb je edina zadetkovna površina te poti, ki na telefonu drži
+                  44 px — točka grafa je tam nekaj pikslov široka. */}
+              {skok(podrobnost) && (
+                <button type="button" className="graf__skok" onClick={skok(podrobnost) ?? undefined}>
+                  V seznam tekem ↓
+                </button>
+              )}
+              <span className="graf__opis">
+                vodoravno je zaporedje obračunanih tekem, ne koledar
               </span>
             </p>
           )}
@@ -201,6 +252,19 @@ function filtrirajPoObdobju(tocke: TockaGrafa[], obdobje: Obdobje): TockaGrafa[]
   const meja = new Date()
   meja.setMonth(meja.getMonth() - meseci)
   return tocke.filter((t) => new Date(t.kdaj) >= meja)
+}
+
+/* Isti zapis za nativni namig (<title>) in za bralnik zaslona. */
+function opisTocke(t: TockaGrafa): string {
+  const deli = [
+    datum(t.kdaj),
+    `${t.vrednost} (${t.sprememba >= 0 ? '+' : '−'}${Math.abs(t.sprememba)})`,
+  ]
+  if (t.nasprotnik) deli.push(`proti ${t.nasprotnik}`)
+  if (t.tekmovanje) deli.push(t.tekmovanje)
+  else if (t.ligaska) deli.push('liga')
+  if (t.del) deli.push(t.del)
+  return deli.join(' · ')
 }
 
 function datum(iso: string): string {

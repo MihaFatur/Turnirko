@@ -14,6 +14,7 @@
    brez novih poizvedb. Okolico na lestvici izracunamo iz globalne lestvice,
    ki jo vmesnik ima ze predpomnjeno (isti kljuc kot LestvicaStran). */
 import type { CSSProperties } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -62,6 +63,28 @@ export function ProfilStran() {
   })
 
   const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
+
+  /* Skok s točke grafa ELO na vrstico iste tekme v seznamu spodaj. Seznam je
+     izrisan v celoti (brez straničenja), zato zadošča iskanje po id-ju vrstice.
+     Vrstica dobi fokus — brez tega bralnik zaslona po skoku ne pove, kam smo
+     prišli — in ostane označena, dokler gledalec ne izbere druge tekme. */
+  const [poudarjenaTekma, nastaviPoudarjeno] = useState<string | null>(null)
+  const skociNaTekmo = useCallback((idTekme: number, ligaska: boolean) => {
+    const kljuc = kljucTekme(idTekme, ligaska)
+    nastaviPoudarjeno(kljuc)
+    const vrstica = document.getElementById('tekma-' + kljuc)
+    if (!vrstica) return
+    vrstica.focus({ preventScroll: true })
+    /* Pri uvoženi zgodovini je seznam dolg tudi 80 000 px. Mehko drsenje čez
+       tako razdaljo ni pot, ampak zabrisan blisk, zato je mehko samo, kadar je
+       cilj v dosegu nekaj zaslonov — sicer skočimo. */
+    const razdalja = Math.abs(vrstica.getBoundingClientRect().top - window.innerHeight / 2)
+    const mirno = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    vrstica.scrollIntoView({
+      behavior: mirno || razdalja > window.innerHeight * 4 ? 'auto' : 'smooth',
+      block: 'center',
+    })
+  }, [])
 
   /* Merilo je isLoading (= brez podatkov IN zahteva teče), ne isPending:
      poizvedba brez podatkov, ki ne teče, je ustavljena (npr. brez povezave)
@@ -191,7 +214,7 @@ export function ProfilStran() {
         </div>
       </div>
 
-      <GrafElo tocke={p.graf}>
+      <GrafElo tocke={p.graf} naTekmo={skociNaTekmo}>
         {z && <PricakovanIzkupicek meseci={z.forma.poMesecih} />}
       </GrafElo>
 
@@ -219,7 +242,7 @@ export function ProfilStran() {
         {p.tekme.length === 0 ? (
           <p className="obvestilo">Ta igralec še ni odigral nobene tekme.</p>
         ) : (
-          <SeznamTekem tekme={p.tekme} />
+          <SeznamTekem tekme={p.tekme} poudarjena={poudarjenaTekma} />
         )}
       </div>
     </section>
@@ -913,7 +936,22 @@ function Os({
 
 /* ---------------- 6. Odigrane tekme ---------------- */
 
-function SeznamTekem({ tekme }: { tekme: TekmaProfila[] }) {
+/* Turnirske in ligaške tekme imajo ločeni zaporedji id-jev, zato je ključ
+   vrstice šele par (vir, id) — enak dogovor kot v grafu ELO. */
+function kljucTekme(idTekme: number, ligaska: boolean): string {
+  return (ligaska ? 'l' : 't') + idTekme
+}
+
+/* Vsaka vrstica nosi id ("tekma-t12" / "tekma-l7"), ker je cilj skoka s točke
+   grafa ELO. "poudarjena" je ključ tekme, na katero je gledalec pravkar
+   skočil — označena ostane, dokler ne izbere druge. */
+function SeznamTekem({
+  tekme,
+  poudarjena,
+}: {
+  tekme: TekmaProfila[]
+  poudarjena: string | null
+}) {
   return (
     <div className="tekme-mreza">
       <div className="tekma-vrstica tekma-vrstica--glava">
@@ -924,7 +962,17 @@ function SeznamTekem({ tekme }: { tekme: TekmaProfila[] }) {
         <span className="tekma-vrstica__desno">ELO</span>
       </div>
       {tekme.map((t) => (
-        <div className="tekma-vrstica" key={(t.ligaska ? 'l' : 't') + t.idTekme}>
+        <div
+          className={
+            'tekma-vrstica' +
+            (poudarjena === kljucTekme(t.idTekme, t.ligaska)
+              ? ' tekma-vrstica--poudarjena'
+              : '')
+          }
+          key={kljucTekme(t.idTekme, t.ligaska)}
+          id={'tekma-' + kljucTekme(t.idTekme, t.ligaska)}
+          tabIndex={-1}
+        >
           <span className="tekma-vrstica__datum">{t.datum ? datum(t.datum) : '—'}</span>
           <span className="tekma-vrstica__tekmovanje">
             <span className="tekma-vrstica__ime">{t.tekmovanje}</span>

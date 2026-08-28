@@ -182,23 +182,40 @@ public class LestvicaLigeStoritev {
         return rezultat;
     }
 
-    /* Bilanca posamicnih tekem vsakega igralca v eni ligi (kljuc je id igralca).
-       Sluzi prikazu kadra pod vrstico lestvice: vrstni red kadra je organizatorjev,
-       bilanca pa pove, koliko je posameznik ligi dejansko prinesel. Igralec brez
-       odigrane tekme v zemljevidu ne nastopa - klicatelj ga steje kot 0 : 0. */
+    /* Bilanca posamicnih tekem v eni ligi, po EKIPI in igralcu. Sluzi prikazu
+       kadra pod vrstico lestvice, kjer pove, koliko je posameznik prinesel
+       prav tej ekipi - zato je kljuc par in ne sam igralec: liga brez prepovedi
+       dvojne registracije sme istega igralca voditi v dveh kadrih, njegov
+       izkupicek pa tam ni isti. Igralec brez odigrane tekme v zemljevidu ne
+       nastopa; BilanceLige ga vrne kot 0 : 0. */
     @Transactional(readOnly = true)
-    public Map<Long, Bilanca> bilancePosamicnih(Long idLiga) {
-        Map<Long, int[]> zbir = new HashMap<>();
+    public BilanceLige bilancePosamicnih(Long idLiga) {
+        Map<Long, Map<Long, int[]>> zbir = new HashMap<>();
         for (Object[] r : tekmaSrecanjaRepozitorij.posamicniIzidiLige(idLiga)) {
-            Long domaci = ((Number) r[0]).longValue();
-            Long gost = ((Number) r[1]).longValue();
-            boolean zmagalDomaci = r[2] == StranEkipe.DOMACI;
-            zbir.computeIfAbsent(domaci, k -> new int[2])[zmagalDomaci ? 0 : 1]++;
-            zbir.computeIfAbsent(gost, k -> new int[2])[zmagalDomaci ? 1 : 0]++;
+            Long ekipaDomaci = ((Number) r[0]).longValue();
+            Long ekipaGost = ((Number) r[1]).longValue();
+            Long domaci = ((Number) r[2]).longValue();
+            Long gost = ((Number) r[3]).longValue();
+            boolean zmagalDomaci = r[4] == StranEkipe.DOMACI;
+            zbir.computeIfAbsent(ekipaDomaci, k -> new HashMap<>())
+                    .computeIfAbsent(domaci, k -> new int[2])[zmagalDomaci ? 0 : 1]++;
+            zbir.computeIfAbsent(ekipaGost, k -> new HashMap<>())
+                    .computeIfAbsent(gost, k -> new int[2])[zmagalDomaci ? 1 : 0]++;
         }
-        Map<Long, Bilanca> bilance = new HashMap<>();
-        zbir.forEach((id, z) -> bilance.put(id, new Bilanca(z[0], z[1])));
-        return bilance;
+        Map<Long, Map<Long, Bilanca>> bilance = new HashMap<>();
+        zbir.forEach((idEkipa, poIgralcih) -> {
+            Map<Long, Bilanca> zaEkipo = new HashMap<>();
+            poIgralcih.forEach((idIgralec, z) -> zaEkipo.put(idIgralec, new Bilanca(z[0], z[1])));
+            bilance.put(idEkipa, zaEkipo);
+        });
+        return new BilanceLige(bilance);
+    }
+
+    /* Bilance ene lige z iskanjem po paru (ekipa, igralec). */
+    public record BilanceLige(Map<Long, Map<Long, Bilanca>> poEkipah) {
+        public Bilanca za(Long idEkipa, Long idIgralec) {
+            return poEkipah.getOrDefault(idEkipa, Map.of()).getOrDefault(idIgralec, Bilanca.PRAZNA);
+        }
     }
 
     public record Bilanca(int zmage, int porazi) {
