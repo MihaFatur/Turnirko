@@ -404,7 +404,7 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
     private Long ligaStirihEkip() {
         Long idLige = ligaStoritev.ustvari(new LigaVnos(
                 "Test liga", "2025/26", SpolKategorija.MOSKI, FormatSrecanja.CORBILLON, 5,
-                null, false, 2, 1, 0, true, false, true, null, null, null)).id();
+                null, false, 2, 1, 0, true, false, true, false, null, null, null)).id();
         for (int i = 1; i <= 4; i++) {
             Klub klub = klubRepozitorij.save(new Klub("Klub " + i, null));
             var ekipa = ligaStoritev.dodajEkipo(idLige, new EkipaVnos(klub.getId(), null, null));

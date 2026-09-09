@@ -175,7 +175,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
                 .withHour(18).withMinute(0).withSecond(0).withNano(0);
         Long idLiga = ligaStoritev.ustvari(new LigaVnos(
                 "Liga za profil", "2024/25", SpolKategorija.MOSKI, FormatSrecanja.SNTL, 5,
-                null, false, 2, 1, 0, true, false, true, null, termin, 7)).id();
+                null, false, 2, 1, 0, true, false, true, false, null, termin, 7)).id();
         dodajEkipoSKadrom(idLiga, "Profil A", 3);
         dodajEkipoSKadrom(idLiga, "Profil B", 3);
         ligaStoritev.generirajRazpored(idLiga);

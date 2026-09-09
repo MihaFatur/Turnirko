@@ -30,9 +30,11 @@ import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 @Service
 public class DomovStoritev {
 
-    /* Koliko lig pokazemo gostu, ki izbora nima. Sklop je povzetek in ne
-       seznam - dve do tri lige so meja, kjer se domaca stran se bere. */
-    private static final int PRIVZETO_LIG = 3;
+    /* Koliko lig pokazemo tistemu, ki svojega izbora nima. Meja je ista kot
+       za adminov izbor (LigaStoritev.LIG_NA_DOMACI): kar se privzeto pokaze,
+       mora biti enako dolgo kot to, kar admin postavi na njegovo mesto -
+       drugace se domaca stran ob prvi oznaceni ligi skrci. */
+    private static final int PRIVZETO_LIG = LigaStoritev.LIG_NA_DOMACI;
 
     /* Vrh mini razpredelnice: prve tri ekipe. Vec jih vrstica lige ne prenese. */
     private static final int EKIP_NA_VRHU = 3;
@@ -96,23 +98,47 @@ public class DomovStoritev {
 
     // ---------- Povzetki lig ----------
 
-    /* Povzetki izbranih lig; prazen seznam id-jev pomeni "pokazi lige v teku"
-       (gost brez izbora oz. uporabnik, ki si ga se ni sestavil). */
+    /* Povzetki lig za sklop "Lige" na domaci strani.
+
+       Vrstni red odlocanja je vrstni red namernosti:
+         1. "idji" - izbor prijavljenega racuna. Kdor si je sklop sestavil sam,
+            ga vidi takega, kot ga je sestavil (dolzine ne omejujemo: to je
+            njegova odlocitev in ne izlozba).
+         2. lige, ki jih je admin postavil na domaco stran (najvec dve) - to je
+            privzeti pogled gosta in vsakega, ki svojega izbora nima.
+         3. "ogledane" - lige, ki si jih je gost nazadnje ogledal (spomin
+            njegovega brskalnika). Sele TU, ker ogled ni izbira: adminova
+            uredniska odlocitev ne sme odpasti zato, ker je gost pred tednom
+            odprl neko ligo.
+         4. lige v teku - nova namestitev, kjer se ni odlocil nihce. */
     @Transactional(readOnly = true)
-    public List<DomovLigaDto> povzetkiLig(List<Long> idji) {
-        List<Liga> lige = new ArrayList<>();
-        if (idji == null || idji.isEmpty()) {
-            ligaRepozitorij.najdiVse().stream()
-                    .filter(l -> l.getStatus() == StatusTekmovanja.V_TEKU)
-                    .limit(PRIVZETO_LIG)
-                    .forEach(lige::add);
+    public List<DomovLigaDto> povzetkiLig(List<Long> idji, List<Long> ogledane) {
+        List<Liga> lige;
+        if (idji != null && !idji.isEmpty()) {
+            lige = poIzboru(idji);
         } else {
-            // vrstni red sledi izboru uporabnika, neobstojece lige tiho odpadejo
-            for (Long id : idji) {
-                ligaRepozitorij.findById(id).ifPresent(lige::add);
+            List<Liga> izpostavljene = ligaRepozitorij.najdiNaDomaci();
+            if (!izpostavljene.isEmpty()) {
+                lige = izpostavljene.stream().limit(PRIVZETO_LIG).toList();
+            } else if (ogledane != null && !ogledane.isEmpty()) {
+                lige = poIzboru(ogledane).stream().limit(PRIVZETO_LIG).toList();
+            } else {
+                lige = ligaRepozitorij.najdiVse().stream()
+                        .filter(l -> l.getStatus() == StatusTekmovanja.V_TEKU)
+                        .limit(PRIVZETO_LIG)
+                        .toList();
             }
         }
         return lige.stream().map(this::povzetek).toList();
+    }
+
+    /* Vrstni red sledi izboru, neobstojece lige tiho odpadejo. */
+    private List<Liga> poIzboru(List<Long> idji) {
+        List<Liga> lige = new ArrayList<>();
+        for (Long id : idji) {
+            ligaRepozitorij.findById(id).ifPresent(lige::add);
+        }
+        return lige;
     }
 
     private DomovLigaDto povzetek(Liga liga) {

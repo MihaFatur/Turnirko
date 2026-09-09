@@ -12,6 +12,9 @@ public record EkipaDto(
         int zaporedna,
         String ime,
         String prikazanoIme,
+        // Mesto na jakostni lestvici lige (1 = najmocnejsa); pove kaj samo pri
+        // ligi z enakomerno razvrstitvijo, sicer je vrstni red vpisa.
+        Integer stNosilca,
         int steviloKadra
 ) {
 
@@ -23,6 +26,7 @@ public record EkipaDto(
                 e.getZaporedna(),
                 e.getIme(),
                 e.prikazanoIme(),
+                e.getStNosilca(),
                 steviloKadra);
     }
 }

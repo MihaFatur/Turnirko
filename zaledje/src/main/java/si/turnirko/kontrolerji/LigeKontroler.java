@@ -31,6 +31,7 @@ import si.turnirko.dto.PrehodiVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.StatistikaTekmovanjaDto;
 import si.turnirko.dto.TerminiVnos;
+import si.turnirko.dto.VrstniRedEkipVnos;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.SrecanjeStoritev;
 import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
@@ -87,6 +88,21 @@ public class LigeKontroler {
         return ligaStoritev.nastaviTermine(id, vnos);
     }
 
+    /* Izbor lig za domaco stran. Preklop in ne polje obrazca (PUT postavi,
+       DELETE odstrani - isti par kot pri /domov/moje-lige), ker se liga na
+       domaci strani zamenja tudi sredi sezone, ko so pravila ze zaklenjena.
+       Samo ADMIN: domaca stran je izlozba zveze in ne posameznega kluba
+       (omeji jo varnostna veriga). */
+    @PutMapping("/{id}/na-domaci")
+    public LigaDto postaviNaDomaco(@PathVariable Long id) {
+        return ligaStoritev.nastaviNaDomaci(id, true);
+    }
+
+    @DeleteMapping("/{id}/na-domaci")
+    public LigaDto umakniZDomace(@PathVariable Long id) {
+        return ligaStoritev.nastaviNaDomaci(id, false);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void zbrisi(@PathVariable Long id) {
@@ -110,6 +126,15 @@ public class LigeKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void odstraniEkipo(@PathVariable Long idEkipa) {
         ligaStoritev.odstraniEkipo(idEkipa);
+    }
+
+    /* Jakostni vrstni red ekip (enakomerna razvrstitev). Svoja koncna tocka kot
+       pri dogodkih: vrstni red se ne ureja po eni ekipi, ampak kot celota.
+       Odgovor so vse ekipe lige, ker so se mesta prestevilcila vsem. */
+    @PutMapping("/{id}/vrstni-red")
+    public List<EkipaDto> shraniVrstniRedEkip(@PathVariable Long id,
+                                              @Valid @RequestBody VrstniRedEkipVnos vnos) {
+        return ligaStoritev.shraniVrstniRedEkip(id, vnos.idjiEkip());
     }
 
     // ---------- Kader ----------

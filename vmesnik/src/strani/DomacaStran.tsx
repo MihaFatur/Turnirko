@@ -22,7 +22,7 @@ import type { DomovLigaDto, LestvicaIgralcaDto, TurnirDto } from '../api/tipi'
 import { EnaNaEna } from '../komponente/EnaNaEna'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { KoledarSklop } from '../komponente/KoledarSklop'
-import { IzborLigOkno } from '../komponente/IzborLigOkno'
+import { DomaceLigeOkno, IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
@@ -37,9 +37,10 @@ const IGRALCEV = 8
 type FilterLestvice = 'vsi' | 'mojeLige' | 'mojKlub'
 
 export function DomacaStran() {
-  const { uporabnik, mojIdIgralec } = useAvtentikacija()
+  const { uporabnik, mojIdIgralec, jeAdmin } = useAvtentikacija()
   const [filter, nastaviFilter] = useState<FilterLestvice>('vsi')
   const [izborOdprt, nastaviIzborOdprt] = useState(false)
+  const [domaceOdprt, nastaviDomaceOdprt] = useState(false)
 
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
   const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
@@ -49,9 +50,17 @@ export function DomacaStran() {
      jih je nazadnje ogledal (zapomni si jih njegov brskalnik). */
   const { jePrijavljen, spremljane, preklopi } = useSpremljanjeLig()
 
+  /* Sklop ima tri vire in strežnik med njimi razsodi sam (glej
+     DomovStoritev.povzetkiLig), zato mu povemo, katere vrste je seznam, ki ga
+     pošiljamo: izbor RAČUNA prevlada, gostov spomin brskalnika pa obvelja šele,
+     če admin domače strani ni uredil. Ogled namreč ni izbira — ena odprta liga
+     pred tednom ne sme povoziti tega, kar je zveza postavila na vhodno stran. */
+  const izbraneRacuna = jePrijavljen ? spremljane : []
+  const ogledane = jePrijavljen ? [] : spremljane
+
   const povzetkiLig = useQuery({
-    queryKey: ['domov-lige', spremljane],
-    queryFn: () => domovApi.lige(spremljane),
+    queryKey: ['domov-lige', izbraneRacuna, ogledane],
+    queryFn: () => domovApi.lige(izbraneRacuna, ogledane),
   })
 
   /* Vrstni red na domači strani je vrstni red dogajanja: kar teče, je zgoraj. */
@@ -63,6 +72,10 @@ export function DomacaStran() {
   /* Merilo je, kaj sklop DEJANSKO kaže, in ne izbor: gost izbora nima, pa mu
      vseeno pokažemo lige v teku — vrstica "ne spremljaš N lig" bi jih sicer
      štela med nespremljane, čeprav so tik nad njo. */
+  /* Ali sklop kaže LASTEN izbor računa. Po tem se ravna naslov in prazno
+     stanje: brez izbora tu ne stojijo »moje« lige, ampak adminove. */
+  const lastenIzbor = jePrijavljen && spremljane.length > 0
+
   const prikazaneLige = (povzetkiLig.data ?? []).map((l) => l.id)
   const nespremljanihVTeku = (lige.data ?? []).filter(
     (l) => l.status === 'V_TEKU' && !prikazaneLige.includes(l.id),
@@ -92,25 +105,41 @@ export function DomacaStran() {
 
         <div className="domov__sklop">
           <div className="naslovna-vrstica">
-            <h2>{jePrijavljen ? 'Moje lige' : 'Lige'}</h2>
-            {/* Izbor je nastavitev domače strani, zato okno in ne pot na
-                /lige — tam vrstica lige vodi v ligo in preklopa ne nosi.
-                Gost izbora nima, zato zanj gumba ni. */}
-            {jePrijavljen && (
-              <button
-                type="button"
-                className="sekcija__meta"
-                onClick={() => nastaviIzborOdprt(true)}
-              >
-                Uredi izbor →
-              </button>
-            )}
+            {/* »Moje lige« samo takrat, ko sklop res kaže lasten izbor. Kdor si
+                ga ni sestavil, tu vidi lige, ki jih je postavil admin — in
+                naslov, ki bi jim rekel »moje«, bi lagal. */}
+            <h2>{lastenIzbor ? 'Moje lige' : 'Lige'}</h2>
+            <div className="naslovna-vrstica__desno">
+              {/* Izbor je nastavitev domače strani, zato okno in ne pot na
+                  /lige — tam vrstica lige vodi v ligo in preklopa ne nosi.
+                  Gost izbora nima, zato zanj gumba ni. */}
+              {jePrijavljen && (
+                <button
+                  type="button"
+                  className="sekcija__meta"
+                  onClick={() => nastaviIzborOdprt(true)}
+                >
+                  Uredi izbor →
+                </button>
+              )}
+              {/* Kaj stoji tu privzeto, je uredniška odločitev zveze in ne
+                  osebna nastavitev — zato svoje okno in samo za admina. */}
+              {jeAdmin && (
+                <button
+                  type="button"
+                  className="sekcija__meta"
+                  onClick={() => nastaviDomaceOdprt(true)}
+                >
+                  Privzeti ligi →
+                </button>
+              )}
+            </div>
           </div>
           <NapakaPoizvedbe poizvedba={povzetkiLig} kaj="lig" />
           {povzetkiLig.isPending && <Skelet vrstic={3} />}
           {povzetkiLig.data && povzetkiLig.data.length === 0 && (
             <p className="domov__prazno">
-              {jePrijavljen ? 'Ne spremljaš še nobene lige.' : 'Nobena liga ne teče.'}
+              {lastenIzbor ? 'Ne spremljaš še nobene lige.' : 'Nobena liga ne teče.'}
             </p>
           )}
           <div className="domov__seznam">
@@ -167,6 +196,7 @@ export function DomacaStran() {
       </div>
 
       {izborOdprt && <IzborLigOkno onZapri={() => nastaviIzborOdprt(false)} />}
+      {domaceOdprt && <DomaceLigeOkno onZapri={() => nastaviDomaceOdprt(false)} />}
     </section>
   )
 }

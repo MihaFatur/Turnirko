@@ -172,11 +172,20 @@ export const ligeApi = {
      sezone). Odgovor so vsa srečanja lige, ker se je spremenil razpored. */
   termini: (id: number, vnos: TerminiVnos) =>
     api.posodobi<SrecanjeDto[]>(`/lige/${id}/termini`, vnos),
+  /* Izbor lig za domačo stran (največ dve). Preklop in ne polje obrazca —
+     pravila se ob žrebu zaklenejo, ligo na domači strani pa je treba zamenjati
+     prav takrat, ko teče. Sme samo admin; strežnik zavrne tretjo ligo. */
+  naDomaco: (id: number) => api.posodobi<LigaDto>(`/lige/${id}/na-domaci`, undefined),
+  zDomace: (id: number) => api.izbrisi(`/lige/${id}/na-domaci`),
   izbrisi: (id: number) => api.izbrisi(`/lige/${id}`),
 
   ekipe: (id: number) => api.vrni<EkipaDto[]>(`/lige/${id}/ekipe`),
   dodajEkipo: (id: number, vnos: EkipaVnos) => api.objavi<EkipaDto>(`/lige/${id}/ekipe`, vnos),
   odstraniEkipo: (idEkipa: number) => api.izbrisi(`/lige/ekipe/${idEkipa}`),
+  /* Jakostni vrstni red ekip (enakomerna razvrstitev) — kot celota, ker se
+     mesta preštevilčijo vsem. Odgovor so vse ekipe lige v novem vrstnem redu. */
+  vrstniRedEkip: (id: number, idjiEkip: number[]) =>
+    api.posodobi<EkipaDto[]>(`/lige/${id}/vrstni-red`, { idjiEkip }),
 
   kader: (idEkipa: number) => api.vrni<KaderIgralecDto[]>(`/lige/ekipe/${idEkipa}/kader`),
   dodajVKader: (idEkipa: number, vnos: KaderVnos) =>
@@ -206,11 +215,18 @@ export const srecanjaApi = {
 
 /* Domača stran: povzetki lig in osebni izbor spremljanih lig. */
 export const domovApi = {
-  /* Brez id-jev vrne lige, ki so v teku (gost brez izbora). */
-  lige: (idji: number[]) =>
-    api.vrni<DomovLigaDto[]>(
-      idji.length > 0 ? `/domov/lige?idji=${idji.join(',')}` : '/domov/lige',
-    ),
+  /* Povzetki lig za sklop »Lige«. Seznama sta LOČENA, ker nista enako tehtna:
+     »idji« je izbor računa in prevlada, »ogledane« pa spomin gostovega
+     brskalnika, ki obvelja šele, če admin domače strani ni uredil. Brez obojega
+     strežnik vrne adminov izbor oz. lige v teku. */
+  lige: (idji: number[], ogledane: number[] = []) => {
+    const deli: string[] = []
+    if (idji.length > 0) deli.push(`idji=${idji.join(',')}`)
+    if (ogledane.length > 0) deli.push(`ogledane=${ogledane.join(',')}`)
+    return api.vrni<DomovLigaDto[]>(
+      deli.length > 0 ? `/domov/lige?${deli.join('&')}` : '/domov/lige',
+    )
+  },
   /* Izbor je last računa - gost dobi 401 in ga hrani brskalnik sam. */
   mojeLige: () => api.vrni<number[]>('/domov/moje-lige'),
   spremljaj: (idLiga: number) => api.posodobi<number[]>(`/domov/moje-lige/${idLiga}`, undefined),

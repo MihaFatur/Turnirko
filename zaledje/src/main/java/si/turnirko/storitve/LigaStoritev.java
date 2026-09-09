@@ -56,6 +56,11 @@ import si.turnirko.storitve.LestvicaLigeStoritev.BilanceLige;
 @Service
 public class LigaStoritev {
 
+    /* Koliko lig sme hkrati stati na domaci strani. Sklop je povzetek in ne
+       seznam: tretja liga potisne lestvico pod rob zaslona telefona. Meja je
+       tu in ne v shemi, ker je stvar predstavitve (glej V17). */
+    public static final int LIG_NA_DOMACI = 2;
+
     private final LigaRepozitorij ligaRepozitorij;
     private final EkipaRepozitorij ekipaRepozitorij;
     private final KaderEkipeRepozitorij kaderRepozitorij;
@@ -161,6 +166,40 @@ public class LigaStoritev {
         uporabiVnos(liga, v);
         liga = ligaRepozitorij.save(liga);
         return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id));
+    }
+
+    /* Liga na domaci strani: uredniska odlocitev, katero tekmovanje je izlozba
+       zveze.
+
+       Kot prehodi in termini kol NI del "uredi": pravila se ob generiranju
+       razporeda zaklenejo, ligo na domaci strani pa je treba zamenjati prav
+       takrat, ko tece. Iz istega razloga tu ni preverbe lastnistva -
+       organizator sme svojo ligo, domaca stran pa ni njegova; koncno tocko
+       varnostna veriga omeji na ADMIN.
+
+       Meja LIG_NA_DOMACI se preveri tu in ne v shemi: pogoj cez vec vrstic bi
+       v SQLite terjal prozilec, sporocilo pa mora povedati, katera liga je na
+       poti (drugace admin ugiba, kaj mora odkljukati). */
+    @Transactional
+    public LigaDto nastaviNaDomaci(Long id, boolean naDomaci) {
+        Liga liga = ligaRepozitorij.findById(id)
+                .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
+
+        if (naDomaci && !liga.isNaDomaci()) {
+            List<Liga> ze = ligaRepozitorij.najdiNaDomaci();
+            if (ze.size() >= LIG_NA_DOMACI) {
+                throw new DomenskaIzjema("Na domaci strani sta lahko najvec "
+                        + LIG_NA_DOMACI + " ligi. Najprej odstrani eno od teh: "
+                        + ze.stream().map(Liga::getIme).collect(Collectors.joining(", ")) + ".");
+            }
+        }
+
+        liga.setNaDomaci(naDomaci);
+        liga = ligaRepozitorij.save(liga);
+        /* Zastavica se preklaplja sredi sezone, zato kol ne smemo zanemariti -
+           odgovor je isti pogled kot pri najdi() (enako kot nastaviPrehode). */
+        Kola k = presteji(srecanjeRepozitorij.stanjeKol(id), 1);
+        return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id), k.odigranih(), k.vseh());
     }
 
     /* Mesto lige v piramidi (visja liga, nizje lige, koliko napreduje/izpade).
@@ -286,15 +325,88 @@ public class LigaStoritev {
 
     // ---------- Ekipe ----------
 
+    /* Vrstni red seznama je odvisen od tega, kaj seznam JE. Pri navadni ligi je
+       to šifrant prijavljenih in se bere po abecedi; pri ligi z enakomerno
+       razvrstitvijo pa jakostna lestvica, iz katere zreb sestavi pare - tam bi
+       abecedni izpis skril prav tisto, kar organizator ureja. */
     @Transactional(readOnly = true)
     public List<EkipaDto> ekipe(Long idLiga) {
         Map<Long, Integer> velikostKadra = new HashMap<>();
         for (Object[] r : kaderRepozitorij.steviloPoEkipah(idLiga)) {
             velikostKadra.put(((Number) r[0]).longValue(), ((Number) r[1]).intValue());
         }
-        return ekipaRepozitorij.najdiZaLigo(idLiga).stream()
+        return ekipeVPravemRedu(idLiga).stream()
                 .map(e -> EkipaDto.iz(e, velikostKadra.getOrDefault(e.getId(), 0)))
                 .toList();
+    }
+
+    private List<Ekipa> ekipeVPravemRedu(Long idLiga) {
+        boolean poJakosti = ligaRepozitorij.findById(idLiga)
+                .map(Liga::isEnakomernaRazvrstitev)
+                .orElse(false);
+        return poJakosti
+                ? ekipaRepozitorij.najdiZaLigoPoJakosti(idLiga)
+                : ekipaRepozitorij.najdiZaLigo(idLiga);
+    }
+
+    /* Jakostni vrstni red ekip lige. Pricakuje VSE ekipe natanko enkrat - delni
+       seznam bi tiho pustil koga brez mesta, po mestih pa tece razdelitev na
+       pare in celoten zreb (isto pravilo kot IzborStoritev.shraniVrstniRed).
+
+       Vezano na PRIPRAVO: po zrebu bi bila sprememba mest brez ucinka, ker je
+       razpored ze zapisan, in bi trdila nekaj, kar ni res. */
+    @Transactional
+    public List<EkipaDto> shraniVrstniRedEkip(Long idLiga, List<Long> idjiEkipPoVrsti) {
+        lastnistvo.preveriLigaPoId(idLiga);
+        Liga liga = ligaRepozitorij.findById(idLiga)
+                .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja."));
+        preveriVPripravi(liga);
+
+        List<Ekipa> ekipe = ekipaRepozitorij.najdiZaLigoPoJakosti(idLiga);
+        Map<Long, Ekipa> poId = new HashMap<>();
+        for (Ekipa e : ekipe) {
+            poId.put(e.getId(), e);
+        }
+
+        Set<Long> videne = new LinkedHashSet<>();
+        List<Ekipa> urejene = new ArrayList<>();
+        for (Long idEkipa : idjiEkipPoVrsti) {
+            Ekipa ekipa = poId.get(idEkipa);
+            if (ekipa == null) {
+                throw new NeveljavenVnosIzjema(
+                        "Ekipa z id " + idEkipa + " ni prijavljena v to ligo.");
+            }
+            if (!videne.add(idEkipa)) {
+                throw new NeveljavenVnosIzjema(
+                        "Ekipa z id " + idEkipa + " se v vrstnem redu pojavi veckrat.");
+            }
+            urejene.add(ekipa);
+        }
+        if (videne.size() != ekipe.size()) {
+            throw new NeveljavenVnosIzjema("Vrstni red mora vsebovati vse ekipe lige ("
+                    + ekipe.size() + "), prejetih pa je " + videne.size() + ".");
+        }
+
+        prestevilci(urejene);
+        Map<Long, Integer> velikostKadra = new HashMap<>();
+        for (Object[] r : kaderRepozitorij.steviloPoEkipah(idLiga)) {
+            velikostKadra.put(((Number) r[0]).longValue(), ((Number) r[1]).intValue());
+        }
+        return urejene.stream()
+                .map(e -> EkipaDto.iz(e, velikostKadra.getOrDefault(e.getId(), 0)))
+                .toList();
+    }
+
+    /* Mesta zapise od 1 naprej. Enolicnost mest v ligi stoji na tem, da se
+       vedno prestevilci CEL seznam - zato je shema (za razliko od zaporedne
+       stevilke ekipe) ne vsiljuje z indeksom. Kliceta jo tudi dodajanje in
+       odstranjevanje ekipe, da so mesta v ligi vedno strnjen niz 1..N. */
+    private void prestevilci(List<Ekipa> poVrsti) {
+        int mesto = 1;
+        for (Ekipa e : poVrsti) {
+            e.setStNosilca(mesto++);
+        }
+        ekipaRepozitorij.saveAll(poVrsti);
     }
 
     /* Ekipo je mogoce prijaviti na dva nacina:
@@ -343,6 +455,16 @@ public class LigaStoritev {
         }
 
         Ekipa ekipa = ekipaRepozitorij.save(new Ekipa(liga, klub, zaporedna, ime));
+        /* Nova ekipa gre na dno jakostne lestvice: kam sodi, ve samo
+           organizator, in dokler tega ne pove, je edino posteno mesto zadnje.
+           Prestevilcimo cel seznam in ne vpisemo le naslednje stevilke: lige od
+           prej mest nimajo (stolpec je iz V16) in prvi vpis jih tako uredi po
+           vrstnem redu prijave, namesto da bi nova ekipa z mestom 1 pristala
+           pred njimi. Mesta dobi tudi liga brez enakomerne razvrstitve - tam
+           nicesar ne pomenijo, zato pa je lestvica ze pripravljena, ce
+           organizator oznako prizge. */
+        ekipaRepozitorij.flush();
+        prestevilci(ekipaRepozitorij.najdiZaLigoPoJakosti(idLiga));
         // za DTO potrebujemo klub (nalozen); ponovno preberi z join fetch
         return EkipaDto.iz(ekipaRepozitorij.najdiZKlubomInLigo(ekipa.getId()).orElseThrow(), 0);
     }
@@ -353,8 +475,13 @@ public class LigaStoritev {
         Ekipa ekipa = ekipaRepozitorij.najdiZKlubomInLigo(idEkipa)
                 .orElseThrow(() -> new NiNajdenoIzjema("Ekipa z id " + idEkipa + " ne obstaja."));
         preveriVPripravi(ekipa.getLiga());
+        Long idLiga = ekipa.getLiga().getId();
         kaderRepozitorij.deleteAll(kaderRepozitorij.najdiZaEkipo(idEkipa));
         ekipaRepozitorij.delete(ekipa);
+        /* Odhod ekipe s sredine lestvice pusti vrzel; mesta so za organizatorja
+           stevilke, ki jih bere ob imenih, zato jih strnemo nazaj v 1..N. */
+        ekipaRepozitorij.flush();
+        prestevilci(ekipaRepozitorij.najdiZaLigoPoJakosti(idLiga));
     }
 
     // ---------- Kader ----------
@@ -436,14 +563,24 @@ public class LigaStoritev {
         if (srecanjeRepozitorij.existsByLigaId(idLiga)) {
             throw new DomenskaIzjema("Razpored za to ligo je ze generiran.");
         }
-        List<Ekipa> ekipe = new ArrayList<>(ekipaRepozitorij.najdiZaLigo(idLiga));
-        ekipe.sort(Comparator.comparing(Ekipa::getId));
+        /* Vrstni red ekip je vhod v zreb, zato mora biti dolocen. Pri
+           enakomerni razvrstitvi je to jakostna lestvica (indeks 0 =
+           najmocnejsa, po njej se sestavijo pari), sicer pa zgolj stabilen
+           vrstni red vpisa - da je razpored ponovljiv in ni odvisen od tega,
+           kako baza vrne vrstice. */
+        List<Ekipa> ekipe = new ArrayList<>(liga.isEnakomernaRazvrstitev()
+                ? ekipaRepozitorij.najdiZaLigoPoJakosti(idLiga)
+                : ekipaRepozitorij.najdiZaLigo(idLiga));
+        if (!liga.isEnakomernaRazvrstitev()) {
+            ekipe.sort(Comparator.comparing(Ekipa::getId));
+        }
         if (ekipe.size() < 2) {
             throw new DomenskaIzjema("Za razpored sta potrebni vsaj dve ekipi.");
         }
 
         List<Srecanje> srecanja = new ArrayList<>();
-        for (RazporedStoritev.Par par : razporedStoritev.razpored(ekipe.size(), liga.isDvokrozno())) {
+        for (RazporedStoritev.Par par : razporedStoritev.razpored(
+                ekipe.size(), liga.isDvokrozno(), liga.isEnakomernaRazvrstitev())) {
             srecanja.add(new Srecanje(liga, par.kolo(), ekipe.get(par.domaci()), ekipe.get(par.gost())));
         }
         /* Sele tu je znano, koliko kol liga ima, zato se datumi iz semena
@@ -505,6 +642,7 @@ public class LigaStoritev {
         liga.setDovoljenoNeodloceno(v.dovoljenoNeodloceno() == null || v.dovoljenoNeodloceno());
         liga.setPrepovedDvojneRegistracije(Boolean.TRUE.equals(v.prepovedDvojneRegistracije()));
         liga.setStejeVElo(v.stejeVElo() == null || v.stejeVElo());
+        liga.setEnakomernaRazvrstitev(Boolean.TRUE.equals(v.enakomernaRazvrstitev()));
         liga.setPredlogaListka(v.predlogaListka() != null ? v.predlogaListka() : PredlogaLige.SNTL_23);
         liga.setZacetekPrvegaKola(v.zacetekPrvegaKola());
         /* Razmik brez datuma prvega kola ne pomeni nicesar, datum brez razmika

@@ -22,6 +22,17 @@ public interface EkipaRepozitorij extends JpaRepository<Ekipa, Long> {
             """)
     List<Ekipa> najdiZaLigo(Long idLiga);
 
+    /* Ekipe lige po jakostnem vrstnem redu (1 = najmocnejsa). Uporablja se pri
+       ligi z enakomerno razvrstitvijo - tam seznam ni abecedni sifrant, ampak
+       jakostna lestvica, iz katere zreb sestavi pare. Ekipe brez mesta gredo na
+       konec (stare lige, ki mest nimajo), za njimi odloca vrstni red vpisa. */
+    @Query("""
+            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub k
+            WHERE e.liga.id = :idLiga
+            ORDER BY CASE WHEN e.stNosilca IS NULL THEN 1 ELSE 0 END, e.stNosilca, e.id
+            """)
+    List<Ekipa> najdiZaLigoPoJakosti(Long idLiga);
+
     @Query("SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub JOIN FETCH e.liga WHERE e.id = :id")
     Optional<Ekipa> najdiZKlubomInLigo(Long id);
 

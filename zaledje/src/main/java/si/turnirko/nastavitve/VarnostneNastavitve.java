@@ -120,6 +120,11 @@ public class VarnostneNastavitve {
                         // gost sme brati vse ostalo
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                         // --- od tu naprej samo mutacije (ne-GET) ---
+                        // izbor lig za domaco stran je urednistvo in ne
+                        // upravljanje tekmovanja: organizator sme svojo ligo,
+                        // vhodna stran zveze pa ni njegova. Pravilo mora stati
+                        // pred splosnim "/api/v1/lige/** sme tudi organizator".
+                        .requestMatchers("/api/v1/lige/*/na-domaci").hasRole("ADMIN")
                         // organizator sme ustvarjati in upravljati turnirje in lige
                         // (na ravni zapisa lastnistvo preveri LastnistvoStoritev)
                         .requestMatchers("/api/v1/turnirji/**", "/api/v1/dogodki/**",

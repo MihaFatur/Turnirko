@@ -11,29 +11,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { domovApi } from '../api/zahteve'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ogledaneLige } from './ogledaneLige'
+import { vVrsto } from './vrstaZahtev'
 
 /* Preklop ene lige; "spremljam" je stanje PRED klikom. */
 interface Preklop {
   id: number
   spremljam: boolean
-}
-
-/* Zahteve preklopa gredo ena za drugo. SQLite prenese enega pisca naenkrat -
-   dva hkratna zapisa strežnik vrne kot 500 - v oknu za izbor pa gledalec
-   odkljuka več lig v sekundi. Vrsta je modulska in ne v kavlju: okno za izbor
-   in domača stran sta oba na zaslonu in vsak svoj klic kavlja, pisec baze pa
-   je vseeno en sam.
-
-   (Vgrajeni "scope" TanStack Queryja tu ne pomaga: če se prva zahteva konča,
-   preden druga pride do svojega premora, se znak za nadaljevanje izgubi in
-   vrsta obstane.) */
-let vrsta: Promise<unknown> = Promise.resolve()
-
-function vVrsto<T>(opravilo: () => Promise<T>): Promise<T> {
-  const naVrsti = vrsta.then(opravilo, opravilo)
-  /* Napaka ene zahteve ne sme podreti vrste za naslednje. */
-  vrsta = naVrsti.catch(() => undefined)
-  return naVrsti
 }
 
 export interface SpremljanjeLig {

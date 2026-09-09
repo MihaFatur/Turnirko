@@ -404,6 +404,8 @@ export function LigaStran() {
           <EkipeUredi
             idLiga={idLiga}
             steviloEkip={l.steviloEkip}
+            enakomerna={l.enakomernaRazvrstitev}
+            dvokrozno={l.dvokrozno}
             onUrediPravila={() => nastaviObrazecOdprt(true)}
           />
         )}
@@ -617,6 +619,8 @@ export function LigaStran() {
         <EkipeUredi
           idLiga={idLiga}
           steviloEkip={l.steviloEkip}
+          enakomerna={l.enakomernaRazvrstitev}
+          dvokrozno={l.dvokrozno}
           onUrediPravila={() => nastaviObrazecOdprt(true)}
         />
       )}
@@ -1652,14 +1656,58 @@ function PravilaOkno({
 /* Ime ekipe z oznako pod njim. Oznaka se izpiše samo, kadar kaj pove:
    pri klubski ekipi z lastnim imenom klub (sicer JE ime že klub), pri prosti
    pa to, da klub nima — sicer bi bila v seznamu videti kot vsaka druga. */
-function ImeEkipe({ ekipa }: { ekipa: EkipaDto }) {
+function ImeEkipe({ ekipa, par }: { ekipa: EkipaDto; par?: string | null }) {
   const oznaka = ekipa.klub === null ? 'prosta ekipa' : ekipa.ime ? ekipa.klub : null
+  /* Par je pri enakomerni razvrstitvi glavna informacija vrstice: s to ekipo se
+     sezona konča in z njo se v vsakem krogu deli nasprotnike. Zato stoji pred
+     klubom, ki ga v tem pogledu nihče ne išče. */
+  const podnapis = [par ? `par: ${par}` : null, oznaka].filter(Boolean).join(' · ')
   return (
     <span className="liga__ekipa-ime">
       <span>{ekipa.prikazanoIme}</span>
-      {oznaka && <span className="liga__ekipa-oznaka">{oznaka}</span>}
+      {podnapis && <span className="liga__ekipa-oznaka">{podnapis}</span>}
     </span>
   )
+}
+
+/* Par ekipe na danem mestu jakostne lestvice: i-ta ekipa zgornje polovice se
+   zveže z i-to ekipo spodnje (pri 10 ekipah A-F, B-G …). Pri lihem številu
+   ekip zadnja iz zgornje polovice partnerja nima — v svojem krogu počiva. */
+function parEkipe(seznam: EkipaDto[], indeks: number): string | null {
+  const polovica = Math.ceil(seznam.length / 2)
+  const parIndeks = indeks < polovica ? indeks + polovica : indeks - polovica
+  return seznam[parIndeks]?.prikazanoIme ?? null
+}
+
+/* Koliko kol ima en krog razporeda po parih. Pri lihem številu parov (10, 6,
+   14 ekip) v vsakem krogu en par ostane brez nasprotnega para — takrat odigra
+   svoj medsebojni dvoboj in v drugem kolu počiva, zato ima liga eno kolo več
+   kot pri navadnem žrebu. Drugače ne gre: lihega števila parov ni mogoče
+   razdeliti na dvoboje parov. */
+function kolaPoParih(stEkip: number): { kol: number; koloVec: boolean } {
+  const m = stEkip % 2 === 0 ? stEkip : stEkip + 1
+  const parov = m / 2
+  const kol = parov % 2 === 0 ? 2 * (parov - 1) + 1 : 2 * parov
+  return { kol, koloVec: kol > m - 1 }
+}
+
+/* Koliko kol bo liga imela in zakaj — organizator to izve PRED žrebom, ne
+   šele iz razporeda: pri lihem številu parov je kol na krog eno več kot doslej
+   in vsaka ekipa enkrat počiva. */
+function namigOKolih(stEkip: number, dvokrozno: boolean): string {
+  const { kol, koloVec } = kolaPoParih(stEkip)
+  const skupaj = dvokrozno ? kol * 2 : kol
+  const uvod = `Pri ${stEkip} ekipah bo imela liga ${skupaj} ${kolTekst(skupaj)}`
+  const razlaga = koloVec
+    ? `${uvod} — eno na krog več kot pri navadnem žrebu, ker parov ni sodo število:`
+      + ' v vsakem krogu en par nima nasprotnega para, zato odigra medsebojno srečanje'
+      + ' in drugo kolo počiva.'
+    : `${uvod}, enako kot pri navadnem žrebu; zadnje kolo kroga so medsebojna`
+      + ' srečanja parov.'
+  return stEkip % 2 === 0
+    ? razlaga
+    : `${razlaga} Ekip je liho, zato zadnja iz zgornje polovice para nima in v`
+      + ' svojem krogu počiva.'
 }
 
 /* Pogled ekip za ligo, ki že teče: kader je takrat zaklenjen (strežnik ga v
@@ -1704,10 +1752,16 @@ function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => vo
 function EkipeUredi({
   idLiga,
   steviloEkip,
+  enakomerna,
+  dvokrozno,
   onUrediPravila,
 }: {
   idLiga: number
   steviloEkip: number
+  /* Liga z enakomerno razvrstitvijo: seznam ekip ni šifrant prijavljenih,
+     ampak jakostna lestvica, ki jo organizator uredi pred žrebom. */
+  enakomerna: boolean
+  dvokrozno: boolean
   onUrediPravila: () => void
 }) {
   const odjemalec = useQueryClient()
@@ -1719,6 +1773,19 @@ function EkipeUredi({
   const [idKlub, nastaviKlub] = useState('')
   const [ime, nastaviIme] = useState('')
   const [urejanKader, nastaviUrejanKader] = useState<EkipaDto | null>(null)
+
+  /* Strežnik pošlje ekipe že v veljavnem jakostnem vrstnem redu; tu se ureja
+     samo lokalna kopija, dokler je ne shranimo (isto kot jakostni vrstni red
+     prijavljenih na dogodku). */
+  const [vrstni, nastaviVrstni] = useState<EkipaDto[]>([])
+  const kljucStreznika = (ekipe.data ?? []).map((e) => e.id).join(',')
+
+  useEffect(() => {
+    nastaviVrstni(ekipe.data ?? [])
+    // ob spremembi seznama na strežniku (nova ekipa, odstranitev, shranjeno)
+    // se lokalna kopija zavrže
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kljucStreznika])
 
   const osveziEkipe = () => odjemalec.invalidateQueries({ queryKey: ['ekipe', idLiga] })
   const osveziLigo = () => odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
@@ -1748,11 +1815,29 @@ function EkipeUredi({
       odjemalec.invalidateQueries({ queryKey: ['lestvica', idLiga] })
     },
   })
+  const shraniVrstniRed = useMutation({
+    mutationFn: () => ligeApi.vrstniRedEkip(idLiga, vrstni.map((e) => e.id)),
+    onSuccess: osveziEkipe,
+  })
+
+  /* Pri enakomerni razvrstitvi se ureja lokalna kopija (in se šele nato
+     shrani), sicer je seznam tak, kot ga vrne strežnik. */
+  const seznam = enakomerna ? vrstni : (ekipe.data ?? [])
+  const spremenjenVrstniRed = enakomerna && seznam.map((e) => e.id).join(',') !== kljucStreznika
+  const polovica = Math.ceil(seznam.length / 2)
+
+  function premakni(indeks: number, zaKoliko: number) {
+    const cilj = indeks + zaKoliko
+    if (cilj < 0 || cilj >= vrstni.length) return
+    const novi = [...vrstni]
+    ;[novi[indeks], novi[cilj]] = [novi[cilj], novi[indeks]]
+    nastaviVrstni(novi)
+  }
 
   return (
     <div>
       <div className="naslovna-vrstica">
-        <h2>Ekipe</h2>
+        <h2>{enakomerna ? 'Ekipe po moči' : 'Ekipe'}</h2>
         <span className="sekcija__meta">{steviloEkip} od najmanj 2</span>
       </div>
 
@@ -1814,24 +1899,87 @@ function EkipeUredi({
       )}
       <SporociloNapake napaka={dodaj.error} />
 
+      {enakomerna && seznam.length > 0 && (
+        <p className="namig">
+          Ekipe razvrsti po moči — najmočnejša na vrh. Žreb zveže prvo iz zgornje
+          polovice s prvo iz spodnje, drugo z drugo in tako naprej; par nato v vsakem
+          krogu igra proti istemu nasprotnemu paru (ena ekipa proti močnejši, druga
+          proti šibkejši), sezono pa par konča z medsebojnim srečanjem.
+        </p>
+      )}
+
       {ekipe.data && ekipe.data.length === 0 && <p className="obvestilo">Ni še ekip.</p>}
-      {ekipe.data && ekipe.data.length > 0 && (
+      {seznam.length > 0 && (
         <ul className="liga__ekipe">
-          {ekipe.data.map((e) => (
-            <li key={e.id} className="liga__ekipa">
-              <ImeEkipe ekipa={e} />
-              <span className="liga__ekipa-gumbi">
-                <span className="sekcija__meta">{kaderTekst(e.steviloKadra)}</span>
-                <button className="gumb gumb--majhen" onClick={() => nastaviUrejanKader(e)}>Kader</button>
-                <button className="gumb gumb--majhen gumb--nevaren" onClick={() => odstrani.mutate(e.id)}>
-                  Odstrani
-                </button>
-              </span>
-            </li>
+          {seznam.map((e, indeks) => (
+            <Fragment key={e.id}>
+              {enakomerna && indeks === polovica && seznam.length > 2 && (
+                <li className="liga__polovica" aria-hidden="true"><span>spodnja polovica</span></li>
+              )}
+              <li className={'liga__ekipa' + (enakomerna ? ' liga__ekipa--jakost' : '')}>
+                {/* Mesto in puščici sta eno: obe krmilita vrstni red, zato
+                    stojita skupaj na levi in ne med dejanji ekipe — pri 375 px
+                    se pet gumbov v eno vrsto ne zloži. */}
+                {enakomerna && (
+                  <span className="liga__mesto">
+                    <span className="liga__mesto-st">{indeks + 1}.</span>
+                    <button
+                      className="gumb gumb--majhen"
+                      disabled={indeks === 0}
+                      title="Premakni navzgor"
+                      aria-label={`Premakni ${e.prikazanoIme} navzgor`}
+                      onClick={() => premakni(indeks, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      className="gumb gumb--majhen"
+                      disabled={indeks === seznam.length - 1}
+                      title="Premakni navzdol"
+                      aria-label={`Premakni ${e.prikazanoIme} navzdol`}
+                      onClick={() => premakni(indeks, 1)}
+                    >
+                      ↓
+                    </button>
+                  </span>
+                )}
+                <ImeEkipe ekipa={e} par={enakomerna ? parEkipe(seznam, indeks) : null} />
+                <span className="liga__ekipa-gumbi">
+                  <span className="sekcija__meta">{kaderTekst(e.steviloKadra)}</span>
+                  <button className="gumb gumb--majhen" onClick={() => nastaviUrejanKader(e)}>Kader</button>
+                  <button className="gumb gumb--majhen gumb--nevaren" onClick={() => odstrani.mutate(e.id)}>
+                    Odstrani
+                  </button>
+                </span>
+              </li>
+            </Fragment>
           ))}
         </ul>
       )}
       <SporociloNapake napaka={odstrani.error} />
+
+      {enakomerna && seznam.length > 1 && (
+        <>
+          <SporociloNapake napaka={shraniVrstniRed.error} />
+          <div className="obrazec__gumbi">
+            <button
+              className="gumb"
+              disabled={!spremenjenVrstniRed}
+              onClick={() => nastaviVrstni(ekipe.data ?? [])}
+            >
+              Razveljavi
+            </button>
+            <button
+              className="gumb gumb--glavni"
+              disabled={!spremenjenVrstniRed || shraniVrstniRed.isPending}
+              onClick={() => shraniVrstniRed.mutate()}
+            >
+              Shrani vrstni red
+            </button>
+          </div>
+          <p className="namig">{namigOKolih(seznam.length, dvokrozno)}</p>
+        </>
+      )}
 
       <div className="liga__priprava-dejanja">
         <button

@@ -2066,6 +2066,18 @@ input[type='radio'] {
   background: var(--barva-vrstica-hover);
 }
 
+/* Izbor lig za domaco stran je omejen na dve: ko sta polni, so neoznacene
+   vrstice nedejavne. Zakaj so take, pove noga okna ("najprej odstrani eno") -
+   sama zbledelost bi bila uganka. */
+.izbor-lig__vrstica:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.izbor-lig__vrstica:disabled:hover {
+  background: none;
+}
+
 /* Izbrana liga dobi 3 px zeleno crto ob levem robu - isti jezik kot oznacena
    vrstica lestvice, le da je tam modra (jaz) in tu zelena (spremljam). */
 .izbor-lig__vrstica--izbrana {
@@ -6704,6 +6716,46 @@ a.domov__lestvica-vrstica--jaz {
   gap: 4px;
 }
 
+/* --- Jakostna lestvica ekip (enakomerna razvrstitev) --- */
+
+/* Vrstica ne razpira imena na sredino: mesto in ime sta skupaj levo, dejanja
+   ostanejo desno (ime raste in jih potisne). */
+.liga__ekipa--jakost {
+  justify-content: flex-start;
+}
+
+.liga__ekipa--jakost .liga__ekipa-ime {
+  flex: 1 1 auto;
+}
+
+/* Mesto na lestvici in puscici za premik: eno krmilo vrstnega reda. */
+.liga__mesto {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.liga__mesto-st {
+  min-width: 28px;
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* Meja med polovicama: pove, kje se zgornja polovica konca in s katero ekipo
+   se torej zveze prva spodnja. Crnilo in ne rjasta - to ni napaka ne izguba. */
+.liga__polovica {
+  display: flex;
+  align-items: center;
+  padding: 12px 0 4px;
+  border-bottom: 1px dashed var(--barva-crnilo-3);
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
 .liga__rating {
   color: var(--barva-crnilo-3);
   font-family: var(--pisava-mono);
@@ -10285,5 +10337,11 @@ a.domov__lestvica-vrstica--jaz {
   .liga__ekipa-gumbi {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  /* Pri jakostni lestvici ostanejo mesto in puscici v prvi vrsti ob imenu
+     (skupaj so ozji od 140 px), dejanja ekipe pa gredo pod njo kot sicer. */
+  .liga__ekipa--jakost .liga__ekipa-ime {
+    flex: 1 1 140px;
   }
 }

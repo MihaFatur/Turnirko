@@ -31,6 +31,18 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
             """)
     Optional<Liga> najdiZVisjo(Long id);
 
+    /* Lige, ki jih je admin postavil na domaco stran. Vrstni red je vrstni red
+       vpisa (id navzgor), da se par ob vsakem obisku izpise enako. */
+    @Query("""
+            SELECT l FROM Liga l
+            LEFT JOIN FETCH l.visjaLiga
+            LEFT JOIN FETCH l.klubLastnik
+            LEFT JOIN FETCH l.ustvaril
+            WHERE l.naDomaci = TRUE
+            ORDER BY l.id
+            """)
+    List<Liga> najdiNaDomaci();
+
     /* Lige, ki kazejo na dano ligo kot na svojo visjo - torej nivo pod njo.
        Bere jih urejanje prehodov, ko usklajuje izbor nizjih lig. */
     @Query("SELECT l FROM Liga l WHERE l.visjaLiga.id = :idVisja ORDER BY l.ime")

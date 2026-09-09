@@ -28,10 +28,15 @@ public class DomovKontroler {
         this.domovStoritev = domovStoritev;
     }
 
-    /* Povzetki lig; brez parametra vrne lige, ki so v teku. */
+    /* Povzetki lig za domaco stran. Parametra sta LOCENA, ker nista enako
+       tehtna: "idji" je izbor racuna in prevlada, "ogledane" pa spomin
+       gostovega brskalnika, ki obvelja sele, ce admin domace strani ni uredil
+       (glej DomovStoritev.povzetkiLig). Brez obojega vrne adminov izbor oz.
+       lige v teku. */
     @GetMapping("/lige")
-    public List<DomovLigaDto> lige(@RequestParam(required = false) List<Long> idji) {
-        return domovStoritev.povzetkiLig(idji);
+    public List<DomovLigaDto> lige(@RequestParam(required = false) List<Long> idji,
+                                   @RequestParam(required = false) List<Long> ogledane) {
+        return domovStoritev.povzetkiLig(idji, ogledane);
     }
 
     @GetMapping("/moje-lige")

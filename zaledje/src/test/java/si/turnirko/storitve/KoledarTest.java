@@ -146,7 +146,7 @@ class KoledarTest extends IntegracijskiTest {
        sedem dni. Ekipe dobijo kader, ker ga razpored zahteva. */
     private Long pripraviLigo(int steviloEkip) {
         LigaVnos vnos = new LigaVnos("Test liga", "2026/27", SpolKategorija.MOSKI,
-                FormatSrecanja.SNTL, 5, null, false, 2, 1, 0, true, false, true, null,
+                FormatSrecanja.SNTL, 5, null, false, 2, 1, 0, true, false, true, false, null,
                 PRVO_KOLO.atTime(18, 0), 7);
         Long idLige = ligaStoritev.ustvari(vnos).id();
 

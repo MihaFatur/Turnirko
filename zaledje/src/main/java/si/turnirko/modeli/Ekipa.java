@@ -43,6 +43,15 @@ public class Ekipa {
     @Column(name = "ime")
     private String ime;
 
+    /* Mesto na jakostni lestvici lige (1 = najmocnejsa ekipa); null = ni
+       doloceno. Pomen je isti kot pri Prijava.stNosilca, le da gre za ekipo.
+       Uporabi ga zreb lige z ENAKOMERNO RAZVRSTITVIJO: po njem se ekipe
+       zvezejo v pare (zgornja polovica s spodnjo) in razvrstijo v kola.
+       Pri ligi brez te oznake je mesto zgolj vrstni red vpisa in na razpored
+       ne vpliva. */
+    @Column(name = "st_nosilca")
+    private Integer stNosilca;
+
     @Version
     @Column(name = "verzija", nullable = false)
     private long verzija;
@@ -68,6 +77,9 @@ public class Ekipa {
 
     public String getIme() { return ime; }
     public void setIme(String ime) { this.ime = ime; }
+
+    public Integer getStNosilca() { return stNosilca; }
+    public void setStNosilca(Integer stNosilca) { this.stNosilca = stNosilca; }
 
     /* Ali je ekipa prosta - brez zapisa v registru klubov. */
     public boolean jeProsta() { return klub == null; }

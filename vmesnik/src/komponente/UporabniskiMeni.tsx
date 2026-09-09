@@ -102,9 +102,6 @@ export function UporabniskiMeni() {
             </>
           ) : (
             <>
-              <p className="uporabnik-meni__namig">
-                Ogleduješ kot gost — vsa vsebina je vidna brez prijave.
-              </p>
               <button
                 type="button"
                 role="menuitem"

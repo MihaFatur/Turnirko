@@ -161,10 +161,11 @@ class DomacaStranTest extends IntegracijskiTest {
         assertThrows(PrepovedanoIzjema.class, () -> domovStoritev.spremljaj(1L));
     }
 
-    /* Brez izbranih lig sklop pokaze lige, ki so v teku - gost izbora nima. */
+    /* Brez izbranih lig - in dokler admin domace strani ni uredil - sklop
+       pokaze lige, ki so v teku. Adminov izbor je v LigeNaDomaciTest. */
     @Test
     void brezIzbranihLigPokazeLigeVTeku() {
-        assertFalse(domovStoritev.povzetkiLig(List.of()).stream()
+        assertFalse(domovStoritev.povzetkiLig(List.of(), List.of()).stream()
                         .anyMatch(l -> l.status() != si.turnirko.modeli.StatusTekmovanja.V_TEKU),
                 "privzeti izbor so lige v teku");
     }

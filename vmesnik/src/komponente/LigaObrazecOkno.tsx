@@ -55,6 +55,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const [dovoljenoNeodloceno, nastaviDovoljenoNeodloceno] = useState(liga?.dovoljenoNeodloceno ?? true)
   const [prepoved, nastaviPrepoved] = useState(liga?.prepovedDvojneRegistracije ?? false)
   const [stejeVElo, nastaviStejeVElo] = useState(liga?.stejeVElo ?? true)
+  const [enakomerna, nastaviEnakomerno] = useState(liga?.enakomernaRazvrstitev ?? false)
   const [predloga, nastaviPredlogo] = useState<PredlogaLige>(liga?.predlogaListka ?? 'SNTL_23')
   /* Termini so seme, ne seznam datumov: ekip (in s tem števila kol) ob
      ustvarjanju še ni. Datume vsem kolom izračuna žreb, ročno popravljanje po
@@ -101,6 +102,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       dovoljenoNeodloceno,
       prepovedDvojneRegistracije: prepoved,
       stejeVElo,
+      enakomernaRazvrstitev: enakomerna,
       predlogaListka: predloga,
       /* Brez datuma prvega kola terminov ni; ura je neobvezna (00:00 pomeni
          »ura ni določena« in se v razporedu ne izpiše). */
@@ -246,6 +248,16 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           <input type="checkbox" checked={stejeVElo} onChange={(d) => nastaviStejeVElo(d.target.checked)} />
           <span>Posamične tekme štejejo v klubski ELO</span>
         </label>
+        <label className="obrazec__polje obrazec__polje--stikalo">
+          <input type="checkbox" checked={enakomerna}
+            onChange={(d) => nastaviEnakomerno(d.target.checked)} />
+          <span>Enakomerna razvrstitev ekip (žreb po parih)</span>
+        </label>
+        <p className="namig">
+          {enakomerna
+            ? 'Ekipe pred žrebom razvrstiš po moči (na strani lige, pod »Ekipe«). Žreb jih zveže v pare — prva zgornje polovice s prvo spodnje in tako naprej — vsak par pa v vsakem krogu igra proti istemu nasprotnemu paru: ena ekipa proti močnejši, druga proti šibkejši. Sezona se za vsak par konča z njunim medsebojnim srečanjem.'
+            : 'Brez tega se žreb ne ozira na moč ekip: ena lahko v prvih kolih dobi same favorite, druga same tekmece z dna lestvice.'}
+        </p>
 
         <label className="obrazec__polje">
           <span>Predloga zapisnika (za natis listkov)</span>

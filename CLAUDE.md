@@ -88,6 +88,38 @@
   celotno srečanje iz razporeda, lestvic in profilov (`EkipaRepozitorij`,
   `SrecanjeRepozitorij`, `TekmaSrecanjaRepozitorij`); regresija je
   `ProstaEkipaTest`.
+- **Enakomerna razvrstitev je žreb po PARIH, ne premešan krožni sistem** (V16).
+  `liga.enakomerna_razvrstitev` prižge dvoje: ekipe dobijo jakostni vrstni red
+  (`ekipa.st_nosilca`, isti pojem kot `prijava.st_nosilca`) in žreb teče po
+  `RazporedStoritev.enokroznoPoParih` namesto po navadni circle metodi.
+  - **Par je i-ta ekipa zgornje polovice z i-to ekipo spodnje** (pri 10 ekipah
+    A-F, B-G, C-H, D-I, E-J). Par nastopa kot celota: v enem **krogu** odigra
+    oba dvoboja proti istemu nasprotnemu paru, zato vsaka ekipa v krogu dobi
+    enega nasprotnika iz zgornje in enega iz spodnje polovice; sezona se za par
+    konča z njunim medsebojnim srečanjem.
+  - **Krog parov = DVE koli**, ker je kolo en igralni dan in ekipa v njem
+    odigra eno srečanje: prvo kolo zgornja-zgornja in spodnja-spodnja, drugo
+    navzkrižno. **Gostitelj je posamezna ekipa in ne par** — prvo kolo doma pri
+    prvem paru, drugo pri drugem; sicer bi ena ekipa gostila vse štiri dvoboje
+    kroga in bi se domače pravice čez sezono razšle (regresija:
+    `poParihDomacaSrecanjaSoRazdeljena`).
+  - **Pri lihem številu parov (10, 6, 14 ekip) ima liga eno kolo več in vsaka
+    ekipa eno prosto kolo.** To ni izbira, ampak nujnost: lihega števila parov
+    ni mogoče razdeliti na dvoboje parov, zato par, ki v krogu ostane brez
+    nasprotnega para, odigra svoj medsebojni dvoboj in drugo kolo počiva. Pri
+    sodem številu parov (8, 12, 16) nihče ne ostane brez nasprotnika, zato so
+    medsebojni dvoboji parov **sklepno kolo** in kol je toliko kot doslej.
+  - **Vrstni red se ureja kot celota** (`PUT /lige/{id}/vrstni-red`,
+    `shraniVrstniRedEkip`) in mora našteti vse ekipe natanko enkrat — isto
+    pravilo kot `IzborStoritev.shraniVrstniRed`. Zato enoličnosti
+    `(id_liga, st_nosilca)` **ne** vsiljuje indeks: mesta se prepišejo vsem
+    naenkrat in vmesna stanja bi ob preverjanju po vrsticah trčila. Varuje jo
+    `prestevilci`, ki mesta vedno zapiše od 1 naprej (tudi ob dodajanju in
+    odstranjevanju ekipe).
+  - Mesto dobi **vsaka** nova ekipa, tudi v ligi brez oznake — tam ne pomeni
+    nič, zato pa je lestvica pripravljena, če organizator oznako prižge.
+    `LigaStoritev.ekipe` zato vrne ekipe **po jakosti** samo pri ligi z oznako,
+    sicer po abecedi (`najdiZaLigoPoJakosti` proti `najdiZaLigo`).
 - **Termini kol so seme + ročni popravki, ne seznam datumov v pravilih.**
   Liga nosi `zacetek_prvega_kola` in `razmik_dni` (V10) — vpišeta se že ob
   ustvarjanju, ko ekip (in s tem števila kol) še ni. Datume vsem srečanjem
@@ -307,6 +339,31 @@
   premora, se znak za nadaljevanje izgubi in vrsta obstane. Iz istega razloga
   `onMutate` **ne sme biti async** — predpomnilnik mora dobiti novo vrednost že
   v odzivu na klik, ker iz njega naslednji klik prebere trenutno stanje.
+  Vrsta živi v `pomozno/vrstaZahtev.ts` in je **ena za vse** takšne preklope
+  (spremljane lige, lige na domači strani): pisec baze je en sam, zato bi dve
+  vrsti pomenili nič.
+- **Lige na domači strani so uredniška odločitev, ne osebna nastavitev** (V17,
+  `liga.na_domaci`). Admin postavi **največ dve** ligi
+  (`LigaStoritev.LIG_NA_DOMACI`), ki ju vidijo gostje in vsi, ki si izbora niso
+  sestavili sami — prej je o vhodni strani odločal vrstni red id-jev. Pojma ne
+  združuj s spremljanimi ligami: tam gre za račun, tu za izložbo zveze.
+  - Zastavica **ni pravilo tekmovanja**, zato je kot prehodi in termini kol
+    zunaj `LigaStoritev.uredi` (ta se ob žrebu zaklene, ligo na domači strani
+    pa je treba zamenjati prav takrat, ko teče): `PUT`/`DELETE
+    /lige/{id}/na-domaci`. Lastništva **ne** preverja — organizator sme svojo
+    ligo, domača stran pa ni njegova; koncno tocko varnostna veriga omeji na
+    `ADMIN` in to pravilo mora stati **pred** splošnim »lige sme tudi
+    organizator«.
+  - Mejo dveh varuje storitev in ne shema (pogoj čez več vrstic bi v SQLite
+    terjal prožilec), sporočilo pa **našteje ligi, ki sta na poti** — drugače
+    admin ugiba, kaj naj odkljuka. Okno tretje kljukice sploh ne ponudi.
+  - **Vrstni red odločanja v `DomovStoritev.povzetkiLig(idji, ogledane)` je
+    vrstni red namernosti:** izbor računa → adminov izbor → gostove zadnje
+    ogledane lige → lige v teku. Parametra sta zato **ločena** in ne en seznam:
+    ogled ni izbira in ena odprta liga izpred tedna ne sme povoziti tega, kar
+    je zveza postavila na vhodno stran.
+  - Naslov sklopa je »Moje lige« **samo**, kadar sklop res kaže lasten izbor;
+    sicer »Lige«. Naslov, ki bi adminovima ligama rekel »moje«, bi lagal.
 - **Razpored pri neodigranem kolu izpiše termin, ne besede »razpored«.**
   Merilo je `metaKola` v `LigaStran`: odigrano kolo dobi datum in oznako
   »odigrano«, kolo, ki šele pride, pa termin (`oblikujTermin` → »ned, 4. okt ·

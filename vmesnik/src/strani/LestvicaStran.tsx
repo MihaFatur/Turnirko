@@ -141,6 +141,12 @@ export function LestvicaStran() {
     [lestvica.data],
   )
 
+  /* Ali gledalec gleda izsek ali celo lestvico. Od tega je odvisen števec ob
+     naslovu: dokler ni zoženo, je "Prikazanih 1703 od 1703" prazna poved in
+     namesto nje pove obseg lestvice (igralci, klubi). Merilo je isto na obeh
+     širinah. */
+  const zozeno = filtri.steviloIzbranih > 0 || iskanje.trim() !== ''
+
   const krmila = (
     <KrmilaSeznama
       stanje={filtri}
@@ -197,7 +203,6 @@ export function LestvicaStran() {
       nastaviIskanje('')
       nastaviIskanjeOdprto(false)
     }
-    const zozeno = filtri.steviloIzbranih > 0 || iskanje.trim() !== ''
 
     return (
       <section className="stran-mobi--lestvica">
@@ -280,37 +285,31 @@ export function LestvicaStran() {
   return (
     <section>
       {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija.
-          Levi stolpec ostane prazen, da iskalnik in števci obdržijo svojih
-          380 px na desni. */}
-      <div className="stran-glava stran-glava--dno">
-        <div />
-        <div>
-          <label className="obrazec__polje">
-            <span>Išči</span>
-            <input
-              className="iskalnik"
-              placeholder="Išči po imenu ali klubu …"
-              value={iskanje}
-              onChange={(d) => nastaviIskanje(d.target.value)}
-            />
-          </label>
-          {lestvica.data && (
-            <div className="stevci">
-              <span className="stevci__postavka">{vseh} {sklonIgralcev(vseh)}</span>
-              <span className="stevci__postavka">{klubov} {sklonKlubov(klubov)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
+          Iskanje in števci tudi ne stojijo več v svojem pasu nad seznamom:
+          zavzeli so 380 px stolpca in prvo vrstico razvrstitve potisnili
+          nizko, čeprav sta oba krmilo TE tabele. Zdaj sta v njeni naslovni
+          vrstici — iskalnik in ob njem števec, isti par kot v seznamu prijav
+          (DogodekStran). */}
       <div>
         <div className="naslovna-vrstica">
           <h2>Razvrstitev</h2>
-          {lestvica.data && (
-            <span className="sekcija__meta">
-              Prikazanih {prikazani.length} od {vseh}
-            </span>
-          )}
+          <div className="naslovna-vrstica__desno">
+            <input
+              className="iskalnik iskalnik--kratek"
+              type="search"
+              value={iskanje}
+              onChange={(d) => nastaviIskanje(d.target.value)}
+              placeholder="išči po imenu ali klubu"
+              aria-label="Išči po imenu ali klubu"
+            />
+            {lestvica.data && (
+              <span className="sekcija__meta">
+                {zozeno
+                  ? `Prikazanih ${prikazani.length} od ${vseh}`
+                  : `${vseh} ${sklonIgralcev(vseh)} · ${klubov} ${sklonKlubov(klubov)}`}
+              </span>
+            )}
+          </div>
         </div>
 
         {vseh > 0 && krmila}

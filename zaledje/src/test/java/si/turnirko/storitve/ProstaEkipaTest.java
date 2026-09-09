@@ -128,7 +128,7 @@ class ProstaEkipaTest extends IntegracijskiTest {
 
     private Long ustvariLigo() {
         LigaVnos v = new LigaVnos("Rekreacijska liga", "2025/26", SpolKategorija.MESANO,
-                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, true, null,
+                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, true, false, null,
                 null, null);
         return ligaStoritev.ustvari(v).id();
     }

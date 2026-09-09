@@ -74,6 +74,15 @@ public class Liga {
     @Column(name = "steje_v_elo", nullable = false)
     private boolean stejeVElo = true;
 
+    /* Enakomerna razvrstitev ekip: ekipe dobijo jakostni vrstni red
+       (Ekipa.stNosilca), zreb pa jih po njem zveze v pare - i-ta ekipa
+       zgornje polovice z i-to ekipo spodnje. Par nastopa kot celota: v
+       vsakem krogu odigra oba dvoboja proti istemu nasprotnemu paru, zato
+       vsaka ekipa v krogu dobi enega nasprotnika iz zgornje in enega iz
+       spodnje polovice (glej RazporedStoritev). */
+    @Column(name = "enakomerna_razvrstitev", nullable = false)
+    private boolean enakomernaRazvrstitev = false;
+
     /* Predloga uradnega ekipnega zapisnika za natis (1. SNTL oz. 2./3. SNTL). */
     @Enumerated(EnumType.STRING)
     @Column(name = "predloga_listka", nullable = false)
@@ -104,6 +113,12 @@ public class Liga {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private StatusTekmovanja status = StatusTekmovanja.PRIPRAVA;
+
+    /* Ali liga stoji v sklopu "Lige" na domaci strani. Urednistvo in ne
+       pravilo tekmovanja (glej V17): ureja jo samo admin in samo prek
+       LigaStoritev.nastaviNaDomaci, ki pazi na mejo dveh lig. */
+    @Column(name = "na_domaci", nullable = false)
+    private boolean naDomaci = false;
 
     /* Lastnistvo: racun, ki je ligo ustvaril, in posnetek njegovega kluba ob
        nastanku. Po njiju storitve razsodijo, kdo sme urejati - organizator sme
@@ -169,6 +184,9 @@ public class Liga {
     public boolean isStejeVElo() { return stejeVElo; }
     public void setStejeVElo(boolean stejeVElo) { this.stejeVElo = stejeVElo; }
 
+    public boolean isEnakomernaRazvrstitev() { return enakomernaRazvrstitev; }
+    public void setEnakomernaRazvrstitev(boolean v) { this.enakomernaRazvrstitev = v; }
+
     public PredlogaLige getPredlogaListka() { return predlogaListka; }
     public void setPredlogaListka(PredlogaLige predlogaListka) { this.predlogaListka = predlogaListka; }
 
@@ -189,6 +207,9 @@ public class Liga {
 
     public StatusTekmovanja getStatus() { return status; }
     public void setStatus(StatusTekmovanja status) { this.status = status; }
+
+    public boolean isNaDomaci() { return naDomaci; }
+    public void setNaDomaci(boolean naDomaci) { this.naDomaci = naDomaci; }
 
     public Uporabnik getUstvaril() { return ustvaril; }
     public void setUstvaril(Uporabnik ustvaril) { this.ustvaril = ustvaril; }

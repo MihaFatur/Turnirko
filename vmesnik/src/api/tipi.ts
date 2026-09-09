@@ -744,6 +744,9 @@ export interface LigaDto {
   dovoljenoNeodloceno: boolean
   prepovedDvojneRegistracije: boolean
   stejeVElo: boolean
+  /* Žreb po parih: ekipe imajo jakostni vrstni red (EkipaDto.stNosilca) in
+     razpored jih zveže v pare — zgornja polovica s spodnjo. */
+  enakomernaRazvrstitev: boolean
   predlogaListka: PredlogaLige
   /* Seme terminov: kdaj se igra prvo kolo (ISO datum-čas; ura velja za celo
      kolo, 00:00 = ura ni določena) in na koliko dni sledijo naslednja. Iz njiju
@@ -761,6 +764,9 @@ export interface LigaDto {
      iz tega izpiše »7. od 18 kol« in palico; brez razporeda sta oba 0. */
   odigranihKol: number
   steviloKol: number
+  /* Ali liga stoji v sklopu »Lige« na domači strani (največ dve, izbere
+     admin). Javno polje: po njem vmesnik ligo označi v izboru. */
+  naDomaci: boolean
   /* Lastnistvo (glej TurnirDto). */
   idLastnik: number | null
   idKlubLastnik: number | null
@@ -781,6 +787,7 @@ export interface LigaVnos {
   dovoljenoNeodloceno: boolean
   prepovedDvojneRegistracije: boolean
   stejeVElo: boolean
+  enakomernaRazvrstitev: boolean
   predlogaListka: PredlogaLige
   /* Termini se vpišejo že ob ustvarjanju lige, ko ekip (in s tem števila kol)
      še ni — zato seme in ne seznam datumov. null = terminov ni. */
@@ -815,7 +822,17 @@ export interface EkipaDto {
   zaporedna: number
   ime: string | null
   prikazanoIme: string
+  /* Mesto na jakostni lestvici lige (1 = najmočnejša). Pove kaj samo pri ligi
+     z enakomerno razvrstitvijo, sicer je zgolj vrstni red vpisa. */
+  stNosilca: number | null
   steviloKadra: number
+}
+
+/* Jakostni vrstni red ekip lige (enakomerna razvrstitev). Ločeno od EkipaVnos,
+   ker se vrstni red ne ureja po eni ekipi, ampak kot celota — seznam mora
+   našteti VSE ekipe lige natanko enkrat. */
+export interface VrstniRedEkipVnos {
+  idjiEkip: number[]
 }
 
 /* idKlub = null pomeni prosto ekipo; takrat je ime obvezno. */

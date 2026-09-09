@@ -32,6 +32,9 @@ public record LigaVnos(
         Boolean dovoljenoNeodloceno,
         Boolean prepovedDvojneRegistracije,
         Boolean stejeVElo,
+        // ekipe imajo jakostni vrstni red in zreb jih razdeli v pare
+        // (zgornja polovica s spodnjo); null = privzeto izklopljeno
+        Boolean enakomernaRazvrstitev,
         // predloga uradnega ekipnega zapisnika; null = privzeto (SNTL_23)
         PredlogaLige predlogaListka,
         // seme terminov: kdaj se igra prvo kolo (ura velja za celo kolo,

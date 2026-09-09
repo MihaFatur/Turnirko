@@ -108,12 +108,6 @@ function PrijavaObrazec({ onZapri }: { onZapri: () => void }) {
       <button type="submit" className="gumb gumb--glavni" disabled={poteka}>
         {poteka ? 'Prijavljam …' : 'Prijava'}
       </button>
-
-      <p className="namig">
-        Brez prijave si lahko ogledaš vse turnirje, lige, lestvice in rezultate.
-        Igralci se prijavijo z e-pošto in vidijo svoj profil s statistiko,
-        administrator ureja tekmovanja.
-      </p>
     </form>
   )
 }
