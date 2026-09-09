@@ -82,14 +82,19 @@ public class IzborStoritev {
                 .thenComparing(Comparator.comparingInt(
                         (Prijava p) -> ratingi.getOrDefault(p.getIgralec().getId(), 0)).reversed())
                 // 4. abecedno, da je vrstni red vedno enolicen in ponovljiv
-                .thenComparing(p -> p.getIgralec().polnoIme()));
+                .thenComparing(p -> p.getIgralec().abecedno()));
         return urejene;
     }
 
     /* Trenutni klubski ELO prijavljenih igralcev (manjka = igralec se nima
-       nobene obracunane tekme). */
+       nobene obracunane tekme). Pri dvojicah zajame OBA clana para - vmesnik
+       ju v vrstici prijave izpise oba. */
     public Map<Long, Integer> ratingi(List<Prijava> prijave) {
-        List<Long> idjiIgralcev = prijave.stream().map(p -> p.getIgralec().getId()).toList();
+        List<Long> idjiIgralcev = prijave.stream()
+                .flatMap(p -> p.igralci().stream())
+                .map(si.turnirko.modeli.Igralec::getId)
+                .distinct()
+                .toList();
         if (idjiIgralcev.isEmpty()) {
             return Map.of();
         }

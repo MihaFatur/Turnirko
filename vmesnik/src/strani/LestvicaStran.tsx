@@ -279,17 +279,11 @@ export function LestvicaStran() {
 
   return (
     <section>
+      {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija.
+          Levi stolpec ostane prazen, da iskalnik in števci obdržijo svojih
+          380 px na desni. */}
       <div className="stran-glava stran-glava--dno">
-        <div>
-          <h1 className="naslov-strani">
-            <span className="naslov-strani__nad">Klubski ELO</span>
-            <span className="naslov-strani__glavni">Lestvica</span>
-          </h1>
-          <p className="uvod">
-            Razmerje zmag in porazov prek vseh turnirjev in ligaških srečanj. Rating se
-            preračuna po vsaki obračunani tekmi.
-          </p>
-        </div>
+        <div />
         <div>
           <label className="obrazec__polje">
             <span>Išči</span>
@@ -345,7 +339,9 @@ export function LestvicaStran() {
                     <th scope="col" className="lestvica__gibanje">Gib.</th>
                     <th scope="col">Igralec</th>
                     <th scope="col">Klub</th>
-                    <th scope="col" className="lestvica__stevilka">Z – P</th>
+                    <th scope="col" className="lestvica__stevilka lestvica__izid-glava">
+                      Z – P
+                    </th>
                     <th scope="col" className="lestvica__rating">Rating</th>
                     <th scope="col" className="lestvica__delta">Δ 30 dni</th>
                   </tr>
@@ -379,10 +375,17 @@ export function LestvicaStran() {
                           </Link>
                         </td>
                         <td className="lestvica__klub">{igralec.klub ?? '—'}</td>
+                        {/* Zmage in porazi nista dve številki eno za drugo,
+                            ampak stolpca ob ločilu: pomišljaj stoji na isti
+                            navpičnici v vseh vrsticah, sicer se "12 – 3" in
+                            "9 – 11" zamakneta in stolpca ni več mogoče brati
+                            navzdol. */}
                         <td className="lestvica__stevilka">
-                          <span className="lestvica__zmage">{igralec.zmage}</span>
-                          <span className="lestvica__locilo"> – </span>
-                          <span className="lestvica__porazi">{igralec.porazi}</span>
+                          <span className="lestvica__izid">
+                            <span className="lestvica__zmage">{igralec.zmage}</span>
+                            <span className="lestvica__locilo">–</span>
+                            <span className="lestvica__porazi">{igralec.porazi}</span>
+                          </span>
                         </td>
                         <td className="lestvica__rating">{igralec.rating ?? '—'}</td>
                         <td className={`lestvica__delta lestvica__delta--${delta.smer}`}>

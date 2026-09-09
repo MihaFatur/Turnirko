@@ -6,8 +6,6 @@ package si.turnirko.dto;
 
 import java.util.List;
 
-import jakarta.validation.constraints.NotNull;
-
 import si.turnirko.modeli.IzidTekme;
 
 public record VnosRezultata(
@@ -15,12 +13,5 @@ public record VnosRezultata(
         Integer dobljeniNizi1,
         Integer dobljeniNizi2,
         Integer zmagovalecStran, // 1 ali 2 - obvezno za posebne izide
-        List<NizVnos> nizi       // tocke po nizih (neobvezno za klubske turnirje)
-) {
-
-    /* Tocke enega niza, npr. 11:7. */
-    public record NizVnos(
-            @NotNull Integer tocke1,
-            @NotNull Integer tocke2
-    ) {}
-}
+        List<NizVnos> nizi       // tocke po nizih (neobvezne za klubske turnirje)
+) {}

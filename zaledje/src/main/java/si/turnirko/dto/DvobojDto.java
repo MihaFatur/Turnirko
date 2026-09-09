@@ -18,9 +18,9 @@ public record DvobojDto(
         List<Tekma> tekme
 ) {
 
-    /* Osnovni podatki igralca v dvoboju. Ime in priimek sta locena, ker se
-       velik naslov strani semaforja bere "Nejc Vrhovnik", izbirnik pod njim
-       pa abecedno "Vrhovnik Nejc". */
+    /* Osnovni podatki igralca v dvoboju. Izpis je povsod "Nejc Vrhovnik";
+       ime in priimek sta locena zato, ker izbirnik pod semaforjem tece
+       abecedno po priimku, izpisuje pa isti vrstni red kot naslov. */
     public record Igralec(
             Long id,
             String ime,

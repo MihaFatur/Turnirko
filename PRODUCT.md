@@ -101,7 +101,9 @@ Izrecno neodločeno / še ne obstaja (ne razglašaj za obstoječe):
 - uradne jakostne točke NTZS (PST čl. 30) — implementiran je samo klubski ELO;
 - gostovanje: danes SQLite in lokalni zagon; Postgres in večklubska raba sta
   načrtovana, ne izvedena;
-- dvojice in ekipna tekmovanja onkraj že podprtih lig SNTL;
+- dvojice v krožnem in skupinskem sistemu — turnirske dvojice obstajajo, a
+  igrajo izključno izločilno mrežo (par je ena prijava, v ELO ne šteje);
+- ekipna tekmovanja onkraj že podprtih lig SNTL;
 - mize, urniki, prijavni roki in prijavnine;
 - uvoz jakostne lestvice NTZS (.xlsx) in uradni izvozi rezultatov.
 

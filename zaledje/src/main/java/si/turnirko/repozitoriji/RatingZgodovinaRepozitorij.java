@@ -97,4 +97,27 @@ public interface RatingZgodovinaRepozitorij extends JpaRepository<RatingZgodovin
             """)
     List<Object[]> spremembeZaTekme(@Param("idjiTekem") Collection<Long> idjiTekem,
                                     @Param("sistem") String sistem);
+
+    /* Iste vrstice za CEL turnir oz. CELO ligo - za zavihek statistike
+       tekmovanja. Po tekmovanju in ne po seznamu id-jev tekem: velik turnir
+       ima nekaj sto tekem, sqlite pa ima omejitev stevila vezanih parametrov.
+       Vrstni red je vrstni red obracuna, zato je zadnja vrstica igralca hkrati
+       njegov rating ob koncu tekmovanja. */
+    @Query("""
+            SELECT z.tekma.id, z.igralec.id, z.sprememba, z.novaVrednost
+            FROM RatingZgodovina z
+            WHERE z.tekma.dogodek.turnir.id = :idTurnir AND z.sistem = :sistem
+            ORDER BY z.ustvarjenOb, z.id
+            """)
+    List<Object[]> spremembeZaTurnir(@Param("idTurnir") Long idTurnir,
+                                     @Param("sistem") String sistem);
+
+    @Query("""
+            SELECT z.tekmaSrecanja.id, z.igralec.id, z.sprememba, z.novaVrednost
+            FROM RatingZgodovina z
+            WHERE z.tekmaSrecanja.srecanje.liga.id = :idLiga AND z.sistem = :sistem
+            ORDER BY z.ustvarjenOb, z.id
+            """)
+    List<Object[]> spremembeZaLigo(@Param("idLiga") Long idLiga,
+                                   @Param("sistem") String sistem);
 }

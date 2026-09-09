@@ -10,7 +10,10 @@
    glede na temo (natis na papir). */
 import type { LigaDto, PredlogaLige, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
 
-const NIZI = [1, 2, 3, 4, 5]
+/* Papirnati obrazec ima pet stolpcev za nize (SNTL igra na 5), zato je to
+   privzetek; liga na 7 nizov jih dobi sedem, da natis ne odreze vpisanih
+   tock. */
+const PRIVZETO_NIZOV = 5
 
 const OZNAKA_VARIANTE: Record<PredlogaLige, string> = {
   SNTL_1: '1. SNTL',
@@ -28,6 +31,10 @@ export function ZapisnikEkipnegaDvoboja({
 }) {
   const s = podrobno.srecanje
   const tekme = [...podrobno.tekme].sort((a, b) => a.zaporedje - b.zaporedje)
+  const NIZI = Array.from(
+    { length: Math.max(PRIVZETO_NIZOV, tekme[0]?.steviloNizov ?? PRIVZETO_NIZOV) },
+    (_, i) => i + 1,
+  )
 
   const imeNa = (stran: StranEkipe, poz: string) =>
     podrobno.postave.find((p) => p.stran === stran && p.pozicija === poz)?.polnoIme ?? ''
@@ -95,19 +102,31 @@ export function ZapisnikEkipnegaDvoboja({
           </tr>
         </thead>
         <tbody>
-          {tekme.map((t) => (
-            <tr key={t.id}>
-              <td className="zapisnik__st">{t.zaporedje}</td>
-              <td className="zapisnik__oznaka">{t.oznaka}</td>
-              <td className="zapisnik__igralec">{[t.domaci, t.domaci2].filter(Boolean).join(' / ') || '—'}</td>
-              <td className="zapisnik__igralec">{[t.gost, t.gost2].filter(Boolean).join(' / ') || '—'}</td>
-              {NIZI.map((n) => (
-                <td key={n} className="zapisnik__niz" />
-              ))}
-              <td className="zapisnik__igre" />
-              <td className="zapisnik__stanje" />
-            </tr>
-          ))}
+          {tekme.map((t) => {
+            const konec = t.status === 'KONCANA'
+            return (
+              <tr key={t.id}>
+                <td className="zapisnik__st">{t.zaporedje}</td>
+                <td className="zapisnik__oznaka">{t.oznaka}</td>
+                <td className="zapisnik__igralec">{[t.domaci, t.domaci2].filter(Boolean).join(' / ') || '—'}</td>
+                <td className="zapisnik__igralec">{[t.gost, t.gost2].filter(Boolean).join(' / ') || '—'}</td>
+                {/* Ze vneseno se izpise, ostalo ostane prazna celica za rocni
+                    vpis - obrazec se natisne tudi pred srecanjem. */}
+                {NIZI.map((n) => {
+                  const niz = t.nizi[n - 1]
+                  return (
+                    <td key={n} className="zapisnik__niz">
+                      {niz ? `${niz.tocke1}:${niz.tocke2}` : ''}
+                    </td>
+                  )
+                })}
+                <td className="zapisnik__igre">
+                  {konec ? `${t.dobljeniNiziDomaci}:${t.dobljeniNiziGost}` : ''}
+                </td>
+                <td className="zapisnik__stanje" />
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 

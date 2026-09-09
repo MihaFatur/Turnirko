@@ -9,7 +9,7 @@
    Mesec je vedno tekoči in puščic za listanje tu ni: listanje (tudi po
    uvoženi zgodovini) pripada celotnemu koledarju, sklop pa mora ostati kratek.
    Zato se poizvedba razteza ŠTIRI mesece naprej, mreža pa kaže samo tega:
-   sklop »Naslednje« mora imeti kaj pokazati tudi v mesecu, ko se ne igra nič
+   sklop »Naslednje tekmovanje« mora imeti kaj pokazati tudi v mesecu, ko se ne igra nič
    — sicer je koledar poleti prazen kvadrat brez pojasnila. */
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -94,7 +94,7 @@ export function KoledarSklop() {
         </div>
 
         <div className="domov__koledar-naslednje">
-          <h3 className="podnaslov-sekcije">Naslednje</h3>
+          <h3 className="podnaslov-sekcije">Naslednje tekmovanje</h3>
           {koledar.isPending && <p className="obvestilo">Nalaganje …</p>}
           {!koledar.isPending && naslednji.length === 0 && (
             <p className="domov__prazno">
@@ -108,9 +108,6 @@ export function KoledarSklop() {
               danes={danes}
             />
           ))}
-          <Link to="/koledar" className="gumb domov__koledar-gumb">
-            Poglej si celoten koledar
-          </Link>
         </div>
       </div>
     </div>

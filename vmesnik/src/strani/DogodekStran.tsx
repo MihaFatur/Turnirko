@@ -1,8 +1,9 @@
 /* Stran enega dogodka - osrednji delovni prostor.
 
    V pripravi (admin): urejanje prijav in izvedba žreba; gost vidi le seznam.
-   Pri formatu TOP (sistem skupine po jakosti) je v pripravi še urejanje
-   jakostnega vrstnega reda s črto reza - po njem tečeta izbor in razporeditev.
+   Povsod, kjer žreb pozna nosilce (vse razen krožnega sistema in dvojic), je
+   v pripravi še urejanje jakostnega vrstnega reda - po njem tečejo nosilska
+   mesta v mreži in skupinah, pri formatu TOP pa še izbor s črto reza.
 
    Po žrebu stran ni več en dolg izpis, ampak podnavigacija s pogledi:
      - Skupine (pri krožnem sistemu Razvrstitev) - skupine so zložljive
@@ -24,9 +25,33 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { dogodkiApi, igralciApi, turnirjiApi } from '../api/zahteve'
-import type { IzborDto, MrezaDto, PrijavaDto, SkupinaDto, TekmaDto } from '../api/tipi'
-import { OZNAKE_SISTEM_KRATKO, OZNAKE_SPOL_KATEGORIJA, OZNAKE_STATUS_PRIJAVE } from '../api/tipi'
+import type {
+  IgralecDto,
+  IzborDto,
+  MrezaDto,
+  PrijavaDto,
+  SkupinaDto,
+  StarostniPas,
+  TekmaDto,
+} from '../api/tipi'
+import {
+  OZNAKE_PASU_KRATKO,
+  OZNAKE_SISTEM_KRATKO,
+  OZNAKE_SPOL_KATEGORIJA,
+  OZNAKE_STAROSTNI_PAS,
+  OZNAKE_STATUS_PRIJAVE,
+  VRSTNI_RED_STAROSTNIH_PASOV,
+  imePrijave,
+} from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import {
+  KrmilaSeznama,
+  poSeznamu,
+  useFiltri,
+  type ObmocjeFiltra,
+  type Razvrstitev,
+  type SkupinaFiltra,
+} from '../komponente/Filtri'
 import { GlavaDejanja, GlavaNaslov, useNazaj } from '../komponente/GlavaTelefona'
 import { Lestvica } from '../komponente/Lestvica'
 import { MeniDejanj } from '../komponente/MeniDejanj'
@@ -43,6 +68,7 @@ import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TekmeSeznam } from '../komponente/TekmeSeznam'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
+import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import {
   imeKolaKratko,
   sklonIgralcev,
@@ -113,11 +139,23 @@ export function DogodekStran() {
   /* Zadržek pove strežnik (npr. zadnja skupina bi imela enega igralca),
      da vmesnik ne podvaja pravil razreza. */
   const zadrzek = podatki.izbor?.zadrzek ?? null
-  const zrebOnemogocen = aktivnePrijave.length < 2 || zadrzek !== null || zreb.isPending
+  /* Dvojice: v žreb gredo samo sestavljeni pari. Igralca brez soigralca ne
+     smemo tiho izpustiti - žreb ga zavrne, zato gumb ugasnemo že tu. */
+  const brezPara = aktivnePrijave.filter((p) => p.polnoIme2 === null)
+  const parovPremalo = dogodek.disciplina === 'DVOJICE' && brezPara.length > 0
+  const zadrzekZreba = parovPremalo
+    ? `Brez soigralca: ${brezPara.map((p) => p.polnoIme).join(', ')}.`
+      + ' Sestavi pare ali igralce odjavi.'
+    : zadrzek
+  const zrebOnemogocen =
+    aktivnePrijave.length < 2 || zadrzekZreba !== null || zreb.isPending
 
   /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
-     stavku; enak vrstni red na obeh širinah. */
+     stavku; enak vrstni red na obeh širinah. Disciplina stoji na začetku samo
+     pri dvojicah: posamično je pravilo in bi bilo v vsaki vrstici odveč. */
+  const jeDvojice = dogodek.disciplina === 'DVOJICE'
   const lastnosti = [
+    jeDvojice ? 'Dvojice' : null,
     OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija],
     dogodek.starostnaKategorija,
     OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja].toLowerCase(),
@@ -161,7 +199,7 @@ export function DogodekStran() {
                     <p className="uporabnik-meni__namig">
                       {aktivnePrijave.length < 2
                         ? 'Za žreb sta potrebna vsaj 2 igralca.'
-                        : zadrzek}
+                        : zadrzekZreba}
                     </p>
                   )}
                   {smem && dogodek.status === 'V_TEKU' && (
@@ -219,7 +257,7 @@ export function DogodekStran() {
                   title={
                     aktivnePrijave.length < 2
                       ? 'Za žreb sta potrebna vsaj 2 igralca.'
-                      : (zadrzek ?? undefined)
+                      : (zadrzekZreba ?? undefined)
                   }
                   onClick={() => nastaviPotrjujemZreb(true)}
                 >
@@ -259,11 +297,14 @@ export function DogodekStran() {
         <PotrditvenoOkno
           naslov="Izvedba žreba"
           sporocilo={
-            podatki.izbor
+            podatki.izbor?.crtaReza
               ? `Po žrebu prijav in vrstnega reda ni več mogoče spreminjati.` +
                 ` Igralo bo najboljših ${podatki.izbor.igra} od ${podatki.izbor.prijavljenih} prijavljenih,` +
                 ` ostali postanejo rezerve. Izvedem žreb?`
-              : 'Po žrebu prijav ni več mogoče spreminjati. Izvedem žreb?'
+              : podatki.izbor
+                ? 'Po žrebu prijav in jakostnega vrstnega reda ni več mogoče spreminjati.' +
+                  ' Po njem se določijo nosilci. Izvedem žreb?'
+                : 'Po žrebu prijav ni več mogoče spreminjati. Izvedem žreb?'
           }
           besedaPotrditve="Izvedi žreb"
           onPotrdi={() => zreb.mutate()}
@@ -284,6 +325,23 @@ export function DogodekStran() {
 
 /* ---------- Seznam prijavljenih (priprava in pogled Udeleženci) ---------- */
 
+/* Klubi ene tekmovalne enote: posameznik ima enega, par pa enega ali dva.
+   Filter kluba zato pri paru zadene, če se ujema kateri koli od njiju. */
+function klubiPrijave(prijava: PrijavaDto): string[] {
+  const prvi = prijava.klub ?? 'brez kluba'
+  if (!prijava.polnoIme2) return [prvi]
+  const drugi = prijava.klub2 ?? 'brez kluba'
+  return prvi === drugi ? [prvi] : [prvi, drugi]
+}
+
+/* Moč enote za razvrstitev: rating posameznika oz. vsota ratingov para.
+   Enota, ki ji manjka rating, gre na dno (-1), da jo človek opazi. */
+function mocPrijave(prijava: PrijavaDto): number {
+  if (!prijava.polnoIme2) return prijava.rating ?? -1
+  if (prijava.rating === null || prijava.rating2 === null) return -1
+  return prijava.rating + prijava.rating2
+}
+
 /* Cilj je 100 prijavljenih na enem zaslonu prenosnika brez straničenja: do 24
    en stolpec, 25-120 dva, nad 120 trije. Iskanje in filter kluba delujeta na
    celoten seznam in ga znova razdelita, zato se stolpci vedno enako napolnijo.
@@ -292,26 +350,31 @@ function SeznamPrijavljenih({
   naslov,
   prijave,
   dejanje,
+  enota = 'igralec',
 }: {
   naslov: string
   prijave: PrijavaDto[]
   dejanje?: (prijava: PrijavaDto) => ReactNode
+  /* Kaj je v tem seznamu ena vrstica. Seznama parov ni mogoče ugotoviti iz
+     vsebine: prazen seznam parov in prazen seznam posameznikov sta enaka. */
+  enota?: 'igralec' | 'par'
 }) {
   const [iskanje, nastaviIskanje] = useState('')
   const [klub, nastaviKlub] = useState('vsi')
+  const jePar = enota === 'par'
 
   /* Razvrstitev po ratingu navzdol; brez ratinga na dno, da jih človek opazi. */
   const urejene = useMemo(
-    () =>
-      [...prijave].sort((prva, druga) => (druga.rating ?? -1) - (prva.rating ?? -1)),
+    () => [...prijave].sort((prva, druga) => mocPrijave(druga) - mocPrijave(prva)),
     [prijave],
   )
 
   const klubi = useMemo(() => {
     const stevci = new Map<string, number>()
     for (const prijava of urejene) {
-      const ime = prijava.klub ?? 'brez kluba'
-      stevci.set(ime, (stevci.get(ime) ?? 0) + 1)
+      for (const ime of klubiPrijave(prijava)) {
+        stevci.set(ime, (stevci.get(ime) ?? 0) + 1)
+      }
     }
     return [...stevci.entries()].sort((prva, druga) => prva[0].localeCompare(druga[0], 'sl'))
   }, [urejene])
@@ -321,8 +384,10 @@ function SeznamPrijavljenih({
     return urejene
       .map((prijava, indeks) => ({ prijava, mesto: indeks + 1 }))
       .filter(({ prijava }) => {
-        if (klub !== 'vsi' && (prijava.klub ?? 'brez kluba') !== klub) return false
-        return !iskano || prijava.polnoIme.toLowerCase().includes(iskano)
+        if (klub !== 'vsi' && !klubiPrijave(prijava).includes(klub)) return false
+        if (!iskano) return true
+        // pri paru zadene tudi soigralčev priimek
+        return imePrijave(prijava).toLowerCase().includes(iskano)
       })
   }, [urejene, iskanje, klub])
 
@@ -379,8 +444,8 @@ function SeznamPrijavljenih({
       {prikazane.length === 0 ? (
         <p className="obvestilo">
           {urejene.length === 0
-            ? 'Ni še prijavljenih igralcev.'
-            : 'Noben prijavljeni ne ustreza iskanju.'}
+            ? (jePar ? 'Ni še sestavljenih parov.' : 'Ni še prijavljenih igralcev.')
+            : (jePar ? 'Noben par ne ustreza iskanju.' : 'Noben prijavljeni ne ustreza iskanju.')}
         </p>
       ) : (
         <div
@@ -399,7 +464,7 @@ function SeznamPrijavljenih({
                 }
               >
                 <span className="prijava-vrstica__mesto">#</span>
-                <span>Igralec</span>
+                <span>{jePar ? 'Par' : 'Igralec'}</span>
                 <span className="prijava-vrstica__rating">Rating</span>
                 {dejanje && <span />}
               </div>
@@ -412,13 +477,19 @@ function SeznamPrijavljenih({
                 >
                   <span className="prijava-vrstica__mesto">{mesto}</span>
                   <span className="prijava-vrstica__ime">
-                    {prijava.polnoIme}
+                    {imePrijave(prijava)}
                     <span className="prijava-vrstica__klub">
                       {' · '}
-                      {prijava.klub ?? 'brez kluba'}
+                      {klubiPrijave(prijava).join(' · ')}
                     </span>
                   </span>
-                  <span className="prijava-vrstica__rating">{prijava.rating ?? '—'}</span>
+                  {/* Par ima dva ratinga; skupnega nima, ker dvojice v ELO
+                      ne štejejo - zato ju izpišemo oba. */}
+                  <span className="prijava-vrstica__rating">
+                    {prijava.polnoIme2
+                      ? `${prijava.rating ?? '—'} / ${prijava.rating2 ?? '—'}`
+                      : (prijava.rating ?? '—')}
+                  </span>
                   {dejanje && dejanje(prijava)}
                 </div>
               ))}
@@ -445,9 +516,23 @@ function razdeli<T>(seznam: T[], koliko: number): T[][] {
 
 function PripravaGost({ podatki }: { podatki: MrezaDto }) {
   const aktivne = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
+  /* Pri dvojicah gost vidi ločeno, kdo je že v paru in kdo še išče soigralca -
+     to je edino, kar se do žreba dogaja. */
+  const dvojice = podatki.dogodek.disciplina === 'DVOJICE'
+  const pari = aktivne.filter((p) => p.polnoIme2 !== null)
+  const brezPara = aktivne.filter((p) => p.polnoIme2 === null)
   return (
     <>
-      <SeznamPrijavljenih naslov="Prijavljeni" prijave={aktivne} />
+      {dvojice ? (
+        <>
+          <SeznamPrijavljenih naslov="Pari" prijave={pari} enota="par" />
+          {brezPara.length > 0 && (
+            <SeznamPrijavljenih naslov="Brez soigralca" prijave={brezPara} />
+          )}
+        </>
+      ) : (
+        <SeznamPrijavljenih naslov="Prijavljeni" prijave={aktivne} />
+      )}
       <p className="namig">Žreb izvede administrator (sodnik) po prijavi.</p>
     </>
   )
@@ -499,6 +584,14 @@ function Priprava({
             />
           )}
         </div>
+      ) : podatki.dogodek.disciplina === 'DVOJICE' ? (
+        <SestavljanjePar
+          prijave={aktivnePrijave}
+          idDogodka={idDogodka}
+          mesanKategorija={podatki.dogodek.spolKategorija === 'MESANO'}
+          osvezi={osvezi}
+          onOdjava={(id) => odjava.mutate(id)}
+        />
       ) : (
         <SeznamPrijavljenih
           naslov="Prijavljeni"
@@ -520,8 +613,136 @@ function Priprava({
   )
 }
 
-/* Format TOP: seznam prijavljenih po jakosti s črto reza.
-   Vrstni red odloča izbor IN skupino, zato je edino, kar se ureja.
+/* Dvojice v pripravi: sestavljene pare zgoraj, igralce brez soigralca spodaj.
+
+   Igralci se prijavijo posamično, pare pa sestavi organizator - tako se lahko
+   prijavi tudi tisti, ki soigralca še nima. Par je ENA prijava: ko ju povežemo,
+   vrstica drugega izgine, ob razdružitvi pa se vrne. Dokler kdo ostane brez
+   soigralca, žreba ni - v mreži bi ga zaman iskali. */
+function SestavljanjePar({
+  prijave,
+  idDogodka,
+  mesanKategorija,
+  osvezi,
+  onOdjava,
+}: {
+  prijave: PrijavaDto[]
+  idDogodka: number
+  mesanKategorija: boolean
+  osvezi: () => void
+  onOdjava: (idPrijave: number) => void
+}) {
+  const pari = prijave.filter((p) => p.polnoIme2 !== null)
+  const brezPara = prijave.filter((p) => p.polnoIme2 === null)
+  const [izbrani, nastaviIzbrane] = useState<number[]>([])
+
+  const povezovanje = useMutation({
+    mutationFn: ([prva, druga]: number[]) => dogodkiApi.poveziVPar(idDogodka, prva, druga),
+    onSuccess: () => {
+      nastaviIzbrane([])
+      osvezi()
+    },
+  })
+
+  const razdruzevanje = useMutation({
+    mutationFn: (idPrijave: number) => dogodkiApi.razdruziPar(idPrijave),
+    onSuccess: osvezi,
+  })
+
+  /* Izbrana sta največ dva: tretji klik izpodrine prvega, da organizatorju ni
+     treba najprej odkljukati. */
+  function preklopi(idPrijave: number) {
+    nastaviIzbrane((prejsnji) => {
+      if (prejsnji.includes(idPrijave)) return prejsnji.filter((id) => id !== idPrijave)
+      return [...prejsnji, idPrijave].slice(-2)
+    })
+  }
+
+  return (
+    <>
+      <SporociloNapake napaka={povezovanje.error} />
+      <SporociloNapake napaka={razdruzevanje.error} />
+
+      <SeznamPrijavljenih
+        naslov="Pari"
+        prijave={pari}
+        enota="par"
+        dejanje={(par) => (
+          <button
+            type="button"
+            className="prijava-vrstica__dejanje"
+            onClick={() => razdruzevanje.mutate(par.id)}
+          >
+            Razdruži
+          </button>
+        )}
+      />
+
+      <div className="plosca">
+        <div className="naslovna-vrstica">
+          <h2 className="sekcija__naslov--manjsi">Brez soigralca</h2>
+          <button
+            className="gumb"
+            disabled={izbrani.length !== 2 || povezovanje.isPending}
+            onClick={() => povezovanje.mutate(izbrani)}
+          >
+            {povezovanje.isPending ? 'Povezujem …' : 'Poveži v par'}
+          </button>
+        </div>
+
+        {brezPara.length === 0 ? (
+          <p className="obvestilo">
+            {pari.length === 0
+              ? 'Ni še prijavljenih igralcev.'
+              : 'Vsi prijavljeni so v parih — žreb je mogoč.'}
+          </p>
+        ) : (
+          <ul className="seznam-izbire">
+            {brezPara.map((prijava) => (
+              <li key={prijava.id}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={izbrani.includes(prijava.id)}
+                    onChange={() => preklopi(prijava.id)}
+                  />
+                  <span>
+                    {prijava.polnoIme}
+                    <span className="seznam-izbire__podrobnost">
+                      {prijava.klub ?? 'brez kluba'}
+                      {prijava.rating !== null && ` · rating ${prijava.rating}`}
+                    </span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="prijava-vrstica__dejanje"
+                  onClick={() => onOdjava(prijava.id)}
+                >
+                  Odjavi
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="namig">
+          Označi dva igralca in ju poveži v par.
+          {mesanKategorija
+            ? ' Kategorija so mešane dvojice: par mora sestavljati en moški in ena ženska.'
+            : ''}{' '}
+          Dokler kdo ostane brez soigralca, žreb ni mogoč.
+        </p>
+      </div>
+    </>
+  )
+}
+
+/* Seznam prijavljenih po jakosti - pri formatu TOP še s črto reza.
+   Vrstni red odloča nosilce (v mreži in skupinah), pri formatu TOP pa tudi
+   izbor, zato je edino, kar se pred žrebom ureja. Ureja se ročno, ker igralci
+   BREZ ratinga stojijo na vrhu predloga: sistem o njih ne ve nič in mora
+   človek zavestno povedati, kam sodijo.
    Premikanje je s puščicama (zanesljivo tudi na dotik in s tipkovnico). */
 function JakostniVrstniRed({
   prijave,
@@ -563,7 +784,11 @@ function JakostniVrstniRed({
     nastaviVrstni(novi)
   }
 
-  /* Katera skupina pripada mestu (1-based) po predogledu strežnika. */
+  /* Katera skupina pripada mestu (1-based) po predogledu strežnika. Predogled
+     je samo pri formatu TOP, kjer je razporeditev zaporedna; žrebane skupine
+     ga nimajo, ker se odloči šele ob žrebu. */
+  const imaSkupine = izbor.skupine.length > 0
+
   function skupinaZaMesto(mesto: number): string | null {
     return izbor.skupine.find((s) => mesto >= s.odMesta && mesto <= s.doMesta)?.oznaka ?? null
   }
@@ -571,14 +796,29 @@ function JakostniVrstniRed({
   return (
     <>
       <p className="izbor__povzetek">
-        Igra <strong>{izbor.igra}</strong> od {izbor.prijavljenih} prijavljenih
-        {izbor.igra < izbor.meja && ` (mest je ${izbor.meja}, a je prijav manj)`}
-        {izbor.skupine.length > 0 && (
+        {izbor.crtaReza ? (
           <>
-            {' · '}
-            {izbor.skupine
-              .map((s) => `${s.oznaka}: ${s.odMesta}.–${s.doMesta}.`)
-              .join(' · ')}
+            Igra <strong>{izbor.igra}</strong> od {izbor.prijavljenih} prijavljenih
+            {izbor.igra < izbor.meja && ` (mest je ${izbor.meja}, a je prijav manj)`}
+            {izbor.skupine.length > 0 && (
+              <>
+                {' · '}
+                {izbor.skupine
+                  .map((s) => `${s.oznaka}: ${s.odMesta}.–${s.doMesta}.`)
+                  .join(' · ')}
+              </>
+            )}
+          </>
+        ) : izbor.steviloSkupin !== null ? (
+          <>
+            Igrajo vsi. Žreb jih razdeli v <strong>{izbor.steviloSkupin}</strong>{' '}
+            {sklonSkupin(izbor.steviloSkupin)}: prvi po jakosti je nosilec skupine A, drugi
+            skupine B in tako naprej, ostali se žrebajo po jakostnih pasovih.
+          </>
+        ) : (
+          <>
+            Igrajo vsi. Vrstni red določa nosilce: prvi gre na vrh mreže, drugi na dno, ostali se
+            žrebajo po jakostnih pasovih (3.–4., 5.–8., 9.–16. …).
           </>
         )}
       </p>
@@ -587,21 +827,25 @@ function JakostniVrstniRed({
 
       <SporociloNapake napaka={shranjevanje.error} />
 
-      <ol className="izbor">
+      {/* Vrstica je mreža s stalnimi stolpci, zato mora imeti vsak stolpec
+          svojo celico tudi takrat, ko je prazna - manjkajoča celica bi vse
+          naslednje potisnila en stolpec levo in ime stisnila na 32 px.
+          Stolpec oznake skupine obstaja samo, kadar je predogled skupin. */}
+      <ol className={'izbor' + (imaSkupine ? '' : ' izbor--brez-skupin')}>
         {vrstni.map((prijava, indeks) => {
           const mesto = indeks + 1
-          const rezerva = mesto > izbor.igra
+          const rezerva = izbor.crtaReza && mesto > izbor.igra
           const skupina = rezerva ? null : skupinaZaMesto(mesto)
           return (
             <li key={prijava.id}>
-              {mesto === izbor.igra + 1 && (
+              {izbor.crtaReza && mesto === izbor.igra + 1 && (
                 <div className="izbor__crta">
                   <span>črta reza — spodnji so rezerve</span>
                 </div>
               )}
               <div className={`izbor__vrstica${rezerva ? ' izbor__vrstica--rezerva' : ''}`}>
                 <span className="izbor__mesto">{mesto}.</span>
-                {skupina && <span className="izbor__skupina">{skupina}</span>}
+                {imaSkupine && <span className="izbor__skupina">{skupina}</span>}
                 <span className="izbor__ime">
                   {prijava.polnoIme}
                   <span className="izbor__podrobnost">
@@ -609,9 +853,11 @@ function JakostniVrstniRed({
                     {prijava.rating !== null ? ` · ${prijava.rating}` : ''}
                   </span>
                 </span>
-                {prijava.rating === null && (
-                  <span className="znacka znacka--opozorilo">brez ratinga</span>
-                )}
+                <span className="izbor__oznaka">
+                  {prijava.rating === null && (
+                    <span className="znacka znacka--opozorilo">brez ratinga</span>
+                  )}
+                </span>
                 <span className="izbor__gumbi">
                   <button
                     className="gumb gumb--majhen"
@@ -669,6 +915,94 @@ function JakostniVrstniRed({
   )
 }
 
+/* Merila nad seznamom igralcev, ki jih je mogoče prijaviti.
+
+   Skupine so iste kot na lestvici (starost, spol, klub) - organizator ju bere
+   izmenično in dve različni razdelitvi istih ljudi bi bili dve zgodbi. Spol
+   in klub sta podatkovna: pri dogodku za ženske ostane v seznamu en sam spol
+   in skupina se sploh ne izriše (glej useFiltri).
+
+   Starostni pas je NAJOŽJI, ki mu igralec ustreza, zato so pasovi
+   izključujoči: za turnir U15 se izberejo U11 + U13 + U15. Prekrivajočih se
+   meril ("in vsi mlajši") SkupinaFiltra namenoma ne pozna. */
+const SKUPINE_IGRALCEV: SkupinaFiltra<IgralecDto>[] = [
+  {
+    kljuc: 'starost',
+    oznaka: 'Starost',
+    vrednost: (igralec) => igralec.starostniPas,
+    napis: (v) => OZNAKE_STAROSTNI_PAS[v as StarostniPas] ?? v,
+    vrstniRed: poSeznamu(VRSTNI_RED_STAROSTNIH_PASOV),
+  },
+  {
+    kljuc: 'spol',
+    oznaka: 'Spol',
+    vrednost: (igralec) => igralec.spol,
+    napis: (v) => (v === 'MOSKI' ? 'Moški' : 'Ženske'),
+    vrstniRed: poSeznamu(['MOSKI', 'ZENSKI']),
+  },
+  { kljuc: 'klub', oznaka: 'Klub', vrednost: (igralec) => igralec.klub?.ime ?? null },
+]
+
+/* Rating je meja tega tekmovanja ("od 1200 navzgor") in ne izbira med
+   vnaprej narisanimi pasovi, zato dve polji. */
+const OBMOCJA_IGRALCEV: ObmocjeFiltra<IgralecDto>[] = [
+  {
+    kljuc: 'rating',
+    oznaka: 'Rating',
+    vrednost: (igralec) => igralec.rating,
+    namig: 'Igralec brez obračunane tekme ratinga nima — ob vpisani meji odpade.',
+  },
+]
+
+/* Priimek je privzetek: organizator igralca išče po imenu, ne po jakosti.
+   Rating je drugo merilo (za turnirje z mejo), klub tretje (klub prijavi
+   svoje naenkrat). */
+const RAZVRSTITVE_IGRALCEV: Razvrstitev<IgralecDto>[] = [
+  { kljuc: 'priimek', oznaka: 'Priimek (A–Ž)', primerjaj: poPriimku },
+  {
+    kljuc: 'rating',
+    oznaka: 'Rating',
+    /* Brez ratinga na dno (-1) - isto pravilo kot v seznamu prijavljenih. */
+    primerjaj: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || poPriimku(a, b),
+  },
+  {
+    kljuc: 'klub',
+    oznaka: 'Klub',
+    primerjaj: (a, b) =>
+      imeKlubaZaVrstniRed(a).localeCompare(imeKlubaZaVrstniRed(b), 'sl') || poPriimku(a, b),
+  },
+]
+
+function poPriimku(a: IgralecDto, b: IgralecDto): number {
+  return a.priimek.localeCompare(b.priimek, 'sl') || a.ime.localeCompare(b.ime, 'sl')
+}
+
+/* Igralci brez kluba gredo na konec in ne med "B" - klub je tu razvrstitev,
+   ne oznaka. */
+function imeKlubaZaVrstniRed(igralec: IgralecDto): string {
+  return igralec.klub?.ime ?? '￿'
+}
+
+/* Koliko vrstic se sploh izriše. Šifrant ima po uvozu zgodovine NTZS več kot
+   tisoč igralcev; ves seznam v DOM pomeni, da se ob vsaki vtipkani črki in
+   vsaki kljukici izriše tisoč vrstic. Rez je izrecen (izpiše se, koliko jih
+   je zunaj) - tiho odrezan seznam bi trdil, da igralca ni. */
+const NAJVEC_VRSTIC = 200
+
+/* Dodajanje igralcev na dogodek.
+
+   Prej je bil tu en sam dolg seznam vseh neprijavljenih igralcev s
+   kljukicami: organizator je moral do vsakega prevoziti šifrant cele države.
+   Zdaj so nad njim iskalnik (po imenu in priimku) in ista merila kot na
+   lestvici (starost, spol, klub) ter meji ratinga.
+
+   Dve pravili, ki ju ne razbij:
+   - iskanje zoži seznam PRED filtri, zato so števci ob merilih števci tega,
+     kar organizator vidi (isto kot na lestvici);
+   - izbrani, ki jih trenutna merila ne pokažejo, se izpišejo v svoji skupini
+     nad seznamom. Gumb prijavi tudi tiste, ki so med iskanjem naslednjega
+     igralca padli iz pogleda - izbor, ki ga ne vidiš, je past. Vrstica, ki
+     merilom ustreza, ob kljukici NE odskoči: ostane, kjer je. */
 function DodajanjeIgralcev({
   podatki,
   idDogodka,
@@ -680,6 +1014,8 @@ function DodajanjeIgralcev({
 }) {
   const igralci = useQuery({ queryKey: ['igralci'], queryFn: igralciApi.seznam })
   const [izbrani, nastaviIzbrane] = useState<Set<number>>(new Set())
+  const [iskanje, nastaviIskanje] = useState('')
+  const jeTelefon = useTelefon()
 
   const prijavljanje = useMutation({
     mutationFn: (idji: number[]) => dogodkiApi.prijaviIgralce(idDogodka, idji),
@@ -691,13 +1027,23 @@ function DodajanjeIgralcev({
 
   /* Na voljo so igralci, ki na ta dogodek se nimajo aktivne prijave in ki po
      spolu ustrezajo kategoriji dogodka. Odjavljeni (ODJAVLJEN) se spet
-     pojavijo - ponovna prijava aktivira njihov obstojeci zapis. */
+     pojavijo - ponovna prijava aktivira njihov obstojeci zapis.
+
+     Pri dvojicah je treba pogledati OBA igralca prijave: soigralec para nima
+     svoje vrstice (ta je ob povezavi izginila), pa vendar že nastopa.
+
+     Kategorija MESANO in KDORKOLI po spolu ne omejujeta - pri mešanih
+     dvojicah je pravilo o sestavi PARA in ga preveri povezava para. */
   const naVoljo = useMemo(() => {
     if (!igralci.data) return []
     const zePrijavljeni = new Set(
       podatki.prijave
         .filter((prijava) => prijava.status !== 'ODJAVLJEN')
-        .map((prijava) => prijava.idIgralca),
+        .flatMap((prijava) =>
+          prijava.idIgralca2 !== null
+            ? [prijava.idIgralca, prijava.idIgralca2]
+            : [prijava.idIgralca],
+        ),
     )
     return igralci.data.filter((igralec) => {
       if (zePrijavljeni.has(igralec.id)) return false
@@ -706,6 +1052,31 @@ function DodajanjeIgralcev({
       return true
     })
   }, [igralci.data, podatki])
+
+  /* Iskanje po imenu in priimku (brez šumnikov, po besedah): "krizan" najde
+     Križana, "novak ana" pa Novak Ano ne glede na vrstni red vpisanega. */
+  const najdeni = useMemo(() => {
+    const besede = besedeIskanja(iskanje)
+    if (besede.length === 0) return naVoljo
+    return naVoljo.filter((igralec) =>
+      ustrezaBesedam(`${igralec.ime} ${igralec.priimek}`, besede),
+    )
+  }, [naVoljo, iskanje])
+
+  const filtri = useFiltri(najdeni, SKUPINE_IGRALCEV, RAZVRSTITVE_IGRALCEV, OBMOCJA_IGRALCEV)
+
+  const naZaslonu = filtri.prikazani.slice(0, NAJVEC_VRSTIC)
+  const odrezanih = filtri.prikazani.length - naZaslonu.length
+
+  /* Izbrani, ki jih trenutna merila (ali rez seznama) ne pokažejo. Ti gredo v
+     svojo skupino nad seznam: gumb jih bo prijavil, zato morajo biti vidni.
+     Brez useMemo - seznam na zaslonu je ob vsakem izrisu nov, zato bi se
+     preračun tako ali tako ponovil, dve zanki čez tisoč vrstic pa nista nič. */
+  const vidni = new Set(naZaslonu.map((igralec) => igralec.id))
+  const skritiIzbrani =
+    izbrani.size === 0
+      ? []
+      : naVoljo.filter((igralec) => izbrani.has(igralec.id) && !vidni.has(igralec.id))
 
   function preklopi(idIgralca: number) {
     nastaviIzbrane((prejsnji) => {
@@ -716,6 +1087,29 @@ function DodajanjeIgralcev({
     })
   }
 
+  const vrstica = (igralec: IgralecDto) => (
+    <li key={igralec.id}>
+      <label>
+        <input
+          type="checkbox"
+          checked={izbrani.has(igralec.id)}
+          onChange={() => preklopi(igralec.id)}
+        />
+        <span>
+          {igralec.ime} {igralec.priimek}
+          <span className="seznam-izbire__podrobnost">
+            {igralec.klub?.ime ?? 'brez kluba'}
+            {igralec.starostniPas !== null && ` · ${OZNAKE_PASU_KRATKO[igralec.starostniPas]}`}
+            {igralec.rating !== null && ` · rating ${igralec.rating}`}
+          </span>
+        </span>
+      </label>
+    </li>
+  )
+
+  /* Praznega seznama sta dva različna vzroka in vsak ima svoj izhod. */
+  const nicNiOstalo = naVoljo.length > 0 && filtri.prikazani.length === 0
+
   return (
     <div className="plosca">
       <div className="naslovna-vrstica">
@@ -725,7 +1119,7 @@ function DodajanjeIgralcev({
           disabled={izbrani.size === 0 || prijavljanje.isPending}
           onClick={() => prijavljanje.mutate([...izbrani])}
         >
-          Prijavi izbrane ({izbrani.size})
+          {prijavljanje.isPending ? 'Prijavljam …' : `Prijavi izbrane (${izbrani.size})`}
         </button>
       </div>
 
@@ -739,26 +1133,75 @@ function DodajanjeIgralcev({
         </p>
       )}
 
-      <ul className="seznam-izbire">
-        {naVoljo.map((igralec) => (
-          <li key={igralec.id}>
-            <label>
-              <input
-                type="checkbox"
-                checked={izbrani.has(igralec.id)}
-                onChange={() => preklopi(igralec.id)}
-              />
-              <span>
-                {igralec.priimek} {igralec.ime}
-                <span className="seznam-izbire__podrobnost">
-                  {igralec.klub?.ime ?? 'brez kluba'}
-                  {igralec.rating !== null && ` · rating ${igralec.rating}`}
+      {naVoljo.length > 0 && (
+        <>
+          {/* Iskalnik stoji NAD krmili in čez vso širino: pri tisoč igralcih je
+              to prvo, kar organizator naredi, filtri pa so drugo. */}
+          <label className="dodajanje__iskanje">
+            <span className="samo-za-bralnik">Išči po imenu ali priimku</span>
+            <input
+              className="iskalnik"
+              type="search"
+              value={iskanje}
+              onChange={(dogodek) => nastaviIskanje(dogodek.target.value)}
+              placeholder="Išči po imenu ali priimku"
+            />
+          </label>
+
+          <KrmilaSeznama
+            stanje={filtri}
+            razvrstitve={RAZVRSTITVE_IGRALCEV}
+            naslovOkna="Dodaj igralce"
+            imeZadetkov={sklonIgralcev}
+            /* Števec je na 390 px tretji del vrste in stisne izbor
+               razvrstitve v "Razvrsti: P ▾"; koliko jih ostane, pove gumb v
+               oknu ("Pokaži 211 igralcev") in seznam sam. */
+            desno={
+              jeTelefon ? undefined : (
+                <span className="sekcija__meta">
+                  {filtri.prikazani.length} od {naVoljo.length} na voljo
                 </span>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
+              )
+            }
+          />
+
+          {skritiIzbrani.length > 0 && (
+            <div className="dodajanje__izbrani">
+              <p className="podnaslov-sekcije">
+                Izbrani zunaj seznama · {skritiIzbrani.length}
+              </p>
+              <ul className="seznam-izbire seznam-izbire--kratek">
+                {skritiIzbrani.map(vrstica)}
+              </ul>
+            </div>
+          )}
+
+          {nicNiOstalo ? (
+            <p className="obvestilo">
+              Iskanju in merilom ne ustreza noben igralec.{' '}
+              <button
+                type="button"
+                className="povezava-gumb"
+                onClick={() => {
+                  nastaviIskanje('')
+                  filtri.pocisti()
+                }}
+              >
+                Počisti iskanje in filtre
+              </button>
+            </p>
+          ) : (
+            <ul className="seznam-izbire">{naZaslonu.map(vrstica)}</ul>
+          )}
+
+          {odrezanih > 0 && (
+            <p className="namig">
+              Prikazanih prvih {NAJVEC_VRSTIC} od {filtri.prikazani.length} zadetkov — do
+              ostalih se pride z iskanjem ali merili.
+            </p>
+          )}
+        </>
+      )}
     </div>
   )
 }

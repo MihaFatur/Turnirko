@@ -125,7 +125,8 @@ Sistem se izbere ob ustvarjanju dogodka:
 
 - **Izločilni** – klasična mreža; ob lihem številu prosta mesta (bye).
 - **Krožni** – vsak z vsakim (krožna metoda); razvrstitev po lestvici
-  (zmage → razlika nizov → medsebojna tekma).
+  (zmage; ob izenačenju odloči le izkupiček med izenačenimi — razlika nizov,
+  nato razlika točk).
 - **Skupine + izločilni** – igralci se razdelijo v skupine (krožni del),
   po dva najboljša napredujeta v izločilno mrežo (žreb izločilnega dela se
   zgenerira samodejno, ko so odigrane vse skupine).

@@ -14,8 +14,8 @@ import si.turnirko.modeli.Spol;
 
 public record LestvicaIgralcaDto(
         Long idIgralca,
-        // Ime in priimek locena: v stolpcu se igralec bere kot "Jan Petric",
-        // v izbirniku pa kot "Petric Jan" (abecedno) - polnoIme zna samo eno.
+        // Igralec se povsod bere kot "Jan Petric" (polnoIme); locena ime in
+        // priimek sta tu zato, ker lestvica zna teci abecedno po priimku.
         String ime,
         String priimek,
         String polnoIme,

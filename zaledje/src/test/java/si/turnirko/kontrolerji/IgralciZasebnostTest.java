@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -66,6 +67,19 @@ class IgralciZasebnostTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
+        preveriBrezOsebnih(telo);
+    }
+
+    /* Starostni pas je izpeljanka iz letnice in gre v javni odgovor NAMERNO
+       (organizator po njem filtrira prijave), datum rojstva pa ne. Test drzi
+       oboje skupaj: kdor bi pas kdaj zamenjal za datum, mora tu pasti. */
+    @Test
+    void javniSeznamNosiStarostniPasBrezDatumaRojstva() throws Exception {
+        String telo = mockMvc.perform(get("/api/v1/igralci"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertTrue(telo.contains("\"starostniPas\""), "javni odgovor nima starostnega pasu: " + telo);
         preveriBrezOsebnih(telo);
     }
 

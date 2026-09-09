@@ -303,7 +303,7 @@ public class LestvicaLigeStoritev {
 
     /* Par se zapise vedno enako - abecedno, ne po strani ali mestu v postavi. */
     private static List<Igralec> vrstniRedVParu(Igralec a, Igralec b) {
-        return a.polnoIme().compareToIgnoreCase(b.polnoIme()) <= 0
+        return a.abecedno().compareToIgnoreCase(b.abecedno()) <= 0
                 ? List.of(a, b) : List.of(b, a);
     }
 

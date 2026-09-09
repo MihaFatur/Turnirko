@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { dogodkiApi, turnirjiApi } from '../api/zahteve'
 import type { FazaTekme, MrezaDto, TekmaDto } from '../api/tipi'
-import { OZNAKE_SPOL_KATEGORIJA } from '../api/tipi'
+import { OZNAKE_SPOL_KATEGORIJA, imeUdelezenca } from '../api/tipi'
 import { imeKola, sklonListkov } from '../pomozno/oblikovanje'
 import { Listek } from '../komponente/Listek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
@@ -102,11 +102,11 @@ export function ListkiStran() {
                   steviloNizov: tekma.steviloNizov,
                   miza: tekma.miza,
                   stran1: {
-                    ime: tekma.udelezenec1?.polnoIme ?? '—',
+                    ime: imeUdelezenca(tekma.udelezenec1) ?? '—',
                     podnaslov: tekma.udelezenec1?.klub ?? null,
                   },
                   stran2: {
-                    ime: tekma.udelezenec2?.polnoIme ?? '—',
+                    ime: imeUdelezenca(tekma.udelezenec2) ?? '—',
                     podnaslov: tekma.udelezenec2?.klub ?? null,
                   },
                 }}

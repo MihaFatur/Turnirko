@@ -162,14 +162,16 @@ public class StatistikaStoritev {
         return zPremikom;
     }
 
-    /* Najprej po ratingu (padajoce), potem po zmagah, potem abecedno.
+    /* Najprej po ratingu (padajoce), potem po zmagah, potem abecedno po
+       priimku (izpis je "Ime Priimek", urejevalni kljuc pa priimek).
        Igralci brez ratinga (se niso igrali) so na dnu. */
     private static Comparator<LestvicaIgralcaDto> primerjavaLestvice() {
         return Comparator
                 .comparing((LestvicaIgralcaDto v) -> v.rating() == null ? Integer.MIN_VALUE : v.rating())
                 .reversed()
                 .thenComparing(Comparator.comparingInt(LestvicaIgralcaDto::zmage).reversed())
-                .thenComparing(LestvicaIgralcaDto::polnoIme);
+                .thenComparing(LestvicaIgralcaDto::priimek)
+                .thenComparing(LestvicaIgralcaDto::ime);
     }
 
     /* Crte gibanja ELO in ratingi izpred meseca - oboje iz istega dnevnika,

@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 
 import si.turnirko.dto.DogodekDto;
 import si.turnirko.dto.DogodekVnos;
+import si.turnirko.dto.StatistikaTekmovanjaDto;
 import si.turnirko.dto.TurnirDto;
 import si.turnirko.dto.TurnirVnos;
 import si.turnirko.izjeme.NiNajdenoIzjema;
@@ -24,6 +25,7 @@ import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
 import si.turnirko.storitve.PovzetkiStoritev;
 import si.turnirko.storitve.PovzetkiStoritev.StevciDogodka;
+import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
 import si.turnirko.storitve.TurnirjiStoritev;
 
 @RestController
@@ -34,15 +36,18 @@ public class TurnirjiKontroler {
     private final TurnirRepozitorij turnirRepozitorij;
     private final DogodekRepozitorij dogodekRepozitorij;
     private final PovzetkiStoritev povzetkiStoritev;
+    private final StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
 
     public TurnirjiKontroler(TurnirjiStoritev turnirjiStoritev,
                              TurnirRepozitorij turnirRepozitorij,
                              DogodekRepozitorij dogodekRepozitorij,
-                             PovzetkiStoritev povzetkiStoritev) {
+                             PovzetkiStoritev povzetkiStoritev,
+                             StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev) {
         this.turnirjiStoritev = turnirjiStoritev;
         this.turnirRepozitorij = turnirRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.povzetkiStoritev = povzetkiStoritev;
+        this.statistikaTekmovanjaStoritev = statistikaTekmovanjaStoritev;
     }
 
     @GetMapping
@@ -63,6 +68,15 @@ public class TurnirjiKontroler {
                 .map(t -> TurnirDto.iz(t, povzetkiStoritev.zaTurnir(id),
                         poteki.getOrDefault(id, TurnirDto.Potek.PRAZEN)))
                 .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + id + " ne obstaja."));
+    }
+
+    /* Zavihek "Zanimivosti" turnirja - cez VSE njegove dogodke skupaj.
+       Na ravni ene kategorije je tekem pogosto premalo, da bi kaj povedale,
+       klub in "V stevilkah" pa tam izgubita pomen. Javno kot ostali GET-i in
+       dosegljivo ze med turnirjem: gledalec je uporabnik st. 1. */
+    @GetMapping("/{id}/statistika")
+    public StatistikaTekmovanjaDto statistika(@PathVariable Long id) {
+        return statistikaTekmovanjaStoritev.zaTurnir(id);
     }
 
     @GetMapping("/{id}/dogodki")

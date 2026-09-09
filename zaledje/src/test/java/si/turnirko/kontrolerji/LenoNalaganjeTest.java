@@ -89,7 +89,7 @@ class LenoNalaganjeTest {
         turnir = turnirjiStoritev.ustvari(
                 new TurnirVnos("Turnir z lenim krajem", 9999, null, null, null, null, null));
         dogodek = turnirjiStoritev.dodajDogodek(turnir.getId(),
-                new DogodekVnos("Clani", SpolKategorija.MESANO, null, 5, null, null, null, null, null));
+                new DogodekVnos("Clani", SpolKategorija.KDORKOLI, null, 5, null, null, null, null, null, null));
 
         Igralec prvi = novIgralec("Ana", "Prva");
         Igralec drugi = novIgralec("Bor", "Drugi");
@@ -135,7 +135,7 @@ class LenoNalaganjeTest {
     void odjavaVrneIgralcaInKlub() {
         PrijavaDto odjavljena = dogodkiKontroler.odjavi(prijave.get(2).id());
         assertEquals(Prijava.StatusPrijave.ODJAVLJEN, odjavljena.status());
-        assertEquals("Tretji Cene", odjavljena.polnoIme());
+        assertEquals("Cene Tretji", odjavljena.polnoIme());
         assertEquals("Testni klub", odjavljena.klub());
     }
 

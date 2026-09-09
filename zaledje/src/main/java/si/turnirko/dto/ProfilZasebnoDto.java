@@ -76,7 +76,8 @@ public record ProfilZasebnoDto(
             Tocke tocke
     ) {}
 
-    /* Samo turnirske tekme, pri katerih so vpisane tocke po nizih. */
+    /* Samo tekme (turnirske in ligaske), pri katerih so vpisane tocke po
+       nizih - vnos je povsod neobvezen. */
     public record Tocke(
             int steviloTekem,
             int tockeZa,

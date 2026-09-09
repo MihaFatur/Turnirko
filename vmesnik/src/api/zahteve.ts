@@ -37,6 +37,7 @@ import type {
   SpremembaGeslaVnos,
   SrecanjeDto,
   SrecanjePodrobnoDto,
+  StatistikaTekmovanjaDto,
   TekmaDto,
   TekmaSrecanjaDto,
   TerminiVnos,
@@ -56,6 +57,9 @@ export const turnirjiApi = {
   dodajDogodek: (id: number, vnos: DogodekVnos) =>
     api.objavi<DogodekDto>(`/turnirji/${id}/dogodki`, vnos),
   zakljuci: (id: number) => api.objavi<TurnirDto>(`/turnirji/${id}/zakljuci`),
+  /* Zavihek »Zanimivosti« — čez vse dogodke turnirja skupaj. */
+  statistika: (id: number) =>
+    api.vrni<StatistikaTekmovanjaDto>(`/turnirji/${id}/statistika`),
 }
 
 export const dogodkiApi = {
@@ -73,6 +77,13 @@ export const dogodkiApi = {
      preostale dobijo nasprotniki. */
   odstop: (idPrijave: number) =>
     api.objavi<PrijavaDto>(`/dogodki/prijave/${idPrijave}/odstop`),
+  /* Dvojice: iz dveh prijav sestavi par (vrne nastali par — druga prijava
+     izgine, njen igralec je odslej soigralec te). */
+  poveziVPar: (id: number, idPrijave1: number, idPrijave2: number) =>
+    api.objavi<PrijavaDto>(`/dogodki/${id}/pari`, { idPrijave1, idPrijave2 }),
+  /* Dvojice: par nazaj v dve samostojni prijavi. */
+  razdruziPar: (idPrijave: number) =>
+    api.objavi<PrijavaDto[]>(`/dogodki/pari/${idPrijave}/razdruzi`),
   izvediZreb: (id: number) => api.objavi<TekmaDto[]>(`/dogodki/${id}/zreb`),
 }
 
@@ -181,6 +192,8 @@ export const ligeApi = {
     api.vrni<LestvicaIgralcaLigeDto[]>(`/lige/${id}/lestvica-igralcev`),
   lestvicaDvojic: (id: number) =>
     api.vrni<LestvicaDvojiceDto[]>(`/lige/${id}/lestvica-dvojic`),
+  /* Zavihek »Zanimivosti« — ista oblika kot pri turnirju, druge postavke. */
+  statistika: (id: number) => api.vrni<StatistikaTekmovanjaDto>(`/lige/${id}/statistika`),
 }
 
 export const srecanjaApi = {

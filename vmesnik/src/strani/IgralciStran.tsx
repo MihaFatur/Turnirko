@@ -66,18 +66,9 @@ export function IgralciStran() {
 
   return (
     <section>
-      <div className="stran-glava stran-glava--dno">
-        <div>
-          <h1 className="naslov-strani">
-            <span className="naslov-strani__nad">Kartoteka</span>
-            <span className="naslov-strani__glavni">Igralci</span>
-          </h1>
-          <p className="uvod">
-            {jeAdmin
-              ? `Klub, igralna roka in datum rojstva vplivajo na kategorije in statistiko. Zvezdica pomeni provizoričen rating (manj kot ${PROVIZORICNO_DO} odigranih tekem).`
-              : 'Kot organizator lahko dodaš novega igralca; urejanje in rating ureja administrator.'}
-          </p>
-        </div>
+      {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija.
+          Ostanejo iskalnik, dejanje in števci — tam, kjer so stali prej. */}
+      <div className="stran-glava stran-glava--dno stran-glava--brez-naslova">
         <div>
           <label className="obrazec__polje">
             <span>Išči</span>
@@ -130,7 +121,7 @@ export function IgralciStran() {
         <table className="tabela">
           <thead>
             <tr>
-              <th scope="col">Priimek in ime</th>
+              <th scope="col">Ime in priimek</th>
               <th scope="col">Klub</th>
               <th scope="col">Spol</th>
               {jeAdmin && <th scope="col">Letnik</th>}
@@ -149,7 +140,7 @@ export function IgralciStran() {
               return (
               <tr key={igralec.id}>
                 <td className="lestvica__ime">
-                  {igralec.priimek} {igralec.ime}
+                  {igralec.ime} {igralec.priimek}
                 </td>
                 <td className={igralec.klub ? 'lestvica__klub' : 'lestvica__klub igralec-klub--brez'}>
                   {igralec.klub?.ime ?? 'brez kluba'}

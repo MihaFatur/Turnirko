@@ -24,16 +24,9 @@ export function RacuniStran() {
 
   return (
     <section>
-      <div className="stran-glava stran-glava--ozka">
-        <div>
-          <h1 className="naslov-strani">
-            <span className="naslov-strani__nad">Kdo sme kaj</span>
-            <span className="naslov-strani__glavni">Dostopi</span>
-          </h1>
-          <p className="uvod">
-            Organizator upravlja tekmovanja svojega kluba. Administrator vse. Gost samo bere.
-          </p>
-        </div>
+      {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija.
+          Ostane kolofon s števili — tam, kjer je stal prej. */}
+      <div className="stran-glava stran-glava--ozka stran-glava--brez-naslova">
         <div className="kolofon">
           <div className="kolofon__vrstica">
             <span className="kolofon__oznaka">Računi</span>
@@ -176,7 +169,7 @@ function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
           <optgroup label="Vsi igralci">
             {ostaliIgralci.map((i) => (
               <option key={i.id} value={i.id}>
-                {i.priimek} {i.ime}
+                {i.ime} {i.priimek}
                 {i.klub ? ` (${i.klub.ime})` : ''}
               </option>
             ))}

@@ -8,16 +8,23 @@ import { ligeApi, srecanjaApi } from '../api/zahteve'
 import type {
   IzidTekme,
   MestoVnos,
+  NizVnos,
   SrecanjePodrobnoDto,
   StranEkipe,
   TekmaSrecanjaDto,
 } from '../api/tipi'
-import { OZNAKE_FORMAT } from '../api/tipi'
+import { OZNAKE_FORMAT, nizovZaZmago } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { SpremembaElo } from '../komponente/SpremembaElo'
+import {
+  TockeNizov,
+  preveriNize,
+  vrsticeZaIzid,
+  type VrsticaNiza,
+} from '../komponente/TockeNizov'
 import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
 
 export function SrecanjeStran() {
@@ -199,11 +206,20 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
                     <SpremembaElo vrednost={t.spremembaEloDomaci} />
                   </td>
                   <td className="srecanje__izid-tekme">
-                    {konec
-                      ? `${t.dobljeniNiziDomaci}:${t.dobljeniNiziGost}`
-                      : t.status === 'NEODIGRANA'
-                        ? '—'
-                        : '—'}
+                    {konec ? (
+                      <>
+                        {t.dobljeniNiziDomaci}:{t.dobljeniNiziGost}
+                        {/* Točke po nizih so neobvezne — izpišejo se le, kadar
+                            jih je organizator vpisal. */}
+                        {t.nizi.length > 0 && (
+                          <span className="srecanje__nizi">
+                            {t.nizi.map((n) => `${n.tocke1}:${n.tocke2}`).join(', ')}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td
                     className={
@@ -255,18 +271,38 @@ function RezultatOkno({
   onZapri: () => void
 }) {
   const odjemalec = useQueryClient()
+  const zaZmago = nizovZaZmago(tekma.steviloNizov)
   const [izid, nastaviIzid] = useState<'IGRANO' | Exclude<IzidTekme, 'IGRANO' | 'PROSTO'>>('IGRANO')
   const [niziDomaci, nastaviNiziDomaci] = useState('')
   const [niziGost, nastaviNiziGost] = useState('')
   const [zmagovalec, nastaviZmagovalca] = useState<StranEkipe>('DOMACI')
+  /* Točke po nizih so tudi v ligi neobvezne (enako kot pri turnirjih). */
+  const [vnasamTocke, nastaviVnasamTocke] = useState(false)
+  const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>([])
+  const [napakaVnosa, nastaviNapakoVnosa] = useState<string | null>(null)
+
+  /* Koliko nizov je bilo odigranih — po tem se ravna število vrstic za točke;
+     dokler izid ni v celoti vpisan, vrstic ni. */
+  const odigranihNizov =
+    niziDomaci !== '' && niziGost !== '' ? Number(niziDomaci) + Number(niziGost) : 0
+
+  function obSpremembiNizov(stran: 'domaci' | 'gost', vrednost: string) {
+    const dom = stran === 'domaci' ? vrednost : niziDomaci
+    const gost = stran === 'gost' ? vrednost : niziGost
+    if (stran === 'domaci') nastaviNiziDomaci(vrednost)
+    else nastaviNiziGost(vrednost)
+    const skupaj = dom !== '' && gost !== '' ? Number(dom) + Number(gost) : 0
+    nastaviTockeNizov((prejsnje) => vrsticeZaIzid(prejsnje, skupaj))
+  }
 
   const shrani = useMutation({
-    mutationFn: () =>
+    mutationFn: (nizi: NizVnos[] | null) =>
       srecanjaApi.vnesiRezultat(tekma.id, {
         izidTip: izid === 'IGRANO' ? null : izid,
         dobljeniNiziDomaci: izid === 'IGRANO' ? Number(niziDomaci) : null,
         dobljeniNiziGost: izid === 'IGRANO' ? Number(niziGost) : null,
         zmagovalecStran: izid === 'IGRANO' ? null : zmagovalec,
+        nizi,
       }),
     onSuccess: () => {
       odjemalec.invalidateQueries({ queryKey: ['srecanje', idSrecanje] })
@@ -278,7 +314,27 @@ function RezultatOkno({
 
   function obOddaji(e: FormEvent) {
     e.preventDefault()
-    shrani.mutate()
+    nastaviNapakoVnosa(null)
+
+    if (izid !== 'IGRANO' || !vnasamTocke) {
+      shrani.mutate(null)
+      return
+    }
+
+    if (tockeNizov.some((niz) => niz.tocke1 === '' || niz.tocke2 === '')) {
+      nastaviNapakoVnosa('Vnesi točke vseh nizov ali izklopi vnos točk.')
+      return
+    }
+    const nizi = tockeNizov.map((niz) => ({
+      tocke1: Number(niz.tocke1),
+      tocke2: Number(niz.tocke2),
+    }))
+    const napaka = preveriNize(nizi, Number(niziDomaci), Number(niziGost), zaZmago)
+    if (napaka) {
+      nastaviNapakoVnosa(napaka)
+      return
+    }
+    shrani.mutate(nizi)
   }
 
   return (
@@ -299,18 +355,33 @@ function RezultatOkno({
         </label>
 
         {izid === 'IGRANO' ? (
-          <div className="obrazec__vrstica">
-            <label className="obrazec__polje">
-              <span>Dobljeni nizi (domači)</span>
-              <input type="number" min={0} value={niziDomaci}
-                onChange={(d) => nastaviNiziDomaci(d.target.value)} required />
+          <>
+            <div className="obrazec__vrstica">
+              <label className="obrazec__polje">
+                <span>Dobljeni nizi (domači)</span>
+                <input type="number" min={0} value={niziDomaci}
+                  onChange={(d) => obSpremembiNizov('domaci', d.target.value)} required />
+              </label>
+              <label className="obrazec__polje">
+                <span>Dobljeni nizi (gost)</span>
+                <input type="number" min={0} value={niziGost}
+                  onChange={(d) => obSpremembiNizov('gost', d.target.value)} required />
+              </label>
+            </div>
+
+            <label className="obrazec__potrditev">
+              <input
+                type="checkbox"
+                checked={vnasamTocke}
+                onChange={(d) => nastaviVnasamTocke(d.target.checked)}
+              />
+              <span>Vnesi tudi točke po nizih</span>
             </label>
-            <label className="obrazec__polje">
-              <span>Dobljeni nizi (gost)</span>
-              <input type="number" min={0} value={niziGost}
-                onChange={(d) => nastaviNiziGost(d.target.value)} required />
-            </label>
-          </div>
+
+            {vnasamTocke && odigranihNizov > 0 && (
+              <TockeNizov vrstice={tockeNizov} nastaviVrstice={nastaviTockeNizov} />
+            )}
+          </>
         ) : (
           <label className="obrazec__polje">
             <span>Zmagovalec</span>
@@ -321,7 +392,8 @@ function RezultatOkno({
           </label>
         )}
 
-        <p className="namig">Najboljši od {tekma.steviloNizov} nizov (za zmago {Math.floor(tekma.steviloNizov / 2) + 1}).</p>
+        <p className="namig">Najboljši od {tekma.steviloNizov} nizov (za zmago {zaZmago}).</p>
+        {napakaVnosa && <div className="napaka">{napakaVnosa}</div>}
         <SporociloNapake napaka={shrani.error} />
         <div className="obrazec__gumbi">
           <button type="button" className="gumb" onClick={onZapri}>Prekliči</button>

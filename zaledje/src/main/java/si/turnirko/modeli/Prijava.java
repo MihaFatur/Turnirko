@@ -1,10 +1,17 @@
-/* Prijava igralca na dogodek.
+/* Prijava na dogodek - TEKMOVALNA ENOTA.
    Tekme se sklicujejo na PRIJAVE (ne neposredno na igralce), ker prijava
-   hrani posnetek kluba in ratinga ob zrebu, v prihodnosti pa bo lahko
-   predstavljala tudi par (dvojice) brez spremembe tabele tekem. */
+   hrani posnetek kluba in ratinga ob zrebu, predvsem pa zato, ker pri
+   disciplini DVOJICE predstavlja PAR: nosi drugega igralca in tabele tekem
+   zato ni bilo treba spreminjati.
+
+   Pri dvojicah se igralci prijavijo posamicno (vsak svoja vrstica), pare pa
+   pred zrebom sestavi organizator: vrstica prvega igralca dobi soigralca,
+   vrstica drugega izgine. Prijava brez soigralca je torej na dogodku dvojic
+   "prijavljen igralec brez para" in v zreb ne gre. */
 package si.turnirko.modeli;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -47,11 +54,21 @@ public class Prijava {
     @JoinColumn(name = "id_igralec", nullable = false)
     private Igralec igralec;
 
+    /* Drugi igralec para (samo pri disciplini DVOJICE). Prazen pomeni
+       posamicno prijavo oz. igralca, ki soigralca se nima. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_igralec_2")
+    private Igralec igralec2;
+
     /* Posnetek kluba OB PRIJAVI - zgodovina ostane pravilna
        tudi ce igralec kasneje prestopi. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_klub_ob_prijavi")
     private Klub klubObPrijavi;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_klub_ob_prijavi_2")
+    private Klub klubObPrijavi2;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -66,6 +83,9 @@ public class Prijava {
     /* Posnetek ratinga ob zrebu - za sledljivost in ponovljivost zreba. */
     @Column(name = "rating_ob_zrebu")
     private Integer ratingObZrebu;
+
+    @Column(name = "rating_ob_zrebu_2")
+    private Integer ratingObZrebu2;
 
     /* Skupina, v katero je igralca uvrstil zreb, in njegovo mesto v njej. */
     @Column(name = "id_skupina")
@@ -108,6 +128,44 @@ public class Prijava {
     /* Ob ponovni prijavi po odjavi se posnetek kluba osvezi (moznost prestopa). */
     public void setKlubObPrijavi(Klub klubObPrijavi) { this.klubObPrijavi = klubObPrijavi; }
 
+    public Igralec getIgralec2() { return igralec2; }
+    public Klub getKlubObPrijavi2() { return klubObPrijavi2; }
+
+    /* Poveze prijavo v par: drugi igralec s svojim posnetkom kluba.
+       null razdruzi par in prijava spet velja za enega samega igralca. */
+    public void nastaviSoigralca(Igralec soigralec) {
+        this.igralec2 = soigralec;
+        this.klubObPrijavi2 = soigralec != null ? soigralec.getKlub() : null;
+        if (soigralec == null) {
+            this.ratingObZrebu2 = null;
+        }
+    }
+
+    /* Ali je prijava sestavljen par (in ne samo prijavljen igralec). */
+    public boolean jePar() { return igralec2 != null; }
+
+    /* Igralci te prijave: eden ali dva. */
+    public List<Igralec> igralci() {
+        return igralec2 == null ? List.of(igralec) : List.of(igralec, igralec2);
+    }
+
+    public boolean vsebujeIgralca(Long idIgralca) {
+        return igralec.getId().equals(idIgralca)
+                || (igralec2 != null && igralec2.getId().equals(idIgralca));
+    }
+
+    /* Ime tekmovalne enote za izpise: "Ana Novak" oz. "Ana Novak / Eva Zajc". */
+    public String prikazanoIme() {
+        return igralec2 == null ? igralec.polnoIme()
+                : igralec.polnoIme() + " / " + igralec2.polnoIme();
+    }
+
+    /* Kratek izpis (npr. za vrstico "zadnji izid"): "Novak" oz. "Novak/Zajc". */
+    public String prikazaniPriimek() {
+        return igralec2 == null ? igralec.getPriimek()
+                : igralec.getPriimek() + "/" + igralec2.getPriimek();
+    }
+
     public StatusPrijave getStatus() { return status; }
     public void setStatus(StatusPrijave status) { this.status = status; }
 
@@ -116,6 +174,9 @@ public class Prijava {
 
     public Integer getRatingObZrebu() { return ratingObZrebu; }
     public void setRatingObZrebu(Integer ratingObZrebu) { this.ratingObZrebu = ratingObZrebu; }
+
+    public Integer getRatingObZrebu2() { return ratingObZrebu2; }
+    public void setRatingObZrebu2(Integer ratingObZrebu2) { this.ratingObZrebu2 = ratingObZrebu2; }
 
     public Long getIdSkupina() { return idSkupina; }
     public void setIdSkupina(Long idSkupina) { this.idSkupina = idSkupina; }

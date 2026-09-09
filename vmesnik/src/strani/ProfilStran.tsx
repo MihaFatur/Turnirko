@@ -9,7 +9,7 @@
    posebej in samo takrat, ko je profil last prijavljenega igralca ali ko gleda
    administrator - streznik na ta klic sicer odgovori s 403.
 
-   Vsi izpeljani prikazi (kolobar, toplotna karta, sparkline, razsevni graf,
+   Vsi izpeljani prikazi (kolobar, toplotna karta, trak izidov, razsevni graf,
    osi razrezov) se izracunajo iz ProfilDto in ProfilZasebnoDto med izrisom -
    brez novih poizvedb. Okolico na lestvici izracunamo iz globalne lestvice,
    ki jo vmesnik ima ze predpomnjeno (isti kljuc kot LestvicaStran). */
@@ -28,6 +28,7 @@ import type {
   ProfilZasebnoDto,
   RazsevnaTocka,
   Razmerje,
+  TekmaDvojic,
   TekmaProfila,
 } from '../api/tipi'
 import { OZNAKE_IZID } from '../api/tipi'
@@ -38,6 +39,7 @@ import { SporociloNapake } from '../komponente/SporociloNapake'
 import {
   oznakaMeseca,
   sklonMesecih,
+  sklonPorazov,
   sklonTekem,
   sklonTock,
   sklonZmag,
@@ -227,12 +229,6 @@ export function ProfilStran() {
         </>
       )}
       {smemZasebno && zasebno.error && <SporociloNapake napaka={zasebno.error} />}
-      {!smemZasebno && (
-        <p className="obvestilo">
-          Poglobljene analize (forma, nasprotniki, nizi in točke) vidi samo igralec sam.
-          Če je to tvoj profil, se prijavi.
-        </p>
-      )}
 
       <div>
         <div className="naslovna-vrstica">
@@ -245,6 +241,23 @@ export function ProfilStran() {
           <SeznamTekem tekme={p.tekme} poudarjena={poudarjenaTekma} />
         )}
       </div>
+
+      {/* Dvojice so SVOJ seznam in ne štejejo ne v pregled ne v ELO: izida
+          para ni mogoče pripisati posamezniku. Razdelek se pokaže samo
+          igralcu, ki je dvojice sploh igral. */}
+      {p.dvojice.length > 0 && (
+        <div>
+          <div className="naslovna-vrstica">
+            <h2>Dvojice</h2>
+            <span className="sekcija__meta">{p.dvojice.length} skupaj</span>
+          </div>
+          <SeznamDvojic tekme={p.dvojice} />
+          <p className="namig">
+            Tekme dvojic ne štejejo v zgornji izkupiček ne v klubski ELO —
+            izida para ni mogoče pripisati posamezniku.
+          </p>
+        </div>
+      )}
     </section>
   )
 }
@@ -511,19 +524,37 @@ function Nasprotniki({
       </div>
 
       <div className="profil__izpostavljeni">
-        <Izpostavljen naslov="Najboljša zmaga" nasprotnik={n.najboljsaZmaga} kazeRating />
-        <Izpostavljen naslov="Nemesis" nasprotnik={n.nemesis} />
-        <Izpostavljen naslov="Najpogostejši nasprotnik" nasprotnik={n.najpogostejsi} kazeTekme />
+        {/* Desna vrednost je pri vsakem izpostavljenem tista, zaradi katere je
+            izpostavljen: rating premaganega, število porazov, število tekem. */}
+        <Izpostavljen
+          naslov="Najboljša zmaga"
+          nasprotnik={n.najboljsaZmaga}
+          desno={n.najboljsaZmaga?.rating ?? null}
+        />
+        <Izpostavljen
+          naslov="Najtežji nasprotnik"
+          nasprotnik={n.nemesis}
+          desno={n.nemesis ? `${n.nemesis.porazi} ${sklonPorazov(n.nemesis.porazi)}` : null}
+        />
+        <Izpostavljen
+          naslov="Najpogostejši nasprotnik"
+          nasprotnik={n.najpogostejsi}
+          desno={
+            n.najpogostejsi
+              ? `${n.najpogostejsi.zmage}–${n.najpogostejsi.porazi} · ${
+                  n.najpogostejsi.zmage + n.najpogostejsi.porazi
+                } ${sklonTekem(n.najpogostejsi.zmage + n.najpogostejsi.porazi)}`
+              : null
+          }
+        />
       </div>
 
       {h2h.length > 0 && (
         <>
-          <div className="podnaslov-sekcije">
-            Najpogostejši nasprotniki · gibanje medsebojnih tekem
-          </div>
+          <div className="podnaslov-sekcije">Najpogostejši nasprotniki</div>
           <div className="h2h__vrstica h2h__vrstica--glava">
             <span>Igralec</span>
-            <span className="h2h__desno">Bilanca</span>
+            <span>Medsebojni rezultat</span>
             <span className="h2h__sredina">Zadnjih {h2h[0].zadnjih.length}</span>
             <span className="h2h__desno">Njegov ELO</span>
             <span className="h2h__desno">Skupaj</span>
@@ -539,7 +570,18 @@ function Nasprotniki({
               <span className={'h2h__bilanca ' + izidRazred(v.zmage, v.porazi)}>
                 {v.zmage}–{v.porazi}
               </span>
-              <Sparkline izidi={v.zadnjih} razred={izidRazred(v.zmage, v.porazi)} />
+              {/* Isti zapisnik kot trak forme: najstarejša tekma levo, Z zeleno,
+                  P rdeče — smer je razvidna brez branja krivulje. */}
+              <span className="h2h__trak">
+                {v.zadnjih.map((zmaga, i) => (
+                  <span
+                    key={i}
+                    className={'h2h__znak ' + (zmaga ? 'h2h__znak--z' : 'h2h__znak--p')}
+                  >
+                    {zmaga ? 'Z' : 'P'}
+                  </span>
+                ))}
+              </span>
               <span className="h2h__elo">{v.rating ?? '—'}</span>
               <span className="h2h__skupaj">{v.zmage + v.porazi}</span>
             </div>
@@ -549,38 +591,6 @@ function Nasprotniki({
 
       <RazsevniGraf tocke={podatki.razsevni} mojElo={mojElo} />
     </div>
-  )
-}
-
-/* Gibanje medsebojnih tekem: črta se ob zmagi dvigne, ob porazu spusti.
-   Absolutne vrednosti ni — pomembna je smer, zato tudi ni osi. */
-function Sparkline({ izidi, razred }: { izidi: boolean[]; razred: string }) {
-  /* Korak je izpeljan iz števila tekem, da črta vedno zapolni vseh 120 px —
-     pri osmih tekmah da natanko 17 px kot na maketi. */
-  const korak = izidi.length > 1 ? 119 / (izidi.length - 1) : 0
-  let y = 14
-  const tocke = izidi.map((zmaga, i) => {
-    y = zmaga ? Math.max(4, y - 5) : Math.min(24, y + 5)
-    return `${(i * korak).toFixed(1)},${y}`
-  })
-  return (
-    <svg
-      className="sparkline"
-      viewBox="0 0 120 28"
-      role="img"
-      aria-label="Gibanje medsebojnih tekem"
-    >
-      <line className="sparkline__os" x1="0" x2="120" y1="14" y2="14" />
-      <polyline className="sparkline__crta" points={tocke.join(' ')} />
-      {izidi.length > 0 && (
-        <circle
-          className={'sparkline__zadnja ' + razred}
-          cx={(izidi.length - 1) * korak}
-          cy={y}
-          r="3"
-        />
-      )}
-    </svg>
   )
 }
 
@@ -717,34 +727,35 @@ function NiziInTocke({ podatki }: { podatki: ProfilZasebnoDto }) {
             vidna={nt.brezIzgubljenegaNiza.odigrane > 0}
           />
           <PritiskVrstica
-            oznaka="Točke pri izidu 9:9 in več"
+            oznaka="Zmaga seta na razliko"
             odstotek={t.odstotekTockPodPritiskom}
             vidna={t.nizovPodPritiskom > 0}
           />
         </div>
 
         <div>
-          <div className="razrez__naslov">Točke · samo turnirske tekme</div>
+          <div className="razrez__naslov">Točke</div>
           {t.steviloTekem > 0 && (
             <div className="nizi__tocke">
               <Kazalnik oznaka="Osvojene točke" vrednost={t.tockeZa} prvi />
-              <Kazalnik oznaka="Prejete točke" vrednost={t.tockeProti} />
+              <Kazalnik oznaka="Izgubljene točke" vrednost={t.tockeProti} />
               <Kazalnik oznaka="Delež točk" vrednost={`${t.odstotekTock} %`} prvi />
               <Kazalnik oznaka="Povprečje na niz" vrednost={t.povprecjeNaNiz} />
             </div>
           )}
-          <p className="profil__opomba">
-            {t.steviloTekem === 0
-              ? 'Točke po nizih so shranjene samo za turnirske tekme in za zdaj ni nobene take tekme.'
-              : `Točke po nizih so shranjene samo za turnirske tekme; izračun temelji na ${t.steviloTekem} takih tekmah, ligaška srečanja hranijo samo nize.`}
-          </p>
+          {t.steviloTekem === 0 && (
+            <p className="profil__opomba">
+              Vnos točk po nizih je neobvezen in za zdaj ni nobene tekme, pri kateri bi bile
+              vpisane.
+            </p>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-/* Toplotna karta končnih izidov: gostota črnila je pogostost. Nadomešča
+/* Toplotna karta končnih izidov: gostota črnila je pogostost celice. Nadomešča
    seznam značk, ker med "3:1 ×24" in "0:3 ×7" tam ni bilo videti razlike. */
 function ToplotnaKarta({ razmerja }: { razmerja: Razmerje[] }) {
   if (razmerja.length === 0) return null
@@ -756,9 +767,7 @@ function ToplotnaKarta({ razmerja }: { razmerja: Razmerje[] }) {
 
   return (
     <>
-      <div className="razrez__naslov razrez__naslov--sekcija">
-        Končni izidi · gostota črnila je pogostost
-      </div>
+      <div className="razrez__naslov razrez__naslov--sekcija">Končni izidi</div>
       {/* Mreža je široka toliko, kolikor je izidov (največ šest v vrsti, na
           telefonu tri) — pri treh izidih bi šest praznih stolpcev naredilo
           luknjo. Število gre v spremenljivko, da odzivno pravilo ostane v CSS. */}
@@ -819,7 +828,7 @@ function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
   const n = podatki.nasprotniki
   const pt = podatki.poTekmovanjih
 
-  const skupine: { naslov: string; vrstice: Delez[]; opomba?: string }[] = [
+  const skupine: { naslov: string; vrstice: Delez[] }[] = [
     {
       naslov: 'Po igralni roki nasprotnika',
       vrstice: [
@@ -845,15 +854,12 @@ function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
         preimenuj(pt.vGosteh, 'Liga · v gosteh'),
         preimenuj(pt.dvojice, 'Liga · dvojice'),
       ],
-      opomba: pt.dvojice.odigrane > 0
-        ? 'Dvojice ne štejejo v ELO ne med posamične zmage.'
-        : undefined,
     },
     {
       naslov: 'Po fazi in poziciji',
       vrstice: [
         ...pt.poFazi.map((d) => preimenuj(d, zVelikoZacetnico(d.oznaka))),
-        ...pt.poPoziciji.map((d) => preimenuj(d, d.oznaka.replace(/^pozicija /, 'Postava '))),
+        ...pt.poPoziciji.map((d) => preimenuj(d, zVelikoZacetnico(d.oznaka))),
       ],
     },
   ]
@@ -889,11 +895,10 @@ function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
                 <span className="razrez__izid">
                   {d.zmage}–{d.porazi}
                 </span>
-                <Os odstotek={d.odstotek} sirina={160} oznaciSlabse />
+                <Os odstotek={d.odstotek} sirina={132} oznaciSlabse />
                 <span className="razrez__odstotek">{d.odstotek} %</span>
               </div>
             ))}
-            {s.opomba && <p className="profil__opomba">{s.opomba}</p>}
           </div>
         ))}
       </div>
@@ -1006,6 +1011,48 @@ function SeznamTekem({
   )
 }
 
+/* Tekme dvojic. Stolpec "Nasprotnik" nosi cel nasprotni par, stolpec ELO pa
+   odpade - dvojice se v rating ne obračunajo; namesto njega stoji soigralec,
+   ki je pri dvojicah edini podatek, ki ga v posamični tabeli ni. */
+function SeznamDvojic({ tekme }: { tekme: TekmaDvojic[] }) {
+  return (
+    <div className="tekme-mreza">
+      <div className="tekma-vrstica tekma-vrstica--glava">
+        <span>Datum</span>
+        <span>Tekmovanje</span>
+        <span>Nasprotni par</span>
+        <span className="tekma-vrstica__desno">Rezultat</span>
+        <span className="tekma-vrstica__desno">Soigralec</span>
+      </div>
+      {tekme.map((t) => (
+        <div className="tekma-vrstica" key={t.idTekme}>
+          <span className="tekma-vrstica__datum">{t.datum ? datum(t.datum) : '—'}</span>
+          <span className="tekma-vrstica__tekmovanje">
+            <span className="tekma-vrstica__ime">{t.tekmovanje}</span>
+            <span className="tekma-vrstica__del">
+              {t.del}
+              {t.izidTip && t.izidTip !== 'IGRANO' ? ` · ${OZNAKE_IZID[t.izidTip]}` : ''}
+            </span>
+          </span>
+          <span className="tekma-vrstica__nasprotnik">{t.nasprotnika}</span>
+          <span className={'tekma-vrstica__izid ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')}>
+            {t.niziZa}:{t.niziProti}
+          </span>
+          <span className="tekma-vrstica__nasprotnik">
+            {t.idSoigralca !== null ? (
+              <Link to={`/igralci/${t.idSoigralca}/profil`} className="profil__nasprotnik">
+                {t.soigralec}
+              </Link>
+            ) : (
+              '—'
+            )}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /* ---------------- Skupne drobne komponente ---------------- */
 
 /* Velika številka v stolpcu, ločenem s hairline (nikoli kartica).
@@ -1043,30 +1090,29 @@ function FormaKazalnik({ oznaka, vrednost }: { oznaka: string; vrednost: string 
   )
 }
 
+/* Naslov, pod njim ime levo in poudarjena vrednost ("desno") v isti vrstici,
+   pod obema klub. Katera vrednost to je, pove klicatelj — pri vsakem
+   izpostavljenem je druga. */
 function Izpostavljen({
   naslov,
   nasprotnik,
-  kazeRating = false,
-  kazeTekme = false,
+  desno,
 }: {
   naslov: string
   nasprotnik: ProfilNasprotnik | null
-  kazeRating?: boolean
-  kazeTekme?: boolean
+  desno: string | number | null
 }) {
   if (!nasprotnik) return null
-  const tekem = nasprotnik.zmage + nasprotnik.porazi
   return (
     <div className="izpostavljen">
       <div className="izpostavljen__naslov">{naslov}</div>
-      <Link to={`/igralci/${nasprotnik.idIgralec}/profil`} className="izpostavljen__ime">
-        {nasprotnik.polnoIme}
-      </Link>
-      <div className="izpostavljen__opis">
-        {nasprotnik.klub ?? 'brez kluba'} · {nasprotnik.zmage}–{nasprotnik.porazi}
-        {kazeRating && nasprotnik.rating !== null && ` · rating ${nasprotnik.rating}`}
-        {kazeTekme && ` · ${tekem} ${sklonTekem(tekem)}`}
+      <div className="izpostavljen__vrstica">
+        <Link to={`/igralci/${nasprotnik.idIgralec}/profil`} className="izpostavljen__ime">
+          {nasprotnik.polnoIme}
+        </Link>
+        {desno !== null && <span className="izpostavljen__vrednost">{desno}</span>}
       </div>
+      <div className="izpostavljen__opis">{nasprotnik.klub ?? 'brez kluba'}</div>
     </div>
   )
 }
@@ -1189,7 +1235,7 @@ function opisIzida(oznaka: string): string {
   if (proti === 0) return 'Brez izgubljenega niza'
   if (za === 0) return 'Brez niza'
   if (Math.abs(za - proti) === 1) return 'Odločilni niz'
-  return za > proti ? 'Nadzorovano' : 'Brez priložnosti'
+  return za > proti ? 'Nadzorovano' : 'Borba'
 }
 
 function izidRazred(zmage: number, porazi: number): string {
@@ -1213,12 +1259,13 @@ function stevilka(v: number, sPredznakom: boolean): string {
   return (v >= 0 ? '+' : '−') + zaokrozena
 }
 
-/* Zaledje sestavi polno ime kot "Priimek Ime", zato je prva beseda priimek.
-   Naslov strani ga postavi v veliko vrstico, ime pa v nadnaslov. */
+/* Zaledje sestavi polno ime kot "Ime Priimek", zato je prva beseda ime, vse
+   ostalo pa priimek (dvodelni priimki ostanejo celi). Naslov strani postavi
+   priimek v veliko vrstico, ime pa v nadnaslov nad njo. */
 function razbijIme(polnoIme: string): { priimek: string; ime: string } {
   const presledek = polnoIme.indexOf(' ')
   if (presledek < 0) return { priimek: polnoIme, ime: '' }
-  return { priimek: polnoIme.slice(0, presledek), ime: polnoIme.slice(presledek + 1) }
+  return { ime: polnoIme.slice(0, presledek), priimek: polnoIme.slice(presledek + 1) }
 }
 
 function datum(iso: string): string {

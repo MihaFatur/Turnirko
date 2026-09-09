@@ -10,7 +10,9 @@
 
    Vrstice s sezono in števci pod mastheadom namenoma ni: stran naj se začne z
    vsebino, ne s povzetkom o sebi. Vse je bralno in vidno tudi gostom;
-   spremljanje lig je edino dejanje in zahteva prijavo. */
+   spremljanje lig je edino dejanje in zahteva prijavo — gostu zato krmil
+   računa (kvadratki, filtri lestvice, poziv k prijavi) sploh ne pokažemo,
+   namesto da bi jih pokazali in ob kliku zahtevali prijavo. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -22,7 +24,6 @@ import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { KoledarSklop } from '../komponente/KoledarSklop'
 import { IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
-import { PrijavaOkno } from '../komponente/PrijavaOkno'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { oblikujDanKratekMesec, oblikujDatum, sklonIgralcev } from '../pomozno/oblikovanje'
@@ -38,7 +39,6 @@ type FilterLestvice = 'vsi' | 'mojeLige' | 'mojKlub'
 export function DomacaStran() {
   const { uporabnik, mojIdIgralec } = useAvtentikacija()
   const [filter, nastaviFilter] = useState<FilterLestvice>('vsi')
-  const [prijavaOdprta, nastaviPrijavaOdprta] = useState(false)
   const [izborOdprt, nastaviIzborOdprt] = useState(false)
 
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
@@ -95,8 +95,7 @@ export function DomacaStran() {
             <h2>{jePrijavljen ? 'Moje lige' : 'Lige'}</h2>
             {/* Izbor je nastavitev domače strani, zato okno in ne pot na
                 /lige — tam vrstica lige vodi v ligo in preklopa ne nosi.
-                Gost izbora nima; njemu pot do prijave pove vrstica pod
-                seznamom, zato je tu ne ponavljamo. */}
+                Gost izbora nima, zato zanj gumba ni. */}
             {jePrijavljen && (
               <button
                 type="button"
@@ -120,39 +119,26 @@ export function DomacaStran() {
                 liga={liga}
                 key={liga.id}
                 /* Kvadratek je preklop računa; gost ga nima, zato ga tudi ne
-                   vidi — namesto njega dobi vabilo k prijavi pod seznamom. */
+                   vidi — vrstica lige mu ostane sama povezava. */
                 spremljam={jePrijavljen ? spremljane.includes(liga.id) : null}
                 naPreklop={() => preklopi(liga.id)}
               />
             ))}
-            {jePrijavljen ? (
-              nespremljanihVTeku > 0 && (
-                <div className="domov__liga-dodaj">
-                  <span className="domov__namig">
-                    Ne spremljaš {nespremljanihVTeku} {sklonLig(nespremljanihVTeku)}, ki
-                    {nespremljanihVTeku === 1 ? ' je' : ' so'} v teku.
-                  </span>
-                  <button
-                    type="button"
-                    className="gumb gumb--majhen"
-                    onClick={() => nastaviIzborOdprt(true)}
-                  >
-                    Dodaj ligo
-                  </button>
-                </div>
-              )
-            ) : (
+            {/* Vabilo k prijavi je odšlo: gostu je sklop bralen tak, kot je, in
+                poziv pod seznamom je bil edina vrstica, ki od njega nekaj
+                terja. Pot do prijave nosi glava. */}
+            {jePrijavljen && nespremljanihVTeku > 0 && (
               <div className="domov__liga-dodaj">
                 <span className="domov__namig">
-                  Prijavljeni računi si izberejo lige, ki jih spremljajo — te so potem
-                  vedno tukaj.
+                  Ne spremljaš {nespremljanihVTeku} {sklonLig(nespremljanihVTeku)}, ki
+                  {nespremljanihVTeku === 1 ? ' je' : ' so'} v teku.
                 </span>
                 <button
                   type="button"
                   className="gumb gumb--majhen"
-                  onClick={() => nastaviPrijavaOdprta(true)}
+                  onClick={() => nastaviIzborOdprt(true)}
                 >
-                  Prijava
+                  Dodaj ligo
                 </button>
               </div>
             )}
@@ -168,6 +154,7 @@ export function DomacaStran() {
         mojIdIgralec={mojIdIgralec}
         mojIdKluba={mojIdKluba}
         spremljane={spremljane}
+        jePrijavljen={jePrijavljen}
       />
 
       <KoledarSklop />
@@ -178,10 +165,6 @@ export function DomacaStran() {
         </div>
         <EnaNaEna />
       </div>
-
-      {prijavaOdprta && (
-        <PrijavaOkno zacetniNacin="prijava" onZapri={() => nastaviPrijavaOdprta(false)} />
-      )}
 
       {izborOdprt && <IzborLigOkno onZapri={() => nastaviIzborOdprt(false)} />}
     </section>
@@ -326,6 +309,7 @@ function SklopLestvica({
   mojIdIgralec,
   mojIdKluba,
   spremljane,
+  jePrijavljen,
 }: {
   vrstice: LestvicaIgralcaDto[] | undefined
   poizvedba: { error: unknown; isFetching: boolean; refetch: () => unknown; isPending: boolean }
@@ -334,6 +318,9 @@ function SklopLestvica({
   mojIdIgralec: number | null
   mojIdKluba: number | null
   spremljane: number[]
+  /* Oba zožena izbora govorita o računu (»moje« lige, »moj« klub), zato ju
+     gost ne dobi: gledal bi filtra, ki mu ne moreta vrniti ničesar. */
+  jePrijavljen: boolean
 }) {
   /* Mesto je vedno mesto na CELI lestvici — filter zoži prikaz, ne
      razvrstitve. Zato ga pripnemo pred filtriranjem. */
@@ -352,13 +339,20 @@ function SklopLestvica({
       <div className="naslovna-vrstica">
         <h2>Lestvica</h2>
         <div className="naslovna-vrstica__desno">
-          <div className="izbirnik">
-            <Filter oznaka="Vsi igralci" vrednost="vsi" izbrani={filter} naFilter={naFilter} />
-            <Filter oznaka="Moje lige" vrednost="mojeLige" izbrani={filter} naFilter={naFilter} />
-            <Filter oznaka="Moj klub" vrednost="mojKlub" izbrani={filter} naFilter={naFilter} />
-          </div>
+          {jePrijavljen && (
+            <div className="izbirnik">
+              <Filter oznaka="Vsi igralci" vrednost="vsi" izbrani={filter} naFilter={naFilter} />
+              <Filter oznaka="Moje lige" vrednost="mojeLige" izbrani={filter} naFilter={naFilter} />
+              <Filter oznaka="Moj klub" vrednost="mojKlub" izbrani={filter} naFilter={naFilter} />
+            </div>
+          )}
+          {/* Vsak del je svoj element in razmik dela gap: povezava je
+             inline-flex, ta pa presledke med svojimi otroki poje — »Cela
+             lestvica →« se je brez tega bralo kot »Celalestvica→«. */}
           <Link to="/lestvica" className="sekcija__meta domov__cela">
-            Cela<span className="domov__cela-dolgo"> lestvica</span> →
+            <span>Cela</span>
+            <span className="domov__cela-dolgo">lestvica</span>
+            <span aria-hidden="true">→</span>
           </Link>
         </div>
       </div>

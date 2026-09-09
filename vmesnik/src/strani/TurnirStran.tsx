@@ -12,20 +12,28 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { turnirjiApi } from '../api/zahteve'
-import type { DogodekDto, DogodekVnos, SistemTekmovanja, SpolKategorija } from '../api/tipi'
+import type {
+  Disciplina,
+  DogodekDto,
+  DogodekVnos,
+  SistemTekmovanja,
+  SpolKategorija,
+} from '../api/tipi'
 import {
   OZNAKE_SISTEM,
   OZNAKE_SISTEM_KRATKO,
   OZNAKE_SISTEM_MOBI,
   OZNAKE_SPOL_KATEGORIJA,
+  kategorijeZaDisciplino,
 } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
-import { GlavaDejanja, useNazaj } from '../komponente/GlavaTelefona'
+import { GlavaDejanja, GlavaZavihki, useNazaj } from '../komponente/GlavaTelefona'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
+import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { StatusMobi, ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import {
@@ -39,6 +47,15 @@ import {
 } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 import { useTelefon } from '../pomozno/telefon'
+
+/* Zavihka strani turnirja. »Zanimivosti« so čez VSE dogodke skupaj — na ravni
+   ene kategorije je tekem pogosto premalo, da bi kaj povedale. */
+type PogledTurnirja = 'DOGODKI' | 'ZANIMIVOSTI'
+
+/* Pod tem številom odigranih tekem zavihka ne ponudimo. Isti prag ima
+   strežnik (StatistikaTekmovanjaStoritev.PRAG_TEKEM); tu je zato, da gumba,
+   ki bi povedal samo »premalo podatkov«, sploh ni. */
+const PRAG_ZANIMIVOSTI = 10
 
 export function TurnirStran() {
   const { id } = useParams()
@@ -62,6 +79,18 @@ export function TurnirStran() {
 
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
   const [potrjujemZakljucek, nastaviPotrjujemZakljucek] = useState(false)
+  const [pogled, nastaviPogled] = useState<PogledTurnirja>('DOGODKI')
+
+  /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
+     nekaj skupinskih sestevkov čez vse tekme turnirja in vstopne strani ne
+     sme obremeniti. Med turnirjem se osvežuje kot ostalo: to je razlog, da
+     je zavihek viden že takrat. */
+  const zanimivosti = useQuery({
+    queryKey: ['turnir', idTurnirja, 'statistika'],
+    queryFn: () => turnirjiApi.statistika(idTurnirja),
+    enabled: pogled === 'ZANIMIVOSTI',
+    refetchInterval: intervalOsvezevanja(turnir.data?.status),
+  })
 
   const zakljucevanje = useMutation({
     mutationFn: () => turnirjiApi.zakljuci(idTurnirja),
@@ -86,6 +115,41 @@ export function TurnirStran() {
 
   const seUreja = smem && podatki.status !== 'ZAKLJUCEN'
   const kraj = [podatki.kraj?.ime, podatki.dvorana].filter(Boolean).join(', ')
+
+  /* Zavihek se ponudi že med turnirjem — gledalec pride pogledat, kaj se je
+     zgodilo danes, ne šele čez teden dni. */
+  const imaZanimivosti = podatki.odigranihTekem >= PRAG_ZANIMIVOSTI
+
+  const zavihki = imaZanimivosti && (
+    <div className="izbirnik turnir__zavihki">
+      <button
+        type="button"
+        className={'izbirnik__gumb' + (pogled === 'DOGODKI' ? ' izbirnik__gumb--aktiven' : '')}
+        aria-pressed={pogled === 'DOGODKI'}
+        onClick={() => nastaviPogled('DOGODKI')}
+      >
+        Kategorije
+      </button>
+      <button
+        type="button"
+        className={'izbirnik__gumb' + (pogled === 'ZANIMIVOSTI' ? ' izbirnik__gumb--aktiven' : '')}
+        aria-pressed={pogled === 'ZANIMIVOSTI'}
+        onClick={() => nastaviPogled('ZANIMIVOSTI')}
+      >
+        Zanimivosti
+      </button>
+    </div>
+  )
+
+  const zanimivostiVsebina = (
+    <>
+      <NapakaPoizvedbe poizvedba={zanimivosti} kaj="zanimivosti" />
+      {zanimivosti.isPending && <p className="obvestilo">Nalaganje …</p>}
+      {zanimivosti.data && (
+        <ZanimivostiTekmovanja podatki={zanimivosti.data} jeLiga={false} />
+      )}
+    </>
+  )
 
   /* Okni (nov dogodek, potrditev zakljucka) sta na obeh sirinah isti. */
   const okna = (
@@ -150,6 +214,36 @@ export function TurnirStran() {
           )}
         </GlavaDejanja>
 
+        {/* Zavihka gresta v lepljivo glavo: krmilo strani mora biti nad
+            vsebino, ki jo krmili — pod naslovnim blokom in kolofonom bi ga
+            gledalec našel šele po drsenju. */}
+        {imaZanimivosti && (
+          <GlavaZavihki>
+            <div className="podnavigacija podnavigacija--telefon podnavigacija--enakomerna">
+              <button
+                type="button"
+                className={
+                  'izbirnik__gumb' + (pogled === 'DOGODKI' ? ' izbirnik__gumb--aktiven' : '')
+                }
+                aria-pressed={pogled === 'DOGODKI'}
+                onClick={() => nastaviPogled('DOGODKI')}
+              >
+                Kategorije
+              </button>
+              <button
+                type="button"
+                className={
+                  'izbirnik__gumb' + (pogled === 'ZANIMIVOSTI' ? ' izbirnik__gumb--aktiven' : '')
+                }
+                aria-pressed={pogled === 'ZANIMIVOSTI'}
+                onClick={() => nastaviPogled('ZANIMIVOSTI')}
+              >
+                Zanimivosti
+              </button>
+            </div>
+          </GlavaZavihki>
+        )}
+
         <div>
           <div className="naslov-mobi__vrsta">
             <span className="naslov-mobi__nad">Turnir</span>
@@ -189,30 +283,34 @@ export function TurnirStran() {
 
         <SporociloNapake napaka={zakljucevanje.error} />
 
-        <div>
-          <div className="naslovna-mobi">
-            <h2>Kategorije</h2>
+        {pogled === 'ZANIMIVOSTI' && zanimivostiVsebina}
+
+        {pogled === 'DOGODKI' && (
+          <div>
+            <div className="naslovna-mobi">
+              <h2>Kategorije</h2>
+              {dogodki.data && dogodki.data.length > 0 && (
+                <span className="naslovna-mobi__stevec">{dogodki.data.length}</span>
+              )}
+            </div>
+
+            <NapakaPoizvedbe poizvedba={dogodki} kaj="dogodkov" />
+            {dogodki.data && dogodki.data.length === 0 && (
+              <p className="obvestilo">
+                Turnir še nima dogodkov. Dogodek je eno tekmovanje — npr. »Člani« ali
+                »Članice do 21 let«. Igralci se prijavljajo na posamezen dogodek.
+              </p>
+            )}
+
             {dogodki.data && dogodki.data.length > 0 && (
-              <span className="naslovna-mobi__stevec">{dogodki.data.length}</span>
+              <div className="seznam-mobi seznam-mobi--odmik">
+                {dogodki.data.map((dogodek) => (
+                  <VrsticaKategorije key={dogodek.id} dogodek={dogodek} />
+                ))}
+              </div>
             )}
           </div>
-
-          <NapakaPoizvedbe poizvedba={dogodki} kaj="dogodkov" />
-          {dogodki.data && dogodki.data.length === 0 && (
-            <p className="obvestilo">
-              Turnir še nima dogodkov. Dogodek je eno tekmovanje — npr. »Člani« ali
-              »Članice do 21 let«. Igralci se prijavljajo na posamezen dogodek.
-            </p>
-          )}
-
-          {dogodki.data && dogodki.data.length > 0 && (
-            <div className="seznam-mobi seznam-mobi--odmik">
-              {dogodki.data.map((dogodek) => (
-                <VrsticaKategorije key={dogodek.id} dogodek={dogodek} />
-              ))}
-            </div>
-          )}
-        </div>
+        )}
 
         {okna}
       </section>
@@ -286,9 +384,13 @@ export function TurnirStran() {
         </div>
       </div>
 
+      {zavihki}
+
       <SporociloNapake napaka={zakljucevanje.error} />
 
-      <div>
+      {pogled === 'ZANIMIVOSTI' && zanimivostiVsebina}
+
+      <div hidden={pogled !== 'DOGODKI'}>
         <div className="naslovna-vrstica">
           <h2>Dogodki</h2>
           {dogodki.data && dogodki.data.length > 0 && (
@@ -325,6 +427,9 @@ export function TurnirStran() {
                   <span className="kartica__glava">
                     <span className="kartica__ime">{dogodek.ime}</span>
                     <span className="kartica__podrobnost">
+                      {/* Posamično je pravilo, dvojice izjema - zato izpišemo
+                          samo disciplino, ki jo je treba opaziti. */}
+                      {dogodek.disciplina === 'DVOJICE' && 'Dvojice · '}
                       {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
                       {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
                       {` · na ${dogodek.privzetoSteviloNizov} ${sklonNizov(dogodek.privzetoSteviloNizov)}`}
@@ -366,7 +471,7 @@ export function TurnirStran() {
    namizju ostane. */
 function VrsticaKategorije({ dogodek }: { dogodek: DogodekDto }) {
   const meta = [
-    OZNAKE_SISTEM_MOBI[dogodek.sistemTekmovanja],
+    dogodek.disciplina === 'DVOJICE' ? 'Dvojice' : OZNAKE_SISTEM_MOBI[dogodek.sistemTekmovanja],
     opisPrijavKratko(dogodek),
     dogodek.vsehTekem > 0
       ? `${dogodek.odigranihTekem}/${dogodek.vsehTekem}`
@@ -396,6 +501,12 @@ function opisPrijav(dogodek: DogodekDto): string {
   if (dogodek.steviloSkupin && dogodek.velikostSkupine) {
     return `${dogodek.steviloSkupin} ${sklonSkupin(dogodek.steviloSkupin)} po ${dogodek.velikostSkupine}`
   }
+  /* Pri dvojicah je ena prijava PAR (ali igralec, ki soigralca še nima), zato
+     bi »12 prijavljenih« pomenilo dvanajst ljudi, teh pa je do štiriindvajset.
+     Nevtralna »prijava« je edina beseda, ki drži v obeh stanjih. */
+  if (dogodek.disciplina === 'DVOJICE') {
+    return `${dogodek.steviloPrijav} ${sklonPrijav(dogodek.steviloPrijav)}`
+  }
   return `${dogodek.steviloPrijav} ${sklonPrijavljenih(dogodek.steviloPrijav)}`
 }
 
@@ -417,7 +528,8 @@ function NovDogodekOkno({
   onShranjeno: () => void
 }) {
   const [ime, nastaviIme] = useState('')
-  const [spolKategorija, nastaviSpolKategorijo] = useState<SpolKategorija>('MESANO')
+  const [disciplina, nastaviDisciplino] = useState<Disciplina>('POSAMICNO')
+  const [spolKategorija, nastaviSpolKategorijo] = useState<SpolKategorija>('KDORKOLI')
   const [starostnaKategorija, nastaviStarostnoKategorijo] = useState('')
   const [steviloNizov, nastaviSteviloNizov] = useState('5')
   const [sistem, nastaviSistem] = useState<SistemTekmovanja>('IZLOCILNI')
@@ -426,11 +538,27 @@ function NovDogodekOkno({
   const [prijavnina, nastaviPrijavnino] = useState('')
   const [rokPrijave, nastaviRokPrijave] = useState('')
 
+  /* Dvojice se igrajo samo po izločilnem sistemu (takojšnje izpadanje), zato
+     izbirnik sistema odpade; »Mešano« pa je pravilo o sestavi para in ga
+     posamično tekmovanje ne pozna. Obojega ne uveljavlja samo obrazec —
+     enako zavrneta strežnik in shema. */
+  const dvojice = disciplina === 'DVOJICE'
+  const kategorije = kategorijeZaDisciplino(disciplina)
+
   /* Format TOP: skupine so rangi po jakosti, zato je treba njihovo
      število in velikost določiti že ob dogodku - zmnožek pove, koliko
      najboljših prijavljenih sploh igra. */
-  const skupinskiSistem = sistem === 'SKUPINE'
+  const skupinskiSistem = !dvojice && sistem === 'SKUPINE'
   const mejaIzbora = Number(steviloSkupin) * Number(velikostSkupine)
+
+  /* Ob preklopu na dvojice kategorija, ki je tam ni, obtiči izbrana in
+     strežnik bi vnos zavrnil - zato jo vrnemo na odprto. */
+  function zamenjajDisciplino(nova: Disciplina) {
+    nastaviDisciplino(nova)
+    if (!kategorijeZaDisciplino(nova).includes(spolKategorija)) {
+      nastaviSpolKategorijo('KDORKOLI')
+    }
+  }
 
   const shranjevanje = useMutation({
     mutationFn: (vnos: DogodekVnos) => turnirjiApi.dodajDogodek(idTurnirja, vnos),
@@ -449,7 +577,8 @@ function NovDogodekOkno({
       privzetoSteviloNizov: Number(steviloNizov),
       prijavnina: prijavnina ? Number(prijavnina) : null,
       rokPrijave: rokPrijave || null,
-      sistemTekmovanja: sistem,
+      disciplina,
+      sistemTekmovanja: dvojice ? 'IZLOCILNI' : sistem,
       steviloSkupin: skupinskiSistem ? Number(steviloSkupin) : null,
       velikostSkupine: skupinskiSistem ? Number(velikostSkupine) : null,
     })
@@ -470,14 +599,24 @@ function NovDogodekOkno({
 
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">
+            <span>Disciplina *</span>
+            <select
+              value={disciplina}
+              onChange={(d) => zamenjajDisciplino(d.target.value as Disciplina)}
+            >
+              <option value="POSAMICNO">Posamično</option>
+              <option value="DVOJICE">Dvojice</option>
+            </select>
+          </label>
+          <label className="obrazec__polje">
             <span>Kategorija *</span>
             <select
               value={spolKategorija}
               onChange={(d) => nastaviSpolKategorijo(d.target.value as SpolKategorija)}
             >
-              {Object.entries(OZNAKE_SPOL_KATEGORIJA).map(([vrednost, oznaka]) => (
+              {kategorije.map((vrednost) => (
                 <option key={vrednost} value={vrednost}>
-                  {oznaka}
+                  {OZNAKE_SPOL_KATEGORIJA[vrednost]}
                 </option>
               ))}
             </select>
@@ -492,16 +631,25 @@ function NovDogodekOkno({
           </label>
         </div>
 
-        <label className="obrazec__polje">
-          <span>Sistem tekmovanja *</span>
-          <select value={sistem} onChange={(d) => nastaviSistem(d.target.value as SistemTekmovanja)}>
-            {Object.entries(OZNAKE_SISTEM).map(([vrednost, oznaka]) => (
-              <option key={vrednost} value={vrednost}>
-                {oznaka}
-              </option>
-            ))}
-          </select>
-        </label>
+        {dvojice ? (
+          <p className="namig">
+            Dvojice se igrajo po sistemu <strong>takojšnjega izpadanja</strong> —
+            enaka mreža kot posamično. Igralce prijaviš posamično, pare pa
+            sestaviš pred žrebom.
+            {spolKategorija === 'MESANO' && ' Vsak par mora sestavljati en moški in ena ženska.'}
+          </p>
+        ) : (
+          <label className="obrazec__polje">
+            <span>Sistem tekmovanja *</span>
+            <select value={sistem} onChange={(d) => nastaviSistem(d.target.value as SistemTekmovanja)}>
+              {Object.entries(OZNAKE_SISTEM).map(([vrednost, oznaka]) => (
+                <option key={vrednost} value={vrednost}>
+                  {oznaka}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {skupinskiSistem && (
           <div className="obrazec__sklop">

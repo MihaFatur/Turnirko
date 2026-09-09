@@ -30,6 +30,7 @@ import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TerminiOkno } from '../komponente/TerminiOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
@@ -45,8 +46,10 @@ type Faza = 'REDNI' | 'PLAYOFF'
 
 /* Na telefonu tri sekcije ne gredo eno pod drugo brez neskončnega drsenja, zato
    se lestvica in razpored menjata z zavihki. Preklop je CSS (v širokem pogledu
-   sta obe sekciji vidni), stanje pa vseeno živi tu, ker si ga zavihka delita. */
-type MobilniPogled = 'LESTVICA' | 'RAZPORED'
+   sta obe sekciji vidni), stanje pa vseeno živi tu, ker si ga zavihka delita.
+   »Zanimivosti« so izjema: tudi v širokem pogledu so svoj pogled in ne tretji
+   stolpec — zgodbe o sezoni se ne berejo ob lestvici, ampak namesto nje. */
+type MobilniPogled = 'LESTVICA' | 'RAZPORED' | 'ZANIMIVOSTI'
 
 /* Play-off zahteva fazo lige v podatkovnem modelu (pari, termini, kdo se uvrsti).
    Dokler je ni, zavihka ne ponujamo - postavitev spodaj je pripravljena, da se
@@ -85,6 +88,17 @@ export function LigaStran() {
   const [prehodiOdprti, nastaviPrehodiOdprte] = useState(false)
   const [terminiOdprti, nastaviTerminiOdprte] = useState(false)
   const [mobilniPogled, nastaviMobilniPogled] = useState<MobilniPogled>('LESTVICA')
+
+  /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
+     nekaj skupinskih seštevkov čez vse tekme lige in strani z lestvico ne sme
+     obremeniti. Kavelj mora stati NAD zgodnjimi return-i (pravila kavljev);
+     ali je zavihek sploh ponujen, odloči šele imaZanimivosti spodaj. */
+  const zanimivosti = useQuery({
+    queryKey: ['liga', idLiga, 'statistika'],
+    queryFn: () => ligeApi.statistika(idLiga),
+    enabled: mobilniPogled === 'ZANIMIVOSTI',
+    refetchInterval: intervalOsvezevanja(liga.data?.status),
+  })
 
   /* Ligo se spremlja tam, kjer se jo najde — sicer bi moral gledalec izbor
      sestavljati po spominu v oknu na domači strani. Gost izbora nima, zato
@@ -129,6 +143,18 @@ export function LigaStran() {
     l.dvokrozno ? 'dvokrožno' : 'enokrožno',
     imaRazpored ? `${odigranihKol}. od ${kola.length} kol odigranih` : 'razpored ni generiran',
   ].join(' · ')
+
+  /* Zavihek se ponudi, ko je odigrano vsaj eno kolo — takrat je tekem že
+     dovolj, da katera od vrstic kaj pove. */
+  const imaZanimivosti = odigranihKol > 0
+
+  const zanimivostiVsebina = (
+    <>
+      <NapakaPoizvedbe poizvedba={zanimivosti} kaj="zanimivosti" />
+      {zanimivosti.isPending && <p className="obvestilo">Nalaganje …</p>}
+      {zanimivosti.data && <ZanimivostiTekmovanja podatki={zanimivosti.data} jeLiga />}
+    </>
+  )
 
   const nivojiPiramide = lige.data ? piramidaSezone(l, lige.data) : []
   /* Samostojna liga (nima višje in nobena ne kaže nanjo) piramide ne dobi -
@@ -348,6 +374,19 @@ export function LigaStran() {
               >
                 Razpored
               </button>
+              {imaZanimivosti && (
+                <button
+                  type="button"
+                  className={
+                    'izbirnik__gumb' +
+                    (mobilniPogled === 'ZANIMIVOSTI' ? ' izbirnik__gumb--aktiven' : '')
+                  }
+                  aria-pressed={mobilniPogled === 'ZANIMIVOSTI'}
+                  onClick={() => nastaviMobilniPogled('ZANIMIVOSTI')}
+                >
+                  Zanimivosti
+                </button>
+              )}
               {/* Pravila niso pogled, ampak referenca - zato okno in ne
                   zavihek z vsebino. */}
               <button
@@ -403,6 +442,8 @@ export function LigaStran() {
             onKolo={nastaviKolo}
           />
         )}
+
+        {imaRazpored && mobilniPogled === 'ZANIMIVOSTI' && zanimivostiVsebina}
 
         {okna}
       </section>
@@ -510,6 +551,18 @@ export function LigaStran() {
             >
               Razpored
             </button>
+            {imaZanimivosti && (
+              <button
+                type="button"
+                className={
+                  'izbirnik__gumb' +
+                  (mobilniPogled === 'ZANIMIVOSTI' ? ' izbirnik__gumb--aktiven' : '')
+                }
+                onClick={() => nastaviMobilniPogled('ZANIMIVOSTI')}
+              >
+                Zanimivosti
+              </button>
+            )}
             <button
               type="button"
               className="izbirnik__gumb"
@@ -519,9 +572,46 @@ export function LigaStran() {
             </button>
           </div>
         )}
+
+        {/* Pas zgoraj je SAMO mobilni (nad 640 px sta lestvica in razpored
+            oba vidna in zavihkov ni), zanimivosti pa so pogled tudi na
+            namizju — zato tam svoj preklop dveh gumbov. Trije gumbi bi iz
+            lestvice in razporeda naredili zavihka, kar je zavestno drugače. */}
+        {imaRazpored && imaZanimivosti && (
+          <div className="izbirnik liga__zavihki-namizje">
+            <button
+              type="button"
+              className={
+                'izbirnik__gumb' +
+                (mobilniPogled === 'ZANIMIVOSTI' ? '' : ' izbirnik__gumb--aktiven')
+              }
+              aria-pressed={mobilniPogled !== 'ZANIMIVOSTI'}
+              onClick={() => nastaviMobilniPogled('LESTVICA')}
+            >
+              Lestvica in razpored
+            </button>
+            <button
+              type="button"
+              className={
+                'izbirnik__gumb' +
+                (mobilniPogled === 'ZANIMIVOSTI' ? ' izbirnik__gumb--aktiven' : '')
+              }
+              aria-pressed={mobilniPogled === 'ZANIMIVOSTI'}
+              onClick={() => nastaviMobilniPogled('ZANIMIVOSTI')}
+            >
+              Zanimivosti
+            </button>
+          </div>
+        )}
       </div>
 
-      {kaziPiramido && <Piramida liga={l} nivoji={nivojiPiramide} />}
+      {imaRazpored && mobilniPogled === 'ZANIMIVOSTI' && zanimivostiVsebina}
+
+      {/* Piramida je kontekst lige in ne njena vsebina, zato jo zavihek
+          zanimivosti umakne skupaj z lestvico. */}
+      {kaziPiramido && mobilniPogled !== 'ZANIMIVOSTI' && (
+        <Piramida liga={l} nivoji={nivojiPiramide} />
+      )}
 
       {vPripravi && smem && (
         <EkipeUredi
@@ -540,7 +630,11 @@ export function LigaStran() {
 
       {imaRazpored && (
         <>
+          {/* »skrita« velja samo pod 640 px (tam sta zavihka), zato zavihek
+              zanimivosti obe sekciji umakne z atributom hidden - drugače bi
+              se na namizju izrisali pod njim. */}
           <div
+            hidden={mobilniPogled === 'ZANIMIVOSTI'}
             className={
               'liga__sekcija' + (mobilniPogled === 'LESTVICA' ? '' : ' liga__sekcija--skrita')
             }
@@ -586,6 +680,7 @@ export function LigaStran() {
           </div>
 
           <div
+            hidden={mobilniPogled === 'ZANIMIVOSTI'}
             className={
               'liga__sekcija' + (mobilniPogled === 'RAZPORED' ? '' : ' liga__sekcija--skrita')
             }
@@ -601,8 +696,12 @@ export function LigaStran() {
           </div>
 
           {/* Zaprta sklopa na dnu strani: lestvica lige so ekipe, osebni
-              izkupički pa drugo branje - zato pod njo in ne v zavihku. */}
-          <LestviceLige idLiga={idLiga} jeTelefon={false} />
+              izkupički pa drugo branje - zato pod njo in ne v zavihku.
+              Z zavihkom zanimivosti odideta skupaj z lestvico: sta njeno
+              nadaljevanje in ne stalnica strani. */}
+          {mobilniPogled !== 'ZANIMIVOSTI' && (
+            <LestviceLige idLiga={idLiga} jeTelefon={false} />
+          )}
         </>
       )}
 
@@ -1784,7 +1883,7 @@ function KaderOkno({ ekipa, onZapri }: { ekipa: EkipaDto; onZapri: () => void })
         <select value={idIgralec} onChange={(d) => nastaviIgralca(d.target.value)}>
           <option value="">— izberi igralca —</option>
           {naVoljo.map((i) => (
-            <option key={i.id} value={i.id}>{i.priimek} {i.ime}{i.klub ? ` (${i.klub.ime})` : ''}</option>
+            <option key={i.id} value={i.id}>{i.ime} {i.priimek}{i.klub ? ` (${i.klub.ime})` : ''}</option>
           ))}
         </select>
         <button className="gumb" disabled={!idIgralec || dodaj.isPending} onClick={() => dodaj.mutate()}>

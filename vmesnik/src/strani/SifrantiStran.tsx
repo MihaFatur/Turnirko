@@ -11,19 +11,8 @@ import { SporociloNapake } from '../komponente/SporociloNapake'
 export function SifrantiStran() {
   return (
     <section>
-      <div className="stran-glava">
-        <div>
-          <h1 className="naslov-strani">
-            <span className="naslov-strani__nad">Osnovni podatki</span>
-            <span className="naslov-strani__glavni">Šifranti</span>
-          </h1>
-          <p className="uvod">
-            Klubi in kraji so podlaga vsemu ostalemu — igralci, ekipe in turnirji se
-            sklicujejo nanje.
-          </p>
-        </div>
-      </div>
-
+      {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija,
+          in stran se sme začeti kar s šifrantoma. */}
       <div className="dvostolpicno">
         <KlubiPlosca />
         <KrajiPlosca />

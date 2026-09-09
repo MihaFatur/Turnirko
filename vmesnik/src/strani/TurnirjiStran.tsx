@@ -245,24 +245,15 @@ export function TurnirjiStran() {
 
   return (
     <section>
-      <div className="stran-glava stran-glava--dejanja">
-        <div>
-          <h1 className="naslov-strani">
-            <span className="naslov-strani__nad">Tekmovanja</span>
-            <span className="naslov-strani__glavni">Turnirji</span>
-          </h1>
-          <p className="uvod">
-            Turnir je okvir; tekmovanja znotraj njega so dogodki — člani, članice, kategorije.
-          </p>
+      {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija,
+          in seznam se sme začeti z vsebino. Ostane le dejanje urejevalca. */}
+      {smeUstvarjati && (
+        <div className="stran-dejanja">
+          <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
+            + Nov turnir
+          </button>
         </div>
-        {smeUstvarjati && (
-          <div className="naslovna-vrstica__desno">
-            <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
-              + Nov turnir
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Brez turnirja v teku se pas ne izrise - prazno stanje bi bilo samo
           se ena vrstica, ki jo mora sodnik prebrati in preskociti. */}

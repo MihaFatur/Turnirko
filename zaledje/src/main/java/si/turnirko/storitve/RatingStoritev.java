@@ -38,9 +38,14 @@ public class RatingStoritev {
         this.eloStoritev = eloStoritev;
     }
 
-    /* Obracuna klubski ELO za koncano turnirsko tekmo (samo enkrat na tekmo). */
+    /* Obracuna klubski ELO za koncano turnirsko tekmo (samo enkrat na tekmo).
+       Dvojice ne stejejo - izida para ni mogoce pripisati posamezniku (isto
+       pravilo kot pri ligaskih dvojicah spodaj). */
     @Transactional
     public void obracunajKlubskiElo(Tekma tekma) {
+        if (tekma.getDogodek().jeDvojice()) {
+            return;
+        }
         if (zgodovinaRepozitorij.existsByTekmaId(tekma.getId())) {
             return; // tekma je ze obracunana
         }

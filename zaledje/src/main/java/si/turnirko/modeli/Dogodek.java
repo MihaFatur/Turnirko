@@ -98,6 +98,9 @@ public class Dogodek {
     public Disciplina getDisciplina() { return disciplina; }
     public void setDisciplina(Disciplina disciplina) { this.disciplina = disciplina; }
 
+    /* Ali je tekmovalna enota par (in torej prijava nosi dva igralca). */
+    public boolean jeDvojice() { return disciplina.jeDvojice(); }
+
     public SpolKategorija getSpolKategorija() { return spolKategorija; }
     public void setSpolKategorija(SpolKategorija spolKategorija) { this.spolKategorija = spolKategorija; }
 

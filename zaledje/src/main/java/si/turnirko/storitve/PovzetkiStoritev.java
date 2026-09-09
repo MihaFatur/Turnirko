@@ -100,17 +100,23 @@ public class PovzetkiStoritev {
             }
         }
 
+        // Zmagovalec dogodka dvojic je PAR - izpisemo obe imeni
+        // ("Ana Novak / Eva Zajc"), sicer bi polovica zmagovalcev izginila.
         Map<Long, String> zmagovalci = new HashMap<>();
         for (Object[] v : prijavaRepozitorij.zmagovalciPoTurnirjih()) {
-            zmagovalci.putIfAbsent(((Number) v[0]).longValue(), v[1] + " " + v[2]);
+            String ime = v[1] + " " + v[2];
+            if (v[3] != null) {
+                ime += " / " + v[3] + " " + v[4];
+            }
+            zmagovalci.putIfAbsent(((Number) v[0]).longValue(), ime);
         }
 
         Map<Long, String> zadnjiIzidi = new HashMap<>();
         for (Tekma t : tekmaRepozitorij.najdiZadnjeVsakegaTurnirja()) {
             zadnjiIzidi.put(t.getDogodek().getTurnir().getId(),
-                    t.getPrijava1().getIgralec().getPriimek() + " "
+                    t.getPrijava1().prikazaniPriimek() + " "
                             + t.getDobljeniNizi1() + ":" + t.getDobljeniNizi2() + " "
-                            + t.getPrijava2().getIgralec().getPriimek());
+                            + t.getPrijava2().prikazaniPriimek());
         }
 
         Map<Long, TurnirDto.Potek> poteki = new HashMap<>();
@@ -129,9 +135,13 @@ public class PovzetkiStoritev {
 
     /* Kako se faza imenuje v vrstici turnirja. Izlocilni del se imenuje po
        oddaljenosti od finala, krozni in skupinski pa po zaporedju kol -
-       "1/8 finala" pri vsakem z vsakim ne pomeni nicesar. */
-    private static String opisFaze(SistemTekmovanja sistem, FazaTekme faza,
-                                   int kolo, Integer zadnjeKolo) {
+       "1/8 finala" pri vsakem z vsakim ne pomeni nicesar.
+
+       Vidna je v paketu, ker isto poimenovanje potrebuje zavihek statistike
+       turnirja (kontekst vrstice "Clani - polfinale"); podvojena bi se s to
+       tiho razsla. */
+    static String opisFaze(SistemTekmovanja sistem, FazaTekme faza,
+                           int kolo, Integer zadnjeKolo) {
         if (faza == FazaTekme.SKUPINA) {
             return "skupine";
         }

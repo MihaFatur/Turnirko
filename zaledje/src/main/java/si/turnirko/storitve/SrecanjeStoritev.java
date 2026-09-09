@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.KaderIgralecDto;
+import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.PostavaSrecanjaDto;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.SrecanjeDto;
@@ -35,6 +36,7 @@ import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.KaderEkipe;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.NizSrecanja;
 import si.turnirko.modeli.PostavaSrecanja;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.Srecanje;
@@ -44,6 +46,7 @@ import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
+import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -57,6 +60,7 @@ public class SrecanjeStoritev {
     private final SrecanjeRepozitorij srecanjeRepozitorij;
     private final PostavaSrecanjaRepozitorij postavaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaRepozitorij;
+    private final NizSrecanjaRepozitorij nizRepozitorij;
     private final KaderEkipeRepozitorij kaderRepozitorij;
     private final RatingStoritev ratingStoritev;
     private final RatingZgodovinaRepozitorij zgodovinaRepozitorij;
@@ -67,6 +71,7 @@ public class SrecanjeStoritev {
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
                             PostavaSrecanjaRepozitorij postavaRepozitorij,
                             TekmaSrecanjaRepozitorij tekmaRepozitorij,
+                            NizSrecanjaRepozitorij nizRepozitorij,
                             KaderEkipeRepozitorij kaderRepozitorij,
                             RatingStoritev ratingStoritev,
                             RatingZgodovinaRepozitorij zgodovinaRepozitorij,
@@ -76,6 +81,7 @@ public class SrecanjeStoritev {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
+        this.nizRepozitorij = nizRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
         this.ratingStoritev = ratingStoritev;
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
@@ -101,10 +107,12 @@ public class SrecanjeStoritev {
 
         List<TekmaSrecanja> tekme = tekmaRepozitorij.najdiZaSrecanje(idSrecanje);
         Map<Long, Map<Long, Integer>> delte = eloDelte(tekme.stream().map(TekmaSrecanja::getId).toList());
+        Map<Long, List<NizVnos>> nizi = niziSrecanja(idSrecanje);
         List<TekmaSrecanjaDto> tekmeDto = tekme.stream()
                 .map(t -> TekmaSrecanjaDto.iz(t,
                         eloZa(delte, t.getId(), t.getIgralecDomaci()),
-                        eloZa(delte, t.getId(), t.getIgralecGost())))
+                        eloZa(delte, t.getId(), t.getIgralecGost()),
+                        nizi.getOrDefault(t.getId(), List.of())))
                 .toList();
 
         BilanceLige bilance = lestvicaLigeStoritev.bilancePosamicnih(liga.getId());
@@ -217,6 +225,11 @@ public class SrecanjeStoritev {
                 throw new NeveljavenVnosIzjema("Porazenec ima prevec dobljenih nizov.");
             }
             zmagovalec = niziDomaci > niziGost ? StranEkipe.DOMACI : StranEkipe.GOST;
+            // tocke po nizih so neobvezne - preverimo jih pred vsako spremembo
+            // stanja, po istih pravilih kot pri turnirski tekmi
+            if (v.nizi() != null && !v.nizi().isEmpty()) {
+                NiziPravila.preveri(v.nizi(), niziDomaci, niziGost, zaZmago);
+            }
         } else if (izid == IzidTekme.PROSTO) {
             throw new NeveljavenVnosIzjema("Izid PROSTO v ligi ni mogoc.");
         } else {
@@ -235,6 +248,17 @@ public class SrecanjeStoritev {
         t.setStatus(StatusTekmeSrecanja.KONCANA);
         tekmaRepozitorij.save(t);
 
+        // Tocke nizov obstajajo samo pri dejansko odigrani tekmi: pri w.o.,
+        // diskvalifikaciji in predaji dobi zmagovalec nize pripisane in
+        // posameznih izidov ni (enako kot pri turnirjih).
+        List<NizVnos> vneseniNizi = izid == IzidTekme.IGRANO && v.nizi() != null
+                ? v.nizi() : List.of();
+        int zaporedna = 1;
+        for (NizVnos niz : vneseniNizi) {
+            nizRepozitorij.save(new NizSrecanja(t, zaporedna, niz.tocke1(), niz.tocke2()));
+            zaporedna++;
+        }
+
         // ELO samo za posamicne tekme, ce liga steje in izid steje (w.o. in
         // diskvalifikacija ne stejeta - enako kot pri turnirjih)
         if (t.getTip() == TipTekmeSrecanja.POSAMICNA && liga.isStejeVElo() && stejeVElo(izid)) {
@@ -246,7 +270,8 @@ public class SrecanjeStoritev {
         Map<Long, Map<Long, Integer>> delte = eloDelte(List.of(t.getId()));
         return TekmaSrecanjaDto.iz(t,
                 eloZa(delte, t.getId(), t.getIgralecDomaci()),
-                eloZa(delte, t.getId(), t.getIgralecGost()));
+                eloZa(delte, t.getId(), t.getIgralecGost()),
+                vneseniNizi);
     }
 
     /* Osvezi povzetek srecanja in uveljavi pravilo predcasnega konca. */
@@ -392,6 +417,17 @@ public class SrecanjeStoritev {
                     return KaderIgralecDto.iz(k, ratingi.get(idIgralec), b.zmage(), b.porazi());
                 })
                 .toList();
+    }
+
+    /* Tocke po nizih vseh tekem srecanja: id tekme -> nizi po vrsti. Ena
+       poizvedba za cel zapisnik; tekma brez vpisanih tock v mapi ni. */
+    private Map<Long, List<NizVnos>> niziSrecanja(Long idSrecanje) {
+        Map<Long, List<NizVnos>> po = new HashMap<>();
+        for (Object[] v : nizRepozitorij.tockeZaSrecanje(idSrecanje)) {
+            po.computeIfAbsent(((Number) v[0]).longValue(), k -> new ArrayList<>())
+                    .add(new NizVnos(((Number) v[2]).intValue(), ((Number) v[3]).intValue()));
+        }
+        return po;
     }
 
     private Map<Long, Map<Long, Integer>> eloDelte(Collection<Long> idjiTekem) {

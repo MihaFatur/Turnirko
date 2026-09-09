@@ -99,8 +99,14 @@ public class Igralec {
     public String getPriimek() { return priimek; }
     public void setPriimek(String priimek) { this.priimek = priimek; }
 
-    /* Polno ime za izpise, npr. "Novak Janez". */
-    public String polnoIme() { return priimek + " " + ime; }
+    /* Polno ime za izpise, npr. "Janez Novak". Slovensko se oseba imenuje
+       ime-priimek in tak je vsak izpis v aplikaciji; obrnjeni vrstni red je
+       samo urejevalni kljuc - zanj je abecedno(). */
+    public String polnoIme() { return ime + " " + priimek; }
+
+    /* Urejevalni kljuc "Novak Janez": seznami igralcev tecejo po priimku,
+       izpisujejo pa polnoIme(). Ta niz ne sme nikoli v vmesnik. */
+    public String abecedno() { return priimek + " " + ime; }
 
     public Spol getSpol() { return spol; }
     public void setSpol(Spol spol) { this.spol = spol; }

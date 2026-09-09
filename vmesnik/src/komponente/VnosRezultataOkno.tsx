@@ -5,17 +5,19 @@
      jih je potrebnih za zmago (npr. 3 pri "najboljsi od 5"), zato rezultat
      izbiramo s seznama veljavnih izidov in napacen vnos sploh ni mogoc.
    - Tocke po nizih so neobvezne; ce so vnesene, jih mora biti natanko
-     toliko, kot je odigranih nizov.
+     toliko, kot je odigranih nizov. Vnos in preverba sta v skupni komponenti
+     TockeNizov - isti kot pri ligaski tekmi, ker so pravila niza ista.
    - Predaja: delni rezultat pred koncem tekme + zmagovalec.
    - Brez boja / diskvalifikacija: samo zmagovalec, nizi se pripisejo. */
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
 import { tekmeApi } from '../api/zahteve'
-import { nizovZaZmago } from '../api/tipi'
+import { imeUdelezenca, nizovZaZmago } from '../api/tipi'
 import type { IzidTekme, NizVnos, TekmaDto, VnosRezultata } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
+import { TockeNizov, preveriNize, vrsticeZaIzid, type VrsticaNiza } from './TockeNizov'
 
 interface Lastnosti {
   tekma: TekmaDto
@@ -34,14 +36,14 @@ const ROCNI_IZIDI: { vrednost: IzidTekme; oznaka: string }[] = [
 
 export function VnosRezultataOkno({ tekma, onZapri, onShranjeno }: Lastnosti) {
   const zaZmago = nizovZaZmago(tekma.steviloNizov)
-  const ime1 = tekma.udelezenec1?.polnoIme ?? 'Igralec 1'
-  const ime2 = tekma.udelezenec2?.polnoIme ?? 'Igralec 2'
+  const ime1 = imeUdelezenca(tekma.udelezenec1) ?? 'Igralec 1'
+  const ime2 = imeUdelezenca(tekma.udelezenec2) ?? 'Igralec 2'
 
   const [izidTip, nastaviIzidTip] = useState<IzidTekme>('IGRANO')
   /* Koncni rezultat v obliki "3:1" - izbran s seznama veljavnih izidov. */
   const [rezultat, nastaviRezultat] = useState('')
   const [vnasamTocke, nastaviVnasamTocke] = useState(false)
-  const [tockeNizov, nastaviTockeNizov] = useState<{ tocke1: string; tocke2: string }[]>([])
+  const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>([])
   /* Za posebne izide: katera stran je zmagala (1 ali 2). */
   const [zmagovalecStran, nastaviZmagovalecStran] = useState<'' | '1' | '2'>('')
   /* Delni rezultat ob predaji. */
@@ -65,51 +67,12 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno }: Lastnosti) {
     veljavniRezultati2.push(`${porazencevi}:${zaZmago}`)
   }
 
-  /* Ali je posamezen niz veljaven namiznoteniski rezultat (kot v zaledju):
-     do 11 z razliko vsaj 2, pri podaljsku (nad 11) razlika natanko 2. */
-  function veljavenNiz(tocke1: number, tocke2: number): boolean {
-    const vec = Math.max(tocke1, tocke2)
-    const manj = Math.min(tocke1, tocke2)
-    return manj >= 0 && ((vec === 11 && manj <= 9) || (vec > 11 && vec - manj === 2))
-  }
-
-  /* Preveri nize po istih pravilih kot zaledje, da uporabnik napako vidi
-     takoj, brez klica streznika. Vrne sporocilo napake ali null. */
-  function preveriNize(nizi: NizVnos[], nizi1: number, nizi2: number): string | null {
-    let dobljeni1 = 0
-    let dobljeni2 = 0
-    for (let i = 0; i < nizi.length; i++) {
-      const { tocke1, tocke2 } = nizi[i]
-      if (tocke1 === tocke2) return `${i + 1}. niz ne more biti neodločen.`
-      if (!veljavenNiz(tocke1, tocke2)) {
-        return `${i + 1}. niz (${tocke1}:${tocke2}) ni veljaven namiznoteniški rezultat.`
-      }
-      // tekma se konca v trenutku odlocitve - noben niz se ne igra po tem
-      if (dobljeni1 === zaZmago || dobljeni2 === zaZmago) {
-        return `Tekma je bila odločena že po ${i} nizih (${dobljeni1}:${dobljeni2}), zato se ${
-          i + 1
-        }. niz ne bi igral. Popravi rezultat ali nize.`
-      }
-      if (tocke1 > tocke2) dobljeni1++
-      else dobljeni2++
-    }
-    if (dobljeni1 !== nizi1 || dobljeni2 !== nizi2) {
-      return `Točke po nizih dajo ${dobljeni1}:${dobljeni2}, izbran pa je rezultat ${nizi1}:${nizi2}.`
-    }
-    return null
-  }
-
   /* Ob spremembi rezultata prilagodi stevilo vrstic za tocke nizov. */
   function obSpremembiRezultata(nov: string) {
     nastaviRezultat(nov)
     if (!nov) return
     const [nizi1, nizi2] = nov.split(':').map(Number)
-    const steviloVrstic = nizi1 + nizi2
-    nastaviTockeNizov((prejsnje) => {
-      const nove = prejsnje.slice(0, steviloVrstic)
-      while (nove.length < steviloVrstic) nove.push({ tocke1: '', tocke2: '' })
-      return nove
-    })
+    nastaviTockeNizov((prejsnje) => vrsticeZaIzid(prejsnje, nizi1 + nizi2))
   }
 
   function obOddaji(dogodek: FormEvent) {
@@ -133,7 +96,7 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno }: Lastnosti) {
           tocke1: Number(niz.tocke1),
           tocke2: Number(niz.tocke2),
         }))
-        const napaka = preveriNize(nizi, nizi1, nizi2)
+        const napaka = preveriNize(nizi, nizi1, nizi2, zaZmago)
         if (napaka) {
           nastaviNapakoVnosa(napaka)
           return
@@ -225,42 +188,7 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno }: Lastnosti) {
             </label>
 
             {vnasamTocke && rezultat && (
-              <div className="obrazec__nizi">
-                {tockeNizov.map((niz, indeks) => (
-                  <div className="obrazec__niz" key={indeks}>
-                    <span className="obrazec__niz-oznaka">{indeks + 1}. niz</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      placeholder="11"
-                      value={niz.tocke1}
-                      onChange={(dogodek) =>
-                        nastaviTockeNizov((prejsnje) =>
-                          prejsnje.map((vrstica, i) =>
-                            i === indeks ? { ...vrstica, tocke1: dogodek.target.value } : vrstica,
-                          ),
-                        )
-                      }
-                    />
-                    <span>:</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      placeholder="7"
-                      value={niz.tocke2}
-                      onChange={(dogodek) =>
-                        nastaviTockeNizov((prejsnje) =>
-                          prejsnje.map((vrstica, i) =>
-                            i === indeks ? { ...vrstica, tocke2: dogodek.target.value } : vrstica,
-                          ),
-                        )
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
+              <TockeNizov vrstice={tockeNizov} nastaviVrstice={nastaviTockeNizov} />
             )}
           </>
         )}

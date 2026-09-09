@@ -16,6 +16,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.dto.VrsticaLestviceDto;
 import si.turnirko.izjeme.DomenskaIzjema;
@@ -89,9 +90,12 @@ public class TekmaStoritev {
         tekma.setStatus(StatusTekme.KONCANA);
         tekmaRepozitorij.save(tekma);
 
-        // rating se obracuna samo za dejansko igrane tekme in le, ce turnir
-        // steje v ELO (organizator to izbere ob ustvarjanju; enako kot pri ligi)
+        // Rating se obracuna samo za dejansko igrane tekme in le, ce turnir
+        // steje v ELO (organizator to izbere ob ustvarjanju; enako kot pri
+        // ligi). Dvojice ne stejejo NIKOLI - izida para ni mogoce pripisati
+        // posamezniku; isto pravilo velja za ligaske dvojice.
         if ((izid == IzidTekme.IGRANO || izid == IzidTekme.PREDAJA)
+                && !tekma.getDogodek().jeDvojice()
                 && tekma.getDogodek().getTurnir().isStejeVElo()) {
             ratingStoritev.obracunajKlubskiElo(tekma);
         }
@@ -231,61 +235,16 @@ public class TekmaStoritev {
 
     /* Ce so vnesene tocke po nizih, jih preveri in shrani. */
     private void shraniTockeNizov(Tekma tekma, VnosRezultata vnos, int nizi1, int nizi2) {
-        List<VnosRezultata.NizVnos> nizi = vnos.nizi();
+        List<NizVnos> nizi = vnos.nizi();
         if (nizi == null || nizi.isEmpty()) {
             return; // tocke po nizih so za klubske turnirje neobvezne
         }
-        if (nizi.size() != nizi1 + nizi2) {
-            throw new NeveljavenVnosIzjema("Stevilo vnesenih nizov (" + nizi.size()
-                    + ") se ne ujema z rezultatom " + nizi1 + ":" + nizi2 + ".");
-        }
+        NiziPravila.preveri(nizi, nizi1, nizi2, tekma.nizovZaZmago());
 
-        // najprej se preveri VSE nize, sele nato se karkoli shrani -
-        // ob napacnem vnosu tako v bazi ne ostanejo delni zapisi
-        int zaZmago = tekma.nizovZaZmago();
-        int dobljeni1 = 0;
-        int dobljeni2 = 0;
         int zaporedna = 1;
-        for (VnosRezultata.NizVnos niz : nizi) {
-            preveriTockeNiza(niz, zaporedna);
-            // Tekma se konca v trenutku, ko eden dobi dovolj nizov - noben niz
-            // se ne igra po tem. Vnos kot 11:4, 11:7, 11:8, 8:11 pri izidu 3:1
-            // je torej nemogoc: zmagovalec je imel 3 nize ze po tretjem nizu
-            // (izid 3:0) in cetrti niz se ne bi igral.
-            if (dobljeni1 == zaZmago || dobljeni2 == zaZmago) {
-                throw new NeveljavenVnosIzjema("Tekma je bila odlocena ze po " + (zaporedna - 1)
-                        + " nizih (izid " + dobljeni1 + ":" + dobljeni2 + "), zato se " + zaporedna
-                        + ". niz ne bi igral. Popravi vnos nizov.");
-            }
-            if (niz.tocke1() > niz.tocke2()) {
-                dobljeni1++;
-            } else {
-                dobljeni2++;
-            }
-            zaporedna++;
-        }
-        if (dobljeni1 != nizi1 || dobljeni2 != nizi2) {
-            throw new NeveljavenVnosIzjema("Tocke po nizih dajo rezultat " + dobljeni1 + ":"
-                    + dobljeni2 + ", vnesen pa je " + nizi1 + ":" + nizi2 + ".");
-        }
-
-        zaporedna = 1;
-        for (VnosRezultata.NizVnos niz : nizi) {
+        for (NizVnos niz : nizi) {
             nizRepozitorij.save(new Niz(tekma, zaporedna, niz.tocke1(), niz.tocke2()));
             zaporedna++;
-        }
-    }
-
-    /* Pravila namiznoteniskega niza: do 11 tock, z razliko vsaj 2;
-       pri podaljsani igri (nad 11) je razlika natanko 2. */
-    private void preveriTockeNiza(VnosRezultata.NizVnos niz, int zaporedna) {
-        int vec = Math.max(niz.tocke1(), niz.tocke2());
-        int manj = Math.min(niz.tocke1(), niz.tocke2());
-        boolean veljaven = manj >= 0
-                && ((vec == 11 && manj <= 9) || (vec > 11 && vec - manj == 2));
-        if (!veljaven) {
-            throw new NeveljavenVnosIzjema("Niz " + zaporedna + " (" + niz.tocke1() + ":"
-                    + niz.tocke2() + ") ni veljaven namiznoteniski rezultat.");
         }
     }
 

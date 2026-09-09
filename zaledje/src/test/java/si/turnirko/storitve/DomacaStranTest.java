@@ -123,8 +123,8 @@ class DomacaStranTest extends IntegracijskiTest {
                 assertEquals(v.rating(), v.eloZgodovina().get(v.eloZgodovina().size() - 1)));
     }
 
-    /* Vrstica lestvice nosi ime in priimek loceno (stolpec se bere "Ana Novak",
-       izbirnik pa abecedno "Novak Ana"). */
+    /* Vrstica lestvice nosi ime in priimek loceno; polno ime je slovensko
+       "Ime Priimek", locena polja pa sluzijo urejanju po priimku. */
     @Test
     void vrsticaLestviceNosiImeInPriimekLoceno() {
         pripraviDogodek(2, SistemTekmovanja.KROZNI);
@@ -132,7 +132,7 @@ class DomacaStranTest extends IntegracijskiTest {
         LestvicaIgralcaDto prva = statistikaStoritev.globalnaLestvica().get(0);
         assertNotNull(prva.ime());
         assertNotNull(prva.priimek());
-        assertEquals(prva.priimek() + " " + prva.ime(), prva.polnoIme());
+        assertEquals(prva.ime() + " " + prva.priimek(), prva.polnoIme());
     }
 
     /* Stolpca "Gib." in "Δ 30 dni" merita isto obdobje: dokler igralec pred

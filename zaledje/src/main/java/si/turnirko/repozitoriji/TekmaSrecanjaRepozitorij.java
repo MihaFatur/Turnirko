@@ -189,6 +189,32 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
             """)
     List<TekmaSrecanja> najdiDvojiceLige(@Param("idLiga") Long idLiga);
 
+    /* Vse odigrane tekme ene lige - POSAMICNE in DVOJICE skupaj, za zavihek
+       statistike lige. Dvojice zavihek loci sam (posamicne vrstice berejo samo
+       POSAMICNA), steje pa jih v "V stevilkah" in v vrstico najuspesnejse
+       dvojice.
+
+       Vez ekipe na klub je LEVA (prosta ekipa kluba nima), igralci pa so
+       vezani levo, ker tekma nepostavljene strani se vedno nosi izid srecanja
+       in mora steti v napredek; vrstice brez imen statistika izpusti sama.
+       Vrstni red je vrstni red igranja (kolo, srecanje, zaporedje) - iz njega
+       se prepozna, katera tekma je srecanje odlocila. */
+    @Query("""
+            SELECT t FROM TekmaSrecanja t
+            JOIN FETCH t.srecanje s
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
+            LEFT JOIN FETCH t.igralecDomaci d1 LEFT JOIN FETCH d1.klub
+            LEFT JOIN FETCH t.igralecDomaci2 d2 LEFT JOIN FETCH d2.klub
+            LEFT JOIN FETCH t.igralecGost g1 LEFT JOIN FETCH g1.klub
+            LEFT JOIN FETCH t.igralecGost2 g2 LEFT JOIN FETCH g2.klub
+            WHERE s.liga.id = :idLiga
+              AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
+              AND t.zmagovalecStran IS NOT NULL
+            ORDER BY s.kolo, s.id, t.zaporedje
+            """)
+    List<TekmaSrecanja> najdiOdigraneZaLigo(@Param("idLiga") Long idLiga);
+
     /* Sestevek dobljenih nizov po srecanjih lige (samo koncane tekme) - za
        kriterij izenacenja "razlika nizov". Vrne [idSrecanja, niziDomaci, niziGost]. */
     @Query("""

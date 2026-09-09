@@ -18,7 +18,10 @@ public record ProfilDto(
         Pregled pregled,
         Uvrstitev uvrstitev,
         List<TockaGrafa> graf,
-        List<TekmaProfila> tekme
+        List<TekmaProfila> tekme,
+        /* Tekme dvojic so LOCEN seznam in ne stejejo v "pregled": izida para
+           ni mogoce pripisati posamezniku (isto pravilo kot pri ELO). */
+        List<TekmaDvojic> dvojice
 ) {
 
     public record Glava(
@@ -54,9 +57,16 @@ public record ProfilDto(
        "tekmovanje" in "del" sta ista zapisa kot v seznamu tekem (ime turnirja
        oz. lige in dogodek oz. kolo s parom ekip) - graf in seznam morata ob
        skoku s tocke na vrstico povedati isto. Kadar sta prazna, tocka nima
-       para v seznamu tekem (postavitveni rating) in skok ni mogoc. */
+       para v seznamu tekem (postavitveni rating) in skok ni mogoc.
+
+       Casa sta dva in nista isto: "kdaj" je trenutek OBRACUNA ratinga (po njem
+       so tocke urejene), "datum" pa dan TEKME - isti kot v vrstici seznama.
+       Pri uvozeni zgodovini so vsi obracuni nastali ob uvozu, zato sme cas
+       izpisati in po njem rezati obdobje samo "datum". Prazen je le pri
+       postavitvenem ratingu (tekme ni). */
     public record TockaGrafa(
             LocalDateTime kdaj,
+            LocalDate datum,
             int vrednost,
             int sprememba,
             Long idTekme,
@@ -81,5 +91,21 @@ public record ProfilDto(
             boolean zmaga,
             IzidTekme izidTip,
             Integer spremembaElo
+    ) {}
+
+    /* Ena odigrana tekma dvojic z vidika lastnika profila: s kom je igral in
+       proti komu. Spremembe ELO ni - dvojice v rating ne stejejo. */
+    public record TekmaDvojic(
+            Long idTekme,
+            LocalDate datum,
+            String tekmovanje,
+            String del,
+            Long idSoigralca,
+            String soigralec,
+            String nasprotnika,
+            int niziZa,
+            int niziProti,
+            boolean zmaga,
+            IzidTekme izidTip
     ) {}
 }

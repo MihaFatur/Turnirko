@@ -3,6 +3,8 @@
    tekme (dvojice ne stejejo). */
 package si.turnirko.dto;
 
+import java.util.List;
+
 import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.StatusTekmeSrecanja;
 import si.turnirko.modeli.StranEkipe;
@@ -25,10 +27,14 @@ public record TekmaSrecanjaDto(
         IzidTekme izidTip,
         StatusTekmeSrecanja status,
         Integer spremembaEloDomaci,
-        Integer spremembaEloGost
+        Integer spremembaEloGost,
+        /* Tocke po nizih po vrsti (11:7, 9:11 ...); prazen seznam, kadar jih
+           organizator ni vpisal - vnos je neobvezen. */
+        List<NizVnos> nizi
 ) {
 
-    public static TekmaSrecanjaDto iz(TekmaSrecanja t, Integer spremembaEloDomaci, Integer spremembaEloGost) {
+    public static TekmaSrecanjaDto iz(TekmaSrecanja t, Integer spremembaEloDomaci,
+                                      Integer spremembaEloGost, List<NizVnos> nizi) {
         return new TekmaSrecanjaDto(
                 t.getId(),
                 t.getZaporedje(),
@@ -45,6 +51,7 @@ public record TekmaSrecanjaDto(
                 t.getIzidTip(),
                 t.getStatus(),
                 spremembaEloDomaci,
-                spremembaEloGost);
+                spremembaEloGost,
+                nizi);
     }
 }

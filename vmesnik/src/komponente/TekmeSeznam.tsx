@@ -2,7 +2,7 @@
    igralca in rezultat; ce je vnos smiseln in gre za administratorja,
    je vrstica klikljiva za vnos rezultata. */
 import type { TekmaDto } from '../api/tipi'
-import { OZNAKE_IZID } from '../api/tipi'
+import { OZNAKE_IZID, imeUdelezenca } from '../api/tipi'
 import { SpremembaElo } from './SpremembaElo'
 
 interface Lastnosti {
@@ -46,8 +46,8 @@ function Vrstica({
   const klikljiva =
     naKlik !== undefined && (tekma.status === 'PRIPRAVLJENA' || tekma.status === 'V_IGRI')
 
-  const ime1 = tekma.udelezenec1?.polnoIme ?? '—'
-  const ime2 = tekma.udelezenec2?.polnoIme ?? '—'
+  const ime1 = imeUdelezenca(tekma.udelezenec1) ?? '—'
+  const ime2 = imeUdelezenca(tekma.udelezenec2) ?? '—'
   const zmagovalec1 = koncana && tekma.idZmagovalcaPrijave === tekma.udelezenec1?.idPrijave
   const zmagovalec2 = koncana && tekma.idZmagovalcaPrijave === tekma.udelezenec2?.idPrijave
 

@@ -32,15 +32,20 @@ public record TekmaDto(
         Integer ratingPred2
 ) {
 
-    /* Udelezenec tekme (stran 1 ali 2). */
-    public record Udelezenec(Long idPrijave, String polnoIme, String klub) {
+    /* Udelezenec tekme (stran 1 ali 2) - igralec ali PAR.
+       polnoIme2/klub2 sta zapolnjena samo pri dvojicah; vmesnik iz njiju
+       sestavi dvovrsticni zapis na kartici mreze. */
+    public record Udelezenec(Long idPrijave, String polnoIme, String klub,
+                             String polnoIme2, String klub2) {
 
         static Udelezenec iz(Prijava prijava) {
             if (prijava == null) return null;
             return new Udelezenec(
                     prijava.getId(),
                     prijava.getIgralec().polnoIme(),
-                    prijava.getKlubObPrijavi() != null ? prijava.getKlubObPrijavi().getIme() : null);
+                    prijava.getKlubObPrijavi() != null ? prijava.getKlubObPrijavi().getIme() : null,
+                    prijava.jePar() ? prijava.getIgralec2().polnoIme() : null,
+                    prijava.getKlubObPrijavi2() != null ? prijava.getKlubObPrijavi2().getIme() : null);
         }
     }
 

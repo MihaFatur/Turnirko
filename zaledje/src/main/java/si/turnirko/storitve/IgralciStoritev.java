@@ -2,6 +2,7 @@
    da zgodovina tekem in ratingov ostane popolna. */
 package si.turnirko.storitve;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -153,7 +154,8 @@ public class IgralciStoritev {
     private static IgralecJavniDto javniDto(Igralec igralec, RatingStanje stanje) {
         return IgralecJavniDto.iz(igralec,
                 stanje != null ? stanje.getVrednost() : null,
-                stanje != null ? stanje.getStTekem() : 0);
+                stanje != null ? stanje.getStTekem() : 0,
+                LocalDate.now());
     }
 
     private RatingStanje stanje(Long idIgralca) {

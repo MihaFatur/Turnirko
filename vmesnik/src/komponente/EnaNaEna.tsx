@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import { igralciApi, statistikaApi } from '../api/zahteve'
 import type { DvobojDto, IgralecDto } from '../api/tipi'
 import { OZNAKE_IZID } from '../api/tipi'
+import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import { oblikujDanKratekMesec, sklonTekem } from '../pomozno/oblikovanje'
 import { SporociloNapake } from './SporociloNapake'
 import { SpremembaElo } from './SpremembaElo'
@@ -321,14 +322,11 @@ function IzbirnikIgralca({
   const idSeznama = useId()
 
   const zadetki = useMemo(() => {
-    const besede = zaIskanje(iskanje).split(/\s+/).filter(Boolean)
+    const besede = besedeIskanja(iskanje)
     if (besede.length === 0) return []
     return igralci
       .filter((i) => i.id !== izkljuci)
-      .filter((i) => {
-        const ime = zaIskanje(`${i.priimek} ${i.ime}`)
-        return besede.every((beseda) => ime.includes(beseda))
-      })
+      .filter((i) => ustrezaBesedam(`${i.ime} ${i.priimek}`, besede))
       .slice(0, NAJVEC_PREDLOGOV)
   }, [igralci, izkljuci, iskanje])
 
@@ -421,7 +419,7 @@ function IzbirnikIgralca({
               onClick={() => izberi(igralec.id)}
             >
               <span className="enanaena__predlog-ime">
-                {igralec.priimek} {igralec.ime}
+                {igralec.ime} {igralec.priimek}
               </span>
               {igralec.klub && (
                 <span className="enanaena__predlog-klub">{igralec.klub.ime}</span>
@@ -592,16 +590,6 @@ function barvaIzida(svoje: number | undefined, tuje: number | undefined): string
   if (svoje > tuje) return 'enanaena__vodi'
   if (svoje < tuje) return 'enanaena__izgublja'
   return ''
-}
-
-/* Niz, pripravljen za primerjavo v iskalniku: male črke brez šumnikov.
-   Brez odstranjenih strešic »krizan« ne najde Križana — na telefonu jih po
-   imenu išče malokdo, v dvorani pa nihče. */
-function zaIskanje(v: string): string {
-  return v
-    .toLocaleLowerCase('sl')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
 }
 
 /* Začetnica priimka zmagovalca ob izidu ("3:1 V"). */

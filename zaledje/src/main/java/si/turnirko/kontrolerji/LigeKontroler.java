@@ -29,9 +29,11 @@ import si.turnirko.dto.LigaDto;
 import si.turnirko.dto.LigaVnos;
 import si.turnirko.dto.PrehodiVnos;
 import si.turnirko.dto.SrecanjeDto;
+import si.turnirko.dto.StatistikaTekmovanjaDto;
 import si.turnirko.dto.TerminiVnos;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.SrecanjeStoritev;
+import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
 
 @RestController
 @RequestMapping("/api/v1/lige")
@@ -39,10 +41,13 @@ public class LigeKontroler {
 
     private final LigaStoritev ligaStoritev;
     private final SrecanjeStoritev srecanjeStoritev;
+    private final StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
 
-    public LigeKontroler(LigaStoritev ligaStoritev, SrecanjeStoritev srecanjeStoritev) {
+    public LigeKontroler(LigaStoritev ligaStoritev, SrecanjeStoritev srecanjeStoritev,
+                         StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev) {
         this.ligaStoritev = ligaStoritev;
         this.srecanjeStoritev = srecanjeStoritev;
+        this.statistikaTekmovanjaStoritev = statistikaTekmovanjaStoritev;
     }
 
     // ---------- Liga ----------
@@ -154,5 +159,13 @@ public class LigeKontroler {
     @GetMapping("/{id}/lestvica-dvojic")
     public List<LestvicaDvojiceDto> lestvicaDvojic(@PathVariable Long id) {
         return ligaStoritev.lestvicaDvojic(id);
+    }
+
+    /* Zavihek "Zanimivosti" lige. Javno kot ostali GET-i in dosegljivo ze med
+       sezono: stevilke se premikajo z vsakim kolom in prav to je razlog, da
+       gledalec zavihek odpre. */
+    @GetMapping("/{id}/statistika")
+    public StatistikaTekmovanjaDto statistika(@PathVariable Long id) {
+        return statistikaTekmovanjaStoritev.zaLigo(id);
     }
 }

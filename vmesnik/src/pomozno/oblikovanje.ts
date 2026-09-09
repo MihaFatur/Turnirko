@@ -195,6 +195,10 @@ export function sklonZmag(n: number): string {
   return sklon(n, 'zmaga', 'zmagi', 'zmage', 'zmag')
 }
 
+export function sklonPorazov(n: number): string {
+  return sklon(n, 'poraz', 'poraza', 'porazi', 'porazov')
+}
+
 export function sklonTock(n: number): string {
   return sklon(n, 'točka', 'točki', 'točke', 'točk')
 }
@@ -234,4 +238,11 @@ export function imeKolaKratko(kolo: number, zadnjeKolo: number): string {
     case 4: return 'ČF'
     default: return `1/${steviloTekemVKolu}`
   }
+}
+
+/* Število s presledkom med tisočicami ("4 812"). Uporabljen je ozki nedeljivi
+   presledek, da se številka nikoli ne prelomi na koncu vrstice — v pasu
+   kazalnikov bi se sicer "4" in "812" znašla vsaka v svoji vrsti. */
+export function oblikujStevilo(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }

@@ -6,9 +6,16 @@
    pogosto zgoščene v turnirske dneve in bi časovno merilo dalo prazne pasove.
    Datum je izpisan pod prvo in zadnjo točko ter ob izbrani točki.
 
+   Ta datum (in z njim izbrano obdobje) je dan TEKME, ne trenutek obračuna
+   ratinga: pri uvoženi zgodovini so vsi obračuni nastali ob uvozu, zato bi
+   po njem vse tekme padle v isti dan in nobeno obdobje ne bi odrezalo nič.
+
    Točka ni le prikaz: pove, s kom in na katerem tekmovanju je bila tekma
    odigrana, ob kliku pa stran skoči na to vrstico v seznamu tekem (prop
    "naTekmo"). Sicer je iz skoka ELO nemogoče ugotoviti, kaj ga je povzročilo.
+
+   Privzeto obdobje so trije meseci: gledalec pride po zadnjo formo, ne po
+   celotno zgodovino, ta pa je pri uvoženih igralcih dolga tudi deset let.
 
    Oznake osi so HTML nad risalno ploskvijo, ne <text> v SVG: SVG jih pri
    raztegu ploskve na širino okvirja skalira skupaj z grafom (12 px bi na
@@ -19,12 +26,16 @@ import { useState } from 'react'
 
 import type { TockaGrafa } from '../api/tipi'
 
-type Obdobje = 'vse' | '12m' | '3m'
+type Obdobje = 'vse' | '12m' | '6m' | '3m' | '30d'
 
-const OBDOBJA: { kljuc: Obdobje; oznaka: string; meseci: number | null }[] = [
-  { kljuc: 'vse', oznaka: 'Vse', meseci: null },
-  { kljuc: '12m', oznaka: '12 mesecev', meseci: 12 },
-  { kljuc: '3m', oznaka: '3 meseci', meseci: 3 },
+/* Obdobje je omejeno bodisi z dnevi bodisi s koledarskimi meseci: "30 dni" je
+   res 30 dni, "3 meseci" pa isti dan tri mesece nazaj (ne 90 dni). */
+const OBDOBJA: { kljuc: Obdobje; oznaka: string; dni: number | null; meseci: number | null }[] = [
+  { kljuc: '30d', oznaka: '30 dni', dni: 30, meseci: null },
+  { kljuc: '3m', oznaka: '3 meseci', dni: null, meseci: 3 },
+  { kljuc: '6m', oznaka: '6 mesecev', dni: null, meseci: 6 },
+  { kljuc: '12m', oznaka: '1 leto', dni: null, meseci: 12 },
+  { kljuc: 'vse', oznaka: 'Vse', dni: null, meseci: null },
 ]
 
 /* Risalna ploskev je široka kot vsebinski okvir (1280 px minus 2 x 40 px
@@ -50,7 +61,7 @@ export function GrafElo({
   naTekmo?: (idTekme: number, ligaska: boolean) => void
   children?: ReactNode
 }) {
-  const [obdobje, nastaviObdobje] = useState<Obdobje>('vse')
+  const [obdobje, nastaviObdobje] = useState<Obdobje>('3m')
   const [izbrana, nastaviIzbrano] = useState<number | null>(null)
 
   const filtrirane = filtrirajPoObdobju(tocke, obdobje)
@@ -103,24 +114,27 @@ export function GrafElo({
     <div className="graf">
       <div className="naslovna-vrstica">
         <h2>Napredek ELO</h2>
-        <div className="izbirnik">
-          {OBDOBJA.map((o) => (
-            <button
-              type="button"
-              key={o.kljuc}
-              className={
-                'izbirnik__gumb' + (obdobje === o.kljuc ? ' izbirnik__gumb--aktiven' : '')
-              }
-              onClick={() => {
-                nastaviObdobje(o.kljuc)
-                nastaviIzbrano(null)
-              }}
-            >
-              {o.oznaka}
-              {obdobje === o.kljuc ? ` · ${filtrirane.length}` : ''}
-            </button>
-          ))}
-        </div>
+        <label className="krmilo-izbor">
+          <span className="samo-za-bralnik">Obdobje grafa</span>
+          <span className="krmilo-izbor__oznaka" aria-hidden="true">
+            {OBDOBJA.find((o) => o.kljuc === obdobje)?.oznaka} · {filtrirane.length}
+            <span className="krmilo-izbor__puscica">▾</span>
+          </span>
+          <select
+            className="krmilo-izbor__polje"
+            value={obdobje}
+            onChange={(dogodek) => {
+              nastaviObdobje(dogodek.target.value as Obdobje)
+              nastaviIzbrano(null)
+            }}
+          >
+            {OBDOBJA.map((o) => (
+              <option key={o.kljuc} value={o.kljuc}>
+                {o.oznaka}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {filtrirane.length === 0 ? (
@@ -137,10 +151,10 @@ export function GrafElo({
                 {Math.round(v)}
               </span>
             ))}
-            <span className="graf__oznaka graf__oznaka--prvi">{datum(filtrirane[0].kdaj)}</span>
+            <span className="graf__oznaka graf__oznaka--prvi">{datum(casTocke(filtrirane[0]))}</span>
             {filtrirane.length > 1 && (
               <span className="graf__oznaka graf__oznaka--zadnji">
-                {datum(filtrirane[filtrirane.length - 1].kdaj)}
+                {datum(casTocke(filtrirane[filtrirane.length - 1]))}
               </span>
             )}
             <svg
@@ -214,7 +228,7 @@ export function GrafElo({
                 {Math.abs(podrobnost.sprememba)}
               </span>
               <span className="graf__opis">
-                · {datum(podrobnost.kdaj)}
+                · {datum(casTocke(podrobnost))}
                 {podrobnost.nasprotnik ? ` · proti ${podrobnost.nasprotnik}` : ''}
                 {/* Del (dogodek oz. kolo s parom ekip) je samo v namigu in v
                     vrstici seznama: imena uvoženih turnirjev so dolga cel
@@ -225,16 +239,6 @@ export function GrafElo({
                   : podrobnost.ligaska
                     ? ' · liga'
                     : ''}
-              </span>
-              {/* Gumb je edina zadetkovna površina te poti, ki na telefonu drži
-                  44 px — točka grafa je tam nekaj pikslov široka. */}
-              {skok(podrobnost) && (
-                <button type="button" className="graf__skok" onClick={skok(podrobnost) ?? undefined}>
-                  V seznam tekem ↓
-                </button>
-              )}
-              <span className="graf__opis">
-                vodoravno je zaporedje obračunanih tekem, ne koledar
               </span>
             </p>
           )}
@@ -247,17 +251,23 @@ export function GrafElo({
 }
 
 function filtrirajPoObdobju(tocke: TockaGrafa[], obdobje: Obdobje): TockaGrafa[] {
-  const meseci = OBDOBJA.find((o) => o.kljuc === obdobje)?.meseci
-  if (!meseci) return tocke
+  const o = OBDOBJA.find((x) => x.kljuc === obdobje)
+  if (!o || (o.dni === null && o.meseci === null)) return tocke
   const meja = new Date()
-  meja.setMonth(meja.getMonth() - meseci)
-  return tocke.filter((t) => new Date(t.kdaj) >= meja)
+  if (o.dni !== null) meja.setDate(meja.getDate() - o.dni)
+  else meja.setMonth(meja.getMonth() - (o.meseci as number))
+  return tocke.filter((t) => new Date(casTocke(t)) >= meja)
+}
+
+/* Dan tekme; postavitveni rating tekme nima, zato tam obvelja čas obračuna. */
+function casTocke(t: TockaGrafa): string {
+  return t.datum ?? t.kdaj
 }
 
 /* Isti zapis za nativni namig (<title>) in za bralnik zaslona. */
 function opisTocke(t: TockaGrafa): string {
   const deli = [
-    datum(t.kdaj),
+    datum(casTocke(t)),
     `${t.vrednost} (${t.sprememba >= 0 ? '+' : '−'}${Math.abs(t.sprememba)})`,
   ]
   if (t.nasprotnik) deli.push(`proti ${t.nasprotnik}`)

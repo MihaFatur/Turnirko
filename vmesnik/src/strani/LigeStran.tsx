@@ -226,25 +226,15 @@ export function LigeStran() {
 
   return (
     <section>
-      <div className="stran-glava stran-glava--dejanja">
-        <div>
-          <h1 className="naslov-strani">
-            <span className="naslov-strani__nad">Ekipna tekmovanja</span>
-            <span className="naslov-strani__glavni">Lige</span>
-          </h1>
-          <p className="uvod">
-            Ekipe, kader in razpored srečanj. Posamične tekme iz lig se lahko štejejo v
-            klubski ELO.
-          </p>
+      {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija,
+          in seznam se sme začeti z vsebino. Ostane le dejanje urejevalca. */}
+      {smeUstvarjati && (
+        <div className="stran-dejanja">
+          <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
+            + Nova liga
+          </button>
         </div>
-        {smeUstvarjati && (
-          <div className="naslovna-vrstica__desno">
-            <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
-              + Nova liga
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       <div>
         <div className="naslovna-vrstica">

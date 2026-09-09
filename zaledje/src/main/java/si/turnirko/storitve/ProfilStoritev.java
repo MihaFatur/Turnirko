@@ -33,6 +33,7 @@ import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IgralnaRoka;
 import si.turnirko.modeli.IzidTekme;
+import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RatingZgodovina;
 import si.turnirko.modeli.Srecanje;
@@ -43,6 +44,7 @@ import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.NizRepozitorij;
+import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
 import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
@@ -64,6 +66,7 @@ public class ProfilStoritev {
     private final RatingZgodovinaRepozitorij zgodovinaRepozitorij;
     private final RatingStanjeRepozitorij stanjeRepozitorij;
     private final NizRepozitorij nizRepozitorij;
+    private final NizSrecanjaRepozitorij nizSrecanjaRepozitorij;
     private final UporabnikRepozitorij uporabnikRepozitorij;
 
     public ProfilStoritev(IgralecRepozitorij igralecRepozitorij,
@@ -72,6 +75,7 @@ public class ProfilStoritev {
                           RatingZgodovinaRepozitorij zgodovinaRepozitorij,
                           RatingStanjeRepozitorij stanjeRepozitorij,
                           NizRepozitorij nizRepozitorij,
+                          NizSrecanjaRepozitorij nizSrecanjaRepozitorij,
                           UporabnikRepozitorij uporabnikRepozitorij) {
         this.igralecRepozitorij = igralecRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -79,6 +83,7 @@ public class ProfilStoritev {
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
         this.stanjeRepozitorij = stanjeRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
+        this.nizSrecanjaRepozitorij = nizSrecanjaRepozitorij;
         this.uporabnikRepozitorij = uporabnikRepozitorij;
     }
 
@@ -118,7 +123,36 @@ public class ProfilStoritev {
                         dobljeniNizi, prejetiNizi, nastopi.size() - ligaskih, ligaskih),
                 uvrstitev(igralec, rating),
                 graf(idIgralec, nastopi),
-                nastopi.stream().map(ProfilStoritev::vTekmoProfila).toList());
+                nastopi.stream().map(ProfilStoritev::vTekmoProfila).toList(),
+                dvojice(idIgralec));
+    }
+
+    /* Tekme dvojic so svoj seznam: v pregled, graf in nize zgoraj namenoma ne
+       stejejo, ker izida para ni mogoce pripisati posamezniku. Zato jih tudi
+       ne beremo skozi "nastope", ampak z lastno poizvedbo. */
+    private List<ProfilDto.TekmaDvojic> dvojice(Long idIgralec) {
+        List<ProfilDto.TekmaDvojic> tekme = new ArrayList<>();
+        for (Tekma t : tekmaRepozitorij.najdiDvojiceZaIgralca(idIgralec)) {
+            boolean mojaPrva = t.getPrijava1().vsebujeIgralca(idIgralec);
+            Prijava moj = mojaPrva ? t.getPrijava1() : t.getPrijava2();
+            Prijava nasprotna = mojaPrva ? t.getPrijava2() : t.getPrijava1();
+            Igralec soigralec = moj.getIgralec().getId().equals(idIgralec)
+                    ? moj.getIgralec2() : moj.getIgralec();
+            LocalDate datum = t.getDogodek().getTurnir().getDatumZacetka();
+            tekme.add(new ProfilDto.TekmaDvojic(
+                    t.getId(),
+                    datum,
+                    t.getDogodek().getTurnir().getIme(),
+                    t.getDogodek().getIme(),
+                    soigralec != null ? soigralec.getId() : null,
+                    soigralec != null ? soigralec.polnoIme() : null,
+                    nasprotna.prikazanoIme(),
+                    mojaPrva ? t.getDobljeniNizi1() : t.getDobljeniNizi2(),
+                    mojaPrva ? t.getDobljeniNizi2() : t.getDobljeniNizi1(),
+                    t.getZmagovalec() != null && t.getZmagovalec().getId().equals(moj.getId()),
+                    t.getIzidTip()));
+        }
+        return tekme;
     }
 
     // ---------- Zasebni del ----------
@@ -206,12 +240,12 @@ public class ProfilStoritev {
             boolean jazDomaci = t.getIgralecDomaci().getId().equals(idIgralec);
             Igralec nasprotnik = jazDomaci ? t.getIgralecGost() : t.getIgralecDomaci();
             Srecanje s = t.getSrecanje();
-            LocalDateTime kdaj = casL.getOrDefault(t.getId(), s.getOdigranOb());
+            LocalDateTime kdaj = casL.getOrDefault(t.getId(), casSrecanja(s));
             Map<Long, Integer> ratingi = ratingPredL.getOrDefault(t.getId(), Map.of());
             nastopi.add(new Nastop(
                     t.getId(), true,
                     kdaj,
-                    datumIz(s.getOdigranOb() != null ? s.getOdigranOb().toLocalDate() : null, kdaj),
+                    datumIz(casSrecanja(s) != null ? casSrecanja(s).toLocalDate() : null, kdaj),
                     s.getLiga().getIme(),
                     s.getKolo() + ". kolo · " + s.getEkipaDomaci().prikazanoIme()
                             + " – " + s.getEkipaGost().prikazanoIme(),
@@ -233,6 +267,15 @@ public class ProfilStoritev {
 
     private static LocalDateTime casIz(LocalDate datum) {
         return datum != null ? datum.atStartOfDay() : null;
+    }
+
+    /* Kdaj je bilo srecanje odigrano: zakljucek, sicer termin kola. "odigranOb"
+       postavi sele zakljucek srecanja v aplikaciji, zato ga uvozena zgodovina
+       nima - termin kola pa ima vsako uvozeno srecanje. Brez tega bi vsaka
+       uvozena ligaska tekma nosila dan uvoza in bi izbirnik obdobja v grafu
+       ELO ne odrezal nicesar. */
+    private static LocalDateTime casSrecanja(Srecanje s) {
+        return s.getOdigranOb() != null ? s.getOdigranOb() : s.getPredvidenZacetek();
     }
 
     /* Datum tekmovanja, sicer dan obracuna ratinga - da vrstica ni brez datuma,
@@ -318,7 +361,8 @@ public class ProfilStoritev {
                     : (z.getTekma() != null ? z.getTekma().getId() : null);
             Nastop n = idTekme != null ? poKljucu.get(kljuc(idTekme, ligaska)) : null;
             tocke.add(new ProfilDto.TockaGrafa(
-                    z.getUstvarjenOb(), z.getNovaVrednost(), z.getSprememba(),
+                    z.getUstvarjenOb(), n != null ? n.datum() : null,
+                    z.getNovaVrednost(), z.getSprememba(),
                     idTekme, ligaska,
                     n != null ? n.nasprotnik().polnoIme() : null,
                     n != null ? n.tekmovanje() : null,
@@ -471,51 +515,73 @@ public class ProfilStoritev {
                 tocke(nastopi));
     }
 
-    /* Tocke po nizih obstajajo samo pri turnirskih tekmah. */
+    /* Tocke po nizih so pri obeh vrstah tekem neobvezne, zato se stejejo samo
+       tekme, pri katerih so res vpisane; "steviloTekem" pove, na koliko tekmah
+       izracun stoji. Turnirske in ligaske tekme imajo svoji tabeli nizov
+       (niz / niz_srecanja) in s tem dva locena id-prostora - zato dve
+       poizvedbi in dve mapi, ne ena. */
     private ProfilZasebnoDto.Tocke tocke(List<Nastop> nastopi) {
         Map<Long, Boolean> turnirske = new HashMap<>();
+        Map<Long, Boolean> ligaske = new HashMap<>();
         for (Nastop n : nastopi) {
-            if (!n.ligaska()) {
-                turnirske.put(n.idTekme(), n.jazPrvi());
+            (n.ligaska() ? ligaske : turnirske).put(n.idTekme(), n.jazPrvi());
+        }
+
+        Sestevek s = new Sestevek();
+        if (!turnirske.isEmpty()) {
+            s.dodaj(nizRepozitorij.tockeZaTekme(turnirske.keySet()), turnirske);
+        }
+        if (!ligaske.isEmpty()) {
+            s.dodaj(nizSrecanjaRepozitorij.tockeZaTekme(ligaske.keySet()), ligaske);
+        }
+        return s.vDto();
+    }
+
+    /* Sestevek tock po nizih cez oba vira. Loceno od tocke() zato, ker se ista
+       zanka izvede za turnirske in ligaske tekme. */
+    private static final class Sestevek {
+        private final java.util.Set<Long> stekmami = new java.util.HashSet<>();
+        private int za;
+        private int proti;
+        private int nizov;
+        private int najvec;
+        private int tesnihNizov;
+        private int tesneZa;
+        private int tesneSkupaj;
+
+        /* "vrstice" so [idTekme, tockePrve strani, tockeDruge strani],
+           "stran" pa pove, ali je lastnik profila prva stran te tekme. */
+        void dodaj(List<Object[]> vrstice, Map<Long, Boolean> stran) {
+            for (Object[] v : vrstice) {
+                Long idTekme = ((Number) v[0]).longValue();
+                Boolean jazPrvi = stran.get(idTekme);
+                if (jazPrvi == null) {
+                    continue;
+                }
+                int moje = ((Number) (jazPrvi ? v[1] : v[2])).intValue();
+                int njegove = ((Number) (jazPrvi ? v[2] : v[1])).intValue();
+                za += moje;
+                proti += njegove;
+                nizov++;
+                najvec = Math.max(najvec, moje);
+                stekmami.add(idTekme);
+                if (Math.min(moje, njegove) >= TOCK_ZA_TESEN_NIZ) {
+                    tesnihNizov++;
+                    tesneZa += moje;
+                    tesneSkupaj += moje + njegove;
+                }
             }
         }
-        if (turnirske.isEmpty()) {
-            return new ProfilZasebnoDto.Tocke(0, 0, 0, 0, 0, 0, 0, 0);
+
+        ProfilZasebnoDto.Tocke vDto() {
+            int skupaj = za + proti;
+            return new ProfilZasebnoDto.Tocke(stekmami.size(), za, proti,
+                    skupaj == 0 ? 0 : Math.round(za * 100f / skupaj),
+                    nizov == 0 ? 0 : Math.round(za * 10.0 / nizov) / 10.0,
+                    najvec,
+                    tesnihNizov,
+                    tesneSkupaj == 0 ? 0 : Math.round(tesneZa * 100f / tesneSkupaj));
         }
-        int za = 0;
-        int proti = 0;
-        int nizov = 0;
-        int najvec = 0;
-        int tesnihNizov = 0;
-        int tesneZa = 0;
-        int tesneSkupaj = 0;
-        java.util.Set<Long> stekmami = new java.util.HashSet<>();
-        for (Object[] v : nizRepozitorij.tockeZaTekme(turnirske.keySet())) {
-            Long idTekme = ((Number) v[0]).longValue();
-            Boolean jazPrvi = turnirske.get(idTekme);
-            if (jazPrvi == null) {
-                continue;
-            }
-            int moje = ((Number) (jazPrvi ? v[1] : v[2])).intValue();
-            int njegove = ((Number) (jazPrvi ? v[2] : v[1])).intValue();
-            za += moje;
-            proti += njegove;
-            nizov++;
-            najvec = Math.max(najvec, moje);
-            stekmami.add(idTekme);
-            if (Math.min(moje, njegove) >= TOCK_ZA_TESEN_NIZ) {
-                tesnihNizov++;
-                tesneZa += moje;
-                tesneSkupaj += moje + njegove;
-            }
-        }
-        int skupaj = za + proti;
-        return new ProfilZasebnoDto.Tocke(stekmami.size(), za, proti,
-                skupaj == 0 ? 0 : Math.round(za * 100f / skupaj),
-                nizov == 0 ? 0 : Math.round(za * 10.0 / nizov) / 10.0,
-                najvec,
-                tesnihNizov,
-                tesneSkupaj == 0 ? 0 : Math.round(tesneZa * 100f / tesneSkupaj));
     }
 
     /* Razsevni graf: samo tekme, pri katerih sta znana oba ratinga ob tekmi in

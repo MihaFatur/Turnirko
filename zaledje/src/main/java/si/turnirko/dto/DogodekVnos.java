@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import si.turnirko.modeli.Disciplina;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 
@@ -18,6 +19,8 @@ public record DogodekVnos(
         @NotNull(message = "stevilo nizov je obvezno") Integer privzetoSteviloNizov,
         Double prijavnina,
         LocalDate rokPrijave,
+        // null pomeni privzeto (POSAMICNO); DVOJICE zahtevajo izlocilni sistem
+        Disciplina disciplina,
         // null pomeni privzeto (IZLOCILNI); doloca ga organizator ob dogodku
         SistemTekmovanja sistemTekmovanja,
         // obvezni pri sistemu SKUPINE, sicer se ne upostevata

@@ -32,11 +32,13 @@ import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.LestvicaIgralcaDto;
 import si.turnirko.dto.LestvicaIgralcaLigeDto;
 import si.turnirko.dto.LigaVnos;
+import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.TekmaSrecanjaDto;
 import si.turnirko.dto.TerminiVnos;
+import si.turnirko.dto.VnosRezultataSrecanja;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
@@ -47,12 +49,14 @@ import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmeSrecanja;
 import si.turnirko.modeli.StranEkipe;
 import si.turnirko.repozitoriji.KlubRepozitorij;
+import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
 
 class LigaSrecanjeTest extends IntegracijskiTest {
 
     @Autowired private LigaStoritev ligaStoritev;
     @Autowired private SrecanjeStoritev srecanjeStoritev;
     @Autowired private KlubRepozitorij klubRepozitorij;
+    @Autowired private NizSrecanjaRepozitorij nizSrecanjaRepozitorij;
     /* Za preverbe, ki morajo res do baze in ne le do predpomnilnika seje. */
     @PersistenceContext private EntityManager seja;
 
@@ -224,7 +228,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         List<TekmaSrecanjaDto> tekme = srecanjeStoritev.podrobno(srecanje).tekme();
         for (int i = 0; i < 4; i++) {
             srecanjeStoritev.vnesiRezultat(tekme.get(i).id(),
-                    new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 0, null));
+                    new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 0, null, null));
         }
 
         SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
@@ -245,9 +249,9 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         TekmaSrecanjaDto dvojice = tekme.get(0);   // "dvojice"
         TekmaSrecanjaDto aX = tekme.get(1);        // "A-X"
         srecanjeStoritev.vnesiRezultat(dvojice.id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
         srecanjeStoritev.vnesiRezultat(aX.id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
 
         // dvojice ne stejejo v ELO -> brez zapisa v dnevniku
         assertTrue(ratingZgodovinaRepozitorij
@@ -257,6 +261,66 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         assertEquals(2, ratingZgodovinaRepozitorij
                 .spremembeZaTekmeSrecanja(List.of(aX.id()), RatingStanje.SISTEM_KLUBSKI_ELO)
                 .size(), "posamicna tekma mora obracunati ELO obema igralcema");
+    }
+
+    /* Tocke po nizih se odslej vpisujejo tudi pri ligaskih tekmah - po istih
+       pravilih kot pri turnirskih (NiziPravila). */
+    @Test
+    void tockeNizovLigaskeTekmeSePreverijoInShranijo() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL, null);
+        nastaviPostavo(srecanje);
+        Long aX = srecanjeStoritev.podrobno(srecanje).tekme().get(1).id();
+
+        // neveljaven niz: 10:9 ni koncan niz
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.vnesiRezultat(aX, new VnosRezultataSrecanja(
+                        null, 3, 0, null,
+                        List.of(new NizVnos(11, 5), new NizVnos(10, 9), new NizVnos(11, 7)))));
+
+        // stevilo nizov se ne ujema z rezultatom
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.vnesiRezultat(aX, new VnosRezultataSrecanja(
+                        null, 3, 0, null,
+                        List.of(new NizVnos(11, 5), new NizVnos(11, 7)))));
+
+        // nemogoc vrstni red: pri 3:1 se cetrti niz po izidu 3:0 ne bi igral
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.vnesiRezultat(aX, new VnosRezultataSrecanja(
+                        null, 3, 1, null,
+                        List.of(new NizVnos(11, 4), new NizVnos(11, 7),
+                                new NizVnos(11, 8), new NizVnos(8, 11)))));
+
+        // zavrnjeni vnosi niso pustili delnih zapisov
+        assertTrue(nizSrecanjaRepozitorij.findByTekmaIdOrderByZaporednaStAsc(aX).isEmpty(),
+                "zavrnjen vnos ne sme shraniti nobenega niza");
+
+        TekmaSrecanjaDto vnesena = srecanjeStoritev.vnesiRezultat(aX, new VnosRezultataSrecanja(
+                null, 3, 1, null,
+                List.of(new NizVnos(11, 4), new NizVnos(8, 11),
+                        new NizVnos(11, 7), new NizVnos(12, 10))));
+
+        assertEquals(4, nizSrecanjaRepozitorij.findByTekmaIdOrderByZaporednaStAsc(aX).size());
+        // tocke gredo v odgovor in v zapisnik po vrsti, kot so bile odigrane
+        assertEquals(List.of("11:4", "8:11", "11:7", "12:10"), oznakeNizov(vnesena));
+        assertEquals(List.of("11:4", "8:11", "11:7", "12:10"),
+                oznakeNizov(srecanjeStoritev.podrobno(srecanje).tekme().get(1)));
+    }
+
+    /* Vnos tock je neobvezen tudi v ligi - brez njih se rezultat shrani enako. */
+    @Test
+    void tockeNizovLigaskeTekmeSoNeobvezne() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL, null);
+        nastaviPostavo(srecanje);
+        Long aX = srecanjeStoritev.podrobno(srecanje).tekme().get(1).id();
+
+        srecanjeStoritev.vnesiRezultat(aX, new VnosRezultataSrecanja(null, 3, 1, null, null));
+
+        assertTrue(nizSrecanjaRepozitorij.findByTekmaIdOrderByZaporednaStAsc(aX).isEmpty());
+        assertEquals(List.of(), oznakeNizov(srecanjeStoritev.podrobno(srecanje).tekme().get(1)));
+    }
+
+    private static List<String> oznakeNizov(TekmaSrecanjaDto t) {
+        return t.nizi().stream().map(n -> n.tocke1() + ":" + n.tocke2()).toList();
     }
 
     @Test
@@ -271,7 +335,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         List<TekmaSrecanjaDto> tekme = srecanjeStoritev.podrobno(srecanje.id()).tekme();
         for (int i = 0; i < 4; i++) {
             srecanjeStoritev.vnesiRezultat(tekme.get(i).id(),
-                    new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 0, null));
+                    new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 0, null, null));
         }
 
         List<LestvicaEkipeDto> lestvica = ligaStoritev.lestvica(liga);
@@ -298,7 +362,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         TekmaSrecanjaDto aX = p.tekme().get(1);
         assertEquals("A-X", aX.oznaka());
         srecanjeStoritev.vnesiRezultat(aX.id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
 
         DvobojDto dvoboj = statistikaStoritev.dvoboj(idA, idX);
         assertEquals(1, dvoboj.odigrane(), "ligaska tekma mora steti v medsebojni izid");
@@ -331,7 +395,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         TekmaSrecanjaDto dvojice = p.tekme().get(0);
         assertEquals("dvojice", dvojice.oznaka());
         srecanjeStoritev.vnesiRezultat(dvojice.id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
 
         assertEquals(0, statistikaStoritev.dvoboj(idA, idX).odigrane(),
                 "dvojice ne smejo steti v medsebojni izid");
@@ -357,11 +421,11 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje.id());
         // dvojice domacim, A-X domacim, B-Y gostom
         srecanjeStoritev.vnesiRezultat(p.tekme().get(0).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
         srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
         srecanjeStoritev.vnesiRezultat(p.tekme().get(2).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null, null));
 
         Long idA = p.kaderDomaci().get(0).idIgralec();
         Long idB = p.kaderDomaci().get(1).idIgralec();
@@ -394,11 +458,11 @@ class LigaSrecanjeTest extends IntegracijskiTest {
 
         // A-X in B-Y gostom, C-Z domacim
         srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null, null));
         srecanjeStoritev.vnesiRezultat(p.tekme().get(2).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null, null));
         srecanjeStoritev.vnesiRezultat(p.tekme().get(3).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
 
         List<Long> vrstniRed = ligaStoritev.kader(p.srecanje().idEkipaDomaci()).stream()
                 .map(KaderIgralecDto::idIgralec).toList();
@@ -460,11 +524,11 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje.id());
         // dvojice domacim, A-X domacim (3:1), B-Y gostom (1:3)
         srecanjeStoritev.vnesiRezultat(p.tekme().get(0).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
         srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
         srecanjeStoritev.vnesiRezultat(p.tekme().get(2).id(),
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 1, 3, null, null));
 
         Long idA = p.kaderDomaci().get(0).idIgralec();
         Long idB = p.kaderDomaci().get(1).idIgralec();
@@ -569,7 +633,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         nastaviPostavo(srecanje);
         SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
         srecanjeStoritev.vnesiRezultat(p.tekme().get(1).id(),  // A-X
-                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null));
+                new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
 
         assertTrue(ligaStoritev.lestvicaDvojic(p.srecanje().idLiga()).isEmpty(),
                 "brez odigranih dvojic je lestvica dvojic prazna");
@@ -616,7 +680,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
        enkrat gostuje, zato je "kdo je zmagal" odvisen od strani in ne od izida. */
     private static si.turnirko.dto.VnosRezultataSrecanja izid(boolean zmagaDomacih) {
         return new si.turnirko.dto.VnosRezultataSrecanja(
-                null, zmagaDomacih ? 3 : 1, zmagaDomacih ? 1 : 3, null);
+                null, zmagaDomacih ? 3 : 1, zmagaDomacih ? 1 : 3, null, null);
     }
 
     private Long ustvariLigo(FormatSrecanja format, Integer zmagZaSrecanje, boolean dvokrozno) {
@@ -689,6 +753,6 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         boolean zmagaDomacih = domaca == zmaga;
         TekmaSrecanjaDto prva = p.tekme().get(1); // za dvojicami: A-X
         srecanjeStoritev.vnesiRezultat(prva.id(), new si.turnirko.dto.VnosRezultataSrecanja(
-                null, zmagaDomacih ? 3 : 1, zmagaDomacih ? 1 : 3, null));
+                null, zmagaDomacih ? 3 : 1, zmagaDomacih ? 1 : 3, null, null));
     }
 }

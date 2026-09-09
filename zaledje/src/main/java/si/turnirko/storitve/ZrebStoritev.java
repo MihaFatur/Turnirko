@@ -1,4 +1,4 @@
-/* Zreb tekem za dogodek. Podprti so trije sistemi:
+/* Zreb tekem za dogodek. Podprti so stirje sistemi:
 
    - IZLOCILNI: klasicna izlocilna mreza za poljubno stevilo igralcev
      (>= 2); mreza se razsiri na najblizjo potenco 2, manjkajoca mesta so
@@ -13,11 +13,19 @@
      zgenerira sele, ko so vse skupine odigrane (glej SkupineStoritev),
      zato se tu ustvarijo samo skupine in njihove tekme.
 
+   - SKUPINE (format TOP): igra najboljsih N; skupine so RANGI in ne
+     enakovredne skupine, izlocilnega dela ni.
+
+   KDO JE NOSILEC IN KAM PADE, doloca NosilciStoritev. Zreb sam samo prebere
+   jakostni vrstni red (IzborStoritev), ga zabelezi v Prijava.stNosilca in iz
+   razporeditve sestavi tekme. Izjema so DVOJICE: para ni mogoce jakostno
+   umestiti (rating para ne obstaja, dvojice v ELO ne stejejo), zato se
+   zrebajo povsem nakljucno.
+
    Vse tekme izlocilne mreze dobijo EKSPLICITNE povezave na izvorni tekmi
    (idIzvorTekma1/2 + vloga ZMAGOVALEC), po katerih tece napredovanje. */
 package si.turnirko.storitve;
 
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -50,7 +58,7 @@ public class ZrebStoritev {
 
     /* Najmanjse stevilo igralcev za smiselen skupinski sistem (vsaj 2
        skupini po vsaj 3 igralce). */
-    static final int NAJMANJ_ZA_SKUPINE = 6;
+    public static final int NAJMANJ_ZA_SKUPINE = 6;
 
     /* Iz vsake skupine napredujeta dva najboljsa v izlocilni del. */
     static final int NAPREDUJE_IZ_SKUPINE = 2;
@@ -61,10 +69,8 @@ public class ZrebStoritev {
     private final SkupinaRepozitorij skupinaRepozitorij;
     private final RatingStanjeRepozitorij ratingStanjeRepozitorij;
     private final IzborStoritev izborStoritev;
+    private final NosilciStoritev nosilci;
     private final LastnistvoStoritev lastnistvo;
-
-    /* Vir nakljucnosti je zamenljiv, da so testi lahko deterministicni. */
-    private Random nakljucje = new SecureRandom();
 
     public ZrebStoritev(DogodekRepozitorij dogodekRepozitorij,
                         PrijavaRepozitorij prijavaRepozitorij,
@@ -72,6 +78,7 @@ public class ZrebStoritev {
                         SkupinaRepozitorij skupinaRepozitorij,
                         RatingStanjeRepozitorij ratingStanjeRepozitorij,
                         IzborStoritev izborStoritev,
+                        NosilciStoritev nosilci,
                         LastnistvoStoritev lastnistvo) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
@@ -79,11 +86,18 @@ public class ZrebStoritev {
         this.skupinaRepozitorij = skupinaRepozitorij;
         this.ratingStanjeRepozitorij = ratingStanjeRepozitorij;
         this.izborStoritev = izborStoritev;
+        this.nosilci = nosilci;
         this.lastnistvo = lastnistvo;
     }
 
+    /* Nakljucje zivi v NosilciStoritev, da je ves zreb - razporeditev nosilcev
+       IN krozni razpored - ponovljiv iz enega samega semena. */
     void nastaviNakljucje(Random nakljucje) {
-        this.nakljucje = nakljucje;
+        nosilci.nastaviNakljucje(nakljucje);
+    }
+
+    private Random nakljucje() {
+        return nosilci.nakljucje();
     }
 
     /* Izvede zreb za dogodek in ustvari vse tekme (glede na sistem). */
@@ -102,9 +116,13 @@ public class ZrebStoritev {
 
         List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodekSStatusom(
                 idDogodka, Prijava.StatusPrijave.PRIJAVLJEN);
+        if (dogodek.jeDvojice()) {
+            preveriSestavljenePare(prijave);
+        }
         if (prijave.size() < 2) {
-            throw new DomenskaIzjema("Za zreb sta potrebna vsaj 2 prijavljena igralca (trenutno: "
-                    + prijave.size() + ").");
+            throw new DomenskaIzjema("Za zreb sta potrebna vsaj 2 "
+                    + (dogodek.jeDvojice() ? "sestavljena para" : "prijavljena igralca")
+                    + " (trenutno: " + prijave.size() + ").");
         }
 
         zabeleziRatingObZrebu(prijave);
@@ -129,10 +147,14 @@ public class ZrebStoritev {
     // ---------------------------------------------------------------------
 
     private List<Tekma> zrebIzlocilni(Dogodek dogodek, List<Prijava> prijave) {
-        // nakljucni vrstni red igralcev = zreb (nosilci pridejo v kasnejsi fazi)
-        List<Prijava> poSeedu = new ArrayList<>(prijave);
-        Collections.shuffle(poSeedu, nakljucje);
-        return zgradiIzlocilnoMrezo(dogodek, poSeedu);
+        if (dogodek.jeDvojice()) {
+            // par nima jakostnega mesta (rating para ne obstaja), zato cist zreb
+            List<Prijava> premesani = new ArrayList<>(prijave);
+            Collections.shuffle(premesani, nakljucje());
+            return zgradiIzlocilnoMrezo(dogodek, premesani);
+        }
+        List<Prijava> poJakosti = zabeleziJakostnaMesta(prijave);
+        return zgradiIzlocilnoMrezo(dogodek, nosilci.vMrezo(poJakosti));
     }
 
     /* Zgradi izlocilno mrezo iz seznama igralcev v "seed" vrstnem redu
@@ -140,11 +162,11 @@ public class ZrebStoritev {
        sistem za izlocilni del iz kvalificiranih igralcev. */
     public List<Tekma> zgradiIzlocilnoMrezo(Dogodek dogodek, List<Prijava> poSeedu) {
         int steviloIgralcev = poSeedu.size();
-        int velikostMreze = najblizjaPotencaDve(steviloIgralcev);
+        int velikostMreze = NosilciStoritev.najblizjaPotencaDve(steviloIgralcev);
 
         // razporeditev po "seed" polozajih: polozaji manjkajocih stevilk
         // (od steviloIgralcev naprej) ostanejo prazni = prosta mesta
-        int[] vrstniRedPolozajev = seedVrstniRed(velikostMreze);
+        int[] vrstniRedPolozajev = NosilciStoritev.seedVrstniRed(velikostMreze);
         Prijava[] mesta = new Prijava[velikostMreze];
         for (int i = 0; i < velikostMreze; i++) {
             int zaporednaStevilka = vrstniRedPolozajev[i]; // 1..velikostMreze
@@ -216,7 +238,7 @@ public class ZrebStoritev {
     /* Krozni sistem z zrebom: vrstni red igralcev doloci nakljucje. */
     private List<Tekma> kroznaMetoda(Dogodek dogodek, List<Prijava> igralci, Long idSkupina) {
         List<Prijava> premesani = new ArrayList<>(igralci);
-        Collections.shuffle(premesani, nakljucje);
+        Collections.shuffle(premesani, nakljucje());
         return kroznePare(dogodek, premesani, idSkupina);
     }
 
@@ -269,10 +291,8 @@ public class ZrebStoritev {
                     + NAJMANJ_ZA_SKUPINE + " prijavljenih igralcev (trenutno: " + prijave.size() + ").");
         }
 
-        List<Prijava> premesane = new ArrayList<>(prijave);
-        Collections.shuffle(premesane, nakljucje);
-
-        int stSkupin = izberiSteviloSkupin(premesane.size());
+        List<Prijava> poJakosti = zabeleziJakostnaMesta(prijave);
+        int stSkupin = izberiSteviloSkupin(poJakosti.size());
 
         // ustvari skupine (A, B, C ...) in jih shrani, da dobijo id-je
         List<Skupina> skupine = new ArrayList<>();
@@ -281,24 +301,22 @@ public class ZrebStoritev {
         }
         skupinaRepozitorij.saveAll(skupine);
 
-        // razdeli igralce po skupinah v krogu (enakomerne velikosti)
-        List<List<Prijava>> poSkupinah = new ArrayList<>();
-        for (int i = 0; i < stSkupin; i++) {
-            poSkupinah.add(new ArrayList<>());
-        }
-        for (int i = 0; i < premesane.size(); i++) {
-            Prijava prijava = premesane.get(i);
-            prijava.setIdSkupina(skupine.get(i % stSkupin).getId());
-            poSkupinah.get(i % stSkupin).add(prijava);
-        }
+        // razdelitev po jakostnih pasovih: 1. nosilec v A, 2. v B ...,
+        // vsak naslednji pas nakljucno po eden v vsako skupino
+        List<List<Prijava>> poSkupinah = nosilci.vSkupine(poJakosti, stSkupin);
 
         // krozne tekme znotraj vsake skupine; pozicija je enolicna cez ves
         // dogodek (UNIQUE dogodek+faza+kolo+pozicija), zato jo stejemo globalno
         List<Tekma> vse = new ArrayList<>();
         int globalnaPozicija = 1;
         for (int i = 0; i < stSkupin; i++) {
-            List<Tekma> tekmeSkupine = kroznaMetoda(dogodek, poSkupinah.get(i), skupine.get(i).getId());
-            for (Tekma tekma : tekmeSkupine) {
+            List<Prijava> clani = poSkupinah.get(i);
+            for (Prijava clan : clani) {
+                clan.setIdSkupina(skupine.get(i).getId());
+            }
+            // clani so ze urejeni po jakostnih pasovih, zato brez mesanja:
+            // nosilec skupine zacne z najsibkejsim, dvoboj 1-2 pade v zadnje kolo
+            for (Tekma tekma : kroznePare(dogodek, clani, skupine.get(i).getId())) {
                 tekma.setPozicija(globalnaPozicija++);
                 vse.add(tekma);
             }
@@ -324,10 +342,8 @@ public class ZrebStoritev {
                     "Dogodek nima nastavljenega stevila skupin in velikosti skupine.");
         }
 
-        // isti vrstni red, kot ga administrator vidi in ureja v pripravi
-        List<Prijava> poJakosti = izborStoritev.vrstniRed(prijave);
         int meja = dogodek.getSteviloSkupin() * dogodek.getVelikostSkupine();
-        int igra = Math.min(meja, poJakosti.size());
+        int igra = Math.min(meja, prijave.size());
 
         List<Integer> velikosti = velikostiSkupin(igra, dogodek.getVelikostSkupine());
         String zadrzek = zadrzekRazreza(velikosti);
@@ -335,18 +351,11 @@ public class ZrebStoritev {
             throw new DomenskaIzjema(zadrzek);
         }
 
-        // Jakostno mesto zabelezimo VSEM - tudi ce ga administrator ni rocno
-        // urejal in je obveljal predlog po ratingu. Brez tega po turnirju ne
-        // bi bilo vec razvidno, po kaksnem vrstnem redu so nastale skupine in
-        // kdo je bil prvi pod crto reza (rating se medtem spreminja).
-        int mesto = 1;
-        for (Prijava prijava : poJakosti) {
-            prijava.setStNosilca(mesto);
-            // kdor ni v izboru, ne igra
-            if (mesto > igra) {
-                prijava.setStatus(Prijava.StatusPrijave.REZERVA);
-            }
-            mesto++;
+        // isti vrstni red, kot ga administrator vidi in ureja v pripravi
+        List<Prijava> poJakosti = zabeleziJakostnaMesta(prijave);
+        // kdor ni v izboru, ne igra
+        for (int i = igra; i < poJakosti.size(); i++) {
+            poJakosti.get(i).setStatus(Prijava.StatusPrijave.REZERVA);
         }
         prijavaRepozitorij.saveAll(poJakosti);
 
@@ -411,7 +420,7 @@ public class ZrebStoritev {
     }
 
     /* Stevilo skupin tako, da ima vsaka priblizno 4 (in vsaj 3) igralce. */
-    static int izberiSteviloSkupin(int steviloIgralcev) {
+    public static int izberiSteviloSkupin(int steviloIgralcev) {
         int stSkupin = Math.max(2, (int) Math.round(steviloIgralcev / 4.0));
         while (stSkupin > 2 && steviloIgralcev / stSkupin < 3) {
             stSkupin--;
@@ -447,17 +456,63 @@ public class ZrebStoritev {
         }
     }
 
-    /* V prijave zabelezi trenutni rating igralcev - posnetek za sledljivost. */
+    /* Dvojice: v zreb gredo samo SESTAVLJENI pari. Igralca brez soigralca ne
+       smemo tiho izpustiti - organizator ga je prijavil in bi ga na mrezi
+       zaman iskal -, zato zreb ustavimo in povemo, koga je treba se povezati. */
+    private void preveriSestavljenePare(List<Prijava> prijave) {
+        List<String> brezPara = prijave.stream()
+                .filter(p -> !p.jePar())
+                .map(p -> p.getIgralec().polnoIme())
+                .toList();
+        if (!brezPara.isEmpty()) {
+            throw new DomenskaIzjema("Pred zrebom morajo biti vsi prijavljeni v parih."
+                    + " Brez soigralca: " + String.join(", ", brezPara)
+                    + ". Sestavi par ali igralca odjavi.");
+        }
+    }
+
+    /* Prijave v jakostnem vrstnem redu; vsaki zabelezi njeno jakostno mesto.
+
+       Mesto zabelezimo VSEM - tudi ce ga administrator ni rocno urejal in je
+       obveljal predlog po ratingu. Brez tega po turnirju ne bi bilo vec
+       razvidno, po kaksnem vrstnem redu je tekel zreb: kdo je bil nosilec,
+       kako so nastale skupine in kdo je bil prvi pod crto reza (rating se
+       medtem spreminja). */
+    private List<Prijava> zabeleziJakostnaMesta(List<Prijava> prijave) {
+        List<Prijava> poJakosti = izborStoritev.vrstniRed(prijave);
+        int mesto = 1;
+        for (Prijava prijava : poJakosti) {
+            prijava.setStNosilca(mesto++);
+        }
+        prijavaRepozitorij.saveAll(poJakosti);
+        return poJakosti;
+    }
+
+    /* V prijave zabelezi trenutni rating igralcev - posnetek za sledljivost.
+       Pri dvojicah se zabelezi za oba clana para. */
     private void zabeleziRatingObZrebu(List<Prijava> prijave) {
-        List<Long> idjiIgralcev = prijave.stream().map(p -> p.getIgralec().getId()).toList();
+        List<Long> idjiIgralcev = prijave.stream()
+                .flatMap(p -> p.igralci().stream())
+                .map(si.turnirko.modeli.Igralec::getId)
+                .distinct()
+                .toList();
         List<RatingStanje> stanja = ratingStanjeRepozitorij
                 .findByIgralecIdInAndSistem(idjiIgralcev, RatingStanje.SISTEM_KLUBSKI_ELO);
         for (Prijava prijava : prijave) {
-            stanja.stream()
-                    .filter(s -> s.getIgralec().getId().equals(prijava.getIgralec().getId()))
-                    .findFirst()
-                    .ifPresent(s -> prijava.setRatingObZrebu(s.getVrednost()));
+            vrednostRatinga(stanja, prijava.getIgralec().getId())
+                    .ifPresent(prijava::setRatingObZrebu);
+            if (prijava.jePar()) {
+                vrednostRatinga(stanja, prijava.getIgralec2().getId())
+                        .ifPresent(prijava::setRatingObZrebu2);
+            }
         }
+    }
+
+    private static java.util.Optional<Integer> vrednostRatinga(List<RatingStanje> stanja, Long idIgralca) {
+        return stanja.stream()
+                .filter(s -> s.getIgralec().getId().equals(idIgralca))
+                .findFirst()
+                .map(RatingStanje::getVrednost);
     }
 
     private Tekma novaTekma(Dogodek dogodek, FazaTekme faza, int kolo, int pozicija) {
@@ -471,30 +526,4 @@ public class ZrebStoritev {
         return tekma;
     }
 
-    /* Najmanjsa potenca stevila 2, ki je >= n. */
-    static int najblizjaPotencaDve(int n) {
-        int potenca = 1;
-        while (potenca < n) {
-            potenca *= 2;
-        }
-        return potenca;
-    }
-
-    /* Standardni "seed" vrstni red polozajev v mrezi.
-       Za velikost 8 vrne [1, 8, 4, 5, 2, 7, 3, 6], kar pomeni pare
-       1-8, 4-5, 2-7 in 3-6. Ker prosta mesta zasedejo najvisje stevilke,
-       so enakomerno razprsena po mrezi in se nikoli ne srecata med sabo. */
-    static int[] seedVrstniRed(int velikost) {
-        int[] vrstniRed = {1};
-        while (vrstniRed.length < velikost) {
-            int dvojnaVelikost = vrstniRed.length * 2;
-            int[] novi = new int[dvojnaVelikost];
-            for (int i = 0; i < vrstniRed.length; i++) {
-                novi[2 * i] = vrstniRed[i];
-                novi[2 * i + 1] = dvojnaVelikost + 1 - vrstniRed[i];
-            }
-            vrstniRed = novi;
-        }
-        return vrstniRed;
-    }
 }

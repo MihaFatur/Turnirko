@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
@@ -204,22 +205,22 @@ class TekmaStoritevTest extends IntegracijskiTest {
         // neveljaven niz: 10:9 ni koncan niz
         assertThrows(NeveljavenVnosIzjema.class, () -> tekmaStoritev.vnesiRezultat(tekma.getId(),
                 new VnosRezultata(null, 3, 0, null, List.of(
-                        new VnosRezultata.NizVnos(11, 5),
-                        new VnosRezultata.NizVnos(10, 9),
-                        new VnosRezultata.NizVnos(11, 7)))));
+                        new NizVnos(11, 5),
+                        new NizVnos(10, 9),
+                        new NizVnos(11, 7)))));
 
         // stevilo nizov se ne ujema z rezultatom
         assertThrows(NeveljavenVnosIzjema.class, () -> tekmaStoritev.vnesiRezultat(tekma.getId(),
                 new VnosRezultata(null, 3, 0, null, List.of(
-                        new VnosRezultata.NizVnos(11, 5),
-                        new VnosRezultata.NizVnos(11, 7)))));
+                        new NizVnos(11, 5),
+                        new NizVnos(11, 7)))));
 
         // veljaven vnos s podaljsano igro (12:10)
         tekmaStoritev.vnesiRezultat(tekma.getId(),
                 new VnosRezultata(null, 3, 0, null, List.of(
-                        new VnosRezultata.NizVnos(11, 5),
-                        new VnosRezultata.NizVnos(12, 10),
-                        new VnosRezultata.NizVnos(11, 0))));
+                        new NizVnos(11, 5),
+                        new NizVnos(12, 10),
+                        new NizVnos(11, 0))));
 
         assertEquals(3, nizRepozitorij.findByTekmaIdOrderByZaporednaStAsc(tekma.getId()).size());
     }
@@ -233,19 +234,19 @@ class TekmaStoritevTest extends IntegracijskiTest {
         // po tretjem nizu (3:0), zato se cetrti niz sploh ne bi igral
         assertThrows(NeveljavenVnosIzjema.class, () -> tekmaStoritev.vnesiRezultat(tekma.getId(),
                 new VnosRezultata(null, 3, 1, null, List.of(
-                        new VnosRezultata.NizVnos(11, 4),
-                        new VnosRezultata.NizVnos(11, 7),
-                        new VnosRezultata.NizVnos(11, 8),
-                        new VnosRezultata.NizVnos(8, 11)))),
+                        new NizVnos(11, 4),
+                        new NizVnos(11, 7),
+                        new NizVnos(11, 8),
+                        new NizVnos(8, 11)))),
                 "niz po odloceni tekmi mora biti zavrnjen");
 
         // isti izid 3:1 z mogocim vrstnim redom (porazenec dobi drugi niz) je veljaven
         tekmaStoritev.vnesiRezultat(tekma.getId(),
                 new VnosRezultata(null, 3, 1, null, List.of(
-                        new VnosRezultata.NizVnos(11, 4),
-                        new VnosRezultata.NizVnos(8, 11),
-                        new VnosRezultata.NizVnos(11, 7),
-                        new VnosRezultata.NizVnos(11, 8))));
+                        new NizVnos(11, 4),
+                        new NizVnos(8, 11),
+                        new NizVnos(11, 7),
+                        new NizVnos(11, 8))));
         assertEquals(4, nizRepozitorij.findByTekmaIdOrderByZaporednaStAsc(tekma.getId()).size());
     }
 

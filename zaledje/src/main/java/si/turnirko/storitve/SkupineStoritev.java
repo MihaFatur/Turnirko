@@ -3,10 +3,9 @@
    Po vsaki koncani skupinski tekmi:
    - ce je skupina odigrana do konca, se udelezencem dodeli mesto v skupini
      (za sprotni prikaz lestvice) - to velja za oba sistema,
-   - SAMO pri SKUPINE_IZLOCILNI: ko so odigrane VSE skupine, se iz najboljsih dveh vsake skupine
-     zgenerira izlocilna mreza. Nosilci so razporejeni navzkrizno, tako da
-     se zmagovalec skupine in drugouvrsceni iz iste skupine ne srecata v
-     prvem kolu (zmagovalec ob lihem stevilu dobi prosto mesto). */
+   - SAMO pri SKUPINE_IZLOCILNI: ko so odigrane VSE skupine, se iz najboljsih
+     dveh vsake skupine zgenerira izlocilna mreza. Razporeditev na nosilska
+     mesta doloca NosilciStoritev (glej pravila zreba tam). */
 package si.turnirko.storitve;
 
 import java.util.ArrayList;
@@ -37,17 +36,20 @@ public class SkupineStoritev {
     private final TekmaRepozitorij tekmaRepozitorij;
     private final RazvrstitevStoritev razvrstitevStoritev;
     private final ZrebStoritev zrebStoritev;
+    private final NosilciStoritev nosilci;
 
     public SkupineStoritev(SkupinaRepozitorij skupinaRepozitorij,
                            PrijavaRepozitorij prijavaRepozitorij,
                            TekmaRepozitorij tekmaRepozitorij,
                            RazvrstitevStoritev razvrstitevStoritev,
-                           ZrebStoritev zrebStoritev) {
+                           ZrebStoritev zrebStoritev,
+                           NosilciStoritev nosilci) {
         this.skupinaRepozitorij = skupinaRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.razvrstitevStoritev = razvrstitevStoritev;
         this.zrebStoritev = zrebStoritev;
+        this.nosilci = nosilci;
     }
 
     @Transactional
@@ -94,40 +96,29 @@ public class SkupineStoritev {
     }
 
     /* Iz najboljsih dveh vsake skupine sestavi seznam nosilcev in zgradi
-       izlocilno mrezo. Zmagovalci skupin so prvi nosilci (dobijo lazje
-       polozaje / prosta mesta), drugouvrsceni pa so razporejeni navzkrizno,
-       da se ne srecajo s svojim zmagovalcem skupine v prvem kolu. */
+       izlocilno mrezo. Zmagovalec skupine A je 1. nosilec, zmagovalec B 2. in
+       tako naprej - skupine so namrec nastale iz jakostnih pasov, zato je
+       njihov vrstni red hkrati vrstni red nosilcev. Kam nosilci padejo in kam
+       se zrebajo drugouvrsceni, doloca NosilciStoritev. */
     private void zgenerirajIzlocilniDel(Dogodek dogodek, List<Skupina> skupine,
                                         List<Prijava> prijave, List<Tekma> tekme) {
-        int g = skupine.size();
-        Prijava[] zmagovalci = new Prijava[g];
-        Prijava[] drugi = new Prijava[g];
+        List<Prijava> zmagovalci = new ArrayList<>();
+        List<Prijava> drugi = new ArrayList<>();
 
         Map<Long, Prijava> poId = new HashMap<>();
         for (Prijava p : prijave) {
             poId.put(p.getId(), p);
         }
 
-        for (int i = 0; i < g; i++) {
-            Skupina skupina = skupine.get(i);
+        for (Skupina skupina : skupine) {
             List<VrsticaLestviceDto> lestvica = razvrstitevStoritev.lestvica(
                     claniSkupine(prijave, skupina.getId()),
                     tekmeSkupine(tekme, skupina.getId()));
-            zmagovalci[i] = poId.get(lestvica.get(0).idPrijave());
-            drugi[i] = poId.get(lestvica.get(1).idPrijave());
+            zmagovalci.add(poId.get(lestvica.get(0).idPrijave()));
+            drugi.add(poId.get(lestvica.get(1).idPrijave()));
         }
 
-        // seed 1..g = zmagovalci skupin; seed g+1..2g = drugouvrsceni navzkrizno
-        Prijava[] poSeedu = new Prijava[2 * g];
-        for (int i = 0; i < g; i++) {
-            poSeedu[i] = zmagovalci[i]; // seedi 1..g
-        }
-        for (int i = 1; i <= g; i++) {
-            // nosilec-zmagovalec seeda i igra proti drugouvrscenemu druge skupine
-            poSeedu[(2 * g + 1 - i) - 1] = drugi[i % g];
-        }
-
-        zrebStoritev.zgradiIzlocilnoMrezo(dogodek, new ArrayList<>(List.of(poSeedu)));
+        zrebStoritev.zgradiIzlocilnoMrezo(dogodek, nosilci.vMrezoIzSkupin(zmagovalci, drugi));
     }
 
     private List<Prijava> claniSkupine(List<Prijava> prijave, Long idSkupine) {

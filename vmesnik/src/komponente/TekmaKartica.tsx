@@ -17,6 +17,14 @@ interface Lastnosti {
   naOsvetlitev?: (idPrijave: number | null) => void
 }
 
+/* Klub pod imenom. Posameznik ima svojega, par pa samo tedaj, kadar sta
+   igralca iz istega kluba - mešan par bi sicer prilepil dve vrstici besedila
+   pod dve vrstici imen in kartica bi se podvojila. */
+function klubZaIzpis(udelezenec: Udelezenec): string | null {
+  if (!udelezenec.polnoIme2) return udelezenec.klub
+  return udelezenec.klub && udelezenec.klub === udelezenec.klub2 ? udelezenec.klub : null
+}
+
 /* Kratka oznaka posebnega izida ob rezultatu. */
 const OZNAKA_POSEBNEGA_IZIDA: Record<string, string> = {
   PROSTO: 'prosto',
@@ -124,10 +132,20 @@ function Stran({
     >
       {/* Kartica v mrezi je siroka 240 px: ime, klub in nizi. Rating pred
           tekmo je tu odvec (bere se na profilu igralca) in bi ime prelomil
-          v dve vrstici. */}
+          v dve vrstici.
+
+          Par dobi drugo vrstico namesto ene dolge z ločilom: »Novak Ana /
+          Zajc Eva« se v 240 px prelomi na poljubnem mestu in ni več razvidno,
+          kje se prvo ime konča. Klub se pri paru izpiše samo, kadar je
+          skupen - dva različna kluba bi kartico podvojila v višino. */}
       <span className="tekma__ime">
         <span className="tekma__ime-vrsta">{udelezenec.polnoIme}</span>
-        {udelezenec.klub && <span className="tekma__klub">{udelezenec.klub}</span>}
+        {udelezenec.polnoIme2 && (
+          <span className="tekma__ime-vrsta">{udelezenec.polnoIme2}</span>
+        )}
+        {klubZaIzpis(udelezenec) && (
+          <span className="tekma__klub">{klubZaIzpis(udelezenec)}</span>
+        )}
       </span>
       <span className="tekma__desno">
         <SpremembaElo vrednost={spremembaElo} />

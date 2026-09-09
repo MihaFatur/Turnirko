@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 import si.turnirko.dto.DogodekDto;
 import si.turnirko.dto.IzborDto;
 import si.turnirko.dto.MrezaDto;
+import si.turnirko.dto.ParVnos;
 import si.turnirko.dto.PrijavaDto;
 import si.turnirko.dto.PrijaviIgralceVnos;
 import si.turnirko.dto.SkupinaDto;
@@ -104,23 +105,32 @@ public class DogodkiKontroler {
         DogodekDto dogodek = DogodekDto.iz(
                 dogodekEntiteta, steviloPrijav, odigranihTekem, tekmeEntitete.size());
 
-        boolean poJakosti = dogodekEntiteta.getSistemTekmovanja() == SistemTekmovanja.SKUPINE;
+        /* Povsod, kjer zreb pozna nosilce, je jakostni vrstni red del vsebine
+           (odloca izbor, skupino in mesto v mrezi), zato ga izracuna streznik
+           in ne vmesnik. Dvojice so izvzete: para ni mogoce jakostno umestiti
+           in njegov zreb je nakljucen. */
+        boolean poJakosti = !dogodekEntiteta.jeDvojice()
+                && dogodekEntiteta.getSistemTekmovanja() != SistemTekmovanja.KROZNI;
         if (poJakosti) {
-            // pri formatu TOP je vrstni red del vsebine (odloca izbor in
-            // skupino), zato ga izracuna streznik in ne vmesnik
             prijaveEntitete = izborStoritev.vrstniRed(prijaveEntitete);
         }
         Map<Long, Integer> ratingi = izborStoritev.ratingi(prijaveEntitete);
         List<PrijavaDto> prijave = prijaveEntitete.stream()
-                .map(p -> PrijavaDto.iz(p, ratingi.get(p.getIgralec().getId())))
+                .map(p -> PrijavaDto.iz(p, ratingi.get(p.getIgralec().getId()),
+                        p.jePar() ? ratingi.get(p.getIgralec2().getId()) : null))
                 .toList();
 
         // Sprememba ELO ("+16 / -16") in rating pred tekmo ob vsaki tekmi.
         // Za odigrane tekme oboje iz dnevnika, za neodigrane rating pred = trenutni.
-        Map<Long, Map<Long, ObTekmi>> spremembe = spremembeEloStoritev.zaTekme(
-                tekmeEntitete.stream().map(Tekma::getId).toList());
-        Map<Long, Integer> trenutni = spremembeEloStoritev.trenutniRatingi(
-                prijaveEntitete.stream().map(p -> p.getIgralec().getId()).distinct().toList());
+        // Dvojice v ELO ne stejejo, para pa tudi ni mogoce opisati z enim
+        // ratingom - zato pri njih obe polji ostaneta prazni.
+        boolean dvojice = dogodekEntiteta.jeDvojice();
+        Map<Long, Map<Long, ObTekmi>> spremembe = dvojice ? Map.of()
+                : spremembeEloStoritev.zaTekme(
+                        tekmeEntitete.stream().map(Tekma::getId).toList());
+        Map<Long, Integer> trenutni = dvojice ? Map.of()
+                : spremembeEloStoritev.trenutniRatingi(
+                        prijaveEntitete.stream().map(p -> p.getIgralec().getId()).distinct().toList());
         List<TekmaDto> tekme = tekmeEntitete.stream()
                 .map(t -> TekmaDto.iz(t,
                         spremembaZaStran(spremembe, t, t.getPrijava1()),
@@ -151,12 +161,24 @@ public class DogodkiKontroler {
         return new MrezaDto(dogodek, prijave, tekme, skupine, lestvica, izbor);
     }
 
-    /* Crta reza in predogled skupin za format TOP. Razrez racuna ZrebStoritev,
-       da predogled in dejanski zreb ne moreta razsoditi razlicno. */
+    /* Jakostni vrstni red pred zrebom; pri formatu TOP se crta reza in
+       predogled skupin. Razrez racuna ZrebStoritev, da predogled in dejanski
+       zreb ne moreta razsoditi razlicno. */
     private IzborDto izbor(Dogodek dogodek, List<Prijava> prijave) {
         List<Prijava> prijavljeni = prijave.stream()
                 .filter(p -> p.getStatus() == Prijava.StatusPrijave.PRIJAVLJEN)
                 .toList();
+        if (dogodek.getSistemTekmovanja() != SistemTekmovanja.SKUPINE) {
+            /* Igrajo vsi, kdo pride v katero skupino pa se odloci sele ob
+               zrebu (pasovi se zrebajo) - zato brez crte reza in predogleda. */
+            Integer stSkupin = dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_IZLOCILNI
+                    && prijavljeni.size() >= ZrebStoritev.NAJMANJ_ZA_SKUPINE
+                    ? ZrebStoritev.izberiSteviloSkupin(prijavljeni.size())
+                    : null;
+            return new IzborDto(prijavljeni.size(), prijavljeni.size(), prijavljeni.size(),
+                    List.of(), null, false, stSkupin);
+        }
+
         int meja = dogodek.mejaIzbora();
         int igra = Math.min(meja, prijavljeni.size());
         List<Integer> velikosti = ZrebStoritev.velikostiSkupin(igra, dogodek.getVelikostSkupine());
@@ -170,7 +192,7 @@ public class DogodkiKontroler {
             odMesta += velikost;
         }
         return new IzborDto(meja, prijavljeni.size(), igra, predogled,
-                ZrebStoritev.zadrzekRazreza(velikosti));
+                ZrebStoritev.zadrzekRazreza(velikosti), true, velikosti.size());
     }
 
     /* Sprememba ELO za enega udelezenca tekme (null, ce tekma ni obracunana
@@ -218,6 +240,20 @@ public class DogodkiKontroler {
     @PostMapping("/prijave/{idPrijave}/odjava")
     public PrijavaDto odjavi(@PathVariable Long idPrijave) {
         return PrijavaDto.iz(turnirjiStoritev.odjavi(idPrijave));
+    }
+
+    /* Dvojice: poveze dve prijavi v par. Vrne nastali par (druga prijava
+       izgine - njen igralec je odslej soigralec te). */
+    @PostMapping("/{id}/pari")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PrijavaDto poveziVPar(@PathVariable Long id, @Valid @RequestBody ParVnos vnos) {
+        return PrijavaDto.iz(turnirjiStoritev.poveziVPar(id, vnos.idPrijave1(), vnos.idPrijave2()));
+    }
+
+    /* Dvojice: razdruzi par nazaj v dve samostojni prijavi. */
+    @PostMapping("/pari/{idPrijave}/razdruzi")
+    public List<PrijavaDto> razdruziPar(@PathVariable Long idPrijave) {
+        return turnirjiStoritev.razdruziPar(idPrijave).stream().map(PrijavaDto::iz).toList();
     }
 
     /* Shrani rocno urejen jakostni vrstni red (format TOP). */

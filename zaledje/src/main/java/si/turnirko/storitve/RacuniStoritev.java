@@ -226,7 +226,7 @@ public class RacuniStoritev {
         // ujemanje priimka je pogoj; kdor se ujema tudi po imenu, gre na vrh
         ujemajoci.sort(java.util.Comparator
                 .comparing((Igralec i) -> !normaliziraj(i.getIme()).equals(ime))
-                .thenComparing(Igralec::polnoIme));
+                .thenComparing(Igralec::abecedno));
 
         return ujemajoci.stream()
                 .map(i -> new RacunIgralcaDto.PredlogIgralcaDto(

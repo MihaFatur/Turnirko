@@ -23,6 +23,27 @@
   šifrant je skupen vsem klubom). Ne združuj poti in ne dodajaj osebnih polj
   v javni DTO — pravilo varuje `IgralciZasebnostTest`, ki preverja surovo
   telo odgovora.
+- **Ime pred priimkom, povsod.** Slovensko se oseba imenuje »Ana Novak« in tak
+  je *vsak* izpis igralca — v zaledju ga sestavi `Igralec.polnoIme()`, v
+  vmesniku pa vsako mesto, ki ime in priimek izpiše ločeno (izbirniki,
+  šifrant, kader, predlogi računov). Obrnjeni vrstni red živi samo kot
+  **urejevalni ključ**: `Igralec.abecedno()` (»Novak Ana«) in `ORDER BY
+  i.priimek, i.ime` v repozitorijih — seznam torej *teče* po priimku, a se
+  *bere* po imenu. `abecedno()` ne sme nikoli v DTO. Kjer DTO nosi `ime` in
+  `priimek` ločeno (`LestvicaIgralcaDto`, `IgralecDto`, `DvobojDto.Igralec`),
+  je to zato, da zna vmesnik razvrstiti po priimku — ne zato, da bi ju kje
+  izpisal obrnjeno.
+- **Starostni pas je izpeljanka, ne osebni podatek** (`StarostniPas`, polje
+  `starostniPas` v `IgralecJavniDto`). Iz letnice se izpelje najožji pas, ki
+  mu igralec ustreza (`U11`…`U21`, `CLANI`, `VETERANI`); brez njega organizator
+  med tisoč igralci mladincev ne loči, datum rojstva pa ostane pod
+  `/podrobno`. Pravilo je 11. člen PST: starost se meri na **31. december
+  leta, v katerem se sezona začne**, zato je referenca sezonska (rez 1.
+  julija, isti kot `sezonaIzDatuma` v vmesniku) in se pas od januarja do
+  junija **ne premakne**. To je namerno drugačno od `KategorijaIgralca`, ki je
+  starostno-**spolna** kategorija lestvice po koledarskem letu — pojma ne
+  združuj, ker bi eden od obeh pogledov spremenil pomen. Ker so pasovi
+  izključujoči, filter »U15« pomeni izbiro U11 + U13 + U15.
 - **Admin geslo nima privzetka.** Če je baza prazna in
   `turnirko.admin.privzeto-geslo` ni nastavljen (oz. je krajši od 12 znakov),
   `ZacetniAdmin` ustavi zagon. Izjema je profil `namizni` (lokalna prenosna
@@ -130,11 +151,93 @@
   tuje račune); zamenjava lastnega gesla ga zahteva (`zamenjajGeslo`).
 - **Sistem tekmovanja** izbere dogodek; `ZrebStoritev` po njem razveji žreb
   (`IZLOCILNI`/`KROZNI`/`SKUPINE_IZLOCILNI`/`SKUPINE`). Lestvice računa
-  `RazvrstitevStoritev` (zmage → razlika nizov → medsebojna tekma), izločilni
+  `RazvrstitevStoritev` (zmage → porazi → **krog**: razlika nizov, nato
+  razlika točk **samo iz tekem med izenačenimi**, rekurzivno), izločilni
   del po skupinah pa `SkupineStoritev` (generira se, ko so odigrane vse
   skupine — nujno pred preverbo zaključka dogodka; **samo** pri
   `SKUPINE_IZLOCILNI`). Izlocilno mrezo gradi ena metoda
   (`ZrebStoritev.zgradiIzlocilnoMrezo`), da jo delita oba sistema.
+- **Žreb z nosilci je svoja storitev** (`NosilciStoritev`; 21. in 22. člen
+  PST). `ZrebStoritev` samo prebere jakostni vrstni red (`IzborStoritev`), ga
+  zabeleži v `Prijava.stNosilca` in iz razporeditve sestavi tekme:
+  - **Skupine se polnijo po jakostnih pasovih.** Prvi pas se **ne žreba** —
+    1. nosilec je prvi zapisani v skupini A, 2. v B … N-ti v N-ti skupini.
+    Vsak naslednji pas (N+1…2N, 2N+1…3N …) se žreba, po enega igralca v vsako
+    skupino; nepoln zadnji pas dobijo **naključne** skupine (te so večje).
+    Razpored znotraj skupine je nato krožna metoda **brez mešanja**
+    (`kroznePare`), zato nosilec skupine začne z najšibkejšim in dvoboj 1–2
+    pade v zadnje kolo — isto kot pri formatu TOP.
+  - **Mreža: 1. nosilec na vrh, 2. na dno** (ta dva se ne žrebata), 3. in 4.
+    na svoji četrtini (s prvima dvema se srečata šele v **polfinalu**), 5.–8.
+    na svoje osmine (**četrtfinale**), 9.–16., 17.–32. … enako po pasovih, ki
+    se podvajajo. Nosi ga `NosilciStoritev.seedVrstniRed`; **obrat pri lihem
+    indeksu** je tisto, kar 2. nosilca potisne na dno in ne na sredino mreže
+    (prej je bilo tako). Prosta mesta zasedejo najvišje številke, zato jih
+    dobijo najvišji nosilci in se dve nikoli ne srečata.
+  - **Izločilni del po skupinah**: zmagovalec skupine A je 1. nosilec, B 2. …
+    — skupine so nastale iz pasov, zato je njihov vrstni red hkrati vrstni
+    red nosilcev. Drugouvrščeni se žrebajo na preostala mesta, vsak v
+    **nasprotno polovico** od zmagovalca svoje skupine, zato se soigralca iz
+    iste skupine srečata šele v **finalu**. Iz tega samo od sebe sledi, da
+    zmagovalec skupine v 1. kolu nikoli ne igra z drugim zmagovalcem skupine
+    (ali je prost ali igra drugouvrščenega). Da polovici vzideta natanko,
+    poskrbi lastnost mreže: nosilski mesti 2k−1 in 2k sta vedno v **različnih**
+    polovicah — ne dodajaj “varovalke”, ki bi to štela drugače.
+  - **Klubska ločitev** (v 1. kolu mreže in znotraj skupine) je **mehko**
+    pravilo: če je igralcev enega kluba preveč, se ji ni mogoče izogniti.
+    Zato žreb ni iskanje po pravilih, ampak več naključnih poskusov, med
+    katerimi obvelja tisti z **najmanj trki**; prvi brez trka konča iskanje.
+  - **Dvojice so izvzete**: para ni mogoče jakostno umestiti (rating para ne
+    obstaja, dvojice v ELO ne štejejo), zato se žrebajo povsem naključno in
+    `stNosilca` ostane prazen.
+  - **Jakostni vrstni red je viden in urejljiv povsod, kjer žreb pozna
+    nosilce** (`IzborDto` v `GET /dogodki/{id}`, `PUT /dogodki/{id}/vrstni-red`).
+    Brez tega bi igralec **brez ratinga** — ta gre po pravilu `IzborStoritev`
+    na **vrh** predloga — tiho postal 1. nosilec. Zastavica `crtaReza` loči
+    format TOP (pod črto so rezerve) od ostalih sistemov (igrajo vsi).
+  - **Lestvica ima jakostno mesto kot predzadnje merilo** (pred abecedo,
+    `RazvrstitevStoritev`): dokler skupina ni začeta, so vsi izenačeni na 0 in
+    lestvica je hkrati **izpis skupine** — po abecedi bi nosilec skupine
+    pristal sredi seznama, čeprav je po pravilih žreba prvi zapisani.
+- **Dvojice niso sistem, ampak disciplina dogodka** (V14). Igrajo isto
+  izločilno mrežo kot posamično tekmovanje, zato shema in `TurnirjiStoritev`
+  zavrneta `DVOJICE` s katerim koli drugim sistemom (krožni in skupine bi
+  potrebovali še lestvice parov, ki jih ni).
+  - **Tekmovalna enota je `Prijava`, ne igralec.** Par je ENA vrstica z
+    `igralec` + `igralec2` (vsak s svojim posnetkom kluba in ratinga ob žrebu).
+    Tabele `tekma` zato **ni** bilo treba spreminjati in mreža, napredovanje,
+    vnos rezultatov, listki in končna mesta tečejo po nespremenjeni kodi.
+    Ne uvajaj vzporedne tabele parov — s tem bi se razcepilo vse zgoraj.
+  - **Prijava je posamična, par sestavi organizator** (`poveziVPar` /
+    `razdruziPar`, `POST /dogodki/{id}/pari` in
+    `POST /dogodki/pari/{id}/razdruzi`). Povezava **izbriše** vrstico drugega
+    igralca (pred žrebom nanjo ne kaže nobena tekma), razdružitev jo ustvari
+    nazaj. Zato: odjava para je zavrnjena (odjavila bi dva človeka hkrati —
+    najprej razdruži), soigralca pa je treba ob ponovni prijavi iskati še v
+    drugem stolpcu (`najdiPoSoigralcu`) — `UNIQUE (dogodek, igralec)` ga ne
+    pokriva, ker svoje vrstice nima.
+  - **Žreb zavrne prijavo brez soigralca** (`preveriSestavljenePare`). Tihi
+    izpust bi pomenil, da organizator prijavljenega v mreži zaman išče.
+  - **Dvojice ne štejejo v ELO in ne v posamično statistiko** — izida para ni
+    mogoče pripisati posamezniku (isto pravilo kot pri ligaških dvojicah).
+    Varujeta ga `TekmaStoritev.vnesiRezultat` in `RatingStoritev` sam. Vsaka
+    poizvedba v `TekmaRepozitorij`, ki hrani **statistiko posameznika**
+    (`najdiZaIgralca`, `najdiDvoboje`, `nasprotniki`, `idjiZOdigranoTekmo`,
+    `najdiVseOdigrane`, `najdiZadnje`), mora imeti
+    `d.disciplina = POSAMICNO` — brez tega bi zajela še prvega člana para in
+    drugega tiho izpustila. Poizvedbe o **poteku tekmovanja**
+    (`najdiZadnjeVsakegaTurnirja`, `zmagovalciPoTurnirjih`) dvojice nasprotno
+    vključujejo in naložijo oba igralca. Profil ima za dvojice svoj razdelek
+    (`ProfilDto.dvojice`, `najdiDvojiceZaIgralca` — igralca išče v vseh
+    štirih mestih tekme).
+- **Spolne kategorije dogodka so štiri** (V14): `MOSKI`, `ZENSKE`,
+  `MESANO` = **strogo mešan par** (moški + ženska) in `KDORKOLI` = odprto.
+  `MESANO` je pravilo o **sestavi para**, zato ga preveri šele povezava para
+  (`preveriMesanPar`), pri posamičnem dogodku pa sploh ni izbira — CHECK v
+  shemi ga zaveže na `DVOJICE`. Do V14 je `MESANO` pomenil »kdorkoli«, zato
+  je migracija obstoječe dogodke prepisala v `KDORKOLI`. **Tabele `liga` se
+  to ne dotakne**: tam `MESANO` še naprej pomeni ligo, v kateri igrajo oboji,
+  in `KDORKOLI` ni izbira (obrazec lige našteje svoje tri možnosti sam).
 - **`SKUPINE` = format TOP** (npr. TOP 24 kot 3 skupine po 8):
   - igra najboljših N prijavljenih (N = `steviloSkupin` × `velikostSkupine`);
     kdor ne pride v izbor, dobi status `REZERVA` in ne igra;
@@ -165,9 +268,28 @@
   `TekmaRepozitorij`, ki hranijo statistiko, ga morajo upoštevati. V lestvici
   skupine pa `BREZ_BOJA` normalno šteje kot zmaga nasprotnika, ker odloča o
   uvrstitvi — to sta namerno ločeni poti.
-- Točke po nizih morajo biti v **mogočem vrstnem redu**: tekma se konča v
-  trenutku odločitve, zato noben niz ne sme slediti izidu, ko je zmagovalec
-  že dosegel dovolj nizov (glej `TekmaStoritev.shraniTockeNizov`).
+- **Točke po nizih so povsod neobvezne in povsod po istih pravilih.** Vpisujejo
+  se pri turnirskih *in* ligaških tekmah; pravila (veljaven niz do 11 z razliko
+  2, ujemanje z izidom, **mogoč vrstni red**) so v enem samem razredu
+  `NiziPravila`, ki ga kličeta `TekmaStoritev.shraniTockeNizov` in
+  `SrecanjeStoritev.vnesiRezultat` — dve kopiji bi se sčasoma razšli in ligaški
+  zapisnik bi sprejel vnos, ki ga turnirski zavrne. Vrstni red: tekma se konča v
+  trenutku odločitve, zato noben niz ne sme slediti izidu, ko je zmagovalec že
+  dosegel dovolj nizov. V vmesniku isto vlogo igra skupna komponenta
+  `komponente/TockeNizov` (vrstice vnosa + `preveriNize`).
+  Shrani jih **svoja tabela na vrsto tekme**: `niz` (`id_tekma`) in
+  `niz_srecanja` (`id_tekma_srecanja`, V15). Loženi sta, ker je ločena že tekma
+  sama in `niz.id_tekma` je `NOT NULL` — skupna tabela bi terjala prezidavo in
+  vsaki poizvedbi dodala pogoj, kateri od obeh stolpcev je zapolnjen. Ceno
+  plača profil: `ProfilStoritev.tocke` zaradi dveh id-prostorov bere iz obeh
+  repozitorijev. Točke po nizih **ne** vplivajo na noben izid — lestvica lige
+  in ELO štejeta dobljene nize iz same tekme; edina izjema je krog v skupini
+  turnirja (`RazvrstitevStoritev`), ki tam sešteje `niz`.
+- **Vneseni nizi napolnijo natisnjeni zapisnik.**
+  `ZapisnikEkipnegaDvoboja` je papirnati obrazec NTZS: kar je vpisano, izpiše,
+  prazne celice pa pusti za ročni vpis (obrazec se natisne tudi pred
+  srečanjem). Stolpcev za nize je pet kot na papirju, pri ligi na 7 nizov pa
+  sedem, da natis vpisanih točk ne odreže.
 - **Spremljane lige so osebna nastavitev računa**, ne zapis o tekmovanju:
   živijo v `spremljana_liga` (račun + liga) in jih vrača/ureja
   `/api/v1/domov/moje-lige` (`DomovStoritev`). To je edina pot, kjer sme
@@ -244,6 +366,39 @@
   `nasprotniki` (obe tabeli) mora ostati **isto kot v `najdiDvoboje`** — sicer
   žreb ponudi par, ki mu pregled »1 na 1« izpiše 0 : 0. Kadar odigranih tekem
   ni (nova namestitev), žreb vrne kar dva aktivna igralca.
+- **Zavihek »Zanimivosti« je ena storitev za obe tekmovanji**
+  (`StatistikaTekmovanjaStoritev`, `GET /turnirji/{id}/statistika` in
+  `GET /lige/{id}/statistika`, javna kot ostali GET-i). Turnir in liga hranita
+  tekme v ločenih tabelah, zgodbe pa so iste, zato se obe strani najprej
+  prevedeta v vmesni `Nastop` (točke nizov **vedno z vidika zmagovalca**) in
+  skupne postavke se računajo enkrat. Pravila, ki jih ne razbij:
+  - **Turnirski zavihek teče čez VSE dogodke turnirja**, ne po kategorijah —
+    na ravni ene kategorije je tekem premalo, klub in »V številkah« pa tam
+    izgubita pomen. Viden je **že med tekmovanjem** (`vTeku` to pove).
+  - **Padca ELO zavihek nima.** Vrstica je samo `vzponi`; v klubu, kjer se vsi
+    poznajo, je razglasitev največjega padca dneva edina postavka, ki bi komu
+    škodila. Ne dodajaj je »zaradi simetrije«.
+  - **Prazna postavka je odsotna postavka.** Uvožena zgodovina brez ratingov,
+    liga brez vpisanih točk po nizih in turnir v prvi uri nimajo istih
+    podatkov; ničla bi trdila, da se nekaj ni zgodilo. Pod `PRAG_TEKEM` (10)
+    zavihka sploh ni (`dovoljPodatkov`), vmesnik pa gumba ne ponudi že prej
+    (`odigranihTekem`, oz. pri ligi odigrano vsaj eno kolo).
+  - **Dvojice ne vstopajo v vrstice o posamezniku** (isto pravilo kot pri ELO).
+    Štejejo v »V številkah« in v svojo vrstico. Edina izjema je »Največ tekem«,
+    kjer se štejejo **nastopi** in ne izkupiček — a v svoj števec.
+  - **»Prvi naslov« se meri po datumu začetka turnirja in strogo »prej«.**
+    Merilo »vsi njegovi naslovi so s tega turnirja« bi lanskemu turnirju
+    vrstico odvzelo v trenutku, ko isti človek zmaga še enkrat — zapis o
+    preteklosti se ne spreminja. Turnir brez datuma ne more biti »prej«.
+    **Uvožena zgodovina te vrstice nima**, ker uvoz `koncno_mesto` ne piše.
+  - **»Srečanje na nož« je najtesnejše odločeno srečanje, ki ga je odločila
+    zadnja odigrana tekma.** Merilo »brez nje zmage še ne bi imel« je odvisno
+    od `zmag_za_srecanje`: liga s pragom se ob odločitvi ustavi, zato zadnja
+    tekma zmago **vedno** prinese in loči šele tesnost izida; liga, ki odigra
+    vse tekme, pa lahko konča 7 : 3 in zadnja tekma ni odločila ničesar.
+  - **Poizvedbe so po TEKMOVANJU in ne po seznamu id-jev tekem** — velik turnir
+    ima nekaj sto tekem, sqlite pa omejuje število vezanih parametrov. Skupaj
+    jih je pet (turnir) oz. štiri (liga), nobena ni na tekmo.
 - **Leno nalaganje:** kontrolerji pretvarjajo entitete v DTO-je IZVEN transakcije.
   Vsaka poizvedba, katere rezultat gre v DTO, mora z "join fetch" vnaprej naložiti
   vse povezave, ki jih DTO bere (kraj, igralca, klub) — sicer na pravem strežniku
@@ -308,6 +463,20 @@
 - Strežniške napake (problem-detail) prikazuje `SporociloNapake`; obrazci ne
   podvajajo domenskih pravil, le vodijo vnos (npr. izbira samo veljavnih izidov).
 - Za nepovratna dejanja uporabi `PotrditvenoOkno`, nikoli `window.confirm`.
+- **Zavihek »Zanimivosti« pozna dve obliki in nič več**
+  (`komponente/ZanimivostiTekmovanja.tsx`, slog razdelek 15b): **zgodba** je
+  enkraten dogodek (presenečenje, obrat, najdaljši niz) v obliki mono oznaka →
+  stavek z imeni → mono kontekst; **lestvička** je primerjava (vzpon ELO, zid,
+  klubi) in uporablja običajno `.vrstica`. Kartic s številkami tu ni.
+  - Imena so **brez glagolov** (»A proti B«, ne »A je premagal B«): zapisnik
+    nikogar ne sklanja po spolu, tekmo pa opiše izid.
+  - Seznam nikoli ne dobi štirih enakih blokov zapored — »Prvi naslov« je zato
+    lestvička s kategorijo namesto številke in ne štiri zgodbe.
+  - **Na strani lige sta zavihka dva pasova.** Mobilni (`.liga__zavihki`) je
+    nad 640 px skrit, ker sta tam lestvica in razpored oba vidna, zato ima
+    široki pogled svoj preklop dveh gumbov (`.liga__zavihki-namizje`,
+    »Lestvica in razpored« ↔ »Zanimivosti«). Trije gumbi bi iz lestvice in
+    razporeda naredili zavihka — to je zavestno drugače.
 - **Filtriranje in razvrščanje seznamov teče skozi `komponente/Filtri.tsx`**
   (`useFiltri` + `KrmilaSeznama`) — turnirji, lige in lestvica. Nad seznamom
   stoji ena vrstica: gumb »Filtriraj«, ki odpre okno z **vsemi** merili, in ob
@@ -328,6 +497,18 @@
   - Znotraj skupine velja **ali-ali** (»v teku *ali* priprava«), med skupinami
     **in**. Postavka ima v vsaki skupini eno vrednost; večvrednih meril
     (»igra v tej ligi«) `SkupinaFiltra` namenoma ne pozna.
+  - **Zvezno merilo je `ObmocjeFiltra` (dve polji »od«/»do«), ne pas naštetih
+    razredov.** Meja, ki jo organizator potrebuje, je meja *tega* tekmovanja
+    (»od 1200 navzgor«); vnaprej narisani pasovi bi jo znali samo približati.
+    Namestnici polj sta dejanski najmanjša in največja vrednost v seznamu.
+    Dve posledici: postavka **brez** vrednosti (igralec brez ratinga) ob
+    vpisani meji odpade, in območje — za razliko od naštetih skupin — **lahko
+    vrne prazen seznam**, ker meja ni izbira med možnostmi s števci. Prazno
+    stanje mora zato ponuditi »Počisti filtre«. Žetoni območij tečejo po
+    **vseh** območjih in ne po trenutno smiselnih (kot pri skupinah): ozko
+    iskanje merilo iz okna umakne, vpisana meja pa še naprej reže — žeton, ki
+    bi takrat izginil, bi pustil filter, ki ga ni mogoče ne videti ne
+    odstraniti.
   - Izbor živi v stanju strani in **ne v naslovu** — isto pravilo kot iskanje
     na lestvici.
   - **Turnir sezone nima kot polje**; izpelje jo `sezonaIzDatuma`
@@ -345,6 +526,26 @@
     pred tem igralcem, pa je bilo treba šteti na roke. Globalno mesto po
     ratingu v vrstici (`Vrstica.mesto`) vseeno ostane: po njem teče
     razvrstitev »Rating« in izenačenja pri drugih merilih — a se ne izpiše.
+- **Blok »Dodaj igralce« (`DodajanjeIgralcev` v `DogodekStran`) je iskalnik s
+  filtri, ne seznam vsega.** V šifrantu je po uvozu zgodovine NTZS več tisoč
+  igralcev; prej je moral organizator do vsakega prevoziti šifrant cele
+  države. Nad seznamom stojita iskalnik (ime in priimek, brez šumnikov in po
+  besedah — `pomozno/iskanje.ts`, isto pravilo kot izbirnik v »Ena na ena«) in
+  ista krmila kot na lestvici: skupine **starost** (`starostniPas`), **spol**
+  in **klub** ter območje **rating od–do**. Pravila, ki jih ne razbij:
+  - **Iskanje zoži seznam PRED filtri**, zato so števci ob merilih števci
+    tega, kar organizator vidi (isto kot na lestvici).
+  - **Izbrani, ki jih trenutna merila ne pokažejo, se izpišejo v svoji
+    skupini nad seznamom** (»Izbrani zunaj seznama«). Gumb prijavi tudi
+    tiste, ki so med iskanjem naslednjega igralca padli iz pogleda — izbor,
+    ki ga ne vidiš, je past. Vrstica, ki merilom ustreza, ob kljukici **ne
+    odskoči**: ostane, kjer je (drugače kot izbor lig, ki ima za to posnetek).
+  - **Izriše se največ `NAJVEC_VRSTIC` (200) vrstic in rez se izpiše.** Ves
+    seznam v DOM pomeni tisoč vrstic ob vsaki vtipkani črki; tiho odrezan
+    seznam pa bi trdil, da igralca ni.
+  - Števca »N od M na voljo« na telefonu **ni**: v vrsti bi bil tretji del in
+    izbor razvrstitve bi stisnil v »Razvrsti: P ▾«. Koliko jih ostane, pove
+    gumb v oknu z merili.
 - **Barva v koledarju pove, katere VRSTE je tekmovanje — in to je edina taka
   raba barve v vmesniku.** Dva tona (`--barva-ton-1` turnir, `--barva-ton-2`
   ligaško kolo) so izrecna izjema od DESIGN.md, zapisana tam v razdelku
@@ -412,14 +613,25 @@
   `tekma-t12` / `tekma-l7` (`kljucTekme` v `ProfilStran`). Točka brez
   `tekmovanja` para v seznamu nima (postavitveni rating) in ni klikljiva.
   Skok je **mehak samo na kratke razdalje** — pri uvoženi zgodovini je seznam
-  dolg 80 000 px in mehko drsenje čez to je zabrisan blisk, ne pot. Ker je
-  točka na telefonu široka nekaj pikslov, dejanje podvaja gumb »V seznam
-  tekem« v vrstici pod grafom (edina zadetkovna površina te poti s 44 px).
+  dolg 80 000 px in mehko drsenje čez to je zabrisan blisk, ne pot.
+  **Obdobje grafa krmili spustni meni** (30 dni, 3 meseci, 6 mesecev, 1 leto,
+  vse; privzeto 3 meseci) — pas gumbov je z vsakim novim obdobjem rasel čez
+  naslovno vrstico.
+- **Točka grafa ELO nosi dva časa in nista isto.** `kdaj` je trenutek
+  **obračuna ratinga** (`rating_zgodovina.ustvarjen_ob`) in po njem so točke
+  urejene — vodoravna os je zaporedje obračunanih tekem, ne koledar. `datum`
+  pa je dan **tekme**: datum turnirja oz. srečanja, isti kot v vrstici seznama
+  tekem (`ProfilStoritev` ga vzame iz istega `Nastopa`). Izpisani datum in
+  izbrano obdobje tečeta po `datum`, ker je pri uvoženi zgodovini vseh
+  200 000 obračunov nastalo ob uvozu — po `kdaj` bi desetletje tekem padlo v
+  en sam dan in nobeno obdobje ne bi odrezalo ničesar. Prazen je `datum` samo
+  pri postavitvenem ratingu (tekme ni), zato tam obvelja `kdaj`. Regresija je
+  `tockaGrafaNosiDatumTekmeInNeDnevaObracuna`.
 - **Igralca v sklopu »Ena na ena« se izbereta z vpisom imena, ne s spustnim
   seznamom** (`IzbirnikIgralca` v `EnaNaEna.tsx`): po uvozu zgodovine je v
   šifrantu več tisoč igralcev in `<select>` je bil neuporaben. Ujemanje je
   **brez šumnikov in po besedah** (»krizan« najde Križana, »novak ana« pa
-  Novak Ano) — iskalnik, ki zahteva strešico, v dvorani ne pomaga. Klub stoji
+  Ano Novak) — iskalnik, ki zahteva strešico, v dvorani ne pomaga. Klub stoji
   ob imenu, ker se soimenjaka drugače ne ločita; predlogi ležijo **čez**
   vsebino (absolutno), da vsak vtipkani znak ne premika semaforja, in so na
   desni strani zrcalno usidrani (`.enanaena__stran--2`). Oznaki »Medsebojno ·

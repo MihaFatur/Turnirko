@@ -93,12 +93,34 @@ public class TurnirjiStoritev {
         dogodek.setPrivzetoSteviloNizov(steviloNizov);
         dogodek.setPrijavnina(vnos.prijavnina());
         dogodek.setRokPrijave(vnos.rokPrijave());
-        // sistem doloci organizator; null pomeni privzeto (IZLOCILNI)
+        // disciplina in sistem dolocita organizator; null pomeni privzeto
+        // (POSAMICNO oz. IZLOCILNI)
+        if (vnos.disciplina() != null) {
+            dogodek.setDisciplina(vnos.disciplina());
+        }
         if (vnos.sistemTekmovanja() != null) {
             dogodek.setSistemTekmovanja(vnos.sistemTekmovanja());
         }
+        preveriDisciplino(dogodek);
         nastaviSkupinskeNastavitve(dogodek, vnos);
         return dogodekRepozitorij.save(dogodek);
+    }
+
+    /* Dvojice igrajo izkljucno izlocilno mrezo, "strogo mesano" pa je lastnost
+       para in pri posamicnem dogodku ne pomeni nicesar - tam je odprta
+       kategorija KDORKOLI. Isti dve pravili varuje CHECK v migraciji V14;
+       tu sta zato, da organizator dobi razumljivo sporocilo namesto napake
+       podatkovne baze. */
+    private void preveriDisciplino(Dogodek dogodek) {
+        if (dogodek.jeDvojice()
+                && dogodek.getSistemTekmovanja() != SistemTekmovanja.IZLOCILNI) {
+            throw new NeveljavenVnosIzjema(
+                    "Dvojice se igrajo samo po izlocilnem sistemu (takojsnje izpadanje).");
+        }
+        if (dogodek.getSpolKategorija() == SpolKategorija.MESANO && !dogodek.jeDvojice()) {
+            throw new NeveljavenVnosIzjema("Kategorija MESANO pomeni strogo mesan par in je"
+                    + " mogoca samo pri dvojicah. Za odprt dogodek izberi KDORKOLI.");
+        }
     }
 
     /* Format TOP potrebuje stevilo skupin in velikost skupine - njun zmnozek
@@ -159,6 +181,14 @@ public class TurnirjiStoritev {
                 throw new DomenskaIzjema("Igralec " + igralec.polnoIme() + " je arhiviran.");
             }
             preveriSpolZaKategorijo(igralec, dogodek.getSpolKategorija());
+            // Pri dvojicah je igralec lahko ze soigralec tujega para. Takrat
+            // ga UNIQUE (dogodek, igralec) ne ustavi - njegova lastna vrstica
+            // je ob povezavi para izginila -, zato ga poiscemo se v drugem
+            // slotu; sicer bi na dogodku nastopal dvakrat.
+            prijavaRepozitorij.najdiPoSoigralcu(idDogodka, idIgralca).ifPresent(par -> {
+                throw new DomenskaIzjema("Igralec " + igralec.polnoIme()
+                        + " je ze prijavljen v paru " + par.prikazanoIme() + ".");
+            });
             Prijava obstojeca = prijavaRepozitorij.najdiZaDogodekInIgralca(idDogodka, idIgralca)
                     .orElse(null);
             if (obstojeca != null) {
@@ -190,16 +220,127 @@ public class TurnirjiStoritev {
             throw new DomenskaIzjema(
                     "Po zrebu odjava ni vec mozna - uporabi izid BREZ_BOJA na tekmah.");
         }
+        // Odjava sestavljenega para bi tiho odjavila DVA igralca, od katerih
+        // eden morda le isce novega soigralca. Razdruzitev je zato loceno
+        // dejanje, ki ga mora organizator opraviti zavestno.
+        if (prijava.jePar()) {
+            throw new DomenskaIzjema("Prijava je par (" + prijava.prikazanoIme()
+                    + "). Najprej ga razdruzi, nato odjavi posameznika.");
+        }
         prijava.setStatus(Prijava.StatusPrijave.ODJAVLJEN);
         return prijava;
     }
 
-    /* Na dogodek za moske smejo samo moski, za zenske samo zenske. */
+    // ---------------------------------------------------------------------
+    // Dvojice: sestavljanje in razdruzevanje parov
+    // ---------------------------------------------------------------------
+
+    /* Poveze dve prijavi istega dogodka v par: prva vrstica dobi soigralca,
+       druga izgine. Vrstici sta pred zrebom brez sledi (nanju se ne sklicuje
+       nobena tekma), zato je izbris pravi izbris in ne mehak - ostanek bi
+       pomenil "prijavljen igralec", kar drugi igralec para ni.
+
+       Vrstni red igralcev v paru je vrstni red prijave: kdor je prijavo
+       oddal prej, je v paru prvi. */
+    @Transactional
+    public Prijava poveziVPar(Long idDogodka, Long idPrijave1, Long idPrijave2) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        if (!dogodek.jeDvojice()) {
+            throw new DomenskaIzjema("Pare je mogoce sestavljati samo na dogodku dvojic.");
+        }
+        if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Pare je mogoce sestavljati samo, dokler je dogodek v pripravi.");
+        }
+        if (idPrijave1.equals(idPrijave2)) {
+            throw new NeveljavenVnosIzjema("Par sestavljata dva razlicna igralca.");
+        }
+
+        Prijava prva = najdiZaPar(idDogodka, idPrijave1);
+        Prijava druga = najdiZaPar(idDogodka, idPrijave2);
+        preveriMesanPar(dogodek, prva.getIgralec(), druga.getIgralec());
+
+        // prijavo z nizjim id-jem obdrzimo kot nosilca para (prej oddana
+        // prijava), da je vrstni red imen ponovljiv
+        Prijava nosilec = prva.getId() < druga.getId() ? prva : druga;
+        Prijava vkljucena = nosilec == prva ? druga : prva;
+
+        nosilec.nastaviSoigralca(vkljucena.getIgralec());
+        // par je placan, ko sta placala oba - prijavnina je vezana na igralca
+        nosilec.setPlacano(nosilec.isPlacano() && vkljucena.isPlacano());
+        prijavaRepozitorij.delete(vkljucena);
+        // izbris mora v bazo pred naslednjim branjem, sicer delni edinstveni
+        // indeks (dogodek, igralec_2) trci ob se obstojeco vrstico
+        prijavaRepozitorij.flush();
+        return nosilec;
+    }
+
+    /* Razdruzi par nazaj v dve samostojni prijavi. Soigralec dobi novo
+       vrstico - njegova stara je ob povezavi izginila. */
+    @Transactional
+    public List<Prijava> razdruziPar(Long idPrijave) {
+        lastnistvo.preveriTurnirPoPrijavi(idPrijave);
+        Prijava par = prijavaRepozitorij.najdiZIgralcem(idPrijave)
+                .orElseThrow(() -> new NiNajdenoIzjema("Prijava z id " + idPrijave + " ne obstaja."));
+        if (par.getDogodek().getStatus() != StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Par je mogoce razdruziti samo, dokler je dogodek v pripravi.");
+        }
+        if (!par.jePar()) {
+            throw new DomenskaIzjema("Ta prijava ni par.");
+        }
+
+        Igralec soigralec = par.getIgralec2();
+        par.nastaviSoigralca(null);
+        par.setStNosilca(null);
+        // novi vrstici damo isti status kot paru: razdruzitev ne sme
+        // odjavljenega igralca vrniti med prijavljene
+        Prijava samostojna = new Prijava(par.getDogodek(), soigralec);
+        samostojna.setStatus(par.getStatus());
+        samostojna.setPlacano(par.isPlacano());
+        prijavaRepozitorij.save(samostojna);
+        return List.of(par, samostojna);
+    }
+
+    /* Prijava, ki jo je mogoce povezati v par: pravi dogodek, prijavljena
+       in ne ze v paru. */
+    private Prijava najdiZaPar(Long idDogodka, Long idPrijave) {
+        Prijava prijava = prijavaRepozitorij.najdiZIgralcem(idPrijave)
+                .orElseThrow(() -> new NiNajdenoIzjema("Prijava z id " + idPrijave + " ne obstaja."));
+        if (!prijava.getDogodek().getId().equals(idDogodka)) {
+            throw new NeveljavenVnosIzjema("Prijava " + idPrijave + " ni s tega dogodka.");
+        }
+        if (prijava.getStatus() != Prijava.StatusPrijave.PRIJAVLJEN) {
+            throw new DomenskaIzjema("Igralec " + prijava.prikazanoIme()
+                    + " ni prijavljen (stanje: " + prijava.getStatus() + ").");
+        }
+        if (prijava.jePar()) {
+            throw new DomenskaIzjema(prijava.prikazanoIme() + " je ze par.");
+        }
+        return prijava;
+    }
+
+    /* Pri kategoriji MESANO mora par sestavljati en moski in ena zenska;
+       druge kategorije so na sestavo para brezbrizne (spol posameznika je
+       preveril ze vpis prijave). */
+    private void preveriMesanPar(Dogodek dogodek, Igralec prvi, Igralec drugi) {
+        if (dogodek.getSpolKategorija() != SpolKategorija.MESANO) {
+            return;
+        }
+        if (prvi.getSpol() == drugi.getSpol()) {
+            throw new DomenskaIzjema("Kategorija je mesane dvojice:"
+                    + " par mora sestavljati en moski in ena zenska.");
+        }
+    }
+
+    /* Na dogodek za moske smejo samo moski, za zenske samo zenske.
+       MESANO je pravilo o SESTAVI PARA, ne o posamezniku - preveri ga
+       preveriMesanPar ob povezavi -, KDORKOLI pa ne omejuje nicesar. */
     private void preveriSpolZaKategorijo(Igralec igralec, SpolKategorija kategorija) {
         boolean ustreza = switch (kategorija) {
             case MOSKI -> igralec.getSpol() == Spol.MOSKI;
             case ZENSKE -> igralec.getSpol() == Spol.ZENSKI;
-            case MESANO -> true;
+            case MESANO, KDORKOLI -> true;
         };
         if (!ustreza) {
             throw new DomenskaIzjema("Igralec " + igralec.polnoIme()

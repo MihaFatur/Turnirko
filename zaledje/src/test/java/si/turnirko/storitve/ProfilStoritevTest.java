@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -16,22 +19,34 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import si.turnirko.dto.EkipaVnos;
+import si.turnirko.dto.KaderVnos;
+import si.turnirko.dto.LigaVnos;
+import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.PotrditevRacunaVnos;
 import si.turnirko.dto.ProfilDto;
 import si.turnirko.dto.ProfilZasebnoDto;
 import si.turnirko.dto.RacunIgralcaDto;
 import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.dto.SpremembaGeslaVnos;
+import si.turnirko.dto.SrecanjePodrobnoDto;
+import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.VnosRezultata;
+import si.turnirko.dto.VnosRezultataSrecanja;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Dogodek;
+import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IgralnaRoka;
+import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.SpolKategorija;
+import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
+import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
@@ -39,6 +54,8 @@ import si.turnirko.repozitoriji.UporabnikRepozitorij;
 class ProfilStoritevTest extends IntegracijskiTest {
 
     @Autowired private ProfilStoritev profilStoritev;
+    @Autowired private LigaStoritev ligaStoritev;
+    @Autowired private SrecanjeStoritev srecanjeStoritev;
     @Autowired private RacuniStoritev racuniStoritev;
     @Autowired private UporabnikRepozitorij uporabnikRepozitorij;
     @Autowired private PasswordEncoder kodirnik;
@@ -46,6 +63,16 @@ class ProfilStoritevTest extends IntegracijskiTest {
     @BeforeEach
     void deterministicniZreb() {
         zrebStoritev.nastaviNakljucje(new Random(42));
+    }
+
+    /* Ekipa lige s kadrom, da ima srecanje koga postaviti na mesta. */
+    private void dodajEkipoSKadrom(Long idLiga, String klubIme, int stIgralcev) {
+        Klub klub = klubRepozitorij.save(new Klub(klubIme, null));
+        var ekipa = ligaStoritev.dodajEkipo(idLiga, new EkipaVnos(klub.getId(), null, null));
+        for (int i = 1; i <= stIgralcev; i++) {
+            Igralec ig = noviIgralec("Ig" + klubIme.replace(" ", "") + i, "Pri" + i);
+            ligaStoritev.dodajVKader(ekipa.id(), new KaderVnos(ig.getId(), i));
+        }
     }
 
     /* Odigra eno turnirsko tekmo in vrne jo, da testi vedo, kdo je kdo. */
@@ -116,6 +143,67 @@ class ProfilStoritevTest extends IntegracijskiTest {
         assertEquals(vrstica.nasprotnik(), tocka.nasprotnik());
     }
 
+    /* Tocka grafa nosi DVA casa in nista isto: "kdaj" je trenutek obracuna
+       ratinga, "datum" pa dan tekme. Uvozena zgodovina je vsa obracunana ob
+       uvozu (torej danes), zato bi izbirnik obdobja nad "kdaj" desetletje
+       tekem stlacil v en dan in nobeno obdobje ne bi odrezalo nicesar. */
+    @Test
+    void tockaGrafaNosiDatumTekmeInNeDnevaObracuna() {
+        Tekma tekma = odigrajEnoTekmo(3, 1);
+        LocalDate predLeti = LocalDate.now().minusYears(3);
+        Turnir turnir = tekma.getDogodek().getTurnir();
+        turnir.setDatumZacetka(predLeti);
+        turnirRepozitorij.save(turnir);
+
+        ProfilDto profil = profilStoritev.profil(tekma.getPrijava1().getIgralec().getId());
+        ProfilDto.TockaGrafa tocka = profil.graf().get(0);
+
+        assertEquals(predLeti, tocka.datum());
+        assertEquals(profil.tekme().get(0).datum(), tocka.datum(),
+                "graf in seznam tekem govorita o istem dnevu");
+        assertNotEquals(predLeti, tocka.kdaj().toLocalDate(),
+                "obracun je nastal danes, tekma pa je stara tri leta");
+    }
+
+    /* Ista zgodba pri ligi, le da dneva tekme tam ne nosi turnir: srecanje ima
+       "odigranOb" sele, ko ga nekdo zakljuci v aplikaciji, uvozena zgodovina
+       pa ima samo termin kola. Brez njega bi vsa uvozena liga (in to je vecina
+       tekem) nosila dan uvoza. */
+    @Test
+    void tockaGrafaLigaskeTekmeVzameTerminKola() {
+        LocalDateTime termin = LocalDateTime.now().minusYears(2)
+                .withHour(18).withMinute(0).withSecond(0).withNano(0);
+        Long idLiga = ligaStoritev.ustvari(new LigaVnos(
+                "Liga za profil", "2024/25", SpolKategorija.MOSKI, FormatSrecanja.SNTL, 5,
+                null, false, 2, 1, 0, true, false, true, null, termin, 7)).id();
+        dodajEkipoSKadrom(idLiga, "Profil A", 3);
+        dodajEkipoSKadrom(idLiga, "Profil B", 3);
+        ligaStoritev.generirajRazpored(idLiga);
+
+        Long idSrecanje = srecanjeStoritev.zaLigo(idLiga).get(0).id();
+        SrecanjePodrobnoDto s = srecanjeStoritev.podrobno(idSrecanje);
+        List<PostavaVnos.MestoVnos> mesta = new ArrayList<>();
+        for (int i = 0; i < s.pozicijeDomaci().size(); i++) {
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.DOMACI, s.pozicijeDomaci().get(i),
+                    s.kaderDomaci().get(i).idIgralec(), i < 2));
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.GOST, s.pozicijeGost().get(i),
+                    s.kaderGost().get(i).idIgralec(), i < 2));
+        }
+        srecanjeStoritev.nastaviPostavo(idSrecanje, new PostavaVnos(mesta));
+        // za dvojicami sledi prva posamicna (mesti A-X)
+        srecanjeStoritev.vnesiRezultat(srecanjeStoritev.podrobno(idSrecanje).tekme().get(1).id(),
+                new VnosRezultataSrecanja(null, 3, 1, null, null));
+
+        Long idIgralec = s.kaderDomaci().get(0).idIgralec();
+        ProfilDto profil = profilStoritev.profil(idIgralec);
+        assertEquals(1, profil.tekme().size(), "igralec z mesta A je odigral eno tekmo");
+        ProfilDto.TockaGrafa tocka = profil.graf().get(0);
+
+        assertEquals(termin.toLocalDate(), tocka.datum());
+        assertNotEquals(termin.toLocalDate(), tocka.kdaj().toLocalDate(),
+                "obracun je nastal danes, kolo pa je bilo pred dvema letoma");
+    }
+
     @Test
     void uvrstitevIzracunaMestoInPercentil() {
         Tekma tekma = odigrajEnoTekmo(3, 0);
@@ -164,9 +252,9 @@ class ProfilStoritevTest extends IntegracijskiTest {
                 .findFirst().orElseThrow();
         // 3:0 z enim tesnim nizom (12:10) - drugi niz gladek, tretji spet tesen
         tekmaStoritev.vnesiRezultat(tekma.getId(), new VnosRezultata(null, 3, 0, null,
-                List.of(new VnosRezultata.NizVnos(11, 4),
-                        new VnosRezultata.NizVnos(12, 10),
-                        new VnosRezultata.NizVnos(11, 9))));
+                List.of(new NizVnos(11, 4),
+                        new NizVnos(12, 10),
+                        new NizVnos(11, 9))));
         Igralec zmagovalec = tekma.getPrijava1().getIgralec();
         Igralec porazenec = tekma.getPrijava2().getIgralec();
 
