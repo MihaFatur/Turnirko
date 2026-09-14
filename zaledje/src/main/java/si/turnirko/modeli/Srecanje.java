@@ -83,6 +83,13 @@ public class Srecanje {
     @Column(name = "predviden_zacetek")
     private LocalDateTime predvidenZacetek;
 
+    /* Ob kateri uri kola se srecanje igra (V31, 0 = prva ura lige); prazno pri
+       kolu kroznega sistema. Hrani se posebej, ker zacetka ob zrebu morda se
+       ni, organizator pa ga sme prestaviti - uro lige mora srecanje vseeno
+       poznati. */
+    @Column(name = "ura_v_kolu")
+    private Integer uraVKolu;
+
     @Column(name = "odigran_ob")
     private LocalDateTime odigranOb;
 
@@ -160,6 +167,9 @@ public class Srecanje {
 
     public LocalDateTime getPredvidenZacetek() { return predvidenZacetek; }
     public void setPredvidenZacetek(LocalDateTime predvidenZacetek) { this.predvidenZacetek = predvidenZacetek; }
+
+    public Integer getUraVKolu() { return uraVKolu; }
+    public void setUraVKolu(Integer uraVKolu) { this.uraVKolu = uraVKolu; }
 
     public LocalDateTime getOdigranOb() { return odigranOb; }
     public void setOdigranOb(LocalDateTime odigranOb) { this.odigranOb = odigranOb; }

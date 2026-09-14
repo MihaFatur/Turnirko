@@ -7795,16 +7795,36 @@ a.domov__lestvica-vrstica--jaz {
   border-bottom: 1px solid var(--barva-crta);
 }
 
-/* Liga z urami srecanj: vsaka vrstica kola je mesto z uro, zato ura stoji
-   spredaj kot oznaka vrstice (mono, kot stevilke drugod). */
-.zreb__vrstica--ura {
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto minmax(0, 1fr) 44px;
+/* Liga z urami: kolo je vec krogov zapored, zato so srecanja kola razdeljena
+   po urah - mono naslov ure (kot stevilke drugod), pod njim srecanja kroga.
+   Skupina je stolpec kot kolo samo: vrstice cez celo sirino, gumb ob levem
+   robu (kolo poravna otroke na zacetek, zato bi se skupina brez sirine
+   skrcila na vsebino). */
+.zreb__ura {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--r1);
+  width: 100%;
 }
 
-.zreb__ura {
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+.zreb__ura + .zreb__ura {
+  margin-top: var(--r2);
+}
+
+.zreb__ura-glava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--r2);
+  padding-top: var(--r1);
+}
+
+.zreb__ura-cas {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--barva-crnilo-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* Pri 390 px se dva izbirnika z imeni ekip v eno vrsto ne zlozita - ime bi
@@ -7856,30 +7876,6 @@ a.domov__lestvica-vrstica--jaz {
   .zreb__krmila .sekcija__meta {
     margin-left: 0;
     text-align: left;
-  }
-
-  /* Vrstica z uro: ura drzi obe vrstici na levi, kot krizec na desni. */
-  .zreb__vrstica--ura {
-    grid-template-columns: 3rem minmax(0, 1fr) 44px;
-  }
-
-  .zreb__vrstica--ura > .zreb__ura {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-  }
-
-  .zreb__vrstica--ura > .zreb__polje:nth-child(2) {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .zreb__vrstica--ura > .zreb__polje:nth-child(4) {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .zreb__vrstica--ura > .zreb__odstrani {
-    grid-column: 3;
   }
 }
 

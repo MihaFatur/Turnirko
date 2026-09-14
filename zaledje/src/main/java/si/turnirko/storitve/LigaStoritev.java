@@ -632,17 +632,17 @@ public class LigaStoritev {
         List<Ekipa> ekipe = ekipeZaZreb(liga);
 
         List<NovoSrecanje> srecanja = new ArrayList<>();
-        for (RazporedStoritev.ParNaMestu par : razporedLige(liga, ekipe.size())) {
+        for (RazporedStoritev.ParObUri par : razporedLige(liga, ekipe.size())) {
             srecanja.add(new NovoSrecanje(
                     new Srecanje(liga, par.kolo(), ekipe.get(par.domaci()), ekipe.get(par.gost())),
-                    par.mesto()));
+                    par.uraVKolu()));
         }
         zapisiRazpored(liga, srecanja, false);
     }
 
     /* Pari po pravilih lige: krozni sistem (navaden ali po parih) in, kadar
-       liga igra ob urah, razdelitev po vecerih. Isti racun za zreb in predlog. */
-    private List<RazporedStoritev.ParNaMestu> razporedLige(Liga liga, int stEkip) {
+       liga igra ob urah, vec krogov v kolu. Isti racun za zreb in predlog. */
+    private List<RazporedStoritev.ParObUri> razporedLige(Liga liga, int stEkip) {
         return razporedStoritev.razpored(stEkip, liga.isDvokrozno(), liga.isEnakomernaRazvrstitev(),
                 liga.getUreSrecanj());
     }
@@ -658,8 +658,8 @@ public class LigaStoritev {
        krozni sistem. Ekipa sama proti sebi in vrzel med koli sta napaka v
        vsakem primeru (kola lige tecejo od 1 naprej), prav tako ekipa, ki bi
        igrala dve srecanji hkrati: v kolu kroznega sistema to pomeni dve
-       srecanji v kolu, v ligi z urami dve srecanji ob isti uri. Ali kak par
-       igra dvakrat ali nikoli, pa je stvar tekmovanja in ne sheme: rocno
+       srecanji v kolu, v ligi z urami dve srecanji ob isti uri kola. Ali kak
+       par igra dvakrat ali nikoli, pa je stvar tekmovanja in ne sheme: rocno
        vodene lige imajo tudi nepopolne razporede, zato vmesnik na to samo
        opozori, strezniku pa je to veljaven vnos. */
     @Transactional
@@ -671,9 +671,9 @@ public class LigaStoritev {
         }
         List<LocalTime> ure = liga.getUreSrecanj();
 
-        // kljuc "kolo" pri kolu kroznega sistema, "kolo|ura" pri ligi z urami
+        // kljuc "kolo|ura v kolu"; pri kolu kroznega sistema je ura vedno 0
         Map<String, Set<Long>> zasedene = new HashMap<>();
-        Map<Integer, Set<Integer>> mestaVKolu = new HashMap<>();
+        Set<Integer> kola = new HashSet<>();
         List<NovoSrecanje> srecanja = new ArrayList<>();
         for (RocniRazporedVnos.ParVnos p : v.srecanja()) {
             if (p.kolo() < 1) {
@@ -687,50 +687,40 @@ public class LigaStoritev {
                         + domaci.prikazanoIme() + " ne more igrati sama s sabo.");
             }
 
-            Set<Integer> mesta = mestaVKolu.computeIfAbsent(p.kolo(), k -> new HashSet<>());
-            int mesto = p.mesto() != null ? p.mesto() : mesta.size();
-            String kljuc;
+            int uraVKolu = ure != null && p.uraVKolu() != null ? p.uraVKolu() : 0;
             String opis;
             if (ure == null) {
                 /* Kolo kroznega sistema je en igralni dan, zato ekipa v njem
                    odigra eno srecanje. Dve bi razdrli lestvico in termin kola. */
-                kljuc = String.valueOf(p.kolo());
                 opis = " ima dve srecanji, kolo pa je en igralni dan.";
             } else {
-                if (mesto < 0 || mesto >= ure.size()) {
-                    throw new NeveljavenVnosIzjema(p.kolo() + ". kolo: liga igra " + ure.size()
-                            + " srecanj na kolo, srecanje na " + (mesto + 1) + ". mestu nima ure.");
+                if (uraVKolu < 0 || uraVKolu >= ure.size()) {
+                    throw new NeveljavenVnosIzjema(p.kolo() + ". kolo: liga igra ob " + ure.size()
+                            + " urah, " + (uraVKolu + 1) + ". ure ni.");
                 }
-                if (!mesta.add(mesto)) {
-                    throw new NeveljavenVnosIzjema(p.kolo() + ". kolo: na " + (mesto + 1)
-                            + ". mestu sta vpisani dve srecanji.");
-                }
-                /* Ekipa sme v kolu igrati veckrat, a ne ob isti uri (dve mizi).
-                   Nedolocena ura (00:00) ne trci z nicimer. */
-                LocalTime ura = ure.get(mesto);
-                kljuc = ura.equals(LocalTime.MIDNIGHT) ? null : p.kolo() + "|" + ura;
-                opis = " ima ob " + oblikujUro(ura) + " dve srecanji hkrati.";
+                /* Ob vsaki uri kola se odigra en krog: ekipa ob njej igra najvec
+                   enkrat, cez vecer pa veckrat. */
+                String ura = oblikujUro(ure.get(uraVKolu));
+                opis = ure.get(uraVKolu).equals(LocalTime.MIDNIGHT)
+                        ? " ima ob " + (uraVKolu + 1) + ". uri kola dve srecanji hkrati."
+                        : " ima ob " + ura + " dve srecanji hkrati.";
             }
-            if (kljuc != null) {
-                Set<Long> vKljucu = zasedene.computeIfAbsent(kljuc, k -> new HashSet<>());
-                for (Ekipa e : List.of(domaci, gost)) {
-                    if (!vKljucu.add(e.getId())) {
-                        throw new NeveljavenVnosIzjema(p.kolo() + ". kolo: ekipa " + e.prikazanoIme() + opis);
-                    }
+            Set<Long> hkrati = zasedene.computeIfAbsent(p.kolo() + "|" + uraVKolu, k -> new HashSet<>());
+            for (Ekipa e : List.of(domaci, gost)) {
+                if (!hkrati.add(e.getId())) {
+                    throw new NeveljavenVnosIzjema(p.kolo() + ". kolo: ekipa " + e.prikazanoIme() + opis);
                 }
             }
-            if (ure == null) {
-                mesta.add(mesto);
-            }
-            srecanja.add(new NovoSrecanje(new Srecanje(liga, p.kolo(), domaci, gost), mesto));
+            kola.add(p.kolo());
+            srecanja.add(new NovoSrecanje(new Srecanje(liga, p.kolo(), domaci, gost), uraVKolu));
         }
 
         /* Kola morajo teci od 1 naprej brez vrzeli: prazno kolo med polnimi je
            bodisi napaka pri prepisu bodisi kolo brez srecanj, ki bi ga razpored
            izpisal kot prazno stran. */
-        int najvisje = mestaVKolu.keySet().stream().mapToInt(Integer::intValue).max().orElse(0);
+        int najvisje = kola.stream().mapToInt(Integer::intValue).max().orElse(0);
         for (int kolo = 1; kolo <= najvisje; kolo++) {
-            if (!mestaVKolu.containsKey(kolo)) {
+            if (!kola.contains(kolo)) {
                 throw new NeveljavenVnosIzjema("Razpored nima " + kolo
                         + ". kola; kola morajo teci od 1 naprej brez vrzeli.");
             }
@@ -759,7 +749,7 @@ public class LigaStoritev {
                 .map(par -> {
                     Ekipa domaci = ekipe.get(par.domaci());
                     Ekipa gost = ekipe.get(par.gost());
-                    return new ParRazporedaDto(par.kolo(), par.mesto(), domaci.getId(),
+                    return new ParRazporedaDto(par.kolo(), par.uraVKolu(), domaci.getId(),
                             domaci.prikazanoIme(), gost.getId(), gost.prikazanoIme());
                 })
                 .toList();
@@ -841,17 +831,19 @@ public class LigaStoritev {
         return ekipa;
     }
 
-    /* Srecanje, ki se sele zapisuje, z mestom v kolu - po njem dobi uro. */
-    private record NovoSrecanje(Srecanje srecanje, int mesto) {}
+    /* Srecanje, ki se sele zapisuje, z uro v kolu - po njej dobi zacetek. */
+    private record NovoSrecanje(Srecanje srecanje, int uraVKolu) {}
 
     /* Zapis razporeda je sklepni korak obeh nacinov. Sele tu je znano, koliko
        kol liga ima, zato se datumi iz semena (zacetek prvega kola + razmik)
        izracunajo zdaj in ne ob vpisu lige. */
     private void zapisiRazpored(Liga liga, List<NovoSrecanje> nova, boolean rocno) {
+        boolean zUrami = liga.getUreSrecanj() != null;
         List<Srecanje> srecanja = new ArrayList<>();
         for (NovoSrecanje n : nova) {
             Srecanje s = n.srecanje();
-            s.setPredvidenZacetek(terminSrecanja(liga, s.getKolo(), n.mesto()));
+            s.setPredvidenZacetek(terminSrecanja(liga, s.getKolo(), n.uraVKolu()));
+            s.setUraVKolu(zUrami ? n.uraVKolu() : null);
             srecanja.add(s);
         }
         srecanjeRepozitorij.saveAll(srecanja);
@@ -965,45 +957,45 @@ public class LigaStoritev {
     public static final int PRIVZET_RAZMIK_DNI = 7;
 
     /* Predviden zacetek srecanja po semenu lige: dan kola iz prvega kola in
-       razmika, ura iz ure mesta v kolu (liga z urami) oz. iz semena (kolo
-       kroznega sistema). Brez semena termina ni. */
-    private static LocalDateTime terminSrecanja(Liga liga, int kolo, int mesto) {
+       razmika, ura iz ure lige (liga z urami) oz. iz semena (kolo kroznega
+       sistema). Brez semena termina ni. */
+    private static LocalDateTime terminSrecanja(Liga liga, int kolo, int uraVKolu) {
         if (liga.getZacetekPrvegaKola() == null) {
             return null;
         }
         int razmik = liga.getRazmikDni() != null ? liga.getRazmikDni() : PRIVZET_RAZMIK_DNI;
         LocalDateTime termin = liga.getZacetekPrvegaKola().plusDays((long) (kolo - 1) * razmik);
         List<LocalTime> ure = liga.getUreSrecanj();
-        return ure != null && mesto < ure.size() ? termin.toLocalDate().atTime(ure.get(mesto)) : termin;
+        return ure != null && uraVKolu < ure.size() ? termin.toLocalDate().atTime(ure.get(uraVKolu)) : termin;
     }
 
-    /* Najvec srecanj v kolu lige z urami. Varovalka pred pomoto in ne pravilo:
-       vecer z vec kot desetimi srecanji na eni mizi ne obstaja, z vec mizami
-       pa je to navadno kolo kroznega sistema. */
-    public static final int NAJVEC_SRECANJ_V_KOLU = 10;
+    /* Najvec ur (in s tem srecanj vsake ekipe) v kolu. Varovalka pred pomoto in
+       ne pravilo: liga, ki v enem dnevu odigra deset krogov, je ze turnir. */
+    public static final int NAJVEC_UR_V_KOLU = 10;
 
-    /* Ure srecanj morajo teci naprej: i-to srecanje kola se zacne ob i-ti uri,
-       razpored jih izpise po uri, zato bi padajoc seznam pomenil, da prvo
-       srecanje kola stoji na dnu. Enaki uri sta dovoljeni (dve mizi hkrati),
-       nedolocena ura (00:00) se ne primerja. */
+    /* Ure kola so vsaj dve - liga z eno uro je navadna liga z uro v semenu in
+       dveh zapisov za isto stvar ne sme biti. Ure morajo teci STROGO naprej: ob
+       vsaki se odigra cel krog, zato bi enaki uri pomenili, da vsaka ekipa igra
+       dve srecanji hkrati. Nedolocena ura (00:00) se ne primerja. */
     private static void preveriUreSrecanj(List<LocalTime> ure) {
         if (ure == null) {
             return;
         }
-        if (ure.isEmpty() || ure.size() > NAJVEC_SRECANJ_V_KOLU) {
-            throw new NeveljavenVnosIzjema("V kolu je lahko od 1 do " + NAJVEC_SRECANJ_V_KOLU + " srecanj.");
+        if (ure.size() < 2 || ure.size() > NAJVEC_UR_V_KOLU) {
+            throw new NeveljavenVnosIzjema("Liga z urami igra v kolu od 2 do " + NAJVEC_UR_V_KOLU
+                    + " krogov; pri enem je ura kola ura prvega kola.");
         }
         LocalTime prejsnja = null;
         for (LocalTime ura : ure) {
             if (ura == null) {
-                throw new NeveljavenVnosIzjema("Vsako srecanje kola potrebuje uro (00:00 = ura ni dolocena).");
+                throw new NeveljavenVnosIzjema("Vsaka ura kola mora biti vpisana (00:00 = ura ni dolocena).");
             }
             if (ura.equals(LocalTime.MIDNIGHT)) {
                 continue;
             }
-            if (prejsnja != null && ura.isBefore(prejsnja)) {
-                throw new NeveljavenVnosIzjema("Ure srecanj v kolu morajo teci naprej: "
-                        + oblikujUro(ura) + " je pred " + oblikujUro(prejsnja) + ".");
+            if (prejsnja != null && !ura.isAfter(prejsnja)) {
+                throw new NeveljavenVnosIzjema("Ure kola morajo teci naprej: " + oblikujUro(ura)
+                        + " ni za " + oblikujUro(prejsnja) + " (ob isti uri bi ekipe igrale dve srecanji hkrati).");
             }
             prejsnja = ura;
         }

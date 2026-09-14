@@ -893,10 +893,9 @@ function datumKola(srecanja: SrecanjeDto[], kolo: number): string | null {
   return terminKola(srecanja, kolo)?.slice(0, 10) ?? null
 }
 
-/* Ali se srečanja kola začnejo ob različnih urah — liga z urami srečanj
-   (večer z nekaj srečanji zapored). Takrat je ura last srečanja: kolo nosi
-   samo dan, ura pa stoji pri srečanju. Enaki uri sta dve mizi hkrati in ostaneta
-   ura kola. */
+/* Ali se srečanja kola začnejo ob različnih urah — liga z urami (večer z več
+   krogi zapored, npr. ob 18.30 in 19.45). Takrat je ura last srečanja: kolo
+   nosi samo dan, ura pa stoji pri srečanju. */
 function ureVKolu(srecanja: SrecanjeDto[], kolo: number): boolean {
   const ure = srecanja.filter((s) => s.kolo === kolo).map((s) => oblikujUro(s.predvidenZacetek))
   return new Set(ure.filter(Boolean)).size > 1
@@ -2175,13 +2174,13 @@ function ekipTekst(n: number): string {
   return 'ekip'
 }
 
-/* Kako se kolo igra, za pravila lige: krog krožnega sistema ali večer z
-   nekaj srečanji ob urah (»2 srečanji na večer · 18.30, 19.45«). */
+/* Kako se kolo igra, za pravila lige: en krog ali večer z več krogi, vsak ob
+   svoji uri (»vsaka ekipa 2 srečanji · 18.30, 19.45«). */
 function opisKola(ure: string[] | null): string {
-  if (!ure) return 'vsaka ekipa enkrat'
+  if (!ure) return 'vsaka ekipa 1 srečanje'
   const n = ure.length
-  const oblika = n === 1 ? 'srečanje' : n === 2 ? 'srečanji' : n <= 4 ? 'srečanja' : 'srečanj'
-  return `${n} ${oblika} na večer · ${ure.map((u) => oblikujUro(u) || 'ura ni določena').join(', ')}`
+  const oblika = n === 2 ? 'srečanji' : n <= 4 ? 'srečanja' : 'srečanj'
+  return `vsaka ekipa ${n} ${oblika} · ${ure.map((u) => oblikujUro(u) || 'ura ni določena').join(', ')}`
 }
 
 /* Slovnično pravilna oblika besede "kolo" glede na število. */

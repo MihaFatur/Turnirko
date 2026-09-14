@@ -153,8 +153,8 @@
     `LigaStoritev` (vpis prižge, žreb in razveljavitev ugasneta), zato se
     vpisan razpored in žreb ne moreta razglasiti drug za drugega.
   - **Strežnik preverja strukturo, ne popolnosti.** Zavrne ekipo z dvema
-    srečanjema hkrati — v kolu krožnega sistema dve srečanji v kolu (kolo je en
-    igralni dan), v ligi z urami srečanj dve srečanji ob isti uri —, ekipo samo proti sebi,
+    srečanjema hkrati — v kolu z enim krogom dve srečanji v kolu (kolo je en
+    igralni dan), v ligi z urami dve srečanji ob isti uri kola —, ekipo samo proti sebi,
     ekipo iz druge lige in vrzel med koli (kola tečejo od 1 naprej). Par, ki se
     ne sreča, in par, ki igra trikrat, pa **spusti skozi**: ročno vodene lige
     imajo tudi nepopolne razporede in popolnost je stvar tekmovanja, ne sheme.
@@ -186,41 +186,49 @@
   (`PUT /lige/{id}/termini`) — kot prehodi **v vsakem stanju lige** in ne pod
   zaklepom pravil, ker se kolo prestavi tudi sredi sezone. Prestavljeno kolo
   **ne premakne naslednjih** (ta so že objavljena) in semena ne popravi.
-  **Dan** je last kola; ura je pri kolu krožnega sistema ena za vsa srečanja,
-  liga z urami srečanj (spodaj) pa ima uro pri vsakem srečanju.
+  **Dan** je last kola; ura je pri kolu z enim krogom ena za vsa srečanja,
+  liga z urami kola (spodaj) pa ima uro pri vsakem srečanju.
   Ura `00:00` pomeni »ura ni določena« — vmesnik takrat izpiše samo datum.
-- **Ure srečanj v kolu: kolo je VEČER, ne krog** (V31, `liga.ure_srecanj`,
-  zapis `"18:30,19:45"`). Lige z eno mizo igrajo kolo kot nekaj srečanj
-  zapored in ista ekipa v njem nastopi večkrat. Število ur JE število srečanj v
-  kolu, i-to srečanje se začne ob i-ti uri. `NULL` = kolo krožnega sistema
-  (vsaka ekipa enkrat) — enakovredna izbira, ne manjkajoča vrednost.
+- **Ure kola: kolo je VEČER z več krogi, ne en krog** (V31,
+  `liga.ure_srecanj`, zapis `"18:30,19:45"`). Liga, ki se zbere en večer na
+  teden, v kolu odigra toliko krogov krožnega sistema, kolikor je ur: ob prvi
+  uri prvega, ob drugi drugega. **Vsaka ekipa v kolu torej odigra toliko
+  srečanj, kolikor je ur, kol pa je toliko manj** (dve uri = pol manj kol).
+  Ob isti uri igrajo vse ekipe hkrati, vsaka enkrat. `NULL` = kolo je en krog
+  — enakovredna izbira, ne manjkajoča vrednost.
+  - **Ni »razvrščanja po večerih«**: `RazporedStoritev.razpored(..., ure)`
+    vzame pare krožnega sistema nespremenjene in krog `k` postavi v kolo
+    `(k-1)/N + 1` ob uri `(k-1) % N`. Vsak z vsakim, domače pravice in žreb po
+    parih zato veljajo brez posebne veje. Pri dvokrožni ligi sme večer združiti
+    zadnji krog prvega dela s prvim povratnim — le tako je kol res N-krat manj.
   - **Ure so pravilo tekmovanja** (od njih je odvisen žreb), zato jih ureja
-    `uredi` in se po žrebu zaklenejo. Ura v semenu (`zacetek_prvega_kola`) je
-    ura prvega srečanja; `uporabiVnos` jo poravna s prvo uro seznama. Ure
-    morajo teči naprej (enaki = dve mizi hkrati), 00:00 se ne primerja, največ
-    `NAJVEC_SRECANJ_V_KOLU` (10).
-  - **Žreb pare vzame iz krožnega sistema in jih samo razdeli po večerih**
-    (`RazporedStoritev.razdeliPoUrah`), zato vsak z vsakim in domače pravice
-    ostanejo. Na vsako mesto gre srečanje brez ekipe, ki ob **isti** uri že
-    igra (trd pogoj), z najmanj nastopi obeh ekip v tem kolu (ekipa igra
-    dvakrat samo, kadar drugače ne gre) in najbolj zgodaj v krožnem sistemu.
-    Povratni krog pride na vrsto šele po prvem. Mesto, ki mu ni srečanja, ostane
-    prazno, zato `ParNaMestu` nosi **mesto** in ne le kolo — po njem dobi
-    srečanje uro (`terminSrecanja`), predlog (`ParRazporedaDto.mesto`) in ročni
-    vpis (`ParVnos.mesto`) pa isto pomenita.
-  - **Ekipa ne igra dveh srečanj hkrati — na treh mestih**: žreb, ročni vpis
-    (`rocniRazpored`: ključ je kolo oz. kolo + ura) in popravek terminov
-    (`preveriHkratnaSrecanja`). Zadnji šteje le trke, v katerih je vsaj eno
-    srečanje spremenil ta vnos — star zapis ne sme ustaviti nepovezanega
-    popravka.
+    `uredi` in se po žrebu zaklenejo. Vsaj **dve** (ena ura je navadna liga z
+    uro v semenu — dveh zapisov za isto ne sme biti), največ
+    `NAJVEC_UR_V_KOLU` (10), **strogo naraščajoče** (enaki uri bi pomenili dve
+    srečanji vsake ekipe hkrati); 00:00 se ne primerja. Ura v semenu
+    (`zacetek_prvega_kola`) je ura prvega kroga; `uporabiVnos` jo poravna s
+    prvo uro seznama.
+  - **Srečanje si zapomni svojo uro kola** (`srecanje.ura_v_kolu`, V31;
+    `SrecanjeDto.uraVKolu`, prazno pri ligi brez ur). Iz začetka se je ne da
+    zanesljivo prebrati: liga brez datuma ga ob žrebu nima, organizator pa ga
+    sme prestaviti. Po njej `terminSrecanja` izračuna začetek, polnilo v
+    `TerminiOkno` vrne uro lige, predlog (`ParRazporedaDto.uraVKolu`) in ročni
+    vpis (`ParVnos.uraVKolu`) pa pomenita isto.
+  - **Ekipa ne igra dveh srečanj hkrati — na treh mestih**: žreb (po zgradbi),
+    ročni vpis (`rocniRazpored`: ključ je kolo + ura kola; pri ligi brez ur je
+    ura vedno 0, zato je to celo kolo) in popravek terminov
+    (`preveriHkratnaSrecanja`, po dejanskem začetku). Zadnji šteje le trke, v
+    katerih je vsaj eno srečanje spremenil ta vnos — star zapis ne sme ustaviti
+    nepovezanega popravka.
   - **Popravek ure je po srečanju** (`TerminiVnos.srecanja`, obvelja za
     terminom kola). Srečanja lige zato pridejo **po kolu in začetku**
     (`najdiZaLigo`, `najdiRednaZaLigo`): razpored, »naslednje srečanje« in
     koledar sledijo uri, ne vrstnemu redu zapisa.
   - Vmesnik: v razporedu stoji ura na mestu izida, dokler srečanje ni
     odigrano, kolo pa nosi samo dan (`ureVKolu` v `LigaStran`) — nova kolona
-    bi na 390 px ne šla. V `RocniZrebOkno` je vrstica mesto z uro (ni je mogoče
-    dodati ali brisati, le izprazniti; zamenjava ekip samo ob isti uri).
+    bi na 390 px ne šla. `RocniZrebOkno` srečanja kola razdeli po urah (tako
+    jih ima papirnati razpored); zamenjava ekip velja samo med srečanji iste
+    ure.
 - **Časovni žig s pomembno uro potrebuje `@Convert(CasKotBesedilo.class)`.**
   Gonilnik sqlite-jdbc pozna eno samo obliko za datume (`date_string_format`,
   v `application.properties` `yyyy-MM-dd`) in z njo piše **tudi** časovne žige

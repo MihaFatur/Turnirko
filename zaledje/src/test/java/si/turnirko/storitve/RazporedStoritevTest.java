@@ -161,144 +161,93 @@ class RazporedStoritevTest {
         }
     }
 
-    // ---------- ure srecanj (kolo je vecer z vec srecanji) ----------
+    // ---------- ure srecanj (kolo je vecer z vec krogi) ----------
 
     private static final LocalTime OB_1830 = LocalTime.of(18, 30);
     private static final LocalTime OB_1945 = LocalTime.of(19, 45);
 
-    /* Brez ur je razpored z mesti isti kot navadni: isti pari v istih kolih,
-       mesto je le zaporedje v kolu. */
+    /* Brez ur je razpored z urami isti kot navadni: isti pari v istih kolih,
+       vsa srecanja kola ob isti (prvi) uri. */
     @Test
     void brezUrRazporedOstaneNavaden() {
         List<RazporedStoritev.Par> navaden = razpored.razpored(6, true, false);
-        List<RazporedStoritev.ParNaMestu> zMesti = razpored.razpored(6, true, false, null);
+        List<RazporedStoritev.ParObUri> zUrami = razpored.razpored(6, true, false, null);
 
-        assertEquals(navaden, zMesti.stream().map(RazporedStoritevTest::brezMesta).toList());
-        assertEquals(List.of(0, 1, 2), zMesti.stream().filter(p -> p.kolo() == 1)
-                .map(RazporedStoritev.ParNaMestu::mesto).toList());
+        assertEquals(navaden, zUrami.stream().map(RazporedStoritevTest::brezUre).toList());
+        assertTrue(zUrami.stream().allMatch(p -> p.uraVKolu() == 0));
     }
 
-    /* Razdelitev po vecerih ne sme izgubiti ali podvojiti nobenega srecanja in
-       ne sme dati kolu vec srecanj, kot je ur - ne glede na stevilo ekip,
-       stevilo ur, krog in zreb po parih. */
+    /* Primer iz zahteve: dve uri (18.30 in 19.45) pomenita, da vsaka ekipa v
+       kolu odigra dve srecanji - ob vsaki uri enega. Kol je zato pol manj:
+       stiri ekipe dvokrozno imajo 6 krogov in s tem 3 kola. */
     @Test
-    void poUrahOstaneVsakZVsakimInKoloNimaVecSrecanjKotUr() {
+    void dveUriRazpolovitaKola() {
+        List<RazporedStoritev.ParObUri> pari = razpored.razpored(4, true, false, List.of(OB_1830, OB_1945));
+
+        assertEquals(12, pari.size(), "srecanj je toliko kot pri kroznem sistemu");
+        assertEquals(3, steviloKol(pari.stream().map(RazporedStoritevTest::brezUre).toList()), "6 krogov / 2 = 3 kola");
+        for (int kolo = 1; kolo <= 3; kolo++) {
+            for (int ekipa = 0; ekipa < 4; ekipa++) {
+                final int k = kolo;
+                final int e = ekipa;
+                List<Integer> ure = pari.stream()
+                        .filter(p -> p.kolo() == k && (p.domaci() == e || p.gost() == e))
+                        .map(RazporedStoritev.ParObUri::uraVKolu).sorted().toList();
+                assertEquals(List.of(0, 1), ure,
+                        "ekipa " + ekipa + " v " + kolo + ". kolu igra ob 18.30 in ob 19.45");
+            }
+        }
+    }
+
+    /* Vecer zdruzi zaporedne kroge kroznega sistema: ob prvi uri N-tega kola se
+       igra krog 2N-1, ob drugi krog 2N. Pari ostanejo pari zreba. */
+    @Test
+    void uraKolaJeZaporedniKrog() {
+        List<RazporedStoritev.Par> krogi = razpored.razpored(6, true, false);
+        List<RazporedStoritev.ParObUri> pari = razpored.razpored(6, true, false, List.of(OB_1830, OB_1945));
+
+        for (RazporedStoritev.ParObUri p : pari) {
+            int krog = (p.kolo() - 1) * 2 + p.uraVKolu() + 1;
+            assertTrue(krogi.contains(new RazporedStoritev.Par(krog, p.domaci(), p.gost())),
+                    p + " mora biti srecanje " + krog + ". kroga");
+        }
+    }
+
+    /* Ne glede na stevilo ekip, ur, krog in zreb po parih: vsak z vsakim
+       ostane, ekipa ob isti uri kola igra najvec enkrat in kol je toliko, kot
+       je krogov deljeno z urami (navzgor). */
+    @Test
+    void poUrahVsakZVsakimInEkipaObUriIgraEnkrat() {
         for (int stEkip = 2; stEkip <= 10; stEkip++) {
-            for (int urVKolu = 1; urVKolu <= 5; urVKolu++) {
-                final int stUr = urVKolu;
+            for (int stUr = 2; stUr <= 4; stUr++) {
                 List<LocalTime> ure = new ArrayList<>();
                 for (int i = 0; i < stUr; i++) {
                     ure.add(LocalTime.of(17 + i, 0));
                 }
                 for (boolean dvokrozno : new boolean[] { false, true }) {
                     for (boolean poParih : new boolean[] { false, true }) {
-                        List<RazporedStoritev.ParNaMestu> pari =
-                                razpored.razpored(stEkip, dvokrozno, poParih, ure);
-                        String primer = stEkip + " ekip, " + stUr + " ur";
-                        preveriVsakParEnkrat(pari.stream().map(RazporedStoritevTest::brezMesta).toList(),
+                        String primer = stEkip + " ekip, " + stUr + " ur, dvokrozno " + dvokrozno
+                                + ", po parih " + poParih;
+                        List<RazporedStoritev.ParObUri> pari = razpored.razpored(stEkip, dvokrozno, poParih, ure);
+                        preveriVsakParEnkrat(pari.stream().map(RazporedStoritevTest::brezUre).toList(),
                                 stEkip, dvokrozno);
-                        int kol = pari.stream().mapToInt(RazporedStoritev.ParNaMestu::kolo).max().orElse(0);
-                        for (int kolo = 1; kolo <= kol; kolo++) {
-                            final int k = kolo;
-                            List<Integer> mesta = pari.stream().filter(p -> p.kolo() == k)
-                                    .map(RazporedStoritev.ParNaMestu::mesto).toList();
-                            assertFalse(mesta.isEmpty(), primer + ": kolo " + kolo + " je prazno");
-                            assertEquals(mesta.size(), new HashSet<>(mesta).size(),
-                                    primer + ": dve srecanji na istem mestu");
-                            assertTrue(mesta.stream().allMatch(m -> m >= 0 && m < stUr),
-                                    primer + ": mesto brez ure");
+
+                        Set<String> obUri = new HashSet<>();
+                        for (RazporedStoritev.ParObUri p : pari) {
+                            assertTrue(p.uraVKolu() >= 0 && p.uraVKolu() < stUr, primer + ": ura zunaj seznama");
+                            assertTrue(obUri.add(p.kolo() + "|" + p.uraVKolu() + "|" + p.domaci()), primer);
+                            assertTrue(obUri.add(p.kolo() + "|" + p.uraVKolu() + "|" + p.gost()), primer);
                         }
+                        int krogov = steviloKol(razpored.razpored(stEkip, dvokrozno, poParih));
+                        assertEquals((krogov + stUr - 1) / stUr,
+                                steviloKol(pari.stream().map(RazporedStoritevTest::brezUre).toList()), primer);
                     }
                 }
             }
         }
     }
 
-    /* Primer iz zahteve: tri ekipe, dve srecanji na vecer (18.30 in 19.45).
-       Vsak vecer je poln, ena ekipa igra dvakrat, a ne ob isti uri, in
-       nobena ne igra dvakrat dva vecera zapored na racun druge. */
-    @Test
-    void triEkipeDveSrecanjiNaVecer() {
-        List<RazporedStoritev.ParNaMestu> pari = razpored.razpored(3, true, false, List.of(OB_1830, OB_1945));
-
-        assertEquals(3, pari.stream().mapToInt(RazporedStoritev.ParNaMestu::kolo).max().orElse(0),
-                "6 srecanj po 2 na vecer = 3 kola");
-        for (int kolo = 1; kolo <= 3; kolo++) {
-            final int k = kolo;
-            List<RazporedStoritev.ParNaMestu> vecer = pari.stream().filter(p -> p.kolo() == k).toList();
-            assertEquals(2, vecer.size(), "vecer " + kolo + " je poln");
-            assertEquals(List.of(0, 1), vecer.stream().map(RazporedStoritev.ParNaMestu::mesto).toList());
-        }
-        // vsaka ekipa igra dvakrat na natanko enem vecerov - obremenitev je enaka
-        for (int ekipa = 0; ekipa < 3; ekipa++) {
-            final int e = ekipa;
-            long dvojnihVecerov = java.util.stream.IntStream.rangeClosed(1, 3)
-                    .filter(k -> pari.stream().filter(p -> p.kolo() == k)
-                            .filter(p -> p.domaci() == e || p.gost() == e).count() == 2)
-                    .count();
-            assertEquals(1, dvojnihVecerov, "ekipa " + ekipa + " igra dvakrat na enem vecerov");
-        }
-    }
-
-    /* Ekipa sme v kolu igrati veckrat, a samo kadar drugace ne gre: ce je ur
-       najvec za polovico ekip, gre razpored brez dvojnih nastopov (pri sodem
-       stevilu ekip, kjer krozni sistem to omogoca). */
-    @Test
-    void poUrahEkipaIgraVeckratSamoKoDrugaceNeGre() {
-        for (int stEkip : new int[] { 4, 6, 8, 10 }) {
-            for (int stUr = 1; stUr <= stEkip / 2; stUr++) {
-                List<LocalTime> ure = new ArrayList<>();
-                for (int i = 0; i < stUr; i++) {
-                    ure.add(LocalTime.of(17 + i, 0));
-                }
-                List<RazporedStoritev.ParNaMestu> pari = razpored.razpored(stEkip, true, false, ure);
-                preveriBrezPonovitevVKolu(pari.stream().map(RazporedStoritevTest::brezMesta).toList());
-            }
-        }
-    }
-
-    /* Dve mizi hkrati: ekipa ne sme igrati dveh srecanj ob isti uri, tudi ce
-       bi jo to potegnilo v isto kolo. */
-    @Test
-    void poUrahEkipaNeIgraDvakratObIstiUri() {
-        List<LocalTime> dveMizi = List.of(LocalTime.of(18, 0), LocalTime.of(18, 0),
-                LocalTime.of(19, 30), LocalTime.of(19, 30));
-        for (int stEkip = 3; stEkip <= 9; stEkip++) {
-            List<RazporedStoritev.ParNaMestu> pari = razpored.razpored(stEkip, true, false, dveMizi);
-            Set<String> zasedeno = new HashSet<>();
-            for (RazporedStoritev.ParNaMestu p : pari) {
-                LocalTime ura = dveMizi.get(p.mesto());
-                assertTrue(zasedeno.add(p.kolo() + "|" + ura + "|" + p.domaci()),
-                        stEkip + " ekip: ekipa " + p.domaci() + " dvakrat ob " + ura + " v kolu " + p.kolo());
-                assertTrue(zasedeno.add(p.kolo() + "|" + ura + "|" + p.gost()),
-                        stEkip + " ekip: ekipa " + p.gost() + " dvakrat ob " + ura + " v kolu " + p.kolo());
-            }
-            preveriVsakParEnkrat(pari.stream().map(RazporedStoritevTest::brezMesta).toList(), stEkip, true);
-        }
-    }
-
-    /* Povratni krog pride na vrsto sele, ko je razdeljen prvi: nobeno srecanje
-       drugega kroga ne sme stati v kolu pred srecanjem prvega. */
-    @Test
-    void poUrahPrviKrogPredPovratnim() {
-        for (int stEkip = 3; stEkip <= 8; stEkip++) {
-            Set<String> prviKrog = new HashSet<>();
-            for (RazporedStoritev.Par p : razpored.razpored(stEkip, false, false)) {
-                prviKrog.add(p.domaci() + ">" + p.gost());
-            }
-            List<RazporedStoritev.ParNaMestu> pari = razpored.razpored(stEkip, true, false,
-                    List.of(OB_1830, OB_1945, LocalTime.of(21, 0)));
-            int zadnjeKoloPrvega = pari.stream().filter(p -> prviKrog.contains(p.domaci() + ">" + p.gost()))
-                    .mapToInt(RazporedStoritev.ParNaMestu::kolo).max().orElse(0);
-            int prvoKoloPovratnega = pari.stream().filter(p -> !prviKrog.contains(p.domaci() + ">" + p.gost()))
-                    .mapToInt(RazporedStoritev.ParNaMestu::kolo).min().orElse(0);
-            assertTrue(zadnjeKoloPrvega <= prvoKoloPovratnega,
-                    stEkip + " ekip: povratno srecanje v " + prvoKoloPovratnega
-                            + ". kolu, prvi krog pa traja do " + zadnjeKoloPrvega + ".");
-        }
-    }
-
-    private static RazporedStoritev.Par brezMesta(RazporedStoritev.ParNaMestu p) {
+    private static RazporedStoritev.Par brezUre(RazporedStoritev.ParObUri p) {
         return new RazporedStoritev.Par(p.kolo(), p.domaci(), p.gost());
     }
 

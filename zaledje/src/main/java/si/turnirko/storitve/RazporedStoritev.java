@@ -7,18 +7,14 @@
    igrala z njim, v tem kolu pocitka. Pri dvokroznem sistemu drugi krog ponovi
    pare z zamenjano vlogo doma/gost.
 
-   Liga z urami srecanj (V31) isti razpored razdeli po VECERIH - glej
-   razdeliPoUrah. */
+   Liga z urami srecanj (V31) v enem kolu odigra vec krogov zapored - glej
+   razpored(..., ure). */
 package si.turnirko.storitve;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -28,100 +24,32 @@ public class RazporedStoritev {
     /* En par srecanja: kolo (1..), indeksa domace in gostujoce ekipe. */
     public record Par(int kolo, int domaci, int gost) {}
 
-    /* Par z mestom v kolu (0 = prvo srecanje kola). Pri ligi z urami mesto
-       pove, ob kateri uri se srecanje zacne; pri kolu kroznega sistema je le
-       zaporedje, ker se vsa srecanja kola zacnejo hkrati. */
-    public record ParNaMestu(int kolo, int mesto, int domaci, int gost) {}
+    /* Par z uro v kolu: uraVKolu je indeks ure lige (0 = prva), ob kateri se
+       srecanje zacne. Pri kolu kroznega sistema je vedno 0 - vsa srecanja kola
+       se zacnejo hkrati. */
+    public record ParObUri(int kolo, int uraVKolu, int domaci, int gost) {}
 
-    /* Razpored lige z mesti v kolu. Brez ur (null) je to navadni razpored,
-       sicer isti pari, razdeljeni po vecerih z ure.size() srecanji. */
-    public List<ParNaMestu> razpored(int stEkip, boolean dvokrozno, boolean poParih, List<LocalTime> ure) {
-        List<Par> pari = razpored(stEkip, dvokrozno, poParih);
-        if (ure == null) {
-            Map<Integer, Integer> vKolu = new HashMap<>();
-            List<ParNaMestu> rezultat = new ArrayList<>();
-            for (Par p : pari) {
-                int mesto = vKolu.merge(p.kolo(), 1, Integer::sum) - 1;
-                rezultat.add(new ParNaMestu(p.kolo(), mesto, p.domaci(), p.gost()));
-            }
-            return rezultat;
-        }
-        int kolVCiklu = razpored(stEkip, false, poParih).stream().mapToInt(Par::kolo).max().orElse(1);
-        return razdeliPoUrah(pari, kolVCiklu, ure);
-    }
+    /* Razpored lige z urami v kolu.
 
-    /* Razdelitev razporeda po vecerih: kolo ima toliko mest, kolikor je ur, in
-       ekipa sme v njem igrati veckrat - to je smisel lige, ki igra ob urah
-       (ena miza, nekaj ekip, vec srecanj na vecer).
+       Brez ur (null) je kolo krog kroznega sistema. Z N urami je kolo VECER, v
+       katerem se odigra N krogov zapored: ob prvi uri prvi, ob drugi drugi ...
+       Vsaka ekipa ta vecer torej odigra N srecanj, ob vsaki uri najvec eno (ob
+       isti uri igrajo vse ekipe hkrati, na vec mizah), in kol je N-krat manj.
 
-       Pari pridejo iz kroznega sistema, zato je vsak z vsakim ze zagotovljen,
-       prav tako razdelitev domacih pravic. Tu se odloci le, katero srecanje gre
-       na katero mesto. Mesta se polnijo po vrsti, na vsako gre srecanje, ki:
-         1. nima ekipe, ki ob ISTI uri ze igra (dve mizi ob 18.00 - trd pogoj;
-            ura 00:00 ni dolocena in ne trci z nicimer),
-         2. cim manj obremeni ekipi, ki v tem kolu ze igrata - ekipa igra dvakrat
-            na vecer samo, kadar drugace ne gre, sicer bi ena igrala tri srecanja,
-            druga pa pocivala,
-         3. je v kroznem sistemu najbolj zgodaj - razpored ostane cim blizje
-            zrebu.
-       Srecanja drugega kroga pridejo na vrsto sele, ko so razdeljena vsa iz
-       prvega: povratno srecanje pred prvim bi gledalca zmedlo.
-
-       Mesto, ki mu ni mogoce najti srecanja (vse ekipe ob tej uri ze igrajo),
-       ostane prazno. Prazno kolo nastati ne more - v praznem kolu ni trkov. */
-    private static List<ParNaMestu> razdeliPoUrah(List<Par> pari, int kolVCiklu, List<LocalTime> ure) {
-        // po kolu kroznega sistema; stabilno, ker razpored po parih dve koli kroga prepleta
-        List<Par> cakajo = new ArrayList<>(pari);
-        cakajo.sort(Comparator.comparingInt(Par::kolo));
-
-        List<ParNaMestu> rezultat = new ArrayList<>();
-        int kolo = 0;
-        while (!cakajo.isEmpty()) {
-            kolo++;
-            Map<Integer, Integer> nastopov = new HashMap<>();
-            Map<LocalTime, Set<Integer>> zasedeneObUri = new HashMap<>();
-            for (int mesto = 0; mesto < ure.size() && !cakajo.isEmpty(); mesto++) {
-                LocalTime ura = ure.get(mesto);
-                Set<Integer> obTejUri = ura.equals(LocalTime.MIDNIGHT)
-                        ? new HashSet<>()
-                        : zasedeneObUri.computeIfAbsent(ura, u -> new HashSet<>());
-                int krog = krog(cakajo.get(0), kolVCiklu);
-
-                int izbran = -1;
-                int najmanjVecji = Integer.MAX_VALUE;
-                int najmanjSkupaj = Integer.MAX_VALUE;
-                for (int i = 0; i < cakajo.size() && krog(cakajo.get(i), kolVCiklu) == krog; i++) {
-                    Par p = cakajo.get(i);
-                    if (obTejUri.contains(p.domaci()) || obTejUri.contains(p.gost())) {
-                        continue;
-                    }
-                    int a = nastopov.getOrDefault(p.domaci(), 0);
-                    int b = nastopov.getOrDefault(p.gost(), 0);
-                    if (Math.max(a, b) < najmanjVecji
-                            || (Math.max(a, b) == najmanjVecji && a + b < najmanjSkupaj)) {
-                        izbran = i;
-                        najmanjVecji = Math.max(a, b);
-                        najmanjSkupaj = a + b;
-                    }
-                }
-                if (izbran < 0) {
-                    continue;
-                }
-
-                Par p = cakajo.remove(izbran);
-                nastopov.merge(p.domaci(), 1, Integer::sum);
-                nastopov.merge(p.gost(), 1, Integer::sum);
-                obTejUri.add(p.domaci());
-                obTejUri.add(p.gost());
-                rezultat.add(new ParNaMestu(kolo, mesto, p.domaci(), p.gost()));
-            }
-        }
-        return rezultat;
-    }
-
-    /* Krog kroznega sistema (0 = prvi, 1 = povratni), v katerega par sodi. */
-    private static int krog(Par p, int kolVCiklu) {
-        return (p.kolo() - 1) / kolVCiklu;
+       Pari in njihov vrstni red ostanejo tocno taki kot pri kroznem sistemu -
+       vecer le zdruzi zaporedne kroge. Zato vsak z vsakim, domace pravice in
+       razpored po parih veljajo naprej brez posebne veje. Pri lihem stevilu
+       krogov ima zadnje kolo manj ur; pri dvokroznem sistemu sme vecer zdruziti
+       zadnji krog prvega dela s prvim krogom povratnega - kola so tako res
+       N-krat manj, pari obeh krogov pa niso isti. */
+    public List<ParObUri> razpored(int stEkip, boolean dvokrozno, boolean poParih, List<LocalTime> ure) {
+        int urVKolu = ure == null || ure.isEmpty() ? 1 : ure.size();
+        return razpored(stEkip, dvokrozno, poParih).stream()
+                // razpored po parih dve koli kroga prepleta; stabilno uredimo po krogu
+                .sorted(Comparator.comparingInt(Par::kolo))
+                .map(p -> new ParObUri((p.kolo() - 1) / urVKolu + 1, (p.kolo() - 1) % urVKolu,
+                        p.domaci(), p.gost()))
+                .toList();
     }
 
     /* Celoten razpored za dano stevilo ekip po navadnem kroznem sistemu.

@@ -28,15 +28,15 @@ public record RocniRazporedVnos(
 
     /* Eno srecanje: kolo (1..) ter domaca in gostujoca ekipa.
 
-       Mesto (0 = prvo srecanje kola) steje samo pri ligi z urami srecanj: pove,
-       ob kateri uri lige se srecanje zacne. Prazno pomeni zaporedje v vnosu -
-       prvo nasteto srecanja kola gre na prvo mesto. Pri kolu kroznega sistema
-       se vsa srecanja zacnejo hkrati in mesto ne pomeni nicesar. */
+       uraVKolu (0 = prva ura lige) steje samo pri ligi z urami srecanj: pove,
+       ob kateri uri kola se srecanje zacne; prazno je prva ura. Pri kolu
+       kroznega sistema se vsa srecanja kola zacnejo hkrati in ga ni treba
+       podati. */
     public record ParVnos(
             @NotNull(message = "stevilka kola je obvezna") Integer kolo,
             @NotNull(message = "domaca ekipa je obvezna") Long idDomaci,
             @NotNull(message = "gostujoca ekipa je obvezna") Long idGost,
-            Integer mesto
+            Integer uraVKolu
     ) {
 
         public ParVnos(Integer kolo, Long idDomaci, Long idGost) {

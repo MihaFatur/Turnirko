@@ -1,11 +1,12 @@
-/* Liga z urami srecanj (V31): kolo je vecer z nekaj srecanji zapored, npr. ob
-   18.30 in ob 19.45, in ekipa v njem sme igrati veckrat.
+/* Liga z urami srecanj (V31): kolo je vecer, v katerem se odigra vec krogov
+   zapored - npr. ob 18.30 prvi in ob 19.45 drugi. Vsaka ekipa ta vecer igra
+   dvakrat in kol je pol manj.
 
-   Testi varujejo, da vsako srecanje dobi uro svojega mesta in da ta preziv
-   zapis v bazo, da se ura popravi po srecanjih (in razpored ji sledi), da
-   ekipa nikoli ne igra dveh srecanj hkrati - ne pri zrebu, ne pri rocnem
-   vpisu in ne pri popravku termina - ter da streznik zavrne ure, ki ne tecejo
-   naprej. Kako se pari razdelijo po vecerih, je cista logika in jo drzi
+   Testi varujejo, da srecanje dobi uro svojega kroga (zacetek in uro v kolu)
+   in da ta preziv zapis v bazo, da se ura popravi po srecanjih (in razpored ji
+   sledi), da ekipa nikoli ne igra dveh srecanj hkrati - ne pri rocnem vpisu in
+   ne pri popravku termina - ter da streznik zavrne ure, ki ne tecejo naprej.
+   Kako se krogi zdruzijo v kola, je cista logika in jo drzi
    RazporedStoritevTest. */
 package si.turnirko.storitve;
 
@@ -48,47 +49,51 @@ class LigaUreSrecanjTest extends IntegracijskiTest {
     @Autowired private SrecanjeStoritev srecanjeStoritev;
     @PersistenceContext private EntityManager seja;
 
-    /* Primer iz zahteve: dve srecanji na vecer, ob 18.30 in ob 19.45. Ura mora
-       prezivet zapis v bazo (glej uraTerminaPrezivizapisVBazo), zato se seja
-       pred branjem izprazni. */
+    /* Primer iz zahteve: dve srecanji na vecer, ob 18.30 in ob 19.45. Stiri
+       ekipe dvokrozno imajo 6 krogov, zato 3 kola; v vsakem ob 18.30 igrata
+       dve srecanji (vse stiri ekipe) in ob 19.45 drugi dve. Ura mora prezivet
+       zapis v bazo (glej uraTerminaPrezivizapisVBazo), zato se seja izprazni. */
     @Test
-    void srecanjaKolaSeZacnejoObUrahLige() {
+    void vsakaEkipaVKoluIgraObObehUrah() {
         Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
-        dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
+        List<Long> ekipe = dodajEkipe(liga, "Ek A", "Ek B", "Ek C", "Ek D");
         ligaStoritev.generirajRazpored(liga);
 
         seja.flush();
         seja.clear();
 
         List<SrecanjeDto> srecanja = srecanjeStoritev.zaLigo(liga);
-        assertEquals(6, srecanja.size(), "tri ekipe dvokrozno: 6 srecanj");
-        assertEquals(3, srecanja.stream().mapToInt(SrecanjeDto::kolo).max().orElse(0),
-                "po dve srecanji na vecer: 3 kola");
+        assertEquals(12, srecanja.size(), "srecanj je toliko kot pri kroznem sistemu");
+        assertEquals(3, srecanja.stream().mapToInt(SrecanjeDto::kolo).max().orElse(0), "kol je pol manj");
         for (int kolo = 1; kolo <= 3; kolo++) {
+            final int k = kolo;
             LocalDateTime dan = PRVI_VECER.plusDays(7L * (kolo - 1));
-            assertEquals(List.of(dan.toLocalDate().atTime(OB_1830), dan.toLocalDate().atTime(OB_1945)),
-                    zacetkiKola(srecanja, kolo), kolo + ". kolo");
+            assertEquals(List.of(dan.with(OB_1830), dan.with(OB_1830), dan.with(OB_1945), dan.with(OB_1945)),
+                    zacetkiKola(srecanja, kolo), kolo + ". kolo po uri");
+            for (Long ekipa : ekipe) {
+                assertEquals(List.of(0, 1), srecanja.stream()
+                        .filter(s -> s.kolo() == k && (s.idEkipaDomaci().equals(ekipa) || s.idEkipaGost().equals(ekipa)))
+                        .map(SrecanjeDto::uraVKolu).sorted().toList(),
+                        "ekipa igra v " + kolo + ". kolu ob vsaki uri enkrat");
+            }
         }
     }
 
-    /* Smisel lige z urami: ekipa sme v istem kolu igrati dvakrat - pri treh
-       ekipah in dveh srecanjih na vecer drugace sploh ne gre. */
+    /* Liga brez ur ostane liga kroznega sistema: kolo je krog in srecanje nima
+       ure v kolu. */
     @Test
-    void ekipaVKoluIgraVeckrat() {
-        Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
-        dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
+    void ligaBrezUrOstaneKrozniSistem() {
+        Long liga = ustvariLigo(PRVI_VECER, null);
+        dodajEkipe(liga, "Ek A", "Ek B", "Ek C", "Ek D");
         ligaStoritev.generirajRazpored(liga);
 
-        List<SrecanjeDto> prvoKolo = srecanjeStoritev.zaLigo(liga).stream().filter(s -> s.kolo() == 1).toList();
-        List<Long> nastopi = new ArrayList<>();
-        prvoKolo.forEach(s -> {
-            nastopi.add(s.idEkipaDomaci());
-            nastopi.add(s.idEkipaGost());
-        });
-        assertEquals(3, nastopi.stream().distinct().count(), "v kolu igrajo vse tri ekipe, ena dvakrat");
+        assertNull(ligaStoritev.najdi(liga).ureSrecanj());
+        List<SrecanjeDto> srecanja = srecanjeStoritev.zaLigo(liga);
+        assertEquals(6, srecanja.stream().mapToInt(SrecanjeDto::kolo).max().orElse(0));
+        assertTrue(srecanja.stream().allMatch(s -> s.uraVKolu() == null));
     }
 
-    /* Ura v semenu je ura prvega srecanja kola, zato se poravna s prvo uro
+    /* Ura v semenu je ura prvega kroga kola, zato se poravna s prvo uro
        seznama - sicer bi seme in ure povedala dve razlicni stvari. */
     @Test
     void semeInUreSeUjemata() {
@@ -99,66 +104,56 @@ class LigaUreSrecanjTest extends IntegracijskiTest {
         assertEquals(PRVI_VECER, dto.zacetekPrvegaKola());
     }
 
-    /* Liga brez ur ostane liga kroznega sistema. */
+    /* Ure morajo teci strogo naprej: ob vsaki se odigra cel krog, zato bi
+       enaki uri pomenili dve srecanji vsake ekipe hkrati. Ena sama ura je
+       navadna liga. Nedolocena ura (00:00) se ne primerja. */
     @Test
-    void ligaBrezUrNimaUr() {
-        Long liga = ustvariLigo(PRVI_VECER, null);
-
-        assertNull(ligaStoritev.najdi(liga).ureSrecanj());
-    }
-
-    /* Ure morajo teci naprej (razpored jih izpise po uri); enaki uri pa sta
-       dve mizi hkrati in sta dovoljeni, prav tako nedolocena ura. */
-    @Test
-    void ureSrecanjMorajoTeciNaprej() {
-        assertThrows(NeveljavenVnosIzjema.class,
-                () -> ustvariLigo(PRVI_VECER, List.of(OB_1945, OB_1830)));
-        assertThrows(NeveljavenVnosIzjema.class, () -> ustvariLigo(PRVI_VECER, List.of()));
+    void ureMorajoTeciNaprej() {
+        assertThrows(NeveljavenVnosIzjema.class, () -> ustvariLigo(PRVI_VECER, List.of(OB_1945, OB_1830)));
+        assertThrows(NeveljavenVnosIzjema.class, () -> ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1830)));
+        assertThrows(NeveljavenVnosIzjema.class, () -> ustvariLigo(PRVI_VECER, List.of(OB_1830)));
         List<LocalTime> enajst = new ArrayList<>();
         for (int i = 0; i < 11; i++) {
             enajst.add(LocalTime.of(10 + i, 0));
         }
         assertThrows(NeveljavenVnosIzjema.class, () -> ustvariLigo(PRVI_VECER, enajst));
 
-        ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1830, OB_1945));
-        ustvariLigo(PRVI_VECER, List.of(LocalTime.MIDNIGHT, OB_1945, LocalTime.MIDNIGHT));
+        ustvariLigo(PRVI_VECER, List.of(LocalTime.MIDNIGHT, LocalTime.MIDNIGHT, OB_1945));
     }
 
-    /* Organizator uro zamenja posameznemu srecanju. Razpored ji sledi: kolo
+    /* Organizator uro prestavi posameznemu srecanju. Razpored ji sledi: kolo
        se izpise po uri in ne po vrstnem redu zapisa. */
     @Test
-    void uraSeZamenjaPoSrecanjih() {
+    void uraSePrestaviPoSrecanjih() {
         Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
-        dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
+        dodajEkipe(liga, "Ek A", "Ek B", "Ek C", "Ek D");
         ligaStoritev.generirajRazpored(liga);
-        List<SrecanjeDto> prvoKolo = srecanjeStoritev.zaLigo(liga).stream().filter(s -> s.kolo() == 1).toList();
-        SrecanjeDto prvo = prvoKolo.get(0);
-        SrecanjeDto drugo = prvoKolo.get(1);
-        LocalDateTime dan = PRVI_VECER.toLocalDate().atStartOfDay();
+        SrecanjeDto prvo = srecanjeStoritev.zaLigo(liga).get(0);
+        LocalDateTime pozneje = PRVI_VECER.with(LocalTime.of(21, 0));
 
         ligaStoritev.nastaviTermine(liga, new TerminiVnos(List.of(), List.of(
-                new TerminiVnos.TerminSrecanja(prvo.id(), dan.with(OB_1945)),
-                new TerminiVnos.TerminSrecanja(drugo.id(), dan.with(OB_1830)))));
+                new TerminiVnos.TerminSrecanja(prvo.id(), pozneje))));
         seja.flush();
         seja.clear();
 
-        List<SrecanjeDto> poPopravku = srecanjeStoritev.zaLigo(liga).stream().filter(s -> s.kolo() == 1).toList();
-        assertEquals(List.of(drugo.id(), prvo.id()), poPopravku.stream().map(SrecanjeDto::id).toList(),
-                "kolo se izpise po uri");
-        assertEquals(dan.with(OB_1830), poPopravku.get(0).predvidenZacetek());
+        List<SrecanjeDto> prvoKolo = srecanjeStoritev.zaLigo(liga).stream().filter(s -> s.kolo() == 1).toList();
+        assertEquals(prvo.id(), prvoKolo.get(prvoKolo.size() - 1).id(), "prestavljeno srecanje je zadnje v kolu");
+        assertEquals(pozneje, prvoKolo.get(prvoKolo.size() - 1).predvidenZacetek());
+        assertEquals(0, prvoKolo.get(prvoKolo.size() - 1).uraVKolu(), "krog srecanja ostane isti");
     }
 
-    /* Ekipa, ki v kolu igra dvakrat, ne sme dobiti obeh srecanj ob isti uri.
-       Popravek, ki bi to naredil, se zavrne. */
+    /* Srecanje ob 19.45 prestavljeno na 18.30 bi ekipi dalo dve srecanji hkrati
+       - ob 18.30 obe ze igrata. Popravek se zavrne. */
     @Test
     void popravekNeSmePostavitiEkipeNaDveSrecanjiHkrati() {
         Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
-        dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
+        dodajEkipe(liga, "Ek A", "Ek B", "Ek C", "Ek D");
         ligaStoritev.generirajRazpored(liga);
-        SrecanjeDto drugo = srecanjeStoritev.zaLigo(liga).stream().filter(s -> s.kolo() == 1).toList().get(1);
+        SrecanjeDto obDrugiUri = srecanjeStoritev.zaLigo(liga).stream()
+                .filter(s -> s.kolo() == 1 && s.uraVKolu() == 1).findFirst().orElseThrow();
 
         TerminiVnos vnos = new TerminiVnos(List.of(), List.of(
-                new TerminiVnos.TerminSrecanja(drugo.id(), PRVI_VECER)));
+                new TerminiVnos.TerminSrecanja(obDrugiUri.id(), PRVI_VECER)));
         assertThrows(NeveljavenVnosIzjema.class, () -> ligaStoritev.nastaviTermine(liga, vnos));
     }
 
@@ -166,7 +161,7 @@ class LigaUreSrecanjTest extends IntegracijskiTest {
     @Test
     void popravekTujegaSrecanjaSeZavrne() {
         Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
-        dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
+        dodajEkipe(liga, "Ek A", "Ek B");
         ligaStoritev.generirajRazpored(liga);
 
         TerminiVnos vnos = new TerminiVnos(List.of(), List.of(
@@ -174,61 +169,59 @@ class LigaUreSrecanjTest extends IntegracijskiTest {
         assertThrows(NeveljavenVnosIzjema.class, () -> ligaStoritev.nastaviTermine(liga, vnos));
     }
 
-    /* Rocni vpis: mesto pove uro. Ekipa sme v kolu igrati dvakrat ob razlicnih
-       urah - pri kolu kroznega sistema bi bila to napaka. */
+    /* Rocni vpis: ura v kolu pove, ob kateri uri se srecanje igra. Ekipa sme v
+       kolu igrati dvakrat ob razlicnih urah - pri kolu kroznega sistema bi bila
+       to napaka. */
     @Test
     void rocniVpisDovoliEkipiDveSrecanjiObRazlicnihUrah() {
         Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
-        List<Long> ekipe = dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
-
-        List<SrecanjeDto> srecanja = ligaStoritev.rocniRazpored(liga, new RocniRazporedVnos(List.of(
-                new ParVnos(1, ekipe.get(1), ekipe.get(2), 1),
-                new ParVnos(1, ekipe.get(0), ekipe.get(1), 0))));
-
-        assertEquals(List.of("Ek A-Ek B", "Ek B-Ek C"), srecanja.stream()
-                .map(s -> s.domaci() + "-" + s.gost()).toList(), "kolo po uri, ne po vnosu");
-        assertEquals(List.of(PRVI_VECER, PRVI_VECER.with(OB_1945)), zacetkiKola(srecanja, 1));
-    }
-
-    /* Dve mizi ob isti uri: ekipa ne more igrati na obeh. */
-    @Test
-    void rocniVpisZavrneEkipoNaDvehMizahHkrati() {
-        Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1830));
-        List<Long> ekipe = dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
-
-        assertThrows(NeveljavenVnosIzjema.class,
-                () -> ligaStoritev.rocniRazpored(liga, new RocniRazporedVnos(List.of(
-                        new ParVnos(1, ekipe.get(0), ekipe.get(1), 0),
-                        new ParVnos(1, ekipe.get(0), ekipe.get(2), 1)))));
-    }
-
-    /* Kolo nima vec mest, kot je ur: srecanje brez ure ni vecer, ampak pomota. */
-    @Test
-    void rocniVpisZavrneSrecanjeBrezUre() {
-        Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
         List<Long> ekipe = dodajEkipe(liga, "Ek A", "Ek B", "Ek C", "Ek D");
 
-        assertThrows(NeveljavenVnosIzjema.class,
-                () -> ligaStoritev.rocniRazpored(liga, new RocniRazporedVnos(List.of(
-                        new ParVnos(1, ekipe.get(0), ekipe.get(1), 0),
-                        new ParVnos(1, ekipe.get(2), ekipe.get(3), 2)))), "tretje mesto");
+        List<SrecanjeDto> srecanja = ligaStoritev.rocniRazpored(liga, new RocniRazporedVnos(List.of(
+                new ParVnos(1, ekipe.get(0), ekipe.get(2), 1),
+                new ParVnos(1, ekipe.get(1), ekipe.get(3), 1),
+                new ParVnos(1, ekipe.get(0), ekipe.get(1), 0),
+                new ParVnos(1, ekipe.get(2), ekipe.get(3), 0))));
+
+        assertEquals(List.of(PRVI_VECER, PRVI_VECER, PRVI_VECER.with(OB_1945), PRVI_VECER.with(OB_1945)),
+                zacetkiKola(srecanja, 1), "kolo po uri, ne po vnosu");
+        assertEquals(List.of(0, 0, 1, 1), srecanja.stream().map(SrecanjeDto::uraVKolu).toList());
+    }
+
+    /* Ob isti uri kola ekipa ne more igrati dvakrat. */
+    @Test
+    void rocniVpisZavrneEkipoDvakratObIstiUri() {
+        Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
+        List<Long> ekipe = dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
+
         assertThrows(NeveljavenVnosIzjema.class,
                 () -> ligaStoritev.rocniRazpored(liga, new RocniRazporedVnos(List.of(
                         new ParVnos(1, ekipe.get(0), ekipe.get(1), 1),
-                        new ParVnos(1, ekipe.get(2), ekipe.get(3), 1)))), "isto mesto dvakrat");
+                        new ParVnos(1, ekipe.get(0), ekipe.get(2), 1)))));
     }
 
-    /* Predlog nosi mesta: vmesnik po njih postavi par v vrstico prave ure. */
+    /* Ura, ki je liga nima, ni vecer, ampak pomota. */
     @Test
-    void predlogNosiMestaVKolu() {
+    void rocniVpisZavrneUroZunajSeznama() {
         Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
-        dodajEkipe(liga, "Ek A", "Ek B", "Ek C");
+        List<Long> ekipe = dodajEkipe(liga, "Ek A", "Ek B");
+
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> ligaStoritev.rocniRazpored(liga, new RocniRazporedVnos(List.of(
+                        new ParVnos(1, ekipe.get(0), ekipe.get(1), 2)))));
+    }
+
+    /* Predlog nosi uro v kolu: vmesnik po njej postavi par k pravi uri. */
+    @Test
+    void predlogNosiUroVKolu() {
+        Long liga = ustvariLigo(PRVI_VECER, List.of(OB_1830, OB_1945));
+        dodajEkipe(liga, "Ek A", "Ek B", "Ek C", "Ek D");
 
         List<ParRazporedaDto> predlog = ligaStoritev.predlogRazporeda(liga);
 
-        assertEquals(6, predlog.size());
-        assertTrue(predlog.stream().allMatch(p -> p.mesto() == 0 || p.mesto() == 1));
-        assertEquals(3, predlog.stream().filter(p -> p.mesto() == 1).count(), "vsak vecer ima drugo srecanje");
+        assertEquals(12, predlog.size());
+        assertEquals(3, predlog.stream().mapToInt(ParRazporedaDto::kolo).max().orElse(0));
+        assertEquals(6, predlog.stream().filter(p -> p.uraVKolu() == 1).count(), "polovica srecanj ob 19.45");
     }
 
     // ---------- pomozne metode ----------

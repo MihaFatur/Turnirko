@@ -10,10 +10,11 @@
    izračuna datume; to okno je ročni popravek. Prestavljeno kolo NE premakne
    naslednjih — ta so že objavljena in bi jih tiho zamaknilo.
 
-   Dan je last kola: kolo se odigra en dan. Ura je pri kolu krožnega sistema
-   ena za vsa srečanja, liga z urami srečanj (večer z nekaj srečanji zapored)
-   pa ima uro pri vsakem srečanju — organizator jo sme srečanju zamenjati.
-   Ura je neobvezna; prazna se shrani kot 00:00 in v razporedu ne izpiše. */
+   Dan je last kola: kolo se odigra en dan. Ura je pri kolu z enim krogom ena
+   za vsa srečanja, liga z urami (večer z več krogi zapored) pa ima uro pri
+   vsakem srečanju — polnilo jo vzame iz ure kroga, organizator pa jo sme
+   srečanju prestaviti. Ura je neobvezna; prazna se shrani kot 00:00 in v
+   razporedu ne izpiše. */
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
@@ -35,6 +36,9 @@ interface VnosSrecanja {
   domaci: string
   gost: string
   ura: string
+  /* Ura kola, ob kateri srečanje igra po razporedu — po njej polnilo vrne
+     srečanju uro lige, tudi ko je bilo prestavljeno ali ure še nima. */
+  uraVKolu: number
 }
 
 interface VnosKola {
@@ -118,7 +122,7 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
         ...v,
         datum: prestej(odDatuma, i * razmik),
         ura: odUre,
-        srecanja: v.srecanja.map((s, j) => ({ ...s, ura: odUr[j] ?? odUr[odUr.length - 1] ?? '' })),
+        srecanja: v.srecanja.map((s) => ({ ...s, ura: odUr[s.uraVKolu] ?? '' })),
       })),
     )
   }
@@ -270,6 +274,7 @@ function zacetniVnosi(srecanja: SrecanjeDto[]): VnosKola[] {
         domaci: s.domaci,
         gost: s.gost,
         ura: vpisanaUra(s.predvidenZacetek),
+        uraVKolu: s.uraVKolu ?? 0,
       })),
     }
   })

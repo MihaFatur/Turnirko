@@ -849,9 +849,10 @@ export interface LigaDto {
      zaledje ob žrebu izračuna predvidene začetke srečanj. */
   zacetekPrvegaKola: string | null
   razmikDni: number | null
-  /* Ure srečanj v kolu (»18:30«): kolo je večer s toliko srečanji zapored in
-     ekipa sme v njem igrati večkrat. null = kolo krožnega sistema (vsaka ekipa
-     enkrat, vsa srečanja ob uri iz semena). */
+  /* Ure kola (»18:30«): kolo je večer, v katerem se ob vsaki uri odigra en
+     krog krožnega sistema — vsaka ekipa ta večer igra toliko srečanj, kolikor
+     je ur, kol pa je toliko manj. null = kolo je en krog (vsaka ekipa enkrat,
+     vsa srečanja ob uri iz semena). */
   ureSrecanj: string[] | null
   idVisjaLiga: number | null
   visjaLigaIme: string | null
@@ -902,8 +903,8 @@ export interface LigaVnos {
   /* Končnica (neobvezna): število ekip 2/4/8 in zmag za serijo 1–4. */
   koncnicaEkip: number | null
   koncnicaZmag: number | null
-  /* Ure srečanj v kolu (»18:30«, 00:00 = ura ni določena); null = kolo
-     krožnega sistema. Pravilo tekmovanja — po žrebu se zaklene. */
+  /* Ure kola (vsaj dve, strogo naraščajoče; 00:00 = ura ni določena); null =
+     kolo je en krog. Pravilo tekmovanja — po žrebu se zaklene. */
   ureSrecanj: string[] | null
 }
 
@@ -921,18 +922,18 @@ export interface TerminiVnos {
    ker ne gre za pravilo tekmovanja, ampak za sam žreb — liga, ki se je doslej
    vodila na roke, ima pare že razdeljene in razposlane igralcem.
    Vsebovati mora CEL razpored; kola morajo teči od 1 naprej brez vrzeli.
-   Mesto (0 = prvo srečanje kola) šteje pri ligi z urami: pove uro srečanja. */
+   uraVKolu (0 = prva ura lige) šteje pri ligi z urami: ob kateri uri kola. */
 export interface RocniRazporedVnos {
-  srecanja: { kolo: number; idDomaci: number; idGost: number; mesto?: number }[]
+  srecanja: { kolo: number; idDomaci: number; idGost: number; uraVKolu?: number }[]
 }
 
 /* Predlog razporeda, kakršnega bi sestavil žreb — brez zapisa v bazo. Iz njega
    obrazec ročnega vpisa sestavi prazno mrežo (koliko kol in koliko srečanj je
-   v kolu) in jo na zahtevo napolni s predlaganimi pari. Mesto pri ligi z urami
-   pove, v vrstico katere ure sodi par. */
+   v kolu) in jo na zahtevo napolni s predlaganimi pari. uraVKolu pri ligi z
+   urami pove, ob kateri uri kola se par igra (sicer 0). */
 export interface ParRazporedaDto {
   kolo: number
-  mesto: number
+  uraVKolu: number
   idDomaci: number
   domaci: string
   idGost: number
@@ -1065,6 +1066,9 @@ export interface SrecanjeDto {
   dobljeneGost: number
   status: StatusSrecanja
   predvidenZacetek: string | null
+  /* Ura kola, ob kateri se srečanje igra (0 = prva ura lige); null pri kolu,
+     ki je en krog. Po njej polnilo terminov vrne srečanju uro lige. */
+  uraVKolu: number | null
   /* Tekma končnice: serija, krog in zaporedna tekma v seriji; null v rednem delu. */
   idSerija: number | null
   krogKoncnice: number | null

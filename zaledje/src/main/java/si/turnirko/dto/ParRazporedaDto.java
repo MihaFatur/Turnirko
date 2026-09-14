@@ -6,13 +6,13 @@
    zreb - pravila razporeda so tako zapisana na enem samem mestu in se ne
    morejo raziti z drugo kopijo v vmesniku.
 
-   Mesto (0 = prvo srecanje kola) pri ligi z urami srecanj pove, ob kateri uri
-   se srecanje zacne - vmesnik ga postavi v vrstico te ure. */
+   uraVKolu (0 = prva ura lige) pri ligi z urami srecanj pove, ob kateri uri
+   kola se srecanje zacne; pri kolu kroznega sistema je 0. */
 package si.turnirko.dto;
 
 public record ParRazporedaDto(
         int kolo,
-        int mesto,
+        int uraVKolu,
         Long idDomaci,
         String domaci,
         Long idGost,

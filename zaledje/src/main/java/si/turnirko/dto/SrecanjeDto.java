@@ -33,6 +33,9 @@ public record SrecanjeDto(
         int dobljeneGost,
         StatusSrecanja status,
         LocalDateTime predvidenZacetek,
+        // ura kola, ob kateri se srecanje igra (0 = prva ura lige, V31);
+        // prazno pri kolu kroznega sistema
+        Integer uraVKolu,
         // koncnica lige: serija, krog koncnice in zaporedna tekma v seriji
         Long idSerija,
         Integer krogKoncnice,
@@ -59,6 +62,7 @@ public record SrecanjeDto(
                 s.getDobljeneGost(),
                 s.getStatus(),
                 s.getPredvidenZacetek(),
+                s.getUraVKolu(),
                 s.jeKoncnica() ? s.getSerija().getId() : null,
                 s.jeKoncnica() ? s.getSerija().getKrog() : null,
                 s.getTekmaVSeriji(),
