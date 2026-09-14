@@ -844,11 +844,15 @@ export interface LigaDto {
      biti razvidno, da gre za isti razpored in ne za nov naključni žreb. */
   rocniZreb: boolean
   predlogaListka: PredlogaLige
-  /* Seme terminov: kdaj se igra prvo kolo (ISO datum-čas; ura velja za celo
-     kolo, 00:00 = ura ni določena) in na koliko dni sledijo naslednja. Iz njiju
+  /* Seme terminov: kdaj se igra prvo kolo (ISO datum-čas; ura prvega srečanja
+     kola, 00:00 = ura ni določena) in na koliko dni sledijo naslednja. Iz njiju
      zaledje ob žrebu izračuna predvidene začetke srečanj. */
   zacetekPrvegaKola: string | null
   razmikDni: number | null
+  /* Ure srečanj v kolu (»18:30«): kolo je večer s toliko srečanji zapored in
+     ekipa sme v njem igrati večkrat. null = kolo krožnega sistema (vsaka ekipa
+     enkrat, vsa srečanja ob uri iz semena). */
+  ureSrecanj: string[] | null
   idVisjaLiga: number | null
   visjaLigaIme: string | null
   stNapreduje: number
@@ -898,29 +902,37 @@ export interface LigaVnos {
   /* Končnica (neobvezna): število ekip 2/4/8 in zmag za serijo 1–4. */
   koncnicaEkip: number | null
   koncnicaZmag: number | null
+  /* Ure srečanj v kolu (»18:30«, 00:00 = ura ni določena); null = kolo
+     krožnega sistema. Pravilo tekmovanja — po žrebu se zaklene. */
+  ureSrecanj: string[] | null
 }
 
 /* Ročni termini kol. Ločeno od LigaVnos iz istega razloga kot PrehodiVnos:
    pravila se po žrebu zaklenejo, kolo pa se sme prestaviti tudi sredi sezone.
-   Termin je last kola — vsa srečanja kola dobijo isti začetek; kolo, ki ga
-   seznam ne našteje, ostane nedotaknjeno, kolo z zacetek = null termin izgubi. */
+   Termin kola dobijo vsa srečanja kola; kolo, ki ga seznam ne našteje, ostane
+   nedotaknjeno, kolo z zacetek = null termin izgubi. Liga z urami srečanj
+   našteje še posamezna srečanja — njihov začetek obvelja za terminom kola. */
 export interface TerminiVnos {
   kola: { kolo: number; zacetek: string | null }[]
+  srecanja?: { id: number; zacetek: string | null }[]
 }
 
 /* Ročno vpisan razpored lige: kdo s kom igra v katerem kolu. Ločeno od žreba,
    ker ne gre za pravilo tekmovanja, ampak za sam žreb — liga, ki se je doslej
    vodila na roke, ima pare že razdeljene in razposlane igralcem.
-   Vsebovati mora CEL razpored; kola morajo teči od 1 naprej brez vrzeli. */
+   Vsebovati mora CEL razpored; kola morajo teči od 1 naprej brez vrzeli.
+   Mesto (0 = prvo srečanje kola) šteje pri ligi z urami: pove uro srečanja. */
 export interface RocniRazporedVnos {
-  srecanja: { kolo: number; idDomaci: number; idGost: number }[]
+  srecanja: { kolo: number; idDomaci: number; idGost: number; mesto?: number }[]
 }
 
 /* Predlog razporeda, kakršnega bi sestavil žreb — brez zapisa v bazo. Iz njega
    obrazec ročnega vpisa sestavi prazno mrežo (koliko kol in koliko srečanj je
-   v kolu) in jo na zahtevo napolni s predlaganimi pari. */
+   v kolu) in jo na zahtevo napolni s predlaganimi pari. Mesto pri ligi z urami
+   pove, v vrstico katere ure sodi par. */
 export interface ParRazporedaDto {
   kolo: number
+  mesto: number
   idDomaci: number
   domaci: string
   idGost: number

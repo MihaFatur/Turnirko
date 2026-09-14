@@ -153,7 +153,8 @@
     `LigaStoritev` (vpis prižge, žreb in razveljavitev ugasneta), zato se
     vpisan razpored in žreb ne moreta razglasiti drug za drugega.
   - **Strežnik preverja strukturo, ne popolnosti.** Zavrne ekipo z dvema
-    srečanjema v istem kolu (kolo je en igralni dan), ekipo samo proti sebi,
+    srečanjema hkrati — v kolu krožnega sistema dve srečanji v kolu (kolo je en
+    igralni dan), v ligi z urami srečanj dve srečanji ob isti uri —, ekipo samo proti sebi,
     ekipo iz druge lige in vrzel med koli (kola tečejo od 1 naprej). Par, ki se
     ne sreča, in par, ki igra trikrat, pa **spusti skozi**: ročno vodene lige
     imajo tudi nepopolne razporede in popolnost je stvar tekmovanja, ne sheme.
@@ -185,8 +186,41 @@
   (`PUT /lige/{id}/termini`) — kot prehodi **v vsakem stanju lige** in ne pod
   zaklepom pravil, ker se kolo prestavi tudi sredi sezone. Prestavljeno kolo
   **ne premakne naslednjih** (ta so že objavljena) in semena ne popravi.
-  Termin je last **kola**, ne srečanja: vsa srečanja kola dobijo isti čas.
+  **Dan** je last kola; ura je pri kolu krožnega sistema ena za vsa srečanja,
+  liga z urami srečanj (spodaj) pa ima uro pri vsakem srečanju.
   Ura `00:00` pomeni »ura ni določena« — vmesnik takrat izpiše samo datum.
+- **Ure srečanj v kolu: kolo je VEČER, ne krog** (V31, `liga.ure_srecanj`,
+  zapis `"18:30,19:45"`). Lige z eno mizo igrajo kolo kot nekaj srečanj
+  zapored in ista ekipa v njem nastopi večkrat. Število ur JE število srečanj v
+  kolu, i-to srečanje se začne ob i-ti uri. `NULL` = kolo krožnega sistema
+  (vsaka ekipa enkrat) — enakovredna izbira, ne manjkajoča vrednost.
+  - **Ure so pravilo tekmovanja** (od njih je odvisen žreb), zato jih ureja
+    `uredi` in se po žrebu zaklenejo. Ura v semenu (`zacetek_prvega_kola`) je
+    ura prvega srečanja; `uporabiVnos` jo poravna s prvo uro seznama. Ure
+    morajo teči naprej (enaki = dve mizi hkrati), 00:00 se ne primerja, največ
+    `NAJVEC_SRECANJ_V_KOLU` (10).
+  - **Žreb pare vzame iz krožnega sistema in jih samo razdeli po večerih**
+    (`RazporedStoritev.razdeliPoUrah`), zato vsak z vsakim in domače pravice
+    ostanejo. Na vsako mesto gre srečanje brez ekipe, ki ob **isti** uri že
+    igra (trd pogoj), z najmanj nastopi obeh ekip v tem kolu (ekipa igra
+    dvakrat samo, kadar drugače ne gre) in najbolj zgodaj v krožnem sistemu.
+    Povratni krog pride na vrsto šele po prvem. Mesto, ki mu ni srečanja, ostane
+    prazno, zato `ParNaMestu` nosi **mesto** in ne le kolo — po njem dobi
+    srečanje uro (`terminSrecanja`), predlog (`ParRazporedaDto.mesto`) in ročni
+    vpis (`ParVnos.mesto`) pa isto pomenita.
+  - **Ekipa ne igra dveh srečanj hkrati — na treh mestih**: žreb, ročni vpis
+    (`rocniRazpored`: ključ je kolo oz. kolo + ura) in popravek terminov
+    (`preveriHkratnaSrecanja`). Zadnji šteje le trke, v katerih je vsaj eno
+    srečanje spremenil ta vnos — star zapis ne sme ustaviti nepovezanega
+    popravka.
+  - **Popravek ure je po srečanju** (`TerminiVnos.srecanja`, obvelja za
+    terminom kola). Srečanja lige zato pridejo **po kolu in začetku**
+    (`najdiZaLigo`, `najdiRednaZaLigo`): razpored, »naslednje srečanje« in
+    koledar sledijo uri, ne vrstnemu redu zapisa.
+  - Vmesnik: v razporedu stoji ura na mestu izida, dokler srečanje ni
+    odigrano, kolo pa nosi samo dan (`ureVKolu` v `LigaStran`) — nova kolona
+    bi na 390 px ne šla. V `RocniZrebOkno` je vrstica mesto z uro (ni je mogoče
+    dodati ali brisati, le izprazniti; zamenjava ekip samo ob isti uri).
 - **Časovni žig s pomembno uro potrebuje `@Convert(CasKotBesedilo.class)`.**
   Gonilnik sqlite-jdbc pozna eno samo obliko za datume (`date_string_format`,
   v `application.properties` `yyyy-MM-dd`) in z njo piše **tudi** časovne žige
@@ -714,7 +748,7 @@
   `GET /api/v1/koledar?od=&do=`, javen kot ostali GET-i). Nove sheme ne
   potrebuje — bere datume turnirjev in termine kol, ki že obstajajo. Trije
   premisleki, ki jih ne razbij:
-  - **Zrnatost ligaškega vnosa je KOLO, ne srečanje.** Termin je last kola
+  - **Zrnatost ligaškega vnosa je KOLO, ne srečanje.** Dan je last kola
     (`nastaviTermine`), zato bi vnos na srečanje isto ligo v istem dnevu
     izpisal petkrat; pari kola gredo v `srecanja` istega vnosa. V ključu
     zbiranja je vseeno tudi DAN — posamično prestavljeno srečanje sodi na svoj

@@ -37,7 +37,7 @@ import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TerminiOkno } from '../komponente/TerminiOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
-import { oblikujDanMesec, oblikujTermin } from '../pomozno/oblikovanje'
+import { oblikujDanMesec, oblikujTermin, oblikujUro } from '../pomozno/oblikovanje'
 import { zabeleziOgledLige } from '../pomozno/ogledaneLige'
 import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
@@ -883,8 +883,8 @@ function stanjeMobi(
 }
 
 /* Termin kola vzamemo iz prvega srečanja, ki ga ima: kolo se odigra en dan,
-   zato vsa njegova srečanja nosijo isti čas (piše ga zaledje iz semena lige
-   oz. ročnega popravka v TerminiOkno). */
+   zaledje pa srečanja kola vrne po uri, zato je to tudi najzgodnejši začetek
+   (piše ga zaledje iz semena lige oz. ročnega popravka v TerminiOkno). */
 function terminKola(srecanja: SrecanjeDto[], kolo: number): string | null {
   return srecanja.find((x) => x.kolo === kolo && x.predvidenZacetek)?.predvidenZacetek ?? null
 }
@@ -893,12 +893,23 @@ function datumKola(srecanja: SrecanjeDto[], kolo: number): string | null {
   return terminKola(srecanja, kolo)?.slice(0, 10) ?? null
 }
 
+/* Ali se srečanja kola začnejo ob različnih urah — liga z urami srečanj
+   (večer z nekaj srečanji zapored). Takrat je ura last srečanja: kolo nosi
+   samo dan, ura pa stoji pri srečanju. Enaki uri sta dve mizi hkrati in ostaneta
+   ura kola. */
+function ureVKolu(srecanja: SrecanjeDto[], kolo: number): boolean {
+  const ure = srecanja.filter((s) => s.kolo === kolo).map((s) => oblikujUro(s.predvidenZacetek))
+  return new Set(ure.filter(Boolean)).size > 1
+}
+
 /* Kaj piše ob številki kola v razporedu. Kolo, ki šele pride, nosi termin —
    »kdaj se to igra« je edino, kar gledalec ob neodigranem kolu išče; beseda
    »razpored« ni povedala nič. Ostane samo, kadar termina ni (organizator ga
-   ni vpisal). Odigrano kolo obdrži oznako, datum pa mu je kontekst. */
+   ni vpisal). Odigrano kolo obdrži oznako, datum pa mu je kontekst. Kolo z več
+   urami nosi samo dan — ure so pri srečanjih. */
 function metaKola(srecanja: SrecanjeDto[], kolo: number, odigrano: boolean): string {
-  const termin = oblikujTermin(terminKola(srecanja, kolo))
+  const zacetek = ureVKolu(srecanja, kolo) ? datumKola(srecanja, kolo) : terminKola(srecanja, kolo)
+  const termin = oblikujTermin(zacetek)
   if (odigrano) return [termin, 'odigrano'].filter(Boolean).join(' · ')
   return termin || 'razpored'
 }
@@ -1422,6 +1433,7 @@ function Razpored({
   /* Termin kola, ki šele pride, je poudarjen - to je vprašanje, s katerim
      gledalec pride na razpored. */
   const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
+  const zUrami = ureVKolu(srecanja, kolo)
 
   return (
     <div>
@@ -1479,7 +1491,11 @@ function Razpored({
                 <span
                   className={'liga__srecanje-izid' + (konec ? '' : ' liga__srecanje-izid--caka')}
                 >
-                  {konec ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : 'vs'}
+                  {/* Kjer bo izid, do takrat stoji ura srečanja, kadar jih ima
+                      kolo več - na istem mestu, da vrstica ne dobi stolpca. */}
+                  {konec
+                    ? `${s.dobljeneDomaci} : ${s.dobljeneGost}`
+                    : (zUrami && oblikujUro(s.predvidenZacetek)) || 'vs'}
                   {/* Registriran izid ni odigran - brez oznake bi se 5 : 0 bralo kot tekma. */}
                   {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
                 </span>
@@ -1544,6 +1560,7 @@ function RazporedMobi({
   const odigrano = koloOdigrano(kolo)
   const meta = metaKola(srecanja, kolo, odigrano)
   const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
+  const zUrami = ureVKolu(srecanja, kolo)
 
   return (
     <>
@@ -1598,7 +1615,9 @@ function RazporedMobi({
                 <span
                   className={'liga-mobi__izid' + (konec ? '' : ' liga-mobi__izid--caka')}
                 >
-                  {konec ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : 'vs'}
+                  {konec
+                    ? `${s.dobljeneDomaci} : ${s.dobljeneGost}`
+                    : (zUrami && oblikujUro(s.predvidenZacetek)) || 'vs'}
                   {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
                 </span>
                 <span
@@ -1666,6 +1685,7 @@ function PravilaOkno({
     ['Nizi', `najboljši od ${liga.steviloNizov}`],
     ['Konec srečanja', liga.zmagZaSrecanje ? `prvi do ${liga.zmagZaSrecanje} zmag` : 'vse tekme'],
     ['Sistem', liga.dvokrozno ? 'dvokrožno' : 'enokrožno'],
+    ['Kolo', opisKola(liga.ureSrecanj)],
     /* Kako so nastali pari, je del opisa tekmovanja — pred žrebom pa še ni
        odgovora, zato se vrstica takrat ne izpiše. */
     ...(liga.status === 'PRIPRAVA'
@@ -2153,6 +2173,15 @@ function ekipTekst(n: number): string {
   if (n === 2) return 'ekipi'
   if (n === 3 || n === 4) return 'ekipe'
   return 'ekip'
+}
+
+/* Kako se kolo igra, za pravila lige: krog krožnega sistema ali večer z
+   nekaj srečanji ob urah (»2 srečanji na večer · 18.30, 19.45«). */
+function opisKola(ure: string[] | null): string {
+  if (!ure) return 'vsaka ekipa enkrat'
+  const n = ure.length
+  const oblika = n === 1 ? 'srečanje' : n === 2 ? 'srečanji' : n <= 4 ? 'srečanja' : 'srečanj'
+  return `${n} ${oblika} na večer · ${ure.map((u) => oblikujUro(u) || 'ura ni določena').join(', ')}`
 }
 
 /* Slovnično pravilna oblika besede "kolo" glede na število. */

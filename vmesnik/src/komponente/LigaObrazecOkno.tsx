@@ -41,6 +41,29 @@ function vecina(format: FormatSrecanja): number {
 /* Liga se praviloma igra tedensko (isto privzeto kot v zaledju). */
 const PRIVZET_RAZMIK = 7
 
+/* Največ srečanj na večer (ista meja kot LigaStoritev.NAJVEC_SRECANJ_V_KOLU). */
+const NAJVEC_SRECANJ_V_KOLU = 10
+
+/* Kaj pomeni izbrani večer. Število kol pove šele žreb (odvisno je od števila
+   ekip in od tega, koliko ur je hkrati), zato ga namig ne ugiba. */
+function namigUr(ure: string[]): string {
+  const vpisane = ure.filter(Boolean).map((u) => u.replace(':', '.'))
+  const kdaj = vpisane.length === ure.length && ure.length > 1
+    ? ` (ob ${vpisane.slice(0, -1).join(', ')} in ${vpisane[vpisane.length - 1]})`
+    : ''
+  if (ure.length === 1) {
+    return 'Vsak večer se odigra eno srečanje, zato ima liga toliko kol, kolikor je srečanj. Prazna ura pomeni, da ura ni določena.'
+  }
+  return `Kolo je večer: ${ure.length} ${srecanjTekst(ure.length)} zapored${kdaj}. Ekipa lahko v istem kolu igra večkrat, a nikoli dvakrat ob isti uri — žreb jo postavi dvakrat samo, kadar drugače ne gre. Enaki uri pomenita dve mizi hkrati. Kol je lahko več kot pri krožnem sistemu; koliko, pokaže žreb. Prazna ura pomeni, da ura ni določena.`
+}
+
+function srecanjTekst(n: number): string {
+  if (n === 1) return 'srečanje'
+  if (n === 2) return 'srečanji'
+  if (n === 3 || n === 4) return 'srečanja'
+  return 'srečanj'
+}
+
 /* Končnica po rednem delu: toliko ekip gre naprej (2 = samo finale). */
 const MOZNOSTI_KONCNICE: { ekip: number; oznaka: string }[] = [
   { ekip: 2, oznaka: 'Finale (prva dva)' },
@@ -81,6 +104,12 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
     liga?.zacetekPrvegaKola?.slice(11, 16) ?? '',
   )
   const [razmik, nastaviRazmik] = useState(liga?.razmikDni ?? PRIVZET_RAZMIK)
+  /* Ure srečanj v kolu: null = kolo krožnega sistema (vsaka ekipa enkrat, ena
+     ura za vse), sicer ura vsakega srečanja večera. Prazna ura je »ura ni
+     določena« (00:00) — polje se zanjo ne izpolni, da ne kaže polnoči. */
+  const [ure, nastaviUre] = useState<string[] | null>(
+    liga?.ureSrecanj?.map((u) => (u === '00:00' ? '' : u.slice(0, 5))) ?? null,
+  )
   /* 0 = liga končnice nima. Končnica je del pravil tekmovanja, zato je tu
      (in se po žrebu zaklene), njen potek pa vodi stran lige. */
   const [koncnicaEkip, nastaviKoncnicaEkip] = useState(liga?.koncnicaEkip ?? 0)
@@ -93,6 +122,22 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   function zamenjajFormat(nov: FormatSrecanja) {
     nastaviFormat(nov)
     nastaviPrag((p) => Math.min(p, RAZPORED_FORMATA[nov].length))
+  }
+
+  /* Ura prvega srečanja je ista kot »Ura« kola krožnega sistema, zato gre ob
+     preklopu v obe smeri s sabo; vpisane ure se ob spremembi števila ohranijo. */
+  function zamenjajSrecanjVKolu(stevilo: number) {
+    if (stevilo === 0) {
+      if (ure) nastaviUroPrvega(ure[0] ?? '')
+      nastaviUre(null)
+      return
+    }
+    const prej = ure ?? [uraPrvega]
+    nastaviUre(Array.from({ length: stevilo }, (_, i) => prej[i] ?? ''))
+  }
+
+  function urediUro(mesto: number, ura: string) {
+    nastaviUre((prej) => prej && prej.map((u, i) => (i === mesto ? ura : u)))
   }
 
   const shranjevanje = useMutation({
@@ -124,10 +169,13 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       predlogaListka: predloga,
       /* Brez datuma prvega kola terminov ni; ura je neobvezna (00:00 pomeni
          »ura ni določena« in se v razporedu ne izpiše). */
-      zacetekPrvegaKola: datumPrvega ? `${datumPrvega}T${uraPrvega || '00:00'}` : null,
+      zacetekPrvegaKola: datumPrvega
+        ? `${datumPrvega}T${(ure ? ure[0] : uraPrvega) || '00:00'}`
+        : null,
       razmikDni: datumPrvega ? razmik : null,
       koncnicaEkip: koncnicaEkip > 0 ? koncnicaEkip : null,
       koncnicaZmag: koncnicaEkip > 0 ? koncnicaZmag : null,
+      ureSrecanj: ure ? ure.map((u) => u || '00:00') : null,
     })
   }
 
@@ -217,11 +265,15 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
               <input type="date" value={datumPrvega}
                 onChange={(d) => nastaviDatumPrvega(d.target.value)} />
             </label>
-            <label className="obrazec__polje">
-              <span>Ura</span>
-              <input type="time" value={uraPrvega}
-                onChange={(d) => nastaviUroPrvega(d.target.value)} />
-            </label>
+            {/* Pri ligi z urami je ura prvega srečanja prva v seznamu spodaj —
+                drugo polje za isto uro bi se z njo lahko razšlo. */}
+            {!ure && (
+              <label className="obrazec__polje">
+                <span>Ura</span>
+                <input type="time" value={uraPrvega}
+                  onChange={(d) => nastaviUroPrvega(d.target.value)} />
+              </label>
+            )}
             <label className="obrazec__polje">
               <span>Na koliko dni</span>
               <input type="number" min={1} max={365} value={razmik}
@@ -233,6 +285,32 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             {datumPrvega
               ? `Vsako kolo se odigra ${razmik === 7 ? 'teden' : `${razmik} dni`} za prejšnjim; datumi se zapišejo ob generiranju razporeda, ko je znano, koliko kol liga ima. Posamezno kolo je pozneje mogoče prestaviti — na strani lige pod »Termini«.`
               : 'Brez datuma prvega kola razpored pri neodigranih kolih ne pokaže dneva, ampak samo oznako »razpored«. Datume je mogoče vpisati tudi pozneje — na strani lige pod »Termini«.'}
+          </p>
+
+          <label className="obrazec__polje">
+            <span>Srečanja v kolu</span>
+            <select value={ure?.length ?? 0}
+              onChange={(d) => zamenjajSrecanjVKolu(Number(d.target.value))}>
+              <option value={0}>Vsaka ekipa enkrat (krožni sistem)</option>
+              {Array.from({ length: NAJVEC_SRECANJ_V_KOLU }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>{n} {srecanjTekst(n)} na večer, ob izbranih urah</option>
+              ))}
+            </select>
+          </label>
+          {ure && (
+            <div className="obrazec__vrstica obrazec__vrstica--ure">
+              {ure.map((ura, i) => (
+                <label key={i} className="obrazec__polje">
+                  <span>{i + 1}. srečanje</span>
+                  <input type="time" value={ura} onChange={(d) => urediUro(i, d.target.value)} />
+                </label>
+              ))}
+            </div>
+          )}
+          <p className="namig">
+            {ure
+              ? namigUr(ure)
+              : 'V kolu igra vsaka ekipa enkrat, vsa srečanja kola se začnejo ob isti uri.'}
           </p>
         </fieldset>
 

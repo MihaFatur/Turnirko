@@ -48,8 +48,16 @@ export function oblikujTermin(iso: string | null | undefined): string {
   /* UTC, da poletni/zimski čas datuma ne premakne za dan nazaj. */
   const dnevVTednu = DNEVI[new Date(Date.UTC(leto, mesec - 1, dan)).getUTCDay()] ?? ''
   const datum = `${dnevVTednu}, ${dan}. ${KRATKI_MESECI[mesec - 1] ?? ''}`
-  const ura = t ? t.slice(0, 5) : ''
-  return ura && ura !== '00:00' ? `${datum} · ${ura.replace(':', '.')}` : datum
+  const ura = oblikujUro(t)
+  return ura ? `${datum} · ${ura}` : datum
+}
+
+/* Ura iz ISO datuma-časa ali iz same ure ("18:30") v slovenskem zapisu:
+   "18.30". Ura 00:00 pomeni »ura ni določena« in vrne prazen niz. */
+export function oblikujUro(cas: string | null | undefined): string {
+  if (!cas) return ''
+  const ura = (cas.includes('T') ? cas.split('T')[1] : cas).slice(0, 5)
+  return ura.length === 5 && ura !== '00:00' ? ura.replace(':', '.') : ''
 }
 
 /* Obdobje turnirja: en datum, "od - do" ali prazen niz. */

@@ -1,0 +1,21 @@
+-- ============================================================================
+-- Turnirko: ure srecanj v kolu
+--
+-- Do zdaj je bilo kolo krog kroznega sistema: vsaka ekipa v njem odigra eno
+-- srecanje in vsa srecanja kola se zacnejo ob isti uri (V10). Lige z eno mizo
+-- (rekreativne, klubske) pa kolo igrajo kot VECER z nekaj srecanji zapored -
+-- npr. ob 18.30 in ob 19.45 - in ista ekipa lahko v njem nastopi veckrat.
+--
+-- Liga zato dobi seznam ur: koliko ur je, toliko srecanj se odigra v kolu, in
+-- i-to srecanje kola se zacne ob i-ti uri. Zapis je besedilo "18:30,19:45";
+-- ura 00:00 pomeni "ura ni dolocena" (isto kot pri terminih kol). NULL pomeni
+-- dosedanje kolo kroznega sistema - to je enakovredna izbira in ne manjkajoca
+-- vrednost.
+--
+-- Ure so pravilo tekmovanja, ker je od njih odvisen zreb (koliko kol liga ima
+-- in kdo igra v katerem), zato se po zrebu zaklenejo skupaj z ostalimi
+-- pravili. Dejanski zacetki ostanejo v srecanje.predviden_zacetek in se
+-- popravljajo po srecanjih (PUT /lige/{id}/termini).
+-- ============================================================================
+
+ALTER TABLE liga ADD COLUMN ure_srecanj TEXT;

@@ -152,7 +152,7 @@ public class DomovStoritev {
             if (s.getStatus() == StatusSrecanja.KONCANO) {
                 odigranihKol = Math.max(odigranihKol, s.getKolo());
             } else if (naslednje == null) {
-                // srecanja pridejo urejena po kolu in id-ju, zato je prvo
+                // srecanja pridejo urejena po kolu in zacetku, zato je prvo
                 // nekoncano tudi prvo na vrsti
                 naslednje = s;
             }

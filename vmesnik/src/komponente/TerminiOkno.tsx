@@ -10,9 +10,10 @@
    izračuna datume; to okno je ročni popravek. Prestavljeno kolo NE premakne
    naslednjih — ta so že objavljena in bi jih tiho zamaknilo.
 
-   Termin je last kola in ne posameznega srečanja: kolo se odigra en dan, zato
-   vsa njegova srečanja dobijo isti začetek. Ura je neobvezna; prazna se shrani
-   kot 00:00 in v razporedu ne izpiše. */
+   Dan je last kola: kolo se odigra en dan. Ura je pri kolu krožnega sistema
+   ena za vsa srečanja, liga z urami srečanj (večer z nekaj srečanji zapored)
+   pa ima uro pri vsakem srečanju — organizator jo sme srečanju zamenjati.
+   Ura je neobvezna; prazna se shrani kot 00:00 in v razporedu ne izpiše. */
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
@@ -29,16 +30,26 @@ interface Lastnosti {
   onShranjeno: () => void
 }
 
+interface VnosSrecanja {
+  id: number
+  domaci: string
+  gost: string
+  ura: string
+}
+
 interface VnosKola {
   kolo: number
   datum: string
   ura: string
   odigrano: boolean
+  /* Srečanja kola po uri — urejajo se samo pri ligi z urami srečanj. */
+  srecanja: VnosSrecanja[]
 }
 
 const PRIVZET_RAZMIK = 7
 
 export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti) {
+  const zUrami = liga.ureSrecanj != null
   const zacetna = useMemo(() => zacetniVnosi(srecanja), [srecanja])
   const [vnosi, nastaviVnose] = useState<VnosKola[]>(zacetna)
   /* Polnilo po razmiku: privzetka sta termin prvega kola oz. seme lige, da
@@ -49,6 +60,10 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
   const [odUre, nastaviOdUre] = useState(
     () => zacetna[0]?.ura || vpisanaUra(liga.zacetekPrvegaKola),
   )
+  /* Pri ligi z urami polnilo nosi ure pravil lige — kolo je večer po njih. */
+  const [odUr, nastaviOdUr] = useState<string[]>(
+    () => liga.ureSrecanj?.map((u) => vpisanaUra(`T${u}`)) ?? [],
+  )
   const [razmik, nastaviRazmik] = useState(liga.razmikDni ?? PRIVZET_RAZMIK)
 
   const shranjevanje = useMutation({
@@ -56,8 +71,17 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
       ligeApi.termini(liga.id, {
         kola: vnosi.map((v) => ({
           kolo: v.kolo,
-          zacetek: v.datum ? `${v.datum}T${v.ura || '00:00'}` : null,
+          zacetek: v.datum ? `${v.datum}T${(zUrami ? v.srecanja[0]?.ura : v.ura) || '00:00'}` : null,
         })),
+        /* Kolo brez datuma termin izgubi v celoti, zato njegovih srečanj ne
+           naštejemo — sicer bi jim ura ostala brez dneva. */
+        srecanja: zUrami
+          ? vnosi.flatMap((v) =>
+              v.datum
+                ? v.srecanja.map((s) => ({ id: s.id, zacetek: `${v.datum}T${s.ura || '00:00'}` }))
+                : [],
+            )
+          : undefined,
       }),
     onSuccess: () => {
       onShranjeno()
@@ -74,17 +98,35 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
     nastaviVnose((prej) => prej.map((v) => (v.kolo === kolo ? { ...v, ...popravek } : v)))
   }
 
+  function urediUroSrecanja(kolo: number, id: number, ura: string) {
+    nastaviVnose((prej) =>
+      prej.map((v) =>
+        v.kolo === kolo
+          ? { ...v, srecanja: v.srecanja.map((s) => (s.id === id ? { ...s, ura } : s)) }
+          : v,
+      ),
+    )
+  }
+
   /* Napolni vsa kola po razmiku od vpisanega začetka. Prepiše tudi že vpisane
-     termine — to je namen gumba; posamezno kolo se popravi v vrstici pod njim. */
+     termine — to je namen gumba; posamezno kolo se popravi v vrstici pod njim.
+     Pri ligi z urami dobi i-to srečanje kola i-to uro. */
   function napolni() {
     if (!odDatuma) return
     nastaviVnose((prej) =>
-      prej.map((v, i) => ({ ...v, datum: prestej(odDatuma, i * razmik), ura: odUre })),
+      prej.map((v, i) => ({
+        ...v,
+        datum: prestej(odDatuma, i * razmik),
+        ura: odUre,
+        srecanja: v.srecanja.map((s, j) => ({ ...s, ura: odUr[j] ?? odUr[odUr.length - 1] ?? '' })),
+      })),
     )
   }
 
   function pobrisi() {
-    nastaviVnose((prej) => prej.map((v) => ({ ...v, datum: '', ura: '' })))
+    nastaviVnose((prej) =>
+      prej.map((v) => ({ ...v, datum: '', ura: '', srecanja: v.srecanja.map((s) => ({ ...s, ura: '' })) })),
+    )
   }
 
   /* Okno je namenoma navadne širine (brez "siroko"): vrstica nosi le oznako,
@@ -94,7 +136,9 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
     <ModalnoOkno naslov="Termini kol" onZapri={onZapri}>
       <form className="obrazec" onSubmit={obOddaji}>
         <p className="obvestilo">
-          Termin velja za vsa srečanja kola. Urejaš jih lahko tudi med sezono.
+          {zUrami
+            ? 'Dan velja za vsa srečanja kola, ura pa za vsako srečanje posebej. Urejaš jih lahko tudi med sezono.'
+            : 'Termin velja za vsa srečanja kola. Urejaš jih lahko tudi med sezono.'}
         </p>
 
         <fieldset className="obrazec__skupina">
@@ -105,16 +149,29 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
               <input type="date" value={odDatuma}
                 onChange={(d) => nastaviOdDatuma(d.target.value)} />
             </label>
-            <label className="obrazec__polje">
-              <span>Ura</span>
-              <input type="time" value={odUre} onChange={(d) => nastaviOdUre(d.target.value)} />
-            </label>
+            {!zUrami && (
+              <label className="obrazec__polje">
+                <span>Ura</span>
+                <input type="time" value={odUre} onChange={(d) => nastaviOdUre(d.target.value)} />
+              </label>
+            )}
             <label className="obrazec__polje">
               <span>Na koliko dni</span>
               <input type="number" min={1} max={365} value={razmik}
                 onChange={(d) => nastaviRazmik(Number(d.target.value))} />
             </label>
           </div>
+          {zUrami && (
+            <div className="obrazec__vrstica obrazec__vrstica--ure">
+              {odUr.map((ura, i) => (
+                <label key={i} className="obrazec__polje">
+                  <span>{i + 1}. srečanje</span>
+                  <input type="time" value={ura}
+                    onChange={(d) => nastaviOdUr((prej) => prej.map((u, j) => (j === i ? d.target.value : u)))} />
+                </label>
+              ))}
+            </div>
+          )}
           <div className="termini__polnilo-gumbi">
             <button type="button" className="gumb gumb--majhen" disabled={!odDatuma}
               onClick={napolni}>
@@ -130,26 +187,46 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
         </fieldset>
 
         <div className="termini">
-          {vnosi.map((v) => (
-            <div key={v.kolo} className="termini__vrstica">
-              <span className="termini__kolo">
-                {v.kolo}. kolo
-                {/* Odigrano kolo se sme popraviti (napačen vpis), a naj bo
-                    vidno, da gre za preteklost in ne za načrt. */}
-                {v.odigrano && <span className="termini__oznaka">odigrano</span>}
-              </span>
-              <label className="termini__polje">
-                <span className="samo-za-bralnik">Datum {v.kolo}. kola</span>
-                <input type="date" value={v.datum}
-                  onChange={(d) => uredi(v.kolo, { datum: d.target.value })} />
-              </label>
-              <label className="termini__polje termini__polje--ura">
-                <span className="samo-za-bralnik">Ura {v.kolo}. kola</span>
-                <input type="time" value={v.ura} disabled={!v.datum}
-                  onChange={(d) => uredi(v.kolo, { ura: d.target.value })} />
-              </label>
-            </div>
-          ))}
+          {vnosi.map((v) =>
+            zUrami ? (
+              <div key={v.kolo} className="termini__vecer">
+                <div className="termini__vrstica termini__vrstica--vecer">
+                  <OznakaKola vnos={v} />
+                  <label className="termini__polje">
+                    <span className="samo-za-bralnik">Datum {v.kolo}. kola</span>
+                    <input type="date" value={v.datum}
+                      onChange={(d) => uredi(v.kolo, { datum: d.target.value })} />
+                  </label>
+                </div>
+                {v.srecanja.map((s) => (
+                  <div key={s.id} className="termini__srecanje">
+                    <label className="termini__polje termini__polje--ura">
+                      <span className="samo-za-bralnik">
+                        Ura srečanja {s.domaci} – {s.gost}, {v.kolo}. kolo
+                      </span>
+                      <input type="time" value={s.ura} disabled={!v.datum}
+                        onChange={(d) => urediUroSrecanja(v.kolo, s.id, d.target.value)} />
+                    </label>
+                    <span className="termini__par">{s.domaci} – {s.gost}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div key={v.kolo} className="termini__vrstica">
+                <OznakaKola vnos={v} />
+                <label className="termini__polje">
+                  <span className="samo-za-bralnik">Datum {v.kolo}. kola</span>
+                  <input type="date" value={v.datum}
+                    onChange={(d) => uredi(v.kolo, { datum: d.target.value })} />
+                </label>
+                <label className="termini__polje termini__polje--ura">
+                  <span className="samo-za-bralnik">Ura {v.kolo}. kola</span>
+                  <input type="time" value={v.ura} disabled={!v.datum}
+                    onChange={(d) => uredi(v.kolo, { ura: d.target.value })} />
+                </label>
+              </div>
+            ),
+          )}
         </div>
 
         <SporociloNapake napaka={shranjevanje.error} />
@@ -164,8 +241,20 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
   )
 }
 
+function OznakaKola({ vnos }: { vnos: VnosKola }) {
+  return (
+    <span className="termini__kolo">
+      {vnos.kolo}. kolo
+      {/* Odigrano kolo se sme popraviti (napačen vpis), a naj bo vidno, da gre
+          za preteklost in ne za načrt. */}
+      {vnos.odigrano && <span className="termini__oznaka">odigrano</span>}
+    </span>
+  )
+}
+
 /* Kola iz razporeda s termini, kot so zdaj. Termin kola vzamemo iz prvega
-   srečanja, ki ga ima — vsa srečanja kola nosijo isti čas (piše ga zaledje). */
+   srečanja, ki ga ima — zaledje srečanja kola vrne po uri, zato je to tudi
+   najzgodnejše. */
 function zacetniVnosi(srecanja: SrecanjeDto[]): VnosKola[] {
   const kola = [...new Set(srecanja.map((s) => s.kolo))].sort((a, b) => a - b)
   return kola.map((kolo) => {
@@ -176,6 +265,12 @@ function zacetniVnosi(srecanja: SrecanjeDto[]): VnosKola[] {
       datum: zacetek?.slice(0, 10) ?? '',
       ura: vpisanaUra(zacetek),
       odigrano: vKolu.every((s) => s.status === 'KONCANO'),
+      srecanja: vKolu.map((s) => ({
+        id: s.id,
+        domaci: s.domaci,
+        gost: s.gost,
+        ura: vpisanaUra(s.predvidenZacetek),
+      })),
     }
   })
 }
@@ -184,7 +279,8 @@ function zacetniVnosi(srecanja: SrecanjeDto[]): VnosKola[] {
    zato se v polje ne vpiše nazaj — sicer bi shranjevanje iz nje naredilo
    vpisano polnoč in razpored bi jo začel izpisovati. */
 function vpisanaUra(iso: string | null | undefined): string {
-  const ura = iso?.slice(11, 16) ?? ''
+  const t = iso?.split('T')[1] ?? ''
+  const ura = t.slice(0, 5)
   return ura === '00:00' ? '' : ura
 }
 

@@ -11,16 +11,21 @@
    iz tega obrazca sploh ne morejo priti.
 
    Kaj ustavi shranjevanje in kaj je samo opozorilo, je ista meja kot na
-   strežniku (LigaStoritev.rocniRazpored): ekipa ne sme igrati dvakrat v istem
-   kolu in ne sama s sabo, kolo ne sme biti prazno — nepopoln razpored (par, ki
-   se ne sreča, ali par, ki se sreča drugačnokrat, kot pravijo pravila lige) pa
-   je stvar tekmovanja in gre skozi kot opozorilo: ročno vodene lige takšne
-   razporede imajo. */
+   strežniku (LigaStoritev.rocniRazpored): ekipa ne sme igrati dveh srečanj
+   hkrati in ne sama s sabo, kolo ne sme biti prazno — nepopoln razpored (par,
+   ki se ne sreča, ali par, ki se sreča drugačnokrat, kot pravijo pravila lige)
+   pa je stvar tekmovanja in gre skozi kot opozorilo: ročno vodene lige takšne
+   razporede imajo.
+
+   »Hkrati« je pri kolu krožnega sistema celo kolo (en igralni dan), pri ligi z
+   urami srečanj pa ista ura. Tam je kolo večer z mesti — vsaka vrstica je ura
+   iz pravil lige, zato vrstic ni mogoče dodajati ali brisati, le prazniti. */
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
 import type { EkipaDto, LigaDto, ParRazporedaDto } from '../api/tipi'
+import { oblikujUro } from '../pomozno/oblikovanje'
 import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { SporociloNapake } from './SporociloNapake'
@@ -63,11 +68,17 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
   const [urejena, nastaviUrejeno] = useState<VrsticaZreba[][] | null>(null)
   const [pregledOdprt, nastaviPregled] = useState(false)
 
-  const prazna = useMemo(() => praznaMreza(predlog.data ?? []), [predlog.data])
+  /* Ure srečanj lige: vrstica kola na i-tem mestu je srečanje ob i-ti uri. */
+  const ure = liga.ureSrecanj
+
+  const prazna = useMemo(() => praznaMreza(predlog.data ?? [], ure), [predlog.data, ure])
   const kola = urejena ?? prazna
 
   const poId = useMemo(() => new Map(ekipe.map((e) => [e.id, e])), [ekipe])
-  const preverba = useMemo(() => preveri(kola, ekipe, liga.dvokrozno), [kola, ekipe, liga.dvokrozno])
+  const preverba = useMemo(
+    () => preveri(kola, ekipe, liga.dvokrozno, ure),
+    [kola, ekipe, liga.dvokrozno, ure],
+  )
   const vpisanih = kola.flat().filter((v) => v.domaci !== null && v.gost !== null).length
   const jePrazen = kola.flat().every((v) => v.domaci === null && v.gost === null)
 
@@ -75,9 +86,16 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
     mutationFn: () =>
       ligeApi.rocniRazpored(liga.id, {
         srecanja: kola.flatMap((vrstice, i) =>
-          vrstice
-            .filter((v) => v.domaci !== null && v.gost !== null)
-            .map((v) => ({ kolo: i + 1, idDomaci: v.domaci as number, idGost: v.gost as number })),
+          vrstice.flatMap((v, mesto) =>
+            v.domaci !== null && v.gost !== null
+              ? [{
+                  kolo: i + 1,
+                  idDomaci: v.domaci,
+                  idGost: v.gost,
+                  ...(ure ? { mesto } : {}),
+                }]
+              : [],
+          ),
         ),
       }),
     onSuccess: () => {
@@ -95,19 +113,26 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
      bilo mogoče popraviti — vsaka ekipa je že nekje in izbirnik bi bil prazen,
      organizator pa bi moral mesta najprej prazniti. Zamenjava tudi ne more
      ustvariti podvojene ekipe v kolu: število ekip v kolu ostane isto.
-     Izbira nasprotnika iz iste vrstice po istem pravilu obrne domačo pravico. */
+     Izbira nasprotnika iz iste vrstice po istem pravilu obrne domačo pravico.
+
+     Pri ligi z urami ekipa sme igrati večkrat na večer, zato se menjata le
+     vrstici ob ISTI uri (dve mizi hkrati) in ista vrstica; drugje izbira
+     ekipo samo postavi. */
   function nastaviEkipo(iKolo: number, kljuc: number, stran: 'domaci' | 'gost', id: number | null) {
     uredi((mreza) => {
       const vrstice = mreza[iKolo]
       const cilj = vrstice.find((v) => v.kljuc === kljuc)
       if (!cilj) return mreza
       const prejsnja = cilj[stran]
+      const uraCilja = ure ? uraMesta(ure, vrstice.indexOf(cilj)) : null
       if (id !== null) {
-        for (const v of vrstice) {
+        vrstice.forEach((v, mesto) => {
+          const hkrati = !ure || v.kljuc === kljuc || (uraCilja !== null && uraMesta(ure, mesto) === uraCilja)
+          if (!hkrati) return
           for (const s of ['domaci', 'gost'] as const) {
             if ((v.kljuc !== kljuc || s !== stran) && v[s] === id) v[s] = prejsnja
           }
-        }
+        })
       }
       cilj[stran] = id
       return mreza
@@ -119,7 +144,7 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
      past, zato je takrat ugasnjen in pot do njega vodi skozi »Počisti vse«. */
   function napolniSPredlogom() {
     if (!predlog.data) return
-    nastaviUrejeno(napolnjenaMreza(predlog.data))
+    nastaviUrejeno(napolnjenaMreza(predlog.data, ure))
   }
 
   function pocisti() {
@@ -134,9 +159,10 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
         {/* »Prva / druga« in ne »leva / desna«: na telefonu sta izbirnika eden
             pod drugim in leva-desna razlaga tam ne bi držala. */}
         Vpiši razpored, kot je bil izžreban. V vrstici je prva ekipa domača,
-        druga gostujoča. Kolo je en igralni dan, zato ekipa v njem odigra eno
-        srečanje; ekipa, ki v kolu ne igra, je prosta. Če izbereš ekipo, ki v
-        tem kolu že igra, se ekipi zamenjata.
+        druga gostujoča.{' '}
+        {ure
+          ? 'Kolo je večer, vsaka vrstica je srečanje ob uri iz pravil lige. Ekipa lahko v kolu igra večkrat, a ne dvakrat ob isti uri; prazno vrstico ob shranjevanju izpustimo.'
+          : 'Kolo je en igralni dan, zato ekipa v njem odigra eno srečanje; ekipa, ki v kolu ne igra, je prosta. Če izbereš ekipo, ki v tem kolu že igra, se ekipi zamenjata.'}
       </p>
 
       {predlog.isPending && <p className="obvestilo">Nalaganje …</p>}
@@ -191,7 +217,10 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
 
               <div className="zreb__vrstice">
               {vrstice.map((v, iVrstica) => (
-                <div key={v.kljuc} className="zreb__vrstica">
+                <div key={v.kljuc} className={'zreb__vrstica' + (ure ? ' zreb__vrstica--ura' : '')}>
+                  {ure && (
+                    <span className="zreb__ura">{oblikujUro(ure[iVrstica]) || '—'}</span>
+                  )}
                   <IzbirnikEkipe
                     oznaka={`Domača ekipa, ${iKolo + 1}. kolo, ${iVrstica + 1}. srečanje`}
                     kratka="doma"
@@ -207,14 +236,22 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
                     vrednost={v.gost}
                     onIzbor={(id) => nastaviEkipo(iKolo, v.kljuc, 'gost', id)}
                   />
+                  {/* Pri ligi z urami je vrstica mesto z uro in ostane —
+                      križec jo le izprazni, sicer bi se ure spodnjih zamaknile. */}
                   <button
                     type="button"
                     className="zreb__odstrani"
-                    aria-label={`Odstrani ${iVrstica + 1}. srečanje ${iKolo + 1}. kola`}
-                    title="Odstrani srečanje"
+                    aria-label={
+                      ure
+                        ? `Izprazni srečanje ob ${oblikujUro(ure[iVrstica]) || `${iVrstica + 1}. uri`}, ${iKolo + 1}. kolo`
+                        : `Odstrani ${iVrstica + 1}. srečanje ${iKolo + 1}. kola`
+                    }
+                    title={ure ? 'Izprazni srečanje' : 'Odstrani srečanje'}
                     onClick={() =>
                       uredi((mreza) => {
-                        mreza[iKolo] = mreza[iKolo].filter((x) => x.kljuc !== v.kljuc)
+                        mreza[iKolo] = ure
+                          ? mreza[iKolo].map((x) => (x.kljuc === v.kljuc ? praznaVrstica() : x))
+                          : mreza[iKolo].filter((x) => x.kljuc !== v.kljuc)
                         return mreza
                       })
                     }
@@ -225,18 +262,20 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
               ))}
               </div>
 
-              <button
-                type="button"
-                className="gumb gumb--majhen"
-                onClick={() =>
-                  uredi((mreza) => {
-                    mreza[iKolo] = [...mreza[iKolo], praznaVrstica()]
-                    return mreza
-                  })
-                }
-              >
-                + Srečanje
-              </button>
+              {!ure && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() =>
+                    uredi((mreza) => {
+                      mreza[iKolo] = [...mreza[iKolo], praznaVrstica()]
+                      return mreza
+                    })
+                  }
+                >
+                  + Srečanje
+                </button>
+              )}
             </section>
           )
         })}
@@ -244,7 +283,9 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
         <button
           type="button"
           className="gumb"
-          onClick={() => uredi((mreza) => [...mreza, [praznaVrstica()]])}
+          onClick={() =>
+            uredi((mreza) => [...mreza, ure ? ure.map(() => praznaVrstica()) : [praznaVrstica()]])
+          }
         >
           + Dodaj kolo
         </button>
@@ -376,15 +417,30 @@ function prosteVKolu(vrstice: VrsticaZreba[], ekipe: EkipaDto[]): string[] {
 }
 
 /* Prazna mreža po obliki predloga: toliko kol in toliko vrstic v kolu, kot bi
-   jih imel žreb. Organizator tako ne šteje, koliko srečanj ima kolo. */
-function praznaMreza(predlog: ParRazporedaDto[]): VrsticaZreba[][] {
-  return poKolih(predlog).map((vKolu) => vKolu.map(() => praznaVrstica()))
+   jih imel žreb. Organizator tako ne šteje, koliko srečanj ima kolo. Pri ligi
+   z urami ima vsako kolo vrstico za vsako uro (tudi zadnje, nepolno kolo). */
+function praznaMreza(predlog: ParRazporedaDto[], ure: string[] | null): VrsticaZreba[][] {
+  return poKolih(predlog).map((vKolu) => (ure ?? vKolu).map(() => praznaVrstica()))
 }
 
-function napolnjenaMreza(predlog: ParRazporedaDto[]): VrsticaZreba[][] {
-  return poKolih(predlog).map((vKolu) =>
-    vKolu.map((p) => ({ ...praznaVrstica(), domaci: p.idDomaci, gost: p.idGost })),
-  )
+/* Pri ligi z urami gre par na svoje mesto (uro), ne na prvo prosto vrstico. */
+function napolnjenaMreza(predlog: ParRazporedaDto[], ure: string[] | null): VrsticaZreba[][] {
+  return poKolih(predlog).map((vKolu) => {
+    if (!ure) {
+      return vKolu.map((p) => ({ ...praznaVrstica(), domaci: p.idDomaci, gost: p.idGost }))
+    }
+    const vrstice = ure.map(() => praznaVrstica())
+    for (const p of vKolu) {
+      if (vrstice[p.mesto]) vrstice[p.mesto] = { ...vrstice[p.mesto], domaci: p.idDomaci, gost: p.idGost }
+    }
+    return vrstice
+  })
+}
+
+/* Ura mesta za primerjavo »hkrati«; nedoločena ura (00:00) ne trči z ničimer. */
+function uraMesta(ure: string[], mesto: number): string | null {
+  const ura = ure[mesto]?.slice(0, 5)
+  return ura && ura !== '00:00' ? ura : null
 }
 
 /* Predlog po kolih; kola predloga tečejo od 1 naprej brez vrzeli (tako jih
@@ -410,11 +466,16 @@ interface Preverba {
 }
 
 /* Preverba vpisanega razporeda. Meja med napako in opozorilom je ista kot na
-   strežniku: napaka je tisto, kar bi razpored pokvarilo (ekipa dvakrat v kolu,
-   sama proti sebi, prazno kolo, nedokončana vrstica), opozorilo pa to, da
-   razpored ni popoln krožni sistem — kar je pri ročno vodeni ligi lahko
-   namerno. */
-function preveri(kola: VrsticaZreba[][], ekipe: EkipaDto[], dvokrozno: boolean): Preverba {
+   strežniku: napaka je tisto, kar bi razpored pokvarilo (ekipa na dveh
+   srečanjih hkrati — v kolu oz. pri ligi z urami ob isti uri —, sama proti
+   sebi, prazno kolo, nedokončana vrstica), opozorilo pa to, da razpored ni
+   popoln krožni sistem — kar je pri ročno vodeni ligi lahko namerno. */
+function preveri(
+  kola: VrsticaZreba[][],
+  ekipe: EkipaDto[],
+  dvokrozno: boolean,
+  ure: string[] | null,
+): Preverba {
   const ime = (id: number) => ekipe.find((e) => e.id === id)?.prikazanoIme ?? `ekipa ${id}`
   const napake: string[] = []
   const opozorila: string[] = []
@@ -427,22 +488,28 @@ function preveri(kola: VrsticaZreba[][], ekipe: EkipaDto[], dvokrozno: boolean):
 
   kola.forEach((vrstice, i) => {
     const kolo = i + 1
-    const vKolu = new Map<number, number>()
+    /* Kdaj trčita dve srečanji ekipe: v kolu krožnega sistema vedno (ključ je
+       kolo), pri ligi z urami le ob isti določeni uri (ključ je ura). */
+    const hkrati = new Map<string, { id: number; kolikokrat: number }>()
     let polnih = 0
 
-    for (const v of vrstice) {
-      if (v.domaci === null && v.gost === null) continue
+    vrstice.forEach((v, mesto) => {
+      if (v.domaci === null && v.gost === null) return
       if (v.domaci === null || v.gost === null) {
         napake.push(`${kolo}. kolo: srečanje ima vpisano samo eno ekipo.`)
-        continue
+        return
       }
       if (v.domaci === v.gost) {
         napake.push(`${kolo}. kolo: ekipa ${ime(v.domaci)} ne more igrati sama s sabo.`)
-        continue
+        return
       }
       polnih += 1
-      for (const id of [v.domaci, v.gost]) {
-        vKolu.set(id, (vKolu.get(id) ?? 0) + 1)
+      const ura = ure ? uraMesta(ure, mesto) : 'kolo'
+      if (ura) {
+        for (const id of [v.domaci, v.gost]) {
+          const kljuc = `${ura}|${id}`
+          hkrati.set(kljuc, { id, kolikokrat: (hkrati.get(kljuc)?.kolikokrat ?? 0) + 1 })
+        }
       }
       const domaci = bilance.get(v.domaci)
       const gost = bilance.get(v.gost)
@@ -453,14 +520,16 @@ function preveri(kola: VrsticaZreba[][], ekipe: EkipaDto[], dvokrozno: boolean):
       if (gost) gost.skupaj += 1
       const kljuc = [v.domaci, v.gost].sort((a, b) => a - b).join('-')
       srecanjaParov.set(kljuc, (srecanjaParov.get(kljuc) ?? 0) + 1)
-    }
+    })
 
-    for (const [id, kolikokrat] of vKolu) {
-      if (kolikokrat > 1) {
-        napake.push(
-          `${kolo}. kolo: ekipa ${ime(id)} ima ${kolikokrat} srečanja, kolo pa je en igralni dan.`,
-        )
-      }
+    for (const [kljuc, { id, kolikokrat }] of hkrati) {
+      if (kolikokrat < 2) continue
+      const ura = kljuc.split('|')[0]
+      napake.push(
+        ure
+          ? `${kolo}. kolo: ekipa ${ime(id)} ima ob ${oblikujUro(ura)} ${kolikokrat} srečanja hkrati.`
+          : `${kolo}. kolo: ekipa ${ime(id)} ima ${kolikokrat} srečanja, kolo pa je en igralni dan.`,
+      )
     }
     /* Prazno kolo med polnimi bi bila prazna stran v razporedu; strežnik kola
        brez srečanj ne pozna. */

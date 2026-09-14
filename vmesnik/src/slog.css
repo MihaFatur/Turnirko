@@ -1433,6 +1433,12 @@ a.gumb {
   align-items: end;
 }
 
+/* Ure srečanj v kolu: polje za uro je ozko, zato jih gre v vrsto več kot
+   splošnih polj (do pet v oknu navadne širine). */
+.obrazec__vrstica--ure {
+  grid-template-columns: repeat(auto-fill, minmax(min(112px, 100%), 1fr));
+}
+
 .obrazec__vrstica--dodajanje {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
@@ -1625,6 +1631,35 @@ input[type='radio'] {
   min-width: 0;
 }
 
+/* Liga z urami srečanj: kolo je blok - vrstica z oznako in dnem, pod njo
+   srečanja večera, vsako s svojo uro. Ure stojijo pod poljem za dan, da se
+   dan in ure berejo kot en stolpec časa; črta loči šele cel večer. */
+.termini__vecer {
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.termini__vrstica--vecer {
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  border-bottom: none;
+}
+
+.termini__srecanje {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 4px calc(5.5rem + 12px);
+}
+
+.termini__par {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--tip-drobno);
+}
+
 .termini__polnilo {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1651,6 +1686,32 @@ input[type='radio'] {
   .termini__vrstica {
     grid-template-columns: 3.5rem minmax(0, 1fr) 5rem;
     gap: 8px;
+  }
+
+  .termini__vrstica--vecer {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+  }
+
+  .termini__srecanje {
+    grid-template-columns: 5rem minmax(0, 1fr);
+    gap: 8px;
+    padding-left: calc(3.5rem + 8px);
+  }
+
+  .termini__srecanje input {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* Odrezan par bi skril gostujočo ekipo - prav po njej se srečanji kola, ki
+     ju igra ista domača ekipa, ločita. Zato se na telefonu prelomi. */
+  .termini__par {
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .termini__srecanje input::-webkit-calendar-picker-indicator {
+    display: none;
   }
 
   .termini__kolo {
@@ -7734,6 +7795,18 @@ a.domov__lestvica-vrstica--jaz {
   border-bottom: 1px solid var(--barva-crta);
 }
 
+/* Liga z urami srecanj: vsaka vrstica kola je mesto z uro, zato ura stoji
+   spredaj kot oznaka vrstice (mono, kot stevilke drugod). */
+.zreb__vrstica--ura {
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto minmax(0, 1fr) 44px;
+}
+
+.zreb__ura {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
 /* Pri 390 px se dva izbirnika z imeni ekip v eno vrsto ne zlozita - ime bi
    se stisnilo na nekaj znakov. Zato gresta eden pod drugega, vez odpade in
    namesto nje vsak dobi svojo oznako (doma / gost); krizec drzi obe vrstici. */
@@ -7783,6 +7856,30 @@ a.domov__lestvica-vrstica--jaz {
   .zreb__krmila .sekcija__meta {
     margin-left: 0;
     text-align: left;
+  }
+
+  /* Vrstica z uro: ura drzi obe vrstici na levi, kot krizec na desni. */
+  .zreb__vrstica--ura {
+    grid-template-columns: 3rem minmax(0, 1fr) 44px;
+  }
+
+  .zreb__vrstica--ura > .zreb__ura {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .zreb__vrstica--ura > .zreb__polje:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .zreb__vrstica--ura > .zreb__polje:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .zreb__vrstica--ura > .zreb__odstrani {
+    grid-column: 3;
   }
 }
 

@@ -2,6 +2,8 @@
 package si.turnirko.dto;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Liga;
@@ -41,6 +43,10 @@ public record LigaDto(
         // kol. Obrazec lige ju prikaze nazaj, ko se pravila urejajo.
         LocalDateTime zacetekPrvegaKola,
         Integer razmikDni,
+        // Ure srecanj v kolu ("18:30"), null = kolo kroznega sistema (V31).
+        // Javno: pravila lige jih izpisejo, razpored po njih ve, da kolo
+        // nosi vec ur.
+        List<String> ureSrecanj,
         Long idVisjaLiga,
         String visjaLigaIme,
         int stNapreduje,
@@ -84,6 +90,9 @@ public record LigaDto(
                 l.getOdbitekBrezBoja(), l.isDovoljenoNeodloceno(), l.isPrepovedDvojneRegistracije(), l.getRaven(),
                 l.isEnakomernaRazvrstitev(), l.isRocniZreb(), l.getPredlogaListka(),
                 l.getZacetekPrvegaKola(), l.getRazmikDni(),
+                l.getUreSrecanj() != null
+                        ? l.getUreSrecanj().stream().map(LocalTime::toString).toList()
+                        : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getId() : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getIme() : null,
                 l.getStNapreduje(), l.getStIzpade(), l.getStatus(), steviloEkip,

@@ -4,10 +4,11 @@
    gledalec vprasa "kaj je v soboto", ne "kaj ima ta liga". Locena seznama bi
    moral vmesnik zliti sam in bi se dvakrat urejala po datumu.
 
-   Zrnatost ligaskega vnosa je KOLO in ne srecanje: termin je last kola (vsa
-   njegova srecanja imajo isti cas, glej LigaStoritev.nastaviTermine), zato bi
-   vnos na srecanje isti dan izpisal isto ligo petkrat. Pari kola gredo v
-   "srecanja" - dan v celotnem koledarju iz njih izpise, kdo igra. */
+   Zrnatost ligaskega vnosa je KOLO in ne srecanje: dan je last kola (glej
+   LigaStoritev.nastaviTermine), zato bi vnos na srecanje isti dan izpisal isto
+   ligo petkrat. Zacetek vnosa je najzgodnejse srecanje kola - liga z urami
+   srecanj (V31) ima v kolu vec ur. Pari kola gredo v "srecanja" - dan v
+   celotnem koledarju iz njih izpise, kdo igra. */
 package si.turnirko.dto;
 
 import java.time.LocalDate;

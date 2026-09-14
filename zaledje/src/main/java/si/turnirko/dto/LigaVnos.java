@@ -7,6 +7,8 @@
 package si.turnirko.dto;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -39,7 +41,7 @@ public record LigaVnos(
         Boolean enakomernaRazvrstitev,
         // predloga uradnega ekipnega zapisnika; null = privzeto (SNTL_23)
         PredlogaLige predlogaListka,
-        // seme terminov: kdaj se igra prvo kolo (ura velja za celo kolo,
+        // seme terminov: kdaj se igra prvo kolo (ura prvega srecanja kola,
         // 00:00 = ura ni dolocena) in na koliko dni sledijo naslednja.
         // null = terminov ni; datumi kol se izracunajo sele ob generiranju
         // razporeda, ko je znano, koliko kol liga sploh ima
@@ -48,7 +50,11 @@ public record LigaVnos(
         // koncnica po rednem delu: koliko najboljsih ekip (2, 4, 8) in koliko
         // zmag za serijo; oboje null = liga brez koncnice
         Integer koncnicaEkip,
-        Integer koncnicaZmag
+        Integer koncnicaZmag,
+        // ure srecanj v kolu (V31): kolo je vecer z ure.size() srecanji
+        // zapored in ekipa v njem sme igrati veckrat; null = kolo kroznega
+        // sistema (vsaka ekipa enkrat, vsa srecanja ob uri iz semena)
+        List<LocalTime> ureSrecanj
 ) {
 
     /* Vnos lige brez koncnice (kot pred V28). */
@@ -62,6 +68,21 @@ public record LigaVnos(
         this(ime, sezona, spolKategorija, formatSrecanja, steviloNizov, zmagZaSrecanje,
                 dvokrozno, tockeZmaga, tockeNeodloceno, tockePoraz, dovoljenoNeodloceno,
                 prepovedDvojneRegistracije, raven, enakomernaRazvrstitev, predlogaListka,
-                zacetekPrvegaKola, razmikDni, null, null);
+                zacetekPrvegaKola, razmikDni, null, null, null);
+    }
+
+    /* Vnos lige s koncnico in s kolom kroznega sistema (kot pred V31). */
+    public LigaVnos(String ime, String sezona, SpolKategorija spolKategorija,
+                    FormatSrecanja formatSrecanja, Integer steviloNizov, Integer zmagZaSrecanje,
+                    Boolean dvokrozno, Integer tockeZmaga, Integer tockeNeodloceno,
+                    Integer tockePoraz, Boolean dovoljenoNeodloceno,
+                    Boolean prepovedDvojneRegistracije, RavenTekmovanja raven,
+                    Boolean enakomernaRazvrstitev, PredlogaLige predlogaListka,
+                    LocalDateTime zacetekPrvegaKola, Integer razmikDni,
+                    Integer koncnicaEkip, Integer koncnicaZmag) {
+        this(ime, sezona, spolKategorija, formatSrecanja, steviloNizov, zmagZaSrecanje,
+                dvokrozno, tockeZmaga, tockeNeodloceno, tockePoraz, dovoljenoNeodloceno,
+                prepovedDvojneRegistracije, raven, enakomernaRazvrstitev, predlogaListka,
+                zacetekPrvegaKola, razmikDni, koncnicaEkip, koncnicaZmag, null);
     }
 }

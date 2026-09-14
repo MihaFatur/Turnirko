@@ -5,6 +5,11 @@
 package si.turnirko.modeli;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -107,14 +112,22 @@ public class Liga {
     /* Seme terminov: kdaj se igra prvo kolo in na koliko dni sledijo naslednja.
        Iz njiju se ob generiranju razporeda izracunajo predvideni zacetki
        srecanj; kasnejsi rocni popravki posameznih kol semena ne spremenijo
-       (prestavljeno kolo ne sme prestaviti vseh naslednjih). Ura velja za celo
-       kolo, 00:00 pomeni "ura ni dolocena". */
+       (prestavljeno kolo ne sme prestaviti vseh naslednjih). Ura je ura
+       prvega srecanja kola, 00:00 pomeni "ura ni dolocena". */
     @Convert(converter = CasKotBesedilo.class)
     @Column(name = "zacetek_prvega_kola")
     private LocalDateTime zacetekPrvegaKola;
 
     @Column(name = "razmik_dni")
     private Integer razmikDni;
+
+    /* Ure srecanj v kolu (V31), zapis "18:30,19:45": kolo je vecer s toliko
+       srecanji zapored, i-to se zacne ob i-ti uri, in ekipa v njem sme igrati
+       veckrat (nikoli dvakrat ob isti uri). Prazno = kolo kroznega sistema -
+       vsaka ekipa enkrat, vsa srecanja ob uri iz semena. Besedilo in ne svoja
+       tabela, ker je seznam del pravil lige in se nikoli ne bere brez nje. */
+    @Column(name = "ure_srecanj")
+    private String ureSrecanj;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_visja_liga")
@@ -235,6 +248,22 @@ public class Liga {
 
     public Integer getRazmikDni() { return razmikDni; }
     public void setRazmikDni(Integer razmikDni) { this.razmikDni = razmikDni; }
+
+    /* null = kolo kroznega sistema; sicer ure srecanj kola po vrsti. */
+    public List<LocalTime> getUreSrecanj() {
+        if (ureSrecanj == null || ureSrecanj.isBlank()) {
+            return null;
+        }
+        return Arrays.stream(ureSrecanj.split(",")).map(String::trim).map(LocalTime::parse).toList();
+    }
+
+    public void setUreSrecanj(List<LocalTime> ure) {
+        this.ureSrecanj = ure == null || ure.isEmpty()
+                ? null
+                : ure.stream()
+                        .map(u -> u.truncatedTo(ChronoUnit.MINUTES).toString())
+                        .collect(Collectors.joining(","));
+    }
 
     public Liga getVisjaLiga() { return visjaLiga; }
     public void setVisjaLiga(Liga visjaLiga) { this.visjaLiga = visjaLiga; }

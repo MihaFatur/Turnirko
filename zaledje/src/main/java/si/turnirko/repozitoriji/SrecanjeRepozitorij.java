@@ -20,24 +20,30 @@ import si.turnirko.modeli.Srecanje;
 
 public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
 
-    /* Vsa srecanja lige - redni del in koncnica - s serijo koncnice. */
+    /* Vsa srecanja lige - redni del in koncnica - s serijo koncnice.
+
+       V kolu po zacetku in sele nato po id: pri ligi z urami srecanj (V31) je
+       kolo vecer z vec urami in organizator jih sme srecanjem zamenjati -
+       razpored in "naslednje srecanje" morata slediti uri, ne vrstnemu redu
+       zapisa. Zacetek je besedilo ISO (CasKotBesedilo), zato je abecedni red
+       tudi casovni. */
     @Query("""
             SELECT s FROM Srecanje s
             JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
             JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             LEFT JOIN FETCH s.serija
             WHERE s.liga.id = :idLiga
-            ORDER BY s.kolo, s.id
+            ORDER BY s.kolo, s.predvidenZacetek, s.id
             """)
     List<Srecanje> najdiZaLigo(Long idLiga);
 
-    /* Srecanja rednega dela lige (brez koncnice). */
+    /* Srecanja rednega dela lige (brez koncnice), urejena kot najdiZaLigo. */
     @Query("""
             SELECT s FROM Srecanje s
             JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
             JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             WHERE s.liga.id = :idLiga AND s.serija IS NULL
-            ORDER BY s.kolo, s.id
+            ORDER BY s.kolo, s.predvidenZacetek, s.id
             """)
     List<Srecanje> najdiRednaZaLigo(Long idLiga);
 
