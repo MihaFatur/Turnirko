@@ -1,6 +1,6 @@
 /* Liga je sezonsko ekipno tekmovanje med klubi (SNTL, rekreacijske lige).
    Konfiguracija je namenoma prilagodljiva: format srecanja, stevilo nizov,
-   prag zmag za konec srecanja, tockovanje in stetje v ELO se izberejo ob
+   prag zmag za konec srecanja, tockovanje in stetje v rating se izberejo ob
    ustvarjanju. Lige so lahko povezane (id_visja_liga) za prehode med sezonami. */
 package si.turnirko.modeli;
 
@@ -66,13 +66,20 @@ public class Liga {
     @Column(name = "dovoljeno_neodloceno", nullable = false)
     private boolean dovoljenoNeodloceno = true;
 
+    /* Koliko tock se ekipi, ki izgubi brez borbe, odsteje od skupnega stevila
+       (Pravila SNTL: ena). 0 = pravila lige odbitka nimajo. */
+    @Column(name = "odbitek_brez_boja", nullable = false)
+    private int odbitekBrezBoja = 0;
+
     /* Igralec sme biti v kadru le ene ekipe v tej ligi. */
     @Column(name = "prepoved_dvojne_registracije", nullable = false)
     private boolean prepovedDvojneRegistracije = false;
 
-    /* Ali posamicne tekme lige stejejo v klubski ELO (dvojice nikoli). */
-    @Column(name = "steje_v_elo", nullable = false)
-    private boolean stejeVElo = true;
+    /* Raven tekmovanja doloci tezo posamicnih tekem lige v Turnirko ratingu
+       (dvojice ne stejejo nikoli). Privzeto KLUBSKO - glej Turnir.raven. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "raven", nullable = false)
+    private RavenTekmovanja raven = RavenTekmovanja.KLUBSKO;
 
     /* Enakomerna razvrstitev ekip: ekipe dobijo jakostni vrstni red
        (Ekipa.stNosilca), zreb pa jih po njem zveze v pare - i-ta ekipa
@@ -83,7 +90,16 @@ public class Liga {
     @Column(name = "enakomerna_razvrstitev", nullable = false)
     private boolean enakomernaRazvrstitev = false;
 
+    /* Ali je razpored VPISAL organizator namesto zreba. Na potek lige ne
+       vpliva (srecanja so ista vrsta zapisa kot pri generiranem zrebu), je pa
+       javna: liga, ki se je doslej vodila na roke, ima pare ze razdeljene in
+       razposlane igralcem, zato mora stran povedati, da to ni nov naklucni
+       zreb. Pise jo samo LigaStoritev - glej migracijo V26. */
+    @Column(name = "rocni_zreb", nullable = false)
+    private boolean rocniZreb = false;
+
     /* Predloga uradnega ekipnega zapisnika za natis (1. SNTL oz. 2./3. SNTL). */
+
     @Enumerated(EnumType.STRING)
     @Column(name = "predloga_listka", nullable = false)
     private PredlogaLige predlogaListka = PredlogaLige.SNTL_23;
@@ -103,6 +119,23 @@ public class Liga {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_visja_liga")
     private Liga visjaLiga;
+
+    /* Koncnica po rednem delu (V28): koliko najboljsih ekip jo igra (2, 4 ali
+       8) in koliko zmag potrebuje ekipa za zmago v seriji (1 = ena tekma,
+       2 = na dve zmagi ...). Oboje prazno pomeni ligo brez koncnice.
+       Pravila koncnice so del pravil tekmovanja, zato jih kot vse ostalo ureja
+       LigaStoritev.uredi (samo v pripravi). */
+    @Column(name = "koncnica_ekip")
+    private Integer koncnicaEkip;
+
+    @Column(name = "koncnica_zmag")
+    private Integer koncnicaZmag;
+
+    /* Od kod je liga prisla (V27). Prazen = nastala je v Turnirku; sicer je
+       uvozena in samo za branje (glej VirTekmovanja, LastnistvoStoritev). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vir")
+    private VirTekmovanja vir;
 
     @Column(name = "st_napreduje", nullable = false)
     private int stNapreduje = 0;
@@ -175,19 +208,26 @@ public class Liga {
     public int getTockePoraz() { return tockePoraz; }
     public void setTockePoraz(int tockePoraz) { this.tockePoraz = tockePoraz; }
 
+    public int getOdbitekBrezBoja() { return odbitekBrezBoja; }
+    public void setOdbitekBrezBoja(int odbitekBrezBoja) { this.odbitekBrezBoja = odbitekBrezBoja; }
+
     public boolean isDovoljenoNeodloceno() { return dovoljenoNeodloceno; }
     public void setDovoljenoNeodloceno(boolean dovoljenoNeodloceno) { this.dovoljenoNeodloceno = dovoljenoNeodloceno; }
 
     public boolean isPrepovedDvojneRegistracije() { return prepovedDvojneRegistracije; }
     public void setPrepovedDvojneRegistracije(boolean v) { this.prepovedDvojneRegistracije = v; }
 
-    public boolean isStejeVElo() { return stejeVElo; }
-    public void setStejeVElo(boolean stejeVElo) { this.stejeVElo = stejeVElo; }
+    public RavenTekmovanja getRaven() { return raven; }
+    public void setRaven(RavenTekmovanja raven) { this.raven = raven; }
 
     public boolean isEnakomernaRazvrstitev() { return enakomernaRazvrstitev; }
     public void setEnakomernaRazvrstitev(boolean v) { this.enakomernaRazvrstitev = v; }
 
+    public boolean isRocniZreb() { return rocniZreb; }
+    public void setRocniZreb(boolean rocniZreb) { this.rocniZreb = rocniZreb; }
+
     public PredlogaLige getPredlogaListka() { return predlogaListka; }
+
     public void setPredlogaListka(PredlogaLige predlogaListka) { this.predlogaListka = predlogaListka; }
 
     public LocalDateTime getZacetekPrvegaKola() { return zacetekPrvegaKola; }
@@ -198,6 +238,21 @@ public class Liga {
 
     public Liga getVisjaLiga() { return visjaLiga; }
     public void setVisjaLiga(Liga visjaLiga) { this.visjaLiga = visjaLiga; }
+
+    public Integer getKoncnicaEkip() { return koncnicaEkip; }
+    public void setKoncnicaEkip(Integer koncnicaEkip) { this.koncnicaEkip = koncnicaEkip; }
+
+    public Integer getKoncnicaZmag() { return koncnicaZmag; }
+    public void setKoncnicaZmag(Integer koncnicaZmag) { this.koncnicaZmag = koncnicaZmag; }
+
+    /* Ali liga po rednem delu igra koncnico. */
+    public boolean imaKoncnico() { return koncnicaEkip != null; }
+
+    public VirTekmovanja getVir() { return vir; }
+    public void setVir(VirTekmovanja vir) { this.vir = vir; }
+
+    /* Ali je liga uvozena iz zunanjega vira in torej samo za branje. */
+    public boolean jeUvozena() { return vir != null; }
 
     public int getStNapreduje() { return stNapreduje; }
     public void setStNapreduje(int stNapreduje) { this.stNapreduje = stNapreduje; }

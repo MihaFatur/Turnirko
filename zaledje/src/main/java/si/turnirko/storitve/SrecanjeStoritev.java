@@ -1,10 +1,19 @@
 /* Poslovna logika srecanj: dolocanje postave, generiranje posamicnih tekem po
    formatu, vnos rezultatov, pravilo predcasnega konca (prvi do N zmag) in
-   obracun ELO za posamicne tekme.
+   obracun ratinga za posamicne tekme.
 
    Postava dodeli igralce iz kadra na mesta (A/B/C, X/Y/Z) in oznaci par za
    dvojice; iz nje se generira urejen seznam tekem. Ko ena stran doseze prag
-   zmag, se preostale tekme oznacijo kot NEODIGRANE in srecanje se konca. */
+   zmag, se preostale tekme oznacijo kot NEODIGRANE in srecanje se konca.
+
+   Srecanje pripada ligi ALI ekipni tekmi turnirja (V28) in tece po isti
+   kodi: pravila igranja (format, nizi, prag, raven) prebere iz tekmovanja
+   (Srecanje.pravila). Kar se po koncu srecanja zgodi, pa je odvisno od tega,
+   kam spada:
+   - ekipna tekma turnirja dobi izid srecanja in turnir tece naprej
+     (napredovanje, skupine, zakljucek dogodka - TekmaStoritev),
+   - tekma serije koncnice steje v serijo (KoncnicaStoritev),
+   - srecanje rednega dela lige nima nadaljevanja (lestvica je izpeljanka). */
 package si.turnirko.storitve;
 
 import java.time.LocalDateTime;
@@ -30,26 +39,31 @@ import si.turnirko.dto.VnosRezultataSrecanja;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
+import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Ekipa;
+import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.KaderEkipe;
-import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.NizSrecanja;
 import si.turnirko.modeli.PostavaSrecanja;
 import si.turnirko.modeli.RatingStanje;
+import si.turnirko.modeli.Skupina;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmeSrecanja;
 import si.turnirko.modeli.StranEkipe;
+import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
+import si.turnirko.repozitoriji.SkupinaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
+import si.turnirko.repozitoriji.TekmaRepozitorij;
 import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
 import si.turnirko.storitve.LestvicaLigeStoritev.Bilanca;
 import si.turnirko.storitve.LestvicaLigeStoritev.BilanceLige;
@@ -62,10 +76,14 @@ public class SrecanjeStoritev {
     private final TekmaSrecanjaRepozitorij tekmaRepozitorij;
     private final NizSrecanjaRepozitorij nizRepozitorij;
     private final KaderEkipeRepozitorij kaderRepozitorij;
+    private final SkupinaRepozitorij skupinaRepozitorij;
+    private final TekmaRepozitorij turnirskeTekme;
     private final RatingStoritev ratingStoritev;
     private final RatingZgodovinaRepozitorij zgodovinaRepozitorij;
-    private final SpremembeEloStoritev spremembeEloStoritev;
+    private final SpremembeRatingaStoritev spremembeRatinga;
     private final LestvicaLigeStoritev lestvicaLigeStoritev;
+    private final TekmaStoritev tekmaStoritev;
+    private final KoncnicaStoritev koncnicaStoritev;
     private final LastnistvoStoritev lastnistvo;
 
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
@@ -73,20 +91,28 @@ public class SrecanjeStoritev {
                             TekmaSrecanjaRepozitorij tekmaRepozitorij,
                             NizSrecanjaRepozitorij nizRepozitorij,
                             KaderEkipeRepozitorij kaderRepozitorij,
+                            SkupinaRepozitorij skupinaRepozitorij,
+                            TekmaRepozitorij turnirskeTekme,
                             RatingStoritev ratingStoritev,
                             RatingZgodovinaRepozitorij zgodovinaRepozitorij,
-                            SpremembeEloStoritev spremembeEloStoritev,
+                            SpremembeRatingaStoritev spremembeRatinga,
                             LestvicaLigeStoritev lestvicaLigeStoritev,
+                            TekmaStoritev tekmaStoritev,
+                            KoncnicaStoritev koncnicaStoritev,
                             LastnistvoStoritev lastnistvo) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
+        this.skupinaRepozitorij = skupinaRepozitorij;
+        this.turnirskeTekme = turnirskeTekme;
         this.ratingStoritev = ratingStoritev;
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
-        this.spremembeEloStoritev = spremembeEloStoritev;
+        this.spremembeRatinga = spremembeRatinga;
         this.lestvicaLigeStoritev = lestvicaLigeStoritev;
+        this.tekmaStoritev = tekmaStoritev;
+        this.koncnicaStoritev = koncnicaStoritev;
         this.lastnistvo = lastnistvo;
     }
 
@@ -97,27 +123,27 @@ public class SrecanjeStoritev {
 
     @Transactional(readOnly = true)
     public SrecanjePodrobnoDto podrobno(Long idSrecanje) {
-        Srecanje s = srecanjeRepozitorij.najdiPodrobno(idSrecanje)
-                .orElseThrow(() -> new NiNajdenoIzjema("Srecanje z id " + idSrecanje + " ne obstaja."));
-        Liga liga = s.getLiga();
-        FormatSrecanja format = liga.getFormatSrecanja();
+        Srecanje s = najdiPodrobno(idSrecanje);
+        FormatSrecanja format = s.pravila().format();
 
         List<PostavaSrecanjaDto> postave = postavaRepozitorij.najdiZaSrecanje(idSrecanje)
                 .stream().map(PostavaSrecanjaDto::iz).toList();
 
         List<TekmaSrecanja> tekme = tekmaRepozitorij.najdiZaSrecanje(idSrecanje);
-        Map<Long, Map<Long, Integer>> delte = eloDelte(tekme.stream().map(TekmaSrecanja::getId).toList());
+        Map<Long, Map<Long, Integer>> delte = delteRatinga(tekme.stream().map(TekmaSrecanja::getId).toList());
         Map<Long, List<NizVnos>> nizi = niziSrecanja(idSrecanje);
         List<TekmaSrecanjaDto> tekmeDto = tekme.stream()
                 .map(t -> TekmaSrecanjaDto.iz(t,
-                        eloZa(delte, t.getId(), t.getIgralecDomaci()),
-                        eloZa(delte, t.getId(), t.getIgralecGost()),
+                        ratingZa(delte, t.getId(), t.getIgralecDomaci()),
+                        ratingZa(delte, t.getId(), t.getIgralecGost()),
                         nizi.getOrDefault(t.getId(), List.of())))
                 .toList();
 
-        BilanceLige bilance = lestvicaLigeStoritev.bilancePosamicnih(liga.getId());
+        BilanceLige bilance = s.jeTurnirsko()
+                ? lestvicaLigeStoritev.bilancePosamicnihDogodka(s.getTekma().getDogodek().getId())
+                : lestvicaLigeStoritev.bilancePosamicnih(s.getLiga().getId());
         return new SrecanjePodrobnoDto(
-                SrecanjeDto.iz(s), format,
+                SrecanjeDto.iz(s), kontekst(s), format,
                 format.pozicijeDomaci(), format.pozicijeGost(),
                 format.izbiraDvojice(), format.stVDvojici(),
                 postave, tekmeDto,
@@ -128,10 +154,13 @@ public class SrecanjeStoritev {
 
     @Transactional
     public void nastaviPostavo(Long idSrecanje, PostavaVnos vnos) {
-        lastnistvo.preveriLigaPoSrecanju(idSrecanje);
-        Srecanje s = srecanjeRepozitorij.najdiPodrobno(idSrecanje)
-                .orElseThrow(() -> new NiNajdenoIzjema("Srecanje z id " + idSrecanje + " ne obstaja."));
-        FormatSrecanja format = s.getLiga().getFormatSrecanja();
+        lastnistvo.preveriPoSrecanju(idSrecanje);
+        Srecanje s = najdiPodrobno(idSrecanje);
+        FormatSrecanja format = s.pravila().format();
+
+        if (s.jeTurnirsko() && s.getTekma().getStatus() == si.turnirko.modeli.StatusTekme.KONCANA) {
+            throw new DomenskaIzjema("Ekipna tekma je ze koncana.");
+        }
 
         // ce je ze vnesen kaksen rezultat, postave ne spreminjamo (obracun ratinga
         // bi bilo treba razveljaviti) - najprej je treba rezultate pociscati
@@ -179,17 +208,21 @@ public class SrecanjeStoritev {
         s.setOdigranOb(null);
         s.setStatus(StatusSrecanja.POTEKA);
         srecanjeRepozitorij.save(s);
+        if (s.jeTurnirsko()) {
+            // ekipna tekma v mrezi se je zacela - enako kot tekma posameznikov
+            tekmaStoritev.oznaciVIgri(s.getTekma().getId());
+        }
     }
 
     // ---------- Rezultat ----------
 
     @Transactional
     public TekmaSrecanjaDto vnesiRezultat(Long idTekma, VnosRezultataSrecanja v) {
-        lastnistvo.preveriLigaPoTekmiSrecanja(idTekma);
+        lastnistvo.preveriPoTekmiSrecanja(idTekma);
         TekmaSrecanja t = tekmaRepozitorij.najdiZaObracun(idTekma)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja."));
         Srecanje s = t.getSrecanje();
-        Liga liga = s.getLiga();
+        Srecanje.Pravila pravila = s.pravila();
 
         if (s.getStatus() == StatusSrecanja.KONCANO) {
             throw new DomenskaIzjema("Srecanje je ze koncano.");
@@ -231,7 +264,7 @@ public class SrecanjeStoritev {
                 NiziPravila.preveri(v.nizi(), niziDomaci, niziGost, zaZmago);
             }
         } else if (izid == IzidTekme.PROSTO) {
-            throw new NeveljavenVnosIzjema("Izid PROSTO v ligi ni mogoc.");
+            throw new NeveljavenVnosIzjema("Izid PROSTO v srecanju ni mogoc.");
         } else {
             if (v.zmagovalecStran() == null) {
                 throw new NeveljavenVnosIzjema("Za posebni izid je obvezna zmagovalna stran.");
@@ -259,23 +292,24 @@ public class SrecanjeStoritev {
             zaporedna++;
         }
 
-        // ELO samo za posamicne tekme, ce liga steje in izid steje (w.o. in
-        // diskvalifikacija ne stejeta - enako kot pri turnirjih)
-        if (t.getTip() == TipTekmeSrecanja.POSAMICNA && liga.isStejeVElo() && stejeVElo(izid)) {
+        // rating samo za posamicne tekme, ce tekmovanje steje in izid steje
+        // (w.o. in diskvalifikacija ne stejeta - enako kot pri turnirjih)
+        if (t.getTip() == TipTekmeSrecanja.POSAMICNA && pravila.raven().steje() && stejeVElo(izid)) {
             ratingStoritev.obracunajZaLigasko(t);
         }
 
-        posodobiSrecanje(s, liga);
+        posodobiSrecanje(s, pravila.zmagZaSrecanje());
 
-        Map<Long, Map<Long, Integer>> delte = eloDelte(List.of(t.getId()));
+        Map<Long, Map<Long, Integer>> delte = delteRatinga(List.of(t.getId()));
         return TekmaSrecanjaDto.iz(t,
-                eloZa(delte, t.getId(), t.getIgralecDomaci()),
-                eloZa(delte, t.getId(), t.getIgralecGost()),
+                ratingZa(delte, t.getId(), t.getIgralecDomaci()),
+                ratingZa(delte, t.getId(), t.getIgralecGost()),
                 vneseniNizi);
     }
 
-    /* Osvezi povzetek srecanja in uveljavi pravilo predcasnega konca. */
-    private void posodobiSrecanje(Srecanje s, Liga liga) {
+    /* Osvezi povzetek srecanja in uveljavi pravilo predcasnega konca. Ko se
+       srecanje konca, sprozi nadaljevanje v tekmovanju, ki mu pripada. */
+    private void posodobiSrecanje(Srecanje s, Integer prag) {
         List<TekmaSrecanja> tekme = tekmaRepozitorij.najdiZaSrecanje(s.getId());
         int zmageDomaci = 0;
         int zmageGost = 0;
@@ -294,7 +328,6 @@ public class SrecanjeStoritev {
         s.setDobljeneDomaci(zmageDomaci);
         s.setDobljeneGost(zmageGost);
 
-        Integer prag = liga.getZmagZaSrecanje();
         boolean odloceno;
         if (prag != null && (zmageDomaci >= prag || zmageGost >= prag)) {
             for (TekmaSrecanja t : tekme) {
@@ -317,9 +350,60 @@ public class SrecanjeStoritev {
             s.setStatus(StatusSrecanja.POTEKA);
         }
         srecanjeRepozitorij.save(s);
+
+        if (odloceno && s.jeTurnirsko()) {
+            tekmaStoritev.zakljuciEkipnoTekmo(s.getTekma().getId(), zmageDomaci, zmageGost);
+        } else if (odloceno && s.jeKoncnica()) {
+            koncnicaStoritev.obKoncanemSrecanju(s.getId());
+        }
     }
 
     // ---------- Pomozno ----------
+
+    private Srecanje najdiPodrobno(Long idSrecanje) {
+        return srecanjeRepozitorij.najdiPodrobno(idSrecanje)
+                .orElseThrow(() -> new NiNajdenoIzjema("Srecanje z id " + idSrecanje + " ne obstaja."));
+    }
+
+    /* Kje srecanje stoji - za naslov zapisnika. */
+    private SrecanjePodrobnoDto.Kontekst kontekst(Srecanje s) {
+        if (s.jeTurnirsko()) {
+            Tekma tekma = s.getTekma();
+            Dogodek dogodek = tekma.getDogodek();
+            return new SrecanjePodrobnoDto.Kontekst(dogodek.getTurnir().getIme(), null,
+                    dogodek.getIme(), opisEkipneTekme(tekma), dogodek.getTurnir().getVir());
+        }
+        String opis = s.jeKoncnica()
+                ? KoncnicaStoritev.opisTekme(s.getSerija().getKrog(),
+                        stKrogovKoncnice(s), s.getTekmaVSeriji())
+                : s.getKolo() + ". kolo";
+        return new SrecanjePodrobnoDto.Kontekst(s.getLiga().getIme(), s.getLiga().getSezona(),
+                null, opis, s.getLiga().getVir());
+    }
+
+    private int stKrogovKoncnice(Srecanje s) {
+        Integer ekip = s.getLiga().getKoncnicaEkip();
+        return ekip == null ? s.getSerija().getKrog() : Integer.numberOfTrailingZeros(ekip);
+    }
+
+    /* Mesto ekipne tekme v turnirju: skupina z imenom oz. faza mreze. */
+    private String opisEkipneTekme(Tekma tekma) {
+        if (tekma.getFaza() == FazaTekme.SKUPINA && tekma.getIdSkupina() != null) {
+            return skupinaRepozitorij.findById(tekma.getIdSkupina())
+                    .map(sk -> (sk.getIme() != null ? sk.getIme() : "skupina " + sk.getOznaka())
+                            + " · " + tekma.getKolo() + ". kolo")
+                    .orElse("skupine");
+        }
+        if (tekma.getFaza() == FazaTekme.TOLAZILNI && tekma.getDogodek().isTekmaZaTretjeMesto()) {
+            return "za 3. mesto";
+        }
+        Integer zadnje = turnirskeTekme.zadnjaKolaPoDogodkih().stream()
+                .filter(r -> ((Number) r[0]).longValue() == tekma.getDogodek().getId())
+                .map(r -> ((Number) r[1]).intValue())
+                .findFirst().orElse(null);
+        return PovzetkiStoritev.opisFaze(tekma.getDogodek().getSistemTekmovanja(), tekma.getFaza(),
+                tekma.getKolo(), zadnje);
+    }
 
     private void preveriStran(FormatSrecanja format, StranEkipe stran,
                               Map<String, PostavaVnos.MestoVnos> postava,
@@ -362,7 +446,7 @@ public class SrecanjeStoritev {
                                 Map<String, PostavaVnos.MestoVnos> domaci,
                                 Map<String, PostavaVnos.MestoVnos> gost,
                                 Map<Long, Igralec> igralci) {
-        int steviloNizov = s.getLiga().getSteviloNizov();
+        int steviloNizov = s.pravila().steviloNizov();
         List<Igralec> dvojicaDomaci = paroviZaDvojice(format.pozicijeDomaci(), domaci, igralci);
         List<Igralec> dvojicaGost = paroviZaDvojice(format.pozicijeGost(), gost, igralci);
 
@@ -408,7 +492,7 @@ public class SrecanjeStoritev {
        (glej LigaStoritev.kader). Bilanca je bilanca pri TEJ ekipi. */
     private List<KaderIgralecDto> kader(Long idEkipa, BilanceLige bilance) {
         List<KaderEkipe> kader = kaderRepozitorij.najdiZaEkipo(idEkipa);
-        Map<Long, Integer> ratingi = spremembeEloStoritev.trenutniRatingi(
+        Map<Long, Integer> ratingi = spremembeRatinga.trenutniRatingi(
                 kader.stream().map(k -> k.getIgralec().getId()).toList());
         return kader.stream()
                 .map(k -> {
@@ -430,12 +514,12 @@ public class SrecanjeStoritev {
         return po;
     }
 
-    private Map<Long, Map<Long, Integer>> eloDelte(Collection<Long> idjiTekem) {
+    private Map<Long, Map<Long, Integer>> delteRatinga(Collection<Long> idjiTekem) {
         Map<Long, Map<Long, Integer>> m = new HashMap<>();
         if (idjiTekem.isEmpty()) {
             return m;
         }
-        for (Object[] r : zgodovinaRepozitorij.spremembeZaTekmeSrecanja(idjiTekem, RatingStanje.SISTEM_KLUBSKI_ELO)) {
+        for (Object[] r : zgodovinaRepozitorij.spremembeZaTekmeSrecanja(idjiTekem, RatingStanje.SISTEM_TURNIRKO)) {
             Long idTekme = ((Number) r[0]).longValue();
             Long idIgralca = ((Number) r[1]).longValue();
             int sprememba = ((Number) r[2]).intValue();
@@ -444,7 +528,7 @@ public class SrecanjeStoritev {
         return m;
     }
 
-    private Integer eloZa(Map<Long, Map<Long, Integer>> delte, Long idTekme, Igralec igralec) {
+    private Integer ratingZa(Map<Long, Map<Long, Integer>> delte, Long idTekme, Igralec igralec) {
         if (igralec == null) {
             return null;
         }

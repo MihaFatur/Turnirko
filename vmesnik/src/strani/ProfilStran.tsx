@@ -1,10 +1,10 @@
 /* Profil igralca s statistiko.
 
    Stran je ena sama kronoloska pripoved:
-   glava -> Napredek ELO -> Forma -> Nasprotniki -> Nizi in tocke -> Razrezi
-   -> Odigrane tekme.
+   glava -> Napredek ratinga -> Forma -> Nasprotniki -> Kaj prinese tekma
+   -> Nizi in tocke -> Razrezi -> Odigrane tekme.
 
-   Javni del (uvrstitev, ELO blok, kolofon, graf, seznam tekem) vidi vsak.
+   Javni del (uvrstitev, blok ratinga, kolofon, graf, seznam tekem) vidi vsak.
    Zasebne analize (forma, nasprotniki, nizi in tocke, razrezi) se nalozijo
    posebej in samo takrat, ko je profil last prijavljenega igralca ali ko gleda
    administrator - streznik na ta klic sicer odgovori s 403.
@@ -31,10 +31,11 @@ import type {
   TekmaDvojic,
   TekmaProfila,
 } from '../api/tipi'
-import { OZNAKE_IZID } from '../api/tipi'
+import { OZNAKE_IZID, izidNizov } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
-import { GrafElo } from '../komponente/GrafElo'
+import { GrafRatinga } from '../komponente/GrafRatinga'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { NapovedTekme } from '../komponente/NapovedTekme'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import {
   oznakaMeseca,
@@ -66,7 +67,7 @@ export function ProfilStran() {
 
   const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
 
-  /* Skok s točke grafa ELO na vrstico iste tekme v seznamu spodaj. Seznam je
+  /* Skok s točke grafa ratinga na vrstico iste tekme v seznamu spodaj. Seznam je
      izrisan v celoti (brez straničenja), zato zadošča iskanje po id-ju vrstice.
      Vrstica dobi fokus — brez tega bralnik zaslona po skoku ne pove, kam smo
      prišli — in ostane označena, dokler gledalec ne izbere druge tekme. */
@@ -150,18 +151,18 @@ export function ProfilStran() {
           </div>
 
           <div>
-            <div className="elo-blok">
-              <span className="elo-blok__oznaka">Klubski ELO</span>
-              <span className="elo-blok__vrednost">{p.glava.rating ?? '—'}</span>
+            <div className="rating-blok">
+              <span className="rating-blok__oznaka">Turnirko rating</span>
+              <span className="rating-blok__vrednost">{p.glava.rating ?? '—'}</span>
               {z?.forma && (
-                <div className="elo-blok__noga">
+                <div className="rating-blok__noga">
                   <span>
                     {z.forma.spremembaElo30dni === null
                       ? 'brez tekem v 30 dneh'
                       : `${z.forma.spremembaElo30dni >= 0 ? '+' : '−'}${Math.abs(z.forma.spremembaElo30dni)} / 30 dni`}
                   </span>
-                  {z.forma.najvisjiElo !== null && (
-                    <span className="elo-blok__vrh">vrh {z.forma.najvisjiElo}</span>
+                  {z.forma.najvisjiRating !== null && (
+                    <span className="rating-blok__vrh">vrh {z.forma.najvisjiRating}</span>
                   )}
                 </div>
               )}
@@ -216,14 +217,18 @@ export function ProfilStran() {
         </div>
       </div>
 
-      <GrafElo tocke={p.graf} naTekmo={skociNaTekmo}>
+      <GrafRatinga tocke={p.graf} naTekmo={skociNaTekmo}>
         {z && <PricakovanIzkupicek meseci={z.forma.poMesecih} />}
-      </GrafElo>
+      </GrafRatinga>
 
       {smemZasebno && z && (
         <>
           <Forma podatki={z} pregled={p.pregled} okolica={okolica} />
-          <Nasprotniki podatki={z} tekme={p.tekme} lestvica={lestvica.data} mojElo={p.glava.rating} />
+          <Nasprotniki podatki={z} tekme={p.tekme} lestvica={lestvica.data} mojRating={p.glava.rating} />
+          {/* Napoved stoji za »Nasprotniki«: tam gledalec vidi, proti komu je
+              igral, tu pa vpraša, kaj bi prinesel naslednji. Vrstni red je
+              isti kot pripoved strani — najprej kaj je bilo, potem kaj bo. */}
+          <NapovedTekme idIgralec={idIgralec} />
           <NiziInTocke podatki={z} />
           <Razrezi podatki={z} />
         </>
@@ -242,7 +247,7 @@ export function ProfilStran() {
         )}
       </div>
 
-      {/* Dvojice so SVOJ seznam in ne štejejo ne v pregled ne v ELO: izida
+      {/* Dvojice so SVOJ seznam in ne štejejo ne v pregled ne v rating: izida
           para ni mogoče pripisati posamezniku. Razdelek se pokaže samo
           igralcu, ki je dvojice sploh igral. */}
       {p.dvojice.length > 0 && (
@@ -253,7 +258,7 @@ export function ProfilStran() {
           </div>
           <SeznamDvojic tekme={p.dvojice} />
           <p className="namig">
-            Tekme dvojic ne štejejo v zgornji izkupiček ne v klubski ELO —
+            Tekme dvojic ne štejejo v zgornji izkupiček ne v Turnirko rating —
             izida para ni mogoče pripisati posamezniku.
           </p>
         </div>
@@ -262,7 +267,7 @@ export function ProfilStran() {
   )
 }
 
-/* ---------------- 1. Napredek ELO: pričakovan proti doseženemu ---------------- */
+/* ---------------- 1. Napredek ratinga: pričakovan proti doseženemu ---------------- */
 
 /* Stolpec je dosežen izkupiček meseca, črna črta čezenj pa vsota verjetnosti
    zmage iz razlike ratingov. Razlika pod stolpcem pove, ali je igralec mesec
@@ -358,7 +363,7 @@ function PricakovanIzkupicek({ meseci }: { meseci: ProfilMesec[] }) {
           </div>
           <p className="izkupicek__opis">
             Modri stolpec je doseženo število zmag v mesecu, črna črta pa pričakovano glede na
-            ELO nasprotnikov. Skupno si v {vidni.length} {sklonMesecih(vidni.length)} zbral{' '}
+            rating nasprotnikov. Skupno si v {vidni.length} {sklonMesecih(vidni.length)} zbral{' '}
             {stevilka(Math.abs(skupnaRazlika), false)} zmage {nad ? 'več' : 'manj'}, kot bi jih
             povprečen igralec tvojega ratinga.
           </p>
@@ -422,7 +427,7 @@ function Forma({
                 vrednost={f.trenutniNiz}
               />
               <FormaKazalnik oznaka="Najdaljši niz zmag" vrednost={f.najdaljsiNizZmag} />
-              <FormaKazalnik oznaka="Najvišji ELO" vrednost={f.najvisjiElo ?? '—'} />
+              <FormaKazalnik oznaka="Najvišji rating" vrednost={f.najvisjiRating ?? '—'} />
             </div>
           </div>
         </div>
@@ -461,7 +466,7 @@ function Kolobar({ odstotek }: { odstotek: number }) {
   )
 }
 
-/* Igralec pred in za tem igralcem na lestvici — pokaže, koliko točk ELO manjka
+/* Igralec pred in za tem igralcem na lestvici — pokaže, koliko točk ratinga manjka
    do naslednjega mesta. Brez lestvice (ali brez uvrstitve) se blok ne izriše. */
 function OkolicaBlok({ okolica }: { okolica: Okolica | null }) {
   if (!okolica) return null
@@ -483,7 +488,7 @@ function OkolicaBlok({ okolica }: { okolica: Okolica | null }) {
             <span className="okolica__ime">{v.polnoIme}</span>
             <span className="okolica__klub">{v.klub ?? 'brez kluba'}</span>
           </span>
-          <span className="okolica__elo">{v.rating ?? '—'}</span>
+          <span className="okolica__rating">{v.rating ?? '—'}</span>
           <span className="okolica__razlika">
             {v.jaz ? '—' : v.razlika === null ? '' : `${v.razlika > 0 ? '+' : '−'}${Math.abs(v.razlika)}`}
           </span>
@@ -492,7 +497,7 @@ function OkolicaBlok({ okolica }: { okolica: Okolica | null }) {
       {okolica.razlikaNad != null && (
         <p className="profil__primerjava">
           Do <strong>{okolica.mestoNad}. mesta</strong> ti manjka {okolica.razlikaNad}{' '}
-          {sklonTock(okolica.razlikaNad)} ELO — približno {okolica.zmagDoNaslednjega}{' '}
+          {sklonTock(okolica.razlikaNad)} rating — približno {okolica.zmagDoNaslednjega}{' '}
           {sklonZmag(okolica.zmagDoNaslednjega)} proti močnejšemu nasprotniku.
         </p>
       )}
@@ -506,12 +511,12 @@ function Nasprotniki({
   podatki,
   tekme,
   lestvica,
-  mojElo,
+  mojRating,
 }: {
   podatki: ProfilZasebnoDto
   tekme: TekmaProfila[]
   lestvica: LestvicaIgralcaDto[] | undefined
-  mojElo: number | null
+  mojRating: number | null
 }) {
   const n = podatki.nasprotniki
   const h2h = izracunajH2H(tekme, lestvica)
@@ -556,7 +561,7 @@ function Nasprotniki({
             <span>Igralec</span>
             <span>Medsebojni rezultat</span>
             <span className="h2h__sredina">Zadnjih {h2h[0].zadnjih.length}</span>
-            <span className="h2h__desno">Njegov ELO</span>
+            <span className="h2h__desno">Njegov rating</span>
             <span className="h2h__desno">Skupaj</span>
           </div>
           {h2h.map((v) => (
@@ -582,22 +587,22 @@ function Nasprotniki({
                   </span>
                 ))}
               </span>
-              <span className="h2h__elo">{v.rating ?? '—'}</span>
+              <span className="h2h__rating">{v.rating ?? '—'}</span>
               <span className="h2h__skupaj">{v.zmage + v.porazi}</span>
             </div>
           ))}
         </>
       )}
 
-      <RazsevniGraf tocke={podatki.razsevni} mojElo={mojElo} />
+      <RazsevniGraf tocke={podatki.razsevni} mojRating={mojRating} />
     </div>
   )
 }
 
-/* Razsevni graf: vodoravno ELO nasprotnika ob tekmi, navpično sprememba
-   lastnega ratinga. Črtkana navpičnica je lasten ELO — kar je desno od nje,
+/* Razsevni graf: vodoravno rating nasprotnika ob tekmi, navpično sprememba
+   lastnega ratinga. Črtkana navpičnica je lasten rating — kar je desno od nje,
    je bilo odigrano proti močnejšemu. */
-function RazsevniGraf({ tocke, mojElo }: { tocke: RazsevnaTocka[]; mojElo: number | null }) {
+function RazsevniGraf({ tocke, mojRating }: { tocke: RazsevnaTocka[]; mojRating: number | null }) {
   if (tocke.length === 0) return null
 
   const SIRINA = 1120
@@ -608,8 +613,8 @@ function RazsevniGraf({ tocke, mojElo }: { tocke: RazsevnaTocka[]; mojElo: numbe
   const RAZPON = 112
 
   const ratingi = tocke.map((t) => t.ratingNasprotnika)
-  const najmanj = Math.min(...ratingi, mojElo ?? Infinity)
-  const najvec = Math.max(...ratingi, mojElo ?? -Infinity)
+  const najmanj = Math.min(...ratingi, mojRating ?? Infinity)
+  const najvec = Math.max(...ratingi, mojRating ?? -Infinity)
   const rob = Math.max(30, (najvec - najmanj) * 0.08)
   const od = najmanj - rob
   const doKam = najvec + rob
@@ -623,18 +628,18 @@ function RazsevniGraf({ tocke, mojElo }: { tocke: RazsevnaTocka[]; mojElo: numbe
   for (let v = Math.ceil(od / korak) * korak; v <= doKam; v += korak) oznakeX.push(v)
 
   const zmagProtiMocnejsim =
-    mojElo === null ? 0 : tocke.filter((t) => t.zmaga && t.ratingNasprotnika > mojElo).length
+    mojRating === null ? 0 : tocke.filter((t) => t.zmaga && t.ratingNasprotnika > mojRating).length
 
   return (
     <>
-      <div className="podnaslov-sekcije">ELO nasprotnika proti izidu</div>
+      <div className="podnaslov-sekcije">rating nasprotnika proti izidu</div>
       <div className="razsevni">
-        {mojElo !== null && (
+        {mojRating !== null && (
           <span
             className="razsevni__moj"
-            style={{ left: `${((x(mojElo) + 8) / SIRINA) * 100}%` }}
+            style={{ left: `${((x(mojRating) + 8) / SIRINA) * 100}%` }}
           >
-            Tvoj ELO {mojElo}
+            Tvoj rating {mojRating}
           </span>
         )}
         {oznakeX.map((v) => (
@@ -659,11 +664,11 @@ function RazsevniGraf({ tocke, mojElo }: { tocke: RazsevnaTocka[]; mojElo: numbe
           className="razsevni__svg"
           viewBox={`0 0 ${SIRINA} ${VISINA}`}
           role="img"
-          aria-label="Razsevni graf: ELO nasprotnika proti spremembi ratinga"
+          aria-label="Razsevni graf: rating nasprotnika proti spremembi ratinga"
         >
           <line className="razsevni__nicla" x1={LEVO} x2={SIRINA - DESNO} y1={SREDINA} y2={SREDINA} />
-          {mojElo !== null && (
-            <line className="razsevni__meja" x1={x(mojElo)} x2={x(mojElo)} y1={16} y2={VISINA - 32} />
+          {mojRating !== null && (
+            <line className="razsevni__meja" x1={x(mojRating)} x2={x(mojRating)} y1={16} y2={VISINA - 32} />
           )}
           {tocke.map((t, i) => (
             <circle
@@ -677,8 +682,8 @@ function RazsevniGraf({ tocke, mojElo }: { tocke: RazsevnaTocka[]; mojElo: numbe
         </svg>
       </div>
       <p className="profil__primerjava">
-        Vsaka pika je tekma: vodoravno ELO nasprotnika, navpično sprememba tvojega ratinga.
-        {mojElo !== null && (
+        Vsaka pika je tekma: vodoravno rating nasprotnika, navpično sprememba tvojega ratinga.
+        {mojRating !== null && (
           <> Zelene pike desno od črtkane črte so zmage proti močnejšim — teh je {zmagProtiMocnejsim}.</>
         )}
       </p>
@@ -840,9 +845,9 @@ function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
     {
       naslov: 'Po moči nasprotnika',
       vrstice: [
-        preimenuj(n.protiMocnejsim, 'Močnejši (+50 ELO)'),
+        preimenuj(n.protiMocnejsim, 'Močnejši (+50 točk)'),
         preimenuj(n.protiPodobnim, 'Podoben rating'),
-        preimenuj(n.protiSibkejsim, 'Šibkejši (−50 ELO)'),
+        preimenuj(n.protiSibkejsim, 'Šibkejši (−50 točk)'),
       ],
     },
     {
@@ -942,13 +947,13 @@ function Os({
 /* ---------------- 6. Odigrane tekme ---------------- */
 
 /* Turnirske in ligaške tekme imajo ločeni zaporedji id-jev, zato je ključ
-   vrstice šele par (vir, id) — enak dogovor kot v grafu ELO. */
+   vrstice šele par (vir, id) — enak dogovor kot v grafu ratinga. */
 function kljucTekme(idTekme: number, ligaska: boolean): string {
   return (ligaska ? 'l' : 't') + idTekme
 }
 
 /* Vsaka vrstica nosi id ("tekma-t12" / "tekma-l7"), ker je cilj skoka s točke
-   grafa ELO. "poudarjena" je ključ tekme, na katero je gledalec pravkar
+   grafa ratinga. "poudarjena" je ključ tekme, na katero je gledalec pravkar
    skočil — označena ostane, dokler ne izbere druge. */
 function SeznamTekem({
   tekme,
@@ -964,7 +969,7 @@ function SeznamTekem({
         <span>Tekmovanje</span>
         <span>Nasprotnik</span>
         <span className="tekma-vrstica__desno">Rezultat</span>
-        <span className="tekma-vrstica__desno">ELO</span>
+        <span className="tekma-vrstica__desno">rating</span>
       </div>
       {tekme.map((t) => (
         <div
@@ -994,16 +999,16 @@ function SeznamTekem({
             <span className="profil__klub">{t.klubNasprotnika ?? 'brez kluba'}</span>
           </span>
           <span className={'tekma-vrstica__izid ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')}>
-            {t.niziZa}:{t.niziProti}
+            {izidNizov(t.niziZa, t.niziProti, t.izidTip)}
           </span>
           <span
             className={
-              'tekma-vrstica__elo ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')
+              'tekma-vrstica__rating ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')
             }
           >
-            {t.spremembaElo === null
+            {t.spremembaRatinga === null
               ? '—'
-              : `${t.spremembaElo >= 0 ? '+' : '−'}${Math.abs(t.spremembaElo)}`}
+              : `${t.spremembaRatinga >= 0 ? '+' : '−'}${Math.abs(t.spremembaRatinga)}`}
           </span>
         </div>
       ))}
@@ -1011,7 +1016,7 @@ function SeznamTekem({
   )
 }
 
-/* Tekme dvojic. Stolpec "Nasprotnik" nosi cel nasprotni par, stolpec ELO pa
+/* Tekme dvojic. Stolpec "Nasprotnik" nosi cel nasprotni par, stolpec ratinga pa
    odpade - dvojice se v rating ne obračunajo; namesto njega stoji soigralec,
    ki je pri dvojicah edini podatek, ki ga v posamični tabeli ni. */
 function SeznamDvojic({ tekme }: { tekme: TekmaDvojic[] }) {
@@ -1036,7 +1041,7 @@ function SeznamDvojic({ tekme }: { tekme: TekmaDvojic[] }) {
           </span>
           <span className="tekma-vrstica__nasprotnik">{t.nasprotnika}</span>
           <span className={'tekma-vrstica__izid ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')}>
-            {t.niziZa}:{t.niziProti}
+            {izidNizov(t.niziZa, t.niziProti, t.izidTip)}
           </span>
           <span className="tekma-vrstica__nasprotnik">
             {t.idSoigralca !== null ? (
@@ -1136,7 +1141,7 @@ type Okolica = {
   zmagDoNaslednjega: number
 }
 
-/* Približek: zmaga proti močnejšemu nasprotniku prinese okrog 15 točk ELO
+/* Približek: zmaga proti močnejšemu nasprotniku prinese okrog 15 točk ratinga
    (K med 20 in 32, pomnožen z verjetnostjo poraza). */
 const TOCK_NA_ZMAGO = 15
 

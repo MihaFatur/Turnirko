@@ -2,7 +2,7 @@
 
    Namenjen je gledalcu, ne organizatorju: pove, kaj je bilo na tem tekmovanju
    vredno videti. Zato so postavke pretežno pozitivne in nobena ne razglaša
-   najslabšega — največjega padca ELO zavihek nima.
+   najslabšega — največjega padca rating zavihek nima.
 
    Dve pravili postavitve, ki ju ne razbij:
 
@@ -12,7 +12,7 @@
      Zato je vsak sklop pogojen in ne pokaže ničle.
    - **Zgodba je blok, lestvička je vrstica.** Enkratni dogodki (presenečenje,
      obrat, najdaljši niz) so trditve in imajo obliko oznaka → stavek → mono
-     kontekst; primerjave (vzpon ELO, zid, klubi) so vrstice s črtami kot
+     kontekst; primerjave (vzpon ratinga, zid, klubi) so vrstice s črtami kot
      povsod drugod. Nikoli mreža kartic s številkami.
 
    Imena so brez glagolov (»A proti B« in ne »A je premagal B«) — zapisnik
@@ -102,7 +102,7 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
               oznaka="Presenečenje"
               meta={[
                 s.presenecenje.izid,
-                `ELO ${oblikujStevilo(s.presenecenje.ratingZmagovalca)} proti ${oblikujStevilo(
+                `rating ${oblikujStevilo(s.presenecenje.ratingZmagovalca)} proti ${oblikujStevilo(
                   s.presenecenje.ratingPorazenca,
                 )} · razlika ${oblikujStevilo(s.presenecenje.razlika)}`,
                 s.presenecenje.kontekst,
@@ -220,12 +220,12 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
       )}
 
       {s.stejeVElo && s.vzponi.length > 0 && (
-        <Lestvicka naslov="Največ pridobljenega ELO" meta="Na tem tekmovanju">
+        <Lestvicka naslov="Največ pridobljenega ratinga" meta="Na tem tekmovanju">
           {s.vzponi.map((v: StatVzpon) => (
             <VrsticaZanimivosti
               key={v.oseba.idIgralec}
               oseba={v.oseba}
-              pod={`ELO ${oblikujStevilo(v.koncni)} · ${v.odigranih} ${sklonTekem(v.odigranih)}`}
+              pod={`rating ${oblikujStevilo(v.koncni)} · ${v.odigranih} ${sklonTekem(v.odigranih)}`}
               stevilo={`+${oblikujStevilo(v.pridobil)}`}
               poudarek
             />

@@ -287,7 +287,7 @@ class SkupinskiSistemTest extends IntegracijskiTest {
         tekmaStoritev.odstopiIgralca(idOdstopnika);
 
         assertEquals(zapisovPred, ratingZgodovinaRepozitorij.count(),
-                "tekme, ki niso bile odigrane, ne smejo premakniti ELO");
+                "tekme, ki niso bile odigrane, ne smejo premakniti rating");
         assertNotNull(idIgralca);
     }
 

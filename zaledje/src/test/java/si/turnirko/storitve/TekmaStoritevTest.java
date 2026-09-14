@@ -20,6 +20,7 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.RatingStanje;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Tekma;
@@ -78,10 +79,12 @@ class TekmaStoritevTest extends IntegracijskiTest {
         tekmaStoritev.vnesiRezultat(tekma.getId(), rezultat(3, 0));
 
         RatingStanje stanje = ratingStanjeRepozitorij
-                .findByIgralecIdAndSistem(idIgralca1, RatingStanje.SISTEM_KLUBSKI_ELO)
+                .findByIgralecIdAndSistem(idIgralca1, RatingStanje.SISTEM_TURNIRKO)
                 .orElseThrow();
-        // dva novinca (K=48), gladka zmaga 3:0 z margino po presenecenju (~1,19)
-        assertEquals(1028, stanje.getVrednost(), "1000 + 28 za gladko zmago 3:0 med novincema");
+        // dva novinca (K=56), gladka zmaga 3:0 z margino po presenecenju (~1,47);
+        // izhodisce ni 1000, ampak starostno sidro igralca (V21)
+        assertEquals(sidroZa(tekma.getPrijava1().getIgralec()) + 41, stanje.getVrednost(),
+                "sidro + 41 za gladko zmago 3:0 med novincema");
         assertTrue(ratingZgodovinaRepozitorij.existsByTekmaId(tekma.getId()));
     }
 
@@ -169,12 +172,37 @@ class TekmaStoritevTest extends IntegracijskiTest {
                 "w.o. ne sme vplivati na rating");
     }
 
+    /* Raven turnirja mora priti vse do obracuna: ista tekma na klubskem
+       turnirju premakne rating za tri cetrtine tega, kar bi na uradnem.
+       Enota testa je namenoma cela pot (vnos rezultata -> rating_stanje) in ne
+       samo formula - prav vmesni clen se najlaze utrga. */
     @Test
-    void turnirBrezEloNeObracunaRatinga() {
+    void klubskiTurnirPremakneRatingZaTriCetrtine() {
         Dogodek dogodek = pripraviDogodek(4);
-        // izklopi ELO na turnirju (organizator to izbere ob ustvarjanju)
         Turnir turnir = dogodek.getTurnir();
-        turnir.setStejeVElo(false);
+        turnir.setRaven(RavenTekmovanja.KLUBSKO);
+        turnirRepozitorij.save(turnir);
+
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma tekma = prvaPripravljena(dogodek.getId());
+        Long idZmagovalca = tekma.getPrijava1().getIgralec().getId();
+
+        tekmaStoritev.vnesiRezultat(tekma.getId(), rezultat(3, 0));
+
+        RatingStanje stanje = ratingStanjeRepozitorij
+                .findByIgralecIdAndSistem(idZmagovalca, RatingStanje.SISTEM_TURNIRKO)
+                .orElseThrow();
+        // na uradnem turnirju je ista tekma vredna +41 (glej test zgoraj)
+        assertEquals(sidroZa(tekma.getPrijava1().getIgralec()) + 31, stanje.getVrednost(),
+                "tri cetrtine od +41 je +31");
+    }
+
+    @Test
+    void turnirBrezRatingaNeObracunaTekem() {
+        Dogodek dogodek = pripraviDogodek(4);
+        // izklopi rating na turnirju (organizator to izbere ob ustvarjanju)
+        Turnir turnir = dogodek.getTurnir();
+        turnir.setRaven(RavenTekmovanja.NE_STEJE);
         turnirRepozitorij.save(turnir);
 
         zrebStoritev.izvediZreb(dogodek.getId());
@@ -182,7 +210,7 @@ class TekmaStoritevTest extends IntegracijskiTest {
         tekmaStoritev.vnesiRezultat(tekma.getId(), rezultat(3, 0));
 
         assertFalse(ratingZgodovinaRepozitorij.existsByTekmaId(tekma.getId()),
-                "turnir brez ELO ne sme obracunati klubskega ratinga");
+                "turnir, ki ne steje v rating, ne sme obracunati ratinga");
     }
 
     @Test

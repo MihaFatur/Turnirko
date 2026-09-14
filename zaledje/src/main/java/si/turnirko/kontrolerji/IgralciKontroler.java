@@ -20,6 +20,7 @@ import si.turnirko.dto.IgralecDto;
 import si.turnirko.dto.IgralecJavniDto;
 import si.turnirko.dto.IgralecVnos;
 import si.turnirko.dto.ZacetniRatingVnos;
+import si.turnirko.dto.ZunanjaUvrstitevVnos;
 import si.turnirko.storitve.IgralciStoritev;
 
 @RestController
@@ -68,12 +69,21 @@ public class IgralciKontroler {
         return igralciStoritev.posodobi(id, vnos);
     }
 
-    /* Postavitveni (zacetni) klubski ELO za novinca - dovoljen le, dokler
+    /* Postavitveni (zacetni) Turnirko rating za novinca - dovoljen le, dokler
        igralec ni odigral nobene ratinske tekme. */
     @PostMapping("/{id}/zacetni-rating")
     public IgralecJavniDto nastaviZacetniRating(@PathVariable Long id,
                                                 @Valid @RequestBody ZacetniRatingVnos vnos) {
         return igralciStoritev.nastaviZacetniRating(id, vnos.vrednost());
+    }
+
+    /* Zunanja uvrstitev: rating z zunanje lestvice za redkega gosta. Za
+       razliko od zacetnega ratinga je dovoljena tudi igralcu s tekmami,
+       zahteva pa vir in pojasnilo - oboje je javno vidno na profilu. */
+    @PostMapping("/{id}/zunanja-uvrstitev")
+    public IgralecJavniDto zunanjaUvrstitev(@PathVariable Long id,
+                                            @Valid @RequestBody ZunanjaUvrstitevVnos vnos) {
+        return igralciStoritev.zunanjaUvrstitev(id, vnos);
     }
 
     /* Brisanje je v resnici arhiviranje - zgodovina tekem ostane. */

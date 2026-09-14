@@ -1,7 +1,7 @@
 /* Posamicna tekma znotraj ekipnega srecanja (dvojice ali posamicna).
    Igralca vezemo NEPOSREDNO na igralca (ne na prijavo kot pri turnirjih),
    ker v ligi nastopajo iz kadra ekipe; pri dvojicah sta na strani dva igralca.
-   V klubski ELO stejejo samo POSAMICNE tekme. */
+   V Turnirko rating stejejo samo POSAMICNE tekme. */
 package si.turnirko.modeli;
 
 import jakarta.persistence.Column;

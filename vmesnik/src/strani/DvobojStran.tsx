@@ -1,5 +1,5 @@
 /* "1 na 1": lifetime izid med dvema igralcema prek vseh tekmovanj, z zgodovino
-   vseh medsebojnih tekem in spremembami ELO. Vidno vsem (tudi gostom).
+   vseh medsebojnih tekem in spremembami ratinga. Vidno vsem (tudi gostom).
 
    Stran namenoma nima svojega naslova: po maketi sta naslov strani imeni obeh
    igralcev v semaforju, ki ga izriše komponenta EnaNaEna. */

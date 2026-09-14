@@ -21,8 +21,8 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { krajiApi, turnirjiApi } from '../api/zahteve'
-import type { TurnirDto, TurnirVnos } from '../api/tipi'
-import { OZNAKE_STATUS_TEKMOVANJA } from '../api/tipi'
+import type { RavenTekmovanja, TurnirDto, TurnirVnos } from '../api/tipi'
+import { OZNAKE_RAVEN, OZNAKE_STATUS_TEKMOVANJA, TEZA_RAVNI } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   KrmilaSeznama,
@@ -74,11 +74,11 @@ const SKUPINE: SkupinaFiltra<TurnirDto>[] = [
   { kljuc: 'dvorana', oznaka: 'Dvorana', vrednost: (t) => t.dvorana },
   { kljuc: 'organizator', oznaka: 'Organizator', vrednost: (t) => t.klubLastnik },
   {
-    kljuc: 'elo',
-    oznaka: 'Rating',
-    vrednost: (t) => (t.stejeVElo ? 'da' : 'ne'),
-    napis: (v) => (v === 'da' ? 'Šteje v ELO' : 'Ne šteje v ELO'),
-    vrstniRed: poSeznamu(['da', 'ne']),
+    kljuc: 'raven',
+    oznaka: 'Raven',
+    vrednost: (t) => t.raven,
+    napis: (v) => OZNAKE_RAVEN[v as RavenTekmovanja] ?? v,
+    vrstniRed: poSeznamu(['URADNO', 'KLUBSKO', 'REKREATIVNO', 'NE_STEJE']),
   },
 ]
 
@@ -425,7 +425,7 @@ function NovTurnirOkno({
   const [datumZacetka, nastaviDatumZacetka] = useState('')
   const [datumKonca, nastaviDatumKonca] = useState('')
   const [opombe, nastaviOpombe] = useState('')
-  const [stejeVElo, nastaviStejeVElo] = useState(true)
+  const [raven, nastaviRaven] = useState<RavenTekmovanja>('KLUBSKO')
 
   const shranjevanje = useMutation({
     mutationFn: (vnos: TurnirVnos) => turnirjiApi.ustvari(vnos),
@@ -444,7 +444,7 @@ function NovTurnirOkno({
       datumZacetka: datumZacetka || null,
       datumKonca: datumKonca || null,
       opombe: opombe.trim() || null,
-      stejeVElo,
+      raven,
     })
   }
 
@@ -514,14 +514,21 @@ function NovTurnirOkno({
           />
         </label>
 
-        <label className="obrazec__polje obrazec__polje--stikalo">
-          <input
-            type="checkbox"
-            checked={stejeVElo}
-            onChange={(dogodek) => nastaviStejeVElo(dogodek.target.checked)}
-          />
-          <span>Tekme štejejo v klubski ELO (rating)</span>
+        <label className="obrazec__polje">
+          <span>Raven tekmovanja (teža v Turnirko ratingu)</span>
+          <select
+            value={raven}
+            onChange={(dogodek) => nastaviRaven(dogodek.target.value as RavenTekmovanja)}
+          >
+            {(Object.keys(OZNAKE_RAVEN) as RavenTekmovanja[]).map((r) => (
+              <option key={r} value={r}>{OZNAKE_RAVEN[r]} — {TEZA_RAVNI[r]}</option>
+            ))}
+          </select>
         </label>
+        <p className="namig">
+          Teža pove, koliko rating premakne ena tekma turnirja: uradna tekmovanja
+          NTZS štejejo v celoti, klubska tri četrtine, rekreativna polovico.
+        </p>
 
         {kraji.data?.length === 0 && (
           <p className="namig">Namig: kraje lahko dodaš na strani Šifranti.</p>

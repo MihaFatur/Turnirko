@@ -31,7 +31,7 @@ public record DvobojDto(
     ) {}
 
     /* Ena medsebojna tekma; nizi so z vidika prvega igralca.
-       Sprememba ELO je z vidika vsakega igralca (null, ce ni bila obracunana).
+       Sprememba ratinga je z vidika vsakega igralca (null, ce ni bila obracunana).
        Tekma je lahko turnirska ali ligaska ("ligaska"); id-ji prihajajo iz
        razlicnih tabel, zato sta za enolicno oznako potrebna oba podatka.
        Pri ligaski tekmi je "tekmovanje" ime lige, "del" pa kolo in srecanje. */

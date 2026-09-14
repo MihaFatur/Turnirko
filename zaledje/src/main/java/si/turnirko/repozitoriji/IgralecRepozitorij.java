@@ -1,6 +1,8 @@
 /* Dostop do igralcev. */
 package si.turnirko.repozitoriji;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,4 +31,20 @@ public interface IgralecRepozitorij extends JpaRepository<Igralec, Long> {
             WHERE i.id = :id
             """)
     Optional<Igralec> najdiZVsem(Long id);
+
+    /* Istovetnost pri uvozu (IdentitetaStupe): licenca NTZS poveze osebo
+       samo skupaj z datumom rojstva in spolom, zato vrne igralca, ne
+       odlocitve. */
+    Optional<Igralec> findByNtzsLicenca(String ntzsLicenca);
+
+    boolean existsByNtzsLicenca(String ntzsLicenca);
+
+    /* Kandidati za isto osebo po datumu rojstva (pravi datum ali 1. januar
+       letnika, ki ga je zapisala stara stran NTZS). */
+    @Query("SELECT i FROM Igralec i LEFT JOIN FETCH i.klub WHERE i.datumRojstva IN :datumi")
+    List<Igralec> najdiPoDatumihRojstva(Collection<LocalDate> datumi);
+
+    /* Razdeljena imena registra - slovar za razdelitev novih imen. */
+    @Query("SELECT i.ime, i.priimek FROM Igralec i")
+    List<Object[]> imenaInPriimki();
 }

@@ -1,4 +1,4 @@
-/* Testi profila igralca: zdruzevanje turnirskih in ligaskih tekem, graf ELO,
+/* Testi profila igralca: zdruzevanje turnirskih in ligaskih tekem, graf ratinga,
    razclenitev po igralni roki nasprotnika ter dostop do zasebnega dela. */
 package si.turnirko.storitve;
 
@@ -41,6 +41,7 @@ import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IgralnaRoka;
 import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.StatusRacuna;
@@ -88,7 +89,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
     }
 
     @Test
-    void profilPovzameOdigraneTekmeInGrafElo() {
+    void profilPovzameOdigraneTekmeInGrafRatinga() {
         Tekma tekma = odigrajEnoTekmo(3, 1);
         Long idZmagovalca = tekma.getPrijava1().getIgralec().getId();
         Long idPorazenca = tekma.getPrijava2().getIgralec().getId();
@@ -110,7 +111,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
         assertEquals(3, t.niziZa());
         assertEquals(1, t.niziProti());
 
-        // graf ELO: ena tocka, sprememba je pozitivna za zmagovalca
+        // graf ratinga: ena tocka, sprememba je pozitivna za zmagovalca
         assertEquals(1, profil.graf().size());
         assertTrue(profil.graf().get(0).sprememba() > 0);
         assertEquals(profil.glava().rating(), profil.graf().get(0).vrednost());
@@ -175,7 +176,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
                 .withHour(18).withMinute(0).withSecond(0).withNano(0);
         Long idLiga = ligaStoritev.ustvari(new LigaVnos(
                 "Liga za profil", "2024/25", SpolKategorija.MOSKI, FormatSrecanja.SNTL, 5,
-                null, false, 2, 1, 0, true, false, true, false, null, termin, 7)).id();
+                null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null, termin, 7)).id();
         dodajEkipoSKadrom(idLiga, "Profil A", 3);
         dodajEkipoSKadrom(idLiga, "Profil B", 3);
         ligaStoritev.generirajRazpored(idLiga);
@@ -228,7 +229,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
         assertEquals(100, z.nasprotniki().protiLevicarjem().odstotek());
         assertEquals(0, z.nasprotniki().protiDesnicarjem().odigrane());
 
-        // tekma je bila obracunana v ELO, zato je rating nasprotnika znan
+        // tekma je bila obracunana v rating, zato je rating nasprotnika znan
         assertEquals(1, z.nasprotniki().tekemZZnanimRatingom());
         assertNotNull(z.nasprotniki().najpogostejsi());
         assertEquals(porazenec.getId(), z.nasprotniki().najpogostejsi().idIgralec());
@@ -262,7 +263,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
 
         // razsevni graf: ena pika, rating nasprotnika PRED tekmo je zacetni
         assertEquals(1, z.razsevni().size());
-        assertEquals(EloStoritev.ZACETNI_RATING, z.razsevni().get(0).ratingNasprotnika());
+        assertEquals(sidroZa(porazenec), z.razsevni().get(0).ratingNasprotnika());
         assertTrue(z.razsevni().get(0).zmaga());
         assertTrue(z.razsevni().get(0).sprememba() > 0);
 

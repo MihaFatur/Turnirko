@@ -22,6 +22,7 @@ import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.FormatSrecanja;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 
 class LigaEnakomernaRazvrstitevTest extends IntegracijskiTest {
@@ -196,7 +197,7 @@ class LigaEnakomernaRazvrstitevTest extends IntegracijskiTest {
 
     private Long ustvariLigo(boolean enakomerna) {
         LigaVnos v = new LigaVnos("Test liga", "2025/26", SpolKategorija.MOSKI,
-                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, true,
+                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO,
                 enakomerna, null, null, null);
         return ligaStoritev.ustvari(v).id();
     }

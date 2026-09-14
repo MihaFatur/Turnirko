@@ -8,25 +8,21 @@
 
    Uporablja se na domači strani (s tremi zadnjimi tekmami) in na strani
    dvoboja (tam sta pod semaforjem še razmerje in vse tekme). Viden vsem. */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { igralciApi, statistikaApi } from '../api/zahteve'
 import type { DvobojDto, IgralecDto } from '../api/tipi'
-import { OZNAKE_IZID } from '../api/tipi'
-import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
+import { OZNAKE_IZID, izidNizov } from '../api/tipi'
 import { oblikujDanKratekMesec, sklonTekem } from '../pomozno/oblikovanje'
+import { IzbirnikIgralca } from './IzbirnikIgralca'
 import { SporociloNapake } from './SporociloNapake'
-import { SpremembaElo } from './SpremembaElo'
+import { SpremembaRatinga } from './SpremembaRatinga'
 
 /* Koliko medsebojnih tekem pokaže strnjena različica. Več jih vrstica ne
    prenese - do ostalih vodi povezava pod seznamom. */
 const TEKEM_V_POVZETKU = 3
-
-/* Koliko predlogov pokaže iskalno polje igralca. Osem je toliko, kolikor jih
-   na telefonu gre na zaslon, ne da bi seznam sam po sebi drsel. */
-const NAJVEC_PREDLOGOV = 8
 
 interface Lastnosti {
   /* Ali pod semaforjem pokaži razmerje in tabelo vseh medsebojnih tekem.
@@ -178,7 +174,7 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
                       {t.tekmovanje}
                     </span>
                     <span className={t.zmagalPrvi ? 'profil__zmaga' : 'profil__poraz'}>
-                      {t.niziPrvega}:{t.niziDrugega}{' '}
+                      {izidNizov(t.niziPrvega, t.niziDrugega, t.izidTip)}{' '}
                       {zacetnica(t.zmagalPrvi ? d.prvi.priimek : d.drugi.priimek)}
                     </span>
                   </div>
@@ -287,151 +283,6 @@ function StranIgralca({
         <span className="enanaena__meta--siroko">{predRatingom(igralec, mesto)}</span>
         {igralec && (igralec.rating !== null ? igralec.rating : '—')}
       </div>
-    </div>
-  )
-}
-
-/* Iskalno polje s predlogi (combobox) namesto spustnega seznama: po uvozu
-   zgodovine NTZS je v šifrantu več tisoč igralcev in seznama ni bilo mogoče
-   prevrteti do imena. Vpiše se del imena, pod poljem pa se izpišejo zadetki.
-
-   Ujemanje teče po besedah in ne po začetku niza: »miha« najde vse Mihe (tudi
-   po imenu, ne le po priimku), »novak ana« pa Novak Ano ne glede na vrstni
-   red vpisanega. Ob imenu stoji klub - brez njega soimenjakov ni mogoče
-   ločiti, teh pa je v šifrantu cele države precej.
-
-   Tipkovnica: gor/dol izbira med predlogi, Enter potrdi, Escape zapre.
-   Fokus ves čas ostane v polju (vzorec combobox), zato predlogi niso gumbi,
-   ampak postavke, na katere kaže aria-activedescendant. */
-function IzbirnikIgralca({
-  oznaka,
-  igralci,
-  izkljuci,
-  naSpremembo,
-}: {
-  oznaka: string
-  igralci: IgralecDto[]
-  /* Igralec z druge strani semaforja: sam s sabo se nihče ne primerja. */
-  izkljuci: number | ''
-  naSpremembo: (id: number) => void
-}) {
-  const [iskanje, nastaviIskanje] = useState('')
-  const [odprt, nastaviOdprt] = useState(false)
-  const [oznacen, nastaviOznacen] = useState(0)
-  const ovoj = useRef<HTMLDivElement>(null)
-  const idSeznama = useId()
-
-  const zadetki = useMemo(() => {
-    const besede = besedeIskanja(iskanje)
-    if (besede.length === 0) return []
-    return igralci
-      .filter((i) => i.id !== izkljuci)
-      .filter((i) => ustrezaBesedam(`${i.ime} ${i.priimek}`, besede))
-      .slice(0, NAJVEC_PREDLOGOV)
-  }, [igralci, izkljuci, iskanje])
-
-  /* Zapre se ob kliku zunaj in ob Escape - isto kot meni dejanj. Zapiranje ob
-     izgubi fokusa (blur) ne pride v poštev: sprožilo bi se PRED klikom na
-     predlog in ta klik bi padel v prazno. */
-  useEffect(() => {
-    if (!odprt) return
-    function obKliku(dogodek: MouseEvent) {
-      if (ovoj.current && !ovoj.current.contains(dogodek.target as Node)) nastaviOdprt(false)
-    }
-    function obTipki(dogodek: globalThis.KeyboardEvent) {
-      if (dogodek.key === 'Escape') nastaviOdprt(false)
-    }
-    document.addEventListener('mousedown', obKliku)
-    document.addEventListener('keydown', obTipki)
-    return () => {
-      document.removeEventListener('mousedown', obKliku)
-      document.removeEventListener('keydown', obTipki)
-    }
-  }, [odprt])
-
-  function izberi(id: number) {
-    naSpremembo(id)
-    /* Polje se izprazni: izbranega igralca nosi veliko ime nad njim, polje pa
-       je iskalnik za naslednjo zamenjavo. */
-    nastaviIskanje('')
-    nastaviOdprt(false)
-    nastaviOznacen(0)
-  }
-
-  function obTipki(dogodek: KeyboardEvent<HTMLInputElement>) {
-    if (dogodek.key === 'ArrowDown' || dogodek.key === 'ArrowUp') {
-      if (zadetki.length === 0) return
-      dogodek.preventDefault()
-      nastaviOdprt(true)
-      nastaviOznacen((prej) => {
-        const naslednji = dogodek.key === 'ArrowDown' ? prej + 1 : prej - 1
-        return (naslednji + zadetki.length) % zadetki.length
-      })
-      return
-    }
-    if (dogodek.key === 'Enter' && odprt && zadetki[oznacen]) {
-      // brez tega bi Enter poslal obrazec, v katerem polje morda stoji
-      dogodek.preventDefault()
-      izberi(zadetki[oznacen].id)
-    }
-  }
-
-  const iscemo = odprt && iskanje.trim() !== ''
-
-  return (
-    <div className="enanaena__polje" ref={ovoj}>
-      <label>
-        <span className="samo-za-bralnik">{oznaka}</span>
-        <input
-          type="text"
-          role="combobox"
-          autoComplete="off"
-          placeholder="Vpiši ime"
-          aria-expanded={iscemo && zadetki.length > 0}
-          aria-controls={idSeznama}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            iscemo && zadetki[oznacen] ? `${idSeznama}-${oznacen}` : undefined
-          }
-          value={iskanje}
-          onChange={(dogodek) => {
-            nastaviIskanje(dogodek.target.value)
-            nastaviOznacen(0)
-            nastaviOdprt(true)
-          }}
-          onFocus={() => nastaviOdprt(true)}
-          onKeyDown={obTipki}
-        />
-      </label>
-
-      {iscemo && zadetki.length > 0 && (
-        <ul className="enanaena__predlogi" id={idSeznama} role="listbox" aria-label={oznaka}>
-          {zadetki.map((igralec, indeks) => (
-            <li
-              key={igralec.id}
-              id={`${idSeznama}-${indeks}`}
-              role="option"
-              aria-selected={indeks === oznacen}
-              className={
-                'enanaena__predlog' + (indeks === oznacen ? ' enanaena__predlog--oznacen' : '')
-              }
-              onMouseEnter={() => nastaviOznacen(indeks)}
-              onClick={() => izberi(igralec.id)}
-            >
-              <span className="enanaena__predlog-ime">
-                {igralec.ime} {igralec.priimek}
-              </span>
-              {igralec.klub && (
-                <span className="enanaena__predlog-klub">{igralec.klub.ime}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {iscemo && zadetki.length === 0 && (
-        <p className="enanaena__predlogi enanaena__brez-zadetka">Ni zadetka</p>
-      )}
     </div>
   )
 }
@@ -554,17 +405,17 @@ function Zgodovina({ dvoboj }: { dvoboj: DvobojDto }) {
                 'dvoboj-tekma__izid ' + (t.zmagalPrvi ? 'profil__zmaga' : 'profil__poraz')
               }
             >
-              {t.niziPrvega}:{t.niziDrugega}
+              {izidNizov(t.niziPrvega, t.niziDrugega, t.izidTip)}
               {t.izidTip && t.izidTip !== 'IGRANO' && (
                 <span className="enanaena__posebni"> ({OZNAKE_IZID[t.izidTip]})</span>
               )}
-              {/* Sprememba ELO stoji pod izidom, ker je njegova posledica -
+              {/* Sprememba ratinga stoji pod izidom, ker je njegova posledica -
                   pod zmagovalcem bi vrstico po nepotrebnem podvojila. */}
-              <span className="dvoboj-tekma__elo">
-                <span className="samo-za-bralnik">Sprememba ELO: </span>
-                <SpremembaElo vrednost={t.spremembaPrvega} />
-                <span className="enanaena__elo-locilo">/</span>
-                <SpremembaElo vrednost={t.spremembaDrugega} />
+              <span className="dvoboj-tekma__rating">
+                <span className="samo-za-bralnik">Sprememba ratinga: </span>
+                <SpremembaRatinga vrednost={t.spremembaPrvega} />
+                <span className="enanaena__rating-locilo">/</span>
+                <SpremembaRatinga vrednost={t.spremembaDrugega} />
               </span>
             </span>
 

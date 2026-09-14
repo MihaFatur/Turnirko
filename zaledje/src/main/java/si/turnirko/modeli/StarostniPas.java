@@ -49,16 +49,29 @@ public enum StarostniPas {
        Vrne null, kadar letnice ni: pasu ni mogoce ugibati in filter takega
        igralca preprosto ne zajame. */
     public static StarostniPas izpelji(LocalDate datumRojstva, LocalDate danes) {
-        if (datumRojstva == null || danes == null) {
+        Integer starost = letaVSezoni(datumRojstva, danes);
+        if (starost == null) {
             return null;
         }
-        int starost = letoSezone(danes) - datumRojstva.getYear();
         for (int i = 0; i < MLADINSKE_MEJE.length; i++) {
             if (starost < MLADINSKE_MEJE[i]) {
                 return MLADINSKI[i];
             }
         }
         return starost >= LET_VETERAN ? VETERANI : CLANI;
+    }
+
+    /* Starost igralca po pravilu PST: leto sezone minus letnica rojstva.
+       Ista stevilka, po kateri se doloca pas - zato je tu in ne prepisana
+       drugje. Uporablja jo tudi starostno sidro Turnirko ratinga, ki mora biti
+       merjeno enako kot tekmovalna kategorija.
+
+       Vrne null, kadar letnice ni: starosti ni mogoce ugibati. */
+    public static Integer letaVSezoni(LocalDate datumRojstva, LocalDate danes) {
+        if (datumRojstva == null || danes == null) {
+            return null;
+        }
+        return letoSezone(danes) - datumRojstva.getYear();
     }
 
     /* Leto, v katerem se je zacela sezona, ki tece na dani dan. */

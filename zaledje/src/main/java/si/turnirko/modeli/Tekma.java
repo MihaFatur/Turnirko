@@ -100,6 +100,15 @@ public class Tekma {
     @Column(name = "predviden_zacetek")
     private LocalDateTime predvidenZacetek;
 
+    /* PRENESEN IZID (V28): tekma finalne skupine, ki se ne igra znova, ampak
+       prevzame izid dvoboja iz predtekmovalne skupine (PST 14. clen). Nosi
+       kazalec na prvotno tekmo in kopijo njenega izida - kopija sluzi lestvici
+       skupine, kazalec pa vsem, ki stejejo tekme posameznika (rating,
+       statistika, dvoboji): ti tako tekmo izpustijo, sicer bi isti dvoboj
+       stel dvakrat. */
+    @Column(name = "id_prenesena")
+    private Long idPrenesena;
+
     /* Optimisticno zaklepanje - dva socasna vnosa rezultata se ne moreta
        tiho prepisati; drugi dobi napako in mora poskusiti znova. */
     @Version
@@ -173,4 +182,10 @@ public class Tekma {
 
     public LocalDateTime getPredvidenZacetek() { return predvidenZacetek; }
     public void setPredvidenZacetek(LocalDateTime predvidenZacetek) { this.predvidenZacetek = predvidenZacetek; }
+
+    public Long getIdPrenesena() { return idPrenesena; }
+    public void setIdPrenesena(Long idPrenesena) { this.idPrenesena = idPrenesena; }
+
+    /* Ali tekma samo nosi izid, prenesen iz predtekmovanja (in se ni igrala). */
+    public boolean jePrenesena() { return idPrenesena != null; }
 }

@@ -1,5 +1,5 @@
-/* Postavitveni (zacetni) klubski ELO, ki ga admin doloci novincu, preden ta
-   odigra prvo tekmo. Meji se ujemata z EloStoritev (100..3000). */
+/* Postavitveni (zacetni) Turnirko rating, ki ga admin doloci novincu, preden ta
+   odigra prvo tekmo. Meji se ujemata z TurnirkoRatingStoritev (100..3000). */
 package si.turnirko.dto;
 
 import jakarta.validation.constraints.Max;

@@ -19,6 +19,7 @@ import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.repozitoriji.LigaRepozitorij;
@@ -99,7 +100,7 @@ class LigaPrehodiTest extends IntegracijskiTest {
         assertEquals(visja, ligaStoritev.najdi(nizja).idVisjaLiga());
         // pravila iste lige so takrat ze zaklenjena
         LigaVnos pravila = new LigaVnos("Savinja liga C", "25/26", SpolKategorija.MOSKI,
-                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, true, false, null, null, null);
+                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null, null, null);
         assertThrows(DomenskaIzjema.class, () -> ligaStoritev.uredi(nizja, pravila));
     }
 
@@ -107,7 +108,7 @@ class LigaPrehodiTest extends IntegracijskiTest {
 
     private Long ustvariLigo(String ime) {
         LigaVnos v = new LigaVnos(ime, "25/26", SpolKategorija.MOSKI, FormatSrecanja.SAVINJA, 5,
-                null, false, 2, 1, 0, true, false, true, false, null, null, null);
+                null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null, null, null);
         LigaDto liga = ligaStoritev.ustvari(v);
         return liga.id();
     }

@@ -7,7 +7,12 @@ import java.nio.file.Path;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+/* Urnik je vklopljen zaradi odbitka za neaktivnost (NeaktivnostStoritev):
+   igralec, ki je nehal igrati, mora s casom pasti na lestvici tudi takrat,
+   kadar nihce nicesar ne vnasa. */
+@EnableScheduling
 @SpringBootApplication
 public class TurnirkoAplikacija {
 

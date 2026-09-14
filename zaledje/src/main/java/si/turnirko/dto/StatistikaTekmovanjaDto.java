@@ -2,7 +2,7 @@
 
    Namen je gledalec (uporabnik st. 1), ne organizator: zavihek pove, kaj je
    bilo na tem tekmovanju vredno videti. Zato so postavke pretezno pozitivne
-   in nobena ne razglasa najslabsega - najvecji padec ELO je zavestno
+   in nobena ne razglasa najslabsega - najvecji padec ratinga je zavestno
    izpuscen.
 
    Vsaka postavka je lahko prazna (null oz. prazen seznam) in se takrat NE
@@ -18,7 +18,7 @@
 
    DVOJICE: v vrstice o posamezniku (vzponi, presenecenje, zid, obrat,
    najdaljsi niz/tekma, klubi) ne vstopajo - izida para ni mogoce pripisati
-   posamezniku, isto pravilo kot pri ELO. Stejejo samo v "V stevilkah" in v
+   posamezniku, isto pravilo kot pri ratingu. Stejejo samo v "V stevilkah" in v
    svojo vrstico. */
 package si.turnirko.dto;
 
@@ -30,7 +30,7 @@ public record StatistikaTekmovanjaDto(
         boolean dovoljPodatkov,
         /* Tekmovanje se traja - stevilke se bodo se premaknile. */
         boolean vTeku,
-        /* Ali tekmovanje steje v klubski ELO. Kadar ne, celoten ELO sklop
+        /* Ali tekmovanje steje v Turnirko rating. Kadar ne, celoten sklop ratinga
            (vzponi, presenecenje) odpade in se ne izrise kot nic. */
         boolean stejeVElo,
         Stevilke stevilke,
@@ -68,7 +68,7 @@ public record StatistikaTekmovanjaDto(
             int tekemDvojic
     ) {}
 
-    /* Koliko ELO je igralec na tem tekmovanju pridobil. Samo pozitivni -
+    /* Koliko ratinga je igralec na tem tekmovanju pridobil. Samo pozitivni -
        vrstice o najvecji izgubi zavihek namenoma nima. */
     public record Vzpon(Oseba oseba, int pridobil, int odigranih, int koncni) {}
 

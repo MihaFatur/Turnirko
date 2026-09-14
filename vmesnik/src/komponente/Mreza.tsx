@@ -7,11 +7,11 @@
    Navpicno poravnavo naredi CSS (enakomerna porazdelitev po visini stolpca). */
 import type { TekmaDto } from '../api/tipi'
 import { imeKola } from '../pomozno/oblikovanje'
-import { TekmaKartica } from './TekmaKartica'
+import { TekmaKartica, type KlikTekme } from './TekmaKartica'
 
 interface Lastnosti {
   tekme: TekmaDto[]
-  naKlikTekme?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
   /* Prvo kolo, ki se izrise; nizja kola so skrita. Brez vrednosti se izrise
      cela mreza (npr. za tisk ali kratke mreze). */
   odKola?: number
@@ -39,7 +39,7 @@ export function kolaMreze(tekme: TekmaDto[]): { kolo: number; tekme: TekmaDto[] 
 
 export function Mreza({
   tekme,
-  naKlikTekme,
+  klik,
   odKola,
   osvetljenaPrijava = null,
   naOsvetlitev,
@@ -63,7 +63,7 @@ export function Mreza({
               <TekmaKartica
                 key={tekma.id}
                 tekma={tekma}
-                naKlik={naKlikTekme}
+                klik={klik}
                 osvetljenaPrijava={osvetljenaPrijava}
                 naOsvetlitev={naOsvetlitev}
               />

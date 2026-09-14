@@ -53,10 +53,19 @@ public class Turnir {
     @Column(name = "opombe")
     private String opombe;
 
-    /* Ali tekme turnirja stejejo v klubski ELO (kot pri ligi). Privzeto da;
-       organizator izklopi za prijateljske/rekreacijske turnirje. */
-    @Column(name = "steje_v_elo", nullable = false)
-    private boolean stejeVElo = true;
+    /* Raven tekmovanja doloci tezo tekem v Turnirko ratingu (glej
+       RavenTekmovanja). Privzeto KLUBSKO: turnir, ki nastane v aplikaciji, je
+       klubski - uradnega statusa si klub ne more podeliti sam, uvoz NTZS pa
+       raven nastavi izrecno. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "raven", nullable = false)
+    private RavenTekmovanja raven = RavenTekmovanja.KLUBSKO;
+
+    /* Od kod je turnir prisel (V27). Prazen = nastal je v Turnirku; sicer je
+       uvozen in samo za branje (glej VirTekmovanja, LastnistvoStoritev). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vir")
+    private VirTekmovanja vir;
 
     /* Lastnistvo: racun, ki je turnir ustvaril, in posnetek njegovega kluba ob
        nastanku. Po njiju storitve razsodijo, kdo sme urejati - organizator sme
@@ -107,8 +116,14 @@ public class Turnir {
     public String getOpombe() { return opombe; }
     public void setOpombe(String opombe) { this.opombe = opombe; }
 
-    public boolean isStejeVElo() { return stejeVElo; }
-    public void setStejeVElo(boolean stejeVElo) { this.stejeVElo = stejeVElo; }
+    public RavenTekmovanja getRaven() { return raven; }
+    public void setRaven(RavenTekmovanja raven) { this.raven = raven; }
+
+    public VirTekmovanja getVir() { return vir; }
+    public void setVir(VirTekmovanja vir) { this.vir = vir; }
+
+    /* Ali je turnir uvozen iz zunanjega vira in torej samo za branje. */
+    public boolean jeUvozen() { return vir != null; }
 
     public Uporabnik getUstvaril() { return ustvaril; }
     public void setUstvaril(Uporabnik ustvaril) { this.ustvaril = ustvaril; }

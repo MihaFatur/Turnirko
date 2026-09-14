@@ -84,11 +84,32 @@ public class RazdelitevImena {
     private final Set<String> znaniPriimki = new HashSet<>();
     private final Map<String, Integer> pogostost = new HashMap<>();
     private final Map<String, Razdeljeno> resitve = new HashMap<>();
+    /* Razdelitve igralcev, ki so ze v registru (kljuc: polno ime brez sumnikov). */
+    private final Map<String, Razdeljeno> resitveRegistra = new HashMap<>();
 
     /* Zgradi razdelitev nad CELOTNIM registrom imen naenkrat. Posamicnega imena
        ni mogoce razdeliti dobro brez ostalih - signal pogostosti in ucenje cez
        obhode obstajata samo, ce vidimo vsa imena skupaj. */
     public RazdelitevImena(List<String> polnaImena) {
+        this(polnaImena, List.of());
+    }
+
+    /* Razdelitev, ki pozna ze razdeljena imena registra (igralci v bazi):
+       njihova imena in priimki postanejo slovar, isto polno ime pa se
+       razdeli natanko tako kot pri obstojecem igralcu - v obeh vrstnih redih,
+       ker ga Stupa pise enkrat tako in drugic drugace. Sinhronizacija s Stupo
+       tako novega igralca razdeli ob znanju vseh, ki so ze v bazi. */
+    public RazdelitevImena(List<String> polnaImena, List<String[]> znaniPari) {
+        for (String[] par : znaniPari) {
+            if (par[0] == null || par[1] == null) {
+                continue;
+            }
+            zetoni(par[0]).forEach(z -> znanaImena.add(kljuc(z)));
+            zetoni(par[1]).forEach(z -> znaniPriimki.add(kljuc(z)));
+            Razdeljeno znana = new Razdeljeno(par[0] + " " + par[1], par[0], par[1], true);
+            resitveRegistra.put(kljucPolnega(par[0] + " " + par[1]), znana);
+            resitveRegistra.put(kljucPolnega(par[1] + " " + par[0]), znana);
+        }
         List<String> ocisceno = polnaImena.stream()
                 .filter(i -> i != null && !i.isBlank())
                 .map(String::trim)
@@ -125,6 +146,10 @@ public class RazdelitevImena {
        oznako zanesljivo=false - klicalec naj jo da cloveku v pregled. */
     public Razdeljeno razdeli(String polno) {
         String p = polno == null ? "" : polno.trim();
+        Razdeljeno izRegistra = resitveRegistra.get(kljucPolnega(p));
+        if (izRegistra != null) {
+            return izRegistra;
+        }
         Razdeljeno znana = resitve.get(p);
         if (znana != null) {
             return znana;
@@ -216,6 +241,10 @@ public class RazdelitevImena {
             }
         }
         return r;
+    }
+
+    private static String kljucPolnega(String polno) {
+        return String.join(" ", zetoni(kljuc(polno)));
     }
 
     /* Primerjalni kljuc: male crke brez sumnikov, da se "Aljaz" in "Aljaz"

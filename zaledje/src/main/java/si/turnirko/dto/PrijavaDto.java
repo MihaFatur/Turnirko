@@ -2,7 +2,11 @@
 
    Pri dvojicah je prijava PAR: polja z dvojko nosijo drugega igralca in so
    pri posamicnem dogodku prazna. Imeni ostajata loceni (in se ne zlepita v
-   en niz), da ju vmesnik lahko izpise v dveh vrsticah kartice mreze. */
+   en niz), da ju vmesnik lahko izpise v dveh vrsticah kartice mreze.
+
+   Pri ekipnem dogodku (V28) je prijava EKIPA: igralca ni (idIgralca prazen),
+   polnoIme je ime ekipe, klub pa klub ekipe - mreza in skupine jo zato
+   izpisejo brez posebne veje. idEkipa vodi do kadra. */
 package si.turnirko.dto;
 
 import si.turnirko.modeli.Prijava;
@@ -22,12 +26,14 @@ public record PrijavaDto(
         Integer ratingObZrebu,
         Integer ratingObZrebu2,
         Integer koncnoMesto,
-        /* Trenutni klubski ELO - podlaga za jakostni vrstni red v pripravi;
-           null pomeni, da igralec se nima nobene obracunane tekme. */
+        /* Trenutni Turnirko rating - podlaga za jakostni vrstni red v pripravi;
+           null pomeni, da igralec se nima nobene obracunane tekme. Pri ekipi je
+           to predlagana jakost po ratingu kadra. */
         Integer rating,
         Integer rating2,
         Long idSkupina,
-        Integer mestoVSkupini
+        Integer mestoVSkupini,
+        Long idEkipa
 ) {
 
     public static PrijavaDto iz(Prijava prijava) {
@@ -35,10 +41,11 @@ public record PrijavaDto(
     }
 
     public static PrijavaDto iz(Prijava prijava, Integer rating, Integer rating2) {
+        boolean ekipa = prijava.jeEkipa();
         return new PrijavaDto(
                 prijava.getId(),
-                prijava.getIgralec().getId(),
-                prijava.getIgralec().polnoIme(),
+                ekipa ? null : prijava.getIgralec().getId(),
+                prijava.jeEkipa() ? prijava.getEkipa().prikazanoIme() : prijava.getIgralec().polnoIme(),
                 prijava.getKlubObPrijavi() != null ? prijava.getKlubObPrijavi().getIme() : null,
                 prijava.jePar() ? prijava.getIgralec2().getId() : null,
                 prijava.jePar() ? prijava.getIgralec2().polnoIme() : null,
@@ -51,7 +58,8 @@ public record PrijavaDto(
                 rating,
                 rating2,
                 prijava.getIdSkupina(),
-                prijava.getMestoVSkupini()
+                prijava.getMestoVSkupini(),
+                ekipa ? prijava.getEkipa().getId() : null
         );
     }
 }

@@ -10,8 +10,15 @@ import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
-import type { FormatSrecanja, LigaDto, LigaVnos, PredlogaLige, SpolKategorija } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_PREDLOGA_LIGE, RAZPORED_FORMATA } from '../api/tipi'
+import type { FormatSrecanja, LigaDto, LigaVnos, PredlogaLige, RavenTekmovanja, SpolKategorija } from '../api/tipi'
+import {
+  FORMATI_SAMO_TURNIR,
+  OZNAKE_FORMAT,
+  OZNAKE_PREDLOGA_LIGE,
+  OZNAKE_RAVEN,
+  RAZPORED_FORMATA,
+  TEZA_RAVNI,
+} from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -34,6 +41,13 @@ function vecina(format: FormatSrecanja): number {
 /* Liga se praviloma igra tedensko (isto privzeto kot v zaledju). */
 const PRIVZET_RAZMIK = 7
 
+/* Končnica po rednem delu: toliko ekip gre naprej (2 = samo finale). */
+const MOZNOSTI_KONCNICE: { ekip: number; oznaka: string }[] = [
+  { ekip: 2, oznaka: 'Finale (prva dva)' },
+  { ekip: 4, oznaka: 'Polfinale in finale (prve štiri)' },
+  { ekip: 8, oznaka: 'Četrtfinale, polfinale in finale (prvih osem)' },
+]
+
 export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const urejanje = liga !== undefined
 
@@ -54,7 +68,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const [tockePoraz, nastaviTockePoraz] = useState(liga?.tockePoraz ?? 0)
   const [dovoljenoNeodloceno, nastaviDovoljenoNeodloceno] = useState(liga?.dovoljenoNeodloceno ?? true)
   const [prepoved, nastaviPrepoved] = useState(liga?.prepovedDvojneRegistracije ?? false)
-  const [stejeVElo, nastaviStejeVElo] = useState(liga?.stejeVElo ?? true)
+  const [raven, nastaviRaven] = useState<RavenTekmovanja>(liga?.raven ?? 'KLUBSKO')
   const [enakomerna, nastaviEnakomerno] = useState(liga?.enakomernaRazvrstitev ?? false)
   const [predloga, nastaviPredlogo] = useState<PredlogaLige>(liga?.predlogaListka ?? 'SNTL_23')
   /* Termini so seme, ne seznam datumov: ekip (in s tem števila kol) ob
@@ -67,6 +81,10 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
     liga?.zacetekPrvegaKola?.slice(11, 16) ?? '',
   )
   const [razmik, nastaviRazmik] = useState(liga?.razmikDni ?? PRIVZET_RAZMIK)
+  /* 0 = liga končnice nima. Končnica je del pravil tekmovanja, zato je tu
+     (in se po žrebu zaklene), njen potek pa vodi stran lige. */
+  const [koncnicaEkip, nastaviKoncnicaEkip] = useState(liga?.koncnicaEkip ?? 0)
+  const [koncnicaZmag, nastaviKoncnicaZmag] = useState(liga?.koncnicaZmag ?? 2)
 
   const tekme = RAZPORED_FORMATA[format]
 
@@ -101,13 +119,15 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       tockePoraz,
       dovoljenoNeodloceno,
       prepovedDvojneRegistracije: prepoved,
-      stejeVElo,
+      raven,
       enakomernaRazvrstitev: enakomerna,
       predlogaListka: predloga,
       /* Brez datuma prvega kola terminov ni; ura je neobvezna (00:00 pomeni
          »ura ni določena« in se v razporedu ne izpiše). */
       zacetekPrvegaKola: datumPrvega ? `${datumPrvega}T${uraPrvega || '00:00'}` : null,
       razmikDni: datumPrvega ? razmik : null,
+      koncnicaEkip: koncnicaEkip > 0 ? koncnicaEkip : null,
+      koncnicaZmag: koncnicaEkip > 0 ? koncnicaZmag : null,
     })
   }
 
@@ -146,9 +166,11 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           <label className="obrazec__polje">
             <span>Format srečanja</span>
             <select value={format} onChange={(d) => zamenjajFormat(d.target.value as FormatSrecanja)}>
-              {(Object.keys(OZNAKE_FORMAT) as FormatSrecanja[]).map((f) => (
-                <option key={f} value={f}>{OZNAKE_FORMAT[f]}</option>
-              ))}
+              {(Object.keys(OZNAKE_FORMAT) as FormatSrecanja[])
+                .filter((f) => !FORMATI_SAMO_TURNIR.includes(f) || f === format)
+                .map((f) => (
+                  <option key={f} value={f}>{OZNAKE_FORMAT[f]}</option>
+                ))}
             </select>
           </label>
           <label className="obrazec__polje">
@@ -183,7 +205,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         </div>
         <p className="namig">
           {konec === 'VSE'
-            ? 'Vseh ' + tekme.length + ' tekem se odigra do konca, tudi ko je zmagovalec srečanja že znan — rezultat šteje v razliko tekem in v ELO.'
+            ? 'Vseh ' + tekme.length + ' tekem se odigra do konca, tudi ko je zmagovalec srečanja že znan — rezultat šteje v razliko tekem in v rating.'
             : `Ko ena ekipa doseže ${prag} dobljenih tekem, se srečanje konča; preostale tekme ostanejo neodigrane.`}
         </p>
 
@@ -211,6 +233,40 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             {datumPrvega
               ? `Vsako kolo se odigra ${razmik === 7 ? 'teden' : `${razmik} dni`} za prejšnjim; datumi se zapišejo ob generiranju razporeda, ko je znano, koliko kol liga ima. Posamezno kolo je pozneje mogoče prestaviti — na strani lige pod »Termini«.`
               : 'Brez datuma prvega kola razpored pri neodigranih kolih ne pokaže dneva, ampak samo oznako »razpored«. Datume je mogoče vpisati tudi pozneje — na strani lige pod »Termini«.'}
+          </p>
+        </fieldset>
+
+        <fieldset className="obrazec__skupina">
+          <legend>Končnica</legend>
+          <div className="obrazec__vrstica">
+            <label className="obrazec__polje">
+              <span>Po rednem delu</span>
+              <select value={koncnicaEkip} onChange={(d) => nastaviKoncnicaEkip(Number(d.target.value))}>
+                <option value={0}>Brez končnice</option>
+                {MOZNOSTI_KONCNICE.map((m) => (
+                  <option key={m.ekip} value={m.ekip}>{m.oznaka}</option>
+                ))}
+              </select>
+            </label>
+            {koncnicaEkip > 0 && (
+              <label className="obrazec__polje">
+                <span>Serija do zmag</span>
+                <select value={koncnicaZmag} onChange={(d) => nastaviKoncnicaZmag(Number(d.target.value))}>
+                  {[1, 2, 3, 4].map((z) => (
+                    <option key={z} value={z}>
+                      {z === 1 ? '1 (ena tekma)' : `${z} (največ ${2 * z - 1} tekem)`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          <p className="namig">
+            {koncnicaEkip > 0
+              ? `Po rednem delu končnico ustvariš na strani lige: pari sledijo končni lestvici (1. proti ${koncnicaEkip}. …), serija traja do ${koncnicaZmag} ${koncnicaZmag === 1 ? 'zmage' : 'zmag'}. Prvo tekmo igra doma slabše uvrščena ekipa, drugo in odločilno bolje uvrščena. Tekme končnice ne štejejo v lestvico rednega dela.`
+              : 'Prvak je prvi po rednem delu.'}
+            {koncnicaEkip > 0 && konec === 'VSE' && tekme.length % 2 === 0 &&
+              ' Srečanje brez praga zmag se lahko konča neodločeno in serije ne odloči — za končnico nastavi prag zmag.'}
           </p>
         </fieldset>
 
@@ -244,10 +300,20 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           <input type="checkbox" checked={prepoved} onChange={(d) => nastaviPrepoved(d.target.checked)} />
           <span>Prepovej dvojno registracijo (igralec le v eni ekipi lige)</span>
         </label>
-        <label className="obrazec__polje obrazec__polje--stikalo">
-          <input type="checkbox" checked={stejeVElo} onChange={(d) => nastaviStejeVElo(d.target.checked)} />
-          <span>Posamične tekme štejejo v klubski ELO</span>
+        <label className="obrazec__polje">
+          <span>Raven tekmovanja (teža v Turnirko ratingu)</span>
+          <select value={raven} onChange={(d) => nastaviRaven(d.target.value as RavenTekmovanja)}>
+            {(Object.keys(OZNAKE_RAVEN) as RavenTekmovanja[]).map((r) => (
+              <option key={r} value={r}>{OZNAKE_RAVEN[r]} — {TEZA_RAVNI[r]}</option>
+            ))}
+          </select>
         </label>
+        <p className="namig">
+          Teža pove, koliko rating premakne ena tekma te lige: uradna tekmovanja
+          NTZS štejejo v celoti, klubska tri četrtine, rekreativna polovico.
+          Zmaga v rekreativni ligi pač ni enako vredna kot zmaga v SNTL.
+          Dvojice ne štejejo nikoli.
+        </p>
         <label className="obrazec__polje obrazec__polje--stikalo">
           <input type="checkbox" checked={enakomerna}
             onChange={(d) => nastaviEnakomerno(d.target.checked)} />

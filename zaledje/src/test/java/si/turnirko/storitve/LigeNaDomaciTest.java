@@ -21,6 +21,7 @@ import si.turnirko.dto.LigaVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.repozitoriji.LigaRepozitorij;
@@ -129,7 +130,7 @@ class LigeNaDomaciTest extends IntegracijskiTest {
 
     private Long ustvariLigo(String ime) {
         LigaVnos v = new LigaVnos(ime, "25/26", SpolKategorija.MOSKI, FormatSrecanja.SAVINJA, 5,
-                null, false, 2, 1, 0, true, false, true, false, null, null, null);
+                null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null, null, null);
         return ligaStoritev.ustvari(v).id();
     }
 

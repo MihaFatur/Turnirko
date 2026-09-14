@@ -20,7 +20,7 @@
    * TERMIN je last srecanja, ne kola: 2. SNTL odigra dve koli v istem dnevu
      na enem prizoriscu (dopoldne in popoldne), zato ima vsako srecanje svojo
      uro iz zapisnika. Ta ura je hkrati tisto, po cemer se tekme uvrstijo v
-     casovno vrsto za obracun ELO. */
+     casovno vrsto za obracun ratinga. */
 package si.turnirko.uvoz.stara;
 
 import java.time.LocalDateTime;
@@ -43,6 +43,7 @@ import si.turnirko.modeli.KaderEkipe;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.PostavaSrecanja;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
@@ -57,7 +58,9 @@ import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
-import si.turnirko.uvoz.EloUvoz;
+import si.turnirko.modeli.VirTekmovanja;
+import si.turnirko.modeli.ZunanjaPovezava;
+import si.turnirko.repozitoriji.ZunanjaPovezavaRepozitorij;
 import si.turnirko.uvoz.SifrantiUvoz;
 import si.turnirko.uvoz.UvozOblike;
 import si.turnirko.uvoz.UvozPorocilo;
@@ -71,28 +74,24 @@ public class StaraLigeUvoz {
     private final SrecanjeRepozitorij srecanjeRepozitorij;
     private final PostavaSrecanjaRepozitorij postavaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
+    private final ZunanjaPovezavaRepozitorij povezave;
     private final SifrantiUvoz sifranti;
     private final UvozPorocilo porocilo;
-
-    private final List<EloUvoz.VrstaTekme> uvozeneTekme = new ArrayList<>();
 
     public StaraLigeUvoz(LigaRepozitorij ligaRepozitorij, EkipaRepozitorij ekipaRepozitorij,
                          KaderEkipeRepozitorij kaderRepozitorij, SrecanjeRepozitorij srecanjeRepozitorij,
                          PostavaSrecanjaRepozitorij postavaRepozitorij,
                          TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij,
-                         SifrantiUvoz sifranti, UvozPorocilo porocilo) {
+                         ZunanjaPovezavaRepozitorij povezave, SifrantiUvoz sifranti, UvozPorocilo porocilo) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.ekipaRepozitorij = ekipaRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
+        this.povezave = povezave;
         this.sifranti = sifranti;
         this.porocilo = porocilo;
-    }
-
-    public List<EloUvoz.VrstaTekme> uvozeneTekme() {
-        return uvozeneTekme;
     }
 
     public void uvozi(JsonNode vir) {
@@ -111,11 +110,17 @@ public class StaraLigeUvoz {
         liga.setFormatSrecanja(format);
         liga.setSteviloNizov(5);
         liga.setStatus(StatusTekmovanja.ZAKLJUCEN);
+        // vir je arhiv NTZS, zato uradno tekmovanje (privzetek entitete je klubsko)
+        liga.setRaven(RavenTekmovanja.URADNO);
         liga.setZacetekPrvegaKola(prviTermin(kola));
         // Srecanje se v vseh razporedih NTZS konca pri vecini tekem
         // (SNTL_BREZ_DVOJIC 5 od 9, OLIMPIJSKI 3 od 5).
         liga.setZmagZaSrecanje(format.stTekem() / 2 + 1);
+        // arhiv zveze je samo za branje (V27)
+        liga.setVir(VirTekmovanja.STARA_NTZS);
         liga = ligaRepozitorij.save(liga);
+        povezave.save(new ZunanjaPovezava(VirTekmovanja.STARA_NTZS, ZunanjaPovezava.Vrsta.LIGA,
+                UvozOblike.prirezi(vir.path("id").asText(), 80), liga.getId()));
         porocilo.prestej("lig");
 
         Map<String, Ekipa> ekipe = ustvariEkipe(liga, vir);
@@ -353,10 +358,8 @@ public class StaraLigeUvoz {
         tekma.setZmagovalecStran(niziD > niziG ? StranEkipe.DOMACI : StranEkipe.GOST);
         tekma.setIzidTip(IzidTekme.IGRANO);
 
-        TekmaSrecanja shranjena = tekmaSrecanjaRepozitorij.save(tekma);
+        tekmaSrecanjaRepozitorij.save(tekma);
         porocilo.prestej("tekem (ligaskih)");
-        uvozeneTekme.add(EloUvoz.VrstaTekme.ligaska(shranjena.getId(),
-                srecanje.getPredvidenZacetek(), srecanje.getKolo(), shranjena.getZaporedje()));
     }
 
     /* Postavo zapisemo sele, ko so znane vse tekme srecanja: sele takrat vemo,

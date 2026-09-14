@@ -22,19 +22,27 @@ public record TekmaDto(
         int dobljeniNizi2,
         Long idZmagovalcaPrijave,
         Integer miza,
-        /* Sprememba klubskega ELO ob tej tekmi (npr. +16 / -16); null,
+        /* Sprememba Turnirko ratinga ob tej tekmi (npr. +16 / -16); null,
            ce tekma se ni obracunana (npr. prosti prehod ali nedokoncana). */
         Integer spremembaElo1,
         Integer spremembaElo2,
         /* Rating igralca PRED to tekmo: pri odigrani tekmi zgodovinski
            (pred obracunom), sicer trenutni; null, ce igralec se nima ratinga. */
         Integer ratingPred1,
-        Integer ratingPred2
+        Integer ratingPred2,
+        /* Ekipna tekma (V28): srecanje z zapisnikom; prazno pri tekmi
+           posameznikov in pri ekipni tekmi, ki se ni igrala (brez boja). */
+        Long idSrecanje,
+        /* Prenesen izid iz predtekmovanja (finalna skupina za mesta): tekma,
+           katere izid nosi. Vmesnik jo oznaci kot preneseno in ne kot
+           odigrano. */
+        Long idPrenesena
 ) {
 
-    /* Udelezenec tekme (stran 1 ali 2) - igralec ali PAR.
+    /* Udelezenec tekme (stran 1 ali 2) - igralec, PAR ali EKIPA.
        polnoIme2/klub2 sta zapolnjena samo pri dvojicah; vmesnik iz njiju
-       sestavi dvovrsticni zapis na kartici mreze. */
+       sestavi dvovrsticni zapis na kartici mreze. Pri ekipi je polnoIme ime
+       ekipe. */
     public record Udelezenec(Long idPrijave, String polnoIme, String klub,
                              String polnoIme2, String klub2) {
 
@@ -42,7 +50,7 @@ public record TekmaDto(
             if (prijava == null) return null;
             return new Udelezenec(
                     prijava.getId(),
-                    prijava.getIgralec().polnoIme(),
+                    prijava.jeEkipa() ? prijava.getEkipa().prikazanoIme() : prijava.getIgralec().polnoIme(),
                     prijava.getKlubObPrijavi() != null ? prijava.getKlubObPrijavi().getIme() : null,
                     prijava.jePar() ? prijava.getIgralec2().polnoIme() : null,
                     prijava.getKlubObPrijavi2() != null ? prijava.getKlubObPrijavi2().getIme() : null);
@@ -55,6 +63,11 @@ public record TekmaDto(
 
     public static TekmaDto iz(Tekma tekma, Integer spremembaElo1, Integer spremembaElo2,
                               Integer ratingPred1, Integer ratingPred2) {
+        return iz(tekma, spremembaElo1, spremembaElo2, ratingPred1, ratingPred2, null);
+    }
+
+    public static TekmaDto iz(Tekma tekma, Integer spremembaElo1, Integer spremembaElo2,
+                              Integer ratingPred1, Integer ratingPred2, Long idSrecanje) {
         return new TekmaDto(
                 tekma.getId(),
                 tekma.getFaza(),
@@ -73,7 +86,9 @@ public record TekmaDto(
                 spremembaElo1,
                 spremembaElo2,
                 ratingPred1,
-                ratingPred2
+                ratingPred2,
+                idSrecanje,
+                tekma.getIdPrenesena()
         );
     }
 }

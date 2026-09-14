@@ -9,7 +9,7 @@
    Obe lestvici štejeta SAMO tekme te lige (rating tega ne zna — teče čez vsa
    tekmovanja) in imata isto merilo: zmage, ob izenačenju uspešnost in razlika
    nizov. Posamične tekme in dvojice sta ločena seznama, ker izida para ni
-   mogoče pripisati posamezniku — isto pravilo kot pri ELO. */
+   mogoče pripisati posamezniku — isto pravilo kot pri ratingu. */
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'

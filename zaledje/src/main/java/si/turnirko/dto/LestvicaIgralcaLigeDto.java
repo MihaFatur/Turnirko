@@ -1,6 +1,6 @@
 /* Ena vrstica lestvice posameznikov ZNOTRAJ ene lige.
 
-   Loceno od LestvicaIgralcaDto (globalna lestvica po klubskem ELO): tu ne
+   Loceno od LestvicaIgralcaDto (globalna lestvica po Turnirko ratingu): tu ne
    nastopa rating, ker ta tece cez vsa tekmovanja, tukaj pa stejejo samo
    posamicne tekme te lige. Merilo je zato izkupicek: zmage, ob izenacenju
    uspesnost in razlika nizov.

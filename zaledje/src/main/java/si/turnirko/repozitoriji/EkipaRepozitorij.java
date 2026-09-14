@@ -36,6 +36,21 @@ public interface EkipaRepozitorij extends JpaRepository<Ekipa, Long> {
     @Query("SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub JOIN FETCH e.liga WHERE e.id = :id")
     Optional<Ekipa> najdiZKlubomInLigo(Long id);
 
+    /* Ekipe ekipnega dogodka turnirja (V28), po abecedi kot pri ligi. */
+    @Query("""
+            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub k
+            WHERE e.dogodek.id = :idDogodek
+            ORDER BY COALESCE(k.ime, e.ime), e.zaporedna
+            """)
+    List<Ekipa> najdiZaDogodek(Long idDogodek);
+
+    @Query("""
+            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub
+            JOIN FETCH e.dogodek d JOIN FETCH d.turnir
+            WHERE e.id = :id
+            """)
+    Optional<Ekipa> najdiZKlubomInDogodkom(Long id);
+
     boolean existsByLigaIdAndKlubIdAndZaporedna(Long idLiga, Long idKlub, int zaporedna);
 
     long countByLigaId(Long idLiga);

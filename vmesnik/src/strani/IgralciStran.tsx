@@ -19,7 +19,7 @@ import { SporociloNapake } from '../komponente/SporociloNapake'
 import { letnica } from '../pomozno/oblikovanje'
 
 /* Do toliko odigranih tekem je rating še provizoričen (ujema se s strežniškim
-   pragom dinamičnega K, EloStoritev.PRAG_PROVIZORICNI). */
+   pragom dinamičnega K, TurnirkoRatingStoritev.PRAG_PROVIZORICNI). */
 const PROVIZORICNO_DO = 10
 
 export function IgralciStran() {
@@ -43,6 +43,9 @@ export function IgralciStran() {
   const [arhiviranec, nastaviArhiviranca] = useState<IgralecDto | null>(null)
   /* Igralec, ki mu postavljamo začetni rating (le pred prvo tekmo). */
   const [postavljanec, nastaviPostavljanca] = useState<IgralecDto | null>(null)
+  /* Igralec, ki mu vpisujemo rating z zunanje lestvice (dovoljeno tudi po
+     odigranih tekmah — glej ZunanjaUvrstitevOkno). */
+  const [zunanjiGost, nastaviZunanjegaGosta] = useState<IgralecDto | null>(null)
 
   const arhiviranje = useMutation({
     mutationFn: (id: number) => igralciApi.arhiviraj(id),
@@ -167,15 +170,24 @@ export function IgralciStran() {
                       )}
                     </span>
                   )}
-                  {jeAdmin && igralec.steviloTekem === 0 ? (
+                  {!jeAdmin && igralec.rating == null && '—'}
+                  {jeAdmin && igralec.steviloTekem === 0 && (
                     <button
                       className="gumb gumb--majhen"
                       onClick={() => nastaviPostavljanca(igralec)}
                     >
                       {igralec.rating == null ? 'Postavi rating' : 'Popravi'}
                     </button>
-                  ) : (
-                    igralec.rating == null && '—'
+                  )}
+                  {/* Zunanja uvrstitev je na voljo VEDNO, tudi po odigranih
+                      tekmah — prav zaradi redkih gostov obstaja. */}
+                  {jeAdmin && (
+                    <button
+                      className="gumb gumb--majhen"
+                      onClick={() => nastaviZunanjegaGosta(igralec)}
+                    >
+                      Zunanja uvrstitev
+                    </button>
                   )}
                 </td>
                 {podroben && (
@@ -230,6 +242,14 @@ export function IgralciStran() {
           onShranjeno={() => odjemalec.invalidateQueries({ queryKey: ['igralci'] })}
         />
       )}
+
+      {zunanjiGost && (
+        <ZunanjaUvrstitevOkno
+          igralec={zunanjiGost}
+          onZapri={() => nastaviZunanjegaGosta(null)}
+          onShranjeno={() => odjemalec.invalidateQueries({ queryKey: ['igralci'] })}
+        />
+      )}
     </section>
   )
 }
@@ -268,11 +288,11 @@ function ZacetniRatingOkno({
         }}
       >
         <p className="obvestilo">
-          Močnemu novincu lahko postaviš vstopni ELO, da mu ni treba plezati z 1000.
+          Močnemu novincu lahko postaviš vstopni rating, da mu ni treba plezati z 1000.
           Mogoče je le pred prvo odigrano tekmo; nato rating določajo rezultati.
         </p>
         <label className="obrazec__polje">
-          <span>Klubski ELO (100–3000)</span>
+          <span>Turnirko rating (100–3000)</span>
           <input
             type="number"
             min={100}
@@ -293,6 +313,116 @@ function ZacetniRatingOkno({
             disabled={!veljaven || shranjevanje.isPending}
           >
             Shrani rating
+          </button>
+        </div>
+      </form>
+    </ModalnoOkno>
+  )
+}
+
+/* Zunanja uvrstitev: rating, prepisan z zunanje lestvice (ITTF, NTZS, druga
+   zveza). Za razliko od začetnega ratinga je na voljo tudi po odigranih
+   tekmah — prav zato obstaja: igralec, ki pri nas odigra dve tekmi na leto,
+   ker sicer igra po svetu, ima pri nas številko, ki o njem ne pove ničesar.
+
+   Vir in pojasnilo sta obvezna in JAVNA (izpišeta se na profilu pod grafom).
+   To ni formalnost: ročno vpisana številka na javni lestvici je brez
+   zapisanega vira videti kot naklonjenost, z virom pa je trditev, ki jo lahko
+   vsak preveri. */
+function ZunanjaUvrstitevOkno({
+  igralec,
+  onZapri,
+  onShranjeno,
+}: {
+  igralec: IgralecDto
+  onZapri: () => void
+  onShranjeno: () => void
+}) {
+  const [vrednost, nastaviVrednost] = useState(String(igralec.rating ?? 1000))
+  const [vir, nastaviVir] = useState('')
+  const [pojasnilo, nastaviPojasnilo] = useState('')
+
+  const shranjevanje = useMutation({
+    mutationFn: () =>
+      igralciApi.zunanjaUvrstitev(igralec.id, {
+        vrednost: Number(vrednost),
+        vir: vir.trim(),
+        pojasnilo: pojasnilo.trim(),
+      }),
+    onSuccess: () => {
+      onShranjeno()
+      onZapri()
+    },
+  })
+
+  const stevilka = Number(vrednost)
+  const veljaven =
+    Number.isInteger(stevilka)
+    && stevilka >= 100
+    && stevilka <= 3000
+    && vir.trim() !== ''
+    && pojasnilo.trim() !== ''
+
+  return (
+    <ModalnoOkno
+      naslov={`Zunanja uvrstitev — ${igralec.ime} ${igralec.priimek}`}
+      onZapri={onZapri}
+    >
+      <form
+        className="obrazec"
+        onSubmit={(d) => {
+          d.preventDefault()
+          if (veljaven) shranjevanje.mutate()
+        }}
+      >
+        <p className="obvestilo">
+          Za redkega gosta, ki pri nas odigra premalo tekem, da bi ga lestvica sama uvrstila.
+          Trenutno: {igralec.rating ?? 'brez ratinga'} po {igralec.steviloTekem}{' '}
+          {igralec.steviloTekem === 1 ? 'tekmi' : 'tekmah'}. Vir in pojasnilo sta javna —
+          izpišeta se na igralčevem profilu.
+        </p>
+        <label className="obrazec__polje">
+          <span>Turnirko rating (100–3000)</span>
+          <input
+            type="number"
+            min={100}
+            max={3000}
+            value={vrednost}
+            onChange={(d) => nastaviVrednost(d.target.value)}
+            autoFocus
+          />
+        </label>
+        <label className="obrazec__polje">
+          <span>Vir</span>
+          <input
+            type="text"
+            maxLength={200}
+            placeholder="npr. ITTF svetovna lestvica, september 2026"
+            value={vir}
+            onChange={(d) => nastaviVir(d.target.value)}
+          />
+        </label>
+        <label className="obrazec__polje">
+          <span>Pojasnilo</span>
+          <textarea
+            rows={3}
+            maxLength={500}
+            placeholder="npr. Igra skoraj samo mednarodno, pri nas dve tekmi na leto."
+            value={pojasnilo}
+            onChange={(d) => nastaviPojasnilo(d.target.value)}
+          />
+        </label>
+        <SporociloNapake napaka={shranjevanje.error} />
+        <div className="obrazec__gumbi">
+          <button type="button" className="gumb" onClick={onZapri}>
+            Prekliči
+          </button>
+          <button
+            type="submit"
+            className="gumb gumb--glavni"
+            disabled={!veljaven || shranjevanje.isPending}
+          >
+            Vpiši uvrstitev
           </button>
         </div>
       </form>

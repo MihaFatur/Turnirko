@@ -114,7 +114,7 @@ Ključna načela:
 | **skupine + izločilni** (skupinski del → izločilna mreža) | prijavni roki, mize, urniki, izpisi |
 | posebni izidi: w.o., predaja, diskvalifikacija, prosto | uradne jakostne točke NTZS |
 | točke po nizih z validacijo (tudi vrstni red nizov) | ovrednotenje vseh mest (3./4. …) |
-| klubski ELO z dnevnikom sprememb | |
+| Turnirko rating z dnevnikom sprememb | |
 | **globalna lestvica igralcev** in **pregled 1-na-1** | |
 | **prijava administratorja**, bralni dostop za goste | uporabniški vmesnik za več administratorjev |
 | več dogodkov na turnir, kategorije po spolu | |

@@ -9,9 +9,17 @@
    svoje (ustvaril == on) ali od svojega kluba (klubLastnik == njegov klub).
    Klub je pri organizatorju neobvezen; brez kluba upravlja samo svoje.
 
+   UVOZENO TEKMOVANJE JE SAMO ZA BRANJE (V27) - za vse, tudi za administratorja
+   in tudi brez varnostnega konteksta. Vir resnice je zveza: popravek v
+   Turnirku bi naslednja sinhronizacija povozila. Zato preverba vira stoji
+   PRED preverbo vloge. Sinhronizacija sama pise mimo storitev (repozitoriji),
+   zato je to pravilo ne ustavi. Opis lige (prehodi v piramidi) in uredniska
+   izbira lig na domaci strani nista pravilo tekmovanja in ostaneta dovoljena
+   - glej preveriLigaZaOpis.
+
    Ce varnostnega konteksta ni (interni klic ali storitveni test brez
-   nastavljene prijave), preverba ne omejuje - v produkciji do mutacije brez
-   veljavne prijave sploh ne pride (ustavi jo veriga). */
+   nastavljene prijave), preverba lastnika ne omejuje - v produkciji do
+   mutacije brez veljavne prijave sploh ne pride (ustavi jo veriga). */
 package si.turnirko.storitve;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -19,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Klub;
@@ -32,6 +41,10 @@ import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 @Service
 public class LastnistvoStoritev {
+
+    /* Sporocilo ob poskusu spremembe uvozenega tekmovanja. */
+    static final String SAMO_ZA_BRANJE = "Tekmovanje je uvozeno iz uradnega vira zveze (%s) in je"
+            + " samo za branje. Popravek vnese zveza, uvoz ga prenese.";
 
     private final UporabnikRepozitorij uporabnikRepozitorij;
     private final TurnirRepozitorij turnirRepozitorij;
@@ -84,6 +97,9 @@ public class LastnistvoStoritev {
     // ---------- Preverba: turnir ----------
 
     public void preveriTurnir(Turnir turnir) {
+        if (turnir.jeUvozen()) {
+            throw new DomenskaIzjema(String.format(SAMO_ZA_BRANJE, turnir.getVir().getOznaka()));
+        }
         preveri(turnir.getUstvaril(), turnir.getKlubLastnik(), "turnirja");
     }
 
@@ -110,35 +126,78 @@ public class LastnistvoStoritev {
     // ---------- Preverba: liga ----------
 
     public void preveriLiga(Liga liga) {
+        if (liga.jeUvozena()) {
+            throw new DomenskaIzjema(String.format(SAMO_ZA_BRANJE, liga.getVir().getOznaka()));
+        }
         preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige");
     }
 
     public void preveriLigaPoId(Long idLiga) {
-        preveriLiga(ligaRepozitorij.najdiZLastnistvom(idLiga)
-                .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja.")));
+        preveriLiga(najdiLigo(idLiga));
     }
 
-    public void preveriLigaPoEkipi(Long idEkipa) {
-        preveriLiga(ligaRepozitorij.najdiZLastnistvomPoEkipi(idEkipa)
+    /* Preverba za OPIS lige (mesto v piramidi), ki ni pravilo tekmovanja in ga
+       vir ne pozna - zato je dovoljen tudi pri uvozeni ligi. */
+    public void preveriLigaZaOpis(Long idLiga) {
+        Liga liga = najdiLigo(idLiga);
+        preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige");
+    }
+
+    public void preveriLigaPoSeriji(Long idSerija) {
+        preveriLiga(ligaRepozitorij.najdiZLastnistvomPoSeriji(idSerija)
+                .orElseThrow(() -> new NiNajdenoIzjema("Serija koncnice z id " + idSerija + " ne obstaja.")));
+    }
+
+    // ---------- Preverba: ekipa, kader, srecanje (liga ALI ekipni turnir) ----------
+
+    /* Ekipa nastopa v ligi ali na ekipnem dogodku turnirja - preverba velja za
+       tekmovanje, kateremu pripada. */
+    public void preveriPoEkipi(Long idEkipa) {
+        var liga = ligaRepozitorij.najdiZLastnistvomPoEkipi(idEkipa);
+        if (liga.isPresent()) {
+            preveriLiga(liga.get());
+            return;
+        }
+        preveriTurnir(turnirRepozitorij.najdiZLastnistvomPoEkipi(idEkipa)
                 .orElseThrow(() -> new NiNajdenoIzjema("Ekipa z id " + idEkipa + " ne obstaja.")));
     }
 
-    public void preveriLigaPoKadru(Long idKader) {
-        preveriLiga(ligaRepozitorij.najdiZLastnistvomPoKadru(idKader)
+    public void preveriPoKadru(Long idKader) {
+        var liga = ligaRepozitorij.najdiZLastnistvomPoKadru(idKader);
+        if (liga.isPresent()) {
+            preveriLiga(liga.get());
+            return;
+        }
+        preveriTurnir(turnirRepozitorij.najdiZLastnistvomPoKadru(idKader)
                 .orElseThrow(() -> new NiNajdenoIzjema("Vnos kadra z id " + idKader + " ne obstaja.")));
     }
 
-    public void preveriLigaPoSrecanju(Long idSrecanje) {
-        preveriLiga(ligaRepozitorij.najdiZLastnistvomPoSrecanju(idSrecanje)
+    public void preveriPoSrecanju(Long idSrecanje) {
+        var liga = ligaRepozitorij.najdiZLastnistvomPoSrecanju(idSrecanje);
+        if (liga.isPresent()) {
+            preveriLiga(liga.get());
+            return;
+        }
+        preveriTurnir(turnirRepozitorij.najdiZLastnistvomPoSrecanju(idSrecanje)
                 .orElseThrow(() -> new NiNajdenoIzjema("Srecanje z id " + idSrecanje + " ne obstaja.")));
     }
 
-    public void preveriLigaPoTekmiSrecanja(Long idTekma) {
-        preveriLiga(ligaRepozitorij.najdiZLastnistvomPoTekmiSrecanja(idTekma)
+    public void preveriPoTekmiSrecanja(Long idTekma) {
+        var liga = ligaRepozitorij.najdiZLastnistvomPoTekmiSrecanja(idTekma);
+        if (liga.isPresent()) {
+            preveriLiga(liga.get());
+            return;
+        }
+        preveriTurnir(turnirRepozitorij.najdiZLastnistvomPoTekmiSrecanja(idTekma)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja.")));
     }
 
     // ---------- Jedro ----------
+
+    private Liga najdiLigo(Long idLiga) {
+        return ligaRepozitorij.najdiZLastnistvom(idLiga)
+                .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja."));
+    }
 
     private void preveri(Uporabnik lastnik, Klub klubLastnik, String kaj) {
         Uporabnik jaz = trenutni();

@@ -1,5 +1,5 @@
 /* Testi postavitvenega (zacetnega) ratinga za novince: admin sme igralcu
-   dolociti vstopni klubski ELO, dokler ta ni odigral nobene ratinske tekme. */
+   dolociti vstopni Turnirko rating, dokler ta ni odigral nobene ratinske tekme. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,14 +40,14 @@ class PostavitveniRatingTest extends IntegracijskiTest {
         ratingStoritev.nastaviZacetniRating(igralec, 1400);
 
         RatingStanje stanje = ratingStanjeRepozitorij
-                .findByIgralecIdAndSistem(igralec.getId(), RatingStanje.SISTEM_KLUBSKI_ELO)
+                .findByIgralecIdAndSistem(igralec.getId(), RatingStanje.SISTEM_TURNIRKO)
                 .orElseThrow();
         assertEquals(1400, stanje.getVrednost());
         assertEquals(0, stanje.getStTekem(), "postavitev ne steje kot tekma");
 
         // v dnevniku je zapis brez tekme (postavitveni), z novo vrednostjo
         List<RatingZgodovina> dnevnik = ratingZgodovinaRepozitorij
-                .najdiZaIgralca(igralec.getId(), RatingStanje.SISTEM_KLUBSKI_ELO);
+                .najdiZaIgralca(igralec.getId(), RatingStanje.SISTEM_TURNIRKO);
         assertEquals(1, dnevnik.size());
         assertEquals(1400, dnevnik.get(0).getNovaVrednost());
         assertNull(dnevnik.get(0).getTekma(), "postavitveni zapis ni vezan na tekmo");
@@ -86,6 +86,6 @@ class PostavitveniRatingTest extends IntegracijskiTest {
         var dto = igralciStoritev.najdi(igralec.getId());
         assertEquals(1400, dto.rating());
         assertEquals(0, dto.steviloTekem());
-        assertTrue(dto.rating() > EloStoritev.ZACETNI_RATING);
+        assertTrue(dto.rating() > TurnirkoRatingStoritev.ZACETNI_RATING);
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import si.turnirko.dto.IgralecDto;
 import si.turnirko.dto.IgralecJavniDto;
 import si.turnirko.dto.IgralecVnos;
+import si.turnirko.dto.ZunanjaUvrstitevVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Igralec;
@@ -42,7 +43,7 @@ public class IgralciStoritev {
         this.ratingStoritev = ratingStoritev;
     }
 
-    /* Seznam aktivnih igralcev s trenutnim klubskim ELO ratingom, brez
+    /* Seznam aktivnih igralcev s trenutnim Turnirko ratingom, brez
        osebnih podatkov - to je izpis, ki ga vidi tudi neprijavljen gost. */
     @Transactional(readOnly = true)
     public List<IgralecJavniDto> seznam() {
@@ -73,7 +74,7 @@ public class IgralciStoritev {
         List<Igralec> igralci = igralecRepozitorij.najdiAktivne();
         List<Long> idji = igralci.stream().map(Igralec::getId).toList();
         List<RatingStanje> ratingi = ratingStanjeRepozitorij
-                .findByIgralecIdInAndSistem(idji, RatingStanje.SISTEM_KLUBSKI_ELO);
+                .findByIgralecIdInAndSistem(idji, RatingStanje.SISTEM_TURNIRKO);
         return igralci.stream()
                 .map(igralec -> vOblika.apply(igralec, najdiStanje(ratingi, igralec.getId())))
                 .toList();
@@ -88,6 +89,15 @@ public class IgralciStoritev {
     public IgralecJavniDto nastaviZacetniRating(Long id, int vrednost) {
         Igralec igralec = najdiIgralca(id);
         ratingStoritev.nastaviZacetniRating(igralec, vrednost);
+        return javniDto(igralec, stanje(id));
+    }
+
+    /* Zunanja uvrstitev - dovoljena tudi igralcu s tekmami (glej
+       RatingStoritev.zunanjaUvrstitev). */
+    @Transactional
+    public IgralecJavniDto zunanjaUvrstitev(Long id, ZunanjaUvrstitevVnos vnos) {
+        Igralec igralec = najdiIgralca(id);
+        ratingStoritev.zunanjaUvrstitev(igralec, vnos.vrednost(), vnos.vir(), vnos.pojasnilo());
         return javniDto(igralec, stanje(id));
     }
 
@@ -160,7 +170,7 @@ public class IgralciStoritev {
 
     private RatingStanje stanje(Long idIgralca) {
         return ratingStanjeRepozitorij
-                .findByIgralecIdAndSistem(idIgralca, RatingStanje.SISTEM_KLUBSKI_ELO)
+                .findByIgralecIdAndSistem(idIgralca, RatingStanje.SISTEM_TURNIRKO)
                 .orElse(null);
     }
 

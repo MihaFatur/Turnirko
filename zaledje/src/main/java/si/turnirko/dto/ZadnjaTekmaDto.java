@@ -1,5 +1,5 @@
 /* Zadnje odigrane tekme cez vse dogodke - za "Zadnji rezultati" na domaci
-   strani. S spremembo klubskega ELO obeh igralcev. */
+   strani. S spremembo Turnirko ratinga obeh igralcev. */
 package si.turnirko.dto;
 
 import si.turnirko.modeli.IzidTekme;

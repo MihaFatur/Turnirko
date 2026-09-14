@@ -65,6 +65,21 @@ public class Dogodek {
     @Column(name = "velikost_skupine")
     private Integer velikostSkupine;
 
+    /* Ekipni dogodek (disciplina EKIPNO, V28): format srecanja in prag zmag,
+       pri katerem se srecanje konca (null = odigrajo se vse tekme). Ista
+       pravila, kot jih ima liga - srecanje ekipne tekme tece po isti kodi.
+       Pri drugih disciplinah srecanj ni in oboje ostane prazno. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "format_srecanja")
+    private FormatSrecanja formatSrecanja;
+
+    @Column(name = "zmag_za_srecanje")
+    private Integer zmagZaSrecanje;
+
+    /* Izlocilna mreza s tekmo za 3. mesto med porazencema polfinala. */
+    @Column(name = "tekma_za_tretje_mesto", nullable = false)
+    private boolean tekmaZaTretjeMesto = false;
+
     @Column(name = "prijavnina")
     private Double prijavnina;
 
@@ -100,6 +115,18 @@ public class Dogodek {
 
     /* Ali je tekmovalna enota par (in torej prijava nosi dva igralca). */
     public boolean jeDvojice() { return disciplina.jeDvojice(); }
+
+    /* Ali je tekmovalna enota ekipa (prijava nosi ekipo, tekma pa srecanje). */
+    public boolean jeEkipno() { return disciplina.jeEkipno(); }
+
+    public FormatSrecanja getFormatSrecanja() { return formatSrecanja; }
+    public void setFormatSrecanja(FormatSrecanja formatSrecanja) { this.formatSrecanja = formatSrecanja; }
+
+    public Integer getZmagZaSrecanje() { return zmagZaSrecanje; }
+    public void setZmagZaSrecanje(Integer zmagZaSrecanje) { this.zmagZaSrecanje = zmagZaSrecanje; }
+
+    public boolean isTekmaZaTretjeMesto() { return tekmaZaTretjeMesto; }
+    public void setTekmaZaTretjeMesto(boolean tekmaZaTretjeMesto) { this.tekmaZaTretjeMesto = tekmaZaTretjeMesto; }
 
     public SpolKategorija getSpolKategorija() { return spolKategorija; }
     public void setSpolKategorija(SpolKategorija spolKategorija) { this.spolKategorija = spolKategorija; }

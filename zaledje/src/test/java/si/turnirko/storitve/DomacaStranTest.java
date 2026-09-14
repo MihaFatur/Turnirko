@@ -1,6 +1,6 @@
 /* Podatki, ki jih domaca stran bere in jih vmesnik sam ne more izpeljati:
    besedno stanje turnirja (kje je, kdo ga je dobil, kaj je bil zadnji izid),
-   crta gibanja ELO ob vrstici lestvice in osebni izbor spremljanih lig.
+   crta gibanja ratinga ob vrstici lestvice in osebni izbor spremljanih lig.
 
    Vsi trije so izpeljanke iz obstojecih zapisov, zato jih varuje test: ce se
    zreb, obracun ali imenovanje kol spremeni, mora to tu pociti. */
@@ -100,27 +100,27 @@ class DomacaStranTest extends IntegracijskiTest {
         assertNull(potek.faza(), "odigranega turnirja ni vec kje igrati");
     }
 
-    /* Crta ELO ob vrstici lestvice: dokler igralec nima vsaj dveh zabelezenih
+    /* Crta rating ob vrstici lestvice: dokler igralec nima vsaj dveh zabelezenih
        vrednosti, crte ni - ena tocka bi obljubljala zgodovino, ki je ni. */
     @Test
-    void crtaEloNastaneSeleZDvemaZabelezenimaVrednostma() {
+    void crtaRatingaNastaneSeleZDvemaZabelezenimaVrednostma() {
         Dogodek dogodek = pripraviDogodek(4, SistemTekmovanja.KROZNI);
         zrebStoritev.izvediZreb(dogodek.getId());
 
         assertTrue(statistikaStoritev.globalnaLestvica().stream()
-                        .allMatch(v -> v.eloZgodovina().isEmpty()),
+                        .allMatch(v -> v.potekRatinga().isEmpty()),
                 "pred prvo obracunano tekmo dnevnika ratinga ni");
 
         odigrajVse(dogodek.getId());
 
         List<LestvicaIgralcaDto> lestvica = statistikaStoritev.globalnaLestvica();
-        assertTrue(lestvica.stream().anyMatch(v -> v.eloZgodovina().size() >= 2),
+        assertTrue(lestvica.stream().anyMatch(v -> v.potekRatinga().size() >= 2),
                 "po treh tekmah ima igralec vec zabelezenih vrednosti");
-        assertTrue(lestvica.stream().allMatch(v -> v.eloZgodovina().size() <= 7),
+        assertTrue(lestvica.stream().allMatch(v -> v.potekRatinga().size() <= 7),
                 "crta ima najvec sedem tock");
         // zadnja tocka crte je vedno trenutni rating
-        lestvica.stream().filter(v -> !v.eloZgodovina().isEmpty()).forEach(v ->
-                assertEquals(v.rating(), v.eloZgodovina().get(v.eloZgodovina().size() - 1)));
+        lestvica.stream().filter(v -> !v.potekRatinga().isEmpty()).forEach(v ->
+                assertEquals(v.rating(), v.potekRatinga().get(v.potekRatinga().size() - 1)));
     }
 
     /* Vrstica lestvice nosi ime in priimek loceno; polno ime je slovensko

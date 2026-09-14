@@ -12,7 +12,9 @@ import si.turnirko.modeli.Dogodek;
 public interface DogodekRepozitorij extends JpaRepository<Dogodek, Long> {
 
     /* Vrstni red dogodkov je vrstni red nastanka (id), ne abeceda in ne status:
-       sodnik jih je vpisal v vrstnem redu, v katerem tecejo v dvorani. */
+       sodnik jih je vpisal v vrstnem redu, v katerem tecejo v dvorani.
+       Turnir se nalozi vnaprej, ker DTO dogodka bere njegov vir. */
+    @Query("SELECT d FROM Dogodek d JOIN FETCH d.turnir WHERE d.turnir.id = :idTurnir ORDER BY d.id")
     List<Dogodek> findByTurnirIdOrderByIdAsc(Long idTurnir);
 
     /* Dogodek skupaj s turnirjem v eni poizvedbi. */

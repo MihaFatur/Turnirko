@@ -19,9 +19,15 @@
    razvrstitev pa je zavihek in ne blok nad pasom - sicer bi moral gledalec
    prevoziti cel seznam, preden bi prišel do zavihkov.
 
-   Vnos rezultata je mogoč samo administratorju (oz. lastniku turnirja). */
+   Ekipni dogodek (V28) ima namesto igralcev ekipe s kadri (EkipeDogodka).
+   Tekma v mreži ali skupini je tam srečanje: klik vodi v zapisnik (postava in
+   posamične tekme, javen za vse), izid tekme pa nastane iz srečanja samega.
+   Prenesen izid finalne skupine vodi v zapisnik predtekmovalnega srečanja.
+
+   Vnos rezultata je mogoč samo administratorju (oz. lastniku turnirja) in ne
+   pri uvoženem dogodku - vir resnice je tam zveza (strežnik mutacije zavrne). */
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { dogodkiApi, igralciApi, turnirjiApi } from '../api/zahteve'
@@ -35,15 +41,20 @@ import type {
   TekmaDto,
 } from '../api/tipi'
 import {
+  OZNAKE_FORMAT,
   OZNAKE_PASU_KRATKO,
   OZNAKE_SISTEM_KRATKO,
   OZNAKE_SPOL_KATEGORIJA,
   OZNAKE_STAROSTNI_PAS,
   OZNAKE_STATUS_PRIJAVE,
+  OZNAKE_VIR,
   VRSTNI_RED_STAROSTNIH_PASOV,
+  igralcevFormata,
   imePrijave,
+  imeUdelezenca,
 } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { EkipeDogodka } from '../komponente/EkipeDogodka'
 import {
   KrmilaSeznama,
   poSeznamu,
@@ -55,6 +66,7 @@ import {
 import { GlavaDejanja, GlavaNaslov, useNazaj } from '../komponente/GlavaTelefona'
 import { Lestvica } from '../komponente/Lestvica'
 import { MeniDejanj } from '../komponente/MeniDejanj'
+import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { Mreza, kolaMreze } from '../komponente/Mreza'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import {
@@ -65,12 +77,14 @@ import {
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SkupinaVrstica } from '../komponente/SkupinaVrstica'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { TekmaKartica, type KlikTekme } from '../komponente/TekmaKartica'
 import { TekmeSeznam } from '../komponente/TekmeSeznam'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import {
   imeKolaKratko,
+  sklonEkip,
   sklonIgralcev,
   sklonNizov,
   sklonPrijavljenih,
@@ -83,6 +97,7 @@ export function DogodekStran() {
   const { id } = useParams()
   const idDogodka = Number(id)
   const odjemalec = useQueryClient()
+  const navigiraj = useNavigate()
   const { jeAdmin, smemUrejati } = useAvtentikacija()
   const jeTelefon = useTelefon()
 
@@ -106,8 +121,22 @@ export function DogodekStran() {
     enabled: idTurnir != null,
   })
 
+  /* Ekipni dogodek v pripravi: velikosti kadrov odločajo, ali je žreb mogoč
+     (vsaka ekipa mora imeti za mizo dovolj igralcev). Ključ je isti kot v
+     seznamu ekip, zato si odgovor delita. */
+  const ekipniVPripravi =
+    mreza.data?.dogodek.disciplina === 'EKIPNO' && mreza.data.dogodek.status === 'PRIPRAVA'
+  const ekipe = useQuery({
+    queryKey: ['ekipe-dogodka', idDogodka],
+    queryFn: () => dogodkiApi.ekipe(idDogodka),
+    enabled: ekipniVPripravi,
+  })
+
   /* Tekma, za katero je odprto okno za vnos rezultata. */
   const [izbranaTekma, nastaviIzbranoTekmo] = useState<TekmaDto | null>(null)
+  /* Ekipna tekma, pri kateri organizator izbira med zapisnikom in izidom
+     brez boja. */
+  const [ekipnaTekma, nastaviEkipnoTekmo] = useState<TekmaDto | null>(null)
   const [potrjujemZreb, nastaviPotrjujemZreb] = useState(false)
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['dogodek', idDogodka] })
@@ -130,9 +159,13 @@ export function DogodekStran() {
   if (!mreza.data) return <p className="obvestilo">Tega dogodka ni (več).</p>
   const podatki = mreza.data!
   const dogodek = podatki.dogodek
-  // organizator sme upravljati dogodke svojega (ali klubskega) turnirja
-  const smem = jeAdmin
-    || (!!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik))
+  const ekipno = dogodek.disciplina === 'EKIPNO'
+  const uvozen = dogodek.vir !== null
+  const koncan = dogodek.status === 'ZAKLJUCEN'
+  /* Organizator sme upravljati dogodke svojega (ali klubskega) turnirja, admin
+     vse - razen uvoženih: vir resnice je zveza. */
+  const smem = !uvozen
+    && (jeAdmin || (!!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik)))
 
   const vPripravi = dogodek.status === 'PRIPRAVA'
   const aktivnePrijave = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
@@ -140,29 +173,78 @@ export function DogodekStran() {
      da vmesnik ne podvaja pravil razreza. */
   const zadrzek = podatki.izbor?.zadrzek ?? null
   /* Dvojice: v žreb gredo samo sestavljeni pari. Igralca brez soigralca ne
-     smemo tiho izpustiti - žreb ga zavrne, zato gumb ugasnemo že tu. */
+     smemo tiho izpustiti - žreb ga zavrne, zato gumb ugasnemo že tu. Isto
+     velja za ekipo s premajhnim kadrom. */
   const brezPara = aktivnePrijave.filter((p) => p.polnoIme2 === null)
   const parovPremalo = dogodek.disciplina === 'DVOJICE' && brezPara.length > 0
+  const zaMizo = ekipno && dogodek.formatSrecanja ? igralcevFormata(dogodek.formatSrecanja) : 0
+  const premajhniKadri = ekipno ? (ekipe.data ?? []).filter((e) => e.steviloKadra < zaMizo) : []
   const zadrzekZreba = parovPremalo
     ? `Brez soigralca: ${brezPara.map((p) => p.polnoIme).join(', ')}.`
       + ' Sestavi pare ali igralce odjavi.'
-    : zadrzek
+    : premajhniKadri.length > 0
+      ? `Premajhen kader (za mizo ${zaMizo} ${sklonIgralcev(zaMizo)}): `
+        + `${premajhniKadri.map((e) => e.prikazanoIme).join(', ')}.`
+      : zadrzek
+  const premaloZaZreb = ekipno
+    ? 'Za žreb sta potrebni vsaj 2 ekipi.'
+    : 'Za žreb sta potrebna vsaj 2 igralca.'
   const zrebOnemogocen =
     aktivnePrijave.length < 2 || zadrzekZreba !== null || zreb.isPending
+    || (ekipno && ekipe.isPending)
 
   /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
      stavku; enak vrstni red na obeh širinah. Disciplina stoji na začetku samo
-     pri dvojicah: posamično je pravilo in bi bilo v vsaki vrstici odveč. */
+     pri dvojicah in ekipah: posamično je pravilo in bi bilo v vsaki vrstici
+     odveč. Ekipni dogodek pove še format srečanja in prag zmag. */
   const jeDvojice = dogodek.disciplina === 'DVOJICE'
   const lastnosti = [
-    jeDvojice ? 'Dvojice' : null,
+    jeDvojice ? 'Dvojice' : ekipno ? 'Ekipno' : null,
     OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija],
     dogodek.starostnaKategorija,
     OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja].toLowerCase(),
+    ekipno && dogodek.formatSrecanja ? OZNAKE_FORMAT[dogodek.formatSrecanja] : null,
+    ekipno && dogodek.zmagZaSrecanje
+      ? `srečanje do ${dogodek.zmagZaSrecanje} ${dogodek.zmagZaSrecanje === 1 ? 'zmage' : 'zmag'}`
+      : null,
     `na ${dogodek.privzetoSteviloNizov} ${sklonNizov(dogodek.privzetoSteviloNizov)}`,
   ]
     .filter(Boolean)
     .join(' · ')
+
+  /* Zapisnik ekipne tekme. Prenesen izid finalne skupine svojega srečanja
+     nima - dvoboj je bil odigran v predtekmovanju, zato vodi v tistega. */
+  const tekmePoId = new Map(podatki.tekme.map((t) => [t.id, t]))
+  const srecanjeTekme = (t: TekmaDto): number | null =>
+    t.idSrecanje
+    ?? (t.idPrenesena !== null ? (tekmePoId.get(t.idPrenesena)?.idSrecanje ?? null) : null)
+  /* Ekipni tekmi, ki še ni odločena, sme organizator zapisati tudi izid brez
+     boja (ekipa ni prišla) - zato mu klik ponudi izbiro in ne takoj zapisnika. */
+  const izbiraEkipne = (t: TekmaDto) =>
+    smem && !koncan && t.status !== 'KONCANA' && t.idPrenesena === null
+    && t.udelezenec1 !== null && t.udelezenec2 !== null
+  const klik: KlikTekme | undefined = ekipno
+    ? {
+        klikljiva: (t) => srecanjeTekme(t) !== null || izbiraEkipne(t),
+        naKlik: (t) => {
+          if (izbiraEkipne(t)) nastaviEkipnoTekmo(t)
+          else navigiraj(`/srecanja/${srecanjeTekme(t)}`)
+        },
+        namig: (t) =>
+          izbiraEkipne(t)
+            ? 'Klikni za zapisnik srečanja ali izid brez boja'
+            : 'Odpri zapisnik srečanja',
+      }
+    : smem && !koncan
+      ? {
+          klikljiva: (t) => t.status === 'PRIPRAVLJENA' || t.status === 'V_IGRI',
+          naKlik: nastaviIzbranoTekmo,
+          namig: () => 'Klikni za vnos rezultata',
+        }
+      : undefined
+  const oznakaVira = dogodek.vir && (
+    <span className="oznaka-vira">{OZNAKE_VIR[dogodek.vir]} · uvoženo, samo za branje</span>
+  )
 
   return (
     <section>
@@ -197,12 +279,12 @@ export function DogodekStran() {
                   )}
                   {smem && vPripravi && zrebOnemogocen && (
                     <p className="uporabnik-meni__namig">
-                      {aktivnePrijave.length < 2
-                        ? 'Za žreb sta potrebna vsaj 2 igralca.'
-                        : zadrzekZreba}
+                      {aktivnePrijave.length < 2 ? premaloZaZreb : zadrzekZreba}
                     </p>
                   )}
-                  {smem && dogodek.status === 'V_TEKU' && (
+                  {/* Listki so sodniški listki posamičnih tekem; ekipna tekma
+                      ima svoj zapisnik z natisom na strani srečanja. */}
+                  {smem && dogodek.status === 'V_TEKU' && !ekipno && (
                     <Link
                       to={`/dogodki/${idDogodka}/listki`}
                       role="menuitem"
@@ -228,6 +310,7 @@ export function DogodekStran() {
               <p className="naslov-mobi__meta naslov-mobi__meta--tesno">{lastnosti}</p>
             </div>
           </GlavaNaslov>
+          {oznakaVira}
         </>
       ) : (
         <>
@@ -240,9 +323,10 @@ export function DogodekStran() {
             <div>
               <h1 className="naslov-strani naslov-strani--enovrsticni">{dogodek.ime}</h1>
               <p className="uvod">{lastnosti}</p>
+              {oznakaVira}
             </div>
             <div className="naslovna-vrstica__desno">
-              {smem && dogodek.status === 'V_TEKU' && (
+              {smem && dogodek.status === 'V_TEKU' && !ekipno && (
                 <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
                   Listki za tiskanje
                 </Link>
@@ -255,9 +339,7 @@ export function DogodekStran() {
                   className="gumb gumb--zreb"
                   disabled={zrebOnemogocen}
                   title={
-                    aktivnePrijave.length < 2
-                      ? 'Za žreb sta potrebna vsaj 2 igralca.'
-                      : (zadrzekZreba ?? undefined)
+                    aktivnePrijave.length < 2 ? premaloZaZreb : (zadrzekZreba ?? undefined)
                   }
                   onClick={() => nastaviPotrjujemZreb(true)}
                 >
@@ -285,12 +367,7 @@ export function DogodekStran() {
           <PripravaGost podatki={podatki} />
         )
       ) : (
-        <Tekmovanje
-          podatki={podatki}
-          naKlikTekme={smem ? nastaviIzbranoTekmo : undefined}
-          osvezi={osvezi}
-          jeAdmin={smem}
-        />
+        <Tekmovanje podatki={podatki} klik={klik} osvezi={osvezi} jeAdmin={smem} />
       )}
 
       {potrjujemZreb && (
@@ -312,14 +389,65 @@ export function DogodekStran() {
         />
       )}
 
+      {ekipnaTekma && (
+        <EkipnaTekmaOkno
+          tekma={ekipnaTekma}
+          idSrecanje={srecanjeTekme(ekipnaTekma)}
+          onZapri={() => nastaviEkipnoTekmo(null)}
+          onBrezBoja={() => {
+            nastaviIzbranoTekmo(ekipnaTekma)
+            nastaviEkipnoTekmo(null)
+          }}
+        />
+      )}
+
       {izbranaTekma && (
         <VnosRezultataOkno
           tekma={izbranaTekma}
+          samoBrezIgre={ekipno}
           onZapri={() => nastaviIzbranoTekmo(null)}
           onShranjeno={osvezi}
         />
       )}
     </section>
+  )
+}
+
+/* Izbira pri ekipni tekmi (samo organizator): zapisnik srečanja ali izid brez
+   boja. Izid ekipne tekme sicer nastane iz zapisnika - brez boja je edini, ki
+   se zapiše neposredno, in ker odstrani srečanje, mora biti izrecna izbira. */
+function EkipnaTekmaOkno({
+  tekma,
+  idSrecanje,
+  onZapri,
+  onBrezBoja,
+}: {
+  tekma: TekmaDto
+  idSrecanje: number | null
+  onZapri: () => void
+  onBrezBoja: () => void
+}) {
+  return (
+    <ModalnoOkno naslov="Ekipna tekma" onZapri={onZapri}>
+      <p className="modal__podnaslov">
+        {imeUdelezenca(tekma.udelezenec1)} : {imeUdelezenca(tekma.udelezenec2)}
+      </p>
+      <p className="namig">
+        Postavo in izide posamičnih tekem vpišeš v zapisnik srečanja. Ko je srečanje odločeno,
+        se izid tekme zapiše sam in zmagovalec napreduje. Brez boja zapišeš, kadar ekipa ni
+        nastopila ali je bila izključena.
+      </p>
+      <div className="obrazec__gumbi">
+        <button type="button" className="gumb" onClick={onBrezBoja}>
+          Izid brez boja …
+        </button>
+        {idSrecanje !== null && (
+          <Link to={`/srecanja/${idSrecanje}`} className="gumb gumb--glavni">
+            Odpri zapisnik
+          </Link>
+        )}
+      </div>
+    </ModalnoOkno>
   )
 }
 
@@ -483,7 +611,7 @@ function SeznamPrijavljenih({
                       {klubiPrijave(prijava).join(' · ')}
                     </span>
                   </span>
-                  {/* Par ima dva ratinga; skupnega nima, ker dvojice v ELO
+                  {/* Par ima dva ratinga; skupnega nima, ker dvojice v rating
                       ne štejejo - zato ju izpišemo oba. */}
                   <span className="prijava-vrstica__rating">
                     {prijava.polnoIme2
@@ -515,6 +643,18 @@ function razdeli<T>(seznam: T[], koliko: number): T[][] {
 /* ---------- Faza priprave (gost): samo seznam prijavljenih ---------- */
 
 function PripravaGost({ podatki }: { podatki: MrezaDto }) {
+  /* Uvožen dogodek žreba pri nas nima - izvede ga zveza v svojem sistemu. */
+  const namig = podatki.dogodek.vir
+    ? 'Tekmovanje vodi zveza; žreb in rezultati se uvozijo iz njenega sistema.'
+    : 'Žreb izvede administrator (sodnik) po prijavi.'
+  if (podatki.dogodek.disciplina === 'EKIPNO') {
+    return (
+      <>
+        <EkipeDogodka dogodek={podatki.dogodek} smem={false} />
+        <p className="namig">{namig}</p>
+      </>
+    )
+  }
   const aktivne = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
   /* Pri dvojicah gost vidi ločeno, kdo je že v paru in kdo še išče soigralca -
      to je edino, kar se do žreba dogaja. */
@@ -533,7 +673,7 @@ function PripravaGost({ podatki }: { podatki: MrezaDto }) {
       ) : (
         <SeznamPrijavljenih naslov="Prijavljeni" prijave={aktivne} />
       )}
-      <p className="namig">Žreb izvede administrator (sodnik) po prijavi.</p>
+      <p className="namig">{namig}</p>
     </>
   )
 }
@@ -551,6 +691,7 @@ function Priprava({
 }) {
   const aktivnePrijave = podatki.prijave.filter((prijava) => prijava.status === 'PRIJAVLJEN')
   const izbor = podatki.izbor
+  const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
 
   const odjava = useMutation({
     mutationFn: (idPrijave: number) => dogodkiApi.odjavi(idPrijave),
@@ -559,7 +700,10 @@ function Priprava({
 
   /* Seznam prijavljenih dobi vso širino okvirja: glavni cilj tega zaslona je
      100 prijavljenih na enem zaslonu prenosnika brez straničenja, kar z blokom
-     ob strani ne gre. Blok "Dodaj igralce" zato stoji pod njim. */
+     ob strani ne gre. Blok "Dodaj igralce" zato stoji pod njim.
+
+     Ekipe se odjavljajo v seznamu ekip (odjava izbriše tudi kader, zato gre
+     prek potrditve) - jakostni vrstni red jih samo ureja. */
   return (
     <>
       <SporociloNapake napaka={odjava.error} />
@@ -569,22 +713,26 @@ function Priprava({
           <div className="naslovna-vrstica">
             <h2>Jakostni vrstni red</h2>
             <span className="sekcija__meta">
-              {aktivnePrijave.length} {sklonPrijavljenih(aktivnePrijave.length)}
+              {aktivnePrijave.length}{' '}
+              {ekipno ? sklonEkip(aktivnePrijave.length) : sklonPrijavljenih(aktivnePrijave.length)}
             </span>
           </div>
           {aktivnePrijave.length === 0 ? (
-            <p className="obvestilo">Ni še prijavljenih igralcev.</p>
+            <p className="obvestilo">
+              {ekipno ? 'Ni še prijavljenih ekip.' : 'Ni še prijavljenih igralcev.'}
+            </p>
           ) : (
             <JakostniVrstniRed
               prijave={aktivnePrijave}
               izbor={izbor}
               idDogodka={idDogodka}
               osvezi={osvezi}
-              onOdjava={(id) => odjava.mutate(id)}
+              ekipno={ekipno}
+              onOdjava={ekipno ? undefined : (id) => odjava.mutate(id)}
             />
           )}
         </div>
-      ) : podatki.dogodek.disciplina === 'DVOJICE' ? (
+      ) : ekipno ? null : podatki.dogodek.disciplina === 'DVOJICE' ? (
         <SestavljanjePar
           prijave={aktivnePrijave}
           idDogodka={idDogodka}
@@ -608,7 +756,11 @@ function Priprava({
         />
       )}
 
-      <DodajanjeIgralcev podatki={podatki} idDogodka={idDogodka} osvezi={osvezi} />
+      {ekipno ? (
+        <EkipeDogodka dogodek={podatki.dogodek} smem />
+      ) : (
+        <DodajanjeIgralcev podatki={podatki} idDogodka={idDogodka} osvezi={osvezi} />
+      )}
     </>
   )
 }
@@ -749,13 +901,17 @@ function JakostniVrstniRed({
   izbor,
   idDogodka,
   osvezi,
+  ekipno = false,
   onOdjava,
 }: {
   prijave: PrijavaDto[]
   izbor: IzborDto
   idDogodka: number
   osvezi: () => void
-  onOdjava: (idPrijave: number) => void
+  /* Vrstice so ekipe: rating je povprečje najboljših ratingov kadra. */
+  ekipno?: boolean
+  /* Brez dejanja vrstica odjave ne ponudi (ekipa se odjavi v seznamu ekip). */
+  onOdjava?: (idPrijave: number) => void
 }) {
   /* Strežnik pošlje prijave že v veljavnem vrstnem redu; tu se ureja
      samo lokalna kopija, dokler je ne shranimo. */
@@ -849,8 +1005,7 @@ function JakostniVrstniRed({
                 <span className="izbor__ime">
                   {prijava.polnoIme}
                   <span className="izbor__podrobnost">
-                    {prijava.klub ?? 'brez kluba'}
-                    {prijava.rating !== null ? ` · ${prijava.rating}` : ''}
+                    {[podnapisPrijave(prijava, ekipno), prijava.rating].filter((d) => d !== null).join(' · ')}
                   </span>
                 </span>
                 <span className="izbor__oznaka">
@@ -875,13 +1030,15 @@ function JakostniVrstniRed({
                   >
                     ↓
                   </button>
-                  <button
-                    className="gumb gumb--majhen"
-                    title="Odjavi igralca"
-                    onClick={() => onOdjava(prijava.id)}
-                  >
-                    Odjavi
-                  </button>
+                  {onOdjava && (
+                    <button
+                      className="gumb gumb--majhen"
+                      title="Odjavi igralca"
+                      onClick={() => onOdjava(prijava.id)}
+                    >
+                      Odjavi
+                    </button>
+                  )}
                 </span>
               </div>
             </li>
@@ -907,12 +1064,26 @@ function JakostniVrstniRed({
       </div>
       {!spremenjeno && (
         <p className="namig">
-          Predlog je razvrščen po klubskem ELO; igralci brez ratinga so na vrhu,
-          da jih uvrstiš sam. Vrstni red določa tudi skupino.
+          {ekipno
+            ? 'Predlog je razvrščen po povprečnem ratingu najboljših igralcev kadra (toliko, kolikor' +
+              ' jih sede za mizo); ekipe brez igralca z ratingom so na vrhu, da jih uvrstiš sam.' +
+              ' Dopolnjen kader predlog spremeni. Vrstni red določa tudi skupino.'
+            : 'Predlog je razvrščen po Turnirko ratingu; igralci brez ratinga so na vrhu,' +
+              ' da jih uvrstiš sam. Vrstni red določa tudi skupino.'}
         </p>
       )}
     </>
   )
+}
+
+/* Podnapis pod imenom prijave: klub igralca, pri ekipi pa klub samo, kadar ga
+   ime ne pove že samo (klubska ekipa se imenuje po klubu, prosta kluba nima). */
+function podnapisPrijave(prijava: PrijavaDto, ekipno: boolean): string | null {
+  if (!ekipno) return prijava.klub ?? 'brez kluba'
+  if (prijava.klub === null) return 'prosta ekipa'
+  return prijava.polnoIme.toLocaleLowerCase('sl').startsWith(prijava.klub.toLocaleLowerCase('sl'))
+    ? null
+    : prijava.klub
 }
 
 /* Merila nad seznamom igralcev, ki jih je mogoče prijaviti.
@@ -1210,20 +1381,23 @@ function DodajanjeIgralcev({
 
 function Tekmovanje({
   podatki,
-  naKlikTekme,
+  klik,
   osvezi,
   jeAdmin,
 }: {
   podatki: MrezaDto
-  naKlikTekme?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
   osvezi: () => void
   jeAdmin: boolean
 }) {
   const jeTelefon = useTelefon()
   const koncan = podatki.dogodek.status === 'ZAKLJUCEN'
-  const naKlik = koncan ? undefined : naKlikTekme
+  const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
   const sistem = podatki.dogodek.sistemTekmovanja
   const izlocilne = podatki.tekme.filter((t) => t.faza === 'GLAVNI')
+  /* Tekma za 3. mesto in tolažilna mreža (uvoženi dogodki) stojita zunaj
+     glavne mreže, a v istem pogledu. */
+  const tolazilne = podatki.tekme.filter((t) => t.faza === 'TOLAZILNI')
   const skupinske = podatki.tekme.filter((t) => t.faza === 'SKUPINA')
   const razvrscenih = podatki.prijave.filter((p) => p.koncnoMesto !== null).length
   const aktivnih = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN').length
@@ -1257,7 +1431,10 @@ function Tekmovanje({
     if (jeTelefon && sistem === 'KROZNI' && skupinske.length > 0) {
       seznam.push({ kljuc: 'tekme', oznaka: 'Tekme', stevec: skupinske.length })
     }
-    if (izlocilne.length > 0 || sistem === 'IZLOCILNI' || sistem === 'SKUPINE_IZLOCILNI') {
+    if (
+      izlocilne.length > 0 || tolazilne.length > 0
+      || sistem === 'IZLOCILNI' || sistem === 'SKUPINE_IZLOCILNI'
+    ) {
       seznam.push({ kljuc: 'mreza', oznaka: 'Izločilni del' })
     }
     if (podatki.prijave.length > 0) {
@@ -1269,6 +1446,7 @@ function Tekmovanje({
     podatki.lestvica.length,
     podatki.prijave.length,
     izlocilne.length,
+    tolazilne.length,
     skupinske.length,
     aktivnih,
     sistem,
@@ -1309,27 +1487,37 @@ function Tekmovanje({
       {izbrani === 'skupine' &&
         (sistem === 'KROZNI' ? (
           jeTelefon ? (
-            <Lestvica vrstice={podatki.lestvica} />
+            <Lestvica vrstice={podatki.lestvica} ekipno={ekipno} />
           ) : (
-            <Krozni podatki={podatki} naKlikTekme={naKlik} />
+            <Krozni podatki={podatki} klik={klik} />
           )
         ) : (
-          <Skupine podatki={podatki} naKlikTekme={naKlik} />
+          <Skupine podatki={podatki} klik={klik} />
         ))}
 
-      {izbrani === 'tekme' && <TekmePoKolih tekme={skupinske} naKlikTekme={naKlik} />}
+      {izbrani === 'tekme' && <TekmePoKolih tekme={skupinske} klik={klik} />}
 
-      {izbrani === 'mreza' && <IzlocilniDel tekme={izlocilne} naKlikTekme={naKlik} />}
-
-      {izbrani === 'udelezenci' && (
-        <Udelezenci podatki={podatki} osvezi={osvezi} jeAdmin={jeAdmin && !koncan} />
+      {izbrani === 'mreza' && (
+        <IzlocilniDel
+          tekme={izlocilne}
+          tolazilne={tolazilne}
+          zaTretjeMesto={podatki.dogodek.tekmaZaTretjeMesto}
+          klik={klik}
+        />
       )}
 
-      {!koncan && naKlik && (
+      {izbrani === 'udelezenci' && (
+        <Udelezenci podatki={podatki} osvezi={osvezi} smem={jeAdmin} />
+      )}
+
+      {!koncan && klik && izbrani !== 'udelezenci' && izbrani !== 'zakljucek' && (
         <p className="namig">
-          {izbrani === 'mreza'
-            ? 'Klikni tekmo z obema znanima igralcema za vnos rezultata. Zmagovalec samodejno napreduje.'
-            : 'Klikni tekmo za vnos rezultata. Lestvica skupine se preračuna sproti.'}
+          {ekipno
+            ? 'Klikni tekmo za zapisnik srečanja — postavo in izide posamičnih tekem. Izid tekme' +
+              ' nastane iz srečanja, zmagovalec napreduje sam.'
+            : izbrani === 'mreza'
+              ? 'Klikni tekmo z obema znanima igralcema za vnos rezultata. Zmagovalec samodejno napreduje.'
+              : 'Klikni tekmo za vnos rezultata. Lestvica skupine se preračuna sproti.'}
         </p>
       )}
     </>
@@ -1340,13 +1528,14 @@ function Tekmovanje({
 
 function Skupine({
   podatki,
-  naKlikTekme,
+  klik,
 }: {
   podatki: MrezaDto
-  naKlikTekme?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
 }) {
   /* Odprta je vedno največ ena skupina; klik na isto jo zapre. */
-  const [odprta, nastaviOdprto] = useState<string | null>(null)
+  const [odprta, nastaviOdprto] = useState<number | null>(null)
+  const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
   /* Format TOP nima izločilnega dela, zato tam nihče ne "napreduje". */
   const napreduje = podatki.dogodek.sistemTekmovanja === 'SKUPINE_IZLOCILNI' ? 2 : undefined
 
@@ -1354,49 +1543,86 @@ function Skupine({
     return <p className="obvestilo">Skupine še niso ustvarjene.</p>
   }
 
+  /* Skupine za mesta (in večstopenjski uvoženi dogodki) imajo več stopenj:
+     predtekmovalne skupine, nato skupine, ki odločajo mesta. Brez naslovov bi
+     »A« in »1.–4. mesto« stala v istem seznamu, kot da sta ista vrsta.
+     Skupine za mesta gredo pod en naslov ne glede na stopnjo: vir (Stupa) ima
+     vsako od njih za svojo fazo, zato bi »1.–4.« in »5.–8. mesto« sicer stali
+     pod različnima naslovoma, čeprav se igrata vzporedno. */
+  const zaMesta = podatki.skupine
+    .filter((s) => s.stopnja > 1 && s.prvoMesto !== null)
+    .sort((a, b) => (a.prvoMesto ?? 0) - (b.prvoMesto ?? 0))
+  const ostale = podatki.skupine.filter((s) => !zaMesta.includes(s))
+  const stopnje = [...new Set(ostale.map((s) => s.stopnja))].sort((a, b) => a - b)
+  const sekcije = stopnje.map((stopnja) => ({
+    kljuc: String(stopnja),
+    naslov: stopnja === 1 ? 'Predtekmovanje' : `${stopnja}. stopnja`,
+    skupine: ostale.filter((s) => s.stopnja === stopnja),
+  }))
+  if (zaMesta.length > 0) {
+    sekcije.push({ kljuc: 'mesta', naslov: 'Finalne skupine', skupine: zaMesta })
+  } else if (sekcije.length > 1) {
+    sekcije[sekcije.length - 1].naslov = 'Finalne skupine'
+  }
+
   return (
     <div>
       <div className="seznam-glava seznam-glava--skupine">
         <span>Skupina</span>
-        <span>Igralci</span>
+        <span>{ekipno ? 'Ekipe' : 'Igralci'}</span>
         <span className="seznam-glava__desno">Podrobno</span>
       </div>
-      <div className="skupine-seznam">
-        {podatki.skupine.map((skupina) => (
-          <SkupinaVrstica
-            key={skupina.id}
-            oznaka={skupina.oznaka}
-            steviloIgralcev={skupina.lestvica.length}
-            odprta={odprta === skupina.oznaka}
-            naPreklop={() =>
-              nastaviOdprto((prej) => (prej === skupina.oznaka ? null : skupina.oznaka))
-            }
-          >
-            <VsebinaSkupine
-              skupina={skupina}
-              tekme={podatki.tekme.filter(
-                (t) => t.faza === 'SKUPINA' && t.idSkupina === skupina.id,
-              )}
-              naKlikTekme={naKlikTekme}
-              napreduje={napreduje}
-            />
-          </SkupinaVrstica>
-        ))}
-      </div>
+      {sekcije.map((sekcija) => (
+        <div key={sekcija.kljuc}>
+          {sekcije.length > 1 && <p className="podnaslov-sekcije">{sekcija.naslov}</p>}
+          <div className="skupine-seznam">
+            {sekcija.skupine.map((skupina) => (
+              <SkupinaVrstica
+                key={skupina.id}
+                oznaka={skupina.oznaka}
+                opis={opisSkupine(skupina, ekipno)}
+                odprta={odprta === skupina.id}
+                naPreklop={() =>
+                  nastaviOdprto((prej) => (prej === skupina.id ? null : skupina.id))
+                }
+              >
+                <VsebinaSkupine
+                  skupina={skupina}
+                  tekme={podatki.tekme.filter(
+                    (t) => t.faza === 'SKUPINA' && t.idSkupina === skupina.id,
+                  )}
+                  klik={klik}
+                  napreduje={napreduje}
+                  ekipno={ekipno}
+                />
+              </SkupinaVrstica>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
+}
+
+/* »4 igralci« oz. pri skupini za mesta »5.–8. mesto · 4 ekipe«. */
+function opisSkupine(skupina: SkupinaDto, ekipno: boolean): string {
+  const n = skupina.lestvica.length
+  const clani = `${n} ${ekipno ? sklonEkip(n) : sklonIgralcev(n)}`
+  return skupina.ime ? `${skupina.ime} · ${clani}` : clani
 }
 
 function VsebinaSkupine({
   skupina,
   tekme,
-  naKlikTekme,
+  klik,
   napreduje,
+  ekipno,
 }: {
   skupina: SkupinaDto
   tekme: TekmaDto[]
-  naKlikTekme?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
   napreduje?: number
+  ekipno: boolean
 }) {
   /* Tekme so razdeljene po kolih tako kot pri krožnem sistemu: brez tega je
      skupina osmih igralcev en sam seznam 28 vrstic, iz katerega ni razvidno,
@@ -1405,7 +1631,7 @@ function VsebinaSkupine({
   return (
     <>
       <div>
-        <Lestvica vrstice={skupina.lestvica} napreduje={napreduje} strnjena />
+        <Lestvica vrstice={skupina.lestvica} napreduje={napreduje} strnjena ekipno={ekipno} />
         {napreduje !== undefined && (
           <div className="legenda">
             <span className="legenda__postavka">
@@ -1419,11 +1645,7 @@ function VsebinaSkupine({
         {kola.map((kolo) => (
           <div key={kolo} className="kolo-skupina">
             <div className="kolo-skupina__naslov">{kolo}. kolo</div>
-            <TekmeSeznam
-              tekme={tekme.filter((t) => t.kolo === kolo)}
-              naKlikTekme={naKlikTekme}
-              strnjen
-            />
+            <TekmeSeznam tekme={tekme.filter((t) => t.kolo === kolo)} klik={klik} strnjen />
           </div>
         ))}
       </div>
@@ -1438,10 +1660,14 @@ function VsebinaSkupine({
    vseh kolih - tako se pot igralca prebere brez klika. */
 function IzlocilniDel({
   tekme,
-  naKlikTekme,
+  tolazilne,
+  zaTretjeMesto,
+  klik,
 }: {
   tekme: TekmaDto[]
-  naKlikTekme?: (tekma: TekmaDto) => void
+  tolazilne: TekmaDto[]
+  zaTretjeMesto: boolean
+  klik?: KlikTekme
 }) {
   const kola = useMemo(() => kolaMreze(tekme), [tekme])
   /* Privzeto najzgodnejše kolo, ki še ni v celoti odigrano - tam se turnir
@@ -1452,7 +1678,9 @@ function IzlocilniDel({
   const [osvetljena, nastaviOsvetljeno] = useState<number | null>(null)
 
   if (kola.length === 0) {
-    return (
+    return tolazilne.length > 0 ? (
+      <TolazilniDel tekme={tolazilne} zaTretjeMesto={zaTretjeMesto} klik={klik} />
+    ) : (
       <p className="obvestilo">
         Izločilni del se samodejno zažene, ko so odigrane vse tekme skupin
         (napredujeta po dva iz vsake skupine).
@@ -1486,11 +1714,50 @@ function IzlocilniDel({
       </div>
       <Mreza
         tekme={tekme}
-        naKlikTekme={naKlikTekme}
+        klik={klik}
         odKola={koloZaPrikaz}
         osvetljenaPrijava={osvetljena}
         naOsvetlitev={nastaviOsvetljeno}
       />
+      {tolazilne.length > 0 && (
+        <TolazilniDel tekme={tolazilne} zaTretjeMesto={zaTretjeMesto} klik={klik} />
+      )}
+    </div>
+  )
+}
+
+/* Tekme zunaj glavne mreže: tekma za 3. mesto (poraženca polfinalov) ali
+   tolažilna mreža uvoženega dogodka. Kola se ne imenujejo po glavni mreži -
+   tekma za 3. mesto nosi kolo finala, pa vendar ni finale. */
+function TolazilniDel({
+  tekme,
+  zaTretjeMesto,
+  klik,
+}: {
+  tekme: TekmaDto[]
+  zaTretjeMesto: boolean
+  klik?: KlikTekme
+}) {
+  const kola = [...new Set(tekme.map((t) => t.kolo))].sort((a, b) => a - b)
+  const samoZaTretje = zaTretjeMesto && tekme.length === 1
+  return (
+    <div>
+      <p className="podnaslov-sekcije">{samoZaTretje ? 'Za 3. mesto' : 'Tolažilni del'}</p>
+      <div className="mreza mreza--tolazilna">
+        {kola.map((kolo) => (
+          <div className="mreza__kolo" key={kolo}>
+            {!samoZaTretje && <div className="mreza__naslov-kola">{kolo}. kolo</div>}
+            <div className="mreza__tekme">
+              {tekme
+                .filter((t) => t.kolo === kolo)
+                .sort((a, b) => a.pozicija - b.pozicija)
+                .map((t) => (
+                  <TekmaKartica key={t.id} tekma={t} klik={klik} />
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1502,13 +1769,17 @@ function IzlocilniDel({
 function Udelezenci({
   podatki,
   osvezi,
-  jeAdmin,
+  smem,
 }: {
   podatki: MrezaDto
   osvezi: () => void
-  jeAdmin: boolean
+  /* Sme urejati (lastnik ali admin, dogodek ni uvožen). */
+  smem: boolean
 }) {
   const [odstopnik, nastaviOdstopnika] = useState<PrijavaDto | null>(null)
+  const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
+  /* Odstop je dejanje med tekmovanjem; po koncu ni česa več predati. */
+  const smemOdstop = smem && podatki.dogodek.status !== 'ZAKLJUCEN'
 
   const odstop = useMutation({
     mutationFn: (idPrijave: number) => dogodkiApi.odstop(idPrijave),
@@ -1524,23 +1795,44 @@ function Udelezenci({
 
   return (
     <>
-      <SeznamPrijavljenih
-        naslov="Udeleženci"
-        prijave={igrajo}
-        dejanje={
-          jeAdmin
-            ? (prijava) => (
-                <button
-                  type="button"
-                  className="prijava-vrstica__dejanje"
-                  onClick={() => nastaviOdstopnika(prijava)}
-                >
-                  Odstopil
-                </button>
-              )
-            : undefined
-        }
-      />
+      {/* Pri ekipah je udeleženec ekipa s kadrom: kdo je igral za katero
+          ekipo, je del zapisa tekmovanja, zato seznam ekip nosi kadre. */}
+      {ekipno ? (
+        <EkipeDogodka
+          dogodek={podatki.dogodek}
+          smem={smem}
+          dejanje={(ekipa) => {
+            const prijava = igrajo.find((p) => p.idEkipa === ekipa.id)
+            return smemOdstop && prijava ? (
+              <button
+                type="button"
+                className="gumb gumb--majhen"
+                onClick={() => nastaviOdstopnika(prijava)}
+              >
+                Odstopila
+              </button>
+            ) : null
+          }}
+        />
+      ) : (
+        <SeznamPrijavljenih
+          naslov="Udeleženci"
+          prijave={igrajo}
+          dejanje={
+            smemOdstop
+              ? (prijava) => (
+                  <button
+                    type="button"
+                    className="prijava-vrstica__dejanje"
+                    onClick={() => nastaviOdstopnika(prijava)}
+                  >
+                    Odstopil
+                  </button>
+                )
+              : undefined
+          }
+        />
+      )}
 
       {rezerve.length > 0 && (
         <div className="plosca">
@@ -1565,7 +1857,7 @@ function Udelezenci({
           <h2 className="sekcija__naslov--manjsi">Odstopili ({odstopili.length})</h2>
           <p className="namig">
             Njihove odigrane tekme obveljajo, preostale so dobili nasprotniki brez
-            boja (te ne štejejo k ELO).
+            boja (te ne štejejo v rating).
           </p>
           <ul className="seznam-preprost">
             {odstopili.map((p) => (
@@ -1582,11 +1874,11 @@ function Udelezenci({
 
       {odstopnik && (
         <PotrditvenoOkno
-          naslov="Odstop igralca"
+          naslov={ekipno ? 'Odstop ekipe' : 'Odstop igralca'}
           sporocilo={
-            `${odstopnik.polnoIme} odstopi s tekmovanja? Že odigrane tekme obveljajo,` +
-            ` vse preostale pa dobijo nasprotniki brez boja. Ker te tekme niso bile` +
-            ` odigrane, se ne štejejo k ELO. Dejanja ni mogoče razveljaviti.`
+            `${ekipno ? `Ekipa ${odstopnik.polnoIme}` : odstopnik.polnoIme} odstopi s tekmovanja?` +
+            ` Že odigrane tekme obveljajo, vse preostale pa dobijo nasprotniki brez boja. Ker te` +
+            ` tekme niso bile odigrane, se ne štejejo v rating. Dejanja ni mogoče razveljaviti.`
           }
           besedaPotrditve="Potrdi odstop"
           onPotrdi={() => odstop.mutate(odstopnik.id)}
@@ -1601,21 +1893,21 @@ function Udelezenci({
 
 function Krozni({
   podatki,
-  naKlikTekme,
+  klik,
 }: {
   podatki: MrezaDto
-  naKlikTekme?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
 }) {
   const skupinske = podatki.tekme.filter((t) => t.faza === 'SKUPINA')
   return (
     <div className="dvostolpicno dvostolpicno--lestvica">
       <div className="plosca">
         <h2 className="sekcija__naslov--manjsi">Lestvica</h2>
-        <Lestvica vrstice={podatki.lestvica} />
+        <Lestvica vrstice={podatki.lestvica} ekipno={podatki.dogodek.disciplina === 'EKIPNO'} />
       </div>
       <div className="plosca">
         <h2 className="sekcija__naslov--manjsi">Tekme</h2>
-        <TekmePoKolih tekme={skupinske} naKlikTekme={naKlikTekme} />
+        <TekmePoKolih tekme={skupinske} klik={klik} />
       </div>
     </div>
   )
@@ -1626,10 +1918,10 @@ function Krozni({
    Na telefonu je to samostojen pogled (zavihek »Tekme«). */
 function TekmePoKolih({
   tekme,
-  naKlikTekme,
+  klik,
 }: {
   tekme: TekmaDto[]
-  naKlikTekme?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
 }) {
   const kola = [...new Set(tekme.map((t) => t.kolo))].sort((a, b) => a - b)
   return (
@@ -1637,7 +1929,7 @@ function TekmePoKolih({
       {kola.map((kolo) => (
         <div key={kolo} className="kolo-skupina">
           <div className="kolo-skupina__naslov">{kolo}. kolo</div>
-          <TekmeSeznam tekme={tekme.filter((t) => t.kolo === kolo)} naKlikTekme={naKlikTekme} />
+          <TekmeSeznam tekme={tekme.filter((t) => t.kolo === kolo)} klik={klik} />
         </div>
       ))}
     </>
@@ -1646,12 +1938,12 @@ function TekmePoKolih({
 
 /* ---------- Zaključen dogodek: razvrstitev in končni vrstni red ---------- */
 
-/* Bilanca ene prijave: zmage, porazi in vsota sprememb klubskega ELO.
+/* Bilanca ene prijave: zmage, porazi in vsota sprememb Turnirko ratinga.
    Sešteta je iz že prenesenih tekem - nova poizvedba ni potrebna. */
 interface Bilanca {
   zmage: number
   porazi: number
-  elo: number | null
+  rating: number | null
 }
 
 function bilancePrijav(tekme: TekmaDto[]): Map<number, Bilanca> {
@@ -1659,7 +1951,7 @@ function bilancePrijav(tekme: TekmaDto[]): Map<number, Bilanca> {
   const vzemi = (idPrijave: number): Bilanca => {
     let bilanca = bilance.get(idPrijave)
     if (!bilanca) {
-      bilanca = { zmage: 0, porazi: 0, elo: null }
+      bilanca = { zmage: 0, porazi: 0, rating: null }
       bilance.set(idPrijave, bilanca)
     }
     return bilanca
@@ -1677,25 +1969,28 @@ function bilancePrijav(tekme: TekmaDto[]): Map<number, Bilanca> {
       const bilanca = vzemi(idPrijave)
       if (tekma.idZmagovalcaPrijave === idPrijave) bilanca.zmage += 1
       else if (tekma.idZmagovalcaPrijave !== null) bilanca.porazi += 1
-      if (sprememba !== null) bilanca.elo = (bilanca.elo ?? 0) + sprememba
+      if (sprememba !== null) bilanca.rating = (bilanca.rating ?? 0) + sprememba
     }
   }
   return bilance
 }
 
-/* "+38" / "−18" / "—" - sprememba klubskega ELO čez cel dogodek. */
-function oznakaElo(elo: number | null): string {
-  if (elo === null) return '—'
-  return elo > 0 ? `+${elo}` : elo < 0 ? `−${Math.abs(elo)}` : '0'
+/* "+38" / "−18" / "—" - sprememba Turnirko ratinga čez cel dogodek. */
+function oznakaRatinga(rating: number | null): string {
+  if (rating === null) return '—'
+  return rating > 0 ? `+${rating}` : rating < 0 ? `−${Math.abs(rating)}` : '0'
 }
 
-function razredElo(elo: number | null, osnova: string): string {
-  if (elo === null || elo === 0) return osnova
-  return osnova + (elo > 0 ? ` ${osnova}--poz` : ` ${osnova}--neg`)
+function razredRatinga(rating: number | null, osnova: string): string {
+  if (rating === null || rating === 0) return osnova
+  return osnova + (rating > 0 ? ` ${osnova}--poz` : ` ${osnova}--neg`)
 }
 
 function Zakljucek({ podatki }: { podatki: MrezaDto }) {
   const jeTelefon = useTelefon()
+  /* Ekipa ratinga nima (v rating gredo posamične tekme njenih srečanj), zato
+     pri ekipah stolpec ratinga odpade in bilanca so zmage in porazi tekem. */
+  const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
   const razvrscene = useMemo(
     () =>
       podatki.prijave
@@ -1720,8 +2015,9 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
       <div className={jeTelefon ? 'naslovna-mobi naslovna-mobi--brez-crte' : 'naslovna-vrstica'}>
         <h2>Končna razvrstitev</h2>
         <span className={jeTelefon ? 'naslovna-mobi__stevec naslovna-mobi__stevec--drobno' : 'sekcija__meta'}>
-          {razvrscene.length} {sklonIgralcev(razvrscene.length)}
-          {!jeTelefon && ' · bilanca · ELO'}
+          {razvrscene.length}{' '}
+          {ekipno ? sklonEkip(razvrscene.length) : sklonIgralcev(razvrscene.length)}
+          {!jeTelefon && (ekipno ? ' · bilanca' : ' · bilanca · rating')}
         </span>
       </div>
 
@@ -1730,22 +2026,25 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
       <div className={'razvrstitev__vrh' + (vrh.length === 2 ? ' razvrstitev__vrh--dve' : '')}>
         {vrh.map((prijava, indeks) => {
           const bilanca = bilance.get(prijava.id)
-          const elo = bilanca?.elo ?? null
+          const rating = bilanca?.rating ?? null
           return (
             <div className={`razvrstitev__mesto razvrstitev__mesto--${indeks + 1}`} key={prijava.id}>
               <span className="razvrstitev__stevilka">{prijava.koncnoMesto}</span>
               <span className="razvrstitev__oseba">
                 <span className="razvrstitev__ime">{prijava.polnoIme}</span>
                 <span className="razvrstitev__klub">
-                  {prijava.klub ?? 'brez kluba'}
-                  {prijava.rating !== null && ` · ${prijava.rating}`}
+                  {[podnapisPrijave(prijava, ekipno), ekipno ? null : prijava.rating]
+                    .filter((d) => d !== null)
+                    .join(' · ')}
                 </span>
               </span>
               <span className="razvrstitev__izid">
                 <span className="razvrstitev__bilanca">
                   {bilanca ? `${bilanca.zmage}${locilo}${bilanca.porazi}` : '—'}
                 </span>
-                <span className={razredElo(elo, 'razvrstitev__elo')}>{oznakaElo(elo)}</span>
+                {!ekipno && (
+                  <span className={razredRatinga(rating, 'razvrstitev__rating')}>{oznakaRatinga(rating)}</span>
+                )}
               </span>
             </div>
           )
@@ -1758,7 +2057,7 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
             <div key={indeks}>
               {stolpec.map((prijava) => {
                 const bilanca = bilance.get(prijava.id)
-                const elo = bilanca?.elo ?? null
+                const rating = bilanca?.rating ?? null
                 return (
                   <div className="vrstni-red__vrstica" key={prijava.id}>
                     <span className="vrstni-red__mesto">
@@ -1767,14 +2066,16 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
                     </span>
                     <span className="vrstni-red__ime">
                       {prijava.polnoIme}
-                      <span className="vrstni-red__klub">
-                        {prijava.klub ?? 'brez kluba'}
-                      </span>
+                      <span className="vrstni-red__klub">{podnapisPrijave(prijava, ekipno)}</span>
                     </span>
                     <span className="vrstni-red__izkupicek">
                       {bilanca ? `${bilanca.zmage}${locilo}${bilanca.porazi}` : '—'}
                     </span>
-                    <span className={razredElo(elo, 'vrstni-red__elo')}>{oznakaElo(elo)}</span>
+                    {/* Pri ekipi celica ostane (prazna), da stolpci vrstice
+                        ostanejo poravnani z mrežo razreda. */}
+                    <span className={ekipno ? 'vrstni-red__rating' : razredRatinga(rating, 'vrstni-red__rating')}>
+                      {ekipno ? '' : oznakaRatinga(rating)}
+                    </span>
                   </div>
                 )
               })}

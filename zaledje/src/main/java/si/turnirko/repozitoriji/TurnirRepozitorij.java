@@ -89,4 +89,38 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             WHERE tk.id = :idTekma
             """)
     Optional<Turnir> najdiZLastnistvomPoTekmi(Long idTekma);
+
+    /* Turnir ekipne tekme, katere izid je dano srecanje (prazno pri ligi). */
+    @Query("""
+            SELECT t FROM Srecanje s JOIN s.tekma tk JOIN tk.dogodek d JOIN d.turnir t
+            LEFT JOIN FETCH t.ustvaril
+            LEFT JOIN FETCH t.klubLastnik
+            WHERE s.id = :idSrecanje
+            """)
+    Optional<Turnir> najdiZLastnistvomPoSrecanju(Long idSrecanje);
+
+    @Query("""
+            SELECT t FROM TekmaSrecanja ts JOIN ts.srecanje s JOIN s.tekma tk
+            JOIN tk.dogodek d JOIN d.turnir t
+            LEFT JOIN FETCH t.ustvaril
+            LEFT JOIN FETCH t.klubLastnik
+            WHERE ts.id = :idTekma
+            """)
+    Optional<Turnir> najdiZLastnistvomPoTekmiSrecanja(Long idTekma);
+
+    @Query("""
+            SELECT t FROM Ekipa e JOIN e.dogodek d JOIN d.turnir t
+            LEFT JOIN FETCH t.ustvaril
+            LEFT JOIN FETCH t.klubLastnik
+            WHERE e.id = :idEkipa
+            """)
+    Optional<Turnir> najdiZLastnistvomPoEkipi(Long idEkipa);
+
+    @Query("""
+            SELECT t FROM KaderEkipe k JOIN k.ekipa e JOIN e.dogodek d JOIN d.turnir t
+            LEFT JOIN FETCH t.ustvaril
+            LEFT JOIN FETCH t.klubLastnik
+            WHERE k.id = :idKader
+            """)
+    Optional<Turnir> najdiZLastnistvomPoKadru(Long idKader);
 }

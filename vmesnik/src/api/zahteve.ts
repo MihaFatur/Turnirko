@@ -12,11 +12,13 @@ import type {
   IgralecDto,
   IgralecPodrobenDto,
   IgralecVnos,
+  IzidUvozaDto,
   KaderIgralecDto,
   KaderVnos,
   KlubDto,
   KlubVnos,
   KoledarVnosDto,
+  KoncnicaDto,
   KrajDto,
   KrajVnos,
   LestvicaDvojiceDto,
@@ -27,13 +29,18 @@ import type {
   LigaVnos,
   MrezaDto,
   NakljucniParDto,
+  NapovedTekmeDto,
+  ParRazporedaDto,
   PostavaVnos,
+  PredogledUvozaDto,
   PrehodiVnos,
+  SezonaUvozaDto,
   PrijavaDto,
   ProfilDto,
   ProfilZasebnoDto,
   RacunIgralcaDto,
   RegistracijaVnos,
+  RocniRazporedVnos,
   SpremembaGeslaVnos,
   SrecanjeDto,
   SrecanjePodrobnoDto,
@@ -44,6 +51,9 @@ import type {
   TurnirDto,
   TurnirVnos,
   UporabnikDto,
+  UvozDogodekDto,
+  UvozZagonDto,
+  UvozZahtevaDto,
   VnosRezultata,
   VnosRezultataSrecanja,
   ZadnjaTekmaDto,
@@ -85,6 +95,16 @@ export const dogodkiApi = {
   razdruziPar: (idPrijave: number) =>
     api.objavi<PrijavaDto[]>(`/dogodki/pari/${idPrijave}/razdruzi`),
   izvediZreb: (id: number) => api.objavi<TekmaDto[]>(`/dogodki/${id}/zreb`),
+
+  /* Ekipni dogodek: prijava je ekipa s kadrom. Igralec sme biti v kadru ene
+     same ekipe dogodka (preveri strežnik). */
+  ekipe: (id: number) => api.vrni<EkipaDto[]>(`/dogodki/${id}/ekipe`),
+  dodajEkipo: (id: number, vnos: EkipaVnos) => api.objavi<EkipaDto>(`/dogodki/${id}/ekipe`, vnos),
+  odstraniEkipo: (idEkipa: number) => api.izbrisi(`/dogodki/ekipe/${idEkipa}`),
+  kader: (idEkipa: number) => api.vrni<KaderIgralecDto[]>(`/dogodki/ekipe/${idEkipa}/kader`),
+  dodajVKader: (idEkipa: number, vnos: KaderVnos) =>
+    api.objavi<KaderIgralecDto>(`/dogodki/ekipe/${idEkipa}/kader`, vnos),
+  odstraniIzKadra: (idKader: number) => api.izbrisi(`/dogodki/kader/${idKader}`),
 }
 
 export const tekmeApi = {
@@ -102,10 +122,21 @@ export const igralciApi = {
     api.posodobi<IgralecDto>(`/igralci/${id}`, vnos),
   /* Brisanje je v resnici arhiviranje - zgodovina tekem ostane. */
   arhiviraj: (id: number) => api.izbrisi(`/igralci/${id}`),
-  /* Postavitveni (začetni) klubski ELO za novinca; dovoljen le pred prvo
+  /* Postavitveni (začetni) Turnirko rating za novinca; dovoljen le pred prvo
      odigrano tekmo. */
   nastaviZacetniRating: (id: number, vrednost: number) =>
     api.objavi<IgralecDto>(`/igralci/${id}/zacetni-rating`, { vrednost }),
+  /* Zunanja uvrstitev: rating z zunanje lestvice za redkega gosta. Dovoljena
+     je tudi igralcu s tekmami, zato zahteva vir in pojasnilo — oboje je javno
+     vidno na profilu. */
+  zunanjaUvrstitev: (id: number, vnos: ZunanjaUvrstitevVnos) =>
+    api.objavi<IgralecDto>(`/igralci/${id}/zunanja-uvrstitev`, vnos),
+}
+
+export interface ZunanjaUvrstitevVnos {
+  vrednost: number
+  vir: string
+  pojasnilo: string
 }
 
 export const klubiApi = {
@@ -137,6 +168,10 @@ export const profiliApi = {
   profil: (idIgralec: number) => api.vrni<ProfilDto>(`/igralci/${idIgralec}/profil`),
   zasebno: (idIgralec: number) =>
     api.vrni<ProfilZasebnoDto>(`/igralci/${idIgralec}/profil/zasebno`),
+  /* Kaj bi prinesla tekma proti izbranemu nasprotniku, če bi bila zdaj.
+     Zasebna kot ostale analize profila. */
+  napoved: (idIgralec: number, idNasprotnika: number) =>
+    api.vrni<NapovedTekmeDto>(`/igralci/${idIgralec}/profil/napoved?nasprotnik=${idNasprotnika}`),
 }
 
 export const racuniApi = {
@@ -193,6 +228,18 @@ export const ligeApi = {
   odstraniIzKadra: (idKader: number) => api.izbrisi(`/lige/kader/${idKader}`),
 
   generirajRazpored: (id: number) => api.objavi<SrecanjeDto[]>(`/lige/${id}/razpored`),
+  /* Ročno vpisan razpored — druga pot do istega razporeda: pare je določil
+     organizator in ne žreb. Cel razpored naenkrat; strežnik zavrne ekipo z
+     dvema srečanjema v kolu, ekipo samo proti sebi in vrzel med koli. */
+  rocniRazpored: (id: number, vnos: RocniRazporedVnos) =>
+    api.objavi<SrecanjeDto[]>(`/lige/${id}/razpored/rocni`, vnos),
+  /* Predlog žreba brez zapisa: iz njega obrazec ročnega vpisa dobi obliko lige
+     (koliko kol, koliko srečanj v kolu) in jo na zahtevo napolni. */
+  predlogRazporeda: (id: number) =>
+    api.vrni<ParRazporedaDto[]>(`/lige/${id}/razpored/predlog`),
+  /* Razveljavitev razporeda: liga se vrne v pripravo, ekipe in kader ostanejo.
+     Strežnik jo dovoli, dokler se nobeno srečanje še ni začelo. */
+  razveljaviRazpored: (id: number) => api.izbrisi(`/lige/${id}/razpored`),
   srecanja: (id: number) => api.vrni<SrecanjeDto[]>(`/lige/${id}/srecanja`),
   lestvica: (id: number) => api.vrni<LestvicaEkipeDto[]>(`/lige/${id}/lestvica`),
   /* Lestvici posameznikov in dvojic te lige. Ločeni poti, ker ju stran naloži
@@ -203,6 +250,12 @@ export const ligeApi = {
     api.vrni<LestvicaDvojiceDto[]>(`/lige/${id}/lestvica-dvojic`),
   /* Zavihek »Zanimivosti« — ista oblika kot pri turnirju, druge postavke. */
   statistika: (id: number) => api.vrni<StatistikaTekmovanjaDto>(`/lige/${id}/statistika`),
+
+  /* Končnica: serije vseh krogov. Nastane iz končne lestvice rednega dela in
+     se razveljavi, dokler se nobena njena tekma ni začela. */
+  koncnica: (id: number) => api.vrni<KoncnicaDto>(`/lige/${id}/koncnica`),
+  ustvariKoncnico: (id: number) => api.objavi<KoncnicaDto>(`/lige/${id}/koncnica`),
+  razveljaviKoncnico: (id: number) => api.izbrisi(`/lige/${id}/koncnica`),
 }
 
 export const srecanjaApi = {
@@ -211,6 +264,23 @@ export const srecanjaApi = {
     api.posodobi<SrecanjePodrobnoDto>(`/srecanja/${id}/postava`, vnos),
   vnesiRezultat: (idTekma: number, vnos: VnosRezultataSrecanja) =>
     api.objavi<TekmaSrecanjaDto>(`/srecanja/tekme/${idTekma}/rezultat`, vnos),
+  /* Tekma končnice ima svoj termin (redni del ga ima po kolih). */
+  nastaviTermin: (id: number, zacetek: string | null) =>
+    api.posodobi<SrecanjeDto>(`/srecanja/${id}/termin`, { zacetek }),
+  zamenjajDomacina: (id: number) => api.objavi<SrecanjeDto>(`/srecanja/${id}/zamenjaj-domacina`),
+}
+
+/* Uvoz iz Stupe (samo admin): predogled naredi posnetek in poskusni zapis
+   brez potrditve, uvoz teče nad ISTIM posnetkom z odločitvami admina. */
+export const uvozApi = {
+  sezone: () => api.vrni<SezonaUvozaDto[]>('/uvoz/stupa/sezone'),
+  dogodki: (sezona?: number) =>
+    api.vrni<UvozDogodekDto[]>(sezona ? `/uvoz/stupa/dogodki?sezona=${sezona}` : '/uvoz/stupa/dogodki'),
+  predogled: (id: number, vnos: UvozZahtevaDto) =>
+    api.objavi<PredogledUvozaDto>(`/uvoz/stupa/dogodki/${id}/predogled`, vnos),
+  uvozi: (id: number, vnos: UvozZahtevaDto) =>
+    api.objavi<IzidUvozaDto>(`/uvoz/stupa/dogodki/${id}/uvoz`, vnos),
+  zagoni: () => api.vrni<UvozZagonDto[]>('/uvoz/stupa/zagoni'),
 }
 
 /* Domača stran: povzetki lig in osebni izbor spremljanih lig. */

@@ -1,5 +1,5 @@
 /* Igralec. Trenutni rating NI atribut igralca - zivi v tabeli rating_stanje,
-   ker ima igralec lahko vec ratingov (klubski ELO, kasneje tocke NTZS).
+   ker ima igralec lahko vec ratingov (Turnirko rating, kasneje tocke NTZS).
    Igralcev ne brisemo (izgubili bi zgodovino tekem) - le arhiviramo. */
 package si.turnirko.modeli;
 

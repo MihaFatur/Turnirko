@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
 import type { EkipaDto, LestvicaEkipeDto, LigaDto, SrecanjeDto } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_SPOL_KATEGORIJA } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_RAVEN, OZNAKE_SPOL_KATEGORIJA, OZNAKE_VIR, TEZA_RAVNI } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   GlavaDejanja,
@@ -24,12 +24,15 @@ import {
   useNazaj,
 } from '../komponente/GlavaTelefona'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
+import { KoncnicaLige } from '../komponente/KoncnicaLige'
 import { LestviceLige } from '../komponente/LestviceLige'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
+import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { RocniZrebOkno } from '../komponente/RocniZrebOkno'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TerminiOkno } from '../komponente/TerminiOkno'
@@ -40,21 +43,16 @@ import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 import { useTelefon } from '../pomozno/telefon'
 
-/* Faza tekmovanja v ligi. Play-off je v postavitvi predviden kot zavihek, a ga
-   podatkovni model lige (še) ne pozna - glej PRIKAZI_PLAYOFF. */
-type Faza = 'REDNI' | 'PLAYOFF'
+/* Faza tekmovanja v ligi: redni del (lestvica) ali končnica (serije) - izbira
+   se ponudi samo ligi, ki ima končnico po pravilih (V28). */
+type Faza = 'REDNI' | 'KONCNICA'
 
 /* Na telefonu tri sekcije ne gredo eno pod drugo brez neskončnega drsenja, zato
    se lestvica in razpored menjata z zavihki. Preklop je CSS (v širokem pogledu
    sta obe sekciji vidni), stanje pa vseeno živi tu, ker si ga zavihka delita.
    »Zanimivosti« so izjema: tudi v širokem pogledu so svoj pogled in ne tretji
    stolpec — zgodbe o sezoni se ne berejo ob lestvici, ampak namesto nje. */
-type MobilniPogled = 'LESTVICA' | 'RAZPORED' | 'ZANIMIVOSTI'
-
-/* Play-off zahteva fazo lige v podatkovnem modelu (pari, termini, kdo se uvrsti).
-   Dokler je ni, zavihka ne ponujamo - postavitev spodaj je pripravljena, da se
-   ob dodani fazi prižge, ne da bi se stran prepisala. */
-const PRIKAZI_PLAYOFF = false
+type MobilniPogled = 'LESTVICA' | 'RAZPORED' | 'KONCNICA' | 'ZANIMIVOSTI'
 
 export function LigaStran() {
   const { id } = useParams()
@@ -87,6 +85,7 @@ export function LigaStran() {
   const [obrazecOdprt, nastaviObrazecOdprt] = useState(false)
   const [prehodiOdprti, nastaviPrehodiOdprte] = useState(false)
   const [terminiOdprti, nastaviTerminiOdprte] = useState(false)
+  const [razveljavitevOdprta, nastaviRazveljavitev] = useState(false)
   const [mobilniPogled, nastaviMobilniPogled] = useState<MobilniPogled>('LESTVICA')
 
   /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
@@ -107,6 +106,20 @@ export function LigaStran() {
 
   const odjemalec = useQueryClient()
 
+  /* Razveljavitev razporeda vrne ligo v pripravo — ekipe in kader ostanejo,
+     srečanja (in z njimi termini kol) pa gredo. Kavelj mora stati nad zgodnjimi
+     return-i; ali je dejanje sploh ponujeno, odloči nobenoOdigrano spodaj. */
+  const razveljavi = useMutation({
+    mutationFn: () => ligeApi.razveljaviRazpored(idLiga),
+    onSuccess: () => {
+      odjemalec.invalidateQueries({ queryKey: ['srecanja', idLiga] })
+      odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
+      odjemalec.invalidateQueries({ queryKey: ['lestvica', idLiga] })
+      odjemalec.invalidateQueries({ queryKey: ['lige'] })
+      odjemalec.invalidateQueries({ queryKey: ['domov-lige'] })
+    },
+  })
+
   /* Gost izbora spremljanih lig nima (ta je last računa), zato mu sklop "Moje
      lige" na domači strani pokaže lige, ki si jih je nazadnje ogledal. */
   useEffect(() => {
@@ -119,11 +132,19 @@ export function LigaStran() {
   if (!liga.data) return <p className="obvestilo">Te lige ni (več).</p>
 
   const l = liga.data
-  // organizator sme urejati svojo (ali klubsko) ligo, admin vse
-  const smem = smemUrejati(l.idLastnik, l.idKlubLastnik)
+  /* Organizator sme urejati svojo (ali klubsko) ligo, admin vse - razen
+     uvožene: vir resnice je zveza (strežnik mutacijo zavrne). Opis lige v
+     piramidi (prehodi) vir ne pozna, zato ga lastnik ureja tudi pri uvoženi. */
+  const smemPoLastnistvu = smemUrejati(l.idLastnik, l.idKlubLastnik)
+  const uvozena = l.vir != null
+  const smem = smemPoLastnistvu && !uvozena
   const vPripravi = l.status === 'PRIPRAVA'
-  const vsa = srecanja.data ?? []
+  /* Redni del in končnica sta ločena: tekme serij nosijo krog končnice in ne
+     kola rednega dela, zato bi v razporedu padle v 1. in 2. kolo. */
+  const vsa = (srecanja.data ?? []).filter((s) => s.idSerija == null)
+  const tekmeKoncnice = (srecanja.data ?? []).filter((s) => s.idSerija != null)
   const imaRazpored = vsa.length > 0
+  const imaKoncnico = l.koncnicaEkip != null
 
   /* Napredek lige: koliko kol je do konca odigranih. Kolo šteje za odigrano,
      ko je končano vsako njegovo srečanje. */
@@ -132,6 +153,11 @@ export function LigaStran() {
     vsa.filter((s) => s.kolo === k).every((s) => s.status === 'KONCANO')
   const odigranihKol = kola.filter(koloOdigrano).length
   const naslednjeKolo = kola.find((k) => !koloOdigrano(k)) ?? null
+  /* Razpored se sme razveljaviti, dokler se ni začelo nobeno srečanje: prepis
+     papirnatega žreba je dolg in tipkarska napaka se odkrije šele, ko jo kdo
+     prebere. Postavljeno srečanje (POTEKA) ima že tekme in morda rezultate,
+     zato tam vrata zapre tudi strežnik. */
+  const nobenoOdigrano = imaRazpored && vsa.every((s) => s.status === 'RAZPORED')
 
   /* Ob prihodu na stran je izbrano prvo neodigrano kolo (to gledalec išče), sicer
      zadnje odigrano. Ročno izbiro spustimo, če je razpored medtem prišel drugačen. */
@@ -142,7 +168,12 @@ export function LigaStran() {
     `${l.steviloEkip} ${ekipTekst(l.steviloEkip)}`,
     l.dvokrozno ? 'dvokrožno' : 'enokrožno',
     imaRazpored ? `${odigranihKol}. od ${kola.length} kol odigranih` : 'razpored ni generiran',
-  ].join(' · ')
+    /* Od kod je razpored, je javen podatek: igralci papirnati žreb že imajo in
+       morajo videti, da gre za isti razpored in ne za nov naključni. */
+    imaRazpored && l.rocniZreb ? 'ročni žreb' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   /* Zavihek se ponudi, ko je odigrano vsaj eno kolo — takrat je tekem že
      dovolj, da katera od vrstic kaj pove. */
@@ -172,7 +203,7 @@ export function LigaStran() {
         <PravilaOkno
           liga={l}
           lahkoUreja={vPripravi && smem}
-          smemUrejatiPrehode={smem}
+          smemUrejatiPrehode={smemPoLastnistvu}
           nizje={nizjeLige(l, lige.data ?? [])}
           onUredi={() => {
             nastaviPravilaOdprta(false)
@@ -219,6 +250,21 @@ export function LigaStran() {
             odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
             odjemalec.invalidateQueries({ queryKey: ['domov-lige'] })
           }}
+        />
+      )}
+
+      {/* Nepovratno dejanje: srečanja gredo, liga se vrne v pripravo. Ponujeno
+          je samo, dokler se ni začelo nobeno srečanje. */}
+      {razveljavitevOdprta && (
+        <PotrditvenoOkno
+          naslov="Razveljavi razpored"
+          sporocilo={
+            'Vsa srečanja lige se zbrišejo skupaj s termini kol, liga pa se vrne v pripravo. '
+            + 'Ekipe in kader ostanejo. Nato lahko razpored vpišeš ali izžrebaš znova.'
+          }
+          besedaPotrditve="Razveljavi razpored"
+          onPotrdi={() => razveljavi.mutate()}
+          onZapri={() => nastaviRazveljavitev(false)}
         />
       )}
 
@@ -321,6 +367,24 @@ export function LigaStran() {
                       </span>
                     )}
                   </button>
+                  {/* Razveljavitev se ponudi samo v oknu, ko je še mogoča —
+                      trajno ugasnjena postavka bi bila sredi sezone samo šum. */}
+                  {nobenoOdigrano && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka uporabnik-meni__postavka--nevaren"
+                      onClick={() => {
+                        zapri()
+                        nastaviRazveljavitev(true)
+                      }}
+                    >
+                      Razveljavi razpored
+                      <span className="uporabnik-meni__pojasnilo">
+                        Liga se vrne v pripravo; ekipe in kader ostanejo
+                      </span>
+                    </button>
+                  )}
                 </>
               )}
             </MeniDejanj>
@@ -338,7 +402,7 @@ export function LigaStran() {
               <ZnackaVNaslovu status={l.status} />
             </div>
             <div className="liga-mobi__stanje">
-              <span>{stanjeMobi(l, vsa, kola, odigranihKol, naslednjeKolo)}</span>
+              <span>{stanjeMobi(l, vsa, kola, odigranihKol, naslednjeKolo, tekmeKoncnice)}</span>
               {imaRazpored && <span className="liga-mobi__delez">{delez} %</span>}
             </div>
             {imaRazpored && (
@@ -374,6 +438,19 @@ export function LigaStran() {
               >
                 Razpored
               </button>
+              {imaKoncnico && (
+                <button
+                  type="button"
+                  className={
+                    'izbirnik__gumb' +
+                    (mobilniPogled === 'KONCNICA' ? ' izbirnik__gumb--aktiven' : '')
+                  }
+                  aria-pressed={mobilniPogled === 'KONCNICA'}
+                  onClick={() => nastaviMobilniPogled('KONCNICA')}
+                >
+                  Končnica
+                </button>
+              )}
               {imaZanimivosti && (
                 <button
                   type="button"
@@ -400,14 +477,12 @@ export function LigaStran() {
           </GlavaZavihki>
         )}
 
+        {uvozena && l.vir && (
+          <p className="oznaka-vira">{OZNAKE_VIR[l.vir]} · uvoženo, samo za branje</p>
+        )}
+
         {vPripravi && smem && (
-          <EkipeUredi
-            idLiga={idLiga}
-            steviloEkip={l.steviloEkip}
-            enakomerna={l.enakomernaRazvrstitev}
-            dvokrozno={l.dvokrozno}
-            onUrediPravila={() => nastaviObrazecOdprt(true)}
-          />
+          <EkipeUredi liga={l} onUrediPravila={() => nastaviObrazecOdprt(true)} />
         )}
 
         {vPripravi && !smem && (
@@ -415,6 +490,12 @@ export function LigaStran() {
             Liga je v pripravi. Ekipe in kader ureja organizator, razpored pride po žrebu.
           </p>
         )}
+
+        {/* Kvalifikacije med ligami imajo samo končnico - brez rednega dela
+            zavihkov ni in serije stojijo na strani. */}
+        {!imaRazpored && imaKoncnico && <KoncnicaLige liga={l} smem={smem} />}
+
+        {imaRazpored && mobilniPogled === 'KONCNICA' && <KoncnicaLige liga={l} smem={smem} />}
 
         {imaRazpored && mobilniPogled === 'LESTVICA' && (
           <>
@@ -440,6 +521,7 @@ export function LigaStran() {
             srecanja={vsa}
             kola={kola}
             kolo={kolo}
+            rocniZreb={l.rocniZreb}
             koloOdigrano={koloOdigrano}
             onKolo={nastaviKolo}
           />
@@ -466,13 +548,16 @@ export function LigaStran() {
               <span className="naslov-strani__glavni">{l.ime}</span>
             </h1>
             <p className="uvod uvod--tesno">{uvod}</p>
+            {uvozena && l.vir && (
+              <span className="oznaka-vira">{OZNAKE_VIR[l.vir]} · uvoženo, samo za branje</span>
+            )}
           </div>
 
           <div className="liga__stanje-blok">
             <div className="naslovna-vrstica__desno">
               <ZnackaStatusa status={l.status} />
               <span className="sekcija__meta">
-                {stanjeLige(l, vsa, kola, naslednjeKolo, kaziPiramido)}
+                {stanjeLige(l, vsa, kola, naslednjeKolo, kaziPiramido, tekmeKoncnice)}
               </span>
             </div>
 
@@ -527,6 +612,18 @@ export function LigaStran() {
                   onClick={() => nastaviTerminiOdprte(true)}
                 >
                   Termini
+                </button>
+              )}
+              {/* Razveljavitev stoji ob ostalih dejanjih samo v oknu, ko je še
+                  mogoča (nobeno srečanje se ni začelo) — sredi sezone bi bil
+                  trajno ugasnjen gumb za brisanje razporeda samo grožnja. */}
+              {smem && nobenoOdigrano && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen gumb--nevaren"
+                  onClick={() => nastaviRazveljavitev(true)}
+                >
+                  Razveljavi razpored
                 </button>
               )}
             </div>
@@ -616,13 +713,7 @@ export function LigaStran() {
       )}
 
       {vPripravi && smem && (
-        <EkipeUredi
-          idLiga={idLiga}
-          steviloEkip={l.steviloEkip}
-          enakomerna={l.enakomernaRazvrstitev}
-          dvokrozno={l.dvokrozno}
-          onUrediPravila={() => nastaviObrazecOdprt(true)}
-        />
+        <EkipeUredi liga={l} onUrediPravila={() => nastaviObrazecOdprt(true)} />
       )}
 
       {vPripravi && !smem && (
@@ -631,6 +722,8 @@ export function LigaStran() {
           (urejate lahko le lige svojega kluba oz. kot administrator).
         </p>
       )}
+
+      {!imaRazpored && imaKoncnico && <KoncnicaLige liga={l} smem={smem} />}
 
       {imaRazpored && (
         <>
@@ -644,8 +737,8 @@ export function LigaStran() {
             }
           >
             <div className="naslovna-vrstica">
-              <h2>{faza === 'REDNI' ? 'Lestvica' : 'Play-off'}</h2>
-              {PRIKAZI_PLAYOFF && (
+              <h2>{faza === 'REDNI' ? 'Lestvica' : 'Končnica'}</h2>
+              {imaKoncnico && (
                 <div className="izbirnik">
                   <button
                     type="button"
@@ -659,11 +752,11 @@ export function LigaStran() {
                   <button
                     type="button"
                     className={
-                      'izbirnik__gumb' + (faza === 'PLAYOFF' ? ' izbirnik__gumb--aktiven' : '')
+                      'izbirnik__gumb' + (faza === 'KONCNICA' ? ' izbirnik__gumb--aktiven' : '')
                     }
-                    onClick={() => nastaviFazo('PLAYOFF')}
+                    onClick={() => nastaviFazo('KONCNICA')}
                   >
-                    Play-off
+                    Končnica
                   </button>
                 </div>
               )}
@@ -679,7 +772,7 @@ export function LigaStran() {
                 onPreklopiKader={razsiriKader}
               />
             ) : (
-              <PlayOff idLiga={idLiga} />
+              <KoncnicaLige liga={l} smem={smem} />
             )}
           </div>
 
@@ -694,6 +787,7 @@ export function LigaStran() {
               kola={kola}
               kolo={kolo}
               odigranihKol={odigranihKol}
+              rocniZreb={l.rocniZreb}
               koloOdigrano={koloOdigrano}
               onKolo={nastaviKolo}
             />
@@ -725,16 +819,43 @@ function stanjeLige(
   kola: number[],
   naslednjeKolo: number | null,
   imaPiramido: boolean,
+  tekmeKoncnice: SrecanjeDto[],
 ): string {
   if (srecanja.length === 0) {
     return imaPiramido ? 'Razpored ni generiran' : 'Samostojna — brez piramide'
   }
   if (liga.status === 'ZAKLJUCEN' || naslednjeKolo == null) {
+    const koncnica = stanjeKoncnice(liga, tekmeKoncnice, 'naslednja tekma')
+    if (koncnica) return koncnica
     const datum = datumKola(srecanja, kola[kola.length - 1])
     return datum ? `Končano ${oblikujDanMesec(datum)}` : 'Vsa kola odigrana'
   }
   const datum = datumKola(srecanja, naslednjeKolo)
   return datum ? `Naslednje kolo ${oblikujDanMesec(datum)}` : `Naslednje ${naslednjeKolo}. kolo`
+}
+
+/* Po rednem delu glavo nosi končnica: dokler kaka njena tekma čaka, kdaj je
+   naslednja, po zadnji pa dan zadnje odigrane - »Končano 11. 4.« (zadnje kolo
+   rednega dela) ob finalu 30. 5. bi bilo narobe. Null, ko liga končnice nima
+   in velja stanje rednega dela. */
+function stanjeKoncnice(liga: LigaDto, tekme: SrecanjeDto[], naslednja: string): string | null {
+  const zakljucena = liga.status === 'ZAKLJUCEN'
+  if (tekme.length === 0) {
+    return liga.koncnicaEkip != null && !zakljucena ? 'Redni del odigran · končnica sledi' : null
+  }
+  const termini = (odigrane: boolean) =>
+    tekme
+      .filter((s) => (s.status === 'KONCANO') === odigrane)
+      .flatMap((s) => (s.predvidenZacetek ? [s.predvidenZacetek.slice(0, 10)] : []))
+      .sort()
+  if (!zakljucena && tekme.some((s) => s.status !== 'KONCANO')) {
+    const prihodnji = termini(false)
+    return prihodnji.length > 0
+      ? `Končnica · ${naslednja} ${oblikujDanMesec(prihodnji[0])}`
+      : 'Končnica v teku'
+  }
+  const pretekli = termini(true)
+  return pretekli.length > 0 ? `Končano ${oblikujDanMesec(pretekli[pretekli.length - 1])}` : null
 }
 
 /* Ista vrsta na telefonu, a z napredkom spredaj: v lepljivi glavi je ena sama
@@ -747,9 +868,12 @@ function stanjeMobi(
   kola: number[],
   odigranihKol: number,
   naslednjeKolo: number | null,
+  tekmeKoncnice: SrecanjeDto[],
 ): string {
   if (srecanja.length === 0) return 'Razpored ni generiran'
   if (liga.status === 'ZAKLJUCEN' || naslednjeKolo == null) {
+    const koncnica = stanjeKoncnice(liga, tekmeKoncnice, 'naslednja')
+    if (koncnica) return koncnica
     const datum = datumKola(srecanja, kola[kola.length - 1])
     return datum ? `Končano ${oblikujDanMesec(datum)}` : 'Vsa kola odigrana'
   }
@@ -1261,97 +1385,23 @@ function Kader({ idEkipa, ekipa }: { idEkipa: number; ekipa: string }) {
   )
 }
 
-/* ---------- Play-off (predvidena faza) ---------- */
-
-/* Postavitev zavihka je pripravljena za trenutek, ko liga dobi fazo play-offa:
-   dve koloni parov, pod vsakim parom trenutni kandidat iz lestvice. Dokler faze
-   v podatkovnem modelu ni, se zavihek ne ponudi (PRIKAZI_PLAYOFF). */
-function PlayOff({ idLiga }: { idLiga: number }) {
-  const lestvica = useQuery({
-    queryKey: ['lestvica', idLiga],
-    queryFn: () => ligeApi.lestvica(idLiga),
-  })
-  const vrstice = lestvica.data ?? []
-  const ime = (mesto: number) => vrstice.find((v) => v.mesto === mesto)?.ekipa ?? '—'
-  const zadnji = vrstice.length
-  /* Pod osmimi ekipami se para "za naslov" in "za obstanek" prekrivata; takrat
-     play-offa ni smiselno risati. */
-  if (zadnji < 8) {
-    return <p className="obvestilo">Za play-off je potrebnih vsaj osem ekip.</p>
-  }
-
-  const vrh = [
-    { faza: 'Polfinale 1', par: '1. — 4.', kandidat: `trenutno ${ime(1)} — ${ime(4)}` },
-    { faza: 'Polfinale 2', par: '2. — 3.', kandidat: `trenutno ${ime(2)} — ${ime(3)}` },
-    { faza: 'Finale', par: 'zmagovalca polfinalov', kandidat: 'na dve dobljeni srečanji' },
-  ]
-  const dno = [
-    {
-      faza: 'Par A',
-      par: `${zadnji - 3}. — ${zadnji}.`,
-      kandidat: `trenutno ${ime(zadnji - 3)} — ${ime(zadnji)}`,
-    },
-    {
-      faza: 'Par B',
-      par: `${zadnji - 2}. — ${zadnji - 1}.`,
-      kandidat: `trenutno ${ime(zadnji - 2)} — ${ime(zadnji - 1)}`,
-    },
-    { faza: 'Izpad', par: 'poraženca izpadeta', kandidat: 'kvalifikacij ni' },
-  ]
-
-  return (
-    <div>
-      <p className="uvod uvod--tesno">
-        Play-off se odigra po rednem delu. Pari se določijo iz končne lestvice; dokler
-        redni del teče, so mesta prazna in stran pokaže trenutne kandidate.
-      </p>
-      <div className="liga__playoff">
-        <PlayOffStolpec naslov="Za naslov" meta="Mesta 1–4" vrstice={vrh} />
-        <PlayOffStolpec
-          naslov="Za obstanek"
-          meta={`Mesta ${zadnji - 3}–${zadnji}`}
-          vrstice={dno}
-        />
-      </div>
-    </div>
-  )
-}
-
-function PlayOffStolpec({
-  naslov,
-  meta,
-  vrstice,
-}: {
-  naslov: string
-  meta: string
-  vrstice: { faza: string; par: string; kandidat: string }[]
-}) {
-  return (
-    <div>
-      <h3 className="liga__kolo-naslov">
-        {naslov}
-        <span className="liga__kolo-datum">{meta}</span>
-      </h3>
-      {vrstice.map((p) => (
-        <div key={p.faza} className="liga__playoff-vrstica">
-          <span className="liga__playoff-faza">{p.faza}</span>
-          <span>
-            <span className="liga__playoff-par">{p.par}</span>
-            <span className="liga__playoff-kandidat">{p.kandidat}</span>
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 /* ---------- Razpored ---------- */
+
+/* Ena vrstica nad razporedom, kadar pare ni izžrebala aplikacija. Zapisana je
+   kot dejstvo in ne kot opozorilo: ročni žreb je enakovreden način, gledalec pa
+   mora vedeti, od kod razpored je — sicer bi igralec, ki je pare dobil po pošti,
+   sklepal, da je aplikacija izžrebala nove. */
+const OPOMBA_ROCNEGA_ZREBA = 'Žreb ni bil naključen — razpored je vpisal organizator.'
 
 interface RazporedLastnosti {
   srecanja: SrecanjeDto[]
   kola: number[]
   kolo: number
   odigranihKol: number
+  /* Ali je pare vpisal organizator namesto žreba. Vrstica pod naslovom to pove
+     vsakemu obiskovalcu, tudi gostu — papirnati razpored je že v rokah igralcev
+     in videti mora biti, da je to isti razpored. */
+  rocniZreb: boolean
   koloOdigrano: (kolo: number) => boolean
   onKolo: (kolo: number) => void
 }
@@ -1361,6 +1411,7 @@ function Razpored({
   kola,
   kolo,
   odigranihKol,
+  rocniZreb,
   koloOdigrano,
   onKolo,
 }: RazporedLastnosti) {
@@ -1380,6 +1431,8 @@ function Razpored({
           {kola.length} {kolTekst(kola.length)} · {odigranihKol} odigranih
         </span>
       </div>
+
+      {rocniZreb && <p className="liga__zreb-opomba">{OPOMBA_ROCNEGA_ZREBA}</p>}
 
       <div className="liga__krmar">
         <button
@@ -1427,6 +1480,8 @@ function Razpored({
                   className={'liga__srecanje-izid' + (konec ? '' : ' liga__srecanje-izid--caka')}
                 >
                   {konec ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : 'vs'}
+                  {/* Registriran izid ni odigran - brez oznake bi se 5 : 0 bralo kot tekma. */}
+                  {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
                 </span>
                 <span
                   className={
@@ -1480,6 +1535,7 @@ function RazporedMobi({
   srecanja,
   kola,
   kolo,
+  rocniZreb,
   koloOdigrano,
   onKolo,
 }: Omit<RazporedLastnosti, 'odigranihKol'>) {
@@ -1492,6 +1548,7 @@ function RazporedMobi({
   return (
     <>
       <div>
+        {rocniZreb && <p className="liga__zreb-opomba">{OPOMBA_ROCNEGA_ZREBA}</p>}
         <div className="liga-mobi__krmar">
           <button
             type="button"
@@ -1542,6 +1599,7 @@ function RazporedMobi({
                   className={'liga-mobi__izid' + (konec ? '' : ' liga-mobi__izid--caka')}
                 >
                   {konec ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : 'vs'}
+                  {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
                 </span>
                 <span
                   className={
@@ -1608,10 +1666,19 @@ function PravilaOkno({
     ['Nizi', `najboljši od ${liga.steviloNizov}`],
     ['Konec srečanja', liga.zmagZaSrecanje ? `prvi do ${liga.zmagZaSrecanje} zmag` : 'vse tekme'],
     ['Sistem', liga.dvokrozno ? 'dvokrožno' : 'enokrožno'],
+    /* Kako so nastali pari, je del opisa tekmovanja — pred žrebom pa še ni
+       odgovora, zato se vrstica takrat ne izpiše. */
+    ...(liga.status === 'PRIPRAVA'
+      ? []
+      : ([['Žreb', liga.rocniZreb ? 'vpisal organizator' : 'naključni']] as [string, string][])),
     ['Točke', `${liga.tockeZmaga} / ${liga.tockeNeodloceno} / ${liga.tockePoraz} (Z/N/P)`],
+    /* Pravila SNTL: ekipi, ki izgubi brez borbe, se odšteje še točka. */
+    ...(liga.odbitekBrezBoja > 0
+      ? ([['Poraz brez borbe', `−${liga.odbitekBrezBoja} ${liga.odbitekBrezBoja === 1 ? 'točka' : 'točki'} od skupnih`]] as [string, string][])
+      : []),
     ['Neodločeno', liga.dovoljenoNeodloceno ? 'mogoče' : 'ni mogoče'],
     ['Dvojna registracija', liga.prepovedDvojneRegistracije ? 'prepovedana' : 'dovoljena'],
-    ['Šteje v ELO', liga.stejeVElo ? 'da (posamične)' : 'ne'],
+    ['Raven tekmovanja', OZNAKE_RAVEN[liga.raven] + ' · teža ' + TEZA_RAVNI[liga.raven]],
   ]
   podatki.push(['Višja liga', liga.visjaLigaIme ?? '—'])
   podatki.push(['Nižje lige', nizje.length > 0 ? nizje.map((k) => k.ime).join(' · ') : '—'])
@@ -1749,21 +1816,13 @@ function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => vo
 /* Urejanje ekip in kadra, dokler je liga v pripravi. Sekcija stoji na strani
    (in ne v oknu), ker je to takrat glavno opravilo organizatorja: dodaj ekipe,
    sestavi kader, generiraj razpored. */
-function EkipeUredi({
-  idLiga,
-  steviloEkip,
-  enakomerna,
-  dvokrozno,
-  onUrediPravila,
-}: {
-  idLiga: number
-  steviloEkip: number
+function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: () => void }) {
+  const idLiga = liga.id
+  const steviloEkip = liga.steviloEkip
   /* Liga z enakomerno razvrstitvijo: seznam ekip ni šifrant prijavljenih,
      ampak jakostna lestvica, ki jo organizator uredi pred žrebom. */
-  enakomerna: boolean
-  dvokrozno: boolean
-  onUrediPravila: () => void
-}) {
+  const enakomerna = liga.enakomernaRazvrstitev
+  const dvokrozno = liga.dvokrozno
   const odjemalec = useQueryClient()
   const ekipe = useQuery({ queryKey: ['ekipe', idLiga], queryFn: () => ligeApi.ekipe(idLiga) })
   const klubi = useQuery({ queryKey: ['klubi'], queryFn: klubiApi.seznam })
@@ -1773,6 +1832,7 @@ function EkipeUredi({
   const [idKlub, nastaviKlub] = useState('')
   const [ime, nastaviIme] = useState('')
   const [urejanKader, nastaviUrejanKader] = useState<EkipaDto | null>(null)
+  const [zrebOdprt, nastaviZrebOdprt] = useState(false)
 
   /* Strežnik pošlje ekipe že v veljavnem jakostnem vrstnem redu; tu se ureja
      samo lokalna kopija, dokler je ne shranimo (isto kot jakostni vrstni red
@@ -1989,14 +2049,43 @@ function EkipeUredi({
         >
           Generiraj razpored
         </button>
+        {/* Drugi način žreba in ne nastavitev prvega: pare je določil človek.
+            Liga, ki se je doslej vodila na roke, ima razpored že razposlan
+            igralcem in naključni žreb bi ga zavrgel. */}
+        <button
+          className="gumb"
+          disabled={(ekipe.data?.length ?? 0) < 2}
+          onClick={() => nastaviZrebOdprt(true)}
+        >
+          Vpiši žreb ročno
+        </button>
         <button className="gumb gumb--majhen" onClick={onUrediPravila}>
           Uredi pravila
         </button>
       </div>
+      <p className="namig">
+        Žreb sestavi pare sam. Če je razpored že narejen na roke (in razposlan
+        igralcem), ga vpiši — tako ostane tak, kot ga ljudje že imajo.
+      </p>
       <SporociloNapake napaka={razpored.error} />
 
       {urejanKader && (
         <KaderOkno ekipa={urejanKader} onZapri={() => nastaviUrejanKader(null)} />
+      )}
+
+      {zrebOdprt && (
+        <RocniZrebOkno
+          liga={liga}
+          ekipe={seznam}
+          onZapri={() => nastaviZrebOdprt(false)}
+          onShranjeno={() => {
+            odjemalec.invalidateQueries({ queryKey: ['srecanja', idLiga] })
+            osveziLigo()
+            odjemalec.invalidateQueries({ queryKey: ['lestvica', idLiga] })
+            odjemalec.invalidateQueries({ queryKey: ['lige'] })
+            odjemalec.invalidateQueries({ queryKey: ['domov-lige'] })
+          }}
+        />
       )}
     </div>
   )

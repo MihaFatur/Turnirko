@@ -6,8 +6,8 @@
    vsaki spremembi vira spremeni, uvoz v bazo pa mora ostati stabilen in
    preverljiv - poleg tega tako v zaledju ni razčlenjevalnika HTML.
 
-   Kot pri StupaArhiv delamo z drevesom JsonNode in ne z desetinami DTO
-   razredov: enkratni uvoznik ne sme s sabo prinesti tolikega bremena. */
+   Kot pri posnetkih Stupe (PosnetekDogodka) delamo z drevesom JsonNode in ne
+   z desetinami DTO razredov: uvoznik ne sme s sabo prinesti tolikega bremena. */
 package si.turnirko.uvoz.stara;
 
 import java.io.IOException;

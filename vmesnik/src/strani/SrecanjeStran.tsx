@@ -1,10 +1,14 @@
 /* Podroben pogled srecanja: postava (za administratorja, dokler ni rezultatov)
-   in zapisnik - seznam posamicnih tekem z vnosom rezultatov. */
+   in zapisnik - seznam posamicnih tekem z vnosom rezultatov.
+
+   Srecanje je ligasko (redni del ali tekma koncnice) ali pa ekipna tekma
+   turnirja - kje je, pove kontekst (tekmovanje, dogodek, "polfinale",
+   "koncnica · finale · 1. tekma"). Uvozeno srecanje je samo za branje. */
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { ligeApi, srecanjaApi } from '../api/zahteve'
+import { ligeApi, srecanjaApi, turnirjiApi } from '../api/zahteve'
 import type {
   IzidTekme,
   MestoVnos,
@@ -13,12 +17,12 @@ import type {
   StranEkipe,
   TekmaSrecanjaDto,
 } from '../api/tipi'
-import { OZNAKE_FORMAT, nizovZaZmago } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_VIR, izidNizov, nizovZaZmago } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { SpremembaElo } from '../komponente/SpremembaElo'
+import { SpremembaRatinga } from '../komponente/SpremembaRatinga'
 import {
   TockeNizov,
   preveriNize,
@@ -38,13 +42,20 @@ export function SrecanjeStran() {
     refetchInterval: (poizvedba) => intervalOsvezevanja(poizvedba.state.data?.srecanje.status),
   })
 
-  /* Za urejanje potrebujemo lastnistvo lige srecanja; poizvedbo sprozimo le
-     za morebitne urejevalce. */
+  /* Za urejanje potrebujemo lastnistvo lige oz. turnirja srecanja; poizvedbo
+     sprozimo le za morebitne urejevalce in ne pri uvozenem srecanju. */
   const idLiga = podrobno.data?.srecanje.idLiga
+  const idTurnir = podrobno.data?.srecanje.idTurnir
+  const uvozeno = podrobno.data?.kontekst.vir != null
   const liga = useQuery({
     queryKey: ['liga', idLiga],
     queryFn: () => ligeApi.najdi(idLiga!),
-    enabled: idLiga != null && (jeAdmin || jeOrganizator),
+    enabled: idLiga != null && !uvozeno && (jeAdmin || jeOrganizator),
+  })
+  const turnir = useQuery({
+    queryKey: ['turnir', idTurnir],
+    queryFn: () => turnirjiApi.najdi(idTurnir!),
+    enabled: idTurnir != null && !uvozeno && jeOrganizator && !jeAdmin,
   })
 
   if (podrobno.isLoading) return <p className="obvestilo">Nalaganje …</p>
@@ -54,8 +65,13 @@ export function SrecanjeStran() {
 
   const p = podrobno.data
   const s = p.srecanje
-  // organizator sme upravljati srecanja svoje (ali klubske) lige, admin vse
-  const smem = jeAdmin || (!!liga.data && smemUrejati(liga.data.idLastnik, liga.data.idKlubLastnik))
+  const k = p.kontekst
+  /* Organizator sme upravljati srecanja svoje (ali klubske) lige oz. turnirja,
+     admin vse - razen uvozenih: vir resnice je zveza. */
+  const lastnik = liga.data ?? turnir.data
+  const smem = k.vir == null
+    && (jeAdmin || (!!lastnik && smemUrejati(lastnik.idLastnik, lastnik.idKlubLastnik)))
+  const opis = k.opis ?? `${s.kolo}. kolo`
   const imaRezultate = p.tekme.some((t) => t.status === 'KONCANA')
   const lahkoUrejaPostavo = smem && s.status !== 'KONCANO' && !imaRezultate
   /* Listki so smiselni le, ko je postava določena in kaka tekma še čaka. */
@@ -69,12 +85,20 @@ export function SrecanjeStran() {
   return (
     <section className="srecanje">
       <div>
-        <Link to={`/lige/${s.idLiga}`} className="povezava-nazaj">← Liga</Link>
+        {s.idDogodek != null ? (
+          <Link to={`/dogodki/${s.idDogodek}`} className="povezava-nazaj">← {k.dogodek ?? 'Dogodek'}</Link>
+        ) : (
+          <Link to={`/lige/${s.idLiga}`} className="povezava-nazaj">← {k.tekmovanje || 'Liga'}</Link>
+        )}
+        <p className="uvod uvod--tesno">
+          {[k.tekmovanje, k.sezona, k.dogodek].filter(Boolean).join(' · ')}
+        </p>
+        {k.vir && <span className="oznaka-vira">{OZNAKE_VIR[k.vir]} · uvoženo, samo za branje</span>}
 
         {/* Maketa nad semaforjem nima naslova, dokument pa mora imeti ime -
             sicer bralnik zaslona strani ne zna poimenovati. */}
         <h1 className="samo-za-bralnik">
-          {s.domaci} proti {s.gost}, {s.kolo}. kolo
+          {s.domaci} proti {s.gost}, {opis}
         </h1>
 
         {/* Semafor med dvema debelima crtama: doma levo, gostje desno. */}
@@ -100,7 +124,7 @@ export function SrecanjeStran() {
               )}
             </div>
             <p className="srecanje__meta">
-              {s.kolo}. kolo · {statusOznaka(s.status)}
+              {opis} · {statusOznaka(s.status)}
               {datum && (
                 <>
                   <br />
@@ -133,7 +157,9 @@ export function SrecanjeStran() {
 
       {p.tekme.length === 0 ? (
         <p className="obvestilo">
-          Postava še ni določena. {smem ? 'Določi jo spodaj.' : 'Čaka na organizatorja.'}
+          {s.status === 'KONCANO'
+            ? 'Srečanje je zapisano brez posamičnih tekem (brez boja).'
+            : `Postava še ni določena. ${smem ? 'Določi jo spodaj.' : 'Čaka na organizatorja.'}`}
         </p>
       ) : (
         <Zapisnik podrobno={p} jeAdmin={smem} />
@@ -149,13 +175,15 @@ function statusOznaka(status: string): string {
 }
 
 /* Iz ISO datuma-casa loci datum (dd. mm. llll) in uro (hh.mm); brez casa vrne
-   prazna niza, da se vrstica ne izpise. */
+   prazna niza, da se vrstica ne izpise. Ura 00:00 pomeni »ura ni dolocena«
+   (turnirsko srecanje pozna samo dan, organizator uro lahko izpusti), zato
+   odpade - kot v oblikujTermin. */
 function razbijCas(iso: string | null): { datum: string; ura: string } {
   if (!iso) return { datum: '', ura: '' }
   const [d, t] = iso.split('T')
   const deli = d.split('-')
   const datum = deli.length === 3 ? `${Number(deli[2])}. ${Number(deli[1])}. ${deli[0]}` : ''
-  const ura = t ? t.slice(0, 5).replace(':', '.') : ''
+  const ura = t && t.slice(0, 5) !== '00:00' ? t.slice(0, 5).replace(':', '.') : ''
   return { datum, ura }
 }
 
@@ -203,12 +231,12 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
                     }
                   >
                     {imeStrani(t, 'DOMACI')}
-                    <SpremembaElo vrednost={t.spremembaEloDomaci} />
+                    <SpremembaRatinga vrednost={t.spremembaRatingaDomaci} />
                   </td>
                   <td className="srecanje__izid-tekme">
                     {konec ? (
                       <>
-                        {t.dobljeniNiziDomaci}:{t.dobljeniNiziGost}
+                        {izidNizov(t.dobljeniNiziDomaci, t.dobljeniNiziGost, t.izidTip)}
                         {/* Točke po nizih so neobvezne — izpišejo se le, kadar
                             jih je organizator vpisal. */}
                         {t.nizi.length > 0 && (
@@ -227,7 +255,7 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
                     }
                   >
                     {imeStrani(t, 'GOST')}
-                    <SpremembaElo vrednost={t.spremembaEloGost} />
+                    <SpremembaRatinga vrednost={t.spremembaRatingaGost} />
                   </td>
                   <td className="tabela__dejanja">
                     {konec ? (

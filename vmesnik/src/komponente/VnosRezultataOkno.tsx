@@ -24,6 +24,9 @@ interface Lastnosti {
   onZapri: () => void
   /* Poklicano po uspesnem vnosu - stran osvezi podatke dogodka. */
   onShranjeno: () => void
+  /* Ekipna tekma: izid nastane iz zapisnika srecanja, neposredno sta mogoca
+     samo brez boja in diskvalifikacija (TekmaStoritev.vnesiRezultat). */
+  samoBrezIgre?: boolean
 }
 
 /* Izidi, ki jih rocno vnasa sodnik (PROSTO doloci sistem sam pri zrebu). */
@@ -34,12 +37,15 @@ const ROCNI_IZIDI: { vrednost: IzidTekme; oznaka: string }[] = [
   { vrednost: 'DISKVALIFIKACIJA', oznaka: 'Diskvalifikacija' },
 ]
 
-export function VnosRezultataOkno({ tekma, onZapri, onShranjeno }: Lastnosti) {
+export function VnosRezultataOkno({ tekma, onZapri, onShranjeno, samoBrezIgre = false }: Lastnosti) {
   const zaZmago = nizovZaZmago(tekma.steviloNizov)
   const ime1 = imeUdelezenca(tekma.udelezenec1) ?? 'Igralec 1'
   const ime2 = imeUdelezenca(tekma.udelezenec2) ?? 'Igralec 2'
+  const izidi = samoBrezIgre
+    ? ROCNI_IZIDI.filter((izid) => izid.vrednost === 'BREZ_BOJA' || izid.vrednost === 'DISKVALIFIKACIJA')
+    : ROCNI_IZIDI
 
-  const [izidTip, nastaviIzidTip] = useState<IzidTekme>('IGRANO')
+  const [izidTip, nastaviIzidTip] = useState<IzidTekme>(samoBrezIgre ? 'BREZ_BOJA' : 'IGRANO')
   /* Koncni rezultat v obliki "3:1" - izbran s seznama veljavnih izidov. */
   const [rezultat, nastaviRezultat] = useState('')
   const [vnasamTocke, nastaviVnasamTocke] = useState(false)
@@ -131,11 +137,19 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno }: Lastnosti) {
   const delniNizi = Array.from({ length: zaZmago }, (_, indeks) => String(indeks))
 
   return (
-    <ModalnoOkno naslov="Vnos rezultata" onZapri={onZapri}>
+    <ModalnoOkno naslov={samoBrezIgre ? 'Izid brez igre' : 'Vnos rezultata'} onZapri={onZapri}>
       <p className="modal__podnaslov">
         {ime1} : {ime2}
-        <span className="modal__namig"> (najboljši od {tekma.steviloNizov} nizov)</span>
+        {!samoBrezIgre && (
+          <span className="modal__namig"> (najboljši od {tekma.steviloNizov} nizov)</span>
+        )}
       </p>
+      {samoBrezIgre && (
+        <p className="namig">
+          Ekipna tekma dobi izid iz zapisnika srečanja. Tu zapišeš samo, da ekipa ni
+          nastopila ali je bila izključena — srečanje, ki se še ni začelo, se ob tem izbriše.
+        </p>
+      )}
 
       <form className="obrazec" onSubmit={obOddaji}>
         <label className="obrazec__polje">
@@ -144,7 +158,7 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno }: Lastnosti) {
             value={izidTip}
             onChange={(dogodek) => nastaviIzidTip(dogodek.target.value as IzidTekme)}
           >
-            {ROCNI_IZIDI.map((izid) => (
+            {izidi.map((izid) => (
               <option key={izid.vrednost} value={izid.vrednost}>
                 {izid.oznaka}
               </option>

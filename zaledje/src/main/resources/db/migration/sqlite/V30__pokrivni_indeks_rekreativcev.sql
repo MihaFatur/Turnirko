@@ -1,0 +1,32 @@
+-- ============================================================================
+-- Turnirko: pokrivni indeks za stetje tekmovalnih tekem (rekreativci)
+--
+-- Kdo je rekreativec, se IZPELJE iz dnevnika ratinga in se ne hrani
+-- (RekreativecStoritev): steje se, koliko tekem je igralec odigral na
+-- tekmovanju ravni URADNO ali KLUBSKO. Stetje tece ob vsakem ogledu javne
+-- lestvice in profila, cez ves dnevnik (193.755 vrstic ob uvozeni zgodovini).
+--
+-- Stetje potrebuje iz dnevnika samo stiri stolpce - sistem, igralca in eno od
+-- obeh tekem -, raven pa prebere pri turnirju oz. ligi. Brez tega indeksa je
+-- sqlite izbral idx_rating_zgodovina_igralec_velja (ta daje vrstni red za
+-- GROUP BY po igralcu, brez statistik pa se mu "sistem = ?" zdi zelo
+-- selektiven) in za VSAKO vrstico prebral celotno vrstico tabele, samo da je
+-- dobil id tekme. Vrstice dnevnika so siroke (sestavine obracuna, vir,
+-- pojasnilo), branje je razprseno po igralcih: izmerjeno 0,57 s na poizvedbo
+-- (turnirska in ligaska), lestvica ~3,2 s, profil ~2,4-3,3 s.
+--
+-- S pokrivnim indeksom stetje ne bere niti ene vrstice tabele; turnirska in
+-- ligaska stran v eni poizvedbi (RatingZgodovinaRepozitorij.tekmovalnihTekem)
+-- skupaj 1,13 s -> 0,09 s (sqlite3 na polni bazi, 13. 9. 2026).
+--
+-- Indeks je NOV in ne razsiritev obstojecega idx_rating_zgodovina_igralec_velja:
+-- razsirjen (sistem, id_igralec, velja_ob, id_tekma, ...) ne daje vec vrstnega
+-- reda "velja_ob, id", zato ga je sqlite pri grafu profila (najdiZaIgralca)
+-- zamenjal s skeniranjem idx_rating_zgodovina_velja po vsem dnevniku.
+-- Preverjeno z EXPLAIN QUERY PLAN za vse poizvedbe RatingZgodovinaRepozitorij:
+-- nov indeks prevzame samo poizvedbe, ki so ze doslej brale ves obseg
+-- "sistem = ?", nobena pa ne izgubi iskanja po igralcu ali casu.
+-- ============================================================================
+
+CREATE INDEX idx_rating_zgodovina_igralec_tekme
+    ON rating_zgodovina (sistem, id_igralec, id_tekma, id_tekma_srecanja);

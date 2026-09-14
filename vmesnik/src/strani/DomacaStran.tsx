@@ -401,7 +401,7 @@ function SklopLestvica({
             <span>Premik</span>
             <span>Igralec</span>
             <span>Klub</span>
-            <span className="domov__elo-glava">Elo 12 mesecev</span>
+            <span className="domov__rating-glava">Rating 12 mesecev</span>
             <span className="domov__desno">Rating</span>
           </div>
           {prikazane.map(({ igralec, mesto }) => (
@@ -481,7 +481,7 @@ function VrsticaLestvice({
         {jaz && <span className="domov__oznaka-jaz">ti</span>}
       </span>
       <span className="domov__lestvica-klub">{igralec.klub ?? '—'}</span>
-      <CrtaElo tocke={igralec.eloZgodovina} />
+      <CrtaRatinga tocke={igralec.potekRatinga} />
       <span className="domov__lestvica-rating">{igralec.rating ?? '—'}</span>
     </Link>
   )
@@ -514,11 +514,11 @@ function Premik({ mest }: { mest: number | null }) {
   )
 }
 
-/* Črta gibanja klubskega ELO v zadnjem letu: sedem točk, brez osi in oznak —
+/* Črta gibanja Turnirko ratinga v zadnjem letu: sedem točk, brez osi in oznak —
    ob vrstici pove samo smer. Vrednosti so raztegnjene na celotno višino, ker
    je zanimiva oblika krivulje in ne absolutna razlika. */
-function CrtaElo({ tocke }: { tocke: number[] }) {
-  if (tocke.length < 2) return <span className="domov__elo" />
+function CrtaRatinga({ tocke }: { tocke: number[] }) {
+  if (tocke.length < 2) return <span className="domov__rating" />
   const sirina = 140
   const visina = 24
   const rob = 3
@@ -537,7 +537,7 @@ function CrtaElo({ tocke }: { tocke: number[] }) {
 
   return (
     <svg
-      className="domov__elo"
+      className="domov__rating"
       width={sirina}
       height={visina}
       viewBox={`0 0 ${sirina} ${visina}`}

@@ -91,8 +91,13 @@ public class RazvrstitevStoritev {
         if (nosilecA != null && nosilecB != null && !nosilecA.equals(nosilecB)) {
             return nosilecA - nosilecB;
         }
-        return a.prijava.getIgralec().abecedno().compareTo(b.prijava.getIgralec().abecedno());
+        return abecedno(a.prijava).compareTo(abecedno(b.prijava));
     };
+
+    /* Urejevalni kljuc po imenu: igralec po priimku, ekipa po imenu (V28). */
+    private static String abecedno(Prijava p) {
+        return p.jeEkipa() ? p.getEkipa().prikazanoIme() : p.getIgralec().abecedno();
+    }
 
     /* Urejena lestvica danih udelezencev iz njihovih KONCANIH medsebojnih
        tekem. Uposteva samo tekme, kjer sta oba udelezenca s tega seznama. */
@@ -165,8 +170,8 @@ public class RazvrstitevStoritev {
         for (Vmesni v : urejeni) {
             rezultat.add(new VrsticaLestviceDto(
                     v.prijava.getId(),
-                    v.prijava.getIgralec().getId(),
-                    v.prijava.getIgralec().polnoIme(),
+                    v.prijava.jeEkipa() ? null : v.prijava.getIgralec().getId(),
+                    v.prijava.prikazanoIme(),
                     v.prijava.getKlubObPrijavi() != null ? v.prijava.getKlubObPrijavi().getIme() : null,
                     v.odigrane, v.zmage, v.porazi, v.niziZa, v.niziProti, mesto++,
                     krogi.get(v.id())));

@@ -1,5 +1,5 @@
 /* Integracijski testi ligaskih srecanj: generiranje razporeda, postava in
-   generiranje tekem po SNTL formatu, pravilo predcasnega konca, stetje ELO
+   generiranje tekem po SNTL formatu, pravilo predcasnega konca, stetje rating
    (posamicne da, dvojice ne) in lestvica. */
 package si.turnirko.storitve;
 
@@ -43,13 +43,18 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.RatingStanje;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmeSrecanja;
+import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StranEkipe;
 import si.turnirko.repozitoriji.KlubRepozitorij;
+import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
+import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 
 class LigaSrecanjeTest extends IntegracijskiTest {
 
@@ -57,6 +62,8 @@ class LigaSrecanjeTest extends IntegracijskiTest {
     @Autowired private SrecanjeStoritev srecanjeStoritev;
     @Autowired private KlubRepozitorij klubRepozitorij;
     @Autowired private NizSrecanjaRepozitorij nizSrecanjaRepozitorij;
+    @Autowired private SrecanjeRepozitorij srecanjeRepozitorij;
+    @Autowired private LigaRepozitorij ligaRepozitorij;
     /* Za preverbe, ki morajo res do baze in ne le do predpomnilnika seje. */
     @PersistenceContext private EntityManager seja;
 
@@ -241,7 +248,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
     }
 
     @Test
-    void eloSeObracunaZaPosamicneNeZaDvojice() {
+    void ratingSeObracunaZaPosamicneNeZaDvojice() {
         Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL, null);
         nastaviPostavo(srecanje);
         List<TekmaSrecanjaDto> tekme = srecanjeStoritev.podrobno(srecanje).tekme();
@@ -253,14 +260,14 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         srecanjeStoritev.vnesiRezultat(aX.id(),
                 new si.turnirko.dto.VnosRezultataSrecanja(null, 3, 1, null, null));
 
-        // dvojice ne stejejo v ELO -> brez zapisa v dnevniku
+        // dvojice ne stejejo v rating -> brez zapisa v dnevniku
         assertTrue(ratingZgodovinaRepozitorij
-                .spremembeZaTekmeSrecanja(List.of(dvojice.id()), RatingStanje.SISTEM_KLUBSKI_ELO)
-                .isEmpty(), "dvojice ne smejo steti v ELO");
+                .spremembeZaTekmeSrecanja(List.of(dvojice.id()), RatingStanje.SISTEM_TURNIRKO)
+                .isEmpty(), "dvojice ne smejo steti v rating");
         // posamicna tekma steje -> dva zapisa (za oba igralca)
         assertEquals(2, ratingZgodovinaRepozitorij
-                .spremembeZaTekmeSrecanja(List.of(aX.id()), RatingStanje.SISTEM_KLUBSKI_ELO)
-                .size(), "posamicna tekma mora obracunati ELO obema igralcema");
+                .spremembeZaTekmeSrecanja(List.of(aX.id()), RatingStanje.SISTEM_TURNIRKO)
+                .size(), "posamicna tekma mora obracunati rating obema igralcema");
     }
 
     /* Tocke po nizih se odslej vpisujejo tudi pri ligaskih tekmah - po istih
@@ -348,9 +355,40 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         assertEquals(0, lestvica.get(1).tocke());
     }
 
+    /* Poraz brez borbe (Pravila SNTL): zmagovalec dobi tocke zmage, porazencu
+       pa se od skupnega stevila tock odsteje odbitek lige - lahko do minusa.
+       Liga brez odbitka tockuje tak poraz kot vsakega drugega. */
+    @Test
+    void porazBrezBorbeOdstejeOdbitekOdSkupnihTock() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, 6, false);
+        dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+        Long idSrecanje = srecanjeStoritev.zaLigo(liga).get(0).id();
+        // tako srecanje zapise uvoz (ekipa ni nastopila, izid registriran 5 : 0)
+        Srecanje s = srecanjeRepozitorij.findById(idSrecanje).orElseThrow();
+        s.setStatus(StatusSrecanja.KONCANO);
+        s.setDobljeneDomaci(5);
+        s.setDobljeneGost(0);
+        s.setBrezBoja(true);
+        srecanjeRepozitorij.save(s);
+
+        Liga l = ligaRepozitorij.findById(liga).orElseThrow();
+        l.setOdbitekBrezBoja(1);
+        ligaRepozitorij.save(l);
+        List<LestvicaEkipeDto> zOdbitkom = ligaStoritev.lestvica(liga);
+        assertEquals(2, zOdbitkom.get(0).tocke(), "zmagovalec dobi tocke zmage");
+        assertEquals(-1, zOdbitkom.get(1).tocke(), "porazencu se odsteje tocka");
+        assertEquals(1, zOdbitkom.get(1).porazi(), "poraz ostane poraz");
+
+        l.setOdbitekBrezBoja(0);
+        ligaRepozitorij.save(l);
+        assertEquals(0, ligaStoritev.lestvica(liga).get(1).tocke(), "brez odbitka navaden poraz");
+    }
+
     /* Ligaska posamicna tekma je za igralca enakovredna turnirski: steti mora
        tudi v medsebojni izid ("1 na 1") in v zmage/poraze na lestvici, ne le
-       v ELO. */
+       v rating. */
     @Test
     void ligaskaPosamicnaStejeVMedsebojniIzidInZmage() {
         Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL, null);
@@ -383,7 +421,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
     }
 
     /* Dvojice ostanejo zunaj osebne statistike - izida para ni mogoce pripisati
-       posamezniku (enako pravilo kot pri ELO). */
+       posamezniku (enako pravilo kot pri ratingu). */
     @Test
     void ligaskeDvojiceNeStejejoVOsebnoStatistiko() {
         Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL, null);
@@ -690,7 +728,7 @@ class LigaSrecanjeTest extends IntegracijskiTest {
     private Long ustvariLigo(FormatSrecanja format, Integer zmagZaSrecanje, boolean dvokrozno,
                              LocalDateTime zacetekPrvegaKola, Integer razmikDni) {
         LigaVnos v = new LigaVnos("Test liga", "2025/26", SpolKategorija.MOSKI, format, 5,
-                zmagZaSrecanje, dvokrozno, 2, 1, 0, true, false, true, false, null,
+                zmagZaSrecanje, dvokrozno, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null,
                 zacetekPrvegaKola, razmikDni);
         return ligaStoritev.ustvari(v).id();
     }

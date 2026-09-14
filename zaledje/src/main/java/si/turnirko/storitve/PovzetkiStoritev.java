@@ -104,7 +104,8 @@ public class PovzetkiStoritev {
         // ("Ana Novak / Eva Zajc"), sicer bi polovica zmagovalcev izginila.
         Map<Long, String> zmagovalci = new HashMap<>();
         for (Object[] v : prijavaRepozitorij.zmagovalciPoTurnirjih()) {
-            String ime = v[1] + " " + v[2];
+            // ekipni dogodek: zmagovalec je ekipa (ime in priimek sta prazna)
+            String ime = v[1] == null ? String.valueOf(v[5]) : v[1] + " " + v[2];
             if (v[3] != null) {
                 ime += " / " + v[3] + " " + v[4];
             }

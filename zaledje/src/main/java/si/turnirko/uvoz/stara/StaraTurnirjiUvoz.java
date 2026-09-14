@@ -45,6 +45,7 @@ import si.turnirko.modeli.Niz;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.Skupina;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.StatusTekmovanja;
@@ -57,7 +58,11 @@ import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.SkupinaRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
-import si.turnirko.uvoz.EloUvoz;
+import si.turnirko.modeli.VirTekmovanja;
+import si.turnirko.modeli.ZunanjaPovezava;
+import si.turnirko.repozitoriji.ZunanjaPovezavaRepozitorij;
+import si.turnirko.storitve.RazvrstitevStoritev;
+import si.turnirko.uvoz.KoncnaMestaUvoza;
 import si.turnirko.uvoz.SifrantiUvoz;
 import si.turnirko.uvoz.UvozOblike;
 import si.turnirko.uvoz.UvozPorocilo;
@@ -71,14 +76,15 @@ public class StaraTurnirjiUvoz {
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
     private final NizRepozitorij nizRepozitorij;
+    private final ZunanjaPovezavaRepozitorij povezave;
+    private final RazvrstitevStoritev razvrstitev;
     private final SifrantiUvoz sifranti;
     private final UvozPorocilo porocilo;
-
-    private final List<EloUvoz.VrstaTekme> uvozeneTekme = new ArrayList<>();
 
     public StaraTurnirjiUvoz(TurnirRepozitorij turnirRepozitorij, DogodekRepozitorij dogodekRepozitorij,
                              SkupinaRepozitorij skupinaRepozitorij, PrijavaRepozitorij prijavaRepozitorij,
                              TekmaRepozitorij tekmaRepozitorij, NizRepozitorij nizRepozitorij,
+                             ZunanjaPovezavaRepozitorij povezave, RazvrstitevStoritev razvrstitev,
                              SifrantiUvoz sifranti, UvozPorocilo porocilo) {
         this.turnirRepozitorij = turnirRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
@@ -86,12 +92,10 @@ public class StaraTurnirjiUvoz {
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
+        this.povezave = povezave;
+        this.razvrstitev = razvrstitev;
         this.sifranti = sifranti;
         this.porocilo = porocilo;
-    }
-
-    public List<EloUvoz.VrstaTekme> uvozeneTekme() {
-        return uvozeneTekme;
     }
 
     public void uvozi(JsonNode vir) {
@@ -107,8 +111,14 @@ public class StaraTurnirjiUvoz {
         // zato bralec vidi prav tisto, kar je pisalo pri viru.
         turnir.setDvorana(UvozOblike.prirezi(UvozOblike.ocisti(vir.path("kraj").asText(null)), 60));
         turnir.setStatus(StatusTekmovanja.ZAKLJUCEN);
+        // vir je arhiv NTZS, zato uradno tekmovanje (privzetek entitete je klubsko)
+        turnir.setRaven(RavenTekmovanja.URADNO);
         turnir.setOpombe("Uvoz s stara.ntzs.si (tekmovanje " + vir.path("id").asText() + ")");
+        // arhiv zveze je samo za branje (V27)
+        turnir.setVir(VirTekmovanja.STARA_NTZS);
         turnir = turnirRepozitorij.save(turnir);
+        povezave.save(new ZunanjaPovezava(VirTekmovanja.STARA_NTZS, ZunanjaPovezava.Vrsta.TURNIR,
+                UvozOblike.prirezi(vir.path("id").asText(), 80), turnir.getId()));
         porocilo.prestej("turnirjev");
 
         for (JsonNode disciplina : vir.path("discipline")) {
@@ -126,7 +136,25 @@ public class StaraTurnirjiUvoz {
         Dogodek dogodek = ustvariDogodek(turnir, vir, tekme, starostnaKategorija);
         Map<String, Prijava> prijave = ustvariPrijave(dogodek, vir, tekme);
         Map<Integer, Skupina> skupine = ustvariSkupine(dogodek, tekme);
-        ustvariTekme(dogodek, tekme, prijave, skupine, datum);
+        List<Tekma> zapisane = ustvariTekme(dogodek, tekme, prijave, skupine, datum);
+
+        // clanstvo v skupini (prejsnji uvoz ga ni pisal) in mesta - po istih
+        // pravilih kot pri dogodku, ki se je odigral v Turnirku
+        List<Prijava> vsePrijave = new ArrayList<>(prijave.values());
+        for (Tekma t : zapisane) {
+            if (t.getFaza() != FazaTekme.SKUPINA || t.getIdSkupina() == null) {
+                continue;
+            }
+            for (Prijava p : new Prijava[] {t.getPrijava1(), t.getPrijava2()}) {
+                if (p != null && p.getIdSkupina() == null) {
+                    p.setIdSkupina(t.getIdSkupina());
+                }
+            }
+        }
+        List<Skupina> seznamSkupin = new ArrayList<>(skupine.values());
+        KoncnaMestaUvoza.mestaVSkupinah(seznamSkupin, vsePrijave, zapisane, razvrstitev);
+        KoncnaMestaUvoza.koncnaMesta(dogodek.getSistemTekmovanja(), seznamSkupin, vsePrijave, zapisane, razvrstitev);
+        prijavaRepozitorij.saveAll(vsePrijave);
     }
 
     private Dogodek ustvariDogodek(Turnir turnir, JsonNode vir, List<JsonNode> tekme,
@@ -158,7 +186,16 @@ public class StaraTurnirjiUvoz {
         dogodek.setPrivzetoSteviloNizov(privzetoSteviloNizov(tekme));
         dogodek.setStatus(StatusTekmovanja.ZAKLJUCEN);
         if (sistem == SistemTekmovanja.SKUPINE && stSkupin > 0) {
-            dogodek.setSteviloSkupin((int) stSkupin);
+            dogodek.setSteviloSkupin((int) Math.min(26, stSkupin));
+            // omejitev CHECK: format TOP potrebuje tudi velikost skupine
+            Map<Integer, Set<String>> clani = new HashMap<>();
+            for (JsonNode t : tekme) {
+                Set<String> c = clani.computeIfAbsent(t.path("skupina").asInt(0), k -> new HashSet<>());
+                c.add(t.path("igralec1").asText(""));
+                c.add(t.path("igralec2").asText(""));
+            }
+            dogodek.setVelikostSkupine(Math.max(2, Math.min(24,
+                    clani.values().stream().mapToInt(Set::size).max().orElse(2))));
         }
         Dogodek shranjen = dogodekRepozitorij.save(dogodek);
         porocilo.prestej("dogodkov (disciplin)");
@@ -248,8 +285,9 @@ public class StaraTurnirjiUvoz {
         return skupine;
     }
 
-    private void ustvariTekme(Dogodek dogodek, List<JsonNode> tekme, Map<String, Prijava> prijave,
-                              Map<Integer, Skupina> skupine, LocalDate datum) {
+    private List<Tekma> ustvariTekme(Dogodek dogodek, List<JsonNode> tekme, Map<String, Prijava> prijave,
+                                     Map<Integer, Skupina> skupine, LocalDate datum) {
+        List<Tekma> zapisane = new ArrayList<>();
         // Shema ima UNIQUE (dogodek, faza, kolo, pozicija). V skupinskem delu
         // vse skupine oStevilcijo tekme od 1 naprej, zato se mesta prekrivajo -
         // trke resimo s premikom mesta, kot pri uvozu iz Stupe.
@@ -311,16 +349,80 @@ public class StaraTurnirjiUvoz {
             tekma.setZmagovalec(nizi1 > nizi2 ? prva : druga);
 
             Tekma shranjena = tekmaRepozitorij.save(tekma);
+            zapisane.add(shranjena);
             porocilo.prestej("tekem (turnirskih)");
-            uvozeneTekme.add(EloUvoz.VrstaTekme.turnirska(
-                    shranjena.getId(), datum, !skupinska, kolo, pozicija));
 
             shraniNize(shranjena, t);
             if (!skupinska) {
                 poMestu.put(kolo + "|" + mestoVMrezi, shranjena);
             }
         }
+        dopolniProstePrehode(dogodek, poMestu, zasedeno, zapisane);
         povezijMrezo(poMestu);
+        return zapisane;
+    }
+
+    /* Prosti prehodi: vir mest brez nasprotnika ne zapise (prvo kolo s 36
+       igralci ima mesta 7-26). Turnirko jih zapise kot tekmo PROSTO - sicer
+       ima mreza luknje. Prosti je udelezenec tekme naslednjega kola, ki ga
+       nobena obstojeca tekma ni pripeljala. */
+    private void dopolniProstePrehode(Dogodek dogodek, Map<String, Tekma> poMestu, Set<String> zasedeno,
+                                      List<Tekma> zapisane) {
+        for (Map.Entry<String, Tekma> vnos : new ArrayList<>(poMestu.entrySet())) {
+            String[] deli = vnos.getKey().split("\\|");
+            int kolo = Integer.parseInt(deli[0]);
+            int mesto = Integer.parseInt(deli[1]);
+            if (kolo < 2) {
+                continue;
+            }
+            Tekma t = vnos.getValue();
+            String k1 = (kolo - 1) + "|" + (mesto * 2 - 1);
+            String k2 = (kolo - 1) + "|" + (mesto * 2);
+            Tekma izvor1 = poMestu.get(k1);
+            Tekma izvor2 = poMestu.get(k2);
+            if (izvor1 != null && izvor2 != null) {
+                continue;
+            }
+            List<Prijava> prosti = new ArrayList<>();
+            for (Prijava p : new Prijava[] {t.getPrijava1(), t.getPrijava2()}) {
+                if (p != null && !pripeljala(izvor1, p) && !pripeljala(izvor2, p)) {
+                    prosti.add(p);
+                }
+            }
+            int i = 0;
+            if (izvor1 == null && i < prosti.size()) {
+                poMestu.put(k1, prostiPrehod(dogodek, kolo - 1, mesto * 2 - 1, prosti.get(i++), zasedeno, zapisane));
+            }
+            if (izvor2 == null && i < prosti.size()) {
+                poMestu.put(k2, prostiPrehod(dogodek, kolo - 1, mesto * 2, prosti.get(i), zasedeno, zapisane));
+            }
+        }
+    }
+
+    private static boolean pripeljala(Tekma izvor, Prijava p) {
+        return izvor != null && izvor.getZmagovalec() != null && izvor.getZmagovalec().getId().equals(p.getId());
+    }
+
+    private Tekma prostiPrehod(Dogodek dogodek, int kolo, int mesto, Prijava prijava, Set<String> zasedeno,
+                               List<Tekma> zapisane) {
+        int pozicija = mesto;
+        while (!zasedeno.add(FazaTekme.GLAVNI + "|" + kolo + "|" + pozicija)) {
+            pozicija++;
+        }
+        Tekma tekma = new Tekma();
+        tekma.setDogodek(dogodek);
+        tekma.setFaza(FazaTekme.GLAVNI);
+        tekma.setKolo(kolo);
+        tekma.setPozicija(pozicija);
+        tekma.setSteviloNizov(dogodek.getPrivzetoSteviloNizov());
+        tekma.setPrijava1(prijava);
+        tekma.setZmagovalec(prijava);
+        tekma.setIzidTip(IzidTekme.PROSTO);
+        tekma.setStatus(StatusTekme.KONCANA);
+        Tekma shranjena = tekmaRepozitorij.save(tekma);
+        zapisane.add(shranjena);
+        porocilo.prestej("prostih prehodov (stara stran)");
+        return shranjena;
     }
 
     /* Poveze tekme izlocilne mreze: (kolo r, mesto p) -> (kolo r+1, ceil(p/2)).

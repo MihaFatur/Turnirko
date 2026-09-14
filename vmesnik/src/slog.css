@@ -22,7 +22,7 @@
     9. izlocilna mreza in tekme
    10. lestvice, skupine, podij
    11. dvoboj (1 na 1), domaca stran in koledar
-   12. profil igralca in graf ELO
+   12. profil igralca in graf ratinga
    13. format TOP: jakostni vrstni red, udelezenci
    14. lige, srecanja, postava
    15. racuni in igralci
@@ -67,7 +67,7 @@
      Modra ima dve vlogi in zato dve vrednosti. Ostra #0088CE RISE (crte,
      palice, polnilo grafa, obroba fokusa) — tam ni besedila, zato je merilo
      3:1 in ga izpolni. Kjer modra postane PODLAGA POD BESEDILOM (gumb,
-     znacka, blok ELO), je ista bela na #0088CE le 3,88:1 in pade AA za
+     znacka, blok ratinga), je ista bela na #0088CE le 3,88:1 in pade AA za
      11-15 px oznake; zato polna ploskev uporablja odtenek nize
      (#0071AB = 5,3:1 z belo). Oko razlike skoraj ne vidi, bralec pa jo.
      Ne zamenjuj ju: "glavna" rise, "glavna-polna" nosi besedilo. */
@@ -77,7 +77,7 @@
   --barva-glavna-tekst: #0071ab;
   --barva-glavna-mehko: #eaf3f9;
   --barva-na-glavni: #ffffff;
-  /* Drugotno besedilo na polni modri (vrh ELO): izpeljano iz zelene
+  /* Drugotno besedilo na polni modri (vrh ratinga): izpeljano iz zelene
      poudarka, ne iz sive - siva na barvni ploskvi zveni umazano. */
   --barva-na-glavni-2: #e8f5c4;
 
@@ -591,15 +591,22 @@ textarea:focus-visible,
   margin-bottom: var(--r3);
 }
 
-/* Dve enakovredni dejanji drug ob drugem (glava lige): vsako pol sirine, odmika
-   pod njima ni - blok stanja ga nosi sam. */
+/* Enakovredna dejanja drug ob drugem (glava lige): delijo si sirino, odmika
+   pod njimi ni - blok stanja ga nosi sam.
+
+   Vrsta se LOMI in gumbi rastejo iz svoje vsebine (flex-basis auto, ne 0):
+   dejanj je v ligi lahko pet (spremljanje, pravila, ekipe in kader, termini,
+   razveljavitev razporeda), stolpec stanja pa je ozek - z enakimi delezi je
+   zadnji gumb odtekel cez desni rob strani. */
 .stran-glava__dejanja--vrsta {
   flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   margin-bottom: 0;
 }
 
 .stran-glava__dejanja--vrsta > .gumb {
-  flex: 1;
+  flex: 1 1 auto;
 }
 
 /* Znacka statusa je oznaka in ne gumb: v stolpcu dejanj se ne razteza cez
@@ -1109,6 +1116,18 @@ a.gumb {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+}
+
+/* Dva izbirnika nad lestvico (spol, tekmovalci/rekreativci). Na sirokem sta v
+   isti vrstici, na telefonu pa eden pod drugim - stirje gumbi v eni vrstici pri
+   390 px ne gredo. Presledek je vecji od presledka med gumboma istega
+   izbirnika, da je vidno, da sta to dve locni vprasanji in ne en pas stirih
+   moznosti. */
+.izbirnik-lestvic {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1) var(--r2);
+  margin-bottom: var(--r2);
 }
 
 .izbirnik__gumb {
@@ -2645,6 +2664,12 @@ input[type='radio'] {
   min-width: 240px;
 }
 
+/* Tekme zunaj glavne mreže (za 3. mesto, tolažilna mreža): stolpec se ne
+   raztegne čez vso širino, sicer bi ena sama kartica postala pas. */
+.mreza--tolazilna .mreza__kolo {
+  flex: 0 0 240px;
+}
+
 .mreza__naslov-kola {
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.12em;
@@ -2861,24 +2886,30 @@ input[type='radio'] {
   color: var(--barva-negativna);
 }
 
+/* Prenesen izid finalne skupine ni izguba ne napaka, ampak pojasnilo - zato
+   tiha siva in ne rjasta posebnega izida. */
+.tekme-seznam__izid--prenesen {
+  color: var(--barva-crnilo-3);
+}
+
 .tekme-seznam__rating {
   margin-left: var(--r1);
 }
 
-/* Desni igralec bere od desne proti levi (ime, rating, sprememba ELO), zato
+/* Desni igralec bere od desne proti levi (ime, rating, sprememba ratinga), zato
    se odmiki zrcalijo - sicer se "-41" in "1730" zlepita v eno stevilo. */
 .tekme-seznam__igralec:last-of-type .tekme-seznam__rating {
   margin-left: 0;
   margin-right: var(--r1);
 }
 
-.tekme-seznam__igralec:last-of-type .sprememba-elo {
+.tekme-seznam__igralec:last-of-type .sprememba-rating {
   margin-left: 0;
   margin-right: var(--r1);
 }
 
-/* Sprememba ELO: mono +11 / −11, brez podlage in radija. */
-.sprememba-elo {
+/* Sprememba ratinga: mono +11 / −11, brez podlage in radija. */
+.sprememba-rating {
   display: inline-block;
   font: 600 12px / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
@@ -2886,15 +2917,15 @@ input[type='radio'] {
   margin-left: var(--r1);
 }
 
-.sprememba-elo--poz {
+.sprememba-rating--poz {
   color: var(--barva-poudarek-tekst);
 }
 
-.sprememba-elo--neg {
+.sprememba-rating--neg {
   color: var(--barva-negativna);
 }
 
-.sprememba-elo--nic {
+.sprememba-rating--nic {
   color: var(--barva-crnilo-3);
 }
 
@@ -3525,18 +3556,18 @@ input[type='radio'] {
   color: var(--barva-crnilo);
 }
 
-/* Bilanca in ELO sta na namizju en podatek v vrsti ("11 – 0 · +38"), na
+/* Bilanca in rating sta na namizju en podatek v vrsti ("11 – 0 · +38"), na
    telefonu pa drug pod drugim - piko zato nosi CSS in ne besedilo. */
-.razvrstitev__elo::before {
+.razvrstitev__rating::before {
   content: ' · ';
   color: var(--barva-crnilo);
 }
 
-.razvrstitev__elo--poz {
+.razvrstitev__rating--poz {
   color: var(--barva-poudarek-tekst);
 }
 
-.razvrstitev__elo--neg {
+.razvrstitev__rating--neg {
   color: var(--barva-negativna);
 }
 
@@ -3590,18 +3621,18 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
-.vrstni-red__elo {
+.vrstni-red__rating {
   text-align: right;
   font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo-3);
 }
 
-.vrstni-red__elo--poz {
+.vrstni-red__rating--poz {
   color: var(--barva-poudarek-tekst);
 }
 
-.vrstni-red__elo--neg {
+.vrstni-red__rating--neg {
   color: var(--barva-negativna);
 }
 
@@ -3807,21 +3838,36 @@ input[type='radio'] {
   text-decoration: none;
 }
 
-/* Iskalno polje stoji POD imenom: ime je vsebina, polje pa orodje, s katerim
-   jo zamenjas - obratni vrstni red je bralcu ponujal kontrolnik, preden je
-   vedel, koga gleda. Ovoj je sidro za predloge, ki lezijo cez vsebino. */
-.enanaena__polje {
+/* --- Izbirnik igralca (combobox) --- */
+
+/* Deljen vzorec: semafor "Ena na ena" in napoved tekme na profilu. Polje
+   stoji POD imenom izbranega igralca - ime je vsebina, polje pa orodje, s
+   katerim jo zamenjas; obratni vrstni red je bralcu ponujal kontrolnik,
+   preden je vedel, koga gleda. Ovoj je sidro za predloge, ki lezijo cez
+   vsebino. */
+.izbirnik-igralca {
   position: relative;
   display: block;
   width: 100%;
   margin-top: var(--r2);
 }
 
-.enanaena__polje label {
+.izbirnik-igralca label {
   display: block;
 }
 
-.enanaena__polje input {
+/* Vidna oznaka nad poljem: kjer izbirnik ne stoji pod velikim imenom
+   (napoved tekme), mora povedati, koga polje isce. */
+.izbirnik-igralca__oznaka {
+  display: block;
+  margin-bottom: var(--r1);
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.izbirnik-igralca input {
   width: 100%;
   height: 44px;
   padding: 0 12px;
@@ -3837,7 +3883,7 @@ input[type='radio'] {
 /* Predlogi lezijo CEZ vsebino pod poljem in je ne premikajo: semafor, ki bi
    ob vsakem vtipkanem znaku poskocil, bi bral kot napaka. Sirina je vsaj
    240 px - v 96 px sirokem stolpcu na telefonu se ime in klub ne zlozita. */
-.enanaena__predlogi {
+.izbirnik-igralca__predlogi {
   position: absolute;
   top: calc(100% - 1px);
   left: 0;
@@ -3859,12 +3905,12 @@ input[type='radio'] {
 
 /* Desna stran semaforja je zrcalna, zato se predlogi sirijo v levo - sicer
    bi pri ozkem stolpcu zlezli cez desni rob zaslona. */
-.enanaena__stran--2 .enanaena__predlogi {
+.enanaena__stran--2 .izbirnik-igralca__predlogi {
   left: auto;
   right: 0;
 }
 
-.enanaena__predlog {
+.izbirnik-igralca__predlog {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -3875,17 +3921,17 @@ input[type='radio'] {
   cursor: pointer;
 }
 
-.enanaena__predlog:last-child {
+.izbirnik-igralca__predlog:last-child {
   border-bottom: 0;
 }
 
 /* Oznacen je predlog pod misko IN tisti, na katerem stoji tipkovnica -
    obojega ne locujemo, ker je v vsakem trenutku oznacen natanko en. */
-.enanaena__predlog--oznacen {
+.izbirnik-igralca__predlog--oznacen {
   background: var(--barva-glavna-mehko);
 }
 
-.enanaena__predlog-ime {
+.izbirnik-igralca__predlog-ime {
   font-size: var(--tip-drobno);
   font-weight: 600;
   color: var(--barva-crnilo);
@@ -3894,7 +3940,7 @@ input[type='radio'] {
 /* Klub loci soimenjaka, zato je tu - a imena klubov so dolga
    ("Namiznoteniski klub Fuzinar Ravne na Koroskem") in bi vsako drugo vrstico
    raztegnila cez tri vrste. Zato ostane v eni vrstici in se odreze. */
-.enanaena__predlog-klub {
+.izbirnik-igralca__predlog-klub {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3904,7 +3950,7 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
-.enanaena__brez-zadetka {
+.izbirnik-igralca__brez-zadetka {
   padding: 12px;
   font-size: var(--tip-drobno);
   color: var(--barva-crnilo-3);
@@ -4097,10 +4143,10 @@ input[type='radio'] {
   text-align: right;
 }
 
-/* ELO stoji ob izidu v isti vrstici in ne pod njim: pod izidom je bil
+/* rating stoji ob izidu v isti vrstici in ne pod njim: pod izidom je bil
    najvisji stolpec vrstice in je vsako tekmo raztegnil za 15 px, pri
    dvajsetih tekmah pa je to cel zaslon praznine. */
-.dvoboj-tekma__elo {
+.dvoboj-tekma__rating {
   display: inline-block;
   margin-left: var(--r1);
   vertical-align: middle;
@@ -4129,11 +4175,11 @@ input[type='radio'] {
   color: var(--barva-negativna);
 }
 
-.enanaena__elo-celica {
+.enanaena__rating-celica {
   white-space: nowrap;
 }
 
-.enanaena__elo-locilo {
+.enanaena__rating-locilo {
   color: var(--barva-crnilo-3);
   margin: 0 4px;
 }
@@ -4492,19 +4538,19 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
-/* Crta gibanja ELO: brez osi in oznak, ob vrstici pove samo smer. */
-.domov__elo {
+/* Crta gibanja rating: brez osi in oznak, ob vrstici pove samo smer. */
+.domov__rating {
   display: block;
   justify-self: center;
 }
 
-.domov__elo polyline {
+.domov__rating polyline {
   fill: none;
   stroke: var(--barva-glavna);
   stroke-width: 1.5;
 }
 
-.domov__elo-glava {
+.domov__rating-glava {
   text-align: center;
 }
 
@@ -4968,7 +5014,7 @@ a.domov__lestvica-vrstica--jaz {
 }
 
 /* ============================================================
-   12. Profil igralca in graf ELO
+   12. Profil igralca in graf ratinga
    ============================================================ */
 
 .profil {
@@ -5015,16 +5061,16 @@ a.domov__lestvica-vrstica--jaz {
   font-weight: 700;
 }
 
-/* Blok klubskega ELO: edina polna modra ploskev na strani. Nosi 112 px
+/* Blok Turnirko ratinga: edina polna modra ploskev na strani. Nosi 112 px
    stevilko in 12 px oznake hkrati, zato mora zdrzati mero za drobno
    besedilo - od tod "glavna-polna" in ne ostra modra. */
-.elo-blok {
+.rating-blok {
   background: var(--barva-glavna-polna);
   color: var(--barva-na-glavni);
   padding: var(--r3);
 }
 
-.elo-blok__oznaka {
+.rating-blok__oznaka {
   display: block;
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.14em;
@@ -5032,7 +5078,7 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-na-glavni);
 }
 
-.elo-blok__vrednost {
+.rating-blok__vrednost {
   display: block;
   margin-top: 12px;
   font-family: var(--pisava-display);
@@ -5044,7 +5090,7 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-na-glavni);
 }
 
-.elo-blok__noga {
+.rating-blok__noga {
   display: flex;
   justify-content: space-between;
   gap: var(--r2);
@@ -5057,12 +5103,12 @@ a.domov__lestvica-vrstica--jaz {
 
 /* Najvisji dosezeni rating: edina beseda na modri ploskvi, ki ni bela -
    zelena pomeni "najboljse doslej" tudi tu. */
-.elo-blok__vrh {
+.rating-blok__vrh {
   color: var(--barva-na-glavni-2);
 }
 
-/* Kolofon pod blokom ELO: 24 px, da se vrstice ne dotikajo polne ploskve. */
-.elo-blok + .kolofon {
+/* Kolofon pod blokom rating: 24 px, da se vrstice ne dotikajo polne ploskve. */
+.rating-blok + .kolofon {
   margin-top: var(--r3);
 }
 
@@ -5126,7 +5172,7 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
-.okolica__elo {
+.okolica__rating {
   font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -5198,6 +5244,12 @@ a.domov__lestvica-vrstica--jaz {
   line-height: 1.6;
   color: var(--barva-crnilo-3);
   max-width: 74ch;
+}
+
+/* Privzeti "bolder" od teze 300 da komaj 400 - poudarek (obrazec, mesto na
+   lestvici) se v lahkem odstavku sploh ne bi locil. */
+.profil__primerjava strong {
+  font-weight: 700;
 }
 
 .profil__opomba {
@@ -5493,7 +5545,7 @@ a.domov__lestvica-vrstica--jaz {
   text-align: left;
 }
 
-.h2h__elo {
+.h2h__rating {
   font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -5534,7 +5586,7 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-negativna-tekst);
 }
 
-/* ---- Nasprotniki: razsevni graf ELO nasprotnika proti izidu ---- */
+/* ---- Nasprotniki: razsevni graf ratinga nasprotnika proti izidu ---- */
 
 .razsevni {
   position: relative;
@@ -5597,6 +5649,288 @@ a.domov__lestvica-vrstica--jaz {
   font: 500 var(--tip-mono) / 1 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo-3);
+}
+
+/* ---- Kaj prinese tekma (napoved proti izbranemu nasprotniku) ---- */
+
+/* Izbirnik in izbrani nasprotnik stojita v isti vrsti: polje je orodje, ime
+   ob njem pa odgovor, koga je orodje naslo. Na telefonu se zlozita. */
+.napoved__izbira {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--r3);
+  margin-top: var(--r3);
+}
+
+.napoved__nasprotnik {
+  padding-bottom: 10px;
+}
+
+.napoved__ime {
+  display: block;
+  font-family: var(--pisava-display);
+  font-size: clamp(22px, 2.6vw, 32px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--barva-crnilo);
+}
+
+.napoved__ime:hover {
+  color: var(--barva-glavna-tekst);
+  text-decoration: none;
+}
+
+.napoved__klub {
+  display: block;
+  margin-top: var(--r1);
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Semafor ratingov: dve stevilki in verjetnost med njima. Navpicni crti sta
+   isto locilo kot v "Ena na ena" - sredina je razmerje, ne tretji podatek. */
+.napoved__semafor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--r3);
+  margin-top: var(--r4);
+  padding-top: var(--r2);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.napoved__stran--desna {
+  text-align: right;
+}
+
+.napoved__sredina {
+  text-align: center;
+  padding: 0 var(--r3);
+  border-left: 1px solid var(--barva-crta);
+  border-right: 1px solid var(--barva-crta);
+}
+
+.napoved__oznaka {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.napoved__stevilka,
+.napoved__verjetnost {
+  display: block;
+  font-family: var(--pisava-display);
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.napoved__verjetnost {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Verjetnostni pas pod semaforjem: primitiv "Napredek" (DESIGN.md, razdelek 4,
+   tocka 7) - 6 px palica brez radija in brez prehoda. Modro polnilo je tvoja
+   pricakovana zmaga, prazen del njegova. Tece cez vse tri stolpce kot poved. */
+.napoved__pas {
+  grid-column: 1 / -1;
+  margin-top: var(--r2);
+}
+
+.napoved__pas-palica {
+  display: flex;
+  height: 6px;
+  background: var(--barva-polnilo);
+}
+
+.napoved__pas-polnilo {
+  display: block;
+  background: var(--barva-glavna);
+}
+
+/* Na najozjih zaslonih se oznaki raje prelomita, kot da bi potisnili stran
+   cez rob. */
+.napoved__pas-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--r2);
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Poved pod semaforjem tece cez vse tri stolpce. Visina vrstice je naravna
+   visina pisave in ne 1,5 iz body: poved je ena vrstica, 5 px zraka vec pa bi
+   velike stevilke odmaknilo od razlike, ki jih pojasni. */
+.napoved__razlika {
+  grid-column: 1 / -1;
+  margin: var(--r2) 0 0;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: normal;
+  color: var(--barva-crnilo-3);
+}
+
+/* Stolpca velikih stevilk sta ozja od tabele pod njima: tabela ima na desni
+   se stolpec osi, stevilki pa se berejo skupaj z izidom na levi. */
+.napoved__vrh {
+  margin-top: var(--r3);
+  max-width: 680px;
+}
+
+/* Ciljni rating v oznaki velike stevilke: odgovor na "koliko bom imel", zato
+   v crnilu, ostala oznaka pa ostane meta. */
+.napoved__cilj {
+  color: var(--barva-crnilo);
+}
+
+.napoved__ravni {
+  margin-top: var(--r4);
+}
+
+/* Tabela vseh moznih izidov. Stolpci so fiksni in stevilke tabularne, da se
+   berejo navpicno - to je bistvo prikaza: kako se sprememba spreminja z
+   izidom v nizih. Sirina je omejena: sest vrstic cez celo namizje bi razgnalo
+   izid in njegovo posledico na nasprotna konca zaslona, brati pa ju je treba
+   skupaj. Levi 4 px rob je prozoren pri vsaki vrstici, da se tipicna vrstica
+   z modrim robom ne zamakne. Glava roba nima, zato "Izid" stoji 4 px levo od
+   rezultatov - tako je v predlogi. */
+.napoved__vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px 100px 152px 130px;
+  align-items: center;
+  gap: var(--r2);
+  max-width: 760px;
+  padding: 14px 0 14px 12px;
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid transparent;
+}
+
+.napoved__vrstica--glava {
+  margin-top: var(--r2);
+  padding: 12px 0 12px 12px;
+  border-left: 0;
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Tipicen izid (3:1 in 1:3) je isti kot pri velikih stevilkah zgoraj:
+   oznacena vrstica podatkov (DESIGN.md, razdelek 4, tocka 6). Besedilo na
+   podlagi dobi barvo izrecno. */
+.napoved__vrstica--tipicna {
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  color: var(--barva-crnilo);
+}
+
+.napoved__desno {
+  text-align: right;
+}
+
+.napoved__izid-celica {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+.napoved__izid {
+  font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "gladka zmaga", "tipicen poraz" ...: poudarek tipicne vrstice ne sme stati
+   samo na barvi (WCAG 1.4.1). */
+.napoved__opis {
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--barva-crnilo-3);
+}
+
+/* Lastna sprememba je odgovor na vprasanje strani, zato je najvecja
+   stevilka v vrstici; nasprotnikova je spremljevalka in ostane drobna. */
+.napoved__sprememba {
+  font: 600 20px / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.napoved__rating {
+  font: 500 var(--tip-telo) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.napoved__nasprotnikova {
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* Os "- 0 +": razmerje med tveganjem in dobickom brez branja stevilk.
+   Posnema primitiv .os (crta je enako dolga povsod, pomembna je samo lega
+   oznake), le da nicla ni polovica, ampak lega vrednosti 0 med najmanjso in
+   najvecjo spremembo tabele. Oznaka nosi barvo izida (currentColor iz
+   .profil__zmaga / .profil__poraz). Os se ne animira. */
+.napoved__os {
+  position: relative;
+  display: block;
+  height: 14px;
+}
+
+.napoved__os-crta,
+.napoved__os-nicla,
+.napoved__os-oznaka {
+  position: absolute;
+}
+
+.napoved__os-crta {
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 1px;
+  background: var(--barva-crta);
+}
+
+.napoved__os-nicla {
+  top: 5px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--barva-crta);
+}
+
+.napoved__os-oznaka {
+  top: 0;
+  width: 2px;
+  height: 14px;
+  background: currentColor;
+}
+
+/* V 390 px stolpcu se izid in opis ne zlozita; tipicno vrstico se vedno
+   oznacuje 4 px rob. */
+@media (max-width: 480px) {
+  .napoved__opis {
+    display: none;
+  }
 }
 
 /* ---- Nizi in tocke ---- */
@@ -5773,7 +6107,7 @@ a.domov__lestvica-vrstica--jaz {
   text-align: center;
 }
 
-/* Oznaka ostane v eni vrstici ("Mocnejsi (+50 ELO)" se je lomil na dvoje);
+/* Oznaka ostane v eni vrstici ("Mocnejsi (+50 točk)" se je lomil na dvoje);
    ce prostora zmanjka, se raje odreze kot prelomi. */
 .razrez__oznaka {
   font-size: var(--tip-telo);
@@ -5819,7 +6153,7 @@ a.domov__lestvica-vrstica--jaz {
   border-bottom: 1px solid var(--barva-crta);
 }
 
-/* Vrstica, na katero je gledalec skocil s tocke grafa ELO. Modra crta ob robu
+/* Vrstica, na katero je gledalec skocil s tocke grafa ratinga. Modra crta ob robu
    in mehka podlaga sta ista jezika kot .kazalnik--poudarjen in
    .vrstica-mobi--poudarjena. Negativni rob iznici notranji odmik, da skok
    vsebine vrstice ne premakne v stran. */
@@ -5875,13 +6209,13 @@ a.domov__lestvica-vrstica--jaz {
   font-variant-numeric: tabular-nums;
 }
 
-.tekma-vrstica__elo {
+.tekma-vrstica__rating {
   text-align: right;
   font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- Napredek ELO: pricakovan proti dosezenemu izkupicku ---- */
+/* ---- Napredek ratinga: pricakovan proti dosezenemu izkupicku ---- */
 
 .izkupicek {
   display: grid;
@@ -5985,7 +6319,7 @@ a.domov__lestvica-vrstica--jaz {
   max-width: 46ch;
 }
 
-/* Graf napredka ELO (lasten SVG). Oznake osi so HTML nad ploskvijo, zato je
+/* Graf napredka rating (lasten SVG). Oznake osi so HTML nad ploskvijo, zato je
    ovoj referenca za njihovo absolutno lego. */
 .graf__ovoj {
   position: relative;
@@ -6069,6 +6403,25 @@ a.domov__lestvica-vrstica--jaz {
   font: 400 var(--tip-drobno) / 1.6 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo-3);
+}
+
+/* Razlaga spremembe pod grafom: cel obrazec v eni vrstici. Mono pisava in
+   drobna stopnja, ker je to opomba k stevilki nad njo in ne samostojna poved;
+   na telefonu se prelomi, zato brez nowrap. */
+.graf__razlaga {
+  margin: var(--r1) 0 0;
+  font: 400 var(--tip-drobno) / 1.6 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* Nacini, ki obrazca koraka ne uporabljajo (postavitev, odbitek, uvrstitev
+   novinca, zunanja uvrstitev), imajo POVED in ne formule. Mono pisava na
+   drobni stopnji je za stavek ali dva pojasnila nebranljiva, zato tam velja
+   pisava telesa - mono ostane tistemu, za kar je: poravnanim stevilkam. */
+.graf__razlaga--poved {
+  font-family: var(--pisava-telo);
+  font-variant-numeric: normal;
 }
 
 .graf__sprememba {
@@ -6480,6 +6833,12 @@ a.domov__lestvica-vrstica--jaz {
   border-bottom: 1px solid var(--barva-crta);
 }
 
+/* Kader ekipe dogodka, ki ga organizator ureja: peti stolpec za odstranitev. */
+.liga__kader-vrstica--dejanje {
+  grid-template-columns: 32px minmax(0, 1fr) 72px 72px auto;
+  align-items: center;
+}
+
 .liga__kader-mesto,
 .liga__kader-rating {
   font: 500 15px / 1.4 var(--pisava-mono);
@@ -6504,42 +6863,99 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo);
 }
 
-/* --- Play-off (predvidena faza) --- */
+/* --- Koncnica lige (serije po krogih) --- */
 
-.liga__playoff {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--r7);
-  margin-top: var(--r4);
+.koncnica {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r4);
 }
 
-.liga__playoff-vrstica {
+.koncnica__krog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+/* Serija: obe ekipi kot vrstici (mesto rednega dela, ime, zmage), pod njima
+   tekme serije. Zmagovalec serije je krepak, porazenec zbledi - isti znak kot
+   pri srecanju v razporedu. */
+.koncnica__serija {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--r3);
+  border-bottom: 2px solid var(--barva-crnilo);
+}
+
+.koncnica__stran {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: 40px minmax(0, 1fr) 48px;
   align-items: baseline;
   gap: var(--r2);
-  padding: 14px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--barva-crta);
 }
 
-.liga__playoff-faza {
+.koncnica__mesto {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  color: var(--barva-crnilo-3);
+}
+
+.koncnica__ekipa {
+  min-width: 0;
+  font-size: var(--tip-uvod);
+  color: var(--barva-crnilo);
+}
+
+.koncnica__zmage {
+  font: 600 var(--tip-h3) / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+.koncnica__stran--zmaga .koncnica__ekipa,
+.koncnica__stran--zmaga .koncnica__zmage {
+  font-weight: 700;
+}
+
+.koncnica__stran--poraz .koncnica__ekipa,
+.koncnica__stran--poraz .koncnica__zmage,
+.koncnica__stran--prazna .koncnica__ekipa {
+  color: var(--barva-crnilo-4);
+}
+
+.koncnica__tekme {
+  margin-top: var(--r1);
+}
+
+.koncnica__tekma-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r2);
+  padding-top: var(--r2);
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--barva-crnilo-3);
 }
 
-.liga__playoff-par {
-  display: block;
-  font-size: var(--tip-telo);
-  color: var(--barva-crnilo);
+.koncnica__dejanja {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  margin-left: auto;
 }
 
-.liga__playoff-kandidat {
+/* Uvozeno tekmovanje: vir in "samo za branje" v eni mono vrstici pod naslovom. */
+.oznaka-vira {
   display: block;
-  margin-top: 2px;
-  font-size: 15px;
-  font-weight: 300;
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--barva-crnilo-3);
 }
 
@@ -6932,6 +7348,17 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
+/* Registriran izid srecanja brez borbe: droben mono napis pod izidom, da se
+   5 : 0 ne bere kot odigrana tekma (stolpec izida je na telefonu 56 px). */
+.liga__brez-borbe {
+  display: block;
+  margin-top: 2px;
+  font: 500 10px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
 /* Ekipno srecanje: semafor med tremi debelimi crtami. */
 .srecanje {
   display: flex;
@@ -7148,6 +7575,217 @@ a.domov__lestvica-vrstica--jaz {
   white-space: nowrap;
 }
 
+/* ---- Rocni zreb: opomba na strani in obrazec vpisa ---- */
+
+/* Od kod je razpored. Mono kot ostali meta podatki strani in NAMENOMA brez
+   barve: rocni zreb ni ne uspeh ne napaka, ampak enakovreden nacin - barva bi
+   mu pripisala oceno. Crta pod njo jo veze na razpored, ki ji sledi. */
+.liga__zreb-opomba {
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+  margin: var(--r1) 0 0;
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.zreb__krmila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r1);
+  margin-top: var(--r2);
+}
+
+/* Stevec vpisanih gre na desni rob vrstice - je izid krmil in ne tretji gumb. */
+.zreb__krmila .sekcija__meta {
+  margin-left: auto;
+}
+
+.zreb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r3);
+  margin-top: var(--r3);
+}
+
+/* Kolo je blok med dvema crtama, ne kartica: zgornja crta je debelejsa, da se
+   pri prepisu dolgega razporeda vidi, kje se kolo zacne. */
+.zreb__kolo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--r1);
+  border-top: 2px solid var(--barva-crnilo);
+  padding-top: var(--r1);
+}
+
+.zreb__kolo-glava {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  width: 100%;
+}
+
+.zreb__kolo-st {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Kdo je v kolu prost, je stavek in ne oznaka - zato brez velikih crk, poleg
+   tega pa levo poravnan (splosni .sekcija__meta poravnava desno). */
+.zreb__kolo-glava .sekcija__meta {
+  flex: 1 1 auto;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+.zreb__kolo-glava .gumb {
+  margin-left: auto;
+}
+
+.zreb__vrstice {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.zreb__vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: var(--r1);
+  width: 100%;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.zreb__polje {
+  display: block;
+  min-width: 0;
+}
+
+.zreb__polje select {
+  width: 100%;
+}
+
+/* Oznaka polja je samo za telefon (tam sta izbirnika eden pod drugim). */
+.zreb__polje-oznaka {
+  display: none;
+}
+
+.zreb__vrstica-vez {
+  font-family: var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* Krizec vrstice je isti pojem kot krizec okna: brez ploskve, pomen nosi
+   aria-label. Zadetkovna povrsina ostane 44 px tudi na miski. */
+.zreb__odstrani {
+  min-width: 44px;
+  min-height: 44px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--barva-crnilo-3);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.zreb__odstrani:hover {
+  color: var(--barva-negativna);
+  border-color: var(--barva-negativna);
+}
+
+/* Napake in opozorila sta locena bloka, ker sta razlicne teze: prvo ustavi
+   shranjevanje (rjasta crta), drugo samo pove, v cem razpored ni popoln. */
+.zreb__napake,
+.zreb__opozorila,
+.zreb__pregled {
+  margin-top: var(--r3);
+}
+
+.zreb__napake {
+  border-left: 3px solid var(--barva-negativna);
+  padding-left: var(--r2);
+}
+
+.zreb__napake .podnaslov-sekcije {
+  color: var(--barva-negativna-tekst);
+  border-bottom-color: var(--barva-negativna);
+  margin-top: 0;
+}
+
+.zreb__opozorila .podnaslov-sekcije {
+  margin-top: 0;
+}
+
+.zreb__seznam {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--tip-drobno);
+}
+
+.zreb__seznam li {
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+/* Pri 390 px se dva izbirnika z imeni ekip v eno vrsto ne zlozita - ime bi
+   se stisnilo na nekaj znakov. Zato gresta eden pod drugega, vez odpade in
+   namesto nje vsak dobi svojo oznako (doma / gost); krizec drzi obe vrstici. */
+@media (max-width: 640px) {
+  .zreb__vrstica {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 4px var(--r1);
+    padding: var(--r1) 0;
+  }
+
+  .zreb__vrstica > .zreb__polje:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .zreb__vrstica > .zreb__polje:nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .zreb__vrstica-vez {
+    display: none;
+  }
+
+  .zreb__odstrani {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .zreb__polje {
+    display: grid;
+    grid-template-columns: 2.6rem minmax(0, 1fr);
+    align-items: center;
+    gap: var(--r1);
+  }
+
+  .zreb__polje-oznaka {
+    display: block;
+    font: 500 11px / 1.4 var(--pisava-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--barva-crnilo-3);
+  }
+
+  /* Stevec vpisanih pade v svojo vrsto, ko gumba zasedeta sirino - desna
+     poravnava bi ga tam lomila proti praznemu robu. */
+  .zreb__krmila .sekcija__meta {
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
 /* ============================================================
    15. Racuni in igralci
    ============================================================ */
@@ -7328,14 +7966,14 @@ a.domov__lestvica-vrstica--jaz {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Lestvica brez stolpca s crto ELO: 140 px je pri ozjem oknu prostor, ki ga
+  /* Lestvica brez stolpca s crto ratinga: 140 px je pri ozjem oknu prostor, ki ga
      ime in klub potrebujeta bolj kot slika smeri. */
   .domov__lestvica-vrstica {
     grid-template-columns: 44px 44px minmax(0, 1fr) 180px 96px;
   }
 
-  .domov__elo,
-  .domov__elo-glava {
+  .domov__rating,
+  .domov__rating-glava {
     display: none;
   }
 
@@ -7345,7 +7983,7 @@ a.domov__lestvica-vrstica--jaz {
     gap: var(--r3);
   }
 
-  .elo-blok__vrednost {
+  .rating-blok__vrednost {
     font-size: 88px;
   }
 }
@@ -7406,8 +8044,8 @@ a.domov__lestvica-vrstica--jaz {
   }
 
   /* Vrstica tekme se zlozi navzdol: zgoraj vir in tekmovanje, pod njima
-     izid s spremembo ELO, spodaj zmagovalec. Stirje stolpci bi dali vsakemu
-     ~70 px, izid s spremembo ELO pa potrebuje 120 px in bi sicer zlezel cez
+     izid s spremembo ratinga, spodaj zmagovalec. Stirje stolpci bi dali vsakemu
+     ~70 px, izid s spremembo ratinga pa potrebuje 120 px in bi sicer zlezel cez
      ime zmagovalca. */
   .dvoboj-tekma {
     grid-template-columns: 84px minmax(0, 1fr);
@@ -7550,6 +8188,10 @@ a.domov__lestvica-vrstica--jaz {
     grid-template-columns: 28px minmax(0, 1fr) 64px 64px;
     gap: var(--r1);
   }
+
+  .liga__kader-vrstica--dejanje {
+    grid-template-columns: 28px minmax(0, 1fr) 48px 48px auto;
+  }
 }
 
 /* Profil na telefonu. Prelomna tocka je vsebinska: pod 768 px nobena od
@@ -7608,7 +8250,7 @@ a.domov__lestvica-vrstica--jaz {
     font-size: 28px;
   }
 
-  /* Gibanje in skupno stevilo tekem odpadeta; bilanca in ELO povesta isto
+  /* Gibanje in skupno stevilo tekem odpadeta; bilanca in rating povesta isto
      zgodbo v treh stolpcih. */
   .h2h__vrstica {
     grid-template-columns: minmax(0, 1fr) 72px 72px;
@@ -7619,6 +8261,42 @@ a.domov__lestvica-vrstica--jaz {
   .h2h__trak,
   .h2h__vrstica > :last-child {
     display: none;
+  }
+
+  /* Napoved: polje in ime nasprotnika eden pod drugim, tabela pa brez
+     nasprotnikove spremembe in osi - v 390 px je pet stolpcev pet drobnih
+     besedil, vprasanje strani pa je LASTNA sprememba. */
+  .napoved__izbira {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r2);
+  }
+
+  .napoved__nasprotnik {
+    padding-bottom: 0;
+  }
+
+  .napoved__vrstica {
+    grid-template-columns: minmax(0, 1fr) 88px 72px;
+    gap: var(--r1);
+  }
+
+  .napoved__os,
+  .napoved__nasprotnikova,
+  .napoved__vrstica--glava > :nth-child(n + 4) {
+    display: none;
+  }
+
+  .napoved__semafor {
+    gap: var(--r2);
+  }
+
+  .napoved__sredina {
+    padding: 0 var(--r2);
+  }
+
+  .napoved__stevilka,
+  .napoved__verjetnost {
+    font-size: 24px;
   }
 
   .toplotna {
@@ -7694,7 +8372,7 @@ a.domov__lestvica-vrstica--jaz {
   }
 
   .tekma-vrstica__del,
-  .tekma-vrstica__elo,
+  .tekma-vrstica__rating,
   .tekma-vrstica__nasprotnik .profil__klub {
     display: none;
   }
@@ -7880,7 +8558,7 @@ a.domov__lestvica-vrstica--jaz {
     font-size: 32px;
   }
 
-  .elo-blok__vrednost {
+  .rating-blok__vrednost {
     font-size: 72px;
   }
 
@@ -8007,7 +8685,7 @@ a.domov__lestvica-vrstica--jaz {
   }
 
   /* Lestvica na stiri stolpce: mesto, premik, igralec s klubom v drugi
-     vrstici, rating. Klub in crta ELO sta odpadla - klub se pod imenom bere
+     vrstici, rating. Klub in crta ratinga sta odpadla - klub se pod imenom bere
      enako dobro, crta pa pri 390 px ni vec crta. */
   .domov__lestvica-vrstica {
     grid-template-columns: 28px 20px minmax(0, 1fr) 56px;
@@ -8089,11 +8767,11 @@ a.domov__lestvica-vrstica--jaz {
     letter-spacing: -0.03em;
   }
 
-  .enanaena__polje {
+  .izbirnik-igralca {
     margin-top: 10px;
   }
 
-  .enanaena__polje input {
+  .izbirnik-igralca input {
     padding: 0 var(--r1);
     font-size: 15px;
   }
@@ -8237,7 +8915,7 @@ a.domov__lestvica-vrstica--jaz {
    Dve obliki in nic vec:
      - ZGODBA je enkraten dogodek (presenecenje, obrat, najdaljsi niz):
        mono oznaka, stavek z imeni v display pisavi, mono kontekst pod njim;
-     - LESTVICKA je primerjava (vzpon ELO, zid, klubi) in uporablja obstojeco
+     - LESTVICKA je primerjava (vzpon ratinga, zid, klubi) in uporablja obstojeco
        .vrstica z dvema stolpcema.
    Kartic s stevilkami tu ni - podatke nosijo vrstice s crtami. */
 
@@ -8346,7 +9024,7 @@ a.domov__lestvica-vrstica--jaz {
   grid-template-columns: 1fr auto;
 }
 
-/* Pridobljen ELO je edina stevilka zavihka s predznakom - zelena pove, da je
+/* Pridobljen rating je edina stevilka zavihka s predznakom - zelena pove, da je
    vrstica o napredku in ne o kolicini. */
 .zanimivosti__stevilo--poz {
   color: var(--barva-poudarek-tekst);
@@ -8368,7 +9046,7 @@ a.domov__lestvica-vrstica--jaz {
     display: none;
   }
 
-  /* Naslov sekcije pri 40 px zavzame dve vrsti ("Najvec pridobljenega ELO"),
+  /* Naslov sekcije pri 40 px zavzame dve vrsti ("Najvec pridobljenega ratinga"),
      mono opomba ob njem pa se stisne v stolpec dveh besed. Zato naslov na
      mero podnaslova in opomba POD njega - kot pri ostalih mobilnih glavah. */
   .zanimivosti .naslovna-vrstica {
@@ -10268,16 +10946,16 @@ a.domov__lestvica-vrstica--jaz {
     font-size: var(--tip-drobno);
   }
 
-  .razvrstitev__elo {
+  .razvrstitev__rating {
     display: block;
     font-size: var(--tip-mono);
   }
 
-  .razvrstitev__elo::before {
+  .razvrstitev__rating::before {
     content: none;
   }
 
-  /* Mesta od cetrtega naprej: en stolpec, izkupicek in ELO drug pod drugim
+  /* Mesta od cetrtega naprej: en stolpec, izkupicek in rating drug pod drugim
      ob desnem robu. Mreza je ista kot pri prvih treh, zato se stevilke,
      imena in izidi berejo navzdol po isti navpicnici. */
   .vrstni-red {
@@ -10321,7 +10999,7 @@ a.domov__lestvica-vrstica--jaz {
     color: var(--barva-crnilo-2);
   }
 
-  .vrstni-red__elo {
+  .vrstni-red__rating {
     grid-column: 3;
     grid-row: 2;
     font-size: 11px;
@@ -10343,5 +11021,296 @@ a.domov__lestvica-vrstica--jaz {
      (skupaj so ozji od 140 px), dejanja ekipe pa gredo pod njo kot sicer. */
   .liga__ekipa--jakost .liga__ekipa-ime {
     flex: 1 1 140px;
+  }
+}
+
+/* --- Uvoz NTZS (samo admin) ---
+
+   Seznam tekmovanj sezone je seznam vrstic s crtami; odprto tekmovanje dobi
+   pod vrstico predogled z 4 px crto v glavni barvi (isti znak kot oznacena
+   vrstica). Stanje preverbe nosi beseda v mono oznaki in barva - zelena
+   ujemanje, rjasta neujemanje - nikoli sama barva. */
+
+.uvoz__sezona select {
+  min-height: 44px;
+}
+
+.uvoz__dogodki {
+  display: flex;
+  flex-direction: column;
+  margin: var(--r2) 0 var(--r6);
+  padding: 0;
+  list-style: none;
+}
+
+.uvoz__dogodek {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--r2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.uvoz__dogodek--odprt {
+  padding-left: 12px;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.uvoz__datum,
+.uvoz__mono {
+  font: 400 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.uvoz__ime {
+  min-width: 0;
+  font-size: var(--tip-vrstica);
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
+
+.uvoz__pod {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--barva-crnilo-3);
+  overflow-wrap: anywhere;
+}
+
+.uvoz__del {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r3);
+  padding: var(--r3) 0 var(--r4) 16px;
+  border-left: 4px solid var(--barva-glavna);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.uvoz__stanje {
+  padding: 12px 16px;
+  border-left: 4px solid var(--barva-crnilo-3);
+  background: var(--barva-polnilo);
+}
+
+.uvoz__stanje--ok {
+  border-left-color: var(--barva-poudarek);
+  background: var(--barva-poudarek-mehko);
+}
+
+.uvoz__stanje--ne {
+  border-left-color: var(--barva-negativna);
+  background: var(--barva-negativna-mehko);
+}
+
+.uvoz__stevci {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  column-gap: var(--r4);
+  margin: 0;
+}
+
+.uvoz__stevec {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.uvoz__stevec dt {
+  font-size: 14px;
+  color: var(--barva-crnilo-2);
+}
+
+.uvoz__stevec dd {
+  margin: 0;
+  font: 600 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.uvoz__sklop h3 {
+  margin: 0;
+  font: 800 var(--tip-h3) / 1.1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.naslovna-vrstica--manjsa {
+  border-top-width: 1px;
+}
+
+.uvoz__preverbe,
+.uvoz__ugotovitve,
+.uvoz__novi {
+  margin: var(--r1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.uvoz__preverba {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--r2);
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.uvoz__preverba-stanje {
+  font: 600 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.uvoz__preverba-stanje--ok {
+  color: var(--barva-poudarek-tekst);
+}
+
+.uvoz__preverba-stanje--ne {
+  color: var(--barva-negativna-tekst);
+}
+
+.uvoz__preverba-stanje--razlika {
+  color: var(--barva-crnilo-3);
+}
+
+.uvoz__zlozljiva {
+  border-top-width: 1px;
+}
+
+.uvoz__naslov-napak {
+  color: var(--barva-negativna-tekst);
+}
+
+.uvoz__ugotovitve > li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.uvoz__ugotovitev {
+  font-weight: 700;
+}
+
+.uvoz__stevilo {
+  font: 600 14px / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.uvoz__primeri {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--barva-crnilo-2);
+  overflow-wrap: anywhere;
+}
+
+.uvoz__oseba {
+  margin: var(--r2) 0 0;
+  padding: 12px 16px;
+  border: none;
+  border-left: 4px solid var(--barva-negativna);
+  background: var(--barva-bela);
+}
+
+.uvoz__oseba--odlocena {
+  border-left-color: var(--barva-poudarek);
+}
+
+.uvoz__oseba-ime {
+  padding: 0;
+  font-size: var(--tip-vrstica);
+  font-weight: 700;
+}
+
+.uvoz__razlog {
+  margin: var(--r1) 0;
+  font-size: 15px;
+  color: var(--barva-crnilo-2);
+}
+
+.uvoz__moznost {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--r1);
+  min-height: 44px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.uvoz__moznost input {
+  margin-top: 4px;
+}
+
+.uvoz__nov {
+  margin: var(--r1) 0;
+  align-items: flex-end;
+}
+
+.uvoz__novi-vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--r2);
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.uvoz__novi-vrstica > form {
+  grid-column: 1 / -1;
+}
+
+.uvoz__novi-ime {
+  margin-right: var(--r1);
+  font-size: 16px;
+}
+
+.uvoz__dejanja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r2);
+}
+
+.uvoz__dnevnik {
+  margin-top: var(--r6);
+}
+
+.uvoz__podrobno td {
+  padding-top: 0;
+  background: var(--barva-polnilo);
+}
+
+@media (max-width: 640px) {
+  .uvoz__dogodek {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 4px;
+  }
+
+  .uvoz__datum {
+    grid-column: 1 / -1;
+    font-size: 13px;
+  }
+
+  .uvoz__stanje-dogodka {
+    grid-column: 1;
+  }
+
+  .uvoz__dogodek > .gumb {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+  }
+
+  .uvoz__del {
+    padding-left: 12px;
+  }
+
+  .uvoz__preverba {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
   }
 }

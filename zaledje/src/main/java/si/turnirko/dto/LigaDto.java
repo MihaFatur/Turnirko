@@ -6,8 +6,10 @@ import java.time.LocalDateTime;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.PredlogaLige;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusTekmovanja;
+import si.turnirko.modeli.VirTekmovanja;
 
 public record LigaDto(
         Long id,
@@ -21,12 +23,19 @@ public record LigaDto(
         int tockeZmaga,
         int tockeNeodloceno,
         int tockePoraz,
+        // odbitek tock za poraz brez borbe (V29, Pravila SNTL: 1)
+        int odbitekBrezBoja,
         boolean dovoljenoNeodloceno,
         boolean prepovedDvojneRegistracije,
-        boolean stejeVElo,
+        // raven tekmovanja doloci tezo posamicnih tekem v Turnirko ratingu
+        RavenTekmovanja raven,
         // Zreb po parih: ekipe imajo jakostni vrstni red (EkipaDto.stNosilca)
         // in razpored jih zveze v pare - zgornja polovica s spodnjo.
         boolean enakomernaRazvrstitev,
+        // Ali je razpored vpisal organizator namesto zreba. Javno polje:
+        // stran lige to pove tudi gostu, ker je papirnati razpored ze v
+        // rokah igralcev in mora biti razvidno, da gre za isti razpored.
+        boolean rocniZreb,
         PredlogaLige predlogaListka,
         // Seme terminov (glej Liga): iz njiju se ob zrebu izracunajo datumi
         // kol. Obrazec lige ju prikaze nazaj, ko se pravila urejajo.
@@ -52,7 +61,14 @@ public record LigaDto(
         // lastniku; streznik je zadnja obramba (LastnistvoStoritev).
         Long idLastnik,
         Long idKlubLastnik,
-        String klubLastnik
+        String klubLastnik,
+        // Koncnica po rednem delu (V28): koliko ekip in koliko zmag za serijo;
+        // oboje prazno = liga koncnice nima.
+        Integer koncnicaEkip,
+        Integer koncnicaZmag,
+        // Vir (V27): uvozena liga je samo za branje - vmesnik urejanja ne
+        // ponudi in pod naslovom pove, od kod so podatki.
+        VirTekmovanja vir
 ) {
 
     /* Liga brez razporeda (nova, urejena, prehodi) - kol se ni. */
@@ -65,8 +81,8 @@ public record LigaDto(
                 l.getId(), l.getIme(), l.getSezona(), l.getSpolKategorija(),
                 l.getFormatSrecanja(), l.getSteviloNizov(), l.getZmagZaSrecanje(),
                 l.isDvokrozno(), l.getTockeZmaga(), l.getTockeNeodloceno(), l.getTockePoraz(),
-                l.isDovoljenoNeodloceno(), l.isPrepovedDvojneRegistracije(), l.isStejeVElo(),
-                l.isEnakomernaRazvrstitev(), l.getPredlogaListka(),
+                l.getOdbitekBrezBoja(), l.isDovoljenoNeodloceno(), l.isPrepovedDvojneRegistracije(), l.getRaven(),
+                l.isEnakomernaRazvrstitev(), l.isRocniZreb(), l.getPredlogaListka(),
                 l.getZacetekPrvegaKola(), l.getRazmikDni(),
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getId() : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getIme() : null,
@@ -74,6 +90,7 @@ public record LigaDto(
                 odigranihKol, steviloKol, l.isNaDomaci(),
                 l.getUstvaril() != null ? l.getUstvaril().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getId() : null,
-                l.getKlubLastnik() != null ? l.getKlubLastnik().getIme() : null);
+                l.getKlubLastnik() != null ? l.getKlubLastnik().getIme() : null,
+                l.getKoncnicaEkip(), l.getKoncnicaZmag(), l.getVir());
     }
 }

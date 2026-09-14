@@ -20,6 +20,7 @@ import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.Spol;
 import si.turnirko.modeli.SpolKategorija;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
@@ -65,8 +66,8 @@ public class TurnirjiStoritev {
         turnir.setDatumZacetka(vnos.datumZacetka());
         turnir.setDatumKonca(vnos.datumKonca());
         turnir.setOpombe(vnos.opombe());
-        // null = privzeto (tekme stejejo v ELO)
-        turnir.setStejeVElo(vnos.stejeVElo() == null || vnos.stejeVElo());
+        // null = privzeto (tekme stejejo v rating)
+        turnir.setRaven(vnos.raven() == null ? RavenTekmovanja.KLUBSKO : vnos.raven());
         // zabelezi lastnika (organizator oz. admin, ki ga ustvarja)
         lastnistvo.oznaciLastnika(turnir);
         // status vedno doloci streznik (PRIPRAVA je privzeti)
@@ -102,8 +103,40 @@ public class TurnirjiStoritev {
             dogodek.setSistemTekmovanja(vnos.sistemTekmovanja());
         }
         preveriDisciplino(dogodek);
+        nastaviEkipneNastavitve(dogodek, vnos);
         nastaviSkupinskeNastavitve(dogodek, vnos);
+        if (Boolean.TRUE.equals(vnos.tekmaZaTretjeMesto())) {
+            if (dogodek.getSistemTekmovanja() != SistemTekmovanja.IZLOCILNI
+                    && dogodek.getSistemTekmovanja() != SistemTekmovanja.SKUPINE_IZLOCILNI) {
+                throw new NeveljavenVnosIzjema("Tekma za 3. mesto je del izlocilne mreze.");
+            }
+            dogodek.setTekmaZaTretjeMesto(true);
+        }
         return dogodekRepozitorij.save(dogodek);
+    }
+
+    /* Ekipni dogodek potrebuje format srecanja; prag zmag je privzeto
+       polovica tekem formata + 1. Brez praga bi se srecanje s sodim stevilom
+       tekem lahko koncalo neodloceno - ekipna tekma v mrezi ali skupini pa
+       mora imeti zmagovalca. Drugi dogodki srecanj nimajo. */
+    private void nastaviEkipneNastavitve(Dogodek dogodek, DogodekVnos vnos) {
+        if (!dogodek.jeEkipno()) {
+            if (vnos.formatSrecanja() != null || vnos.zmagZaSrecanje() != null) {
+                throw new NeveljavenVnosIzjema("Format srecanja ima samo ekipni dogodek.");
+            }
+            return;
+        }
+        if (vnos.formatSrecanja() == null) {
+            throw new NeveljavenVnosIzjema("Ekipni dogodek potrebuje format srecanja.");
+        }
+        int tekem = vnos.formatSrecanja().stTekem();
+        int prag = vnos.zmagZaSrecanje() != null ? vnos.zmagZaSrecanje() : tekem / 2 + 1;
+        if (prag < tekem / 2 + 1 || prag > tekem) {
+            throw new NeveljavenVnosIzjema("Prag zmag za srecanje mora biti med " + (tekem / 2 + 1)
+                    + " in " + tekem + " - sicer lahko zmagata obe ekipi ali nobena.");
+        }
+        dogodek.setFormatSrecanja(vnos.formatSrecanja());
+        dogodek.setZmagZaSrecanje(prag);
     }
 
     /* Dvojice igrajo izkljucno izlocilno mrezo, "strogo mesano" pa je lastnost
@@ -127,6 +160,16 @@ public class TurnirjiStoritev {
        pove, koliko najboljsih prijavljenih sploh igra. Pri drugih sistemih
        nastavitvi namenoma ostaneta prazni, da ne zavajata. */
     private void nastaviSkupinskeNastavitve(Dogodek dogodek, DogodekVnos vnos) {
+        if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_ZA_MESTA) {
+            // stevilo predtekmovalnih skupin je neobvezno - brez njega ga doloci zreb
+            if (vnos.steviloSkupin() != null) {
+                if (vnos.steviloSkupin() < 1 || vnos.steviloSkupin() > 26) {
+                    throw new NeveljavenVnosIzjema("Stevilo skupin mora biti med 1 in 26.");
+                }
+                dogodek.setSteviloSkupin(vnos.steviloSkupin());
+            }
+            return;
+        }
         if (dogodek.getSistemTekmovanja() != SistemTekmovanja.SKUPINE) {
             return;
         }
@@ -171,6 +214,9 @@ public class TurnirjiStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
         if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
             throw new DomenskaIzjema("Prijave so mozne samo, dokler je dogodek v pripravi.");
+        }
+        if (dogodek.jeEkipno()) {
+            throw new DomenskaIzjema("Na ekipni dogodek se prijavijo ekipe s kadrom, ne posamezni igralci.");
         }
 
         List<Prijava> nove = new ArrayList<>();

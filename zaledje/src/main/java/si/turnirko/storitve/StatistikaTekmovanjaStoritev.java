@@ -10,12 +10,12 @@
    Pravila, ki jih ne razbij:
 
    - DVOJICE ne vstopajo v nobeno vrstico o posamezniku. Izida para ni mogoce
-     pripisati posamezniku (isto pravilo kot pri ELO in ligaskih dvojicah),
+     pripisati posamezniku (isto pravilo kot pri ratingu in ligaskih dvojicah),
      zato jih steje samo pas "V stevilkah" in svoja vrstica najuspesnejse
      dvojice. Izjema je "delaven", kjer stejemo NASTOPE (kolikokrat je igralec
      sedel za mizo) in ne izkupicka - a tudi tam so dvojice svoj stevec.
 
-   - Prazna postavka je odsotna postavka. Uvozena zgodovina brez obracuna ELO,
+   - Prazna postavka je odsotna postavka. Uvozena zgodovina brez obracuna ratinga,
      liga brez vpisanih tock po nizih in turnir v prvi uri nimajo istih
      podatkov; vrstica z ničlo bi trdila, da se nekaj ni zgodilo, ceprav
      podatka preprosto ni.
@@ -161,11 +161,11 @@ public class StatistikaTekmovanjaStoritev {
     /* Sprememba ratinga ob eni tekmi in rating pred njo. */
     private record Elo(int sprememba, int ratingPred) {}
 
-    /* Dnevnik ELO celega tekmovanja: po tekmah in igralcih, ter rating vsakega
+    /* Dnevnik ratinga celega tekmovanja: po tekmah in igralcih, ter rating vsakega
        igralca po njegovi zadnji tekmi tega tekmovanja. */
-    private record EloTekmovanja(Map<Long, Map<Long, Elo>> poTekmah, Map<Long, Integer> koncni) {
+    private record RatingTekmovanja(Map<Long, Map<Long, Elo>> poTekmah, Map<Long, Integer> koncni) {
 
-        static final EloTekmovanja PRAZEN = new EloTekmovanja(Map.of(), Map.of());
+        static final RatingTekmovanja PRAZEN = new RatingTekmovanja(Map.of(), Map.of());
 
         Elo za(Long idTekme, Long idIgralca) {
             return poTekmah.getOrDefault(idTekme, Map.of()).get(idIgralca);
@@ -190,14 +190,14 @@ public class StatistikaTekmovanjaStoritev {
             dogodki.add(t.getDogodek().getId());
         }
 
-        /* Dnevnik ELO beremo le, kadar turnir vanj sploh steje - sicer je
+        /* Dnevnik ratinga beremo le, kadar turnir vanj sploh steje - sicer je
            poizvedba zagotovljeno prazna. */
-        EloTekmovanja elo = turnir.isStejeVElo()
-                ? eloTekmovanja(ratingZgodovinaRepozitorij
-                        .spremembeZaTurnir(idTurnir, RatingStanje.SISTEM_KLUBSKI_ELO))
-                : EloTekmovanja.PRAZEN;
+        RatingTekmovanja rating = turnir.getRaven().steje()
+                ? ratingTekmovanja(ratingZgodovinaRepozitorij
+                        .spremembeZaTurnir(idTurnir, RatingStanje.SISTEM_TURNIRKO))
+                : RatingTekmovanja.PRAZEN;
 
-        return sestavi(nastopi, elo, turnir.isStejeVElo(),
+        return sestavi(nastopi, rating, turnir.getRaven().steje(),
                 turnir.getStatus() != StatusTekmovanja.ZAKLJUCEN,
                 dogodki.size(), null,
                 prviNaslovi(turnir), null, List.of(), List.of());
@@ -250,12 +250,12 @@ public class StatistikaTekmovanjaStoritev {
             ekipe.add(t.getSrecanje().getEkipaGost().getId());
         }
 
-        EloTekmovanja elo = liga.isStejeVElo()
-                ? eloTekmovanja(ratingZgodovinaRepozitorij
-                        .spremembeZaLigo(idLiga, RatingStanje.SISTEM_KLUBSKI_ELO))
-                : EloTekmovanja.PRAZEN;
+        RatingTekmovanja rating = liga.getRaven().steje()
+                ? ratingTekmovanja(ratingZgodovinaRepozitorij
+                        .spremembeZaLigo(idLiga, RatingStanje.SISTEM_TURNIRKO))
+                : RatingTekmovanja.PRAZEN;
 
-        return sestavi(nastopi, elo, liga.isStejeVElo(),
+        return sestavi(nastopi, rating, liga.getRaven().steje(),
                 liga.getStatus() != StatusTekmovanja.ZAKLJUCEN,
                 null, ekipe.size(),
                 List.of(), naNoz(liga, tekme), gostje(tekme), nosilci(tekme));
@@ -293,7 +293,7 @@ public class StatistikaTekmovanjaStoritev {
 
     /* ---------- Skupno sestavljanje ---------- */
 
-    private StatistikaTekmovanjaDto sestavi(List<Nastop> nastopi, EloTekmovanja elo,
+    private StatistikaTekmovanjaDto sestavi(List<Nastop> nastopi, RatingTekmovanja rating,
                                             boolean stejeVElo, boolean vTeku,
                                             Integer dogodkov, Integer ekip,
                                             List<PrviNaslov> prviNaslovi, NaNoz naNoz,
@@ -306,8 +306,8 @@ public class StatistikaTekmovanjaStoritev {
         return new StatistikaTekmovanjaDto(
                 true, vTeku, stejeVElo,
                 stevilke(nastopi, dogodkov, ekip),
-                vzponi(nastopi, elo),
-                presenecenje(nastopi, elo),
+                vzponi(nastopi, rating),
+                presenecenje(nastopi, rating),
                 zid(nastopi),
                 delavci(nastopi),
                 klubi(nastopi),
@@ -348,18 +348,18 @@ public class StatistikaTekmovanjaStoritev {
                 tock == 0 ? null : tock, dogodkov, ekip, dvojic);
     }
 
-    /* ---------- 1. Najvec pridobljenega ELO ---------- */
+    /* ---------- 1. Najvec pridobljenega ratinga ---------- */
 
     /* Zavihek pozna samo vzpon. Vrstice "najvec izgubil" nima namenoma: v
        klubu, kjer se vsi poznajo, je razglasitev najvecjega padca dneva edina
        postavka, ki bi komu skodila. */
-    private static List<Vzpon> vzponi(List<Nastop> nastopi, EloTekmovanja elo) {
+    private static List<Vzpon> vzponi(List<Nastop> nastopi, RatingTekmovanja rating) {
         Map<Long, Oseba> osebe = new HashMap<>();
         Map<Long, int[]> sestevki = new HashMap<>();   // {sprememba, odigranih}
         for (Nastop n : nastopi) {
             if (n.posamicno()) {
                 for (Oseba o : List.of(n.zmagovalec(), n.porazenec())) {
-                    Elo e = elo.za(n.idTekme(), o.idIgralec());
+                    Elo e = rating.za(n.idTekme(), o.idIgralec());
                     if (e == null) {
                         continue;
                     }
@@ -376,7 +376,7 @@ public class StatistikaTekmovanjaStoritev {
             if (vnos.getValue()[0] <= 0) {
                 continue;
             }
-            Integer koncni = elo.koncni().get(vnos.getKey());
+            Integer koncni = rating.koncni().get(vnos.getKey());
             if (koncni == null) {
                 continue;
             }
@@ -390,14 +390,14 @@ public class StatistikaTekmovanjaStoritev {
 
     /* ---------- 2. Presenecenje ---------- */
 
-    private static Presenecenje presenecenje(List<Nastop> nastopi, EloTekmovanja elo) {
+    private static Presenecenje presenecenje(List<Nastop> nastopi, RatingTekmovanja rating) {
         Presenecenje najvecje = null;
         for (Nastop n : nastopi) {
             if (!n.posamicno()) {
                 continue;
             }
-            Elo zmag = elo.za(n.idTekme(), n.zmagovalec().idIgralec());
-            Elo por = elo.za(n.idTekme(), n.porazenec().idIgralec());
+            Elo zmag = rating.za(n.idTekme(), n.zmagovalec().idIgralec());
+            Elo por = rating.za(n.idTekme(), n.porazenec().idIgralec());
             if (zmag == null || por == null) {
                 continue;
             }
@@ -996,10 +996,10 @@ public class StatistikaTekmovanjaStoritev {
         return kola;
     }
 
-    /* Vrstice [idTekme, idIgralca, sprememba, novaVrednost] v dnevnik ELO.
+    /* Vrstice [idTekme, idIgralca, sprememba, novaVrednost] v dnevniku ratinga.
        Poizvedba je urejena po casu obracuna, zato je zadnja vrednost igralca
        hkrati njegov rating ob koncu tekmovanja. */
-    private static EloTekmovanja eloTekmovanja(List<Object[]> vrstice) {
+    private static RatingTekmovanja ratingTekmovanja(List<Object[]> vrstice) {
         Map<Long, Map<Long, Elo>> poTekmah = new HashMap<>();
         Map<Long, Integer> koncni = new HashMap<>();
         for (Object[] v : vrstice) {
@@ -1011,7 +1011,7 @@ public class StatistikaTekmovanjaStoritev {
                     .put(idIgralca, new Elo(sprememba, novaVrednost - sprememba));
             koncni.put(idIgralca, novaVrednost);
         }
-        return new EloTekmovanja(poTekmah, koncni);
+        return new RatingTekmovanja(poTekmah, koncni);
     }
 
     private static <T> List<T> prvih(List<T> vrstice) {

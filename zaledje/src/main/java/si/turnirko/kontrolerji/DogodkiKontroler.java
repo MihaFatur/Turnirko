@@ -1,11 +1,14 @@
-/* Koncne tocke za dogodke: prijave, zreb in prikaz mreze. */
+/* Koncne tocke za dogodke: prijave, ekipe in kadri (ekipni dogodek), zreb in
+   prikaz mreze. */
 package si.turnirko.kontrolerji;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import si.turnirko.dto.DogodekDto;
+import si.turnirko.dto.EkipaDto;
+import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.IzborDto;
+import si.turnirko.dto.KaderIgralecDto;
+import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.MrezaDto;
 import si.turnirko.dto.ParVnos;
 import si.turnirko.dto.PrijavaDto;
@@ -38,11 +45,14 @@ import si.turnirko.modeli.Tekma;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.SkupinaRepozitorij;
+import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
+import si.turnirko.storitve.EkipeDogodkaStoritev;
 import si.turnirko.storitve.IzborStoritev;
 import si.turnirko.storitve.RazvrstitevStoritev;
-import si.turnirko.storitve.SpremembeEloStoritev;
-import si.turnirko.storitve.SpremembeEloStoritev.ObTekmi;
+import si.turnirko.storitve.SkupineStoritev;
+import si.turnirko.storitve.SpremembeRatingaStoritev;
+import si.turnirko.storitve.SpremembeRatingaStoritev.ObTekmi;
 import si.turnirko.storitve.TekmaStoritev;
 import si.turnirko.storitve.TurnirjiStoritev;
 import si.turnirko.storitve.ZrebStoritev;
@@ -55,33 +65,39 @@ public class DogodkiKontroler {
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
     private final SkupinaRepozitorij skupinaRepozitorij;
+    private final SrecanjeRepozitorij srecanjeRepozitorij;
     private final TurnirjiStoritev turnirjiStoritev;
     private final ZrebStoritev zrebStoritev;
     private final RazvrstitevStoritev razvrstitevStoritev;
-    private final SpremembeEloStoritev spremembeEloStoritev;
+    private final SpremembeRatingaStoritev spremembeRatinga;
     private final IzborStoritev izborStoritev;
     private final TekmaStoritev tekmaStoritev;
+    private final EkipeDogodkaStoritev ekipeDogodka;
 
     public DogodkiKontroler(DogodekRepozitorij dogodekRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
                             TekmaRepozitorij tekmaRepozitorij,
                             SkupinaRepozitorij skupinaRepozitorij,
+                            SrecanjeRepozitorij srecanjeRepozitorij,
                             TurnirjiStoritev turnirjiStoritev,
                             ZrebStoritev zrebStoritev,
                             RazvrstitevStoritev razvrstitevStoritev,
-                            SpremembeEloStoritev spremembeEloStoritev,
+                            SpremembeRatingaStoritev spremembeRatinga,
                             IzborStoritev izborStoritev,
-                            TekmaStoritev tekmaStoritev) {
+                            TekmaStoritev tekmaStoritev,
+                            EkipeDogodkaStoritev ekipeDogodka) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.skupinaRepozitorij = skupinaRepozitorij;
+        this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.turnirjiStoritev = turnirjiStoritev;
         this.zrebStoritev = zrebStoritev;
         this.razvrstitevStoritev = razvrstitevStoritev;
-        this.spremembeEloStoritev = spremembeEloStoritev;
+        this.spremembeRatinga = spremembeRatinga;
         this.izborStoritev = izborStoritev;
         this.tekmaStoritev = tekmaStoritev;
+        this.ekipeDogodka = ekipeDogodka;
     }
 
     /* Celotna slika dogodka: podatki, prijave, mreza in - glede na sistem -
@@ -114,29 +130,42 @@ public class DogodkiKontroler {
         if (poJakosti) {
             prijaveEntitete = izborStoritev.vrstniRed(prijaveEntitete);
         }
+        boolean ekipno = dogodekEntiteta.jeEkipno();
         Map<Long, Integer> ratingi = izborStoritev.ratingi(prijaveEntitete);
+        Map<Long, Integer> ekipni = ekipno ? izborStoritev.ratingiEkip(prijaveEntitete) : Map.of();
         List<PrijavaDto> prijave = prijaveEntitete.stream()
-                .map(p -> PrijavaDto.iz(p, ratingi.get(p.getIgralec().getId()),
-                        p.jePar() ? ratingi.get(p.getIgralec2().getId()) : null))
+                .map(p -> p.jeEkipa()
+                        ? PrijavaDto.iz(p, ekipni.get(p.getEkipa().getId()), null)
+                        : PrijavaDto.iz(p, ratingi.get(p.getIgralec().getId()),
+                                p.jePar() ? ratingi.get(p.getIgralec2().getId()) : null))
                 .toList();
 
-        // Sprememba ELO ("+16 / -16") in rating pred tekmo ob vsaki tekmi.
+        // Sprememba ratinga ("+16 / -16") in rating pred tekmo ob vsaki tekmi.
         // Za odigrane tekme oboje iz dnevnika, za neodigrane rating pred = trenutni.
-        // Dvojice v ELO ne stejejo, para pa tudi ni mogoce opisati z enim
-        // ratingom - zato pri njih obe polji ostaneta prazni.
-        boolean dvojice = dogodekEntiteta.jeDvojice();
-        Map<Long, Map<Long, ObTekmi>> spremembe = dvojice ? Map.of()
-                : spremembeEloStoritev.zaTekme(
+        // Dvojice v rating ne stejejo, para pa tudi ni mogoce opisati z enim
+        // ratingom - zato pri njih obe polji ostaneta prazni. Enako pri ekipni
+        // tekmi: v rating gredo njene posamicne tekme (zapisnik srecanja).
+        boolean brezRatinga = dogodekEntiteta.jeDvojice() || ekipno;
+        Map<Long, Map<Long, ObTekmi>> spremembe = brezRatinga ? Map.of()
+                : spremembeRatinga.zaTekme(
                         tekmeEntitete.stream().map(Tekma::getId).toList());
-        Map<Long, Integer> trenutni = dvojice ? Map.of()
-                : spremembeEloStoritev.trenutniRatingi(
+        Map<Long, Integer> trenutni = brezRatinga ? Map.of()
+                : spremembeRatinga.trenutniRatingi(
                         prijaveEntitete.stream().map(p -> p.getIgralec().getId()).distinct().toList());
+        // ekipna tekma vodi na zapisnik svojega srecanja
+        Map<Long, Long> srecanja = new HashMap<>();
+        if (ekipno) {
+            for (Object[] r : srecanjeRepozitorij.srecanjaDogodka(id)) {
+                srecanja.put(((Number) r[0]).longValue(), ((Number) r[1]).longValue());
+            }
+        }
         List<TekmaDto> tekme = tekmeEntitete.stream()
                 .map(t -> TekmaDto.iz(t,
                         spremembaZaStran(spremembe, t, t.getPrijava1()),
                         spremembaZaStran(spremembe, t, t.getPrijava2()),
                         ratingPredZaStran(spremembe, trenutni, t, t.getPrijava1()),
-                        ratingPredZaStran(spremembe, trenutni, t, t.getPrijava2())))
+                        ratingPredZaStran(spremembe, trenutni, t, t.getPrijava2()),
+                        srecanja.get(t.getId())))
                 .toList();
 
         List<SkupinaDto> skupine = List.of();
@@ -146,6 +175,7 @@ public class DogodkiKontroler {
         if (dogodekEntiteta.getSistemTekmovanja().imaSkupine()) {
             List<Prijava> zaLestvice = prijaveEntitete;
             skupine = skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(id).stream()
+                    .sorted(java.util.Comparator.comparingInt(Skupina::getStopnja))
                     .map(skupina -> lestvicaSkupine(skupina, zaLestvice, tekmeEntitete))
                     .toList();
         }
@@ -171,10 +201,15 @@ public class DogodkiKontroler {
         if (dogodek.getSistemTekmovanja() != SistemTekmovanja.SKUPINE) {
             /* Igrajo vsi, kdo pride v katero skupino pa se odloci sele ob
                zrebu (pasovi se zrebajo) - zato brez crte reza in predogleda. */
-            Integer stSkupin = dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_IZLOCILNI
-                    && prijavljeni.size() >= ZrebStoritev.NAJMANJ_ZA_SKUPINE
-                    ? ZrebStoritev.izberiSteviloSkupin(prijavljeni.size())
-                    : null;
+            Integer stSkupin = null;
+            if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_IZLOCILNI
+                    && prijavljeni.size() >= ZrebStoritev.NAJMANJ_ZA_SKUPINE) {
+                stSkupin = ZrebStoritev.izberiSteviloSkupin(prijavljeni.size());
+            } else if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_ZA_MESTA
+                    && prijavljeni.size() >= ZrebStoritev.NAJMANJ_ZA_SKUPINE_ZA_MESTA) {
+                stSkupin = dogodek.getSteviloSkupin() != null ? dogodek.getSteviloSkupin()
+                        : ZrebStoritev.izberiSteviloSkupin(prijavljeni.size());
+            }
             return new IzborDto(prijavljeni.size(), prijavljeni.size(), prijavljeni.size(),
                     List.of(), null, false, stSkupin);
         }
@@ -195,7 +230,7 @@ public class DogodkiKontroler {
                 ZrebStoritev.zadrzekRazreza(velikosti), true, velikosti.size());
     }
 
-    /* Sprememba ELO za enega udelezenca tekme (null, ce tekma ni obracunana
+    /* Sprememba ratinga za enega udelezenca tekme (null, ce tekma ni obracunana
        ali je stran prazna). */
     private static Integer spremembaZaStran(Map<Long, Map<Long, ObTekmi>> spremembe, Tekma tekma, Prijava stran) {
         ObTekmi ob = obTekmi(spremembe, tekma, stran);
@@ -206,27 +241,29 @@ public class DogodkiKontroler {
        pri neodigrani pa trenutni rating; null, ce igralca ali ratinga ni. */
     private static Integer ratingPredZaStran(Map<Long, Map<Long, ObTekmi>> spremembe,
                                              Map<Long, Integer> trenutni, Tekma tekma, Prijava stran) {
-        if (stran == null) return null;
+        if (stran == null || stran.jeEkipa()) return null;
         ObTekmi ob = obTekmi(spremembe, tekma, stran);
         if (ob != null) return ob.ratingPred();
         return trenutni.get(stran.getIgralec().getId());
     }
 
     private static ObTekmi obTekmi(Map<Long, Map<Long, ObTekmi>> spremembe, Tekma tekma, Prijava stran) {
-        if (stran == null) return null;
+        if (stran == null || stran.jeEkipa()) return null;
         Map<Long, ObTekmi> poIgralcu = spremembe.get(tekma.getId());
         return poIgralcu == null ? null : poIgralcu.get(stran.getIgralec().getId());
     }
 
+    /* Clane skupine doloci isto pravilo kot SkupineStoritev (predtekmovalna
+       skupina iz zreba, visje stopnje iz tekem), sicer bi se tabela na strani
+       in izracun mest razsla. */
     private SkupinaDto lestvicaSkupine(Skupina skupina, List<Prijava> prijave, List<Tekma> tekme) {
-        List<Prijava> clani = prijave.stream()
-                .filter(p -> skupina.getId().equals(p.getIdSkupina()))
-                .toList();
+        List<Prijava> clani = SkupineStoritev.clani(skupina, prijave, tekme);
         List<Tekma> tekmeSkupine = tekme.stream()
                 .filter(t -> t.getFaza() == FazaTekme.SKUPINA
                         && skupina.getId().equals(t.getIdSkupina()))
                 .toList();
-        return new SkupinaDto(skupina.getId(), skupina.getOznaka(),
+        return new SkupinaDto(skupina.getId(), skupina.getOznaka(), skupina.getStopnja(),
+                skupina.getIme(), skupina.getPrvoMesto(),
                 razvrstitevStoritev.lestvica(clani, tekmeSkupine));
     }
 
@@ -256,14 +293,50 @@ public class DogodkiKontroler {
         return turnirjiStoritev.razdruziPar(idPrijave).stream().map(PrijavaDto::iz).toList();
     }
 
-    /* Shrani rocno urejen jakostni vrstni red (format TOP). */
+    // ---------- Ekipni dogodek: ekipe in kadri ----------
+
+    @GetMapping("/{id}/ekipe")
+    public List<EkipaDto> ekipe(@PathVariable Long id) {
+        return ekipeDogodka.ekipe(id);
+    }
+
+    @PostMapping("/{id}/ekipe")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EkipaDto dodajEkipo(@PathVariable Long id, @RequestBody EkipaVnos vnos) {
+        return ekipeDogodka.dodajEkipo(id, vnos);
+    }
+
+    @DeleteMapping("/ekipe/{idEkipa}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void odstraniEkipo(@PathVariable Long idEkipa) {
+        ekipeDogodka.odstraniEkipo(idEkipa);
+    }
+
+    @GetMapping("/ekipe/{idEkipa}/kader")
+    public List<KaderIgralecDto> kader(@PathVariable Long idEkipa) {
+        return ekipeDogodka.kader(idEkipa);
+    }
+
+    @PostMapping("/ekipe/{idEkipa}/kader")
+    @ResponseStatus(HttpStatus.CREATED)
+    public KaderIgralecDto dodajVKader(@PathVariable Long idEkipa, @Valid @RequestBody KaderVnos vnos) {
+        return ekipeDogodka.dodajVKader(idEkipa, vnos);
+    }
+
+    @DeleteMapping("/kader/{idKader}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void odstraniIzKadra(@PathVariable Long idKader) {
+        ekipeDogodka.odstraniIzKadra(idKader);
+    }
+
+    /* Shrani rocno urejen jakostni vrstni red. */
     @PutMapping("/{id}/vrstni-red")
     public List<PrijavaDto> vrstniRed(@PathVariable Long id, @Valid @RequestBody VrstniRedVnos vnos) {
         return izborStoritev.shraniVrstniRed(id, vnos.idjiPrijav())
                 .stream().map(PrijavaDto::iz).toList();
     }
 
-    /* Odstop igralca med tekmovanjem: odigrane tekme obveljajo,
+    /* Odstop med tekmovanjem: odigrane tekme obveljajo,
        preostale dobijo nasprotniki brez boja. */
     @PostMapping("/prijave/{idPrijave}/odstop")
     public PrijavaDto odstop(@PathVariable Long idPrijave) {

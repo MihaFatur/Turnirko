@@ -25,7 +25,7 @@ public class StatistikaKontroler {
         this.statistikaStoritev = statistikaStoritev;
     }
 
-    /* Globalna lestvica igralcev po klubskem ELO. */
+    /* Globalna lestvica igralcev po Turnirko ratingu. */
     @GetMapping("/lestvica")
     public List<LestvicaIgralcaDto> lestvica() {
         return statistikaStoritev.globalnaLestvica();

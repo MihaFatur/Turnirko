@@ -1,4 +1,4 @@
-/* Igralec - izpis, vkljucno s trenutnim klubskim ELO ratingom. */
+/* Igralec - izpis, vkljucno s trenutnim Turnirko ratingom. */
 package si.turnirko.dto;
 
 import java.time.LocalDate;
@@ -21,7 +21,7 @@ public record IgralecDto(
         String naslov,
         KrajDto kraj,
         KlubDto klub,
-        Integer rating, // trenutni klubski ELO; null, ce igralec se ni igral
+        Integer rating, // trenutni Turnirko rating; null, ce igralec se ni igral
         // stevilo ze odigranih ratinskih tekem; 0 -> se je mogoce postaviti
         // zacetni rating; nizko stevilo -> rating je se provizoricen
         int steviloTekem

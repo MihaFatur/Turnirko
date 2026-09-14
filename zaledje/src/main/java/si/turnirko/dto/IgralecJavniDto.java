@@ -31,7 +31,7 @@ public record IgralecJavniDto(
            igralec letnice nima. */
         StarostniPas starostniPas,
         KlubDto klub,
-        Integer rating, // trenutni klubski ELO; null, ce igralec se ni igral
+        Integer rating, // trenutni Turnirko rating; null, ce igralec se ni igral
         // stevilo ze odigranih ratinskih tekem; nizko stevilo -> rating je
         // se provizoricen (isti pomen kot v IgralecDto)
         int steviloTekem

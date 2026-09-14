@@ -1,4 +1,4 @@
-/* Globalna lestvica igralcev po klubskem ELO ratingu, z razmerjem
+/* Globalna lestvica igralcev po Turnirko ratingu, z razmerjem
    zmag in porazov prek vseh dogodkov. Vidna vsem (tudi gostom).
 
    Na telefonu je vrstica DRUGO drevo in ne ožja tabela: sedem stolpcev se je
@@ -11,12 +11,20 @@
    filtra v štirih vrstah. Ostane ena vrstica krmil (gumb »Filtriraj« in izbor
    razvrstitve), iskanje pa je preklopnik v lepljivi glavi.
 
-   Starost in spol sta LOČENI merili in ne en pas kategorij. Kategorija
-   (»Člani/Članice/U19/Veterani«) spol nosi samo pri članih — pri mladincih in
-   veteranih se izgubi, zato iz nje vprašanja »vse igralke« ni bilo mogoče
-   sestaviti. Zdaj sta to dve skupini in »članice« sta preprosto starost
-   Člani + spol Ženske; spol za to nosi LestvicaIgralcaDto (javen je tako ali
-   tako, glej IgralecJavniDto). Tretja skupina je klub.
+   LESTVIC JE VEČ IN NISO ENA. Spol ni filter, ampak IZBIRA LESTVICE: med
+   moškimi in ženskami ni niti ene obračunane tekme (0 od 91.741), zato sta
+   skali neprimerljivi in skupno mesto ne pomeni ničesar — mešan seznam je
+   bral kot razvrstitev, kar ni bil. Enako velja za rekreativce: dober
+   rekreativec ne sme prehiteti nekoliko slabšega igralca, ki hodi na članske
+   turnirje NTZS (teža tekmovanja to ublaži, ne odpravi). Zato sta nad tabelo
+   dva segmentirana izbirnika, pas rekreativcev pa se pokaže šele, ko kdo tam
+   sploh je.
+
+   Privzeto se odpre lestvica gledalčevega spola, če je gledalec na njej;
+   sicer moška (večja). Starost ostane filter, ker U19 in člani igrajo skupaj
+   in se na isti lestvici primerjajo; kategorija (»Člani/Članice«) spol nosi
+   samo pri članih, zato filtra »vse igralke« iz nje ni bilo mogoče sestaviti.
+   Druga skupina filtra je klub.
 
    Iskanje po imenu ni skupina filtra, ampak zoži seznam PRED njim — števci ob
    merilih so tako vedno števci tega, kar gledalec vidi. */
@@ -25,7 +33,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { statistikaApi } from '../api/zahteve'
-import type { LestvicaIgralcaDto } from '../api/tipi'
+import type { LestvicaIgralcaDto, Spol } from '../api/tipi'
 import {
   KrmilaSeznama,
   poSeznamu,
@@ -48,6 +56,12 @@ interface Vrstica {
   mesto: number
 }
 
+/* Katera lestvica se gleda. Tip je ločen od spola, ker sta to dve neodvisni
+   vprašanji in ne štiri enakovredne možnosti v enem pasu. */
+type TipLestvice = 'TEKMOVALCI' | 'REKREATIVCI'
+
+const OZNAKE_SPOLA: Record<Spol, string> = { MOSKI: 'Moški', ZENSKI: 'Ženske' }
+
 const SKUPINE: SkupinaFiltra<Vrstica>[] = [
   {
     kljuc: 'starost',
@@ -55,13 +69,6 @@ const SKUPINE: SkupinaFiltra<Vrstica>[] = [
     vrednost: ({ igralec }) => (igralec.kategorija === null ? null : starost(igralec)),
     napis: (v) => OZNAKE_STAROSTI[v] ?? v,
     vrstniRed: poSeznamu(['U19', 'CLANSKA', 'VETERANI']),
-  },
-  {
-    kljuc: 'spol',
-    oznaka: 'Spol',
-    vrednost: ({ igralec }) => igralec.spol,
-    napis: (v) => (v === 'MOSKI' ? 'Moški' : 'Ženske'),
-    vrstniRed: poSeznamu(['MOSKI', 'ZENSKI']),
   },
   { kljuc: 'klub', oznaka: 'Klub', vrednost: ({ igralec }) => igralec.klub },
 ]
@@ -112,15 +119,49 @@ export function LestvicaStran() {
   /* Iskanje na telefonu živi v stanju strani in ne v naslovu: je opravilo
      enega obiska, ne stanje, ki bi ga kdo delil s povezavo. */
   const [iskanjeOdprto, nastaviIskanjeOdprto] = useState(false)
+  const [tip, nastaviTip] = useState<TipLestvice>('TEKMOVALCI')
+  const [spol, nastaviSpol] = useState<Spol | null>(null)
+
+  /* Igralci ene lestvice: en spol in ena skupina. Mesto se pripne TU, ker je
+     mesto na svoji lestvici in ne v skupnem seznamu vseh. */
+  const izbranaLestvica = useMemo(() => {
+    const vse = lestvica.data ?? []
+    /* Privzeti spol: gledalčev, če je na lestvici; sicer moška (večja).
+       Izbira ene od dveh lestvic kot "prve" je neizogibna, zato naj bo
+       gledalčeva. */
+    const mojSpol = vse.find((v) => v.idIgralca === mojIdIgralec)?.spol ?? null
+    const izbrani = spol ?? mojSpol ?? 'MOSKI'
+    const rekreativci = tip === 'REKREATIVCI'
+    return vse
+      .filter((v) => v.spol === izbrani && v.rekreativec === rekreativci)
+      .map((igralec, indeks) => ({ igralec, mesto: indeks + 1 }))
+  }, [lestvica.data, spol, tip, mojIdIgralec])
+
+  /* Koliko igralcev je na kateri lestvici - za števce ob gumbih in za to, da
+     se pas rekreativcev ne pokaže, dokler tam ni nikogar. */
+  const steviloNaLestvici = useMemo(() => {
+    const stevci = { MOSKI: 0, ZENSKI: 0, TEKMOVALCI: 0, REKREATIVCI: 0 } as Record<string, number>
+    for (const v of lestvica.data ?? []) {
+      if (v.rekreativec) stevci.REKREATIVCI++
+      else stevci.TEKMOVALCI++
+      /* Igralec brez spola (v bazi je obvezen, a tip dopušča null) ne pripada
+         nobeni od obeh lestvic in se ne šteje nikjer. */
+      if (v.spol !== null && v.rekreativec === (tip === 'REKREATIVCI')) stevci[v.spol]++
+    }
+    return stevci
+  }, [lestvica.data, tip])
+
+  const izbraniSpol = spol
+    ?? (lestvica.data ?? []).find((v) => v.idIgralca === mojIdIgralec)?.spol
+    ?? 'MOSKI'
 
   const najdeni = useMemo(() => {
-    const vse = (lestvica.data ?? []).map((igralec, indeks) => ({ igralec, mesto: indeks + 1 }))
     const iskano = iskanje.trim().toLocaleLowerCase('sl')
-    if (!iskano) return vse
-    return vse.filter(({ igralec }) =>
+    if (!iskano) return izbranaLestvica
+    return izbranaLestvica.filter(({ igralec }) =>
       `${igralec.polnoIme} ${igralec.klub ?? ''}`.toLocaleLowerCase('sl').includes(iskano),
     )
-  }, [lestvica.data, iskanje])
+  }, [izbranaLestvica, iskanje])
 
   const filtri = useFiltri(najdeni, SKUPINE, RAZVRSTITVE)
 
@@ -135,10 +176,10 @@ export function LestvicaStran() {
     [filtri.prikazani],
   )
 
-  const vseh = lestvica.data?.length ?? 0
+  const vseh = izbranaLestvica.length
   const klubov = useMemo(
-    () => new Set((lestvica.data ?? []).map((v) => v.klub).filter((v) => v !== null)).size,
-    [lestvica.data],
+    () => new Set(izbranaLestvica.map(({ igralec }) => igralec.klub).filter((v) => v !== null)).size,
+    [izbranaLestvica],
   )
 
   /* Ali gledalec gleda izsek ali celo lestvico. Od tega je odvisen števec ob
@@ -157,7 +198,7 @@ export function LestvicaStran() {
   )
 
   const opisTabele =
-    'Lestvica igralcev po klubskem ratingu ELO' +
+    'Lestvica igralcev po Turnirko ratingu' +
     (filtri.zetoni.length > 0
       ? ` — izbrano: ${filtri.zetoni.map((z) => `${z.oznaka} ${z.napis}`).join(', ')}`
       : '')
@@ -189,10 +230,50 @@ export function LestvicaStran() {
     </>
   )
 
+  /* Segmentirana izbirnika: spol vedno, tip samo, kadar rekreativci obstajajo.
+     Isti razred kot podnavigacija dogodka - ista poteza naj bo videti enako. */
+  const izbirnikLestvice = (
+    <div className="izbirnik-lestvic">
+      <div className="izbirnik">
+        {(['MOSKI', 'ZENSKI'] as Spol[]).map((v) => (
+          <button
+            key={v}
+            type="button"
+            className={'izbirnik__gumb' + (izbraniSpol === v ? ' izbirnik__gumb--aktiven' : '')}
+            aria-pressed={izbraniSpol === v}
+            onClick={() => nastaviSpol(v)}
+          >
+            {OZNAKE_SPOLA[v]} · {steviloNaLestvici[v]}
+          </button>
+        ))}
+      </div>
+      {steviloNaLestvici.REKREATIVCI > 0 && (
+        <div className="izbirnik">
+          {(['TEKMOVALCI', 'REKREATIVCI'] as TipLestvice[]).map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={'izbirnik__gumb' + (tip === v ? ' izbirnik__gumb--aktiven' : '')}
+              aria-pressed={tip === v}
+              onClick={() => nastaviTip(v)}
+            >
+              {v === 'TEKMOVALCI' ? 'Tekmovalci' : 'Rekreativci'}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
   const namig = (
     <p className="namig">
-      Igralci brez obračunane tekme še niso na lestvici. Ime igralca vodi na profil s
-      statistiko.
+      Igralci brez obračunane tekme še niso na lestvici; po 18 mesecih brez tekme z nje
+      izginejo. Moška in ženska lestvica sta ločeni, ker med spoloma ni obračunanih tekem
+      in številki nista primerljivi.{' '}
+      {steviloNaLestvici.REKREATIVCI > 0
+        ? 'Rekreativci imajo svojo lestvico, dokler ne odigrajo treh tekem na uradnem ali klubskem tekmovanju.'
+        : ''}
+      Ime igralca vodi na profil s statistiko.
     </p>
   )
 
@@ -238,9 +319,10 @@ export function LestvicaStran() {
         )}
 
         <div>
-          <span className="naslov-mobi__nad">Klubski ELO</span>
+          <span className="naslov-mobi__nad">Turnirko rating</span>
           <h1 className="naslov-mobi naslov-mobi--seznam">Lestvica</h1>
 
+          {izbirnikLestvice}
           {vseh > 0 && krmila}
         </div>
 
@@ -291,6 +373,7 @@ export function LestvicaStran() {
           vrstici — iskalnik in ob njem števec, isti par kot v seznamu prijav
           (DogodekStran). */}
       <div>
+        {izbirnikLestvice}
         <div className="naslovna-vrstica">
           <h2>Razvrstitev</h2>
           <div className="naslovna-vrstica__desno">

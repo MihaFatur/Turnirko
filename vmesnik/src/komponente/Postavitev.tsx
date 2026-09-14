@@ -61,6 +61,7 @@ const povezave: Povezava[] = [
   { pot: '/igralci', oznaka: 'Igralci', samoUrejevalec: true },
   { pot: '/racuni', oznaka: 'Dostopi', samoAdmin: true },
   { pot: '/sifranti', oznaka: 'Šifranti', samoAdmin: true },
+  { pot: '/uvoz', oznaka: 'Uvoz NTZS', samoAdmin: true },
 ]
 
 /* Prve stiri postavke spodnje vrstice so iste za vse - to so poti, po katerih
@@ -389,6 +390,13 @@ function PredalVec({ jeAdmin, onZapri }: { jeAdmin: boolean; onZapri: () => void
             <NavLink to="/sifranti" className="predal__postavka" onClick={onZapri}>
               Šifranti
               <span className="predal__kontekst">Kraji, klubi</span>
+            </NavLink>
+          )}
+
+          {jeAdmin && (
+            <NavLink to="/uvoz" className="predal__postavka" onClick={onZapri}>
+              Uvoz NTZS
+              <span className="predal__kontekst">Stupa</span>
             </NavLink>
           )}
         </div>

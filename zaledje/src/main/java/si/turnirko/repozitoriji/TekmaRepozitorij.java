@@ -7,13 +7,22 @@
 
    DVOJICE: vsaka poizvedba, ki hrani statistiko ali medsebojne izide
    POSAMEZNIKA, mora omejiti disciplino na POSAMICNO. Izida para ni mogoce
-   pripisati posamezniku (isto pravilo kot pri ELO in ligaskih dvojicah), pri
+   pripisati posamezniku (isto pravilo kot pri ratingu in ligaskih dvojicah), pri
    dvojicah pa bi tako poizvedba upostevala se samo prvega clana para - drugi
    je v prijavi v drugem stolpcu. Poizvedbe, ki opisujejo POTEK tekmovanja
    (zadnji izid turnirja, zadnje kolo), pa dvojice nasprotno vkljucujejo in
-   zato nalozijo tudi drugega clana. */
+   zato nalozijo tudi drugega clana.
+
+   EKIPE (V28): ekipni dogodek ima disciplino EKIPNO, zato ga statistika
+   posameznika izpusti ze po disciplini; njegove posamicne tekme so v
+   tekma_srecanja. Poizvedbe o poteku tekmovanja nalozijo ekipo s klubom.
+
+   PRENESENE TEKME (tekma.id_prenesena) nosijo izid dvoboja iz predtekmovanja
+   in se niso igrale - vsaka poizvedba, ki steje tekme posameznika ali gre v
+   rating, jih mora izpustiti, sicer isti dvoboj steje dvakrat. */
 package si.turnirko.repozitoriji;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +30,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import si.turnirko.modeli.Disciplina;
+import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
@@ -75,8 +87,10 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
     @Query("""
             SELECT t FROM Tekma t
             JOIN FETCH t.dogodek d JOIN FETCH d.turnir
-            JOIN FETCH t.prijava1 p1 JOIN FETCH p1.igralec LEFT JOIN FETCH p1.igralec2
-            JOIN FETCH t.prijava2 p2 JOIN FETCH p2.igralec LEFT JOIN FETCH p2.igralec2
+            JOIN FETCH t.prijava1 p1 LEFT JOIN FETCH p1.igralec LEFT JOIN FETCH p1.igralec2
+            LEFT JOIN FETCH p1.ekipa e1 LEFT JOIN FETCH e1.klub
+            JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.igralec2
+            LEFT JOIN FETCH p2.ekipa e2 LEFT JOIN FETCH e2.klub
             LEFT JOIN FETCH t.zmagovalec
             WHERE t.id IN (
                 SELECT MAX(z.id) FROM Tekma z
@@ -105,8 +119,10 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             SELECT t FROM Tekma t
             LEFT JOIN FETCH t.prijava1 p1 LEFT JOIN FETCH p1.igralec LEFT JOIN FETCH p1.klubObPrijavi
             LEFT JOIN FETCH p1.igralec2 LEFT JOIN FETCH p1.klubObPrijavi2
+            LEFT JOIN FETCH p1.ekipa e1 LEFT JOIN FETCH e1.klub
             LEFT JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.klubObPrijavi
             LEFT JOIN FETCH p2.igralec2 LEFT JOIN FETCH p2.klubObPrijavi2
+            LEFT JOIN FETCH p2.ekipa e2 LEFT JOIN FETCH e2.klub
             LEFT JOIN FETCH t.zmagovalec
             WHERE t.dogodek.id = :idDogodek
             ORDER BY t.faza, t.kolo, t.pozicija
@@ -119,8 +135,10 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             JOIN FETCH t.dogodek d JOIN FETCH d.turnir
             LEFT JOIN FETCH t.prijava1 p1 LEFT JOIN FETCH p1.igralec LEFT JOIN FETCH p1.klubObPrijavi
             LEFT JOIN FETCH p1.igralec2 LEFT JOIN FETCH p1.klubObPrijavi2
+            LEFT JOIN FETCH p1.ekipa e1 LEFT JOIN FETCH e1.klub
             LEFT JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.klubObPrijavi
             LEFT JOIN FETCH p2.igralec2 LEFT JOIN FETCH p2.klubObPrijavi2
+            LEFT JOIN FETCH p2.ekipa e2 LEFT JOIN FETCH e2.klub
             WHERE t.id = :id
             """)
     Optional<Tekma> najdiZVsem(Long id);
@@ -129,27 +147,35 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
     @Query("SELECT t FROM Tekma t WHERE t.idIzvorTekma1 = :idTekme OR t.idIzvorTekma2 = :idTekme")
     List<Tekma> najdiOdvisne(Long idTekme);
 
-    /* Vse DEJANSKO ODIGRANE koncane tekme z igralci - za globalno statistiko
-       in lestvico igralcev.
+    /* Izidi vseh DEJANSKO ODIGRANIH koncanih tekem - za zmage in poraze na
+       globalni lestvici igralcev: [idIgralca1, idIgralca2, idZmagovalnePrijave,
+       idPrijave1].
 
        Merilo je IzidTekme.jeOdigrana(): prosti prehod, neprihod (w.o.) in
        diskvalifikacija niso odigrane tekme in ne smejo v statistiko igralca.
        Isto merilo velja za vse poizvedbe v tej datoteki, ki hranijo
        statistiko ali prikazujejo rezultate kot odigrane.
 
-       Dvojice so izpuscene - njihovega izida ni mogoce pripisati posamezniku. */
+       Dvojice so izpuscene - njihovega izida ni mogoce pripisati posamezniku.
+
+       Stevilke in ne entitete: lestvica sesteje vso zgodovino (~50 tisoc tekem,
+       skupaj z ligaskimi ~94 tisoc) ob vsakem ogledu in iz tekme potrebuje
+       samo tri id-je. Nalaganje entitet z obema prijavama in igralcema je
+       lestvico podaljsalo za ~1,7 s; ista vsebina kot stevilke je ~0,2 s.
+       Prijavi sta stik (notranji) - tekma brez obeh udelezencev ni odigrana. */
     @Query("""
-            SELECT t FROM Tekma t
+            SELECT p1.igralec.id, p2.igralec.id, t.zmagovalec.id, p1.id
+            FROM Tekma t
             JOIN t.dogodek d
-            LEFT JOIN FETCH t.prijava1 p1 LEFT JOIN FETCH p1.igralec
-            LEFT JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec
-            LEFT JOIN FETCH t.zmagovalec
+            JOIN t.prijava1 p1 JOIN t.prijava2 p2
             WHERE t.status = si.turnirko.modeli.StatusTekme.KONCANA
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.POSAMICNO
+              AND t.idPrenesena IS NULL
+              AND t.zmagovalec IS NOT NULL
             """)
-    List<Tekma> najdiVseOdigrane();
+    List<Object[]> izidiVsehOdigranih();
 
     /* Vse dejansko odigrane tekme enega turnirja, cez vse njegove dogodke -
        za zavihek statistike turnirja. Dvojice so tu VKLJUCENE: zavihek jih
@@ -173,6 +199,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND t.zmagovalec IS NOT NULL
+              AND t.idPrenesena IS NULL
             ORDER BY t.id
             """)
     List<Tekma> najdiOdigraneZaTurnir(Long idTurnir);
@@ -201,6 +228,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.POSAMICNO
+              AND t.idPrenesena IS NULL
               AND ((p1.igralec.id = :prvi AND p2.igralec.id = :drugi)
                 OR (p1.igralec.id = :drugi AND p2.igralec.id = :prvi))
             ORDER BY t.id DESC
@@ -223,6 +251,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.POSAMICNO
+              AND t.idPrenesena IS NULL
               AND i.arhiviran = false
             """)
     List<Long> idjiZOdigranoTekmo();
@@ -240,6 +269,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.POSAMICNO
+              AND t.idPrenesena IS NULL
               AND (i1.id = :id OR i2.id = :id)
               AND i1.arhiviran = false AND i2.arhiviran = false
             """)
@@ -249,7 +279,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
        z igralci, klubi, dogodkom in turnirjem - za "Zadnji rezultati".
        Stevilo omeji Pageable (npr. prvih 8).
 
-       Vrstica pokaze tudi spremembo ELO, ki je dvojice nimajo, zato so
+       Vrstica pokaze tudi spremembo ratinga, ki je dvojice nimajo, zato so
        dvojice tu izpuscene; potek turnirja z dvojicami pove vrstica turnirja
        (najdiZadnjeVsakegaTurnirja). */
     @Query("""
@@ -262,6 +292,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.POSAMICNO
+              AND t.idPrenesena IS NULL
             ORDER BY t.id DESC
             """)
     List<Tekma> najdiZadnje(Pageable strani);
@@ -279,6 +310,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.POSAMICNO
+              AND t.idPrenesena IS NULL
               AND (p1.igralec.id = :idIgralec OR p2.igralec.id = :idIgralec)
             ORDER BY t.id DESC
             """)
@@ -286,7 +318,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
 
     /* Vse odigrane tekme DVOJIC, v katerih je igralec nastopil - v katerem
        koli od stirih mest (nosilec ali soigralec na eni ali drugi strani).
-       Za razdelek "Dvojice" na profilu; v posamicno bilanco in ELO te tekme
+       Za razdelek "Dvojice" na profilu; v posamicno bilanco in rating te tekme
        ne stejejo. */
     @Query("""
             SELECT t FROM Tekma t
@@ -298,6 +330,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.DVOJICE
+              AND t.idPrenesena IS NULL
               AND (i1.id = :idIgralec OR s1.id = :idIgralec
                 OR i2.id = :idIgralec OR s2.id = :idIgralec)
             ORDER BY t.id DESC
@@ -324,4 +357,24 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND t.status = si.turnirko.modeli.StatusTekme.CAKA
             """)
     int oznaciPripravljenoCeStaOba(Long idTekme);
+
+    /* Vse turnirske tekme, ki stejejo v Turnirko rating, s podatki za razvrstitev
+       v casovno vrsto: [id, datum zacetka turnirja, faza, kolo, pozicija].
+       Merila so ista kot pri rednem vnosu rezultata (TekmaStoritev): samo
+       dejansko odigrane tekme, samo tekmovanja, ki stejejo, nikoli dvojice.
+       Sluzi ponovnemu preracunu ratinga. */
+    @Query("""
+            SELECT t.id, t.dogodek.turnir.datumZacetka, t.faza, t.kolo, t.pozicija
+            FROM Tekma t
+            WHERE t.dogodek.disciplina = :disciplina
+              AND t.dogodek.turnir.raven <> si.turnirko.modeli.RavenTekmovanja.NE_STEJE
+              AND t.izidTip IN :izidi
+              AND t.prijava1 IS NOT NULL
+              AND t.prijava2 IS NOT NULL
+              AND t.zmagovalec IS NOT NULL
+              AND t.idPrenesena IS NULL
+            """)
+    List<Object[]> ratinskeTekme(@Param("disciplina") Disciplina disciplina,
+                                 @Param("izidi") Collection<IzidTekme> izidi);
+
 }

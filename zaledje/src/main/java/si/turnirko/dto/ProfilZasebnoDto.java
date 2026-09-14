@@ -14,7 +14,7 @@ public record ProfilZasebnoDto(
         NiziInTocke niziInTocke,
         Forma forma,
         PoTekmovanjih poTekmovanjih,
-        /* Razsevni graf "ELO nasprotnika proti izidu". Rating nasprotnika ob
+        /* Razsevni graf "rating nasprotnika proti izidu". Rating nasprotnika ob
            tekmi je sicer javen podatek, a razrez zivi tu, ker pove, proti
            komu je igralec mocan oziroma sibek - to je analiza, ne rezultat. */
         List<RazsevnaTocka> razsevni
@@ -93,7 +93,7 @@ public record ProfilZasebnoDto(
     ) {}
 
     /* En koledarski mesec: kolikokrat je igralec zmagal in koliko zmag bi
-       glede na ELO nasprotnikov pricakovali. "mesec" je oblike "2026-04". */
+       glede na rating nasprotnikov pricakovali. "mesec" je oblike "2026-04". */
     public record Mesec(String mesec, int zmage, double pricakovaneZmage) {}
 
     public record Forma(
@@ -104,8 +104,8 @@ public record ProfilZasebnoDto(
             int najdaljsiNizZmag,
             int najdaljsiNizPorazov,
             Integer spremembaElo30dni,
-            Integer najvisjiElo,
-            LocalDate najvisjiEloDatum,
+            Integer najvisjiRating,
+            LocalDate najvisjiRatingDatum,
             /* Od najstarejsega meseca naprej; steti so samo nastopi, pri
                katerih sta bila znana oba ratinga (sicer pricakovanja ni). */
             List<Mesec> poMesecih
@@ -122,7 +122,7 @@ public record ProfilZasebnoDto(
             Delez vGosteh,
             List<Delez> poPoziciji,
             List<Delez> poFazi,
-            /* Ligaske dvojice: ne stejejo v ELO ne v osebne zmage, zato loceno. */
+            /* Ligaske dvojice: ne stejejo v rating ne v osebne zmage, zato loceno. */
             Delez dvojice
     ) {}
 }

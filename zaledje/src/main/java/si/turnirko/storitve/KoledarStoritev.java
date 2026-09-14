@@ -115,8 +115,11 @@ public class KoledarStoritev {
             /* Kljuc nosi tudi dan: prestavljeno srecanje kola (organizator ga
                sme premakniti posebej) sodi v koledar na svoj dan in ne na dan
                ostalih srecanj istega kola. */
-            String kljuc = s.getLiga().getId() + "|" + s.getKolo() + "|" + dan;
-            kola.computeIfAbsent(kljuc, k -> new Kolo(s.getLiga(), s.getKolo(), dan,
+            /* Tekme koncnice niso kolo rednega dela: dan jih zdruzi v en vnos
+               "koncnica" brez stevilke kola (V28). */
+            boolean koncnica = s.jeKoncnica();
+            String kljuc = s.getLiga().getId() + "|" + (koncnica ? "koncnica" : s.getKolo()) + "|" + dan;
+            kola.computeIfAbsent(kljuc, k -> new Kolo(s.getLiga(), koncnica ? null : s.getKolo(), dan,
                     s.getPredvidenZacetek())).pari.add(par(s));
         }
 
@@ -133,12 +136,13 @@ public class KoledarStoritev {
     /* Delovni zbir enega kola, preden postane vnos koledarja. */
     private static final class Kolo {
         private final Liga liga;
-        private final int kolo;
+        // null pri tekmah koncnice - te niso kolo rednega dela
+        private final Integer kolo;
         private final LocalDate dan;
         private final LocalDateTime zacetek;
         private final List<KoledarVnosDto.Par> pari = new ArrayList<>();
 
-        private Kolo(Liga liga, int kolo, LocalDate dan, LocalDateTime zacetek) {
+        private Kolo(Liga liga, Integer kolo, LocalDate dan, LocalDateTime zacetek) {
             this.liga = liga;
             this.kolo = kolo;
             this.dan = dan;
@@ -149,7 +153,7 @@ public class KoledarStoritev {
             return new KoledarVnosDto(
                     KoledarVnosDto.Vrsta.LIGA,
                     liga.getId(),
-                    liga.getIme(),
+                    kolo == null ? liga.getIme() + " · končnica" : liga.getIme(),
                     dan,
                     dan,
                     zacetek,

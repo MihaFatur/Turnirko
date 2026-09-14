@@ -29,11 +29,20 @@ public interface RatingStanjeRepozitorij extends JpaRepository<RatingStanje, Lon
 
     /* Ratingi vseh neaarhiviranih igralcev v danem sistemu, za uvrstitev in
        percentil na profilu. Vrne vrstice [idIgralca, idKluba (lahko null),
-       vrednost]; "left join" je nujen, ker igralec morda ni v klubu. */
+       vrednost, spol, cas zadnje tekme]; "left join" je nujen, ker igralec
+       morda ni v klubu. Spol in casa svezine sta zato, ker uvrstitev meri
+       LOCENO lestvico (isti spol, brez skritih) - glej ProfilStoritev. Casa
+       sta dva, ker o svezini stevilke odloca poznejsi od njiju
+       (RatingStanje.svezOb): tekma ali zunanja uvrstitev. */
     @Query("""
-            SELECT i.id, k.id, r.vrednost
+            SELECT i.id, k.id, r.vrednost, i.spol, r.zadnjaTekmaOb, r.zunanjaUvrstitevOb
             FROM RatingStanje r JOIN r.igralec i LEFT JOIN i.klub k
             WHERE r.sistem = :sistem AND i.arhiviran = false
             """)
     List<Object[]> vsiRatingi(@Param("sistem") String sistem);
+
+    /* Vsa stanja danega sistema - ponovni preracun jih pobrise in postavi znova
+       iz dnevnika. */
+    List<RatingStanje> findBySistem(String sistem);
+
 }

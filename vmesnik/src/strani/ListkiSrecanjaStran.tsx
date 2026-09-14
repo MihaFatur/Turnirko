@@ -29,7 +29,7 @@ export function ListkiSrecanjaStran() {
   const liga = useQuery({
     queryKey: ['liga', idLiga],
     queryFn: () => ligeApi.najdi(idLiga!),
-    enabled: idLiga !== undefined,
+    enabled: idLiga != null,
   })
 
   /* null = uporabi privzeto predlogo lige; sicer zacasna izbira za ta natis. */
@@ -68,8 +68,8 @@ export function ListkiSrecanjaStran() {
             {srecanje.domaci} : {srecanje.gost}
           </h1>
           <p>
-            {liga.data ? `${liga.data.ime} · ` : ''}
-            {srecanje.kolo}. kolo
+            {[podrobno.data.kontekst.tekmovanje, podrobno.data.kontekst.dogodek].filter(Boolean).join(' · ')}
+            {' · '}{podrobno.data.kontekst.opis ?? `${srecanje.kolo}. kolo`}
           </p>
         </header>
 

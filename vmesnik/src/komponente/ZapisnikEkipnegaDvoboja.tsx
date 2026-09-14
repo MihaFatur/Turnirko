@@ -9,6 +9,7 @@
    vrstice za delegata NTZS (imajo jo tekme 1. SNTL). Zapisnik je crno-bel ne
    glede na temo (natis na papir). */
 import type { LigaDto, PredlogaLige, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
+import { izidNizov } from '../api/tipi'
 
 /* Papirnati obrazec ima pet stolpcev za nize (SNTL igra na 5), zato je to
    privzetek; liga na 7 nizov jih dobi sedem, da natis ne odreze vpisanih
@@ -63,11 +64,11 @@ export function ZapisnikEkipnegaDvoboja({
               <th>Dvorana</th><td className="zapisnik__vpis" colSpan={3} />
             </tr>
             <tr>
-              <th>Liga</th><td className="zapisnik__vpis" colSpan={3}>{liga?.ime ?? ''}</td>
+              <th>Liga</th><td className="zapisnik__vpis" colSpan={3}>{liga?.ime ?? [podrobno.kontekst.tekmovanje, podrobno.kontekst.dogodek].filter(Boolean).join(' · ')}</td>
             </tr>
             <tr>
-              <th>Sezona</th><td className="zapisnik__vpis">{liga?.sezona ?? ''}</td>
-              <th>Krog</th><td className="zapisnik__vpis">{s.kolo}.</td>
+              <th>Sezona</th><td className="zapisnik__vpis">{liga?.sezona ?? podrobno.kontekst.sezona ?? ''}</td>
+              <th>Krog</th><td className="zapisnik__vpis">{s.idLiga != null && s.idSerija == null ? `${s.kolo}.` : podrobno.kontekst.opis ?? `${s.kolo}.`}</td>
             </tr>
           </tbody>
         </table>
@@ -121,7 +122,7 @@ export function ZapisnikEkipnegaDvoboja({
                   )
                 })}
                 <td className="zapisnik__igre">
-                  {konec ? `${t.dobljeniNiziDomaci}:${t.dobljeniNiziGost}` : ''}
+                  {konec ? izidNizov(t.dobljeniNiziDomaci, t.dobljeniNiziGost, t.izidTip) : ''}
                 </td>
                 <td className="zapisnik__stanje" />
               </tr>

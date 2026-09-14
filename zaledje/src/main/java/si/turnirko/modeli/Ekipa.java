@@ -1,9 +1,13 @@
-/* Ekipa je nastop v ligi. Praviloma nastopa klub - en klub ima lahko vec ekip
-   (Savinja 1, 2), locenih po zaporedni stevilki. Ekipa pa je lahko tudi PROSTA
-   (brez kluba): zasedba, ki v registru klubov nima zapisa in nastopa samo v tej
-   ligi (rekreacijske in medpodjetniske lige). Taka ekipa se poimenuje sama, z
-   lastnim imenom. Igralce, ki smejo nastopati, v obeh primerih hrani kader -
-   ti so vedno iz skupnega registra igralcev. */
+/* Ekipa je nastop v tekmovanju: v LIGI ali na EKIPNEM DOGODKU turnirja (V28)
+   - v natanko enem od obeh. Praviloma nastopa klub - en klub ima lahko vec
+   ekip (Savinja 1, 2), locenih po zaporedni stevilki. Ekipa pa je lahko tudi
+   PROSTA (brez kluba): zasedba, ki v registru klubov nima zapisa in nastopa
+   samo v tem tekmovanju (rekreacijske in medpodjetniske lige). Taka ekipa se
+   poimenuje sama, z lastnim imenom. Igralce, ki smejo nastopati, v obeh
+   primerih hrani kader - ti so vedno iz skupnega registra igralcev.
+
+   Na ekipnem dogodku ekipo v zrebu in mrezi zastopa njena PRIJAVA
+   (Prijava.ekipa) - enako kot igralca njegova. */
 package si.turnirko.modeli;
 
 import jakarta.persistence.Column;
@@ -26,9 +30,15 @@ public class Ekipa {
     @Column(name = "id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_liga", nullable = false)
+    /* Liga ekipe; prazna pri ekipi ekipnega dogodka. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_liga")
     private Liga liga;
+
+    /* Ekipni dogodek turnirja; prazen pri ligaski ekipi. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_dogodek")
+    private Dogodek dogodek;
 
     /* Prazen pri prosti ekipi - ta v registru klubov nima zapisa. */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -48,7 +58,7 @@ public class Ekipa {
        Uporabi ga zreb lige z ENAKOMERNO RAZVRSTITVIJO: po njem se ekipe
        zvezejo v pare (zgornja polovica s spodnjo) in razvrstijo v kola.
        Pri ligi brez te oznake je mesto zgolj vrstni red vpisa in na razpored
-       ne vpliva. */
+       ne vpliva. Na ekipnem dogodku jakostno mesto nosi prijava, ne ekipa. */
     @Column(name = "st_nosilca")
     private Integer stNosilca;
 
@@ -67,10 +77,21 @@ public class Ekipa {
         this.ime = ime;
     }
 
+    /* Ekipa ekipnega dogodka turnirja (pravila imena so ista kot pri ligi). */
+    public Ekipa(Dogodek dogodek, Klub klub, int zaporedna, String ime) {
+        this.dogodek = dogodek;
+        this.klub = klub;
+        this.zaporedna = zaporedna;
+        this.ime = ime;
+    }
+
     public Long getId() { return id; }
 
     public Liga getLiga() { return liga; }
+    public Dogodek getDogodek() { return dogodek; }
     public Klub getKlub() { return klub; }
+    /* Samo ponovni uvoz iz vira: ekipa obdrzi id, klub pa prepise vir. */
+    public void setKlub(Klub klub) { this.klub = klub; }
 
     public int getZaporedna() { return zaporedna; }
     public void setZaporedna(int zaporedna) { this.zaporedna = zaporedna; }
@@ -83,6 +104,9 @@ public class Ekipa {
 
     /* Ali je ekipa prosta - brez zapisa v registru klubov. */
     public boolean jeProsta() { return klub == null; }
+
+    /* Ali ekipa nastopa na ekipnem dogodku turnirja (in ne v ligi). */
+    public boolean jeTurnirska() { return dogodek != null; }
 
     /* Ime za prikaz: lastno ime ali "Klub N" (N samo, ce ima klub vec ekip).
        Prosta ekipa pride vedno do prve veje - brez kluba je ime edino, kar

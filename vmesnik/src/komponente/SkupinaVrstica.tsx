@@ -9,11 +9,11 @@
    igralcev ne izlocilnega dela, zato jo lahko uporabi vsak nov sistem. */
 import type { ReactNode } from 'react'
 
-import { sklonIgralcev } from '../pomozno/oblikovanje'
-
 interface Lastnosti {
   oznaka: string
-  steviloIgralcev: number
+  /* Kaj je v skupini, npr. »4 igralci« ali »1.–4. mesto · 4 ekipe«. Sestavi
+     ga stran, ker samo ona ve, ali so v skupini igralci, pari ali ekipe. */
+  opis: string
   odprta: boolean
   naPreklop: () => void
   /* Vsebina odprte skupine (lestvica in tekme po kolih). */
@@ -22,7 +22,7 @@ interface Lastnosti {
 
 export function SkupinaVrstica({
   oznaka,
-  steviloIgralcev,
+  opis,
   odprta,
   naPreklop,
   children,
@@ -38,9 +38,7 @@ export function SkupinaVrstica({
         onClick={naPreklop}
       >
         <span className="skupina-vrstica__oznaka">{oznaka}</span>
-        <span className="skupina-vrstica__igralci">
-          {steviloIgralcev} {sklonIgralcev(steviloIgralcev)}
-        </span>
+        <span className="skupina-vrstica__igralci">{opis}</span>
         <span className="skupina-vrstica__gumb">{odprta ? 'zapri' : 'odpri'}</span>
       </button>
       {odprta && (

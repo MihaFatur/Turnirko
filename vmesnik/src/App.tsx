@@ -22,6 +22,7 @@ import { SrecanjeStran } from './strani/SrecanjeStran'
 import { ListkiSrecanjaStran } from './strani/ListkiSrecanjaStran'
 import { ProfilStran } from './strani/ProfilStran'
 import { RacuniStran } from './strani/RacuniStran'
+import { UvozStran } from './strani/UvozStran'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
    pokaže obvestilo, gosta pa preusmeri na lestvico. */
@@ -136,6 +137,14 @@ export function App() {
           element={
             <SamoAdmin>
               <SifrantiStran />
+            </SamoAdmin>
+          }
+        />
+        <Route
+          path="/uvoz"
+          element={
+            <SamoAdmin>
+              <UvozStran />
             </SamoAdmin>
           }
         />

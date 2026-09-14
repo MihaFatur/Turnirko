@@ -3,8 +3,10 @@ package si.turnirko.dto;
 
 import java.time.LocalDate;
 
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Turnir;
+import si.turnirko.modeli.VirTekmovanja;
 
 public record TurnirDto(
         Long id,
@@ -15,8 +17,8 @@ public record TurnirDto(
         LocalDate datumKonca,
         StatusTekmovanja status,
         String opombe,
-        // ali tekme turnirja stejejo v klubski ELO
-        boolean stejeVElo,
+        // raven tekmovanja doloci tezo tekem v Turnirko ratingu
+        RavenTekmovanja raven,
         // Lastnistvo: racun, ki je turnir ustvaril, in klub lastnik. Po njiju
         // vmesnik pokaze urejevalna dejanja le lastniku; streznik je zadnja
         // obramba (LastnistvoStoritev). idLastnik ni obcutljiv podatek.
@@ -38,7 +40,10 @@ public record TurnirDto(
         // tekem pri roki in bi ga sicer moral ugibati.
         String faza,
         String zmagovalec,
-        String zadnjiIzid
+        String zadnjiIzid,
+        // Vir (V27): uvozen turnir je samo za branje - vmesnik urejanja ne
+        // ponudi in pod naslovom pove, od kod so podatki.
+        VirTekmovanja vir
 ) {
 
     /* Stevci enega turnirja; PRAZNI so odgovor mutacije, kjer jih se ni. */
@@ -78,7 +83,7 @@ public record TurnirDto(
                 turnir.getDatumKonca(),
                 turnir.getStatus(),
                 turnir.getOpombe(),
-                turnir.isStejeVElo(),
+                turnir.getRaven(),
                 turnir.getUstvaril() != null ? turnir.getUstvaril().getId() : null,
                 turnir.getKlubLastnik() != null ? turnir.getKlubLastnik().getId() : null,
                 turnir.getKlubLastnik() != null ? turnir.getKlubLastnik().getIme() : null,
@@ -90,7 +95,8 @@ public record TurnirDto(
                 stevci.vsehTekem(),
                 potek.faza(),
                 potek.zmagovalec(),
-                potek.zadnjiIzid()
+                potek.zadnjiIzid(),
+                turnir.getVir()
         );
     }
 }

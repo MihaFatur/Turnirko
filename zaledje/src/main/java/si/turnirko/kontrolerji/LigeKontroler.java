@@ -22,16 +22,20 @@ import si.turnirko.dto.EkipaDto;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
+import si.turnirko.dto.KoncnicaDto;
 import si.turnirko.dto.LestvicaDvojiceDto;
 import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.LestvicaIgralcaLigeDto;
 import si.turnirko.dto.LigaDto;
 import si.turnirko.dto.LigaVnos;
+import si.turnirko.dto.ParRazporedaDto;
 import si.turnirko.dto.PrehodiVnos;
+import si.turnirko.dto.RocniRazporedVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.StatistikaTekmovanjaDto;
 import si.turnirko.dto.TerminiVnos;
 import si.turnirko.dto.VrstniRedEkipVnos;
+import si.turnirko.storitve.KoncnicaStoritev;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.SrecanjeStoritev;
 import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
@@ -43,12 +47,15 @@ public class LigeKontroler {
     private final LigaStoritev ligaStoritev;
     private final SrecanjeStoritev srecanjeStoritev;
     private final StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
+    private final KoncnicaStoritev koncnicaStoritev;
 
     public LigeKontroler(LigaStoritev ligaStoritev, SrecanjeStoritev srecanjeStoritev,
-                         StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev) {
+                         StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev,
+                         KoncnicaStoritev koncnicaStoritev) {
         this.ligaStoritev = ligaStoritev;
         this.srecanjeStoritev = srecanjeStoritev;
         this.statistikaTekmovanjaStoritev = statistikaTekmovanjaStoritev;
+        this.koncnicaStoritev = koncnicaStoritev;
     }
 
     // ---------- Liga ----------
@@ -164,6 +171,31 @@ public class LigeKontroler {
         return srecanjeStoritev.zaLigo(id);
     }
 
+    /* Rocno vpisan razpored - druga pot do istega razporeda: pare je dolocil
+       organizator (liga, ki se je doslej vodila na roke, ima zreb ze na
+       papirju). Svoja pot in ne zastavica na zgornji, ker prinasa cel razpored. */
+    @PostMapping("/{id}/razpored/rocni")
+    public List<SrecanjeDto> rocniRazpored(@PathVariable Long id,
+                                           @Valid @RequestBody RocniRazporedVnos vnos) {
+        return ligaStoritev.rocniRazpored(id, vnos);
+    }
+
+    /* Predlog razporeda, kakrsnega bi sestavil zreb - brez zapisa. Iz njega
+       vmesnik sestavi prazno mrezo za rocni vpis in jo na zahtevo napolni. */
+    @GetMapping("/{id}/razpored/predlog")
+    public List<ParRazporedaDto> predlogRazporeda(@PathVariable Long id) {
+        return ligaStoritev.predlogRazporeda(id);
+    }
+
+    /* Razveljavitev razporeda: liga se vrne v pripravo. Mogoca je, dokler se
+       nobeno srecanje se ni zacelo - prepis papirnatega zreba mora biti
+       popravljiv, ne da bi organizator brisal ligo z ekipami in kadrom vred. */
+    @DeleteMapping("/{id}/razpored")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void razveljaviRazpored(@PathVariable Long id) {
+        ligaStoritev.razveljaviRazpored(id);
+    }
+
     @GetMapping("/{id}/srecanja")
     public List<SrecanjeDto> srecanja(@PathVariable Long id) {
         return srecanjeStoritev.zaLigo(id);
@@ -192,5 +224,27 @@ public class LigeKontroler {
     @GetMapping("/{id}/statistika")
     public StatistikaTekmovanjaDto statistika(@PathVariable Long id) {
         return statistikaTekmovanjaStoritev.zaLigo(id);
+    }
+
+    // ---------- Koncnica ----------
+
+    /* Koncnica lige: krogi, serije in tekme. Javno kot ostali GET-i. */
+    @GetMapping("/{id}/koncnica")
+    public KoncnicaDto koncnica(@PathVariable Long id) {
+        return koncnicaStoritev.koncnica(id);
+    }
+
+    /* Ustvari koncnico iz koncne lestvice rednega dela. */
+    @PostMapping("/{id}/koncnica")
+    @ResponseStatus(HttpStatus.CREATED)
+    public KoncnicaDto ustvariKoncnico(@PathVariable Long id) {
+        return koncnicaStoritev.ustvari(id);
+    }
+
+    /* Razveljavi koncnico, dokler se nobena njena tekma ni zacela. */
+    @DeleteMapping("/{id}/koncnica")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void razveljaviKoncnico(@PathVariable Long id) {
+        koncnicaStoritev.razveljavi(id);
     }
 }

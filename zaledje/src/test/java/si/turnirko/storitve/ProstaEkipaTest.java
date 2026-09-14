@@ -28,6 +28,7 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 
@@ -128,7 +129,7 @@ class ProstaEkipaTest extends IntegracijskiTest {
 
     private Long ustvariLigo() {
         LigaVnos v = new LigaVnos("Rekreacijska liga", "2025/26", SpolKategorija.MESANO,
-                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, true, false, null,
+                FormatSrecanja.SAVINJA, 5, null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null,
                 null, null);
         return ligaStoritev.ustvari(v).id();
     }

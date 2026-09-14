@@ -1,6 +1,7 @@
 /* Kartica ene tekme v mrezi: oba udelezenca, rezultat in stanje.
-   Klik je mogoc samo, ko je rezultat smiselno vnesti (oba igralca znana,
-   tekma se ni koncana) - ostalo prepreci ze zaledje, a ne ponujamo klika.
+   Katera tekma se na klik odzove in kaj klik pomeni (vnos rezultata ali
+   zapisnik ekipnega srecanja), pove stran s KlikTekme - ostalo prepreci ze
+   zaledje, a ne ponujamo klika.
 
    Vsaka polovica kartice nosi id prijave. Prijava je za dogodek ena sama,
    zato je ista v vseh kolih - prehod miske nad imenom osvetli vse pojavitve
@@ -8,21 +9,38 @@
 import type { PointerEvent } from 'react'
 
 import type { TekmaDto, Udelezenec } from '../api/tipi'
-import { SpremembaElo } from './SpremembaElo'
+import { SpremembaRatinga } from './SpremembaRatinga'
+
+/* Kaj pomeni klik na tekmo. Odloci stran, ker samo ona ve, kdo gleda:
+   organizatorju klik odpre vnos rezultata, pri ekipnem dogodku pa vsakemu
+   gledalcu zapisnik srecanja (postava in posamicne tekme so javne). Kartica
+   in vrstica seznama zato ne ugibata po stanju tekme, katera se odzove. */
+export interface KlikTekme {
+  klikljiva: (tekma: TekmaDto) => boolean
+  naKlik: (tekma: TekmaDto) => void
+  /* Namig ob prehodu miske, npr. »Klikni za vnos rezultata«. */
+  namig: (tekma: TekmaDto) => string
+}
 
 interface Lastnosti {
   tekma: TekmaDto
-  naKlik?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
   osvetljenaPrijava?: number | null
   naOsvetlitev?: (idPrijave: number | null) => void
 }
 
 /* Klub pod imenom. Posameznik ima svojega, par pa samo tedaj, kadar sta
    igralca iz istega kluba - mešan par bi sicer prilepil dve vrstici besedila
-   pod dve vrstici imen in kartica bi se podvojila. */
-function klubZaIzpis(udelezenec: Udelezenec): string | null {
-  if (!udelezenec.polnoIme2) return udelezenec.klub
-  return udelezenec.klub && udelezenec.klub === udelezenec.klub2 ? udelezenec.klub : null
+   pod dve vrstici imen in kartica bi se podvojila. Klubska ekipa se imenuje
+   po klubu (»NTK Gorica 2«), zato bi klub pod njo samo ponovil ime. */
+export function klubZaIzpis(udelezenec: Udelezenec): string | null {
+  const klub = !udelezenec.polnoIme2
+    ? udelezenec.klub
+    : udelezenec.klub && udelezenec.klub === udelezenec.klub2 ? udelezenec.klub : null
+  if (klub && udelezenec.polnoIme.toLocaleLowerCase('sl').startsWith(klub.toLocaleLowerCase('sl'))) {
+    return null
+  }
+  return klub
 }
 
 /* Kratka oznaka posebnega izida ob rezultatu. */
@@ -33,10 +51,8 @@ const OZNAKA_POSEBNEGA_IZIDA: Record<string, string> = {
   DISKVALIFIKACIJA: 'diskv.',
 }
 
-export function TekmaKartica({ tekma, naKlik, osvetljenaPrijava, naOsvetlitev }: Lastnosti) {
-  const klikljiva =
-    naKlik !== undefined &&
-    (tekma.status === 'PRIPRAVLJENA' || tekma.status === 'V_IGRI')
+export function TekmaKartica({ tekma, klik, osvetljenaPrijava, naOsvetlitev }: Lastnosti) {
+  const klikljiva = klik !== undefined && klik.klikljiva(tekma)
 
   const razredi = ['tekma', `tekma--${tekma.status}`]
   if (klikljiva) razredi.push('tekma--klikljiva')
@@ -49,13 +65,13 @@ export function TekmaKartica({ tekma, naKlik, osvetljenaPrijava, naOsvetlitev }:
   return (
     <div
       className={razredi.join(' ')}
-      onClick={klikljiva ? () => naKlik(tekma) : undefined}
-      title={klikljiva ? 'Klikni za vnos rezultata' : undefined}
+      onClick={klikljiva ? () => klik.naKlik(tekma) : undefined}
+      title={klikljiva ? klik.namig(tekma) : undefined}
     >
       <Stran
         udelezenec={tekma.udelezenec1}
         nizi={tekma.dobljeniNizi1}
-        spremembaElo={tekma.spremembaElo1}
+        spremembaRatinga={tekma.spremembaElo1}
         tekma={tekma}
         osvetljenaPrijava={osvetljenaPrijava}
         naOsvetlitev={naOsvetlitev}
@@ -63,7 +79,7 @@ export function TekmaKartica({ tekma, naKlik, osvetljenaPrijava, naOsvetlitev }:
       <Stran
         udelezenec={tekma.udelezenec2}
         nizi={tekma.dobljeniNizi2}
-        spremembaElo={tekma.spremembaElo2}
+        spremembaRatinga={tekma.spremembaElo2}
         tekma={tekma}
         osvetljenaPrijava={osvetljenaPrijava}
         naOsvetlitev={naOsvetlitev}
@@ -76,14 +92,14 @@ export function TekmaKartica({ tekma, naKlik, osvetljenaPrijava, naOsvetlitev }:
 function Stran({
   udelezenec,
   nizi,
-  spremembaElo,
+  spremembaRatinga,
   tekma,
   osvetljenaPrijava,
   naOsvetlitev,
 }: {
   udelezenec: Udelezenec | null
   nizi: number
-  spremembaElo: number | null
+  spremembaRatinga: number | null
   tekma: TekmaDto
   osvetljenaPrijava?: number | null
   naOsvetlitev?: (idPrijave: number | null) => void
@@ -148,7 +164,7 @@ function Stran({
         )}
       </span>
       <span className="tekma__desno">
-        <SpremembaElo vrednost={spremembaElo} />
+        <SpremembaRatinga vrednost={spremembaRatinga} />
         {/* Pri prostem prehodu rezultata ni - 0:0 bi samo begal. */}
         <span className="tekma__nizi">
           {tekma.status === 'KONCANA' && tekma.izidTip !== 'PROSTO' ? nizi : ''}

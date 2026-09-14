@@ -7,7 +7,7 @@
      dokler kdo ostane brez soigralca, zreba ni,
    - isti igralec ne sme nastopati v dveh parih,
    - kategorija MESANO zahteva strogo mesan par, KDORKOLI ne omejuje nicesar,
-   - tekme dvojic se NE obracunajo v klubski ELO. */
+   - tekme dvojic se NE obracunajo v Turnirko rating. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -238,7 +238,7 @@ class DvojiceTest extends IntegracijskiTest {
     }
 
     // ---------------------------------------------------------------
-    // Rezultati in ELO
+    // Rezultati in rating
     // ---------------------------------------------------------------
 
     /* Izida para ni mogoce pripisati posamezniku, zato se rating NE obracuna -

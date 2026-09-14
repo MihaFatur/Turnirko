@@ -1,8 +1,12 @@
-/* Dostop do prijav igralcev na dogodke.
+/* Dostop do prijav na dogodke.
 
    Vsaka poizvedba, ki gre v DTO, mora vnaprej naloziti TUDI drugega igralca
-   para (igralec2, klubObPrijavi2) - pri dvojicah je prijava par in bi
-   polovica izpisa sicer sprozila leno nalaganje izven transakcije. */
+   para (igralec2, klubObPrijavi2) in EKIPO s klubom - pri dvojicah je prijava
+   par, pri ekipnem dogodku ekipa, in bi del izpisa sicer sprozil leno
+   nalaganje izven transakcije.
+
+   Vez na igralca je pri seznamih prijav LEVA: ekipna prijava igralca nima in
+   notranji stik bi celo ekipo tiho izpustil iz mreze in skupin (V28). */
 package si.turnirko.repozitoriji;
 
 import java.util.List;
@@ -44,15 +48,17 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             """)
     Optional<Prijava> najdiPoSoigralcu(Long idDogodek, Long idIgralec);
 
-    /* Vse prijave dogodka z igralci in klubi v eni poizvedbi. */
+    /* Vse prijave dogodka z igralci (ekipami) in klubi v eni poizvedbi.
+       Urejene po priimku igralca oz. imenu ekipe. */
     @Query("""
             SELECT p FROM Prijava p
-            JOIN FETCH p.igralec i
+            LEFT JOIN FETCH p.igralec i
             LEFT JOIN FETCH p.igralec2
+            LEFT JOIN FETCH p.ekipa e LEFT JOIN FETCH e.klub ek
             LEFT JOIN FETCH p.klubObPrijavi
             LEFT JOIN FETCH p.klubObPrijavi2
             WHERE p.dogodek.id = :idDogodek
-            ORDER BY i.priimek, i.ime
+            ORDER BY COALESCE(i.priimek, e.ime, ek.ime), i.ime, e.zaporedna
             """)
     List<Prijava> najdiZaDogodek(Long idDogodek);
 
@@ -60,20 +66,30 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
        Klub je nalozen vnaprej, ker gredo ustvarjene tekme takoj v DTO. */
     @Query("""
             SELECT p FROM Prijava p
-            JOIN FETCH p.igralec
+            LEFT JOIN FETCH p.igralec
             LEFT JOIN FETCH p.igralec2
+            LEFT JOIN FETCH p.ekipa e LEFT JOIN FETCH e.klub
             LEFT JOIN FETCH p.klubObPrijavi
             LEFT JOIN FETCH p.klubObPrijavi2
             WHERE p.dogodek.id = :idDogodek AND p.status = :status
             """)
     List<Prijava> najdiZaDogodekSStatusom(Long idDogodek, Prijava.StatusPrijave status);
 
+    /* Ekipna prijava dane ekipe (ekipa je na dogodku prijavljena natanko enkrat). */
+    @Query("""
+            SELECT p FROM Prijava p
+            JOIN FETCH p.ekipa e LEFT JOIN FETCH e.klub
+            JOIN FETCH p.dogodek d JOIN FETCH d.turnir
+            WHERE e.id = :idEkipa
+            """)
+    Optional<Prijava> najdiZaEkipo(Long idEkipa);
+
     /* Stevilo prijavljenih po turnirjih: [idTurnir, prijav]. Odjavljeni ne
        stejejo - so mehak izbris in ne igrajo. Ena skupinska poizvedba za cel
        seznam turnirjev.
 
-       Steje se PRIJAVA (torej par kot ena enota), ne glave igralcev: stevec
-       stoji ob mrezi in mora povedati, koliko je tekmovalcev v njej. */
+       Steje se PRIJAVA (torej par ali ekipa kot ena enota), ne glave igralcev:
+       stevec stoji ob mrezi in mora povedati, koliko je tekmovalcev v njej. */
     @Query("""
             SELECT p.dogodek.turnir.id, COUNT(p) FROM Prijava p
             WHERE p.status <> :odjavljen
@@ -90,13 +106,16 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
     List<Object[]> stejPoDogodkihTurnirja(Long idTurnir, Prijava.StatusPrijave odjavljen);
 
     /* Zmagovalci (1. mesto) po turnirjih: [idTurnir, ime, priimek, ime2,
-       priimek2]. Zakljucen turnir se v seznamu bere po zmagovalcu, ne po fazi;
-       turnir z vec dogodki jih ima vec, klicatelj vzame prvega. Zadnji dve
-       polji sta zapolnjeni pri dvojicah - zmagovalec je par, ne igralec. */
+       priimek2, imeEkipe]. Zakljucen turnir se v seznamu bere po zmagovalcu,
+       ne po fazi; turnir z vec dogodki jih ima vec, klicatelj vzame prvega.
+       Polji 3-4 sta zapolnjeni pri dvojicah - zmagovalec je par, ne igralec -,
+       zadnje pa pri ekipnem dogodku (tam sta ime in priimek prazna). */
     @Query("""
-            SELECT p.dogodek.turnir.id, i.ime, i.priimek, i2.ime, i2.priimek FROM Prijava p
-            JOIN p.igralec i
+            SELECT p.dogodek.turnir.id, i.ime, i.priimek, i2.ime, i2.priimek,
+                   COALESCE(e.ime, CONCAT(ek.ime, ' ', e.zaporedna)) FROM Prijava p
+            LEFT JOIN p.igralec i
             LEFT JOIN p.igralec2 i2
+            LEFT JOIN p.ekipa e LEFT JOIN e.klub ek
             WHERE p.koncnoMesto = 1
             ORDER BY p.dogodek.id
             """)
@@ -104,7 +123,8 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
 
     /* Zmagovalci (1. mesto) posameznih dogodkov ENEGA turnirja, z imenom
        dogodka - za vrstico "Prvi naslov" na zavihku statistike. Pri dvojicah
-       je zmagovalec par, zato je nalozen tudi soigralec. */
+       je zmagovalec par, zato je nalozen tudi soigralec. Ekipni dogodki
+       izpadejo (stik na igralca je notranji): naslov ekipe ni naslov igralca. */
     @Query("""
             SELECT p FROM Prijava p
             JOIN FETCH p.dogodek d
@@ -124,7 +144,8 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
        Vez na soigralca mora biti IZRECNO LEVA: pri posamicni prijavi je
        igralec2 prazen, pisava "p.igralec2.id" pa v JPQL pomeni notranji stik
        in bi tiho izpustila vse posamicne naslove - torej ravno tiste, ki jih
-       vrstica najveckrat pokaze. */
+       vrstica najveckrat pokaze. Ekipne prijave izpadejo po notranjem stiku
+       na igralca. */
     @Query("""
             SELECT i.id, i2.id, t.id, t.datumZacetka FROM Prijava p
             JOIN p.dogodek d JOIN d.turnir t
@@ -135,14 +156,24 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             """)
     List<Object[]> naslovi(List<Long> idjiIgralcev);
 
-    /* Ena prijava z igralcema in kluboma - za izpis po odjavi oz. povezavi. */
+    /* Ena prijava z igralcema (ekipo) in kluboma - za izpis po odjavi oz. povezavi. */
     @Query("""
             SELECT p FROM Prijava p
-            JOIN FETCH p.igralec
+            LEFT JOIN FETCH p.igralec
             LEFT JOIN FETCH p.igralec2
+            LEFT JOIN FETCH p.ekipa e LEFT JOIN FETCH e.klub
             LEFT JOIN FETCH p.klubObPrijavi
             LEFT JOIN FETCH p.klubObPrijavi2
             WHERE p.id = :id
             """)
     Optional<Prijava> najdiZIgralcem(Long id);
+
+    /* Datumi turnirjev, na katerih je igralec nastopil posamicno ali v paru -
+       uvoz po njih presodi, ali je dogodek najnovejsi nastop (in klub igralca
+       sme zamenjati). */
+    @Query("""
+            SELECT t.datumZacetka FROM Prijava p JOIN p.dogodek d JOIN d.turnir t
+            WHERE p.igralec.id = :idIgralec OR p.igralec2.id = :idIgralec
+            """)
+    List<java.time.LocalDate> datumiNastopov(Long idIgralec);
 }

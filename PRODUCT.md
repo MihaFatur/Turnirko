@@ -31,7 +31,7 @@ Ostale potrjene skupine (podpora, ne merilo odločitev):
 
 Turnirko vodi namiznoteniška tekmovanja — posamične turnirje z več dogodki in
 ekipne lige — po pravilih NTZS: prijave, žreb, mreže in skupine, vnos
-rezultatov, razvrstitve, klubski ELO in natisljivi zapisniki. Vse, kar sme biti
+rezultatov, razvrstitve, Turnirko rating in natisljivi zapisniki. Vse, kar sme biti
 javno, je javno dosegljivo brez prijave.
 
 Uspeh je dvojen: (1) turnir se od prijav do končne razvrstitve izpelje v celoti
@@ -52,7 +52,7 @@ ima in tega generični turnirski SaaS nima:
   uradni ekipni zapisnik NTZS z variantama predloge);
 - javna, brskljiva lestvica in pregled 1-na-1 — NTZS jakostne lestvice še vedno
   objavlja kot statične .xlsx/.pdf;
-- klubski ELO z dnevnikom vseh sprememb, ki ga tekmovanje lahko tudi izklopi.
+- Turnirko rating z dnevnikom vseh sprememb, ki ga tekmovanje lahko tudi izklopi.
 
 ## Operating Context
 
@@ -77,14 +77,30 @@ Potrjeno delujoče:
   in `SKUPINE` = format TOP (npr. TOP 24 kot 3 skupine po 8, skupine so rangi);
 - turnir → več dogodkov (disciplina, spol, kategorija), prijave z jakostnim
   vrstnim redom in mehkim izbrisom ob odjavi;
-- ekipne lige: srečanja, postava, uradni zapisnik, ligaška lestvica;
+- ekipne lige: srečanja, postava, uradni zapisnik, ligaška lestvica in
+  končnica po rednem delu (serije do N zmag, 2/4/8 ekip);
+- ekipni turnirji (ekipni DP, pokal NTZS): ekipe s kadri, srečanja z
+  zapisnikom kot tekme mreže ali skupin, skupine za mesta s prenesenim izidom
+  iz predtekmovanja (PST 14. člen), tekma za 3. mesto;
+- uvoz NTZS iz sistema Stupa (admin, ročno): predogled z uskladitvijo tekmo za
+  tekmo, odločitve o istovetnosti oseb, uvoz s preračunom ratinga in dnevnikom;
+  uvožena tekmovanja so samo za branje;
 - izidi: igrano, brez boja, predaja, diskvalifikacija; točke po nizih z
   validacijo mogočega vrstnega reda; odstop med tekmovanjem;
-- klubski ELO z dnevnikom (`rating_zgodovina`), dinamičnim K, ničvsotnim
-  zaokroževanjem in margino po presenečenju; štetje v ELO je izbirno na ravni
-  turnirja in lige;
+- Turnirko rating z dnevnikom (`rating_zgodovina`): K po negotovosti
+  (40 + pribitki za manj kot 30 in manj kot 10 tekem ter za vrnitev po letu
+  odsotnosti), ničvsotno zaokroževanje, margina po presenečenju, starostno
+  sidro za novince, uvrstitev po prvem dnevu igranja in odbitek za
+  neaktivnost; vsako tekmovanje ima raven (uradno 100 %, klubsko 75 %,
+  rekreativno 50 %), ki določa težo njegovih tekem; vsaka vrstica dnevnika
+  razloži svojo številko z zapisanim obrazcem;
+- zunanja uvrstitev za redke goste: za igralca, ki pri nas odigra premalo
+  tekem (mednarodni igralci), admin prepiše moč z zunanje lestvice — z
+  obveznim in javno vidnim virom ter pojasnilom;
+- ločene lestvice (moški / ženske, tekmovalci / rekreativci) in ponovni
+  preračun celotne zgodovine iz izidov;
 - štiri vloge (admin, organizator, igralec, gost) z lastništvom na ravni zapisa;
-- javna lestvica, profil igralca z grafom ELO, pregled 1-na-1.
+- javna lestvica, profil igralca z grafom ratinga, pregled 1-na-1.
 
 Trdne omejitve, ki jih prihodnje delo ne sme razbiti:
 
@@ -98,12 +114,12 @@ Trdne omejitve, ki jih prihodnje delo ne sme razbiti:
 
 Izrecno neodločeno / še ne obstaja (ne razglašaj za obstoječe):
 
-- uradne jakostne točke NTZS (PST čl. 30) — implementiran je samo klubski ELO;
+- uradne jakostne točke NTZS (PST čl. 30) — implementiran je samo Turnirko rating;
 - gostovanje: danes SQLite in lokalni zagon; Postgres in večklubska raba sta
   načrtovana, ne izvedena;
 - dvojice v krožnem in skupinskem sistemu — turnirske dvojice obstajajo, a
-  igrajo izključno izločilno mrežo (par je ena prijava, v ELO ne šteje);
-- ekipna tekmovanja onkraj že podprtih lig SNTL;
+  igrajo izključno izločilno mrežo (par je ena prijava, v rating ne šteje);
+- samodejna (časovna) sinhronizacija s Stupo — uvoz je namerno ročen;
 - mize, urniki, prijavni roki in prijavnine;
 - uvoz jakostne lestvice NTZS (.xlsx) in uradni izvozi rezultatov.
 

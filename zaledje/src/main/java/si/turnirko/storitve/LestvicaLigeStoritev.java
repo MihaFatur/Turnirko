@@ -1,6 +1,10 @@
 /* Izracun lestvic lige iz koncanih srecanj: ekipne (glavne) ter lestvic
    posameznikov in dvojic, ki tecejo SAMO po tekmah te lige.
 
+   Tocke: zmaga, neodloceno in poraz po pravilih lige; ekipi, ki izgubi brez
+   borbe (srecanje.brezBoja), se od skupnega stevila odsteje se
+   liga.odbitekBrezBoja (Pravila SNTL).
+
    Kriteriji izenacenja ekipne lestvice (potrjen vrstni red): tocke -> medsebojni izid ->
    razlika posamicnih tekem -> razlika nizov -> ime. Medsebojni izid je
    izracunan parno (tocke, ki sta jih izenaceni ekipi osvojili druga proti
@@ -65,7 +69,10 @@ public class LestvicaLigeStoritev {
                     e.jeProsta() ? null : e.getKlub().getIme()));
         }
 
-        List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(idLiga);
+        // Lestvica je lestvica REDNEGA DELA: srecanja koncnice tockovanja
+        // nimajo (odloca serija) in bi ekipam v koncnici pripisala tocke, ki
+        // jih ostale ekipe sploh ne morejo dobiti.
+        List<Srecanje> srecanja = srecanjeRepozitorij.najdiRednaZaLigo(idLiga);
         // medsebojni izid: hth[a][b] = tocke, ki jih je ekipa a osvojila proti b
         Map<Long, Map<Long, Integer>> hth = new HashMap<>();
 
@@ -109,6 +116,13 @@ public class LestvicaLigeStoritev {
             vg.tocke += tockeG;
             hth.computeIfAbsent(vd.id, k -> new HashMap<>()).merge(vg.id, tockeD, Integer::sum);
             hth.computeIfAbsent(vg.id, k -> new HashMap<>()).merge(vd.id, tockeG, Integer::sum);
+            /* Poraz brez borbe (V29): porazencu se od SKUPNEGA stevila tock odsteje
+               odbitek lige (Pravila SNTL: "porazeni ekipi se odvzame se eno
+               tocko"). Medsebojni izid ostane izid srecanja - odbitek je kazen,
+               ne rezultat dvoboja. */
+            if (s.isBrezBoja() && dd != gg) {
+                (dd < gg ? vd : vg).tocke -= liga.getOdbitekBrezBoja();
+            }
         }
 
         // razlika nizov iz sestevka po srecanjih
@@ -190,8 +204,19 @@ public class LestvicaLigeStoritev {
        nastopa; BilanceLige ga vrne kot 0 : 0. */
     @Transactional(readOnly = true)
     public BilanceLige bilancePosamicnih(Long idLiga) {
+        return sestejBilance(tekmaSrecanjaRepozitorij.posamicniIzidiLige(idLiga));
+    }
+
+    /* Iste bilance za ekipni dogodek turnirja - kader v zapisniku ekipne tekme
+       pokaze izkupicek igralca za to ekipo na tem dogodku. */
+    @Transactional(readOnly = true)
+    public BilanceLige bilancePosamicnihDogodka(Long idDogodek) {
+        return sestejBilance(tekmaSrecanjaRepozitorij.posamicniIzidiDogodka(idDogodek));
+    }
+
+    private static BilanceLige sestejBilance(List<Object[]> izidi) {
         Map<Long, Map<Long, int[]>> zbir = new HashMap<>();
-        for (Object[] r : tekmaSrecanjaRepozitorij.posamicniIzidiLige(idLiga)) {
+        for (Object[] r : izidi) {
             Long ekipaDomaci = ((Number) r[0]).longValue();
             Long ekipaGost = ((Number) r[1]).longValue();
             Long domaci = ((Number) r[2]).longValue();

@@ -89,4 +89,12 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
             WHERE ts.id = :idTekma
             """)
     Optional<Liga> najdiZLastnistvomPoTekmiSrecanja(Long idTekma);
+
+    @Query("""
+            SELECT l FROM SerijaKoncnice sk JOIN sk.liga l
+            LEFT JOIN FETCH l.ustvaril
+            LEFT JOIN FETCH l.klubLastnik
+            WHERE sk.id = :idSerija
+            """)
+    Optional<Liga> najdiZLastnistvomPoSeriji(Long idSerija);
 }

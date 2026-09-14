@@ -170,6 +170,10 @@ export function sklonIgralcev(n: number): string {
   return sklon(n, 'igralec', 'igralca', 'igralci', 'igralcev')
 }
 
+export function sklonEkip(n: number): string {
+  return sklon(n, 'ekipa', 'ekipi', 'ekipe', 'ekip')
+}
+
 export function sklonSkupin(n: number): string {
   return sklon(n, 'skupina', 'skupini', 'skupine', 'skupin')
 }

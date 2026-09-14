@@ -5,9 +5,11 @@ import java.time.LocalDate;
 
 import si.turnirko.modeli.Disciplina;
 import si.turnirko.modeli.Dogodek;
+import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusTekmovanja;
+import si.turnirko.modeli.VirTekmovanja;
 
 public record DogodekDto(
         Long id,
@@ -29,7 +31,13 @@ public record DogodekDto(
            s 100, zato stojita oba podatka ze v seznamu dogodkov. */
         int steviloPrijav,
         int odigranihTekem,
-        int vsehTekem
+        int vsehTekem,
+        /* Ekipni dogodek: format srecanja in prag zmag; prazna pri drugih. */
+        FormatSrecanja formatSrecanja,
+        Integer zmagZaSrecanje,
+        boolean tekmaZaTretjeMesto,
+        /* Vir turnirja (V27): uvozen dogodek je samo za branje. */
+        VirTekmovanja vir
 ) {
 
     /* Brez stevcev - za odgovor ob nastanku dogodka, ko jih se ni. */
@@ -54,7 +62,11 @@ public record DogodekDto(
                 dogodek.getStatus(),
                 steviloPrijav,
                 odigranihTekem,
-                vsehTekem
+                vsehTekem,
+                dogodek.getFormatSrecanja(),
+                dogodek.getZmagZaSrecanje(),
+                dogodek.isTekmaZaTretjeMesto(),
+                dogodek.getTurnir().getVir()
         );
     }
 }

@@ -1,5 +1,5 @@
 /* Ena posamicna tekma znotraj srecanja - izpis (zapisnik). Pri dvojicah sta
-   na strani dva igralca (domaci2/gost2). Sprememba ELO velja samo za posamicne
+   na strani dva igralca (domaci2/gost2). Sprememba ratinga velja samo za posamicne
    tekme (dvojice ne stejejo). */
 package si.turnirko.dto;
 
@@ -26,15 +26,15 @@ public record TekmaSrecanjaDto(
         StranEkipe zmagovalecStran,
         IzidTekme izidTip,
         StatusTekmeSrecanja status,
-        Integer spremembaEloDomaci,
-        Integer spremembaEloGost,
+        Integer spremembaRatingaDomaci,
+        Integer spremembaRatingaGost,
         /* Tocke po nizih po vrsti (11:7, 9:11 ...); prazen seznam, kadar jih
            organizator ni vpisal - vnos je neobvezen. */
         List<NizVnos> nizi
 ) {
 
-    public static TekmaSrecanjaDto iz(TekmaSrecanja t, Integer spremembaEloDomaci,
-                                      Integer spremembaEloGost, List<NizVnos> nizi) {
+    public static TekmaSrecanjaDto iz(TekmaSrecanja t, Integer spremembaRatingaDomaci,
+                                      Integer spremembaRatingaGost, List<NizVnos> nizi) {
         return new TekmaSrecanjaDto(
                 t.getId(),
                 t.getZaporedje(),
@@ -50,8 +50,8 @@ public record TekmaSrecanjaDto(
                 t.getZmagovalecStran(),
                 t.getIzidTip(),
                 t.getStatus(),
-                spremembaEloDomaci,
-                spremembaEloGost,
+                spremembaRatingaDomaci,
+                spremembaRatingaGost,
                 nizi);
     }
 }

@@ -1,27 +1,28 @@
 /* Seznam tekem (krozni sistem, skupine): vsaka vrstica prikaze oba
-   igralca in rezultat; ce je vnos smiseln in gre za administratorja,
-   je vrstica klikljiva za vnos rezultata. */
+   udelezenca in rezultat. Katera vrstica je klikljiva in kaj klik pomeni
+   (vnos rezultata ali zapisnik ekipnega srecanja), pove stran s KlikTekme. */
 import type { TekmaDto } from '../api/tipi'
 import { OZNAKE_IZID, imeUdelezenca } from '../api/tipi'
-import { SpremembaElo } from './SpremembaElo'
+import { SpremembaRatinga } from './SpremembaRatinga'
+import type { KlikTekme } from './TekmaKartica'
 
 interface Lastnosti {
   tekme: TekmaDto[]
-  naKlikTekme?: (tekma: TekmaDto) => void
+  klik?: KlikTekme
   /* Strnjena različica za ozek stolpec (odprta skupina): samo imeni in
-     rezultat. Rating in sprememba ELO se v 300 px ne bereta - kdor ju išče,
+     rezultat. Rating in sprememba ratinga se v 300 px ne bereta - kdor ju išče,
      odpre profil igralca. */
   strnjen?: boolean
 }
 
-export function TekmeSeznam({ tekme, naKlikTekme, strnjen = false }: Lastnosti) {
+export function TekmeSeznam({ tekme, klik, strnjen = false }: Lastnosti) {
   if (tekme.length === 0) {
     return <p className="obvestilo">Ni tekem.</p>
   }
   return (
     <ul className="tekme-seznam">
       {tekme.map((tekma) => (
-        <Vrstica key={tekma.id} tekma={tekma} naKlik={naKlikTekme} strnjen={strnjen} />
+        <Vrstica key={tekma.id} tekma={tekma} klik={klik} strnjen={strnjen} />
       ))}
     </ul>
   )
@@ -35,37 +36,43 @@ function razredRezultata(tekma: TekmaDto, klikljiva: boolean): string {
 
 function Vrstica({
   tekma,
-  naKlik,
+  klik,
   strnjen,
 }: {
   tekma: TekmaDto
-  naKlik?: (t: TekmaDto) => void
+  klik?: KlikTekme
   strnjen: boolean
 }) {
   const koncana = tekma.status === 'KONCANA'
-  const klikljiva =
-    naKlik !== undefined && (tekma.status === 'PRIPRAVLJENA' || tekma.status === 'V_IGRI')
+  const klikljiva = klik !== undefined && klik.klikljiva(tekma)
 
   const ime1 = imeUdelezenca(tekma.udelezenec1) ?? '—'
   const ime2 = imeUdelezenca(tekma.udelezenec2) ?? '—'
   const zmagovalec1 = koncana && tekma.idZmagovalcaPrijave === tekma.udelezenec1?.idPrijave
   const zmagovalec2 = koncana && tekma.idZmagovalcaPrijave === tekma.udelezenec2?.idPrijave
 
-  const posebni =
-    koncana && tekma.izidTip && tekma.izidTip !== 'IGRANO' ? OZNAKE_IZID[tekma.izidTip] : null
+  /* Prenesen izid finalne skupine ni nova tekma: dvoboj je bil odigran v
+     predtekmovanju in se ne igra znova (PST, 14. člen). Brez oznake bi bil
+     videti kot tekma, ki sta jo ekipi odigrali dvakrat. */
+  const prenesena = tekma.idPrenesena !== null
+  const posebni = prenesena
+    ? 'prenesen izid iz predtekmovanja'
+    : koncana && tekma.izidTip && tekma.izidTip !== 'IGRANO'
+      ? OZNAKE_IZID[tekma.izidTip]
+      : null
 
   return (
     <li
       className={'tekme-seznam__vrstica' + (klikljiva ? ' tekme-seznam__vrstica--klikljiva' : '')}
-      onClick={klikljiva ? () => naKlik!(tekma) : undefined}
-      title={klikljiva ? 'Klikni za vnos rezultata' : undefined}
+      onClick={klikljiva ? () => klik.naKlik(tekma) : undefined}
+      title={klikljiva ? klik.namig(tekma) : undefined}
     >
       <span className={'tekme-seznam__igralec' + (zmagovalec1 ? ' tekme-seznam__igralec--zmaga' : '')}>
         {ime1}
         {!strnjen && tekma.ratingPred1 !== null && (
           <span className="tekme-seznam__rating">{tekma.ratingPred1}</span>
         )}
-        {!strnjen && koncana && <SpremembaElo vrednost={tekma.spremembaElo1} />}
+        {!strnjen && koncana && <SpremembaRatinga vrednost={tekma.spremembaElo1} />}
       </span>
       {/* Rezultat pove stanje tekme: izid, "v igri", dejanje ali crtica.
           Neodigrana tekma je crtica v onemogoceni barvi - nic se ni zgodilo. */}
@@ -75,17 +82,21 @@ function Vrstica({
           : tekma.status === 'V_IGRI'
             ? 'v igri'
             : klikljiva
-              ? 'vnesi'
+              ? (tekma.idSrecanje !== null ? 'zapisnik' : 'vnesi')
               : '–'}
       </span>
       <span className={'tekme-seznam__igralec' + (zmagovalec2 ? ' tekme-seznam__igralec--zmaga' : '')}>
-        {!strnjen && koncana && <SpremembaElo vrednost={tekma.spremembaElo2} />}
+        {!strnjen && koncana && <SpremembaRatinga vrednost={tekma.spremembaElo2} />}
         {!strnjen && tekma.ratingPred2 !== null && (
           <span className="tekme-seznam__rating">{tekma.ratingPred2}</span>
         )}
         {ime2}
       </span>
-      {posebni && <span className="tekme-seznam__izid">{posebni}</span>}
+      {posebni && (
+        <span className={'tekme-seznam__izid' + (prenesena ? ' tekme-seznam__izid--prenesen' : '')}>
+          {posebni}
+        </span>
+      )}
     </li>
   )
 }

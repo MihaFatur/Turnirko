@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import si.turnirko.modeli.RavenTekmovanja;
+
 public record TurnirVnos(
         @NotBlank(message = "ime turnirja je obvezno")
         @Size(min = 3, max = 80, message = "ime turnirja mora imeti od 3 do 80 znakov") String ime,
@@ -14,6 +16,6 @@ public record TurnirVnos(
         LocalDate datumZacetka,
         LocalDate datumKonca,
         String opombe,
-        // ali tekme turnirja stejejo v klubski ELO; null = privzeto (steje)
-        Boolean stejeVElo
+        // raven tekmovanja (teza v Turnirko ratingu); null = privzeto KLUBSKO
+        RavenTekmovanja raven
 ) {}

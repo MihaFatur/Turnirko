@@ -4,7 +4,14 @@
    - vnos na ze KONCANO tekmo je zavrnjen (naknadni popravki z razveljavitvijo
      ratinga in napredovanja so predvideni kot posebna operacija v nacrtu),
    - ob koncu tekme se (enkrat!) obracuna rating, izvede napredovanje po mrezi
-     in po zadnji tekmi zakljuci dogodek ter dodeli koncni mesti. */
+     in po zadnji tekmi zakljuci dogodek ter dodeli koncna mesta.
+
+   EKIPNA TEKMA (dogodek EKIPNO, V28) izida ne dobi z vnosom, ampak iz svojega
+   SRECANJA: postava in posamicne tekme tecejo v SrecanjeStoritev, ta pa ob
+   koncu srecanja poklice zakljuciEkipnoTekmo. Neposredno sta dovoljena samo
+   BREZ_BOJA in DISKVALIFIKACIJA - ekipa ni prisla oz. je bila izkljucena, in
+   srecanja takrat ni bilo. Posledice (napredovanje, skupine, zakljucek) so
+   iste kot pri tekmi posameznikov in zivijo na enem mestu (posledice). */
 package si.turnirko.storitve;
 
 import java.util.ArrayList;
@@ -47,6 +54,7 @@ public class TekmaStoritev {
     private final NapredovanjeStoritev napredovanjeStoritev;
     private final SkupineStoritev skupineStoritev;
     private final RazvrstitevStoritev razvrstitevStoritev;
+    private final EkipneTekmeStoritev ekipneTekme;
     private final LastnistvoStoritev lastnistvo;
 
     public TekmaStoritev(TekmaRepozitorij tekmaRepozitorij,
@@ -57,6 +65,7 @@ public class TekmaStoritev {
                          NapredovanjeStoritev napredovanjeStoritev,
                          SkupineStoritev skupineStoritev,
                          RazvrstitevStoritev razvrstitevStoritev,
+                         EkipneTekmeStoritev ekipneTekme,
                          LastnistvoStoritev lastnistvo) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
@@ -66,6 +75,7 @@ public class TekmaStoritev {
         this.napredovanjeStoritev = napredovanjeStoritev;
         this.skupineStoritev = skupineStoritev;
         this.razvrstitevStoritev = razvrstitevStoritev;
+        this.ekipneTekme = ekipneTekme;
         this.lastnistvo = lastnistvo;
     }
 
@@ -79,6 +89,14 @@ public class TekmaStoritev {
         preveriStanje(tekma);
 
         IzidTekme izid = vnos.izidTip() == null ? IzidTekme.IGRANO : vnos.izidTip();
+        if (tekma.getDogodek().jeEkipno()) {
+            if (izid != IzidTekme.BREZ_BOJA && izid != IzidTekme.DISKVALIFIKACIJA) {
+                throw new NeveljavenVnosIzjema("Izid ekipne tekme nastane iz srecanja: vpisi postavo"
+                        + " in rezultate posamicnih tekem. Neposredno je mogoc samo izid brez boja.");
+            }
+            // srecanja ni bilo - ce je ze nastalo, se ni smelo zaceti
+            ekipneTekme.odstraniNezacetoSrecanje(tekma.getId());
+        }
         switch (izid) {
             case IGRANO -> vnesiIgrano(tekma, vnos);
             case BREZ_BOJA, DISKVALIFIKACIJA -> vnesiPosebenIzid(tekma, vnos, izid);
@@ -91,29 +109,75 @@ public class TekmaStoritev {
         tekmaRepozitorij.save(tekma);
 
         // Rating se obracuna samo za dejansko igrane tekme in le, ce turnir
-        // steje v ELO (organizator to izbere ob ustvarjanju; enako kot pri
+        // steje v rating (organizator to izbere ob ustvarjanju; enako kot pri
         // ligi). Dvojice ne stejejo NIKOLI - izida para ni mogoce pripisati
-        // posamezniku; isto pravilo velja za ligaske dvojice.
+        // posamezniku; isto pravilo velja za ligaske dvojice. Ekipna tekma sama
+        // v rating ne gre - gredo njene posamicne tekme (SrecanjeStoritev).
         if ((izid == IzidTekme.IGRANO || izid == IzidTekme.PREDAJA)
                 && !tekma.getDogodek().jeDvojice()
-                && tekma.getDogodek().getTurnir().isStejeVElo()) {
-            ratingStoritev.obracunajKlubskiElo(tekma);
+                && !tekma.getDogodek().jeEkipno()
+                && tekma.getDogodek().getTurnir().getRaven().steje()) {
+            ratingStoritev.obracunajZaTurnirsko(tekma);
         }
 
+        posledice(tekma);
+        return tekma;
+    }
+
+    /* Ekipna tekma se je zacela: srecanje ima postavo. Enako stanje kot tekma
+       posameznikov, ki je na mizi. */
+    @Transactional
+    public void oznaciVIgri(Long idTekme) {
+        tekmaRepozitorij.findById(idTekme).ifPresent(t -> {
+            if (t.getStatus() == StatusTekme.PRIPRAVLJENA) {
+                t.setStatus(StatusTekme.V_IGRI);
+                tekmaRepozitorij.save(t);
+            }
+        });
+    }
+
+    /* Izid ekipne tekme iz koncanega srecanja: dobljene posamicne tekme vsake
+       ekipe. Domaca ekipa srecanja je ekipa prve prijave tekme (tako srecanje
+       nastane v EkipneTekmeStoritev), zato stevila sledita strani tekme. */
+    @Transactional
+    public void zakljuciEkipnoTekmo(Long idTekme, int dobljene1, int dobljene2) {
+        Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme)
+                .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
+        if (tekma.getStatus() == StatusTekme.KONCANA) {
+            return;
+        }
+        if (dobljene1 == dobljene2) {
+            throw new DomenskaIzjema("Ekipna tekma turnirja se ne more koncati neodloceno"
+                    + " - dogodek potrebuje prag zmag za srecanje.");
+        }
+        tekma.setDobljeniNizi1(dobljene1);
+        tekma.setDobljeniNizi2(dobljene2);
+        tekma.setIzidTip(IzidTekme.IGRANO);
+        tekma.setZmagovalec(dobljene1 > dobljene2 ? tekma.getPrijava1() : tekma.getPrijava2());
+        tekma.setStatus(StatusTekme.KONCANA);
+        tekmaRepozitorij.save(tekma);
+        posledice(tekma);
+    }
+
+    /* Kar sledi vsaki koncani tekmi turnirja - v tem vrstnem redu:
+       napredovanje po mrezi, skupinski del (mesta, izlocilni del, finalne
+       skupine) in sele nato zakljucek dogodka, sicer bi se dogodek predcasno
+       zakljucil. Nove ekipne tekme z obema ekipama dobijo srecanje. */
+    private void posledice(Tekma tekma) {
         // izlocilni del: zmagovalec (ali porazenec) napreduje po povezavah
         napredovanjeStoritev.razsiriIzKoncane(tekma);
 
         // skupinski del: dodeli mesta v koncani skupini in - ko so vse
-        // skupine odigrane - zgeneriraj izlocilno mrezo. Nujno se zgodi PRED
-        // preverbo zakljucka dogodka, sicer bi se dogodek predcasno zakljucil.
+        // skupine odigrane - zgeneriraj izlocilno mrezo oz. finalne skupine
         Dogodek dogodek = tekma.getDogodek();
         if (dogodek.getSistemTekmovanja().imaSkupine() && tekma.getFaza() == FazaTekme.SKUPINA) {
             skupineStoritev.obKoncaniSkupinski(tekma);
         }
+        if (dogodek.jeEkipno()) {
+            ekipneTekme.zagotoviSrecanja(dogodek.getId());
+        }
 
         zakljuciDogodekCeKoncan(dogodek.getId(), dogodek.getSistemTekmovanja());
-
-        return tekma;
     }
 
     /* Odstop igralca med tekmovanjem (poskodba, odhod pred koncem).
@@ -122,7 +186,7 @@ public class TekmaStoritev {
 
        Zavestno je izbran izid BREZ_BOJA in ne PREDAJA: te tekme niso bile
        nikoli odigrane, zato se rating NE sme obracunati. Nasprotnik bi sicer
-       dobil ELO tocke za tekmo, ki je ni igral, kar bi popacilo lestvico.
+       dobil tocke ratinga za tekmo, ki je ni igral, kar bi popacilo lestvico.
        Na lestvici skupine tekma normalno steje kot njegova zmaga. */
     @Transactional
     public Prijava odstopiIgralca(Long idPrijave) {
@@ -136,7 +200,7 @@ public class TekmaStoritev {
                     + " Pred zrebom igralca odjavi.");
         }
         if (prijava.getStatus() != Prijava.StatusPrijave.PRIJAVLJEN) {
-            throw new DomenskaIzjema("Igralec ne nastopa na tem dogodku (stanje: "
+            throw new DomenskaIzjema("Tekmovalec ne nastopa na tem dogodku (stanje: "
                     + prijava.getStatus() + ").");
         }
         prijava.setStatus(Prijava.StatusPrijave.ODSTOPIL);
@@ -156,8 +220,11 @@ public class TekmaStoritev {
             if (nasprotnik == null) {
                 continue; // nasprotnik se ni znan (tekma visjega kola v mrezi)
             }
+            if (dogodek.jeEkipno()) {
+                ekipneTekme.odstraniNezacetoSrecanje(tekma.getId());
+            }
 
-            int zaZmago = tekma.nizovZaZmago();
+            int zaZmago = zmagZaIzid(tekma);
             tekma.setDobljeniNizi1(prvi ? 0 : zaZmago);
             tekma.setDobljeniNizi2(prvi ? zaZmago : 0);
             tekma.setIzidTip(IzidTekme.BREZ_BOJA);
@@ -174,6 +241,9 @@ public class TekmaStoritev {
         if (dogodek.getSistemTekmovanja().imaSkupine() && !brezBoja.isEmpty()) {
             skupineStoritev.obKoncaniSkupinski(brezBoja.get(brezBoja.size() - 1));
         }
+        if (dogodek.jeEkipno()) {
+            ekipneTekme.zagotoviSrecanja(dogodek.getId());
+        }
         zakljuciDogodekCeKoncan(dogodek.getId(), dogodek.getSistemTekmovanja());
 
         return prijava;
@@ -181,6 +251,18 @@ public class TekmaStoritev {
 
     private static boolean jeIstaPrijava(Prijava stran, Long idPrijave) {
         return stran != null && stran.getId().equals(idPrijave);
+    }
+
+    /* Koliko "nizov" dobi zmagovalec izida brez boja: pri tekmi posameznikov
+       nizi za zmago, pri ekipni tekmi posamicne tekme za zmago srecanja. */
+    private static int zmagZaIzid(Tekma tekma) {
+        Dogodek dogodek = tekma.getDogodek();
+        if (!dogodek.jeEkipno()) {
+            return tekma.nizovZaZmago();
+        }
+        return dogodek.getZmagZaSrecanje() != null
+                ? dogodek.getZmagZaSrecanje()
+                : dogodek.getFormatSrecanja().stTekem() / 2 + 1;
     }
 
     /* Preveri, ali je tekmo v trenutnem stanju sploh dovoljeno vnasati. */
@@ -196,7 +278,7 @@ public class TekmaStoritev {
             default -> { /* PRIPRAVLJENA ali V_IGRI - v redu */ }
         }
         if (tekma.getPrijava1() == null || tekma.getPrijava2() == null) {
-            throw new DomenskaIzjema("Tekma se nima obeh igralcev.");
+            throw new DomenskaIzjema("Tekma se nima obeh udelezencev.");
         }
     }
 
@@ -248,11 +330,11 @@ public class TekmaStoritev {
         }
     }
 
-    /* Brez boja (w.o.) ali diskvalifikacija: zmagovalec dobi vse nize,
-       rating se NE obracuna. */
+    /* Brez boja (w.o.) ali diskvalifikacija: zmagovalec dobi vse nize (pri
+       ekipni tekmi posamicne tekme za zmago srecanja), rating se NE obracuna. */
     private void vnesiPosebenIzid(Tekma tekma, VnosRezultata vnos, IzidTekme izid) {
         Prijava zmagovalec = zahtevajZmagovalca(tekma, vnos);
-        int zaZmago = tekma.nizovZaZmago();
+        int zaZmago = zmagZaIzid(tekma);
         boolean prviZmagal = zmagovalec.getId().equals(tekma.getPrijava1().getId());
         tekma.setDobljeniNizi1(prviZmagal ? zaZmago : 0);
         tekma.setDobljeniNizi2(prviZmagal ? 0 : zaZmago);
@@ -287,8 +369,9 @@ public class TekmaStoritev {
     }
 
     /* Ko so vse tekme dogodka koncane: dogodek zakljuci in dodeli koncna
-       mesta. Pri izlocilnem in skupinskem sistemu iz finala izlocilne mreze,
-       pri kroznem iz koncne lestvice.
+       mesta. Pri izlocilnem in skupinskem sistemu iz finala izlocilne mreze
+       (in tekme za 3. mesto), pri kroznem iz koncne lestvice, pri skupinah za
+       mesta iz finalnih skupin.
        Dogodek se nalozi sveze iz baze, ker so atomarne posodobitve
        napredovanja lahko medtem ocistile sejo (stara referenca bi bila
        odklopljena in sprememba statusa bi se tiho izgubila). */
@@ -296,6 +379,11 @@ public class TekmaStoritev {
         long nedokoncanih = tekmaRepozitorij.countByDogodekIdAndStatusNot(
                 idDogodka, StatusTekme.KONCANA);
         if (nedokoncanih > 0) {
+            return;
+        }
+        // skupine za mesta: po predtekmovanju morajo nastati finalne skupine -
+        // dokler jih ni, dogodek ni koncan, ceprav so vse obstojece tekme odigrane
+        if (sistem == SistemTekmovanja.SKUPINE_ZA_MESTA && !skupineStoritev.imaFinalneSkupine(idDogodka)) {
             return;
         }
 
@@ -309,24 +397,34 @@ public class TekmaStoritev {
             // lestvico (mesto v skupini dodeli SkupineStoritev).
             case SKUPINE -> { }
             case IZLOCILNI, SKUPINE_IZLOCILNI -> dodeliMestaIzFinala(idDogodka);
+            case SKUPINE_ZA_MESTA -> skupineStoritev.dodeliMestaIzFinalnihSkupin(idDogodka);
         }
     }
 
-    /* Izlocilni in skupinski sistem: 1. in 2. mesto iz finala glavne mreze. */
+    /* Izlocilni in skupinski sistem: 1. in 2. mesto iz finala glavne mreze,
+       3. in 4. iz tekme za 3. mesto, ce jo dogodek ima. */
     private void dodeliMestaIzFinala(Long idDogodka) {
         List<Tekma> tekme = tekmaRepozitorij.najdiZaDogodek(idDogodka);
         tekme.stream()
                 .filter(t -> t.getFaza() == FazaTekme.GLAVNI && t.getPozicija() == 1)
                 .max(Comparator.comparingInt(Tekma::getKolo))
-                .ifPresent(finale -> {
-                    if (finale.getZmagovalec() != null) {
-                        finale.getZmagovalec().setKoncnoMesto(1);
-                        Prijava porazenec = finale.porazenec();
-                        if (porazenec != null) {
-                            porazenec.setKoncnoMesto(2);
-                        }
-                    }
-                });
+                .ifPresent(finale -> dodeliPar(finale, 1));
+        tekme.stream()
+                .filter(t -> t.getFaza() == FazaTekme.TOLAZILNI
+                        && t.getVlogaIzvora1() == si.turnirko.modeli.VlogaIzvora.PORAZENEC
+                        && t.getVlogaIzvora2() == si.turnirko.modeli.VlogaIzvora.PORAZENEC)
+                .findFirst()
+                .ifPresent(zaTretje -> dodeliPar(zaTretje, 3));
+    }
+
+    private static void dodeliPar(Tekma tekma, int boljseMesto) {
+        if (tekma.getZmagovalec() != null) {
+            tekma.getZmagovalec().setKoncnoMesto(boljseMesto);
+            Prijava porazenec = tekma.porazenec();
+            if (porazenec != null) {
+                porazenec.setKoncnoMesto(boljseMesto + 1);
+            }
+        }
     }
 
     /* Krozni sistem: koncna mesta so kar mesta na skupni lestvici. */

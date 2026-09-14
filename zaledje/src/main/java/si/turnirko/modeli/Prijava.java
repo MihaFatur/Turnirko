@@ -1,13 +1,19 @@
 /* Prijava na dogodek - TEKMOVALNA ENOTA.
    Tekme se sklicujejo na PRIJAVE (ne neposredno na igralce), ker prijava
    hrani posnetek kluba in ratinga ob zrebu, predvsem pa zato, ker pri
-   disciplini DVOJICE predstavlja PAR: nosi drugega igralca in tabele tekem
-   zato ni bilo treba spreminjati.
+   disciplini DVOJICE predstavlja PAR, pri disciplini EKIPNO pa EKIPO (V28):
+   tabele tekem zato ni bilo treba spreminjati in zreb, mreza, skupine in
+   koncna mesta tecejo po isti kodi.
 
    Pri dvojicah se igralci prijavijo posamicno (vsak svoja vrstica), pare pa
    pred zrebom sestavi organizator: vrstica prvega igralca dobi soigralca,
    vrstica drugega izgine. Prijava brez soigralca je torej na dogodku dvojic
-   "prijavljen igralec brez para" in v zreb ne gre. */
+   "prijavljen igralec brez para" in v zreb ne gre.
+
+   Ekipna prijava igralca NIMA - kdo sme igrati, pove kader ekipe, kdo je
+   igral, pa srecanje ekipne tekme. Zato igralci() pri njej vrne prazen
+   seznam in vsaka koda, ki iz prijave bere igralca, mora ekipno prijavo
+   izlociti (statistika posameznika jo izloci ze po disciplini dogodka). */
 package si.turnirko.modeli;
 
 import java.time.LocalDateTime;
@@ -50,9 +56,15 @@ public class Prijava {
     @JoinColumn(name = "id_dogodek", nullable = false)
     private Dogodek dogodek;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_igralec", nullable = false)
+    /* Igralec posamicne prijave oz. prvi igralec para; prazen pri ekipi. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_igralec")
     private Igralec igralec;
+
+    /* Ekipa (samo pri disciplini EKIPNO); prazna pri igralcu in paru. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_ekipa")
+    private Ekipa ekipa;
 
     /* Drugi igralec para (samo pri disciplini DVOJICE). Prazen pomeni
        posamicno prijavo oz. igralca, ki soigralca se nima. */
@@ -121,15 +133,29 @@ public class Prijava {
         this.klubObPrijavi = igralec.getKlub();
     }
 
+    /* Ekipna prijava: posnetek kluba je klub ekipe (prosta ekipa ga nima). */
+    public Prijava(Dogodek dogodek, Ekipa ekipa) {
+        this.dogodek = dogodek;
+        this.ekipa = ekipa;
+        this.klubObPrijavi = ekipa.getKlub();
+    }
+
     public Long getId() { return id; }
     public Dogodek getDogodek() { return dogodek; }
     public Igralec getIgralec() { return igralec; }
+    public Ekipa getEkipa() { return ekipa; }
+
+    /* Ali prijava nosi ekipo (ekipni dogodek) in ne igralca. */
+    public boolean jeEkipa() { return ekipa != null; }
     public Klub getKlubObPrijavi() { return klubObPrijavi; }
     /* Ob ponovni prijavi po odjavi se posnetek kluba osvezi (moznost prestopa). */
     public void setKlubObPrijavi(Klub klubObPrijavi) { this.klubObPrijavi = klubObPrijavi; }
 
     public Igralec getIgralec2() { return igralec2; }
     public Klub getKlubObPrijavi2() { return klubObPrijavi2; }
+    /* Posnetek kluba soigralca iz vira (uvoz): klub ob tistem nastopu in ne
+       danasnji klub igralca. */
+    public void setKlubObPrijavi2(Klub klubObPrijavi2) { this.klubObPrijavi2 = klubObPrijavi2; }
 
     /* Poveze prijavo v par: drugi igralec s svojim posnetkom kluba.
        null razdruzi par in prijava spet velja za enega samega igralca. */
@@ -144,24 +170,38 @@ public class Prijava {
     /* Ali je prijava sestavljen par (in ne samo prijavljen igralec). */
     public boolean jePar() { return igralec2 != null; }
 
-    /* Igralci te prijave: eden ali dva. */
+    /* Igralci te prijave: eden ali dva; pri ekipi nobeden (igralce nosi kader). */
     public List<Igralec> igralci() {
+        if (ekipa != null) {
+            return List.of();
+        }
         return igralec2 == null ? List.of(igralec) : List.of(igralec, igralec2);
     }
 
     public boolean vsebujeIgralca(Long idIgralca) {
+        if (ekipa != null) {
+            return false;
+        }
         return igralec.getId().equals(idIgralca)
                 || (igralec2 != null && igralec2.getId().equals(idIgralca));
     }
 
-    /* Ime tekmovalne enote za izpise: "Ana Novak" oz. "Ana Novak / Eva Zajc". */
+    /* Ime tekmovalne enote za izpise: "Ana Novak", "Ana Novak / Eva Zajc"
+       oz. ime ekipe. */
     public String prikazanoIme() {
+        if (ekipa != null) {
+            return ekipa.prikazanoIme();
+        }
         return igralec2 == null ? igralec.polnoIme()
                 : igralec.polnoIme() + " / " + igralec2.polnoIme();
     }
 
-    /* Kratek izpis (npr. za vrstico "zadnji izid"): "Novak" oz. "Novak/Zajc". */
+    /* Kratek izpis (npr. za vrstico "zadnji izid"): "Novak", "Novak/Zajc"
+       oz. ime ekipe - ekipa krajse oblike imena nima. */
     public String prikazaniPriimek() {
+        if (ekipa != null) {
+            return ekipa.prikazanoIme();
+        }
         return igralec2 == null ? igralec.getPriimek()
                 : igralec.getPriimek() + "/" + igralec2.getPriimek();
     }

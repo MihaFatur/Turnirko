@@ -28,6 +28,14 @@
    SAVINJA: kot Corbillon (2 igralca + dvojice, oba igrata tudi par), le da so
        dvojice PRVE in ne na sredini: dvojice, A-X, B-Y, A-Y, B-X. Rekreacijska
        liga tako zacne z obema igralcema na mizi, brez cakanja na svoj nastop.
+   EKIPNI_DP: 3 igralci, dvojice prve, nato stiri posamicne in prvi do treh
+       zmag: dvojice, A-X, C-Z, A-Y, B-X. Tako so v sezoni 2025/26 igrala
+       ekipna DP mladih (U13-U19) in njihove kvalifikacije - preverjeno na
+       vseh 242 srecanjih v Stupi; par za dvojice sta skoraj vedno B in C.
+       Z OLIMPIJSKI ga ne zamenjaj: ta dvojic nima, druga posamicna tekma pa
+       je tam B-Y in ne C-Z.
+   POKAL_NTZS: 3 igralci brez dvojic, prvi do treh zmag: A-Y, B-X, C-Z, A-X,
+       B-Y. Tako je teklo pokalno tekmovanje NTZS 2026.
 
    Nove formate dodas tako, da dopolnis enum in metodo razpored() (in razsiris
    CHECK omejitev stolpca liga.format_srecanja z novo migracijo). */
@@ -44,7 +52,16 @@ public enum FormatSrecanja {
     SNTL_BREZ_DVOJIC(3, false, false),
     OLIMPIJSKI(3, false, false),
     CORBILLON(2, true, false),
-    SAVINJA(2, true, false);
+    SAVINJA(2, true, false),
+    EKIPNI_DP(3, true, true),
+    POKAL_NTZS(3, false, false);
+
+    /* Formata, ki ju pozna samo ekipni DOGODEK turnirja. Omejitev CHECK stolpca
+       liga.format_srecanja ju ne nasteje - liga bi ju zavrnila v bazi, zato ju
+       zavrne ze storitev (LigaStoritev), z razumljivim sporocilom. */
+    public boolean samoZaTurnir() {
+        return this == EKIPNI_DP || this == POKAL_NTZS;
+    }
 
     /* Eno mesto (tekma) v srecanju. Pri dvojicah sta domaci/gost null - par
        se dolobi iz postave (igralci z oznako v_dvojici). */
@@ -156,6 +173,18 @@ public enum FormatSrecanja {
                     new MestoTekme(p, "B", "Y"),
                     new MestoTekme(p, "A", "Y"),
                     new MestoTekme(p, "B", "X"));
+            case EKIPNI_DP -> List.of(
+                    new MestoTekme(d, null, null),
+                    new MestoTekme(p, "A", "X"),
+                    new MestoTekme(p, "C", "Z"),
+                    new MestoTekme(p, "A", "Y"),
+                    new MestoTekme(p, "B", "X"));
+            case POKAL_NTZS -> List.of(
+                    new MestoTekme(p, "A", "Y"),
+                    new MestoTekme(p, "B", "X"),
+                    new MestoTekme(p, "C", "Z"),
+                    new MestoTekme(p, "A", "X"),
+                    new MestoTekme(p, "B", "Y"));
         };
     }
 

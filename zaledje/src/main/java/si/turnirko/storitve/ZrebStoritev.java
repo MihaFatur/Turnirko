@@ -19,7 +19,7 @@
    KDO JE NOSILEC IN KAM PADE, doloca NosilciStoritev. Zreb sam samo prebere
    jakostni vrstni red (IzborStoritev), ga zabelezi v Prijava.stNosilca in iz
    razporeditve sestavi tekme. Izjema so DVOJICE: para ni mogoce jakostno
-   umestiti (rating para ne obstaja, dvojice v ELO ne stejejo), zato se
+   umestiti (rating para ne obstaja, dvojice v rating ne stejejo), zato se
    zrebajo povsem nakljucno.
 
    Vse tekme izlocilne mreze dobijo EKSPLICITNE povezave na izvorni tekmi
@@ -48,6 +48,7 @@ import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.VlogaIzvora;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
+import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
 import si.turnirko.repozitoriji.SkupinaRepozitorij;
@@ -60,6 +61,10 @@ public class ZrebStoritev {
        skupini po vsaj 3 igralce). */
     public static final int NAJMANJ_ZA_SKUPINE = 6;
 
+    /* Skupine za mesta: vsaj dve skupini po dve prijavi - ekipna prvenstva
+       mladih imajo pogosto le nekaj ekip. */
+    public static final int NAJMANJ_ZA_SKUPINE_ZA_MESTA = 4;
+
     /* Iz vsake skupine napredujeta dva najboljsa v izlocilni del. */
     static final int NAPREDUJE_IZ_SKUPINE = 2;
 
@@ -70,6 +75,8 @@ public class ZrebStoritev {
     private final RatingStanjeRepozitorij ratingStanjeRepozitorij;
     private final IzborStoritev izborStoritev;
     private final NosilciStoritev nosilci;
+    private final EkipneTekmeStoritev ekipneTekme;
+    private final KaderEkipeRepozitorij kaderRepozitorij;
     private final LastnistvoStoritev lastnistvo;
 
     public ZrebStoritev(DogodekRepozitorij dogodekRepozitorij,
@@ -79,6 +86,8 @@ public class ZrebStoritev {
                         RatingStanjeRepozitorij ratingStanjeRepozitorij,
                         IzborStoritev izborStoritev,
                         NosilciStoritev nosilci,
+                        EkipneTekmeStoritev ekipneTekme,
+                        KaderEkipeRepozitorij kaderRepozitorij,
                         LastnistvoStoritev lastnistvo) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
@@ -87,6 +96,8 @@ public class ZrebStoritev {
         this.ratingStanjeRepozitorij = ratingStanjeRepozitorij;
         this.izborStoritev = izborStoritev;
         this.nosilci = nosilci;
+        this.ekipneTekme = ekipneTekme;
+        this.kaderRepozitorij = kaderRepozitorij;
         this.lastnistvo = lastnistvo;
     }
 
@@ -119,9 +130,13 @@ public class ZrebStoritev {
         if (dogodek.jeDvojice()) {
             preveriSestavljenePare(prijave);
         }
+        if (dogodek.jeEkipno()) {
+            preveriKadre(dogodek, prijave);
+        }
         if (prijave.size() < 2) {
             throw new DomenskaIzjema("Za zreb sta potrebna vsaj 2 "
-                    + (dogodek.jeDvojice() ? "sestavljena para" : "prijavljena igralca")
+                    + (dogodek.jeDvojice() ? "sestavljena para"
+                            : dogodek.jeEkipno() ? "prijavljeni ekipi" : "prijavljena igralca")
                     + " (trenutno: " + prijave.size() + ").");
         }
 
@@ -132,7 +147,12 @@ public class ZrebStoritev {
             case KROZNI -> zrebKrozni(dogodek, prijave);
             case SKUPINE_IZLOCILNI -> zrebSkupine(dogodek, prijave);
             case SKUPINE -> zrebSkupinePoJakosti(dogodek, prijave);
+            case SKUPINE_ZA_MESTA -> zrebSkupine(dogodek, prijave);
         };
+        // ekipne tekme z obema ekipama dobijo srecanje (postava, posamicne tekme)
+        if (dogodek.jeEkipno()) {
+            ekipneTekme.zagotoviSrecanja(dogodek.getId());
+        }
 
         // zreb pomeni zacetek tekmovanja
         dogodek.setStatus(StatusTekmovanja.V_TEKU);
@@ -222,7 +242,34 @@ public class ZrebStoritev {
 
         prenesiProstePrehode(vseTekme);
         tekmaRepozitorij.saveAll(vseTekme);
+        if (dogodek.isTekmaZaTretjeMesto() && steviloKol >= 2) {
+            Tekma zaTretje = tekmaZaTretjeMesto(dogodek, vseTekme, steviloKol);
+            if (zaTretje != null) {
+                vseTekme.add(zaTretje);
+            }
+        }
         return vseTekme;
+    }
+
+    /* Tekma za 3. mesto: porazenca obeh polfinalov. Stoji v tolazilni fazi na
+       kolu finala, da je v mrezi ob finalu, napredovanje pa jo polni po isti
+       poti kot glavno mrezo (vloga PORAZENEC).
+       Polfinale s prostim prehodom porazenca nima (mreza treh) - takrat tekme
+       ni in tretji je porazenec edinega odigranega polfinala. */
+    private Tekma tekmaZaTretjeMesto(Dogodek dogodek, List<Tekma> vseTekme, int steviloKol) {
+        List<Tekma> polfinale = vseTekme.stream()
+                .filter(t -> t.getFaza() == FazaTekme.GLAVNI && t.getKolo() == steviloKol - 1)
+                .sorted(java.util.Comparator.comparingInt(Tekma::getPozicija))
+                .toList();
+        if (polfinale.size() != 2 || polfinale.stream().anyMatch(t -> t.getIzidTip() == IzidTekme.PROSTO)) {
+            return null;
+        }
+        Tekma zaTretje = novaTekma(dogodek, FazaTekme.TOLAZILNI, steviloKol, 1);
+        zaTretje.setIdIzvorTekma1(polfinale.get(0).getId());
+        zaTretje.setVlogaIzvora1(VlogaIzvora.PORAZENEC);
+        zaTretje.setIdIzvorTekma2(polfinale.get(1).getId());
+        zaTretje.setVlogaIzvora2(VlogaIzvora.PORAZENEC);
+        return tekmaRepozitorij.save(zaTretje);
     }
 
     // ---------------------------------------------------------------------
@@ -281,18 +328,32 @@ public class ZrebStoritev {
         return tekme;
     }
 
+    /* Krozni razpored finalne skupine za mesta nad ze urejenimi clani (brez
+       mesanja). Tekme niso shranjene - prenesene izide doloci SkupineStoritev. */
+    List<Tekma> kroznePareFinalneSkupine(Dogodek dogodek, List<Prijava> clani, Long idSkupina) {
+        return kroznePare(dogodek, clani, idSkupina);
+    }
+
     // ---------------------------------------------------------------------
     // SKUPINE_IZLOCILNI (skupinski del; izlocilni del zgenerira SkupineStoritev)
     // ---------------------------------------------------------------------
 
     private List<Tekma> zrebSkupine(Dogodek dogodek, List<Prijava> prijave) {
-        if (prijave.size() < NAJMANJ_ZA_SKUPINE) {
-            throw new DomenskaIzjema("Za sistem skupine+izlocilni je potrebnih vsaj "
-                    + NAJMANJ_ZA_SKUPINE + " prijavljenih igralcev (trenutno: " + prijave.size() + ").");
+        boolean zaMesta = dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_ZA_MESTA;
+        int najmanj = zaMesta ? NAJMANJ_ZA_SKUPINE_ZA_MESTA : NAJMANJ_ZA_SKUPINE;
+        if (prijave.size() < najmanj) {
+            throw new DomenskaIzjema("Za sistem " + (zaMesta ? "skupin za mesta" : "skupine+izlocilni")
+                    + " je potrebnih vsaj " + najmanj + " prijav (trenutno: " + prijave.size() + ").");
         }
 
         List<Prijava> poJakosti = zabeleziJakostnaMesta(prijave);
-        int stSkupin = izberiSteviloSkupin(poJakosti.size());
+        int stSkupin = zaMesta && dogodek.getSteviloSkupin() != null
+                ? dogodek.getSteviloSkupin()
+                : izberiSteviloSkupin(poJakosti.size());
+        if (stSkupin < 1 || poJakosti.size() / stSkupin < 2) {
+            throw new DomenskaIzjema("V vsaki skupini morata biti vsaj dve prijavi ("
+                    + poJakosti.size() + " prijav v " + stSkupin + " skupinah).");
+        }
 
         // ustvari skupine (A, B, C ...) in jih shrani, da dobijo id-je
         List<Skupina> skupine = new ArrayList<>();
@@ -456,6 +517,25 @@ public class ZrebStoritev {
         }
     }
 
+    /* Ekipni dogodek: vsaka ekipa mora imeti v kadru vsaj toliko igralcev,
+       kolikor jih format postavi za mizo - sicer srecanja ne more odigrati.
+       Zreb ustavimo in povemo, kateri ekipi koga manjka. */
+    private void preveriKadre(Dogodek dogodek, List<Prijava> prijave) {
+        int potrebno = dogodek.getFormatSrecanja().getStIgralcev();
+        java.util.Map<Long, Integer> velikosti = new java.util.HashMap<>();
+        for (Object[] r : kaderRepozitorij.steviloPoEkipahDogodka(dogodek.getId())) {
+            velikosti.put(((Number) r[0]).longValue(), ((Number) r[1]).intValue());
+        }
+        List<String> premajhne = prijave.stream()
+                .filter(p -> velikosti.getOrDefault(p.getEkipa().getId(), 0) < potrebno)
+                .map(p -> p.getEkipa().prikazanoIme())
+                .toList();
+        if (!premajhne.isEmpty()) {
+            throw new DomenskaIzjema("Pred zrebom mora imeti vsaka ekipa v kadru vsaj " + potrebno
+                    + " igralce. Premajhen kader: " + String.join(", ", premajhne) + ".");
+        }
+    }
+
     /* Dvojice: v zreb gredo samo SESTAVLJENI pari. Igralca brez soigralca ne
        smemo tiho izpustiti - organizator ga je prijavil in bi ga na mrezi
        zaman iskal -, zato zreb ustavimo in povemo, koga je treba se povezati. */
@@ -497,8 +577,11 @@ public class ZrebStoritev {
                 .distinct()
                 .toList();
         List<RatingStanje> stanja = ratingStanjeRepozitorij
-                .findByIgralecIdInAndSistem(idjiIgralcev, RatingStanje.SISTEM_KLUBSKI_ELO);
+                .findByIgralecIdInAndSistem(idjiIgralcev, RatingStanje.SISTEM_TURNIRKO);
         for (Prijava prijava : prijave) {
+            if (prijava.jeEkipa()) {
+                continue; // ekipa ratinga nima - nosijo ga igralci kadra
+            }
             vrednostRatinga(stanja, prijava.getIgralec().getId())
                     .ifPresent(prijava::setRatingObZrebu);
             if (prijava.jePar()) {

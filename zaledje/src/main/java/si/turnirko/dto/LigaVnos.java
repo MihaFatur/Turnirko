@@ -14,6 +14,7 @@ import jakarta.validation.constraints.Size;
 
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.PredlogaLige;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 
 public record LigaVnos(
@@ -31,7 +32,8 @@ public record LigaVnos(
         Integer tockePoraz,
         Boolean dovoljenoNeodloceno,
         Boolean prepovedDvojneRegistracije,
-        Boolean stejeVElo,
+        // raven tekmovanja (teza v Turnirko ratingu); null = privzeto KLUBSKO
+        RavenTekmovanja raven,
         // ekipe imajo jakostni vrstni red in zreb jih razdeli v pare
         // (zgornja polovica s spodnjo); null = privzeto izklopljeno
         Boolean enakomernaRazvrstitev,
@@ -42,5 +44,24 @@ public record LigaVnos(
         // null = terminov ni; datumi kol se izracunajo sele ob generiranju
         // razporeda, ko je znano, koliko kol liga sploh ima
         LocalDateTime zacetekPrvegaKola,
-        Integer razmikDni
-) {}
+        Integer razmikDni,
+        // koncnica po rednem delu: koliko najboljsih ekip (2, 4, 8) in koliko
+        // zmag za serijo; oboje null = liga brez koncnice
+        Integer koncnicaEkip,
+        Integer koncnicaZmag
+) {
+
+    /* Vnos lige brez koncnice (kot pred V28). */
+    public LigaVnos(String ime, String sezona, SpolKategorija spolKategorija,
+                    FormatSrecanja formatSrecanja, Integer steviloNizov, Integer zmagZaSrecanje,
+                    Boolean dvokrozno, Integer tockeZmaga, Integer tockeNeodloceno,
+                    Integer tockePoraz, Boolean dovoljenoNeodloceno,
+                    Boolean prepovedDvojneRegistracije, RavenTekmovanja raven,
+                    Boolean enakomernaRazvrstitev, PredlogaLige predlogaListka,
+                    LocalDateTime zacetekPrvegaKola, Integer razmikDni) {
+        this(ime, sezona, spolKategorija, formatSrecanja, steviloNizov, zmagZaSrecanje,
+                dvokrozno, tockeZmaga, tockeNeodloceno, tockePoraz, dovoljenoNeodloceno,
+                prepovedDvojneRegistracije, raven, enakomernaRazvrstitev, predlogaListka,
+                zacetekPrvegaKola, razmikDni, null, null);
+    }
+}

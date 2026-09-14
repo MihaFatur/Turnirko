@@ -51,6 +51,7 @@ import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StranEkipe;
@@ -159,7 +160,7 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         assertEquals(10, s.klubi().get(0).odigrane());
         assertEquals(2, s.klubi().get(0).igralcev());
 
-        // --- Vzpon ELO: samo pridobitve, padavcev zavihek ne razglasa ---
+        // --- Vzpon rating: samo pridobitve, padavcev zavihek ne razglasa ---
         assertFalse(s.vzponi().isEmpty());
         for (Vzpon v : s.vzponi()) {
             assertTrue(v.pridobil() > 0, "v vrstici so samo pridobitve");
@@ -225,12 +226,12 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         assertTrue(s.delavci().isEmpty());
     }
 
-    /* Turnir, ki v ELO ne steje, dnevnika nima - vrstici o ratingu zato
+    /* Turnir, ki v rating ne steje, dnevnika nima - vrstici o ratingu zato
        odpadeta, zavihek pa ostane. */
     @Test
-    void brezEloOdpadetaVzponInPresenecenje() {
+    void brezRatingaOdpadetaVzponInPresenecenje() {
         Dogodek dogodek = kroznoSestih();
-        dogodek.getTurnir().setStejeVElo(false);
+        dogodek.getTurnir().setRaven(RavenTekmovanja.NE_STEJE);
         turnirRepozitorij.save(dogodek.getTurnir());
         odigraj(dogodek, poJakosti(dogodek));
 
@@ -395,7 +396,7 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
 
     private int trenutniRating(Long idIgralca) {
         return ratingStanjeRepozitorij
-                .findByIgralecIdAndSistem(idIgralca, RatingStanje.SISTEM_KLUBSKI_ELO)
+                .findByIgralecIdAndSistem(idIgralca, RatingStanje.SISTEM_TURNIRKO)
                 .orElseThrow().getVrednost();
     }
 
@@ -404,7 +405,7 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
     private Long ligaStirihEkip() {
         Long idLige = ligaStoritev.ustvari(new LigaVnos(
                 "Test liga", "2025/26", SpolKategorija.MOSKI, FormatSrecanja.CORBILLON, 5,
-                null, false, 2, 1, 0, true, false, true, false, null, null, null)).id();
+                null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null, null, null)).id();
         for (int i = 1; i <= 4; i++) {
             Klub klub = klubRepozitorij.save(new Klub("Klub " + i, null));
             var ekipa = ligaStoritev.dodajEkipo(idLige, new EkipaVnos(klub.getId(), null, null));

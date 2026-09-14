@@ -98,11 +98,18 @@ public class VarnostneNastavitve {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/registracija").permitAll()
                         // /auth/me sluzi za preverbo poverilnic - zahteva veljavno prijavo
                         .requestMatchers("/api/v1/auth/**").authenticated()
-                        // zasebni del profila (analize) vidi samo igralec sam ali
-                        // administrator; lastnistvo preveri ProfilStoritev
-                        .requestMatchers(HttpMethod.GET, "/api/v1/igralci/*/profil/zasebno").authenticated()
+                        // zasebni del profila (analize in napoved tekme) vidi samo
+                        // igralec sam ali administrator; lastnistvo preveri
+                        // DostopDoProfila - veriga pozna samo vlogo, ne lastnistva
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/igralci/*/profil/zasebno",
+                                "/api/v1/igralci/*/profil/napoved").authenticated()
                         // seznam racunov vsebuje e-poste, zato ni javen kljub temu, da je GET
                         .requestMatchers(HttpMethod.GET, "/api/v1/racuni/**").hasRole("ADMIN")
+                        // uvoz iz Stupe (tudi branje): predogled nosi datume rojstva
+                        // novih igralcev in kandidatov za istovetnost, zato je vsa pot
+                        // samo administratorjeva - pravilo mora stati pred "GET je javen"
+                        .requestMatchers("/api/v1/uvoz/**").hasRole("ADMIN")
                         // sifrant igralcev z osebnimi podatki (datum rojstva, e-posta,
                         // telefon, naslov, licenca). Organizator jih namenoma NE vidi:
                         // za vodenje tekmovanja zadosca javni izpis, skupni sifrant pa

@@ -1,7 +1,7 @@
 /* Ena vrstica lestvice dvojic ZNOTRAJ ene lige.
 
    Dvojica je par igralcev, ne posameznik: izida para ni mogoce pripisati enemu
-   (zato dvojice ne stejejo ne v ELO ne v osebno statistiko), skupaj pa je par
+   (zato dvojice ne stejejo ne v rating ne v osebno statistiko), skupaj pa je par
    svoja tekmovalna enota in lestvico ima lahko. Kljuc para je NEUREJEN - ista
    dva igralca sta ista dvojica, ne glede na to, kdo je bil doma in v katerem
    zaporedju sta zapisana v postavi.

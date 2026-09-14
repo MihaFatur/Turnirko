@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import si.turnirko.modeli.Disciplina;
+import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 
@@ -26,5 +27,21 @@ public record DogodekVnos(
         // obvezni pri sistemu SKUPINE, sicer se ne upostevata
         // (razpon preveri TurnirjiStoritev, ker je pravilo domensko)
         Integer steviloSkupin,
-        Integer velikostSkupine
-) {}
+        Integer velikostSkupine,
+        // ekipni dogodek (disciplina EKIPNO): format srecanja (obvezen) in prag
+        // zmag za srecanje (null = polovica tekem formata + 1)
+        FormatSrecanja formatSrecanja,
+        Integer zmagZaSrecanje,
+        // izlocilna mreza s tekmo za 3. mesto; null = brez
+        Boolean tekmaZaTretjeMesto
+) {
+
+    /* Vnos dogodka posameznikov ali dvojic (kot pred V28). */
+    public DogodekVnos(String ime, SpolKategorija spolKategorija, String starostnaKategorija,
+                       Integer privzetoSteviloNizov, Double prijavnina, LocalDate rokPrijave,
+                       Disciplina disciplina, SistemTekmovanja sistemTekmovanja,
+                       Integer steviloSkupin, Integer velikostSkupine) {
+        this(ime, spolKategorija, starostnaKategorija, privzetoSteviloNizov, prijavnina, rokPrijave,
+                disciplina, sistemTekmovanja, steviloSkupin, velikostSkupine, null, null, null);
+    }
+}

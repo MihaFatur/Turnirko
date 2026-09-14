@@ -6,7 +6,7 @@
    racunajo vse razclenitve - tako je pravilo za turnir in ligo eno samo.
 
    Delitev na javno in zasebno: javno je tisto, kar izhaja iz ze javnih
-   rezultatov (ELO, graf, seznam tekem, izkupicek), zasebne pa so analize
+   rezultatov (rating, graf, seznam tekem, izkupicek), zasebne pa so analize
    (nasprotniki, forma, tocke, konteksti), ki jih vidi samo igralec sam ali
    administrator. */
 package si.turnirko.storitve;
@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.ToIntFunction;
 
 import org.springframework.stereotype.Service;
@@ -28,7 +29,6 @@ import si.turnirko.dto.ProfilDto;
 import si.turnirko.dto.ProfilZasebnoDto;
 import si.turnirko.dto.ProfilZasebnoDto.Delez;
 import si.turnirko.izjeme.NiNajdenoIzjema;
-import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IgralnaRoka;
@@ -36,12 +36,11 @@ import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RatingZgodovina;
+import si.turnirko.modeli.RazlogSpremembe;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.TekmaSrecanja;
-import si.turnirko.modeli.Uporabnik;
-import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.NizRepozitorij;
 import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
@@ -49,7 +48,6 @@ import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
 import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
 import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
-import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 @Service
 public class ProfilStoritev {
@@ -67,7 +65,8 @@ public class ProfilStoritev {
     private final RatingStanjeRepozitorij stanjeRepozitorij;
     private final NizRepozitorij nizRepozitorij;
     private final NizSrecanjaRepozitorij nizSrecanjaRepozitorij;
-    private final UporabnikRepozitorij uporabnikRepozitorij;
+    private final DostopDoProfila dostop;
+    private final RekreativecStoritev rekreativecStoritev;
 
     public ProfilStoritev(IgralecRepozitorij igralecRepozitorij,
                           TekmaRepozitorij tekmaRepozitorij,
@@ -76,7 +75,8 @@ public class ProfilStoritev {
                           RatingStanjeRepozitorij stanjeRepozitorij,
                           NizRepozitorij nizRepozitorij,
                           NizSrecanjaRepozitorij nizSrecanjaRepozitorij,
-                          UporabnikRepozitorij uporabnikRepozitorij) {
+                          DostopDoProfila dostop,
+                          RekreativecStoritev rekreativecStoritev) {
         this.igralecRepozitorij = igralecRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
@@ -84,7 +84,8 @@ public class ProfilStoritev {
         this.stanjeRepozitorij = stanjeRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
         this.nizSrecanjaRepozitorij = nizSrecanjaRepozitorij;
-        this.uporabnikRepozitorij = uporabnikRepozitorij;
+        this.dostop = dostop;
+        this.rekreativecStoritev = rekreativecStoritev;
     }
 
     /* Ena odigrana posamicna tekma, prevedena v pogled lastnika profila.
@@ -96,7 +97,7 @@ public class ProfilStoritev {
             String tekmovanje, String del,
             Igralec nasprotnik,
             int niziZa, int niziProti, boolean zmaga, IzidTekme izidTip,
-            Integer spremembaElo, Integer mojRatingPred, Integer ratingNasprotnikaPred,
+            Integer spremembaRatinga, Integer mojRatingPred, Integer ratingNasprotnikaPred,
             Boolean doma, String pozicija, FazaTekme faza, boolean jazPrvi) {}
 
     // ---------- Javni del ----------
@@ -106,7 +107,7 @@ public class ProfilStoritev {
         Igralec igralec = najdiIgralca(idIgralec);
         List<Nastop> nastopi = nastopi(idIgralec);
         Integer rating = stanjeRepozitorij
-                .findByIgralecIdAndSistem(idIgralec, RatingStanje.SISTEM_KLUBSKI_ELO)
+                .findByIgralecIdAndSistem(idIgralec, RatingStanje.SISTEM_TURNIRKO)
                 .map(RatingStanje::getVrednost).orElse(null);
 
         int zmage = (int) nastopi.stream().filter(Nastop::zmaga).count();
@@ -161,7 +162,7 @@ public class ProfilStoritev {
        "prijavnoIme" je ime prijavljenega uporabnika iz varnostnega konteksta. */
     @Transactional(readOnly = true)
     public ProfilZasebnoDto zasebno(Long idIgralec, String prijavnoIme) {
-        preveriLastnistvo(idIgralec, prijavnoIme);
+        dostop.preveriLastnistvo(idIgralec, prijavnoIme);
         najdiIgralca(idIgralec);
         List<Nastop> nastopi = nastopi(idIgralec);
         return new ProfilZasebnoDto(
@@ -170,22 +171,6 @@ public class ProfilStoritev {
                 forma(idIgralec, nastopi),
                 poTekmovanjih(idIgralec, nastopi),
                 razsevni(nastopi));
-    }
-
-    /* Administrator sme vse; igralec samo svoj profil. */
-    private void preveriLastnistvo(Long idIgralec, String prijavnoIme) {
-        Uporabnik u = uporabnikRepozitorij.najdiZVsem(prijavnoIme)
-                .orElseThrow(() -> new PrepovedanoIzjema("Prijavljeni uporabnik ne obstaja."));
-        if (u.getVloga() == Vloga.ADMIN) {
-            return;
-        }
-        if (!u.jePotrjenIgralec()) {
-            throw new PrepovedanoIzjema(
-                    "Racun se ni potrjen, zato zasebna statistika ni na voljo.");
-        }
-        if (!u.getIgralec().getId().equals(idIgralec)) {
-            throw new PrepovedanoIzjema("Zasebno statistiko lahko vidi samo igralec sam.");
-        }
     }
 
     // ---------- Zbiranje nastopov ----------
@@ -204,7 +189,7 @@ public class ProfilStoritev {
         Map<Long, Integer> spremembaT = new HashMap<>();
         Map<Long, Integer> spremembaL = new HashMap<>();
         for (RatingZgodovina z : zgodovinaRepozitorij.najdiZaIgralca(idIgralec,
-                RatingStanje.SISTEM_KLUBSKI_ELO)) {
+                RatingStanje.SISTEM_TURNIRKO)) {
             if (z.getTekma() != null) {
                 casT.put(z.getTekma().getId(), z.getUstvarjenOb());
                 spremembaT.put(z.getTekma().getId(), z.getSprememba());
@@ -246,9 +231,8 @@ public class ProfilStoritev {
                     t.getId(), true,
                     kdaj,
                     datumIz(casSrecanja(s) != null ? casSrecanja(s).toLocalDate() : null, kdaj),
-                    s.getLiga().getIme(),
-                    s.getKolo() + ". kolo · " + s.getEkipaDomaci().prikazanoIme()
-                            + " – " + s.getEkipaGost().prikazanoIme(),
+                    OpisSrecanja.tekmovanje(s),
+                    OpisSrecanja.del(s),
                     nasprotnik,
                     jazDomaci ? t.getDobljeniNiziDomaci() : t.getDobljeniNiziGost(),
                     jazDomaci ? t.getDobljeniNiziGost() : t.getDobljeniNiziDomaci(),
@@ -273,9 +257,9 @@ public class ProfilStoritev {
        postavi sele zakljucek srecanja v aplikaciji, zato ga uvozena zgodovina
        nima - termin kola pa ima vsako uvozeno srecanje. Brez tega bi vsaka
        uvozena ligaska tekma nosila dan uvoza in bi izbirnik obdobja v grafu
-       ELO ne odrezal nicesar. */
+       rating ne odrezal nicesar. */
     private static LocalDateTime casSrecanja(Srecanje s) {
-        return s.getOdigranOb() != null ? s.getOdigranOb() : s.getPredvidenZacetek();
+        return OpisSrecanja.cas(s);
     }
 
     /* Datum tekmovanja, sicer dan obracuna ratinga - da vrstica ni brez datuma,
@@ -302,8 +286,8 @@ public class ProfilStoritev {
             return Map.of();
         }
         return ratingiPred(ligaske
-                ? zgodovinaRepozitorij.ratingiPredLigaskimi(idjiTekem, RatingStanje.SISTEM_KLUBSKI_ELO)
-                : zgodovinaRepozitorij.ratingiPredTurnirskimi(idjiTekem, RatingStanje.SISTEM_KLUBSKI_ELO));
+                ? zgodovinaRepozitorij.ratingiPredLigaskimi(idjiTekem, RatingStanje.SISTEM_TURNIRKO)
+                : zgodovinaRepozitorij.ratingiPredTurnirskimi(idjiTekem, RatingStanje.SISTEM_TURNIRKO));
     }
 
     private static Map<Long, Map<Long, Integer>> ratingiPred(List<Object[]> vrstice) {
@@ -317,30 +301,74 @@ public class ProfilStoritev {
 
     // ---------- Javni izracuni ----------
 
+    /* Uvrstitev mora meriti TISTO lestvico, ki jo gledalec vidi: isti spol,
+       ista skupina (tekmovalci / rekreativci) in samo igralci, ki na javni
+       lestvici sploh so. Prej je merila vse po vrsti - zato je igralec, ki ga
+       je pravilo 18 mesecev umaknilo z lestvice, na profilu vseeno bral
+       "4. od 1545", moska in zenska stevilka pa sta se primerjali med sabo,
+       ceprav med spoloma ni niti ene obracunane tekme. */
     private ProfilDto.Uvrstitev uvrstitev(Igralec igralec, Integer rating) {
-        List<Object[]> vsi = stanjeRepozitorij.vsiRatingi(RatingStanje.SISTEM_KLUBSKI_ELO);
-        int skupaj = vsi.size();
-        if (rating == null || skupaj == 0) {
-            return new ProfilDto.Uvrstitev(null, skupaj, null, null);
+        LocalDateTime zdaj = LocalDateTime.now();
+        List<Object[]> vsi = stanjeRepozitorij.vsiRatingi(RatingStanje.SISTEM_TURNIRKO);
+
+        /* Skupina gledanega igralca; kdor ratinga nima, ni v nobeni. Gledani je
+           v istem klicu kot vsi ostali (in ne posebej), ker vsak klic prebere
+           ves dnevnik; ratinga pa morda nima, zato ga dodamo izrecno. */
+        List<Long> idji = new ArrayList<>(vsi.stream().map(v -> ((Number) v[0]).longValue()).toList());
+        idji.add(igralec.getId());
+        Set<Long> rekreativci = rekreativecStoritev.rekreativci(idji);
+        boolean rekreativec = rekreativci.contains(igralec.getId());
+
+        List<Object[]> lestvica = vsi.stream()
+                .filter(v -> v[3] == igralec.getSpol())
+                .filter(v -> Neaktivnost.naJavniLestvici(svezOb(v), zdaj))
+                .filter(v -> rekreativci.contains(((Number) v[0]).longValue()) == rekreativec)
+                .toList();
+        int skupaj = lestvica.size();
+
+        /* Kdor je z lestvice skrit, na njej mesta nima - stevilka ostane, mesto
+           pa bi bilo izmisljeno. */
+        boolean naLestvici = lestvica.stream()
+                .anyMatch(v -> ((Number) v[0]).longValue() == igralec.getId().longValue());
+        if (rating == null || skupaj == 0 || !naLestvici) {
+            return new ProfilDto.Uvrstitev(null, skupaj, null, klubskoPovprecje(igralec, lestvica));
         }
+
         // mesto = koliko igralcev ima strogo visji rating, plus ena
-        int boljsih = (int) vsi.stream().filter(v -> ((Number) v[2]).intValue() > rating).count();
+        int boljsih = (int) lestvica.stream()
+                .filter(v -> ((Number) v[2]).intValue() > rating).count();
         int mesto = boljsih + 1;
         int percentil = skupaj <= 1 ? 100 : Math.round((skupaj - mesto) * 100f / (skupaj - 1));
 
-        Integer klubskoPovprecje = null;
-        if (igralec.getKlub() != null) {
-            Long idKluba = igralec.getKlub().getId();
-            List<Integer> klubski = vsi.stream()
-                    .filter(v -> v[1] != null && ((Number) v[1]).longValue() == idKluba)
-                    .map(v -> ((Number) v[2]).intValue())
-                    .toList();
-            if (!klubski.isEmpty()) {
-                klubskoPovprecje = (int) Math.round(
-                        klubski.stream().mapToInt(Integer::intValue).average().orElse(0));
-            }
+        return new ProfilDto.Uvrstitev(mesto, skupaj, percentil,
+                klubskoPovprecje(igralec, lestvica));
+    }
+
+    /* Kdaj smo o igralcu nazadnje kaj izvedeli: poznejsi od zadnje tekme in
+       zadnje zunanje uvrstitve (isto pravilo kot RatingStanje.svezOb, le da je
+       tu vrstica projekcije in ne entiteta). */
+    private static LocalDateTime svezOb(Object[] vrstica) {
+        LocalDateTime tekma = (LocalDateTime) vrstica[4];
+        LocalDateTime zunanja = (LocalDateTime) vrstica[5];
+        if (zunanja == null) {
+            return tekma;
         }
-        return new ProfilDto.Uvrstitev(mesto, skupaj, percentil, klubskoPovprecje);
+        return (tekma == null || zunanja.isAfter(tekma)) ? zunanja : tekma;
+    }
+
+    /* Povprecje kluba znotraj ISTE lestvice - primerjava z povprecjem, ki
+       meša spola, igralcu ne pove nicesar. */
+    private static Integer klubskoPovprecje(Igralec igralec, List<Object[]> lestvica) {
+        if (igralec.getKlub() == null) {
+            return null;
+        }
+        Long idKluba = igralec.getKlub().getId();
+        List<Integer> klubski = lestvica.stream()
+                .filter(v -> v[1] != null && ((Number) v[1]).longValue() == idKluba)
+                .map(v -> ((Number) v[2]).intValue())
+                .toList();
+        return klubski.isEmpty() ? null : (int) Math.round(
+                klubski.stream().mapToInt(Integer::intValue).average().orElse(0));
     }
 
     /* Graf napredka: dnevnik ratinga od najstarejsega, obogaten z nasprotnikom
@@ -355,20 +383,52 @@ public class ProfilStoritev {
         }
         List<ProfilDto.TockaGrafa> tocke = new ArrayList<>();
         for (RatingZgodovina z : zgodovinaRepozitorij.najdiZaIgralca(idIgralec,
-                RatingStanje.SISTEM_KLUBSKI_ELO)) {
+                RatingStanje.SISTEM_TURNIRKO)) {
             boolean ligaska = z.getTekmaSrecanja() != null;
             Long idTekme = ligaska ? z.getTekmaSrecanja().getId()
                     : (z.getTekma() != null ? z.getTekma().getId() : null);
             Nastop n = idTekme != null ? poKljucu.get(kljuc(idTekme, ligaska)) : null;
+            /* Datum: pri tekmi iz nastopa, sicer iz veljavnosti zapisa -
+               odbitek za neaktivnost mora na casovni osi stati tam, kjer je
+               zapadel, ne nikjer. */
             tocke.add(new ProfilDto.TockaGrafa(
-                    z.getUstvarjenOb(), n != null ? n.datum() : null,
+                    z.getUstvarjenOb(),
+                    n != null ? n.datum() : z.getVeljaOb().toLocalDate(),
                     z.getNovaVrednost(), z.getSprememba(),
                     idTekme, ligaska,
                     n != null ? n.nasprotnik().polnoIme() : null,
                     n != null ? n.tekmovanje() : null,
-                    n != null ? n.del() : null));
+                    n != null ? n.del() : null,
+                    z.getRazlog(),
+                    nacin(z), razclenitev(z), z.getVir(), z.getPojasnilo()));
         }
         return tocke;
+    }
+
+    /* Kako je sprememba nastala. Zapis brez tekme nosi razlog; zapis s tekmo
+       je korak, kadar ima sestavine, in uvrstitev novinca, kadar jih ne - tam
+       se rating ni sestel po korakih, ampak izracunal znova. */
+    private static ProfilDto.NacinSpremembe nacin(RatingZgodovina z) {
+        if (z.getRazlog() == RazlogSpremembe.NEAKTIVNOST) {
+            return ProfilDto.NacinSpremembe.NEAKTIVNOST;
+        }
+        if (z.getRazlog() == RazlogSpremembe.POSTAVITEV) {
+            return ProfilDto.NacinSpremembe.POSTAVITEV;
+        }
+        if (z.getRazlog() == RazlogSpremembe.ZUNANJA_UVRSTITEV) {
+            return ProfilDto.NacinSpremembe.ZUNANJA_UVRSTITEV;
+        }
+        return z.getK() != null
+                ? ProfilDto.NacinSpremembe.KORAK
+                : ProfilDto.NacinSpremembe.UVRSTITEV;
+    }
+
+    private static ProfilDto.Razclenitev razclenitev(RatingZgodovina z) {
+        if (z.getK() == null || z.getTocke() == null) {
+            return null;
+        }
+        return new ProfilDto.Razclenitev(z.getK(), z.getMargina(), z.getTeza(),
+                z.getPricakovano(), z.getTocke());
     }
 
     private static String kljuc(Long idTekme, boolean ligaska) {
@@ -380,7 +440,7 @@ public class ProfilStoritev {
                 n.idTekme(), n.ligaska(), n.datum(), n.tekmovanje(), n.del(),
                 n.nasprotnik().getId(), n.nasprotnik().polnoIme(),
                 n.nasprotnik().getKlub() != null ? n.nasprotnik().getKlub().getIme() : null,
-                n.niziZa(), n.niziProti(), n.zmaga(), n.izidTip(), n.spremembaElo());
+                n.niziZa(), n.niziProti(), n.zmaga(), n.izidTip(), n.spremembaRatinga());
     }
 
     // ---------- Zasebni izracuni ----------
@@ -590,15 +650,15 @@ public class ProfilStoritev {
         List<ProfilZasebnoDto.RazsevnaTocka> tocke = new ArrayList<>();
         for (Nastop n : nastopi) {
             if (n.ratingNasprotnikaPred() != null && n.mojRatingPred() != null
-                    && n.spremembaElo() != null) {
+                    && n.spremembaRatinga() != null) {
                 tocke.add(new ProfilZasebnoDto.RazsevnaTocka(
-                        n.ratingNasprotnikaPred(), n.spremembaElo(), n.zmaga()));
+                        n.ratingNasprotnikaPred(), n.spremembaRatinga(), n.zmaga()));
             }
         }
         return tocke;
     }
 
-    /* Pricakovane zmage po mesecih: vsota verjetnosti zmage po formuli ELO
+    /* Pricakovane zmage po mesecih: vsota verjetnosti zmage po formuli rating
        (1 / (1 + 10^((nasprotnik - jaz) / 400))) cez tekme meseca. Mesec brez
        tekme z znanima ratingoma v seznam ne pride - prazen stolpec ne pove nic. */
     private static List<ProfilZasebnoDto.Mesec> poMesecih(List<Nastop> nastopi) {
@@ -656,7 +716,7 @@ public class ProfilStoritev {
         }
 
         List<RatingZgodovina> dnevnik = zgodovinaRepozitorij.najdiZaIgralca(idIgralec,
-                RatingStanje.SISTEM_KLUBSKI_ELO);
+                RatingStanje.SISTEM_TURNIRKO);
         LocalDateTime meja = LocalDateTime.now().minusDays(30);
         Integer sprememba30 = dnevnik.isEmpty() ? null : dnevnik.stream()
                 .filter(z -> z.getUstvarjenOb() != null && z.getUstvarjenOb().isAfter(meja))

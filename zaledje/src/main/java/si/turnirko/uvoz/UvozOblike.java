@@ -34,7 +34,7 @@ public final class UvozOblike {
 
     /* Casovni zig iz "2021-10-09" ali "2021-10-09T17:00:00". Ura je pomembna:
        ligaska srecanja jo imajo in po njej se tekme uvrstijo v casovno vrsto
-       za obracun ELO (2. SNTL odigra dve koli v istem dnevu). Kjer ure ni,
+       za obracun ratinga (2. SNTL odigra dve koli v istem dnevu). Kjer ure ni,
        vzamemo polnoc. */
     public static LocalDateTime casovniZig(String v) {
         String s = ocisti(v);
@@ -79,13 +79,37 @@ public final class UvozOblike {
         };
     }
 
-    /* Drzavljanstvo kot tricrkovna oznaka; Turnirko privzame "SLO". */
+    /* Drzave, ki se v podatkih NTZS pojavijo, v oznakah ITTF. Prirez imena
+       (prejsnja razlicica) je iz "North Macedonia" naredil "NOR". */
+    private static final java.util.Map<String, String> DRZAVE = java.util.Map.ofEntries(
+            java.util.Map.entry("slovenia", "SLO"), java.util.Map.entry("slovenija", "SLO"),
+            java.util.Map.entry("croatia", "CRO"), java.util.Map.entry("hrvaska", "CRO"),
+            java.util.Map.entry("bosnia and herzegovina", "BIH"), java.util.Map.entry("serbia", "SRB"),
+            java.util.Map.entry("north macedonia", "MKD"), java.util.Map.entry("montenegro", "MNE"),
+            java.util.Map.entry("kosovo", "KOS"), java.util.Map.entry("albania", "ALB"),
+            java.util.Map.entry("austria", "AUT"), java.util.Map.entry("italy", "ITA"),
+            java.util.Map.entry("hungary", "HUN"), java.util.Map.entry("germany", "GER"),
+            java.util.Map.entry("russia", "RUS"), java.util.Map.entry("ukraine", "UKR"),
+            java.util.Map.entry("armenia", "ARM"), java.util.Map.entry("czech republic", "CZE"),
+            java.util.Map.entry("slovakia", "SVK"), java.util.Map.entry("poland", "POL"),
+            java.util.Map.entry("romania", "ROU"), java.util.Map.entry("bulgaria", "BUL"),
+            java.util.Map.entry("china", "CHN"), java.util.Map.entry("japan", "JPN"),
+            java.util.Map.entry("india", "IND"), java.util.Map.entry("france", "FRA"),
+            java.util.Map.entry("spain", "ESP"), java.util.Map.entry("belarus", "BLR"));
+
+    /* Drzavljanstvo kot tricrkovna oznaka; Turnirko privzame "SLO". Neznano
+       ime drzave ostane SLO in ne prirez imena - napacna oznaka bi bila
+       trditev, prazna pa ni. */
     public static String drzavljanstvo(String drzava) {
         String s = ocisti(drzava);
-        if (s == null || s.equalsIgnoreCase("Slovenia") || s.equalsIgnoreCase("Slovenija")) {
+        if (s == null) {
             return "SLO";
         }
-        return s.length() <= 3 ? s.toUpperCase() : s.substring(0, 3).toUpperCase();
+        String oznaka = DRZAVE.get(s.toLowerCase());
+        if (oznaka != null) {
+            return oznaka;
+        }
+        return s.length() == 3 ? s.toUpperCase() : "SLO";
     }
 
     /* Prireze besedilo na najvec N znakov (shema ima CHECK na dolzino).

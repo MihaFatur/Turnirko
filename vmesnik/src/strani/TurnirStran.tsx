@@ -16,14 +16,19 @@ import type {
   Disciplina,
   DogodekDto,
   DogodekVnos,
+  FormatSrecanja,
   SistemTekmovanja,
   SpolKategorija,
 } from '../api/tipi'
 import {
+  OZNAKE_FORMAT,
+  OZNAKE_RAVEN,
   OZNAKE_SISTEM,
   OZNAKE_SISTEM_KRATKO,
   OZNAKE_SISTEM_MOBI,
   OZNAKE_SPOL_KATEGORIJA,
+  OZNAKE_VIR,
+  RAZPORED_FORMATA,
   kategorijeZaDisciplino,
 } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
@@ -39,6 +44,7 @@ import { StatusMobi, ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import {
   oblikujObdobje,
   oblikujObdobjeKratko,
+  sklonEkip,
   sklonNizov,
   sklonPrijav,
   sklonPrijavljenih,
@@ -105,8 +111,9 @@ export function TurnirStran() {
   if (turnir.error) return <NapakaPoizvedbe poizvedba={turnir} kaj="turnirja" />
   if (!turnir.data) return <p className="obvestilo">Tega turnirja ni (več).</p>
   const podatki = turnir.data!
-  // organizator sme upravljati svoj (ali klubski) turnir, admin vse
-  const smem = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik)
+  /* Organizator sme upravljati svoj (ali klubski) turnir, admin vse - razen
+     uvoženega: vir resnice je zveza, strežnik mutacijo zavrne. */
+  const smem = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik) && podatki.vir == null
 
   /* Gumb za zakljucek ponudimo sele, ko so vsi dogodki zakljuceni. */
   const vsiDogodkiZakljuceni =
@@ -255,7 +262,10 @@ export function TurnirStran() {
               .filter(Boolean)
               .join(' · ') || 'kraj in datum še nista določena'}
           </p>
-          {podatki.opombe && <p className="opomba-bloka">{podatki.opombe}</p>}
+          {podatki.vir && (
+            <span className="oznaka-vira">{OZNAKE_VIR[podatki.vir]} · uvoženo, samo za branje</span>
+          )}
+          {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
         </div>
 
         {/* Kolofon 2 x 2: stiri vrstice oznaka <-> vrednost so na telefonu
@@ -276,8 +286,8 @@ export function TurnirStran() {
             <span className="kolofon__vrednost">{podatki.steviloDogodkov}</span>
           </div>
           <div className="kolofon__vrstica">
-            <span className="kolofon__oznaka">Šteje v ELO</span>
-            <span className="kolofon__vrednost">{podatki.stejeVElo ? 'da' : 'ne'}</span>
+            <span className="kolofon__oznaka">Raven</span>
+            <span className="kolofon__vrednost">{OZNAKE_RAVEN[podatki.raven]}</span>
           </div>
         </div>
 
@@ -332,7 +342,10 @@ export function TurnirStran() {
               .filter(Boolean)
               .join(' · ') || 'kraj in datum še nista določena'}
           </p>
-          {podatki.opombe && <p className="opomba-bloka">{podatki.opombe}</p>}
+          {podatki.vir && (
+            <span className="oznaka-vira">{OZNAKE_VIR[podatki.vir]} · uvoženo, samo za branje</span>
+          )}
+          {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
         </div>
         <div>
           <div className="stran-glava__dejanja">
@@ -377,8 +390,8 @@ export function TurnirStran() {
               <span className="kolofon__vrednost">{podatki.steviloDogodkov}</span>
             </div>
             <div className="kolofon__vrstica">
-              <span className="kolofon__oznaka">Šteje v ELO</span>
-              <span className="kolofon__vrednost">{podatki.stejeVElo ? 'da' : 'ne'}</span>
+              <span className="kolofon__oznaka">Raven</span>
+              <span className="kolofon__vrednost">{OZNAKE_RAVEN[podatki.raven]}</span>
             </div>
           </div>
         </div>
@@ -430,6 +443,7 @@ export function TurnirStran() {
                       {/* Posamično je pravilo, dvojice izjema - zato izpišemo
                           samo disciplino, ki jo je treba opaziti. */}
                       {dogodek.disciplina === 'DVOJICE' && 'Dvojice · '}
+                      {dogodek.disciplina === 'EKIPNO' && 'Ekipno · '}
                       {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
                       {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
                       {` · na ${dogodek.privzetoSteviloNizov} ${sklonNizov(dogodek.privzetoSteviloNizov)}`}
@@ -471,7 +485,11 @@ export function TurnirStran() {
    namizju ostane. */
 function VrsticaKategorije({ dogodek }: { dogodek: DogodekDto }) {
   const meta = [
-    dogodek.disciplina === 'DVOJICE' ? 'Dvojice' : OZNAKE_SISTEM_MOBI[dogodek.sistemTekmovanja],
+    dogodek.disciplina === 'DVOJICE'
+      ? 'Dvojice'
+      : dogodek.disciplina === 'EKIPNO'
+        ? `Ekipno · ${OZNAKE_SISTEM_MOBI[dogodek.sistemTekmovanja]}`
+        : OZNAKE_SISTEM_MOBI[dogodek.sistemTekmovanja],
     opisPrijavKratko(dogodek),
     dogodek.vsehTekem > 0
       ? `${dogodek.odigranihTekem}/${dogodek.vsehTekem}`
@@ -507,6 +525,9 @@ function opisPrijav(dogodek: DogodekDto): string {
   if (dogodek.disciplina === 'DVOJICE') {
     return `${dogodek.steviloPrijav} ${sklonPrijav(dogodek.steviloPrijav)}`
   }
+  if (dogodek.disciplina === 'EKIPNO') {
+    return `${dogodek.steviloPrijav} ${sklonEkip(dogodek.steviloPrijav)}`
+  }
   return `${dogodek.steviloPrijav} ${sklonPrijavljenih(dogodek.steviloPrijav)}`
 }
 
@@ -537,13 +558,29 @@ function NovDogodekOkno({
   const [velikostSkupine, nastaviVelikostSkupine] = useState('8')
   const [prijavnina, nastaviPrijavnino] = useState('')
   const [rokPrijave, nastaviRokPrijave] = useState('')
+  /* Ekipni dogodek: format srečanja in prag zmag (privzeto večina tekem -
+     tekma v mreži ali skupini mora imeti zmagovalca). */
+  const [format, nastaviFormat] = useState<FormatSrecanja>('EKIPNI_DP')
+  const [prag, nastaviPrag] = useState(Math.floor(RAZPORED_FORMATA.EKIPNI_DP.length / 2) + 1)
+  const [zaTretje, nastaviZaTretje] = useState(false)
 
   /* Dvojice se igrajo samo po izločilnem sistemu (takojšnje izpadanje), zato
      izbirnik sistema odpade; »Mešano« pa je pravilo o sestavi para in ga
      posamično tekmovanje ne pozna. Obojega ne uveljavlja samo obrazec —
      enako zavrneta strežnik in shema. */
   const dvojice = disciplina === 'DVOJICE'
+  const ekipno = disciplina === 'EKIPNO'
   const kategorije = kategorijeZaDisciplino(disciplina)
+  const tekemFormata = RAZPORED_FORMATA[format].length
+  const najmanjsiPrag = Math.floor(tekemFormata / 2) + 1
+  const sistemDogodka: SistemTekmovanja = dvojice ? 'IZLOCILNI' : sistem
+  /* Tekma za 3. mesto je del izločilne mreže. */
+  const mozna3mesto = sistemDogodka === 'IZLOCILNI' || sistemDogodka === 'SKUPINE_IZLOCILNI'
+
+  function zamenjajFormat(nov: FormatSrecanja) {
+    nastaviFormat(nov)
+    nastaviPrag(Math.floor(RAZPORED_FORMATA[nov].length / 2) + 1)
+  }
 
   /* Format TOP: skupine so rangi po jakosti, zato je treba njihovo
      število in velikost določiti že ob dogodku - zmnožek pove, koliko
@@ -578,9 +615,12 @@ function NovDogodekOkno({
       prijavnina: prijavnina ? Number(prijavnina) : null,
       rokPrijave: rokPrijave || null,
       disciplina,
-      sistemTekmovanja: dvojice ? 'IZLOCILNI' : sistem,
+      sistemTekmovanja: sistemDogodka,
       steviloSkupin: skupinskiSistem ? Number(steviloSkupin) : null,
       velikostSkupine: skupinskiSistem ? Number(velikostSkupine) : null,
+      formatSrecanja: ekipno ? format : null,
+      zmagZaSrecanje: ekipno ? prag : null,
+      tekmaZaTretjeMesto: mozna3mesto && zaTretje,
     })
   }
 
@@ -606,6 +646,7 @@ function NovDogodekOkno({
             >
               <option value="POSAMICNO">Posamično</option>
               <option value="DVOJICE">Dvojice</option>
+              <option value="EKIPNO">Ekipno</option>
             </select>
           </label>
           <label className="obrazec__polje">
@@ -649,6 +690,52 @@ function NovDogodekOkno({
               ))}
             </select>
           </label>
+        )}
+
+        {ekipno && (
+          <div className="obrazec__sklop">
+            <div className="obrazec__vrstica">
+              <label className="obrazec__polje">
+                <span>Format srečanja *</span>
+                <select value={format} onChange={(d) => zamenjajFormat(d.target.value as FormatSrecanja)}>
+                  {(Object.keys(OZNAKE_FORMAT) as FormatSrecanja[]).map((f) => (
+                    <option key={f} value={f}>{OZNAKE_FORMAT[f]}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="obrazec__polje">
+                <span>Srečanje se konča pri zmagah</span>
+                <input
+                  type="number"
+                  min={najmanjsiPrag}
+                  max={tekemFormata}
+                  value={prag}
+                  onChange={(d) => nastaviPrag(Number(d.target.value))}
+                  required
+                />
+              </label>
+            </div>
+            <p className="namig">
+              Vrstni red tekem: {RAZPORED_FORMATA[format].join(' · ')}. Prijaviš ekipe s
+              kadrom; postavo in posamične tekme vsakega srečanja vpišeš v zapisnik, izid
+              srečanja pa gre v mrežo oz. skupino. Igralec sme biti v kadru ene same ekipe.
+            </p>
+          </div>
+        )}
+
+        {mozna3mesto && (
+          <label className="obrazec__polje obrazec__polje--stikalo">
+            <input type="checkbox" checked={zaTretje} onChange={(d) => nastaviZaTretje(d.target.checked)} />
+            <span>Tekma za 3. mesto (poraženca polfinalov)</span>
+          </label>
+        )}
+
+        {sistemDogodka === 'SKUPINE_ZA_MESTA' && (
+          <p className="namig">
+            Predtekmovalne skupine igrajo vsak z vsakim, nato prvo- in drugouvrščeni igrajo
+            finalno skupino za 1.–4. mesto, tretje- in četrtouvrščeni za 5.–8. … Medsebojni
+            izid iz predtekmovanja se prenese in se ne igra znova (PST, 14. člen).
+          </p>
         )}
 
         {skupinskiSistem && (

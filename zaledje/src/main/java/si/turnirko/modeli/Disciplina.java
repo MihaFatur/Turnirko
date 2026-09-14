@@ -1,15 +1,23 @@
-/* Disciplina dogodka: en igralec na strani ali par.
+/* Disciplina dogodka: en igralec na strani, par ali ekipa.
 
-   Dvojice niso nov SISTEM tekmovanja - igrajo isto izlocilno mrezo kot
-   posamicno tekmovanje (glej CHECK v migraciji V14). Razlikuje se le
-   tekmovalna enota: pri dvojicah prijava nosi dva igralca. */
+   Nobena disciplina ni nov SISTEM tekmovanja - razlikuje se samo tekmovalna
+   enota, ki jo nosi prijava:
+   - POSAMICNO: prijava nosi igralca,
+   - DVOJICE:   prijava nosi dva igralca (V14); igrajo samo izlocilno mrezo,
+   - EKIPNO:    prijava nosi EKIPO (V28); izid ekipne tekme so dobljene
+                posamicne tekme, kako je bilo igrano, pa zapise srecanje. */
 package si.turnirko.modeli;
 
 public enum Disciplina {
     POSAMICNO,
-    DVOJICE;
+    DVOJICE,
+    EKIPNO;
 
     public boolean jeDvojice() {
         return this == DVOJICE;
+    }
+
+    public boolean jeEkipno() {
+        return this == EKIPNO;
     }
 }

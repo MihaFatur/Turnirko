@@ -1,5 +1,9 @@
 /* Lestvica skupine ali kroznega sistema: mesto, igralec, odigrane,
-   zmage/porazi, nizi in razlika. Ime igralca vodi na njegov profil. */
+   zmage/porazi, nizi in razlika. Ime igralca vodi na njegov profil.
+
+   Pri ekipnem dogodku je vrstica ekipa: profila nima, stolpec »Nizi« pa so
+   dobljene in izgubljene posamične tekme srečanj (izid ekipne tekme je
+   število dobljenih tekem, tako kot je izid posamične tekme število nizov). */
 import { Link } from 'react-router-dom'
 
 import type { VrsticaLestviceDto } from '../api/tipi'
@@ -12,9 +16,10 @@ interface Lastnosti {
      ostane le, kar odloča o napredovanju (mesto, ime, Z, P, nizi).
      Odigrane so vsota Z + P, razliko pa bralec izpelje iz nizov. */
   strnjena?: boolean
+  ekipno?: boolean
 }
 
-export function Lestvica({ vrstice, napreduje, strnjena = false }: Lastnosti) {
+export function Lestvica({ vrstice, napreduje, strnjena = false, ekipno = false }: Lastnosti) {
   if (vrstice.length === 0) {
     return <p className="obvestilo">Ni še udeležencev.</p>
   }
@@ -26,11 +31,15 @@ export function Lestvica({ vrstice, napreduje, strnjena = false }: Lastnosti) {
   return (
     <>
       <table className={'tabela' + (strnjena ? ' lestvica--skupina' : '')}>
-        <caption className="samo-za-bralnik">Lestvica skupine: mesto, igralec, izkupiček in razlika nizov</caption>
+        <caption className="samo-za-bralnik">
+          {ekipno
+            ? 'Lestvica skupine: mesto, ekipa, izkupiček in razlika posamičnih tekem'
+            : 'Lestvica skupine: mesto, igralec, izkupiček in razlika nizov'}
+        </caption>
         <thead>
           <tr>
             <th scope="col" className="lestvica__mesto">#</th>
-            <th scope="col">Igralec</th>
+            <th scope="col">{ekipno ? 'Ekipa' : 'Igralec'}</th>
             {!strnjena && (
               <th scope="col" className="lestvica__stevilka lestvica__odigrane" title="Odigrane tekme">Od.</th>
             )}
@@ -38,11 +47,17 @@ export function Lestvica({ vrstice, napreduje, strnjena = false }: Lastnosti) {
             {/* Stolpec porazov na telefonu odpade, zato ima glava isto oznako
                 stolpca kot celice - barvo nosi samo celica. */}
             <th scope="col" className="lestvica__stevilka lestvica__stolpec-p" title="Porazi">P</th>
-            <th scope="col" className="lestvica__stevilka lestvica__nizi" title="Dobljeni : izgubljeni nizi">
-              Nizi
+            <th
+              scope="col"
+              className="lestvica__stevilka lestvica__nizi"
+              title={ekipno ? 'Dobljene : izgubljene posamične tekme' : 'Dobljeni : izgubljeni nizi'}
+            >
+              {ekipno ? 'Tekme' : 'Nizi'}
             </th>
             {!strnjena && (
-              <th scope="col" className="lestvica__stevilka" title="Razlika nizov">±</th>
+              <th scope="col" className="lestvica__stevilka" title={ekipno ? 'Razlika tekem' : 'Razlika nizov'}>
+                ±
+              </th>
             )}
           </tr>
         </thead>
@@ -68,10 +83,16 @@ export function Lestvica({ vrstice, napreduje, strnjena = false }: Lastnosti) {
                   {vrstica.krog !== null && <span className="samo-za-bralnik"> (krog)</span>}
                 </td>
                 <td>
-                  <Link to={`/igralci/${vrstica.idIgralca}/profil`} className="lestvica__ime">
-                    {vrstica.polnoIme}
-                  </Link>
-                  {vrstica.klub && <span className="lestvica__klub"> {vrstica.klub}</span>}
+                  {vrstica.idIgralca !== null ? (
+                    <Link to={`/igralci/${vrstica.idIgralca}/profil`} className="lestvica__ime">
+                      {vrstica.polnoIme}
+                    </Link>
+                  ) : (
+                    <span className="lestvica__ime">{vrstica.polnoIme}</span>
+                  )}
+                  {vrstica.klub && !imeVsebujeKlub(vrstica) && (
+                    <span className="lestvica__klub"> {vrstica.klub}</span>
+                  )}
                 </td>
                 {!strnjena && (
                   <td className="lestvica__stevilka lestvica__odigrane">{vrstica.odigrane}</td>
@@ -95,9 +116,19 @@ export function Lestvica({ vrstice, napreduje, strnjena = false }: Lastnosti) {
       </table>
       {jeKrog && (
         <p className="lestvica__opomba lestvica__opomba--krog">
-          ° krog — mesta določa izkupiček med izenačenimi, ne skupna razlika nizov
+          ° krog — mesta določa izkupiček med izenačenimi, ne skupna razlika{' '}
+          {ekipno ? 'tekem' : 'nizov'}
         </p>
       )}
     </>
+  )
+}
+
+/* Klubska ekipa se imenuje po klubu (»NTK Gorica 2«) - klub ob imenu bi ga
+   samo ponovil. */
+function imeVsebujeKlub(vrstica: VrsticaLestviceDto): boolean {
+  return (
+    vrstica.klub !== null &&
+    vrstica.polnoIme.toLocaleLowerCase('sl').startsWith(vrstica.klub.toLocaleLowerCase('sl'))
   )
 }

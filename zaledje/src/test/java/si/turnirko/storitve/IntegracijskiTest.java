@@ -19,6 +19,7 @@ import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Prijava;
+import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.Spol;
 import si.turnirko.modeli.SpolKategorija;
@@ -40,6 +41,7 @@ import si.turnirko.repozitoriji.TurnirRepozitorij;
 public abstract class IntegracijskiTest {
 
     @Autowired protected IgralecRepozitorij igralecRepozitorij;
+    @Autowired protected si.turnirko.storitve.SidroStoritev sidroStoritev;
     @Autowired protected KlubRepozitorij klubRepozitorij;
     @Autowired protected TurnirRepozitorij turnirRepozitorij;
     @Autowired protected DogodekRepozitorij dogodekRepozitorij;
@@ -111,6 +113,8 @@ public abstract class IntegracijskiTest {
     protected Dogodek pripraviDogodekDvojic(int steviloIgralcev) {
         Turnir turnir = new Turnir();
         turnir.setIme("Testni turnir dvojic");
+        turnir.setDatumZacetka(LocalDate.now());
+        turnir.setRaven(RavenTekmovanja.URADNO);
         turnirRepozitorij.save(turnir);
 
         Dogodek dogodek = new Dogodek();
@@ -151,6 +155,14 @@ public abstract class IntegracijskiTest {
                                     Integer steviloSkupin, Integer velikostSkupine) {
         Turnir turnir = new Turnir();
         turnir.setIme("Testni turnir");
+        /* Datum ni okras: rating zapise v dnevnik cas TEKME (velja_ob), po njem
+           pa tecejo crta gibanja, premik mesta in ponovni preracun. Turnir brez
+           datuma bi vse svoje tekme postavil v leto 1900. */
+        turnir.setDatumZacetka(LocalDate.now());
+        /* Raven tudi ne: teza tekmovanja mnozi spremembo ratinga, zato bi bile
+           pricakovane vrednosti v testih pri privzetem KLUBSKO (0,75) tri
+           cetrtine necesa. URADNO pomeni tezo 1,00 - "brez mnozitelja". */
+        turnir.setRaven(RavenTekmovanja.URADNO);
         turnirRepozitorij.save(turnir);
 
         Dogodek dogodek = new Dogodek();
@@ -170,7 +182,7 @@ public abstract class IntegracijskiTest {
         return dogodek;
     }
 
-    /* Igralcem dogodka doloci klubski ELO po vrstnem redu prijave:
+    /* Igralcem dogodka doloci Turnirko rating po vrstnem redu prijave:
        prvi prijavljeni dobi prvo vrednost in tako naprej. Kdor v seznamu
        nima vrednosti, ostane brez ratinga. */
     protected void nastaviRatinge(Dogodek dogodek, int... vrednosti) {
@@ -179,11 +191,25 @@ public abstract class IntegracijskiTest {
                 .sorted(java.util.Comparator.comparing(Prijava::getId))
                 .toList();
         for (int i = 0; i < vrednosti.length && i < prijave.size(); i++) {
-            ratingStanjeRepozitorij.save(new si.turnirko.modeli.RatingStanje(
+            si.turnirko.modeli.RatingStanje stanje = new si.turnirko.modeli.RatingStanje(
                     prijave.get(i).getIgralec(),
-                    si.turnirko.modeli.RatingStanje.SISTEM_KLUBSKI_ELO,
-                    vrednosti[i]));
+                    si.turnirko.modeli.RatingStanje.SISTEM_TURNIRKO,
+                    vrednosti[i]);
+            /* Rating, ki ga test doloci na roko, je POSTAVLJEN - v resnicnem
+               svetu tako vrednost postavi administrator. Brez te zastavice bi
+               jo uvrstitev novinca med prvim dnevom igranja preracunala iz
+               izidov in test bi meril nekaj drugega, kot je nastavil. */
+            stanje.setPostavljen(true);
+            ratingStanjeRepozitorij.save(stanje);
         }
+    }
+
+    /* Starostno sidro testnega igralca - izhodisce, od katerega tecejo
+       pricakovane spremembe ratinga v testih. Vrednosti ne zapisujemo na roko:
+       nosi jo tabela starostno_sidro (V21) in ob njeni osvezitvi bi se sicer
+       podrla vrsta testov. */
+    protected int sidroZa(Igralec igralec) {
+        return sidroStoritev.zacetniRating(igralec, LocalDate.now());
     }
 
     protected Igralec noviIgralec(String ime, String priimek) {

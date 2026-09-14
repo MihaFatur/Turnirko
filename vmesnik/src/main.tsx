@@ -10,8 +10,11 @@ import { NapakaStreznika } from './api/odjemalec'
 import { AvtentikacijaPonudnik } from './avtentikacija/AvtentikacijaKontekst'
 /* Lokalno vgrajene pisave sistema (brez zunanjih klicev - deluje tudi brez
    interneta v dvorani; DESIGN.md nalaga druzine, ne nacina dostave).
-   Bricolage Grotesque = display, Karla = telo, IBM Plex Mono = oznake. */
-import '@fontsource-variable/bricolage-grotesque'
+   Bricolage Grotesque = display, Karla = telo, IBM Plex Mono = oznake.
+   Bricolage z osjo optične velikosti (opsz), ne samo teže: makete jo nalagajo
+   tako in brskalnik jo nastavi po velikosti pisave sam. Brez nje je naslov
+   40 px za 12 px širši kot na maketi. */
+import '@fontsource-variable/bricolage-grotesque/opsz.css'
 import '@fontsource-variable/karla'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
