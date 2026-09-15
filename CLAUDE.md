@@ -208,7 +208,7 @@
     srečanji vsake ekipe hkrati); 00:00 se ne primerja. Ura v semenu
     (`zacetek_prvega_kola`) je ura prvega kroga; `uporabiVnos` jo poravna s
     prvo uro seznama.
-  - **Srečanje si zapomni svojo uro kola** (`srecanje.ura_v_kolu`, V31;
+  - **Srečanje si zapomni svojo uro kola** (`srecanje.ura_v_kolu`, V32;
     `SrecanjeDto.uraVKolu`, prazno pri ligi brez ur). Iz začetka se je ne da
     zanesljivo prebrati: liga brez datuma ga ob žrebu nima, organizator pa ga
     sme prestaviti. Po njej `terminSrecanja` izračuna začetek, polnilo v

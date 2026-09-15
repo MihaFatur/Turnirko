@@ -83,7 +83,7 @@ public class Srecanje {
     @Column(name = "predviden_zacetek")
     private LocalDateTime predvidenZacetek;
 
-    /* Ob kateri uri kola se srecanje igra (V31, 0 = prva ura lige); prazno pri
+    /* Ob kateri uri kola se srecanje igra (V32, 0 = prva ura lige); prazno pri
        kolu kroznega sistema. Hrani se posebej, ker zacetka ob zrebu morda se
        ni, organizator pa ga sme prestaviti - uro lige mora srecanje vseeno
        poznati. */

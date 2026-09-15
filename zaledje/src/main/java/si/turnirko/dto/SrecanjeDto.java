@@ -33,7 +33,7 @@ public record SrecanjeDto(
         int dobljeneGost,
         StatusSrecanja status,
         LocalDateTime predvidenZacetek,
-        // ura kola, ob kateri se srecanje igra (0 = prva ura lige, V31);
+        // ura kola, ob kateri se srecanje igra (0 = prva ura lige, V32);
         // prazno pri kolu kroznega sistema
         Integer uraVKolu,
         // koncnica lige: serija, krog koncnice in zaporedna tekma v seriji
