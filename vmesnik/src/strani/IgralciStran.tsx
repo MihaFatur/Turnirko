@@ -13,6 +13,8 @@ import type {
 } from '../api/tipi'
 import { OZNAKE_IGRALNA_ROKA, OZNAKE_SPOL } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
+import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
@@ -523,17 +525,12 @@ function IgralecOkno({
         </div>
 
         <div className="obrazec__vrstica">
-          <label className="obrazec__polje">
-            <span>Klub</span>
-            <select value={idKlub} onChange={(d) => nastaviIdKlub(d.target.value)}>
-              <option value="">— brez kluba —</option>
-              {klubi.data?.map((klub) => (
-                <option key={klub.id} value={klub.id}>
-                  {klub.ime}
-                </option>
-              ))}
-            </select>
-          </label>
+          <IzbirnikKluba
+            namig="Brez kluba · vpiši ime"
+            klubi={klubi.data ?? []}
+            izbrano={idKlub ? Number(idKlub) : null}
+            naSpremembo={(id) => nastaviIdKlub(id === null ? '' : String(id))}
+          />
           <label className="obrazec__polje">
             <span>Licenca NTZS</span>
             <input value={ntzsLicenca} onChange={(d) => nastaviLicenco(d.target.value)} />
@@ -581,17 +578,11 @@ function IgralecOkno({
             <span>Naslov</span>
             <input value={naslov} onChange={(d) => nastaviNaslov(d.target.value)} />
           </label>
-          <label className="obrazec__polje">
-            <span>Kraj</span>
-            <select value={postnaSt} onChange={(d) => nastaviPostnaSt(d.target.value)}>
-              <option value="">— izberi kraj —</option>
-              {kraji.data?.map((kraj) => (
-                <option key={kraj.postnaSt} value={kraj.postnaSt}>
-                  {kraj.postnaSt} {kraj.ime}
-                </option>
-              ))}
-            </select>
-          </label>
+          <IzbirnikKraja
+            kraji={kraji.data ?? []}
+            izbrano={postnaSt ? Number(postnaSt) : null}
+            naSpremembo={(st) => nastaviPostnaSt(st === null ? '' : String(st))}
+          />
         </div>
 
         <SporociloNapake napaka={shranjevanje.error} />

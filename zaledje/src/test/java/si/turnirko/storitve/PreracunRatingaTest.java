@@ -28,7 +28,12 @@ class PreracunRatingaTest extends IntegracijskiTest {
 
     @Autowired private PreracunRatingaStoritev preracunStoritev;
 
-    private static final LocalDate DAN_TURNIRJA = LocalDate.of(2026, 3, 14);
+    /* Turnir je nedaven in odmaknjen od danes. Preracun na koncu uveljavi
+       odbitke za neaktivnost, zapadle do DANES; pri fiksnem datumu je test
+       sest mesecev po njem zacel pricakovati odbitek, ki ga redni obracun
+       (brez dnevnega opravila) ni zapisal. Danasnji dan pa ne sme biti, ker
+       bi dnevnikNosiDatumTekmeInNeDatumaVnosa potem ne locil obeh datumov. */
+    private static final LocalDate DAN_TURNIRJA = LocalDate.now().minusMonths(1);
 
     /* Odigra cel izlocilni turnir stirih igralcev in vrne dogodek. */
     private Dogodek odigranTurnir() {

@@ -64,6 +64,7 @@ import {
   type SkupinaFiltra,
 } from '../komponente/Filtri'
 import { GlavaDejanja, GlavaNaslov, useNazaj } from '../komponente/GlavaTelefona'
+import { IskalniIzbirnik, type MoznostIzbirnika } from '../komponente/IskalniIzbirnik'
 import { Lestvica } from '../komponente/Lestvica'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
@@ -786,12 +787,19 @@ function SestavljanjePar({
 }) {
   const pari = prijave.filter((p) => p.polnoIme2 !== null)
   const brezPara = prijave.filter((p) => p.polnoIme2 === null)
-  const [izbrani, nastaviIzbrane] = useState<number[]>([])
+  const [prvi, nastaviPrvega] = useState<number | null>(null)
+  const [drugi, nastaviDrugega] = useState<number | null>(null)
+
+  /* Izbor velja samo, dokler je igralec še brez soigralca - odjavljen (ali
+     med tem drugje povezan) igralec iz polja izpade. */
+  const prviVelja = brezPara.some((p) => p.id === prvi) ? prvi : null
+  const drugiVelja = brezPara.some((p) => p.id === drugi) ? drugi : null
 
   const povezovanje = useMutation({
-    mutationFn: ([prva, druga]: number[]) => dogodkiApi.poveziVPar(idDogodka, prva, druga),
+    mutationFn: ([prva, druga]: [number, number]) => dogodkiApi.poveziVPar(idDogodka, prva, druga),
     onSuccess: () => {
-      nastaviIzbrane([])
+      nastaviPrvega(null)
+      nastaviDrugega(null)
       osvezi()
     },
   })
@@ -801,14 +809,19 @@ function SestavljanjePar({
     onSuccess: osvezi,
   })
 
-  /* Izbrana sta največ dva: tretji klik izpodrine prvega, da organizatorju ni
-     treba najprej odkljukati. */
-  function preklopi(idPrijave: number) {
-    nastaviIzbrane((prejsnji) => {
-      if (prejsnji.includes(idPrijave)) return prejsnji.filter((id) => id !== idPrijave)
-      return [...prejsnji, idPrijave].slice(-2)
-    })
-  }
+  /* Pri velikem turnirju dvojic je brez soigralca tudi šestdeset imen, zato se
+     igralca para poiščeta z vpisom imena in ne s kljukicama v seznamu. Vsako
+     polje ponudi vse brez soigralca razen tistega, ki je že v drugem polju. */
+  const moznostPrijave = (prijava: PrijavaDto): MoznostIzbirnika => ({
+    id: prijava.id,
+    ime: prijava.polnoIme,
+    podrobnost: [prijava.klub ?? 'brez kluba', prijava.rating !== null ? `rating ${prijava.rating}` : null]
+      .filter(Boolean)
+      .join(' · '),
+  })
+  const moznostiPrvega = brezPara.filter((p) => p.id !== drugiVelja).map(moznostPrijave)
+  const moznostiDrugega = brezPara.filter((p) => p.id !== prviVelja).map(moznostPrijave)
+  const lahkoPovezem = prviVelja !== null && drugiVelja !== null && !povezovanje.isPending
 
   return (
     <>
@@ -832,14 +845,10 @@ function SestavljanjePar({
 
       <div className="plosca">
         <div className="naslovna-vrstica">
-          <h2 className="sekcija__naslov--manjsi">Brez soigralca</h2>
-          <button
-            className="gumb"
-            disabled={izbrani.length !== 2 || povezovanje.isPending}
-            onClick={() => povezovanje.mutate(izbrani)}
-          >
-            {povezovanje.isPending ? 'Povezujem …' : 'Poveži v par'}
-          </button>
+          <h2 className="sekcija__naslov--manjsi">Poveži v par</h2>
+          {brezPara.length > 0 && (
+            <span className="sekcija__meta">{brezPara.length} brez soigralca</span>
+          )}
         </div>
 
         {brezPara.length === 0 ? (
@@ -849,43 +858,61 @@ function SestavljanjePar({
               : 'Vsi prijavljeni so v parih — žreb je mogoč.'}
           </p>
         ) : (
-          <ul className="seznam-izbire">
-            {brezPara.map((prijava) => (
-              <li key={prijava.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={izbrani.includes(prijava.id)}
-                    onChange={() => preklopi(prijava.id)}
-                  />
-                  <span>
-                    {prijava.polnoIme}
-                    <span className="seznam-izbire__podrobnost">
-                      {prijava.klub ?? 'brez kluba'}
-                      {prijava.rating !== null && ` · rating ${prijava.rating}`}
-                    </span>
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  className="prijava-vrstica__dejanje"
-                  onClick={() => onOdjava(prijava.id)}
-                >
-                  Odjavi
-                </button>
-              </li>
-            ))}
-          </ul>
+          <form
+            className="obrazec__vrstica sestavljanje-para"
+            onSubmit={(dogodek) => {
+              dogodek.preventDefault()
+              if (lahkoPovezem) povezovanje.mutate([prviVelja, drugiVelja])
+            }}
+          >
+            <IskalniIzbirnik
+              vObrazcu
+              oznaka="Igralec"
+              namig="Vpiši ime"
+              moznosti={moznostiPrvega}
+              izbrano={prviVelja}
+              naIzbiro={nastaviPrvega}
+              naPraznjenje={() => nastaviPrvega(null)}
+            />
+            <IskalniIzbirnik
+              vObrazcu
+              oznaka="Soigralec"
+              namig="Vpiši ime"
+              moznosti={moznostiDrugega}
+              izbrano={drugiVelja}
+              naIzbiro={nastaviDrugega}
+              naPraznjenje={() => nastaviDrugega(null)}
+            />
+            <button className="gumb" type="submit" disabled={!lahkoPovezem}>
+              {povezovanje.isPending ? 'Povezujem …' : 'Poveži v par'}
+            </button>
+          </form>
         )}
 
         <p className="namig">
-          Označi dva igralca in ju poveži v par.
+          Vpiši imeni obeh igralcev in ju poveži v par.
           {mesanKategorija
             ? ' Kategorija so mešane dvojice: par mora sestavljati en moški in ena ženska.'
             : ''}{' '}
           Dokler kdo ostane brez soigralca, žreb ni mogoč.
         </p>
       </div>
+
+      {brezPara.length > 0 && (
+        <SeznamPrijavljenih
+          naslov="Brez soigralca"
+          prijave={brezPara}
+          dejanje={(prijava) => (
+            <button
+              type="button"
+              className="prijava-vrstica__dejanje"
+              onClick={() => onOdjava(prijava.id)}
+            >
+              Odjavi
+            </button>
+          )}
+        />
+      )}
     </>
   )
 }

@@ -189,6 +189,7 @@ function razbijCas(iso: string | null): { datum: string; ura: string } {
 
 function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmin: boolean }) {
   const [urejana, nastaviUrejano] = useState<TekmaSrecanjaDto | null>(null)
+  const [menjava, nastaviMenjavo] = useState<TekmaSrecanjaDto | null>(null)
   const s = podrobno.srecanje
   const koncano = s.status === 'KONCANO'
 
@@ -232,6 +233,7 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
                   >
                     {imeStrani(t, 'DOMACI')}
                     <SpremembaRatinga vrednost={t.spremembaRatingaDomaci} />
+                    {t.menjavaDomaci && <OznakaMenjave />}
                   </td>
                   <td className="srecanje__izid-tekme">
                     {konec ? (
@@ -256,14 +258,24 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
                   >
                     {imeStrani(t, 'GOST')}
                     <SpremembaRatinga vrednost={t.spremembaRatingaGost} />
+                    {t.menjavaGost && <OznakaMenjave />}
                   </td>
                   <td className="tabela__dejanja">
                     {konec ? (
                       <span className="srecanje__stanje">Končana</span>
                     ) : jeAdmin && !koncano && t.status === 'CAKA' ? (
-                      <button className="gumb gumb--majhen" onClick={() => nastaviUrejano(t)}>
-                        Vnesi
-                      </button>
+                      <div>
+                        <button
+                          className="gumb gumb--majhen srecanje__gumb-menjave"
+                          aria-label={`Menjava igralcev – ${t.oznaka}`}
+                          onClick={() => nastaviMenjavo(t)}
+                        >
+                          Menjava
+                        </button>
+                        <button className="gumb gumb--majhen" onClick={() => nastaviUrejano(t)}>
+                          Vnesi
+                        </button>
+                      </div>
                     ) : (
                       <span className="srecanje__stanje srecanje__stanje--caka">Čaka</span>
                     )}
@@ -276,9 +288,144 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
       </div>
 
       {urejana && (
-        <RezultatOkno tekma={urejana} idSrecanje={s.id} onZapri={() => nastaviUrejano(null)} />
+        <RezultatOkno
+          tekma={urejana}
+          idSrecanje={s.id}
+          onZapri={() => nastaviUrejano(null)}
+          onMenjava={() => {
+            nastaviUrejano(null)
+            nastaviMenjavo(urejana)
+          }}
+        />
+      )}
+      {menjava && (
+        <MenjavaOkno tekma={menjava} podrobno={podrobno} onZapri={() => nastaviMenjavo(null)} />
       )}
     </div>
+  )
+}
+
+/* Oznaka tekme (»A-Y«) je mesto v začetni postavi. Kadar na njem igra kdo
+   drug, to pove oznaka pod imenom — sicer bi zapisnik trdil, da je C igral
+   kot A. */
+function OznakaMenjave() {
+  return <span className="srecanje__menjava">menjava</span>
+}
+
+/* Menjava velja za to eno tekmo in ne »od tu naprej«: v ligi se igralci med
+   srečanjem menjajo prosto (po A-X in B-Y lahko sledita C-Y in A-Z), zato
+   organizator prepiše zapisnik s papirja tekmo za tekmo. Ponujen je kader
+   ekipe; kdor na srečanje pride na novo, gre najprej v kader. */
+function MenjavaOkno({
+  tekma,
+  podrobno,
+  onZapri,
+}: {
+  tekma: TekmaSrecanjaDto
+  podrobno: SrecanjePodrobnoDto
+  onZapri: () => void
+}) {
+  const odjemalec = useQueryClient()
+  const s = podrobno.srecanje
+  const dvojice = tekma.tip === 'DVOJICE'
+  const vNiz = (id: number | null) => (id == null ? '' : String(id))
+  const [domaci, nastaviDomaci] = useState(vNiz(tekma.idDomaci))
+  const [domaci2, nastaviDomaci2] = useState(vNiz(tekma.idDomaci2))
+  const [gost, nastaviGost] = useState(vNiz(tekma.idGost))
+  const [gost2, nastaviGost2] = useState(vNiz(tekma.idGost2))
+
+  const shrani = useMutation({
+    mutationFn: () =>
+      srecanjaApi.zamenjajIgralce(tekma.id, {
+        idDomaci: Number(domaci),
+        idDomaci2: dvojice ? Number(domaci2) : null,
+        idGost: Number(gost),
+        idGost2: dvojice ? Number(gost2) : null,
+      }),
+    onSuccess: (novo) => {
+      odjemalec.setQueryData(['srecanje', s.id], novo)
+      onZapri()
+    },
+  })
+
+  const izbrani = dvojice ? [domaci, domaci2, gost, gost2] : [domaci, gost]
+  const vsiIzbrani = izbrani.every((id) => id !== '')
+  const parRazlicen = !dvojice || (domaci !== domaci2 && gost !== gost2)
+  const spremenjeno =
+    domaci !== vNiz(tekma.idDomaci) || gost !== vNiz(tekma.idGost)
+    || (dvojice && (domaci2 !== vNiz(tekma.idDomaci2) || gost2 !== vNiz(tekma.idGost2)))
+  /* Kje se kader dopolni: pri ligi okno »Ekipe in kader«, pri ekipnem
+     dogodku stran dogodka. */
+  const potDoKadra = s.idDogodek != null ? `/dogodki/${s.idDogodek}` : `/lige/${s.idLiga}`
+
+  return (
+    <ModalnoOkno naslov={`Menjava – ${tekma.oznaka}`} onZapri={onZapri}>
+      <form
+        className="obrazec"
+        onSubmit={(d) => {
+          d.preventDefault()
+          if (vsiIzbrani && parRazlicen && spremenjeno && !shrani.isPending) shrani.mutate()
+        }}
+      >
+        <div className="obrazec__vrstica">
+          <IzbiraIgralca oznaka={dvojice ? `${s.domaci} – 1. igralec` : s.domaci}
+            kader={podrobno.kaderDomaci} vrednost={domaci} naSpremembo={nastaviDomaci} />
+          {dvojice && (
+            <IzbiraIgralca oznaka={`${s.domaci} – 2. igralec`}
+              kader={podrobno.kaderDomaci} vrednost={domaci2} naSpremembo={nastaviDomaci2} />
+          )}
+        </div>
+        <div className="obrazec__vrstica">
+          <IzbiraIgralca oznaka={dvojice ? `${s.gost} – 1. igralec` : s.gost}
+            kader={podrobno.kaderGost} vrednost={gost} naSpremembo={nastaviGost} />
+          {dvojice && (
+            <IzbiraIgralca oznaka={`${s.gost} – 2. igralec`}
+              kader={podrobno.kaderGost} vrednost={gost2} naSpremembo={nastaviGost2} />
+          )}
+        </div>
+        {!parRazlicen && <div className="napaka">Par sestavljata dva različna igralca.</div>}
+
+        <p className="namig">
+          Menjava velja samo za to tekmo; oznaka {tekma.oznaka} ostane mesto v začetni postavi.
+          Igralca ni na seznamu? Najprej ga dodaj v <Link to={potDoKadra}>kader ekipe</Link>.
+        </p>
+        <SporociloNapake napaka={shrani.error} />
+        <div className="obrazec__gumbi">
+          <button type="button" className="gumb" onClick={onZapri}>Prekliči</button>
+          <button
+            type="submit"
+            className="gumb gumb--glavni"
+            disabled={!vsiIzbrani || !parRazlicen || !spremenjeno || shrani.isPending}
+          >
+            Shrani menjavo
+          </button>
+        </div>
+      </form>
+    </ModalnoOkno>
+  )
+}
+
+function IzbiraIgralca({
+  oznaka,
+  kader,
+  vrednost,
+  naSpremembo,
+}: {
+  oznaka: string
+  kader: { idIgralec: number; polnoIme: string }[]
+  vrednost: string
+  naSpremembo: (vrednost: string) => void
+}) {
+  return (
+    <label className="obrazec__polje">
+      <span>{oznaka}</span>
+      <select value={vrednost} onChange={(d) => naSpremembo(d.target.value)}>
+        <option value="">— igralec —</option>
+        {kader.map((k) => (
+          <option key={k.idIgralec} value={k.idIgralec}>{k.polnoIme}</option>
+        ))}
+      </select>
+    </label>
   )
 }
 
@@ -293,10 +440,14 @@ function RezultatOkno({
   tekma,
   idSrecanje,
   onZapri,
+  onMenjava,
 }: {
   tekma: TekmaSrecanjaDto
   idSrecanje: number
   onZapri: () => void
+  /* Rezultat se vpisuje s papirja; če je tam drug igralec, je to trenutek, ko
+     organizator razliko opazi. Na telefonu je to tudi edini vhod v menjavo. */
+  onMenjava: () => void
 }) {
   const odjemalec = useQueryClient()
   const zaZmago = nizovZaZmago(tekma.steviloNizov)
@@ -371,6 +522,11 @@ function RezultatOkno({
         <p className="srecanje__pari">
           <strong>{imeStrani(tekma, 'DOMACI')}</strong> proti <strong>{imeStrani(tekma, 'GOST')}</strong>
         </p>
+        <div>
+          <button type="button" className="gumb gumb--majhen" onClick={onMenjava}>
+            Menjava igralcev
+          </button>
+        </div>
 
         <label className="obrazec__polje">
           <span>Izid</span>
@@ -474,6 +630,8 @@ function PostavaUredi({ podrobno }: { podrobno: SrecanjePodrobnoDto }) {
     nastavi(nova)
   }
 
+  /* Shranjena postava tekme sestavi znova, zato vpisane menjave odpadejo. */
+  const imaMenjave = podrobno.tekme.some((t) => t.menjavaDomaci || t.menjavaGost)
   const vsaIzbrana =
     podrobno.pozicijeDomaci.every((p) => domaci[p]) && podrobno.pozicijeGost.every((p) => gost[p])
   const dvojiceOk =
@@ -510,6 +668,11 @@ function PostavaUredi({ podrobno }: { podrobno: SrecanjePodrobnoDto }) {
       </div>
       {podrobno.izbiraDvojice && (
         <p className="namig">Označi {podrobno.stVDvojici} igralca na vsaki strani za dvojice.</p>
+      )}
+      {imaMenjave && (
+        <p className="namig">
+          Ponovna shranitev postave tekme sestavi znova — vpisane menjave pri tem odpadejo.
+        </p>
       )}
       <SporociloNapake napaka={shrani.error} />
       <div className="obrazec__gumbi">

@@ -1,6 +1,6 @@
 /* Poslovna logika srecanj: dolocanje postave, generiranje posamicnih tekem po
-   formatu, vnos rezultatov, pravilo predcasnega konca (prvi do N zmag) in
-   obracun ratinga za posamicne tekme.
+   formatu, menjave igralcev v tekmah, ki se cakajo, vnos rezultatov, pravilo
+   predcasnega konca (prvi do N zmag) in obracun ratinga za posamicne tekme.
 
    Postava dodeli igralce iz kadra na mesta (A/B/C, X/Y/Z) in oznaci par za
    dvojice; iz nje se generira urejen seznam tekem. Ko ena stran doseze prag
@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.KaderIgralecDto;
+import si.turnirko.dto.MenjavaVnos;
 import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.PostavaSrecanjaDto;
 import si.turnirko.dto.PostavaVnos;
@@ -126,17 +127,14 @@ public class SrecanjeStoritev {
         Srecanje s = najdiPodrobno(idSrecanje);
         FormatSrecanja format = s.pravila().format();
 
-        List<PostavaSrecanjaDto> postave = postavaRepozitorij.najdiZaSrecanje(idSrecanje)
-                .stream().map(PostavaSrecanjaDto::iz).toList();
+        List<PostavaSrecanja> postava = postavaRepozitorij.najdiZaSrecanje(idSrecanje);
+        List<PostavaSrecanjaDto> postave = postava.stream().map(PostavaSrecanjaDto::iz).toList();
 
         List<TekmaSrecanja> tekme = tekmaRepozitorij.najdiZaSrecanje(idSrecanje);
         Map<Long, Map<Long, Integer>> delte = delteRatinga(tekme.stream().map(TekmaSrecanja::getId).toList());
         Map<Long, List<NizVnos>> nizi = niziSrecanja(idSrecanje);
         List<TekmaSrecanjaDto> tekmeDto = tekme.stream()
-                .map(t -> TekmaSrecanjaDto.iz(t,
-                        ratingZa(delte, t.getId(), t.getIgralecDomaci()),
-                        ratingZa(delte, t.getId(), t.getIgralecGost()),
-                        nizi.getOrDefault(t.getId(), List.of())))
+                .map(t -> tekmaDto(t, delte, nizi.getOrDefault(t.getId(), List.of()), postava))
                 .toList();
 
         BilanceLige bilance = s.jeTurnirsko()
@@ -301,10 +299,158 @@ public class SrecanjeStoritev {
         posodobiSrecanje(s, pravila.zmagZaSrecanje());
 
         Map<Long, Map<Long, Integer>> delte = delteRatinga(List.of(t.getId()));
+        return tekmaDto(t, delte, vneseniNizi, postavaRepozitorij.najdiZaSrecanje(s.getId()));
+    }
+
+    // ---------- Menjava ----------
+
+    /* Menjava: eno se neodigrano tekmo srecanja igra drug igralec iz kadra.
+       Postava ostane ZACETNA postava - iz nje so nastale tekme -, kdo tekmo res
+       igra, pa stoji v tekmi sami. Zato menjava tekmi ne spremeni ne mesta v
+       zaporedju ne oznake: "A-Y" ostane "A-Y", le igralec je drug (zapisnik to
+       oznaci, glej menjava()). Rating, lestvica igralcev in bilanca kadra ze
+       zdaj berejo igralca iz tekme, zato stejejo zamenjanega brez posebne veje.
+
+       Menjava velja za ENO tekmo in ne "od tu naprej". V ligi se igralci med
+       srecanjem menjajo prosto: po dvojicah AB/XY ter A-X in B-Y lahko sledita
+       C-Y in A-Z - A se je umaknil C-ju in se vrnil na mesto B. Pravilo
+       "zamenjani ostane zunaj" bi tak vpis onemogocilo, organizator pa tako
+       prepise zapisnik s papirja tekmo za tekmo.
+
+       Samo tekma, ki CAKA: odigrana ima ze obracunan rating, neodigrana pa se
+       po pravilih ne igra vec. Igralec mora biti v kadru svoje ekipe - kdor na
+       srecanje pride na novo, gre najprej v kader (ta se sme dopolnjevati tudi
+       med sezono). Koliko tekem odigra en igralec, strezniku ni mar: to je
+       pravilo tekmovanja, ki ga liga v aplikaciji ne pozna. */
+    @Transactional
+    public SrecanjePodrobnoDto zamenjajIgralce(Long idTekma, MenjavaVnos v) {
+        lastnistvo.preveriPoTekmiSrecanja(idTekma);
+        TekmaSrecanja t = tekmaRepozitorij.najdiZaObracun(idTekma)
+                .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja."));
+        Srecanje s = t.getSrecanje();
+
+        if (s.getStatus() == StatusSrecanja.KONCANO) {
+            throw new DomenskaIzjema("Srecanje je ze koncano.");
+        }
+        if (t.getStatus() == StatusTekmeSrecanja.KONCANA) {
+            throw new DomenskaIzjema("Tekma je ze odigrana - igralcev ni vec mogoce zamenjati.");
+        }
+        if (t.getStatus() == StatusTekmeSrecanja.NEODIGRANA) {
+            throw new DomenskaIzjema("Ta tekma se po pravilih ne igra (srecanje je bilo ze odloceno).");
+        }
+
+        boolean dvojice = t.getTip() == TipTekmeSrecanja.DVOJICE;
+        List<Long> domaci = igralciStrani(v.idDomaci(), v.idDomaci2(), dvojice, "domacih");
+        List<Long> gost = igralciStrani(v.idGost(), v.idGost2(), dvojice, "gostov");
+        if (domaci.stream().anyMatch(gost::contains)) {
+            throw new NeveljavenVnosIzjema("Isti igralec ne more igrati za obe ekipi.");
+        }
+
+        Map<Long, Igralec> kaderDomaci = kaderPoId(s.getEkipaDomaci());
+        Map<Long, Igralec> kaderGost = kaderPoId(s.getEkipaGost());
+        for (Long id : domaci) {
+            if (!kaderDomaci.containsKey(id)) {
+                throw new DomenskaIzjema("Igralec ni v kadru domacih.");
+            }
+        }
+        for (Long id : gost) {
+            if (!kaderGost.containsKey(id)) {
+                throw new DomenskaIzjema("Igralec ni v kadru gostov.");
+            }
+        }
+
+        t.setIgralecDomaci(kaderDomaci.get(domaci.get(0)));
+        t.setIgralecGost(kaderGost.get(gost.get(0)));
+        t.setIgralecDomaci2(dvojice ? kaderDomaci.get(domaci.get(1)) : null);
+        t.setIgralecGost2(dvojice ? kaderGost.get(gost.get(1)) : null);
+        tekmaRepozitorij.save(t);
+        return podrobno(s.getId());
+    }
+
+    /* Igralci ene strani tekme: pri posamicni en, pri dvojicah dva razlicna. */
+    private static List<Long> igralciStrani(Long prvi, Long drugi, boolean dvojice, String opis) {
+        if (dvojice) {
+            if (prvi == null || drugi == null) {
+                throw new NeveljavenVnosIzjema("Za dvojice " + opis + " sta potrebna dva igralca.");
+            }
+            if (prvi.equals(drugi)) {
+                throw new NeveljavenVnosIzjema("Par " + opis + " sestavljata dva razlicna igralca.");
+            }
+            return List.of(prvi, drugi);
+        }
+        if (prvi == null) {
+            throw new NeveljavenVnosIzjema("Manjka igralec " + opis + ".");
+        }
+        if (drugi != null) {
+            throw new NeveljavenVnosIzjema("Posamicno tekmo igra en igralec na strani.");
+        }
+        return List.of(prvi);
+    }
+
+    private Map<Long, Igralec> kaderPoId(Ekipa ekipa) {
+        Map<Long, Igralec> poId = new HashMap<>();
+        for (KaderEkipe k : kaderRepozitorij.najdiZaEkipo(ekipa.getId())) {
+            poId.put(k.getIgralec().getId(), k.getIgralec());
+        }
+        return poId;
+    }
+
+    /* Menjava na strani tekme: igra kdo drug kot tisti, ki je v zacetni postavi
+       na mestu, iz katerega je tekma nastala. Mesto se prebere iz OZNAKE
+       ("A-Y"; pri dvojicah par, oznacen v postavi) in ne iz zaporedja formata,
+       ker imajo uvozena srecanja svoje zaporedje. Kadar mesta ni mogoce najti
+       (uvoz brez postave, oznaka "?-X", par brez natanko dveh oznacenih), se
+       menjava ne ugiba - raje nic kot napacna oznaka. */
+    private static Menjava menjava(TekmaSrecanja t, List<PostavaSrecanja> postava) {
+        if (t.getTip() == TipTekmeSrecanja.DVOJICE) {
+            return new Menjava(
+                    menjavaPara(postava, StranEkipe.DOMACI, t.getIgralecDomaci(), t.getIgralecDomaci2()),
+                    menjavaPara(postava, StranEkipe.GOST, t.getIgralecGost(), t.getIgralecGost2()));
+        }
+        String[] mesti = t.getOznaka().split("-");
+        if (mesti.length != 2) {
+            return new Menjava(false, false);
+        }
+        return new Menjava(
+                menjavaMesta(postava, StranEkipe.DOMACI, mesti[0], t.getIgralecDomaci()),
+                menjavaMesta(postava, StranEkipe.GOST, mesti[1], t.getIgralecGost()));
+    }
+
+    private record Menjava(boolean domaci, boolean gost) {}
+
+    private static boolean menjavaMesta(List<PostavaSrecanja> postava, StranEkipe stran,
+                                        String mesto, Igralec igralec) {
+        if (igralec == null) {
+            return false;
+        }
+        return postava.stream()
+                .filter(p -> p.getStran() == stran && p.getPozicija().equals(mesto))
+                .findFirst()
+                .map(p -> !p.getIgralec().getId().equals(igralec.getId()))
+                .orElse(false);
+    }
+
+    private static boolean menjavaPara(List<PostavaSrecanja> postava, StranEkipe stran,
+                                       Igralec prvi, Igralec drugi) {
+        if (prvi == null || drugi == null) {
+            return false;
+        }
+        Set<Long> par = new HashSet<>();
+        for (PostavaSrecanja p : postava) {
+            if (p.getStran() == stran && p.isVDvojici()) {
+                par.add(p.getIgralec().getId());
+            }
+        }
+        return par.size() == 2 && !par.equals(Set.of(prvi.getId(), drugi.getId()));
+    }
+
+    private TekmaSrecanjaDto tekmaDto(TekmaSrecanja t, Map<Long, Map<Long, Integer>> delte,
+                                      List<NizVnos> nizi, List<PostavaSrecanja> postava) {
+        Menjava menjava = menjava(t, postava);
         return TekmaSrecanjaDto.iz(t,
                 ratingZa(delte, t.getId(), t.getIgralecDomaci()),
                 ratingZa(delte, t.getId(), t.getIgralecGost()),
-                vneseniNizi);
+                nizi, menjava.domaci(), menjava.gost());
     }
 
     /* Osvezi povzetek srecanja in uveljavi pravilo predcasnega konca. Ko se

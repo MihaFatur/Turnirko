@@ -24,6 +24,8 @@ import {
   useNazaj,
 } from '../komponente/GlavaTelefona'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
+import { IzbirnikIgralca } from '../komponente/IzbirnikIgralca'
+import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { KoncnicaLige } from '../komponente/KoncnicaLige'
 import { LestviceLige } from '../komponente/LestviceLige'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
@@ -1796,8 +1798,10 @@ function namigOKolih(stEkip: number, dvokrozno: boolean): string {
       + ' svojem krogu počiva.'
 }
 
-/* Pogled ekip za ligo, ki že teče: kader je takrat zaklenjen (strežnik ga v
-   drugih stanjih ne spusti), zato okno samo pokaže, kdo je prijavljen. */
+/* Ekipe in kader lige, ki že teče. Ekipe so takrat zaklenjene (od njih je
+   odvisen razpored), kader pa ne: ekipa sredi sezone pripelje novega igralca in
+   ta mora v kader, preden ga organizator postavi v tekmo ali vpiše kot menjavo.
+   Zato se ekipa v oknu razpre v urejanje kadra in ne v izpis. */
 function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => void }) {
   const ekipe = useQuery({ queryKey: ['ekipe', idLiga], queryFn: () => ligeApi.ekipe(idLiga) })
   const [odprta, nastaviOdprto] = useState<number | null>(null)
@@ -1822,12 +1826,19 @@ function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => vo
                   {kaderTekst(e.steviloKadra)} {odprta === e.id ? '▴' : '▾'}
                 </span>
               </button>
-              {odprta === e.id && <Kader idEkipa={e.id} ekipa={e.prikazanoIme} />}
+              {odprta === e.id && (
+                <div className="liga__kader">
+                  <UrejanjeKadra idEkipa={e.id} />
+                </div>
+              )}
             </li>
           ))}
         </ul>
       )}
-      <p className="namig">Kader je mogoče spreminjati samo, dokler je liga v pripravi.</p>
+      <p className="namig">
+        Ekipe so po žrebu zaklenjene, kader pa lahko dopolniš tudi med sezono. Kdor je za
+        ekipo že igral, v kadru ostane.
+      </p>
     </ModalnoOkno>
   )
 }
@@ -1947,15 +1958,11 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
         }}
       >
         {nacin === 'klub' && (
-          <label className="obrazec__polje">
-            <span>Klub</span>
-            <select value={idKlub} onChange={(d) => nastaviKlub(d.target.value)}>
-              <option value="">— izberi klub —</option>
-              {klubi.data?.map((k) => (
-                <option key={k.id} value={k.id}>{k.ime}</option>
-              ))}
-            </select>
-          </label>
+          <IzbirnikKluba
+            klubi={klubi.data ?? []}
+            izbrano={idKlub ? Number(idKlub) : null}
+            naSpremembo={(id) => nastaviKlub(id === null ? '' : String(id))}
+          />
         )}
         <label className="obrazec__polje">
           <span>{nacin === 'klub' ? 'Ime ekipe (neobvezno)' : 'Ime ekipe'}</span>
@@ -2111,19 +2118,32 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
 }
 
 function KaderOkno({ ekipa, onZapri }: { ekipa: EkipaDto; onZapri: () => void }) {
+  return (
+    <ModalnoOkno naslov={`Kader – ${ekipa.prikazanoIme}`} onZapri={onZapri}>
+      <UrejanjeKadra idEkipa={ekipa.id} />
+    </ModalnoOkno>
+  )
+}
+
+/* Dodajanje in odstranjevanje igralcev kadra - isto v pripravi (okno ob ekipi)
+   in med sezono (okno »Ekipe in kader«). Odstranitev igralca, ki je za ekipo že
+   nastopil, strežnik zavrne in sporočilo se izpiše tu. */
+function UrejanjeKadra({ idEkipa }: { idEkipa: number }) {
   const odjemalec = useQueryClient()
-  const kader = useQuery({ queryKey: ['kader', ekipa.id], queryFn: () => ligeApi.kader(ekipa.id) })
+  const kader = useQuery({ queryKey: ['kader', idEkipa], queryFn: () => ligeApi.kader(idEkipa) })
   const igralci = useQuery({ queryKey: ['igralci'], queryFn: igralciApi.seznam })
-  const [idIgralec, nastaviIgralca] = useState('')
 
   const osvezi = () => {
-    odjemalec.invalidateQueries({ queryKey: ['kader', ekipa.id] })
-    /* Seznam ekip nosi velikost kadra, zato ga je treba osvežiti z njim. */
+    odjemalec.invalidateQueries({ queryKey: ['kader', idEkipa] })
+    /* Seznam ekip nosi velikost kadra, zato ga je treba osvežiti z njim;
+       zapisnik srečanja pa ponudi kader za postavo in menjave. */
     odjemalec.invalidateQueries({ queryKey: ['ekipe'] })
+    odjemalec.invalidateQueries({ queryKey: ['srecanje'] })
   }
+  /* Izbira v polju igralca doda takoj - isto kot kader ekipnega dogodka. */
   const dodaj = useMutation({
-    mutationFn: () => ligeApi.dodajVKader(ekipa.id, { idIgralec: Number(idIgralec), vrstniRed: null }),
-    onSuccess: () => { osvezi(); nastaviIgralca('') },
+    mutationFn: (idIgralec: number) => ligeApi.dodajVKader(idEkipa, { idIgralec, vrstniRed: null }),
+    onSuccess: osvezi,
   })
   const odstrani = useMutation({
     mutationFn: (idKader: number) => ligeApi.odstraniIzKadra(idKader),
@@ -2134,17 +2154,16 @@ function KaderOkno({ ekipa, onZapri }: { ekipa: EkipaDto; onZapri: () => void })
   const naVoljo = igralci.data?.filter((i) => !vKadru.has(i.id)) ?? []
 
   return (
-    <ModalnoOkno naslov={`Kader – ${ekipa.prikazanoIme}`} onZapri={onZapri}>
-      <div className="obrazec__vrstica liga__dodaj-ekipo">
-        <select value={idIgralec} onChange={(d) => nastaviIgralca(d.target.value)}>
-          <option value="">— izberi igralca —</option>
-          {naVoljo.map((i) => (
-            <option key={i.id} value={i.id}>{i.ime} {i.priimek}{i.klub ? ` (${i.klub.ime})` : ''}</option>
-          ))}
-        </select>
-        <button className="gumb" disabled={!idIgralec || dodaj.isPending} onClick={() => dodaj.mutate()}>
-          + Dodaj
-        </button>
+    <>
+      <div className="liga__dodaj-ekipo">
+        <IzbirnikIgralca
+          oznaka="Dodaj igralca v kader"
+          vidnaOznaka
+          namig="Vpiši ime igralca"
+          igralci={naVoljo}
+          izkljuci=""
+          naSpremembo={(id) => dodaj.mutate(id)}
+        />
       </div>
       <SporociloNapake napaka={dodaj.error} />
 
@@ -2161,7 +2180,8 @@ function KaderOkno({ ekipa, onZapri }: { ekipa: EkipaDto; onZapri: () => void })
           ))}
         </ul>
       )}
-    </ModalnoOkno>
+      <SporociloNapake napaka={odstrani.error} />
+    </>
   )
 }
 

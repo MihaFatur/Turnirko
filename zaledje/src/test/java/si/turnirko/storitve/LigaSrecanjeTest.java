@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.LestvicaIgralcaDto;
 import si.turnirko.dto.LestvicaIgralcaLigeDto;
 import si.turnirko.dto.LigaVnos;
+import si.turnirko.dto.MenjavaVnos;
 import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.SrecanjeDto;
@@ -39,6 +41,7 @@ import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.TekmaSrecanjaDto;
 import si.turnirko.dto.TerminiVnos;
 import si.turnirko.dto.VnosRezultataSrecanja;
+import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
@@ -710,6 +713,148 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         }
         assertThrows(NeveljavenVnosIzjema.class,
                 () -> srecanjeStoritev.nastaviPostavo(srecanje, new PostavaVnos(mesta)));
+    }
+
+    // ---------- menjave in kader med sezono ----------
+
+    /* Primer iz rekreativne lige (Savinja): po dvojicah AB/XY ter A-X in B-Y
+       domaci postavijo C namesto A, nato se A vrne na mesto B, gostje pa
+       postavijo Z namesto X - odigrata se C-Y in A-Z. Menjava velja samo za
+       svojo tekmo (zato se A sme vrniti), oznaka ostane mesto v zacetni postavi,
+       rating in bilanca kadra pa pripadeta igralcu, ki je tekmo res igral. */
+    @Test
+    void menjavaVeljaZaSvojoTekmoInStejeIgralcu_kiJeIgral() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SAVINJA, null);
+        nastaviPostavo(srecanje);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        Long idA = p.kaderDomaci().get(0).idIgralec();
+        Long idC = p.kaderDomaci().get(2).idIgralec();
+        Long idY = p.kaderGost().get(1).idIgralec();
+        Long idZ = p.kaderGost().get(2).idIgralec();
+        // dvojice, A-X in B-Y domacim
+        for (int i = 0; i < 3; i++) {
+            srecanjeStoritev.vnesiRezultat(p.tekme().get(i).id(), izid(true));
+        }
+
+        srecanjeStoritev.zamenjajIgralce(p.tekme().get(3).id(), new MenjavaVnos(idC, null, idY, null));
+        SrecanjePodrobnoDto po = srecanjeStoritev.zamenjajIgralce(p.tekme().get(4).id(),
+                new MenjavaVnos(idA, null, idZ, null));
+
+        TekmaSrecanjaDto cy = po.tekme().get(3);
+        TekmaSrecanjaDto az = po.tekme().get(4);
+        assertEquals(List.of("A-Y", "B-X"), List.of(cy.oznaka(), az.oznaka()),
+                "oznaka ostane mesto v postavi");
+        assertEquals(List.of(idC, idY), List.of(cy.idDomaci(), cy.idGost()));
+        assertEquals(List.of(idA, idZ), List.of(az.idDomaci(), az.idGost()));
+        assertTrue(cy.menjavaDomaci(), "C na mestu A je menjava");
+        assertFalse(cy.menjavaGost(), "Y igra na svojem mestu");
+        assertTrue(az.menjavaDomaci(), "A na mestu B je menjava");
+        assertTrue(az.menjavaGost(), "Z na mestu X je menjava");
+        assertTrue(po.tekme().subList(0, 3).stream().noneMatch(t -> t.menjavaDomaci() || t.menjavaGost()),
+                "tekme pred menjavo ostanejo nedotaknjene");
+        assertEquals(p.postave(), po.postave(), "zacetna postava se ne spremeni");
+        assertEquals(StatusSrecanja.POTEKA, po.srecanje().status());
+
+        srecanjeStoritev.vnesiRezultat(cy.id(), izid(true));
+        Set<Long> obracunani = ratingZgodovinaRepozitorij
+                .spremembeZaTekmeSrecanja(List.of(cy.id()), RatingStanje.SISTEM_TURNIRKO).stream()
+                .map(r -> ((Number) r[1]).longValue())
+                .collect(Collectors.toSet());
+        assertEquals(Set.of(idC, idY), obracunani, "rating dobi, kdor je tekmo igral");
+
+        Map<Long, KaderIgralecDto> doma = ligaStoritev.kader(p.srecanje().idEkipaDomaci()).stream()
+                .collect(Collectors.toMap(KaderIgralecDto::idIgralec, k -> k));
+        assertEquals(1, doma.get(idC).zmage(), "zmaga C-Y gre C-ju");
+        assertEquals(1, doma.get(idA).zmage(), "A ima samo svojo A-X");
+    }
+
+    /* Dvojice: menjava zamenja par. Par je neurejen - ista igralca v drugem
+       vrstnem redu nista menjava. */
+    @Test
+    void menjavaParaZaDvojice() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SAVINJA, null);
+        nastaviPostavo(srecanje);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        Long idA = p.kaderDomaci().get(0).idIgralec();
+        Long idB = p.kaderDomaci().get(1).idIgralec();
+        Long idC = p.kaderDomaci().get(2).idIgralec();
+        Long idX = p.kaderGost().get(0).idIgralec();
+        Long idY = p.kaderGost().get(1).idIgralec();
+        Long dvojice = p.tekme().get(0).id();
+
+        TekmaSrecanjaDto ca = srecanjeStoritev.zamenjajIgralce(dvojice,
+                new MenjavaVnos(idC, idA, idX, idY)).tekme().get(0);
+        assertEquals(List.of(idC, idA), List.of(ca.idDomaci(), ca.idDomaci2()));
+        assertTrue(ca.menjavaDomaci(), "par CA ni par AB iz postave");
+        assertFalse(ca.menjavaGost());
+
+        TekmaSrecanjaDto ba = srecanjeStoritev.zamenjajIgralce(dvojice,
+                new MenjavaVnos(idB, idA, idY, idX)).tekme().get(0);
+        assertFalse(ba.menjavaDomaci(), "isti par v drugem vrstnem redu ni menjava");
+        assertFalse(ba.menjavaGost());
+
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.zamenjajIgralce(dvojice, new MenjavaVnos(idA, idA, idX, idY)),
+                "par sestavljata dva razlicna igralca");
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.zamenjajIgralce(dvojice, new MenjavaVnos(idA, null, idX, idY)),
+                "dvojice brez drugega igralca");
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.zamenjajIgralce(p.tekme().get(1).id(), new MenjavaVnos(idA, idB, idX, null)),
+                "posamicno tekmo igra en igralec na strani");
+    }
+
+    /* Menjava je vpis tega, kdo bo tekmo igral: odigrane tekme ne popravi
+       (rating je ze obracunan), igralca, ki ni v kadru svoje ekipe, pa ne
+       sprejme - tudi ne, ce je v kadru nasprotnika. */
+    @Test
+    void menjavaOdigraneTekmeInIgralcaIzvenKadraSeZavrne() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SAVINJA, null);
+        nastaviPostavo(srecanje);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        Long idC = p.kaderDomaci().get(2).idIgralec();
+        Long idX = p.kaderGost().get(0).idIgralec();
+        Long idZ = p.kaderGost().get(2).idIgralec();
+        Long ax = p.tekme().get(1).id();
+        Long ay = p.tekme().get(3).id();
+        srecanjeStoritev.vnesiRezultat(ax, izid(true));
+
+        assertThrows(DomenskaIzjema.class,
+                () -> srecanjeStoritev.zamenjajIgralce(ax, new MenjavaVnos(idC, null, idX, null)),
+                "odigrana tekma");
+        assertThrows(DomenskaIzjema.class,
+                () -> srecanjeStoritev.zamenjajIgralce(ay, new MenjavaVnos(idZ, null, idX, null)),
+                "gost ne igra za domace");
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.zamenjajIgralce(ay, new MenjavaVnos(idX, null, idX, null)),
+                "isti igralec na obeh straneh");
+    }
+
+    /* Kader se sme dopolniti tudi, ko liga ze tece: igralec, ki na srecanje
+       pride na novo, gre v kader in takoj v tekmo. Odstraniti pa ni mogoce
+       nikogar, ki je za ekipo igral ali je postavljen v tekmo - kdor se ni
+       nastopil, gre brez tezav. */
+    @Test
+    void kaderSeMedSezonoDopolniOdstraniPaSeSamoKdorNiNastopil() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SAVINJA, null);
+        nastaviPostavo(srecanje);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        assertEquals(si.turnirko.modeli.StatusTekmovanja.V_TEKU,
+                ligaStoritev.najdi(p.srecanje().idLiga()).status());
+
+        Igralec prislek = noviIgralec("Novi", "Prislek");
+        KaderIgralecDto vnos = ligaStoritev.dodajVKader(p.srecanje().idEkipaDomaci(),
+                new KaderVnos(prislek.getId(), null));
+        SrecanjePodrobnoDto po = srecanjeStoritev.zamenjajIgralce(p.tekme().get(3).id(),
+                new MenjavaVnos(prislek.getId(), null, p.kaderGost().get(1).idIgralec(), null));
+        assertEquals(prislek.getId(), po.tekme().get(3).idDomaci());
+        assertEquals(4, po.kaderDomaci().size());
+
+        ligaStoritev.odstraniIzKadra(p.kaderDomaci().get(2).id()); // C ni nastopil
+        assertThrows(DomenskaIzjema.class, () -> ligaStoritev.odstraniIzKadra(vnos.id()),
+                "prislek je postavljen v tekmo, ki caka");
+        assertThrows(DomenskaIzjema.class, () -> ligaStoritev.odstraniIzKadra(p.kaderDomaci().get(0).id()),
+                "A je igral dvojice in A-X");
     }
 
     // ---------- pomozne metode ----------

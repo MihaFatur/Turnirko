@@ -1536,11 +1536,177 @@ input[type='radio'] {
   font-size: 15px;
 }
 
-/* Seznam, ki lahko naraste (npr. vse lige): drsi znotraj sebe, da gumbi
-   obrazca ostanejo v vidnem delu okna. */
-.obrazec__radio-skupina--drsna {
-  max-height: 15rem;
+/* --- Iskalni izbirnik (combobox) --- */
+
+/* Izbira iz dolgega seznama (igralec, klub, kraj, liga) z vpisom imena - glej
+   komponente/IskalniIzbirnik.tsx. V semaforju »Ena na ena« polje stoji POD
+   imenom izbranega igralca: ime je vsebina, polje pa orodje, s katerim jo
+   zamenjas; obratni vrstni red je bralcu ponujal kontrolnik, preden je vedel,
+   koga gleda. */
+.iskalni-izbirnik {
+  display: block;
+  width: 100%;
+  margin-top: var(--r2);
+}
+
+/* V obrazcu je polje eno izmed polj: oznaka in razmik sta od .obrazec__polje
+   (pravilo mora stati za splosnim, ker imata isto tezo). */
+.iskalni-izbirnik--obrazec {
+  display: flex;
+  margin-top: 0;
+}
+
+.obrazec__polje > .iskalni-izbirnik__napis {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Sidro predlogov je ovoj polja in ne cel izbirnik: predlogi, ki se odprejo
+   navzgor, morajo sesti na polje in ne na oznako nad njim. */
+.iskalni-izbirnik__sidro {
+  position: relative;
+}
+
+/* V skupini obrazca razmik nosi skupina (gap). */
+.obrazec__skupina > .iskalni-izbirnik {
+  margin-top: 0;
+}
+
+/* Vidna oznaka nad poljem zunaj obrazca: kjer izbirnik ne stoji pod velikim
+   imenom (napoved tekme, kader), mora povedati, koga polje isce. */
+.iskalni-izbirnik__oznaka {
+  display: block;
+  margin-bottom: var(--r1);
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.iskalni-izbirnik__vnos {
+  height: 44px;
+  padding: 0 12px;
+  font-size: 17px;
+}
+
+/* Predlogi lezijo CEZ vsebino pod poljem in je ne premikajo: semafor, ki bi
+   ob vsakem vtipkanem znaku poskocil, bi bral kot napaka. Sirina je vsaj
+   240 px - v 96 px sirokem stolpcu na telefonu se ime in klub ne zlozita.
+   Najvecjo visino (osem vrstic po 50 px ali manj, kolikor je prostora do
+   roba okna) nastavi komponenta. */
+.iskalni-izbirnik__predlogi {
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 0;
+  z-index: 20;
+  width: 100%;
+  min-width: 240px;
+  max-width: 100vw;
   overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--barva-papir);
+  border: 1px solid var(--barva-crnilo);
+  text-align: left;
+}
+
+/* Pod poljem ni prostora (dno okna, tipkovnica na telefonu): predlogi se
+   odprejo navzgor, da jih ni treba iskati z drsenjem. */
+.iskalni-izbirnik__predlogi--gor {
+  top: auto;
+  bottom: calc(100% - 1px);
+}
+
+/* Desna stran semaforja je zrcalna, zato se predlogi sirijo v levo - sicer
+   bi pri ozkem stolpcu zlezli cez desni rob zaslona. */
+.enanaena__stran--2 .iskalni-izbirnik__predlogi {
+  left: auto;
+  right: 0;
+}
+
+.iskalni-izbirnik__predlog {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--barva-crta);
+  cursor: pointer;
+}
+
+.iskalni-izbirnik__predlog:last-child {
+  border-bottom: 0;
+}
+
+/* Oznacen je predlog pod misko IN tisti, na katerem stoji tipkovnica -
+   obojega ne locujemo, ker je v vsakem trenutku oznacen natanko en. */
+.iskalni-izbirnik__predlog--oznacen {
+  background: var(--barva-glavna-mehko);
+}
+
+.iskalni-izbirnik__predlog-ime {
+  font-size: var(--tip-drobno);
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+/* Podrobnost (klub) loci soimenjaka, zato je tu - a imena klubov so dolga
+   ("Namiznoteniski klub Fuzinar Ravne na Koroskem") in bi vsako drugo vrstico
+   raztegnila cez tri vrste. Zato ostane v eni vrstici in se odreze. */
+.iskalni-izbirnik__predlog-podrobnost {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Vidna, a neizbirna moznost (igralec, ki ze ima dostop). */
+.iskalni-izbirnik__predlog--onemogocen {
+  cursor: default;
+}
+
+.iskalni-izbirnik__predlog--onemogocen .iskalni-izbirnik__predlog-ime {
+  font-weight: 400;
+  color: var(--barva-crnilo-3);
+}
+
+.iskalni-izbirnik__brez-zadetka {
+  padding: 12px;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
+}
+
+/* Izbrane postavke pod iskalnim poljem (npr. nizje lige): ime s podrobnostjo
+   in odstranitev v eni vrstici. */
+.izbrane-postavke {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.izbrane-postavke li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  min-height: 44px;
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: 15px;
+}
+
+.izbrane-postavke__podrobnost {
+  display: block;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
 }
 
 .obrazec__skupina,
@@ -1785,6 +1951,11 @@ input[type='radio'] {
 }
 
 .dodajanje__izbrani {
+  margin-top: var(--r2);
+}
+
+/* Par pri dvojicah: polji igralcev in gumb pod naslovom plosce. */
+.sestavljanje-para {
   margin-top: var(--r2);
 }
 
@@ -3897,124 +4068,6 @@ input[type='radio'] {
 .enanaena__ime a:hover {
   color: var(--barva-glavna-tekst);
   text-decoration: none;
-}
-
-/* --- Izbirnik igralca (combobox) --- */
-
-/* Deljen vzorec: semafor "Ena na ena" in napoved tekme na profilu. Polje
-   stoji POD imenom izbranega igralca - ime je vsebina, polje pa orodje, s
-   katerim jo zamenjas; obratni vrstni red je bralcu ponujal kontrolnik,
-   preden je vedel, koga gleda. Ovoj je sidro za predloge, ki lezijo cez
-   vsebino. */
-.izbirnik-igralca {
-  position: relative;
-  display: block;
-  width: 100%;
-  margin-top: var(--r2);
-}
-
-.izbirnik-igralca label {
-  display: block;
-}
-
-/* Vidna oznaka nad poljem: kjer izbirnik ne stoji pod velikim imenom
-   (napoved tekme), mora povedati, koga polje isce. */
-.izbirnik-igralca__oznaka {
-  display: block;
-  margin-bottom: var(--r1);
-  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-}
-
-.izbirnik-igralca input {
-  width: 100%;
-  height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--barva-crnilo);
-  border-radius: 0;
-  background: var(--barva-bela);
-  color: var(--barva-crnilo);
-  font-family: var(--pisava-telo);
-  font-size: 17px;
-  font-weight: 400;
-}
-
-/* Predlogi lezijo CEZ vsebino pod poljem in je ne premikajo: semafor, ki bi
-   ob vsakem vtipkanem znaku poskocil, bi bral kot napaka. Sirina je vsaj
-   240 px - v 96 px sirokem stolpcu na telefonu se ime in klub ne zlozita. */
-.izbirnik-igralca__predlogi {
-  position: absolute;
-  top: calc(100% - 1px);
-  left: 0;
-  z-index: 20;
-  width: 100%;
-  min-width: 240px;
-  max-width: 100vw;
-  /* Osem vrstic po 50 px: toliko, kolikor jih polje sploh ponudi, zato do
-     drsenja v seznamu praviloma ne pride. */
-  max-height: 400px;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  background: var(--barva-papir);
-  border: 1px solid var(--barva-crnilo);
-  text-align: left;
-}
-
-/* Desna stran semaforja je zrcalna, zato se predlogi sirijo v levo - sicer
-   bi pri ozkem stolpcu zlezli cez desni rob zaslona. */
-.enanaena__stran--2 .izbirnik-igralca__predlogi {
-  left: auto;
-  right: 0;
-}
-
-.izbirnik-igralca__predlog {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-height: 44px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--barva-crta);
-  cursor: pointer;
-}
-
-.izbirnik-igralca__predlog:last-child {
-  border-bottom: 0;
-}
-
-/* Oznacen je predlog pod misko IN tisti, na katerem stoji tipkovnica -
-   obojega ne locujemo, ker je v vsakem trenutku oznacen natanko en. */
-.izbirnik-igralca__predlog--oznacen {
-  background: var(--barva-glavna-mehko);
-}
-
-.izbirnik-igralca__predlog-ime {
-  font-size: var(--tip-drobno);
-  font-weight: 600;
-  color: var(--barva-crnilo);
-}
-
-/* Klub loci soimenjaka, zato je tu - a imena klubov so dolga
-   ("Namiznoteniski klub Fuzinar Ravne na Koroskem") in bi vsako drugo vrstico
-   raztegnila cez tri vrste. Zato ostane v eni vrstici in se odreze. */
-.izbirnik-igralca__predlog-klub {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: 500 11px / 1.3 var(--pisava-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-}
-
-.izbirnik-igralca__brez-zadetka {
-  padding: 12px;
-  font-size: var(--tip-drobno);
-  color: var(--barva-crnilo-3);
 }
 
 .enanaena__meta {
@@ -7565,6 +7618,29 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-glavna-tekst);
 }
 
+/* Pod imenom igralca, ki igra na mestu nekoga drugega iz zacetne postave.
+   Mono oznaka kot stanje tekme - podatek o zapisu, ne poudarek. */
+.srecanje__menjava {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Na telefonu drugi gumb v vrstici razsiri zapisnik cez rob (354 -> 446 px)
+   in "Vnesi" zdrsne izven zaslona. Tam menjavo ponudi okno za vnos
+   rezultata, zato gumb v vrstici odpade. */
+@media (max-width: 640px) {
+  .srecanje__gumb-menjave {
+    display: none;
+  }
+
+  .tabela__dejanja .srecanje__gumb-menjave + .gumb {
+    margin-left: 0;
+  }
+}
+
 .srecanje__izid-tekme {
   font-family: var(--pisava-display);
   font-size: 32px;
@@ -8860,11 +8936,11 @@ a.domov__lestvica-vrstica--jaz {
     letter-spacing: -0.03em;
   }
 
-  .izbirnik-igralca {
+  .iskalni-izbirnik:not(.iskalni-izbirnik--obrazec) {
     margin-top: 10px;
   }
 
-  .izbirnik-igralca input {
+  .iskalni-izbirnik__vnos {
     padding: 0 var(--r1);
     font-size: 15px;
   }

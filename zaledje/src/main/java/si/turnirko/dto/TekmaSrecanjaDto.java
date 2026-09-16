@@ -20,6 +20,12 @@ public record TekmaSrecanjaDto(
         String domaci2,
         String gost,
         String gost2,
+        /* Id-ji istih igralcev - okno za menjavo z njimi izbere trenutno
+           zasedbo tekme. */
+        Long idDomaci,
+        Long idDomaci2,
+        Long idGost,
+        Long idGost2,
         int steviloNizov,
         int dobljeniNiziDomaci,
         int dobljeniNiziGost,
@@ -30,11 +36,17 @@ public record TekmaSrecanjaDto(
         Integer spremembaRatingaGost,
         /* Tocke po nizih po vrsti (11:7, 9:11 ...); prazen seznam, kadar jih
            organizator ni vpisal - vnos je neobvezen. */
-        List<NizVnos> nizi
+        List<NizVnos> nizi,
+        /* Ali na tej strani igra kdo drug kot na mestu v zacetni postavi
+           (menjava). Izpelje ga streznik (SrecanjeStoritev.menjava), da oznaka
+           "A-Y" ob imenu, ki ni A, ne zavaja. */
+        boolean menjavaDomaci,
+        boolean menjavaGost
 ) {
 
     public static TekmaSrecanjaDto iz(TekmaSrecanja t, Integer spremembaRatingaDomaci,
-                                      Integer spremembaRatingaGost, List<NizVnos> nizi) {
+                                      Integer spremembaRatingaGost, List<NizVnos> nizi,
+                                      boolean menjavaDomaci, boolean menjavaGost) {
         return new TekmaSrecanjaDto(
                 t.getId(),
                 t.getZaporedje(),
@@ -44,6 +56,10 @@ public record TekmaSrecanjaDto(
                 t.getIgralecDomaci2() != null ? t.getIgralecDomaci2().polnoIme() : null,
                 t.getIgralecGost() != null ? t.getIgralecGost().polnoIme() : null,
                 t.getIgralecGost2() != null ? t.getIgralecGost2().polnoIme() : null,
+                t.getIgralecDomaci() != null ? t.getIgralecDomaci().getId() : null,
+                t.getIgralecDomaci2() != null ? t.getIgralecDomaci2().getId() : null,
+                t.getIgralecGost() != null ? t.getIgralecGost().getId() : null,
+                t.getIgralecGost2() != null ? t.getIgralecGost2().getId() : null,
                 t.getSteviloNizov(),
                 t.getDobljeniNiziDomaci(),
                 t.getDobljeniNiziGost(),
@@ -52,6 +68,8 @@ public record TekmaSrecanjaDto(
                 t.getStatus(),
                 spremembaRatingaDomaci,
                 spremembaRatingaGost,
-                nizi);
+                nizi,
+                menjavaDomaci,
+                menjavaGost);
     }
 }

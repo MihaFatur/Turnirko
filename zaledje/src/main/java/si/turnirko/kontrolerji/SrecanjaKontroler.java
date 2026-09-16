@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 
+import si.turnirko.dto.MenjavaVnos;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.SrecanjePodrobnoDto;
@@ -44,6 +45,12 @@ public class SrecanjaKontroler {
     public SrecanjePodrobnoDto nastaviPostavo(@PathVariable Long id, @Valid @RequestBody PostavaVnos vnos) {
         srecanjeStoritev.nastaviPostavo(id, vnos);
         return srecanjeStoritev.podrobno(id);
+    }
+
+    /* Menjava: kdo bo igral eno se neodigrano tekmo srecanja. */
+    @PutMapping("/tekme/{idTekma}/igralci")
+    public SrecanjePodrobnoDto zamenjajIgralce(@PathVariable Long idTekma, @RequestBody MenjavaVnos vnos) {
+        return srecanjeStoritev.zamenjajIgralce(idTekma, vnos);
     }
 
     @PostMapping("/tekme/{idTekma}/rezultat")

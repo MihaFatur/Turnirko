@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { opisNapake } from '../api/odjemalec'
 import { authApi, klubiApi } from '../api/zahteve'
+import { IzbirnikKluba } from './IzbirnikKluba'
 import { ModalnoOkno } from './ModalnoOkno'
 
 type Nacin = 'prijava' | 'registracija'
@@ -195,15 +196,13 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
         </label>
       </div>
 
-      <label className="obrazec__polje">
-        <span>{organizator ? 'Klub, ki ga zastopaš' : 'Klub'}</span>
-        <select value={idKlub} onChange={(d) => nastaviKlub(d.target.value)}>
-          <option value="">— brez oz. ne vem —</option>
-          {klubi.data?.map((k) => (
-            <option key={k.id} value={k.id}>{k.ime}</option>
-          ))}
-        </select>
-      </label>
+      <IzbirnikKluba
+        oznaka={organizator ? 'Klub, ki ga zastopaš' : 'Klub'}
+        namig="Vpiši ime kluba ali pusti prazno"
+        klubi={klubi.data ?? []}
+        izbrano={idKlub ? Number(idKlub) : null}
+        naSpremembo={(id) => nastaviKlub(id === null ? '' : String(id))}
+      />
 
       <label className="obrazec__polje">
         <span>E-pošta * (z njo se prijaviš)</span>

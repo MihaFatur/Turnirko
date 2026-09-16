@@ -27,6 +27,7 @@ import type {
   LestvicaIgralcaLigeDto,
   LigaDto,
   LigaVnos,
+  MenjavaVnos,
   MrezaDto,
   NakljucniParDto,
   NapovedTekmeDto,
@@ -264,6 +265,8 @@ export const srecanjaApi = {
     api.posodobi<SrecanjePodrobnoDto>(`/srecanja/${id}/postava`, vnos),
   vnesiRezultat: (idTekma: number, vnos: VnosRezultataSrecanja) =>
     api.objavi<TekmaSrecanjaDto>(`/srecanja/tekme/${idTekma}/rezultat`, vnos),
+  zamenjajIgralce: (idTekma: number, vnos: MenjavaVnos) =>
+    api.posodobi<SrecanjePodrobnoDto>(`/srecanja/tekme/${idTekma}/igralci`, vnos),
   /* Tekma končnice ima svoj termin (redni del ga ima po kolih). */
   nastaviTermin: (id: number, zacetek: string | null) =>
     api.posodobi<SrecanjeDto>(`/srecanja/${id}/termin`, { zacetek }),

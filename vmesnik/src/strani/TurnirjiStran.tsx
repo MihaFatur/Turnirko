@@ -33,6 +33,7 @@ import {
   type SkupinaFiltra,
 } from '../komponente/Filtri'
 import { GlavaDejanja } from '../komponente/GlavaTelefona'
+import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
@@ -462,20 +463,11 @@ function NovTurnirOkno({
         </label>
 
         <div className="obrazec__vrstica">
-          <label className="obrazec__polje">
-            <span>Kraj</span>
-            <select
-              value={postnaSt}
-              onChange={(dogodek) => nastaviPostnaSt(dogodek.target.value)}
-            >
-              <option value="">— izberi kraj —</option>
-              {kraji.data?.map((kraj) => (
-                <option key={kraj.postnaSt} value={kraj.postnaSt}>
-                  {kraj.postnaSt} {kraj.ime}
-                </option>
-              ))}
-            </select>
-          </label>
+          <IzbirnikKraja
+            kraji={kraji.data ?? []}
+            izbrano={postnaSt ? Number(postnaSt) : null}
+            naSpremembo={(st) => nastaviPostnaSt(st === null ? '' : String(st))}
+          />
           <label className="obrazec__polje">
             <span>Dvorana</span>
             <input

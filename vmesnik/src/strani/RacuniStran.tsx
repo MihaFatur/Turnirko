@@ -3,12 +3,14 @@
    naključno). Gesla ni mogoče prebrati — shranjena je le zgostitev — zato ga
    admin ne "vidi", ampak ga poljubno nastavi in izroči igralcu.
    Vidi jo samo administrator. */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, racuniApi } from '../api/zahteve'
 import type { RacunIgralcaDto } from '../api/tipi'
 import { OZNAKE_STATUSA_RACUNA, OZNAKE_VLOGA } from '../api/tipi'
+import { IskalniIzbirnik, type MoznostIzbirnika } from '../komponente/IskalniIzbirnik'
+import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 
@@ -104,19 +106,40 @@ export function RacuniStran() {
 function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
   const odjemalec = useQueryClient()
   const igralci = useQuery({ queryKey: ['igralci'], queryFn: igralciApi.seznam })
-  const [izbran, nastaviIzbranega] = useState<string>(
-    racun.predlogi.find((p) => !p.zeImaRacun)?.idIgralec.toString() ?? '',
+  const [izbran, nastaviIzbranega] = useState<number | null>(
+    racun.predlogi.find((p) => !p.zeImaRacun)?.idIgralec ?? null,
   )
   const [zavrnitev, nastaviZavrnitev] = useState(false)
 
   /* Predlogi so le bližnjica — če se priimek ne ujema (drugačen zapis,
-     šumniki, dekliški priimek), mora biti mogoče izbrati kogarkoli. */
-  const predlagani = new Set(racun.predlogi.map((p) => p.idIgralec))
-  const ostaliIgralci = (igralci.data ?? []).filter((i) => !predlagani.has(i.id))
+     šumniki, dekliški priimek), mora biti mogoče izbrati kogarkoli. Zato jih
+     polje ponudi, preden je kaj vpisano, iskanje pa teče čez vse igralce
+     (predlogi ostanejo na vrhu zadetkov). */
+  const predlagani = useMemo<MoznostIzbirnika[]>(
+    () =>
+      racun.predlogi.map((p) => ({
+        id: p.idIgralec,
+        ime: p.polnoIme,
+        podrobnost: [p.klub, p.zeImaRacun ? 'že ima dostop' : 'predlog po priimku']
+          .filter(Boolean)
+          .join(' · '),
+        onemogocena: p.zeImaRacun,
+      })),
+    [racun.predlogi],
+  )
+  const moznosti = useMemo<MoznostIzbirnika[]>(() => {
+    const idjiPredlogov = new Set(racun.predlogi.map((p) => p.idIgralec))
+    return [
+      ...predlagani,
+      ...(igralci.data ?? [])
+        .filter((i) => !idjiPredlogov.has(i.id))
+        .map((i) => ({ id: i.id, ime: `${i.ime} ${i.priimek}`, podrobnost: i.klub?.ime ?? null })),
+    ]
+  }, [racun.predlogi, predlagani, igralci.data])
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['racuni'] })
   const potrdi = useMutation({
-    mutationFn: () => racuniApi.potrdi(racun.id, Number(izbran)),
+    mutationFn: (idIgralec: number) => racuniApi.potrdi(racun.id, idIgralec),
     onSuccess: osvezi,
   })
   const zavrni = useMutation({
@@ -147,38 +170,26 @@ function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
 
       {racun.predlogi.length === 0 && (
         <p className="racun__namig">
-          Med igralci ni nikogar s tem priimkom — morda je vpisan drugače. Izberi ga
-          ročno s celotnega seznama.
+          Med igralci ni nikogar s tem priimkom — morda je vpisan drugače. Poišči ga
+          z vpisom imena.
         </p>
       )}
 
       <div className="obrazec__vrstica racun__izbira">
-        <select value={izbran} onChange={(d) => nastaviIzbranega(d.target.value)}>
-          <option value="">— poveži z igralcem —</option>
-          {racun.predlogi.length > 0 && (
-            <optgroup label="Predlagani (ujemanje po priimku)">
-              {racun.predlogi.map((p) => (
-                <option key={p.idIgralec} value={p.idIgralec} disabled={p.zeImaRacun}>
-                  {p.polnoIme}
-                  {p.klub ? ` (${p.klub})` : ''}
-                  {p.zeImaRacun ? ' — že ima dostop' : ''}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          <optgroup label="Vsi igralci">
-            {ostaliIgralci.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.ime} {i.priimek}
-                {i.klub ? ` (${i.klub.ime})` : ''}
-              </option>
-            ))}
-          </optgroup>
-        </select>
+        <IskalniIzbirnik
+          vObrazcu
+          oznaka="Poveži z igralcem"
+          namig="Vpiši ime igralca"
+          moznosti={moznosti}
+          brezIskanja={predlagani}
+          izbrano={izbran}
+          naIzbiro={nastaviIzbranega}
+          naPraznjenje={() => nastaviIzbranega(null)}
+        />
         <button
           className="gumb gumb--glavni"
-          disabled={!izbran || potrdi.isPending}
-          onClick={() => potrdi.mutate()}
+          disabled={izbran === null || potrdi.isPending}
+          onClick={() => izbran !== null && potrdi.mutate(izbran)}
         >
           Potrdi dostop
         </button>
@@ -208,21 +219,24 @@ function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
 function ZahtevaOrganizator({ racun }: { racun: RacunIgralcaDto }) {
   const odjemalec = useQueryClient()
   const klubi = useQuery({ queryKey: ['klubi'], queryFn: klubiApi.seznam })
-  const [idKlub, nastaviKlub] = useState('')
+  const [idKlub, nastaviKlub] = useState<number | null>(null)
   const [zavrnitev, nastaviZavrnitev] = useState(false)
 
   /* Predizberi klub, ki ga je organizator navedel ob registraciji (ujemanje
-     po imenu - DTO nosi le ime navedenega kluba). */
+     po imenu - DTO nosi le ime navedenega kluba). Samo enkrat, ko se klubi
+     naložijo: sicer bi admin, ki polje izprazni (brez kluba), navedeni klub
+     takoj dobil nazaj. */
+  const predizbrano = useRef(false)
   useEffect(() => {
-    if (!idKlub && racun.klubZelja && klubi.data) {
-      const najden = klubi.data.find((k) => k.ime === racun.klubZelja)
-      if (najden) nastaviKlub(String(najden.id))
-    }
-  }, [klubi.data, racun.klubZelja, idKlub])
+    if (predizbrano.current || !klubi.data) return
+    predizbrano.current = true
+    const najden = klubi.data.find((k) => k.ime === racun.klubZelja)
+    if (najden) nastaviKlub(najden.id)
+  }, [klubi.data, racun.klubZelja])
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['racuni'] })
   const potrdi = useMutation({
-    mutationFn: () => racuniApi.potrdiOrganizatorja(racun.id, idKlub ? Number(idKlub) : null),
+    mutationFn: () => racuniApi.potrdiOrganizatorja(racun.id, idKlub),
     onSuccess: osvezi,
   })
   const zavrni = useMutation({
@@ -255,12 +269,12 @@ function ZahtevaOrganizator({ racun }: { racun: RacunIgralcaDto }) {
       </p>
 
       <div className="obrazec__vrstica racun__izbira">
-        <select value={idKlub} onChange={(d) => nastaviKlub(d.target.value)}>
-          <option value="">— brez kluba —</option>
-          {klubi.data?.map((k) => (
-            <option key={k.id} value={k.id}>{k.ime}</option>
-          ))}
-        </select>
+        <IzbirnikKluba
+          namig="Brez kluba · vpiši ime"
+          klubi={klubi.data ?? []}
+          izbrano={idKlub}
+          naSpremembo={nastaviKlub}
+        />
         <button
           className="gumb gumb--glavni"
           disabled={potrdi.isPending}

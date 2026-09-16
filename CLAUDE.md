@@ -752,6 +752,34 @@
   (ekipa, igralec), ker sme liga brez `prepoved_dvojne_registracije` istega
   igralca voditi v dveh kadrih — njegov izkupiček pa tam ni isti (regresija:
   `bilancaKadraStejeSamoTekmeZaTistoEkipo`).
+- **Kader lige se sme dopolnjevati tudi med sezono** (`LigaStoritev.dodajVKader`
+  stanja lige ne preverja); zaklenjene so le ekipe (`preveriVPripravi`), ker je
+  razpored razpored ekip. **Odstraniti pa ni mogoče igralca, ki je za ekipo
+  nastopil ali je postavljen v tekmo, ki čaka** (`steviloNastopovZaEkipo`) —
+  isto pravilo kot kader ekipnega dogodka. Zato je bilanca novega člana kadra
+  vedno 0 : 0. V vmesniku okno »Ekipe in kader« lige v teku ekipo razpre v
+  urejanje kadra (`UrejanjeKadra`, isto kot `KaderOkno` v pripravi).
+- **Menjava je last ENE tekme srečanja, ne »od tu naprej«**
+  (`SrecanjeStoritev.zamenjajIgralce`, `PUT /srecanja/tekme/{id}/igralci`).
+  V ligi se igralci med srečanjem menjajo prosto — po dvojicah AB/XY ter A-X in
+  B-Y lahko sledita C-Y in A-Z (A se umakne C-ju in se vrne na mesto B) —, zato
+  bi pravilo »zamenjani ostane zunaj« tak vpis onemogočilo. Pravila, ki jih ne
+  razbij:
+  - **Postava ostane ZAČETNA postava** in oznaka tekme (»A-Y«) ostane mesto v
+    njej; kdo tekmo res igra, stoji v tekmi. Rating, lestvica igralcev in
+    bilanca kadra že berejo igralca iz tekme, zato zamenjani šteje brez veje.
+  - **Samo tekma, ki ČAKA** (odigrana ima obračunan rating), igralec iz kadra
+    **svoje** ekipe, pri dvojicah dva različna. Koliko tekem odigra en igralec,
+    strežnik ne preverja — liga v aplikaciji tega pravila ne pozna.
+  - **Oznaka menjave se izpelje, ne hrani** (`TekmaSrecanjaDto.menjavaDomaci/
+    menjavaGost`, `SrecanjeStoritev.menjava`): mesto se prebere iz oznake
+    tekme (pri dvojicah par, označen v postavi), zato velja tudi za uvožena
+    srečanja; kadar mesta ni mogoče najti, se ne ugiba.
+  - Ponovna shranitev postave tekme sestavi znova in menjave zavrže (dovoljena
+    je le pred prvim rezultatom).
+  - Regresije: `menjavaVeljaZaSvojoTekmoInStejeIgralcu_kiJeIgral`,
+    `menjavaParaZaDvojice`, `menjavaOdigraneTekmeInIgralcaIzvenKadraSeZavrne`,
+    `kaderSeMedSezonoDopolniOdstraniPaSeSamoKdorNiNastopil`.
 - **Koledar je pogled po DNEVIH in ne po tekmovanjih** (`KoledarStoritev`,
   `GET /api/v1/koledar?od=&do=`, javen kot ostali GET-i). Nove sheme ne
   potrebuje — bere datume turnirjev in termine kol, ki že obstajajo. Trije
@@ -1155,20 +1183,42 @@
   en sam dan in nobeno obdobje ne bi odrezalo ničesar. Prazen je `datum` samo
   pri postavitvenem ratingu (tekme ni), zato tam obvelja `kdaj`. Regresija je
   `tockaGrafaNosiDatumTekmeInNeDnevaObracuna`.
-- **Igralec se izbere z vpisom imena, ne s spustnim seznamom**
-  (`komponente/IzbirnikIgralca.tsx`): po uvozu zgodovine je v šifrantu več
-  tisoč igralcev in `<select>` je bil neuporaben. Ujemanje je **brez šumnikov
-  in po besedah** (»krizan« najde Križana, »novak ana« pa Ano Novak) —
-  iskalnik, ki zahteva strešico, v dvorani ne pomaga. Klub stoji ob imenu, ker
-  se soimenjaka drugače ne ločita; predlogi ležijo **čez** vsebino
-  (absolutno), da vsak vtipkani znak ne premika vsebine pod poljem, in so na
-  desni strani semaforja zrcalno usidrani (`.enanaena__stran--2`). Komponenta
-  je **deljena** (»Ena na ena« in »Kaj prinese tekma«), zato so razredi
-  `.izbirnik-igralca__*` in ne `.enanaena__*` — dve kopiji istega comboboxa bi
-  se razšli v tipkovnici in dostopnosti. Oznaki »Medsebojno · vsa tekmovanja«
-  in »Naključni par« sta samo v razširjeni različici `EnaNaEna`
-  (`pokaziZgodovino`, stran dvoboja); na domači strani ju nadomesti naslov
-  sklopa.
+- **Igralec, klub, kraj in liga se izberejo z vpisom imena — nikjer s
+  spustnim seznamom ali seznamom s kljukicami, po katerem bi bilo treba
+  drseti.** Po uvozu zgodovine je igralcev več tisoč, klubov sedemdeset, lig
+  nekaj sto. Vse teče skozi en combobox, `komponente/IskalniIzbirnik.tsx`
+  (razredi `.iskalni-izbirnik__*`); tanki ovoji so `IzbirnikIgralca`,
+  `IzbirnikKluba` in `IzbirnikKraja`, lige in prijave dvojic ga kličejo
+  neposredno. Dve kopiji istega comboboxa bi se razšli v tipkovnici in
+  dostopnosti. Pravila, ki jih ne razbij:
+  - Ujemanje je **brez šumnikov in po besedah** (`pomozno/iskanje.ts`:
+    »krizan« najde Križana, »novak ana« Ano Novak), zadetki na **začetku
+    besede gredo naprej** (`zadetihZacetkov`) — pokaže se jih le osem in »ana«
+    mora ponuditi Ano pred Dijano.
+  - **Dve vlogi, izbrani z `izbrano`.** Brez njega je polje *dejanje*
+    (semafor, kader lige in dogodka, dodaj nižjo ligo): izbira sproži, polje se
+    izprazni. Z `izbrano` (tudi `null`) je *vrednost obrazca* (klub, kraj,
+    višja liga, igralec računa, igralca para): v polju stoji ime izbora,
+    prazno polje ob odhodu izbor počisti, delni vpis vrne prejšnji izbor,
+    natančno vpisano ime pa velja kot izbira. Besedilo v polju, ki ni izbor,
+    bi bilo past.
+  - Escape zapre **samo predloge**, okno (`ModalnoOkno`) šele naslednji.
+    Predlogi ležijo **čez** vsebino (absolutno) in se odprejo **navzgor**, kadar
+    pod poljem ni prostora (dno okna, tipkovnica, na telefonu spodnja
+    vrstica) — do predloga se nikoli ne drsi. Na desni strani semaforja so
+    zrcalno usidrani (`.enanaena__stran--2`).
+  - Ob imenu igralca stoji klub, ker se soimenjaka drugače ne ločita.
+  - `brezIskanja` ponudi predloge, preden je kaj vpisano (predlogi po
+    priimku pri potrditvi računa); brez tega prazno polje ne ponudi ničesar.
+  - **Dvojice**: par se sestavi z dvema poljema (»Igralec«, »Soigralec«) iz
+    prijavljenih brez soigralca; seznam »Brez soigralca« pod njima je samo
+    pregled z odjavo.
+  - Izjema ostaja blok »Dodaj igralce« na dogodku (zgoraj): tam iskanje zoži
+    seznam s kljukicami, ker se prijavlja več igralcev hkrati in s filtri.
+
+  Oznaki »Medsebojno · vsa tekmovanja« in »Naključni par« sta samo v
+  razširjeni različici `EnaNaEna` (`pokaziZgodovino`, stran dvoboja); na
+  domači strani ju nadomesti naslov sklopa.
 - **Sklop »Kaj prinese tekma« je napoved, ne obračun** (`NapovedTekme.tsx`,
   `NapovedTekmeStoritev`, `GET /igralci/{id}/profil/napoved?nasprotnik=`).
   Igralec izbere kateregakoli nasprotnika in vidi, koliko ratinga bi mu
@@ -1240,6 +1290,13 @@
   Skupine z več stopnjami (skupine za mesta) so razdeljene z naslovi
   stopenj; tekma za 3. mesto in tolažilna mreža stojita pod glavno mrežo
   (`TolazilniDel`).
+- **Menjava v zapisniku srečanja** (`MenjavaOkno` v `SrecanjeStran`): na
+  namizju ima tekma, ki čaka, gumba »Menjava« in »Vnesi«; pod 640 px gumb
+  »Menjava« odpade (`.srecanje__gumb-menjave`), ker drugi gumb zapisnik
+  razširi čez rob (354 → 446 px) in »Vnesi« zdrsne z zaslona. Tam menjavo
+  ponudi okno za rezultat (»Menjava igralcev«) — to je tudi trenutek, ko
+  organizator s papirja opazi drugega igralca. Stran, ki igra na tujem mestu,
+  nosi pod imenom mono oznako »menjava« (`.srecanje__menjava`).
 - **Končnica lige ima svoj pogled** (`KoncnicaLige`): na namizju preklop
   »Lestvica / Končnica« nad lestvico, na telefonu zavihek; liga samo s
   končnico (kvalifikacije med ligami) kaže serije kar na strani. Razpored

@@ -18,6 +18,7 @@ import type { DogodekDto, EkipaDto } from '../api/tipi'
 import { igralcevFormata } from '../api/tipi'
 import { sklonEkip, sklonIgralcev } from '../pomozno/oblikovanje'
 import { IzbirnikIgralca } from './IzbirnikIgralca'
+import { IzbirnikKluba } from './IzbirnikKluba'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { PotrditvenoOkno } from './PotrditvenoOkno'
 import { SporociloNapake } from './SporociloNapake'
@@ -211,15 +212,11 @@ function DodajanjeEkipe({
         }}
       >
         {nacin === 'klub' && (
-          <label className="obrazec__polje">
-            <span>Klub</span>
-            <select value={idKlub} onChange={(d) => nastaviKlub(d.target.value)}>
-              <option value="">— izberi klub —</option>
-              {klubi.data?.map((k) => (
-                <option key={k.id} value={k.id}>{k.ime}</option>
-              ))}
-            </select>
-          </label>
+          <IzbirnikKluba
+            klubi={klubi.data ?? []}
+            izbrano={idKlub ? Number(idKlub) : null}
+            naSpremembo={(id) => nastaviKlub(id === null ? '' : String(id))}
+          />
         )}
         <label className="obrazec__polje">
           <span>{nacin === 'klub' ? 'Ime ekipe (neobvezno)' : 'Ime ekipe'}</span>

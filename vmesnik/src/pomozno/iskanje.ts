@@ -29,3 +29,11 @@ export function ustrezaBesedam(besedilo: string, besede: string[]): boolean {
   const pripravljeno = zaIskanje(besedilo)
   return besede.every((beseda) => pripravljeno.includes(beseda))
 }
+
+/* Koliko iskanih besed zadene ZAČETEK kake besede besedila. Iskalnik s
+   predlogi jih pokaže le nekaj, zato mora »ana« najprej ponuditi Ano in šele
+   za njo Jano in Dijano - po abecedi priimkov bi Ana lahko padla čez rez. */
+export function zadetihZacetkov(besedilo: string, besede: string[]): number {
+  const besedeBesedila = zaIskanje(besedilo).split(/[\s\-.,()/·]+/)
+  return besede.filter((beseda) => besedeBesedila.some((b) => b.startsWith(beseda))).length
+}

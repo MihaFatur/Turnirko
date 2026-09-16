@@ -3,8 +3,9 @@
    PRIPRAVA (ureja se konfiguracija, ekipe, kader) -> V_TEKU (razpored
    generiran, srecanja tecejo) -> ZAKLJUCEN.
 
-   Spremembe strukture (ekipe, kader, format) so mozne le v PRIPRAVI, da se
-   ze generiran razpored ne razveljavi. */
+   Spremembe strukture (ekipe, format) so mozne le v PRIPRAVI, da se ze
+   generiran razpored ne razveljavi. Kader na razpored ne vpliva, zato se sme
+   dopolnjevati tudi med sezono (glej dodajVKader). */
 package si.turnirko.storitve;
 
 import java.time.LocalDateTime;
@@ -56,6 +57,7 @@ import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
+import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
 import si.turnirko.storitve.LestvicaLigeStoritev.Bilanca;
 import si.turnirko.storitve.LestvicaLigeStoritev.BilanceLige;
 
@@ -71,6 +73,7 @@ public class LigaStoritev {
     private final EkipaRepozitorij ekipaRepozitorij;
     private final KaderEkipeRepozitorij kaderRepozitorij;
     private final SrecanjeRepozitorij srecanjeRepozitorij;
+    private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
     private final KlubRepozitorij klubRepozitorij;
     private final IgralecRepozitorij igralecRepozitorij;
     private final RazporedStoritev razporedStoritev;
@@ -82,6 +85,7 @@ public class LigaStoritev {
                         EkipaRepozitorij ekipaRepozitorij,
                         KaderEkipeRepozitorij kaderRepozitorij,
                         SrecanjeRepozitorij srecanjeRepozitorij,
+                        TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij,
                         KlubRepozitorij klubRepozitorij,
                         IgralecRepozitorij igralecRepozitorij,
                         RazporedStoritev razporedStoritev,
@@ -92,6 +96,7 @@ public class LigaStoritev {
         this.ekipaRepozitorij = ekipaRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
         this.srecanjeRepozitorij = srecanjeRepozitorij;
+        this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.razporedStoritev = razporedStoritev;
@@ -587,6 +592,10 @@ public class LigaStoritev {
                 .toList();
     }
 
+    /* Kader se sme dopolnjevati v vsakem stanju lige, tudi ko ta ze tece: ekipa
+       sredi sezone pripelje novega igralca, razpored pa je razpored EKIP in ga
+       nov clan kadra ne spremeni. Brez tega bi organizator igralca, ki je prisel
+       na srecanje, lahko vpisal le tako, da bi razpored razveljavil. */
     @Transactional
     public KaderIgralecDto dodajVKader(Long idEkipa, KaderVnos v) {
         lastnistvo.preveriPoEkipi(idEkipa);
@@ -605,16 +614,25 @@ public class LigaStoritev {
         }
         KaderEkipe vnos = kaderRepozitorij.save(new KaderEkipe(ekipa, igralec, v.vrstniRed()));
         Integer rating = spremembeRatinga.trenutniRatingi(List.of(igralec.getId())).get(igralec.getId());
-        /* Kader se ureja samo v pripravi, ko liga se ni odigrala nicesar - bilanca
-           novega clana je zato nujno 0 : 0 in je ni treba sestevati. */
+        /* Za ekipo igra samo, kdor je v njenem kadru, iz kadra pa ne gre nihce,
+           ki je ze nastopil (odstraniIzKadra) - bilanca novega clana je zato
+           nujno 0 : 0 tudi sredi sezone in je ni treba sestevati. */
         return KaderIgralecDto.iz(vnos, rating, 0, 0);
     }
 
+    /* Odstraniti ni mogoce igralca, ki je za ekipo ze nastopil ali je postavljen
+       v tekmo, ki caka: njegove tekme bi ostale brez clana kadra, kader pod
+       vrstico lestvice pa bi njegove zmage za ekipo tiho izgubil. Isto pravilo
+       ima kader ekipnega dogodka (EkipeDogodkaStoritev). V pripravi nihce se ni
+       nastopil, zato tam odstranitev ostane prosta. */
     @Transactional
     public void odstraniIzKadra(Long idKader) {
         lastnistvo.preveriPoKadru(idKader);
         KaderEkipe k = kaderRepozitorij.findById(idKader)
                 .orElseThrow(() -> new NiNajdenoIzjema("Vnos kadra z id " + idKader + " ne obstaja."));
+        if (tekmaSrecanjaRepozitorij.steviloNastopovZaEkipo(k.getEkipa().getId(), k.getIgralec().getId()) > 0) {
+            throw new DomenskaIzjema("Igralec je za ekipo ze nastopil - iz kadra ga ni mogoce odstraniti.");
+        }
         kaderRepozitorij.delete(k);
     }
 
@@ -1017,7 +1035,7 @@ public class LigaStoritev {
 
     private void preveriVPripravi(Liga liga) {
         if (liga.getStatus() != StatusTekmovanja.PRIPRAVA) {
-            throw new DomenskaIzjema("Ekipe in kader je mogoce spreminjati samo, dokler je liga v pripravi.");
+            throw new DomenskaIzjema("Ekipe je mogoce spreminjati samo, dokler je liga v pripravi.");
         }
     }
 

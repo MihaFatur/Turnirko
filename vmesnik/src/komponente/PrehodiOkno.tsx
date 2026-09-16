@@ -9,11 +9,12 @@
    Zakaj obe smeri: v bazi je povezava ena sama (nižja liga kaže na višjo), a
    pisati jo je treba z obeh strani. Sicer bi bilo treba za vsako nižjo ligo
    odpirati njen obrazec — in če ta ni več v pripravi, sploh ne bi šlo. */
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
 import type { LigaDto } from '../api/tipi'
+import { IskalniIzbirnik, type MoznostIzbirnika } from './IskalniIzbirnik'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -26,9 +27,7 @@ interface Lastnosti {
 }
 
 export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
-  const [idVisja, nastaviVisjo] = useState(
-    liga.idVisjaLiga != null ? String(liga.idVisjaLiga) : '',
-  )
+  const [idVisja, nastaviVisjo] = useState<number | null>(liga.idVisjaLiga)
   const [nizje, nastaviNizje] = useState<number[]>(() =>
     vse.filter((l) => l.idVisjaLiga === liga.id).map((l) => l.id),
   )
@@ -38,7 +37,7 @@ export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
   const shranjevanje = useMutation({
     mutationFn: () =>
       ligeApi.prehodi(liga.id, {
-        idVisjaLiga: idVisja ? Number(idVisja) : null,
+        idVisjaLiga: idVisja,
         idNizjeLige: nizje,
         stNapreduje: napreduje,
         stIzpade: izpade,
@@ -54,26 +53,35 @@ export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
     shranjevanje.mutate()
   }
 
-  const druge = vse.filter((l) => l.id !== liga.id).sort((a, b) => a.ime.localeCompare(b.ime, 'sl'))
-  /* Liga, izbrana za višjo, ne more biti hkrati nižja — krog strežnik zavrne,
-     zato je iz seznama raje ni. */
-  const mozneNizje = druge.filter((l) => String(l.id) !== idVisja)
+  const druge = useMemo(
+    () => vse.filter((l) => l.id !== liga.id).sort((a, b) => a.ime.localeCompare(b.ime, 'sl')),
+    [vse, liga.id],
+  )
+  /* Liga, izbrana za višjo, ne more biti hkrati nižja (in obratno) — krog
+     strežnik zavrne, zato je iz ponudbe drugega polja raje ni. */
+  const moznostiVisje = useMemo(
+    () => druge.filter((l) => !nizje.includes(l.id)).map((l) => moznostLige(l, null)),
+    [druge, nizje],
+  )
+  const moznostiNizje = useMemo(
+    () =>
+      druge
+        .filter((l) => l.id !== idVisja && !nizje.includes(l.id))
+        .map((l) => moznostLige(l, liga.id)),
+    [druge, idVisja, nizje, liga.id],
+  )
+  const izbraneNizje = nizje
+    .map((id) => vse.find((l) => l.id === id))
+    .filter((l): l is LigaDto => l !== undefined)
 
   /* Piramida veže lige ene sezone; drugačna sezona je skoraj vedno spregled
      (npr. »8. Sezona« proti »25/26«), zato nanjo opozorimo, a je ne prepovemo. */
   const sezone = new Set(
-    [
-      idVisja ? vse.find((l) => l.id === Number(idVisja)) : undefined,
-      ...nizje.map((id) => vse.find((l) => l.id === id)),
-    ]
+    [idVisja !== null ? vse.find((l) => l.id === idVisja) : undefined, ...izbraneNizje]
       .filter((l): l is LigaDto => l !== undefined)
       .map((l) => l.sezona ?? ''),
   )
   const razhajanjeSezon = sezone.size > 0 && !(sezone.size === 1 && sezone.has(liga.sezona ?? ''))
-
-  function preklopiNizjo(id: number) {
-    nastaviNizje((prej) => (prej.includes(id) ? prej.filter((x) => x !== id) : [...prej, id]))
-  }
 
   return (
     <ModalnoOkno naslov="Prehodi in piramida" onZapri={onZapri}>
@@ -83,40 +91,52 @@ export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
           Prehode je mogoče urejati tudi, ko liga že teče.
         </p>
 
-        <label className="obrazec__polje">
-          <span>Višja liga (kamor se napreduje)</span>
-          <select value={idVisja} onChange={(d) => nastaviVisjo(d.target.value)}>
-            <option value="">— brez (to je najvišja liga) —</option>
-            {druge.map((l) => (
-              <option key={l.id} value={l.id}>{opis(l)}</option>
-            ))}
-          </select>
-        </label>
+        <IskalniIzbirnik
+          vObrazcu
+          oznaka="Višja liga (kamor se napreduje)"
+          namig="Brez (najvišja liga) · vpiši ime"
+          moznosti={moznostiVisje}
+          izbrano={idVisja}
+          naIzbiro={nastaviVisjo}
+          naPraznjenje={() => nastaviVisjo(null)}
+        />
 
+        {/* Nižjih lig je lahko več, zato je polje dejanje: izbrana liga gre v
+            seznam pod njim, polje pa se izprazni za naslednjo. */}
         <fieldset className="obrazec__skupina">
           <legend>Nižje lige (od koder se napreduje sem)</legend>
-          {mozneNizje.length === 0 ? (
-            <p className="namig">Drugih lig ni.</p>
-          ) : (
-            <div className="obrazec__radio-skupina obrazec__radio-skupina--drsna">
-              {mozneNizje.map((l) => (
-                <label key={l.id}>
-                  <input
-                    type="checkbox"
-                    checked={nizje.includes(l.id)}
-                    onChange={() => preklopiNizjo(l.id)}
-                  />
+          {izbraneNizje.length > 0 && (
+            <ul className="izbrane-postavke">
+              {izbraneNizje.map((l) => (
+                <li key={l.id}>
                   <span>
                     {opis(l)}
-                    {/* Liga je lahko že pod drugo — označba pove, kaj se bo
-                        z odkljukanjem premaknilo. */}
                     {l.idVisjaLiga != null && l.idVisjaLiga !== liga.id && (
-                      <span className="opombe"> — zdaj pod: {l.visjaLigaIme}</span>
+                      <span className="izbrane-postavke__podrobnost">
+                        zdaj pod: {l.visjaLigaIme} — ob shranitvi se premakne sem
+                      </span>
                     )}
                   </span>
-                </label>
+                  <button
+                    type="button"
+                    className="gumb gumb--majhen gumb--nevaren"
+                    onClick={() => nastaviNizje((prej) => prej.filter((id) => id !== l.id))}
+                  >
+                    Odstrani
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
+          )}
+          {druge.length === 0 ? (
+            <p className="namig">Drugih lig ni.</p>
+          ) : (
+            <IskalniIzbirnik
+              oznaka="Dodaj nižjo ligo"
+              namig="Dodaj nižjo ligo · vpiši ime"
+              moznosti={moznostiNizje}
+              naIzbiro={(id) => nastaviNizje((prej) => [...prej, id])}
+            />
           )}
         </fieldset>
 
@@ -157,4 +177,15 @@ export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
    sezon nerazločljivi. */
 function opis(l: LigaDto): string {
   return l.sezona ? `${l.ime} · ${l.sezona}` : l.ime
+}
+
+/* Liga kot predlog. Pri nižji ligi podrobnost pove, pod katero ligo je zdaj
+   — z izbiro se bo premaknila sem. */
+function moznostLige(l: LigaDto, idTe: number | null): MoznostIzbirnika {
+  const drugje = idTe !== null && l.idVisjaLiga != null && l.idVisjaLiga !== idTe
+  return {
+    id: l.id,
+    ime: opis(l),
+    podrobnost: drugje ? `zdaj pod: ${l.visjaLigaIme}` : null,
+  }
 }

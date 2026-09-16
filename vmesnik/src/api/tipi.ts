@@ -1086,6 +1086,10 @@ export interface TekmaSrecanjaDto {
   domaci2: string | null
   gost: string | null
   gost2: string | null
+  idDomaci: number | null
+  idDomaci2: number | null
+  idGost: number | null
+  idGost2: number | null
   steviloNizov: number
   dobljeniNiziDomaci: number
   dobljeniNiziGost: number
@@ -1097,6 +1101,19 @@ export interface TekmaSrecanjaDto {
   /* Točke po nizih po vrsti; prazen seznam, kadar niso vpisane (vnos je
      neobvezen — enako kot pri turnirjih). tocke1 so domačih, tocke2 gostov. */
   nizi: NizVnos[]
+  /* Na tej strani igra kdo drug kot na mestu v začetni postavi. Izpelje ga
+     strežnik; oznaka tekme (»A-Y«) ostane mesto v postavi. */
+  menjavaDomaci: boolean
+  menjavaGost: boolean
+}
+
+/* Menjava v eni tekmi, ki še čaka: posamična ima idDomaci in idGost, dvojice
+   vse štiri. */
+export interface MenjavaVnos {
+  idDomaci: number
+  idDomaci2: number | null
+  idGost: number
+  idGost2: number | null
 }
 
 export interface PostavaSrecanjaDto {
