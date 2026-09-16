@@ -1,10 +1,11 @@
 /* Seznam tekem (krozni sistem, skupine): vsaka vrstica prikaze oba
    udelezenca in rezultat. Katera vrstica je klikljiva in kaj klik pomeni
-   (vnos rezultata ali zapisnik ekipnega srecanja), pove stran s KlikTekme. */
+   (vnos rezultata, tocke po nizih ali zapisnik ekipnega srecanja), pove stran
+   s KlikTekme. */
 import type { TekmaDto } from '../api/tipi'
 import { OZNAKE_IZID, imeUdelezenca } from '../api/tipi'
 import { SpremembaRatinga } from './SpremembaRatinga'
-import type { KlikTekme } from './TekmaKartica'
+import { obTipki, type KlikTekme } from './TekmaKartica'
 
 interface Lastnosti {
   tekme: TekmaDto[]
@@ -31,7 +32,7 @@ export function TekmeSeznam({ tekme, klik, strnjen = false }: Lastnosti) {
 function razredRezultata(tekma: TekmaDto, klikljiva: boolean): string {
   if (tekma.status === 'KONCANA') return ''
   if (tekma.status === 'V_IGRI') return ' tekme-seznam__rezultat--v-igri'
-  return klikljiva ? '' : ' tekme-seznam__rezultat--prazen'
+  return klikljiva ? ' tekme-seznam__rezultat--dejanje' : ' tekme-seznam__rezultat--prazen'
 }
 
 function Vrstica({
@@ -65,6 +66,8 @@ function Vrstica({
     <li
       className={'tekme-seznam__vrstica' + (klikljiva ? ' tekme-seznam__vrstica--klikljiva' : '')}
       onClick={klikljiva ? () => klik.naKlik(tekma) : undefined}
+      onKeyDown={klikljiva ? (d) => obTipki(d, () => klik.naKlik(tekma)) : undefined}
+      tabIndex={klikljiva ? 0 : undefined}
       title={klikljiva ? klik.namig(tekma) : undefined}
     >
       <span className={'tekme-seznam__igralec' + (zmagovalec1 ? ' tekme-seznam__igralec--zmaga' : '')}>

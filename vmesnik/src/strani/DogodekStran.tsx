@@ -25,7 +25,8 @@
    Prenesen izid finalne skupine vodi v zapisnik predtekmovalnega srečanja.
 
    Vnos rezultata je mogoč samo administratorju (oz. lastniku turnirja) in ne
-   pri uvoženem dogodku - vir resnice je tam zveza (strežnik mutacije zavrne). */
+   pri uvoženem dogodku - vir resnice je tam zveza (strežnik mutacije zavrne).
+   Končana tekma z vpisanimi točkami pa vsakemu gledalcu odpre okno z nizi. */
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -39,6 +40,7 @@ import type {
   SkupinaDto,
   StarostniPas,
   TekmaDto,
+  Udelezenec,
 } from '../api/tipi'
 import {
   OZNAKE_FORMAT,
@@ -77,6 +79,7 @@ import {
 } from '../komponente/PodnavigacijaDogodka'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SkupinaVrstica } from '../komponente/SkupinaVrstica'
+import { NiziTekmeOkno, type StranTekme } from '../komponente/NiziTekmeOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TekmaKartica, type KlikTekme } from '../komponente/TekmaKartica'
 import { TekmeSeznam } from '../komponente/TekmeSeznam'
@@ -138,6 +141,8 @@ export function DogodekStran() {
   /* Ekipna tekma, pri kateri organizator izbira med zapisnikom in izidom
      brez boja. */
   const [ekipnaTekma, nastaviEkipnoTekmo] = useState<TekmaDto | null>(null)
+  /* Končana tekma, za katero je odprto okno s točkami po nizih. */
+  const [tekmaZNizi, nastaviTekmoZNizi] = useState<TekmaDto | null>(null)
   const [potrjujemZreb, nastaviPotrjujemZreb] = useState(false)
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['dogodek', idDogodka] })
@@ -224,6 +229,10 @@ export function DogodekStran() {
   const izbiraEkipne = (t: TekmaDto) =>
     smem && !koncan && t.status !== 'KONCANA' && t.idPrenesena === null
     && t.udelezenec1 !== null && t.udelezenec2 !== null
+  /* Organizatorju klik na tekmo, ki čaka, odpre vnos rezultata; končana tekma
+     z vpisanimi točkami pa vsakemu gledalcu okno z nizi - to je le branje. */
+  const vnosRezultata = (t: TekmaDto) =>
+    smem && !koncan && (t.status === 'PRIPRAVLJENA' || t.status === 'V_IGRI')
   const klik: KlikTekme | undefined = ekipno
     ? {
         klikljiva: (t) => srecanjeTekme(t) !== null || izbiraEkipne(t),
@@ -236,13 +245,11 @@ export function DogodekStran() {
             ? 'Klikni za zapisnik srečanja ali izid brez boja'
             : 'Odpri zapisnik srečanja',
       }
-    : smem && !koncan
-      ? {
-          klikljiva: (t) => t.status === 'PRIPRAVLJENA' || t.status === 'V_IGRI',
-          naKlik: nastaviIzbranoTekmo,
-          namig: () => 'Klikni za vnos rezultata',
-        }
-      : undefined
+    : {
+        klikljiva: (t) => vnosRezultata(t) || imaTocke(t),
+        naKlik: (t) => (vnosRezultata(t) ? nastaviIzbranoTekmo(t) : nastaviTekmoZNizi(t)),
+        namig: (t) => (vnosRezultata(t) ? 'Klikni za vnos rezultata' : 'Pokaži točke po nizih'),
+      }
   const oznakaVira = dogodek.vir && (
     <span className="oznaka-vira">{OZNAKE_VIR[dogodek.vir]} · uvoženo, samo za branje</span>
   )
@@ -410,8 +417,37 @@ export function DogodekStran() {
           onShranjeno={osvezi}
         />
       )}
+
+      {tekmaZNizi && (
+        <NiziTekmeOkno
+          nadnaslov={dogodek.ime}
+          strani={[
+            stranTekme(tekmaZNizi.udelezenec1, tekmaZNizi.dobljeniNizi1, tekmaZNizi),
+            stranTekme(tekmaZNizi.udelezenec2, tekmaZNizi.dobljeniNizi2, tekmaZNizi),
+          ]}
+          nizi={tekmaZNizi.nizi}
+          izidTip={tekmaZNizi.izidTip}
+          onZapri={() => nastaviTekmoZNizi(null)}
+        />
+      )}
     </section>
   )
+}
+
+/* Končana tekma odpre okno z nizi, samo kadar so točke vpisane - brez njih bi
+   okno ponovilo izid, ki je že na kartici. */
+function imaTocke(tekma: TekmaDto): boolean {
+  return tekma.status === 'KONCANA' && tekma.nizi.length > 0
+}
+
+function stranTekme(udelezenec: Udelezenec | null, dobljeniNizi: number, tekma: TekmaDto): StranTekme {
+  return {
+    imena: udelezenec
+      ? [udelezenec.polnoIme, udelezenec.polnoIme2].filter((ime): ime is string => !!ime)
+      : ['—'],
+    dobljeniNizi,
+    zmagovalec: udelezenec !== null && tekma.idZmagovalcaPrijave === udelezenec.idPrijave,
+  }
 }
 
 /* Izbira pri ekipni tekmi (samo organizator): zapisnik srečanja ali izid brez
@@ -1488,7 +1524,29 @@ function Tekmovanje({
     ? pogled
     : pogledi[0]?.kljuc ?? 'udelezenci'
 
-  const odigranih = podatki.tekme.filter((t) => t.status === 'KONCANA').length
+  /* Na telefonu kartica ne pokaže, da je klikljiva (dotik nima prehoda miške),
+     zato namig pove, kaj klik naredi. Točke omeni samo, kadar jih ima vsaj ena
+     tekma - gledalcu sicer klik ne naredi ničesar. */
+  const zTockami = podatki.tekme.some(imaTocke)
+  const namigKlika = ekipno
+    ? (koncan
+        ? null
+        : 'Klikni tekmo za zapisnik srečanja — postavo in izide posamičnih tekem. Izid tekme' +
+          ' nastane iz srečanja, zmagovalec napreduje sam.')
+    : jeAdmin && !koncan
+      ? [
+          izbrani === 'mreza'
+            ? 'Klikni tekmo z obema znanima igralcema za vnos rezultata. Zmagovalec samodejno napreduje.'
+            : 'Klikni tekmo za vnos rezultata. Lestvica skupine se preračuna sproti.',
+          zTockami ? 'Odigrana tekma pokaže točke po nizih.' : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
+      : zTockami
+        ? 'Klikni odigrano tekmo za točke po nizih.'
+        : null
+
+  const odigranih =podatki.tekme.filter((t) => t.status === 'KONCANA').length
   const povzetek = [
     podatki.skupine.length > 0
       ? `${podatki.skupine.length} ${sklonSkupin(podatki.skupine.length)}`
@@ -1537,15 +1595,8 @@ function Tekmovanje({
         <Udelezenci podatki={podatki} osvezi={osvezi} smem={jeAdmin} />
       )}
 
-      {!koncan && klik && izbrani !== 'udelezenci' && izbrani !== 'zakljucek' && (
-        <p className="namig">
-          {ekipno
-            ? 'Klikni tekmo za zapisnik srečanja — postavo in izide posamičnih tekem. Izid tekme' +
-              ' nastane iz srečanja, zmagovalec napreduje sam.'
-            : izbrani === 'mreza'
-              ? 'Klikni tekmo z obema znanima igralcema za vnos rezultata. Zmagovalec samodejno napreduje.'
-              : 'Klikni tekmo za vnos rezultata. Lestvica skupine se preračuna sproti.'}
-        </p>
+      {namigKlika && izbrani !== 'udelezenci' && izbrani !== 'zakljucek' && (
+        <p className="namig">{namigKlika}</p>
       )}
     </>
   )

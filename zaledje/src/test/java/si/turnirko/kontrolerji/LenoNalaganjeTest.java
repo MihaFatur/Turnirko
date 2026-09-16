@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import si.turnirko.dto.DogodekVnos;
 import si.turnirko.dto.MrezaDto;
+import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.PrijavaDto;
 import si.turnirko.dto.PrijaviIgralceVnos;
 import si.turnirko.dto.TekmaDto;
@@ -170,6 +171,26 @@ class LenoNalaganjeTest {
         assertEquals(StatusTekme.KONCANA, koncana.status());
         assertEquals("Testni klub", koncana.udelezenec1().klub());
         assertEquals("Testni klub", koncana.udelezenec2().klub());
+    }
+
+    /* Gledalec s klikom na koncano tekmo odpre tocke po nizih - te pridejo z
+       mrezo, v vrstnem redu odigranih nizov in samo pri tekmi, ki jih ima. */
+    @Test
+    void mrezaInVnosVrnetaTockeNizovPoVrsti() {
+        TekmaDto pripravljena = dogodkiKontroler.zreb(dogodek.getId()).stream()
+                .filter(t -> t.status() == StatusTekme.PRIPRAVLJENA)
+                .findFirst().orElseThrow();
+        List<NizVnos> nizi = List.of(
+                new NizVnos(11, 7), new NizVnos(9, 11), new NizVnos(11, 8), new NizVnos(12, 10));
+
+        TekmaDto koncana = tekmeKontroler.vnesiRezultat(pripravljena.id(),
+                new VnosRezultata(IzidTekme.IGRANO, 3, 1, null, nizi));
+        assertEquals(nizi, koncana.nizi());
+
+        MrezaDto mreza = dogodkiKontroler.mreza(dogodek.getId());
+        for (TekmaDto tekma : mreza.tekme()) {
+            assertEquals(tekma.id().equals(pripravljena.id()) ? nizi : List.of(), tekma.nizi());
+        }
     }
 
     private Igralec novIgralec(String ime, String priimek) {

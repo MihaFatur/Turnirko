@@ -2236,6 +2236,128 @@ input[type='radio'] {
   font-size: var(--tip-drobno);
 }
 
+/* --- Okno s tockami po nizih (NiziTekmeOkno) --- */
+
+/* Strani sta vrstici, nizi stolpci. Izid in nizi so ozki stalni stolpci, ime
+   vzame preostanek. Na telefonu gre ime v svojo vrstico nad stevilke (spodaj),
+   sicer bi mu tekma na 7 nizov pustila 36 px in bi se razlomilo po crkah. */
+.nizi-okno {
+  margin-top: 0;
+  table-layout: fixed;
+}
+
+.nizi-okno th,
+.nizi-okno td {
+  padding: 12px 0;
+}
+
+.tabela th.nizi-okno__izid,
+.tabela th.nizi-okno__niz,
+.nizi-okno__izid,
+.nizi-okno__niz {
+  width: 32px;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.tabela th.nizi-okno__izid,
+td.nizi-okno__izid {
+  width: 48px;
+}
+
+/* Ime v glavi vrstice: <th> zaradi bralnika zaslona, a ne mono oznaka. */
+.tabela th.nizi-okno__ime {
+  padding-right: var(--r1);
+  font: 400 16px / 1.3 var(--pisava-telo);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  color: var(--barva-crnilo);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.nizi-okno__ime-vrsta {
+  display: block;
+}
+
+/* Zmagovalec je krepak, porazenec pobledi - kot na kartici mreze. */
+.nizi-okno__vrsta--zmaga th.nizi-okno__ime {
+  font-weight: 700;
+}
+
+.nizi-okno__vrsta--poraz th.nizi-okno__ime,
+.nizi-okno__vrsta--poraz td.nizi-okno__izid {
+  color: var(--barva-crnilo-3);
+}
+
+td.nizi-okno__izid {
+  font: 800 var(--tip-h3) / 1 var(--pisava-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+/* Tocke niza: dobljeni niz v polnem crnilu, izgubljeni pobledi - zmagovalec
+   vsakega niza se prebere brez primerjanja stevilk. */
+td.nizi-okno__niz {
+  font: 500 16px / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+td.nizi-okno__niz--dobljen {
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+/* Telefon: vrstica tabele se prelomi - ime cez vso sirino, pod njim izid in
+   nizi v stolpcih glave. Crta gre zato na vrstico in ne na celice, sicer bi
+   segla le do zadnjega niza in locila ime od njegovih stevilk. */
+@media (max-width: 640px) {
+  .nizi-okno,
+  .nizi-okno thead,
+  .nizi-okno tbody {
+    display: block;
+  }
+
+  .nizi-okno tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--barva-crta);
+  }
+
+  .nizi-okno thead tr {
+    padding: 0 0 var(--r1);
+    border-bottom-color: var(--barva-crnilo);
+  }
+
+  .tabela.nizi-okno th,
+  .tabela.nizi-okno td {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .nizi-okno thead th:first-child {
+    display: none;
+  }
+
+  .tabela th.nizi-okno__ime {
+    flex: 0 0 100%;
+    padding: 0 0 var(--r1);
+  }
+
+  .tabela th.nizi-okno__izid,
+  td.nizi-okno__izid {
+    flex: 0 0 48px;
+  }
+
+  .tabela th.nizi-okno__niz,
+  td.nizi-okno__niz {
+    flex: 0 0 32px;
+  }
+}
+
 /* --- Okno "Uredi izbor lig" --- */
 
 /* Okno izbora je edino, ki mora stati v zaslonu v celoti: seznam lahko naraste
@@ -3089,7 +3211,9 @@ input[type='radio'] {
   white-space: nowrap;
 }
 
-.tekme-seznam__vrstica--klikljiva .tekme-seznam__rezultat {
+/* Beseda dejanja (»vnesi«, »zapisnik«) namesto izida, ki ga še ni. Izid
+   klikljive odigrane tekme (okno s točkami po nizih) ostane izid. */
+.tekme-seznam__rezultat--dejanje {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -3101,8 +3225,7 @@ input[type='radio'] {
   color: var(--barva-crnilo-4);
 }
 
-/* Tekma, ki tece prav zdaj: beseda namesto rezultata, ki ga se ni.
-   Specificnost mora premagati pravilo za klikljivo vrstico zgoraj. */
+/* Tekma, ki tece prav zdaj: beseda namesto rezultata, ki ga se ni. */
 .tekme-seznam__vrstica .tekme-seznam__rezultat--v-igri {
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -7581,6 +7704,15 @@ a.domov__lestvica-vrstica--jaz {
 
 .srecanje__vrsta--neodigrana {
   opacity: 0.75;
+}
+
+/* Odigrana tekma z vpisanimi tockami odpre okno z nizi (NiziTekmeOkno). */
+.srecanje__vrsta--klikljiva {
+  cursor: pointer;
+}
+
+.srecanje__vrsta--klikljiva:hover {
+  background: var(--barva-glavna-mehko);
 }
 
 .srecanje__pari {

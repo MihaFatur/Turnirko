@@ -245,6 +245,9 @@ export interface TekmaDto {
   udelezenec2: Udelezenec | null
   dobljeniNizi1: number
   dobljeniNizi2: number
+  /* Točke po nizih po vrsti; prazen seznam, kadar niso vpisane (vnos je
+     neobvezen). tocke1 so strani 1, tocke2 strani 2. */
+  nizi: NizVnos[]
   idZmagovalcaPrijave: number | null
   miza: number | null
   /* Sprememba Turnirko ratinga ob tej tekmi (npr. +16 / -16); null, dokler

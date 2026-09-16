@@ -1,6 +1,8 @@
 /* Tekma - izpis za prikaz mreze. */
 package si.turnirko.dto;
 
+import java.util.List;
+
 import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.Prijava;
@@ -20,6 +22,9 @@ public record TekmaDto(
         Udelezenec udelezenec2,
         int dobljeniNizi1,
         int dobljeniNizi2,
+        /* Tocke po nizih po vrsti (11:7, 9:11 ...); prazen seznam, kadar jih
+           organizator ni vpisal - vnos je neobvezen. tocke1 so strani 1. */
+        List<NizVnos> nizi,
         Long idZmagovalcaPrijave,
         Integer miza,
         /* Sprememba Turnirko ratinga ob tej tekmi (npr. +16 / -16); null,
@@ -57,17 +62,18 @@ public record TekmaDto(
         }
     }
 
+    /* Tekma brez vpisanih tock (npr. pravkar izzrebana). */
     public static TekmaDto iz(Tekma tekma) {
-        return iz(tekma, null, null, null, null);
+        return iz(tekma, List.of());
+    }
+
+    public static TekmaDto iz(Tekma tekma, List<NizVnos> nizi) {
+        return iz(tekma, null, null, null, null, null, nizi);
     }
 
     public static TekmaDto iz(Tekma tekma, Integer spremembaElo1, Integer spremembaElo2,
-                              Integer ratingPred1, Integer ratingPred2) {
-        return iz(tekma, spremembaElo1, spremembaElo2, ratingPred1, ratingPred2, null);
-    }
-
-    public static TekmaDto iz(Tekma tekma, Integer spremembaElo1, Integer spremembaElo2,
-                              Integer ratingPred1, Integer ratingPred2, Long idSrecanje) {
+                              Integer ratingPred1, Integer ratingPred2, Long idSrecanje,
+                              List<NizVnos> nizi) {
         return new TekmaDto(
                 tekma.getId(),
                 tekma.getFaza(),
@@ -81,6 +87,7 @@ public record TekmaDto(
                 Udelezenec.iz(tekma.getPrijava2()),
                 tekma.getDobljeniNizi1(),
                 tekma.getDobljeniNizi2(),
+                nizi,
                 tekma.getZmagovalec() != null ? tekma.getZmagovalec().getId() : null,
                 tekma.getMiza(),
                 spremembaElo1,

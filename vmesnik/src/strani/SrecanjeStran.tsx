@@ -21,6 +21,8 @@ import { OZNAKE_FORMAT, OZNAKE_VIR, izidNizov, nizovZaZmago } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { NiziTekmeOkno } from '../komponente/NiziTekmeOkno'
+import { obTipki } from '../komponente/TekmaKartica'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { SpremembaRatinga } from '../komponente/SpremembaRatinga'
 import {
@@ -190,6 +192,7 @@ function razbijCas(iso: string | null): { datum: string; ura: string } {
 function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmin: boolean }) {
   const [urejana, nastaviUrejano] = useState<TekmaSrecanjaDto | null>(null)
   const [menjava, nastaviMenjavo] = useState<TekmaSrecanjaDto | null>(null)
+  const [tekmaZNizi, nastaviTekmoZNizi] = useState<TekmaSrecanjaDto | null>(null)
   const s = podrobno.srecanje
   const koncano = s.status === 'KONCANO'
 
@@ -219,10 +222,23 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
               const konec = t.status === 'KONCANA'
               const domZmaga = t.zmagovalecStran === 'DOMACI'
               const gostZmaga = t.zmagovalecStran === 'GOST'
+              /* Točke so izpisane že pod izidom; klik jih odpre v istem oknu kot
+                 na turnirju, kjer se berejo po nizih v stolpcih. */
+              const zNizi = konec && t.nizi.length > 0
               return (
                 <tr
                   key={t.id}
-                  className={t.status === 'NEODIGRANA' ? 'srecanje__vrsta--neodigrana' : undefined}
+                  className={
+                    t.status === 'NEODIGRANA'
+                      ? 'srecanje__vrsta--neodigrana'
+                      : zNizi
+                        ? 'srecanje__vrsta--klikljiva'
+                        : undefined
+                  }
+                  onClick={zNizi ? () => nastaviTekmoZNizi(t) : undefined}
+                  onKeyDown={zNizi ? (d) => obTipki(d, () => nastaviTekmoZNizi(t)) : undefined}
+                  tabIndex={zNizi ? 0 : undefined}
+                  title={zNizi ? 'Pokaži točke po nizih' : undefined}
                 >
                   <td className="srecanje__oznaka">{t.oznaka}</td>
                   <td
@@ -300,6 +316,26 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
       )}
       {menjava && (
         <MenjavaOkno tekma={menjava} podrobno={podrobno} onZapri={() => nastaviMenjavo(null)} />
+      )}
+      {tekmaZNizi && (
+        <NiziTekmeOkno
+          nadnaslov={`${s.domaci} : ${s.gost} · ${tekmaZNizi.oznaka}`}
+          strani={[
+            {
+              imena: [tekmaZNizi.domaci, tekmaZNizi.domaci2].filter((ime): ime is string => !!ime),
+              dobljeniNizi: tekmaZNizi.dobljeniNiziDomaci,
+              zmagovalec: tekmaZNizi.zmagovalecStran === 'DOMACI',
+            },
+            {
+              imena: [tekmaZNizi.gost, tekmaZNizi.gost2].filter((ime): ime is string => !!ime),
+              dobljeniNizi: tekmaZNizi.dobljeniNiziGost,
+              zmagovalec: tekmaZNizi.zmagovalecStran === 'GOST',
+            },
+          ]}
+          nizi={tekmaZNizi.nizi}
+          izidTip={tekmaZNizi.izidTip}
+          onZapri={() => nastaviTekmoZNizi(null)}
+        />
       )}
     </div>
   )

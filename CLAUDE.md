@@ -1281,6 +1281,13 @@
 - **Kaj pomeni klik na tekmo, odloči stran** (`KlikTekme` v `TekmaKartica`:
   `klikljiva`, `naKlik`, `namig`) — kartica mreže in vrstica seznama ne ugibata
   po stanju tekme. Posamično tekmovanje: organizatorju vnos rezultata.
+  **Končana tekma z vpisanimi točkami** (`TekmaDto.nizi`, ena poizvedba na
+  dogodek — `NizRepozitorij.tockeZaDogodek`) pa **vsakemu gledalcu** odpre
+  `NiziTekmeOkno` (samo branje); isto okno odpre vrstica zapisnika srečanja
+  (`TekmaSrecanjaDto.nizi`). Brez točk končana tekma ni klikljiva — okno bi
+  ponovilo izid s kartice. Okno ne ve, od kod tekma pride: obe vrsti se pred
+  klicem prevedeta v dve `StranTekme`. Pod 640 px gre ime v svojo vrstico nad
+  izid in nize, sicer tekma na 7 nizov imenu pusti 36 px.
   **Ekipni dogodek**: vsakemu gledalcu zapisnik srečanja (javen), prenesen izid
   finalne skupine vodi v zapisnik predtekmovalnega srečanja, organizatorju
   pa klik na neodločeno tekmo ponudi izbiro med zapisnikom in izidom brez

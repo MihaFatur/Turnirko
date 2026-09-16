@@ -34,4 +34,15 @@ public interface NizRepozitorij extends JpaRepository<Niz, Long> {
             ORDER BY n.tekma.id, n.zaporednaSt
             """)
     List<Object[]> tockeZaTurnir(@Param("idTurnir") Long idTurnir);
+
+    /* Nizi enega dogodka po tekmi in zaporedju - za mrezo dogodka, kjer
+       gledalec s klikom na koncano tekmo odpre tocke po nizih. Po dogodku in
+       ne po seznamu id-jev iz istega razloga kot tockeZaTurnir. */
+    @Query("""
+            SELECT n.tekma.id, n.zaporednaSt, n.tocke1, n.tocke2
+            FROM Niz n
+            WHERE n.tekma.dogodek.id = :idDogodek
+            ORDER BY n.tekma.id, n.zaporednaSt
+            """)
+    List<Object[]> tockeZaDogodek(@Param("idDogodek") Long idDogodek);
 }

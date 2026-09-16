@@ -6,14 +6,15 @@
    Vsaka polovica kartice nosi id prijave. Prijava je za dogodek ena sama,
    zato je ista v vseh kolih - prehod miske nad imenom osvetli vse pojavitve
    istega igralca in pot skozi mrezo se prebere brez klika. */
-import type { PointerEvent } from 'react'
+import type { KeyboardEvent, PointerEvent } from 'react'
 
 import type { TekmaDto, Udelezenec } from '../api/tipi'
 import { SpremembaRatinga } from './SpremembaRatinga'
 
 /* Kaj pomeni klik na tekmo. Odloci stran, ker samo ona ve, kdo gleda:
-   organizatorju klik odpre vnos rezultata, pri ekipnem dogodku pa vsakemu
-   gledalcu zapisnik srecanja (postava in posamicne tekme so javne). Kartica
+   organizatorju klik odpre vnos rezultata, koncana tekma z vpisanimi tockami
+   vsakemu gledalcu okno z nizi, pri ekipnem dogodku pa zapisnik srecanja
+   (postava in posamicne tekme so javne). Kartica
    in vrstica seznama zato ne ugibata po stanju tekme, katera se odzove. */
 export interface KlikTekme {
   klikljiva: (tekma: TekmaDto) => boolean
@@ -51,6 +52,14 @@ const OZNAKA_POSEBNEGA_IZIDA: Record<string, string> = {
   DISKVALIFIKACIJA: 'diskv.',
 }
 
+/* Klikljiva tekma se sproži tudi s tipkovnico, kot gumb: Enter ali preslednica. */
+export function obTipki(dogodek: KeyboardEvent, naKlik: () => void) {
+  if (dogodek.key === 'Enter' || dogodek.key === ' ') {
+    dogodek.preventDefault()
+    naKlik()
+  }
+}
+
 export function TekmaKartica({ tekma, klik, osvetljenaPrijava, naOsvetlitev }: Lastnosti) {
   const klikljiva = klik !== undefined && klik.klikljiva(tekma)
 
@@ -66,6 +75,9 @@ export function TekmaKartica({ tekma, klik, osvetljenaPrijava, naOsvetlitev }: L
     <div
       className={razredi.join(' ')}
       onClick={klikljiva ? () => klik.naKlik(tekma) : undefined}
+      onKeyDown={klikljiva ? (d) => obTipki(d, () => klik.naKlik(tekma)) : undefined}
+      role={klikljiva ? 'button' : undefined}
+      tabIndex={klikljiva ? 0 : undefined}
       title={klikljiva ? klik.namig(tekma) : undefined}
     >
       <Stran

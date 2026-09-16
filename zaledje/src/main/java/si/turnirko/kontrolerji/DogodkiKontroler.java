@@ -27,6 +27,7 @@ import si.turnirko.dto.IzborDto;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.MrezaDto;
+import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.ParVnos;
 import si.turnirko.dto.PrijavaDto;
 import si.turnirko.dto.PrijaviIgralceVnos;
@@ -43,6 +44,7 @@ import si.turnirko.modeli.Skupina;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
+import si.turnirko.repozitoriji.NizRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.SkupinaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -64,6 +66,7 @@ public class DogodkiKontroler {
     private final DogodekRepozitorij dogodekRepozitorij;
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
+    private final NizRepozitorij nizRepozitorij;
     private final SkupinaRepozitorij skupinaRepozitorij;
     private final SrecanjeRepozitorij srecanjeRepozitorij;
     private final TurnirjiStoritev turnirjiStoritev;
@@ -77,6 +80,7 @@ public class DogodkiKontroler {
     public DogodkiKontroler(DogodekRepozitorij dogodekRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
                             TekmaRepozitorij tekmaRepozitorij,
+                            NizRepozitorij nizRepozitorij,
                             SkupinaRepozitorij skupinaRepozitorij,
                             SrecanjeRepozitorij srecanjeRepozitorij,
                             TurnirjiStoritev turnirjiStoritev,
@@ -89,6 +93,7 @@ public class DogodkiKontroler {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
+        this.nizRepozitorij = nizRepozitorij;
         this.skupinaRepozitorij = skupinaRepozitorij;
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.turnirjiStoritev = turnirjiStoritev;
@@ -159,13 +164,21 @@ public class DogodkiKontroler {
                 srecanja.put(((Number) r[0]).longValue(), ((Number) r[1]).longValue());
             }
         }
+        // tocke po nizih vseh tekem dogodka v eni poizvedbi (vrstice so ze
+        // urejene po zaporedju niza)
+        Map<Long, List<NizVnos>> nizi = new HashMap<>();
+        for (Object[] r : nizRepozitorij.tockeZaDogodek(id)) {
+            nizi.computeIfAbsent(((Number) r[0]).longValue(), k -> new ArrayList<>())
+                    .add(new NizVnos(((Number) r[2]).intValue(), ((Number) r[3]).intValue()));
+        }
         List<TekmaDto> tekme = tekmeEntitete.stream()
                 .map(t -> TekmaDto.iz(t,
                         spremembaZaStran(spremembe, t, t.getPrijava1()),
                         spremembaZaStran(spremembe, t, t.getPrijava2()),
                         ratingPredZaStran(spremembe, trenutni, t, t.getPrijava1()),
                         ratingPredZaStran(spremembe, trenutni, t, t.getPrijava2()),
-                        srecanja.get(t.getId())))
+                        srecanja.get(t.getId()),
+                        nizi.getOrDefault(t.getId(), List.of())))
                 .toList();
 
         List<SkupinaDto> skupine = List.of();
