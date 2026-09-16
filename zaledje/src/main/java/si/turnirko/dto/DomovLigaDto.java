@@ -27,7 +27,8 @@ public record DomovLigaDto(
     /* Ena vrstica mini razpredelnice (prve tri ekipe). */
     public record Vrh(int mesto, String ekipa, int odigrane, int tocke) {}
 
-    /* Prvo se neodigrano srecanje lige; datum je lahko prazen (razpored brez
-       predvidenega zacetka). */
-    public record Naslednje(int kolo, LocalDate datum, String domaci, String gost) {}
+    /* Kolo prvega se neodigranega srecanja lige; datum je lahko prazen
+       (razpored brez predvidenega zacetka). Parov ni: kolo igra vec srecanj
+       hkrati, izpisano prvo med njimi pa se je bralo kot edino srecanje kola. */
+    public record Naslednje(int kolo, LocalDate datum) {}
 }

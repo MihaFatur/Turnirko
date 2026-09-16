@@ -4,18 +4,19 @@
    Poleg tega nosi stiri stvari, ki jih vmesnik sam ne more izracunati:
    premik mesta in spremembo ratinga (za oboje bi potreboval stanje izpred
    meseca), potek ratinga v zadnjem letu (dnevnik ratinga) in pripadnost (klub,
-   lige, kategorija) za filtre. */
+   lige, starostni pas) za filtre. */
 package si.turnirko.dto;
 
 import java.util.List;
 
-import si.turnirko.modeli.KategorijaIgralca;
 import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.StarostniPas;
 
 public record LestvicaIgralcaDto(
         Long idIgralca,
         // Igralec se povsod bere kot "Jan Petric" (polnoIme); locena ime in
-        // priimek sta tu zato, ker lestvica zna teci abecedno po priimku.
+        // priimek sta urejevalni kljuc, po katerem se razvrstijo izenaceni
+        // (glej StatistikaStoritev.primerjavaLestvice).
         String ime,
         String priimek,
         String polnoIme,
@@ -31,16 +32,13 @@ public record LestvicaIgralcaDto(
         // Razlika Turnirko ratinga proti stanju pred 30 dnevi; null z istim
         // razlogom kot premik (pred mesecem ratinga se ni bilo).
         Integer spremembaRatinga,
-        // Spol in starostno-spolna kategorija (izpeljana, glej
-        // KategorijaIgralca) za filtre nad lestvico; oba sta lahko null, kadar
-        // ju ni mogoce dolociti.
-        //
-        // Zakaj oboje, ceprav kategorija spol ze nosi: nosi ga SAMO pri
-        // clanih (CLANI/CLANICE), pri U19 in VETERANIH pa se izgubi. Filtra
-        // "vse zenske" torej iz kategorije ni mogoce sestaviti, zato gre spol
-        // zraven - javen je tako ali tako (glej IgralecJavniDto).
+        // Spol izbere lestvico (moska/zenska), starostni pas pa kategorijo v
+        // filtru nad njo (U11 ... U21, clani). Oba sta lahko null, kadar ju ni
+        // mogoce dolociti. Pas je isti kot pri prijavah na dogodek (sezonsko
+        // pravilo PST), zato ima igralec na lestvici in v prijavi isto
+        // kategorijo; javen je tako ali tako (glej IgralecJavniDto).
         Spol spol,
-        KategorijaIgralca kategorija,
+        StarostniPas starostniPas,
         // Do sedem tock Turnirko ratinga iz zadnjih 12 mesecev (najstarejsa prva)
         // za crto ob vrstici; tocke sledijo TEKMAM, ne koledarju (glej
         // StatistikaStoritev). Prazen seznam = crte ni cesa risati.

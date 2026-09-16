@@ -6,16 +6,14 @@
    turnir U15 organizator izbere U11, U13 in U15) - vec vrednosti hkrati zna,
    prekrivajocih se pasov pa ne.
 
-   Zakaj poleg KategorijaIgralca se en pojem o starosti:
-   - KategorijaIgralca je starostno-SPOLNA kategorija lestvice (Clani/Clanice/
-     U19/Veterani) in tece po koledarskem letu;
-   - StarostniPas je tekmovalna kategorija, po kateri se prijavlja na turnir:
-     brez spola (ta je svoje merilo) in po SEZONI, ne po koledarskem letu.
-   Zdruzitev bi enemu od obeh pogledov spremenila pomen, zato stojita loceno.
+   Pas je edini pojem o starosti: po njem se prijavlja na turnir IN filtrira
+   lestvica, zato ima igralec na obeh mestih isto kategorijo. Je brez spola
+   (ta je svoje merilo - na lestvici izbere moski ali zenski seznam) in tece
+   po SEZONI, ne po koledarskem letu.
 
    Osebnega podatka ne razkriva - datum rojstva ostane v podrobnem pogledu
    (samo ADMIN), navzven gre groba skupina, ki je ob nastopu tako ali tako
-   javna (isti premislek kot pri KategorijaIgralca). */
+   javna. */
 package si.turnirko.modeli;
 
 import java.time.LocalDate;
@@ -30,8 +28,7 @@ public enum StarostniPas {
     CLANI,
     VETERANI;
 
-    /* Meje mladinskih pasov iz PST; veteran je od 40 naprej (isto kot na
-       lestvici, glej KategorijaIgralca). */
+    /* Meje mladinskih pasov iz PST; veteran je od 40 naprej. */
     private static final int[] MLADINSKE_MEJE = { 11, 13, 15, 17, 19, 21 };
     private static final StarostniPas[] MLADINSKI = { U11, U13, U15, U17, U19, U21 };
     private static final int LET_VETERAN = 40;

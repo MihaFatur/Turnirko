@@ -33,11 +33,11 @@ import si.turnirko.dto.ZadnjaTekmaDto;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Igralec;
-import si.turnirko.modeli.KategorijaIgralca;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.Spol;
 import si.turnirko.modeli.Srecanje;
+import si.turnirko.modeli.StarostniPas;
 import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.TekmaSrecanja;
@@ -163,7 +163,7 @@ public class StatistikaStoritev {
                     null,
                     sprememba,
                     igralec.getSpol(),
-                    KategorijaIgralca.izpelji(igralec.getSpol(), igralec.getDatumRojstva(), danes),
+                    StarostniPas.izpelji(igralec.getDatumRojstva(), danes),
                     poteki.crte().getOrDefault(igralec.getId(), List.of()),
                     lige.getOrDefault(igralec.getId(), List.of()),
                     rekreativci.contains(igralec.getId())));
@@ -185,7 +185,7 @@ public class StatistikaStoritev {
             zPremikom.add(new LestvicaIgralcaDto(
                     v.idIgralca(), v.ime(), v.priimek(), v.polnoIme(), v.klub(), v.idKluba(),
                     v.rating(), v.odigrane(), v.zmage(), v.porazi(),
-                    premik, v.spremembaRatinga(), v.spol(), v.kategorija(),
+                    premik, v.spremembaRatinga(), v.spol(), v.starostniPas(),
                     v.potekRatinga(), v.idjiLig(), v.rekreativec()));
         }
         return zPremikom;

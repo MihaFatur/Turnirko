@@ -137,7 +137,7 @@ class DomacaStranTest extends IntegracijskiTest {
 
     /* Stolpca "Gib." in "Δ 30 dni" merita isto obdobje: dokler igralec pred
        mesecem ratinga se ni imel, sta oba prazna (in ne 0, kar bi pomenilo
-       "nic se ni spremenilo"). Kategorija je izpeljana in je vedno tu. */
+       "nic se ni spremenilo"). Starostni pas je izpeljan in je vedno tu. */
     @Test
     void premikInSpremembaRatingaStaPrazniBrezStanjaIzpredMeseca() {
         Dogodek dogodek = pripraviDogodek(4, SistemTekmovanja.KROZNI);
@@ -150,7 +150,7 @@ class DomacaStranTest extends IntegracijskiTest {
         assertTrue(lestvica.stream().allMatch(v -> v.spremembaRatinga() == null),
                 "delta ratinga tece iz istega stanja kot premik");
         assertTrue(lestvica.stream().allMatch(
-                        v -> v.kategorija() == si.turnirko.modeli.KategorijaIgralca.CLANI),
+                        v -> v.starostniPas() == si.turnirko.modeli.StarostniPas.CLANI),
                 "testni igralci so moski, rojeni 2000 - torej clani");
     }
 

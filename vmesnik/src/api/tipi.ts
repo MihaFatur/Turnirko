@@ -39,8 +39,7 @@ export type IgralnaRoka = 'LEVA' | 'DESNA'
 /* Tekmovalni starostni pas igralca (11. člen PST), izpeljan iz letnice —
    ne shranjen. Pas je NAJOŽJI, ki mu igralec ustreza: kdor je U11, je tudi
    U13, a tu nastopa enkrat. Zato filter »U15« pomeni izbiro U11 + U13 + U15.
-   Ni isto kot KategorijaIgralca na lestvici: ta nosi spol in teče po
-   koledarskem letu, pas pa je brez spola in teče po sezoni. */
+   Pas je brez spola (ta je svoje merilo) in teče po sezoni. */
 export type StarostniPas =
   | 'U11'
   | 'U13'
@@ -420,15 +419,11 @@ export interface PredlogIgralcaDto {
   zeImaRacun: boolean
 }
 
-/* Starostno-spolna kategorija igralca; zaledje jo izpelje iz spola in letnice
-   rojstva (glej KategorijaIgralca.java), zato je ni v šifrantu. */
-export type KategorijaIgralca = 'CLANI' | 'CLANICE' | 'U19' | 'VETERANI'
-
 /* Vrstica globalne lestvice igralcev (po Turnirko ratingu). */
 export interface LestvicaIgralcaDto {
   idIgralca: number
   /* Igralec se povsod bere kot "Jan Petrič" (polnoIme); ločena ime in priimek
-     sta tu zato, ker lestvica zna teči abecedno po priimku. */
+     sta urejevalni ključ, po katerem strežnik razvrsti izenačene. */
   ime: string
   priimek: string
   polnoIme: string
@@ -444,12 +439,11 @@ export interface LestvicaIgralcaDto {
   /* Razlika Turnirko ratinga proti stanju pred 30 dnevi; null z istim razlogom
      kot premik. */
   spremembaRatinga: number | null
-  /* Spol in izpeljana kategorija za filtra nad lestvico; oba sta lahko null.
-     Spol je zraven, ker ga kategorija nosi samo pri članih (pri U19 in
-     veteranih se izgubi) — brez njega filtra »vse igralke« ni mogoče
-     sestaviti. */
+  /* Spol izbere lestvico (moška/ženska), starostni pas pa kategorijo v
+     filtru; oba sta lahko null. Pas je isti kot pri prijavah na dogodek
+     (StarostniPas, sezonsko pravilo PST). */
   spol: Spol | null
-  kategorija: KategorijaIgralca | null
+  starostniPas: StarostniPas | null
   /* Do sedem točk Turnirko ratinga čez zadnjih 12 mesecev (najstarejša prva). */
   potekRatinga: number[]
   /* Lige, v katerih je igralec v kadru katere od ekip (filter "Moje lige"). */
@@ -481,8 +475,6 @@ export interface VrhLigeDto {
 export interface NaslednjeKoloDto {
   kolo: number
   datum: string | null
-  domaci: string
-  gost: string
 }
 
 /* Naključni par za semafor »1 na 1«. Strežnik jamči, da sta igralca med sabo
@@ -788,6 +780,14 @@ export const OZNAKE_FORMAT: Record<FormatSrecanja, string> = {
   SAVINJA: 'Savinja liga (2 igralca, dvojice prve)',
   EKIPNI_DP: 'Ekipni DP (dvojice + 4 posamične)',
   POKAL_NTZS: 'Pokal NTZS (5 posamičnih)',
+}
+
+/* Samo ime sistema, brez sestave v oklepaju (»SNTL (3 igralci + dvojice)« →
+   »SNTL«) - za seznam lig, kjer gledalec sistem prepozna po imenu. Celoten
+   opis ostane v obrazcu in pravilih lige. Imena so tudi brez oklepaja vsa
+   različna, zato se možnosti filtra ne zlijejo. */
+export function imeSistema(format: FormatSrecanja): string {
+  return OZNAKE_FORMAT[format].replace(/\s*\(.*\)$/, '')
 }
 
 /* Vrstni red tekem — kot ga vrne FormatSrecanja.razpored() na strežniku.

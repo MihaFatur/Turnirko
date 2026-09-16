@@ -169,11 +169,8 @@ public class DomovStoritev {
         return new DomovLigaDto(
                 liga.getId(), liga.getIme(), liga.getSezona(), liga.getStatus(),
                 odigranihKol, vsehKol, vrh,
-                naslednje == null ? null : new DomovLigaDto.Naslednje(
-                        naslednje.getKolo(),
-                        datum(naslednje),
-                        naslednje.getEkipaDomaci().prikazanoIme(),
-                        naslednje.getEkipaGost().prikazanoIme()));
+                naslednje == null ? null
+                        : new DomovLigaDto.Naslednje(naslednje.getKolo(), datum(naslednje)));
     }
 
     private static LocalDate datum(Srecanje srecanje) {

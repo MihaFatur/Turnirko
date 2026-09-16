@@ -31,19 +31,20 @@
   i.priimek, i.ime` v repozitorijih — seznam torej *teče* po priimku, a se
   *bere* po imenu. `abecedno()` ne sme nikoli v DTO. Kjer DTO nosi `ime` in
   `priimek` ločeno (`LestvicaIgralcaDto`, `IgralecDto`, `DvobojDto.Igralec`),
-  je to zato, da zna vmesnik razvrstiti po priimku — ne zato, da bi ju kje
-  izpisal obrnjeno.
+  je to urejevalni ključ (razvrstitev po priimku; na lestvici izenačeni v
+  strežniku) — ne zato, da bi ju kje izpisal obrnjeno.
 - **Starostni pas je izpeljanka, ne osebni podatek** (`StarostniPas`, polje
-  `starostniPas` v `IgralecJavniDto`). Iz letnice se izpelje najožji pas, ki
+  `starostniPas` v `IgralecJavniDto` in `LestvicaIgralcaDto`). Iz letnice se izpelje najožji pas, ki
   mu igralec ustreza (`U11`…`U21`, `CLANI`, `VETERANI`); brez njega organizator
   med tisoč igralci mladincev ne loči, datum rojstva pa ostane pod
   `/podrobno`. Pravilo je 11. člen PST: starost se meri na **31. december
   leta, v katerem se sezona začne**, zato je referenca sezonska (rez 1.
   julija, isti kot `sezonaIzDatuma` v vmesniku) in se pas od januarja do
-  junija **ne premakne**. To je namerno drugačno od `KategorijaIgralca`, ki je
-  starostno-**spolna** kategorija lestvice po koledarskem letu — pojma ne
-  združuj, ker bi eden od obeh pogledov spremenil pomen. Ker so pasovi
-  izključujoči, filter »U15« pomeni izbiro U11 + U13 + U15.
+  junija **ne premakne**. Je **edini** pojem o starosti: po njem se prijavlja
+  na turnir in filtrira lestvica, zato ima igralec na obeh mestih isto
+  kategorijo (nekdanja koledarska `KategorijaIgralca` lestvice je odšla
+  septembra 2026). Ker so pasovi izključujoči, filter »U15« pomeni izbiro
+  U11 + U13 + U15.
 - **Admin geslo nima privzetka.** Če je baza prazna in
   `turnirko.admin.privzeto-geslo` ni nastavljen (oz. je krajši od 12 znakov),
   `ZacetniAdmin` ustavi zagon. Izjema je profil `namizni` (lokalna prenosna
@@ -1067,16 +1068,28 @@
     odstraniti.
   - Izbor živi v stanju strani in **ne v naslovu** — isto pravilo kot iskanje
     na lestvici.
+  - **Iskanje po imenu** (lestvica, turnirji, lige) teče skozi
+    `komponente/IskanjeSeznama.tsx`: na namizju polje v naslovni vrstici
+    seznama ob števcu, na telefonu preklopnik »Išči« v lepljivi glavi, ki
+    odpre pas pod črto (ostala dejanja glave gredo skozi `dejanja` v isti
+    portal, da se vrstni red gumbov ne premeša). Iskanje zoži seznam **pred**
+    filtri. Turnirji iščejo po imenu, lige po imenu in sezoni.
   - **Turnir sezone nima kot polje**; izpelje jo `sezonaIzDatuma`
     (`pomozno/oblikovanje.ts`) z rezom 1. julija. Uvožena zgodovina se začne
     najprej sredi septembra in konča najkasneje sredi junija, zato skozi rez
     ne pade nobeno tekmovanje. Kraj in dvorana sta **ločeni** skupini: uvoz je
     ime prizorišča zapisal v `dvorana` (tam so imena mest), ročni vnos pa ima
     kraj iz šifranta.
-  - **Lestvica loči starost in spol.** `KategorijaIgralca` spol nosi samo pri
-    članih (pri U19 in veteranih se izgubi), zato ga `LestvicaIgralcaDto`
-    vrača posebej (`spol`) — brez tega filtra »vse igralke« ni mogoče
-    sestaviti. **Prikazani seznam se vedno oštevilči od 1 naprej** — številka
+  - **Na lestvici spol ni filter, ampak izbira lestvice** — med spoloma ni
+    obračunanih tekem in skali nista primerljivi. V oknu z merili stoji kot
+    `IzbiraEne` (podaja jo stran prek `KrmilaSeznama vOknu`): vedno je
+    izbrana natanko ena vrednost, »Počisti« je ne odnese, med žetoni je ni —
+    izbrana lestvica se zato izpiše ob naslovu (»Moški · 1234 igralcev«).
+    Segmentiranih pasov nad tabelo ni več. **Kategorija** je navaden filter
+    z natanko temi vrednostmi: U11, U13, U15, U17, U19, U21, Člani,
+    Rekreativci — izpelje se iz `starostniPas` (veterani so člani), rekreativec
+    pa je v svoji kategoriji ne glede na starost. Razvrstitve po priimku na
+    lestvici ni. **Prikazani seznam se vedno oštevilči od 1 naprej** — številka
     pove mesto v tem, kar gledalec gleda, ne v celi lestvici. Filter »U19«,
     ki se je začel pri 35., se je bral kot izsek sredine, koliko mladincev je
     pred tem igralcem, pa je bilo treba šteti na roke. Globalno mesto po
@@ -1304,6 +1317,13 @@
   ponudi okno za rezultat (»Menjava igralcev«) — to je tudi trenutek, ko
   organizator s papirja opazi drugega igralca. Stran, ki igra na tujem mestu,
   nosi pod imenom mono oznako »menjava« (`.srecanje__menjava`).
+- **Glava lige: ime zgoraj, sezona pod njim** (`.naslov-strani__pod`,
+  `.naslov-mobi__pod`) — izrecna odločitev lastnika in zavestna izjema od
+  para nadnaslov/naslov iz DESIGN.md. Glava ne nosi vrstice »10 ekip ·
+  dvokrožno« (sistem je v Pravilih, potek v napredku), piramida se imenuje
+  »Piramida lig« in brez kategorije, kader ima oznako »rating · score«. Na
+  seznamu lig stoji samo ime sistema (`imeSistema`: »SNTL« brez sestave v
+  oklepaju); celoten opis ostane v obrazcu in pravilih.
 - **Končnica lige ima svoj pogled** (`KoncnicaLige`): na namizju preklop
   »Lestvica / Končnica« nad lestvico, na telefonu zavihek; liga samo s
   končnico (kvalifikacije med ligami) kaže serije kar na strani. Razpored

@@ -15,7 +15,10 @@
    (stanje, sezona, kraj, organizator, rating) in ob njem izbor razvrstitve -
    glej komponente/Filtri. Sezone turnir ne nosi kot polje; izpelje se iz
    datuma zacetka, kraj in organizator pa se izriseta samo, kadar ju podatki
-   imajo (uvozena zgodovina NTZS ju nima). */
+   imajo (uvozena zgodovina NTZS ju nima).
+
+   Iskanje po imenu zozi seznam PRED filtri (glej komponente/IskanjeSeznama).
+   Pas "Danes v dvorani" ostane cel - tako kot ga ne zozijo filtri. */
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -32,13 +35,14 @@ import {
   type Razvrstitev,
   type SkupinaFiltra,
 } from '../komponente/Filtri'
-import { GlavaDejanja } from '../komponente/GlavaTelefona'
+import { IskalnikSeznama, IskanjeTelefona } from '../komponente/IskanjeSeznama'
 import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
+import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import {
   datumskiBlok,
   oblikujObdobje,
@@ -132,9 +136,14 @@ export function TurnirjiStran() {
         : false,
   })
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
+  const [iskanje, nastaviIskanje] = useState('')
 
   const vsi = useMemo(() => turnirji.data ?? [], [turnirji.data])
-  const filtri = useFiltri(vsi, SKUPINE, RAZVRSTITVE)
+  const najdeni = useMemo(() => {
+    const besede = besedeIskanja(iskanje)
+    return besede.length === 0 ? vsi : vsi.filter((t) => ustrezaBesedam(t.ime, besede))
+  }, [vsi, iskanje])
+  const filtri = useFiltri(najdeni, SKUPINE, RAZVRSTITVE)
   const prikazani = filtri.prikazani
   const vTeku = useMemo(() => vsi.filter((t) => t.status === 'V_TEKU'), [vsi])
   const osvezenoOb = uraOsvezitve(turnirji.dataUpdatedAt)
@@ -164,10 +173,16 @@ export function TurnirjiStran() {
           v oknu, ki ga je gledalec ze zaprl. */}
       {vsi.length > 0 && prikazani.length === 0 && (
         <p className="obvestilo">
-          Izbranim merilom ne ustreza noben turnir.{' '}
-          <button type="button" className="povezava-gumb" onClick={filtri.pocisti}>
-            Počisti filtre
-          </button>
+          {najdeni.length === 0 ? (
+            'Iskanju ne ustreza noben turnir.'
+          ) : (
+            <>
+              Izbranim merilom ne ustreza noben turnir.{' '}
+              <button type="button" className="povezava-gumb" onClick={filtri.pocisti}>
+                Počisti filtre
+              </button>
+            </>
+          )}
         </p>
       )}
     </>
@@ -178,17 +193,22 @@ export function TurnirjiStran() {
       <section>
         {/* Dejanje urejevalca stoji v lepljivi glavi in ne nad seznamom:
             gledalec (uporabnik st. 1) pride po turnirje, ne po gumb. */}
-        <GlavaDejanja>
-          {smeUstvarjati && (
-            <button
-              type="button"
-              className="glava-telefon__gumb"
-              onClick={() => nastaviOdprtObrazec(true)}
-            >
-              + Turnir
-            </button>
-          )}
-        </GlavaDejanja>
+        <IskanjeTelefona
+          iskanje={iskanje}
+          naIskanje={nastaviIskanje}
+          poCem="po imenu"
+          dejanja={
+            smeUstvarjati && (
+              <button
+                type="button"
+                className="glava-telefon__gumb"
+                onClick={() => nastaviOdprtObrazec(true)}
+              >
+                + Turnir
+              </button>
+            )
+          }
+        />
 
         <div>
           <span className="naslov-mobi__nad">Tekmovanja</span>
@@ -218,7 +238,7 @@ export function TurnirjiStran() {
         )}
 
         <div>
-          <div className="naslovna-mobi">
+          <div className="naslovna-mobi naslovna-mobi--brez-crte">
             <h2>Vsi turnirji</h2>
             <span className="naslovna-mobi__stevec">
               {prikazani.length === vsi.length
@@ -273,14 +293,17 @@ export function TurnirjiStran() {
       )}
 
       <div>
-        <div className="naslovna-vrstica">
+        <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
           <h2>Vsi turnirji</h2>
           {turnirji.data && vsi.length > 0 && (
-            <span className="sekcija__meta">
-              {prikazani.length === vsi.length
-                ? `${vsi.length} ${sklonTurnirjev(vsi.length)}`
-                : `Prikazanih ${prikazani.length} od ${vsi.length}`}
-            </span>
+            <div className="naslovna-vrstica__desno">
+              <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem="po imenu" />
+              <span className="sekcija__meta">
+                {prikazani.length === vsi.length
+                  ? `${vsi.length} ${sklonTurnirjev(vsi.length)}`
+                  : `Prikazanih ${prikazani.length} od ${vsi.length}`}
+              </span>
+            </div>
           )}
         </div>
 

@@ -630,7 +630,8 @@ textarea:focus-visible,
   margin: 0;
 }
 
-.naslov-strani__nad {
+.naslov-strani__nad,
+.naslov-strani__pod {
   display: block;
   font-weight: 200;
   font-size: var(--tip-h1-nad);
@@ -644,8 +645,15 @@ textarea:focus-visible,
   color: var(--barva-crnilo);
 }
 
+/* Isti glas POD naslovom (sezona pod imenom lige). Vrstica 0,88 bi jo
+   prilepila na spodnji rob imena, zato en korak ritma zraka. */
+.naslov-strani__pod {
+  margin-top: var(--r1);
+}
+
 /* Podstran (turnir, liga): za odtenek manjsi par. */
-.naslov-strani--podstran .naslov-strani__nad {
+.naslov-strani--podstran .naslov-strani__nad,
+.naslov-strani--podstran .naslov-strani__pod {
   font-size: 44px;
 }
 
@@ -763,6 +771,15 @@ textarea:focus-visible,
   gap: var(--r3);
   flex-wrap: wrap;
   margin: 0;
+}
+
+/* Naslov, nad katerim ni vsebine, od katere bi ga crta locila: prvi sklopi
+   domace strani in glavni seznam na straneh turnirjev, lig in lestvice. Tam
+   je bila crta samo se en rez pod glavo ali krmili, ki sodijo k istemu
+   seznamu. */
+.naslovna-vrstica--brez-crte {
+  border-top: none;
+  padding-top: 0;
 }
 
 .naslovna-vrstica__desno {
@@ -1116,18 +1133,6 @@ a.gumb {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
-}
-
-/* Dva izbirnika nad lestvico (spol, tekmovalci/rekreativci). Na sirokem sta v
-   isti vrstici, na telefonu pa eden pod drugim - stirje gumbi v eni vrstici pri
-   390 px ne gredo. Presledek je vecji od presledka med gumboma istega
-   izbirnika, da je vidno, da sta to dve locni vprasanji in ne en pas stirih
-   moznosti. */
-.izbirnik-lestvic {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--r1) var(--r2);
-  margin-bottom: var(--r2);
 }
 
 .izbirnik__gumb {
@@ -6907,7 +6912,7 @@ a.domov__lestvica-vrstica--jaz {
   margin-top: var(--r3);
 }
 
-/* --- Piramida sezone --- */
+/* --- Piramida lig --- */
 
 /* Kam liga vodi in od kod nanjo napredujejo: ena vrstica na nivo. Tekoca liga
    ni povezava, ampak polna ploskev - "tu si". */
@@ -8378,7 +8383,7 @@ a.domov__lestvica-vrstica--jaz {
     font-size: 40px;
   }
 
-  .liga .naslov-strani--podstran .naslov-strani__nad {
+  .liga .naslov-strani--podstran .naslov-strani__pod {
     font-size: 24px;
   }
 
@@ -8855,7 +8860,8 @@ a.domov__lestvica-vrstica--jaz {
     font-size: 56px;
   }
 
-  .naslov-strani--podstran .naslov-strani__nad {
+  .naslov-strani--podstran .naslov-strani__nad,
+  .naslov-strani--podstran .naslov-strani__pod {
     font-size: 32px;
   }
 
@@ -9126,7 +9132,8 @@ a.domov__lestvica-vrstica--jaz {
     font-size: 44px;
   }
 
-  .naslov-strani--podstran .naslov-strani__nad {
+  .naslov-strani--podstran .naslov-strani__nad,
+  .naslov-strani--podstran .naslov-strani__pod {
     font-size: 26px;
   }
 }
@@ -9144,7 +9151,8 @@ a.domov__lestvica-vrstica--jaz {
     font-size: 48px;
   }
 
-  .naslov-strani--podstran .naslov-strani__nad {
+  .naslov-strani--podstran .naslov-strani__nad,
+  .naslov-strani--podstran .naslov-strani__pod {
     font-size: 28px;
   }
 
@@ -10277,12 +10285,18 @@ a.domov__lestvica-vrstica--jaz {
 
 /* Nadnaslov ni vec display 200 v veliki meri, ampak mono oznaka: naslov 36 px
    pod njim mora spraviti prvo vrstico seznama na zaslon brez drsenja. */
-.naslov-mobi__nad {
+.naslov-mobi__nad,
+.naslov-mobi__pod {
   display: block;
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--barva-crnilo-3);
+}
+
+/* Ista oznaka pod naslovom (sezona pod imenom lige). */
+.naslov-mobi__pod {
+  margin-top: 6px;
 }
 
 .naslov-mobi__vrsta {
@@ -10327,8 +10341,7 @@ a.domov__lestvica-vrstica--jaz {
 
 /* Naslov podstrani, ki stoji V lepljivi glavi ob znacki (liga): 32 px kot
    podstran, a v eni vrstici - prelom bi znacko potisnil pod ime in pas bi
-   zrasel cez polovico zaslona. Odmik nosi vrsta in ne naslov: sicer bi
-   znacka ob njem plavala nekaj pikslov previsoko. */
+   zrasel cez polovico zaslona. */
 .naslov-mobi--ena-vrsta {
   min-width: 0;
   font-size: 32px;
@@ -10336,10 +10349,6 @@ a.domov__lestvica-vrstica--jaz {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.naslov-mobi__vrsta--odmik {
-  margin-top: 6px;
 }
 
 .naslov-mobi__meta {

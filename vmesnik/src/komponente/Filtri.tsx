@@ -24,7 +24,7 @@
    med skupinami): "V teku ali priprava" je smiselno vprasanje, "v teku in
    hkrati priprava" ni. Postavka ima v vsaki skupini eno vrednost - vecvrednih
    meril (npr. "igra v tej ligi") tu namenoma ni. */
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 
 import { ModalnoOkno } from './ModalnoOkno'
 
@@ -360,6 +360,7 @@ export function KrmilaSeznama<T>({
   naslovOkna,
   imeZadetkov,
   poFiltru,
+  vOknu,
   desno,
 }: {
   stanje: StanjeFiltrov<T>
@@ -371,13 +372,17 @@ export function KrmilaSeznama<T>({
   /* Zunanje krmilo takoj za gumbom filtra (koledar: izbirnik vrste). Stoji v
      ISTI vrsti in ne nad njo, ker je del istega vprasanja "kaj vidim". */
   poFiltru?: React.ReactNode
+  /* Izbira, ki ni filter, a sodi v isto okno (lestvica: spol - glej
+     IzbiraEne). Stoji nad merili; stran jo drzi v svojem stanju, ker je vedno
+     izbrana natanko ena vrednost in je "Pocisti" ne sme odnesti. */
+  vOknu?: React.ReactNode
   desno?: React.ReactNode
 }) {
   const [odprto, nastaviOdprto] = useState(false)
   const { steviloIzbranih, zetoni, moznosti, razponi, prikazani, razvrstitev, nastaviRazvrstitev } =
     stanje
   const imeRazvrstitve = razvrstitve.find((r) => r.kljuc === razvrstitev)?.oznaka ?? ''
-  const jeCesaFiltrirati = moznosti.length > 0 || razponi.length > 0
+  const jeCesaFiltrirati = moznosti.length > 0 || razponi.length > 0 || Boolean(vOknu)
 
   return (
     <>
@@ -470,7 +475,9 @@ export function KrmilaSeznama<T>({
           naMejo={stanje.nastaviMejo}
           naPocisti={stanje.pocisti}
           onZapri={() => nastaviOdprto(false)}
-        />
+        >
+          {vOknu}
+        </FiltriOkno>
       )}
     </>
   )
@@ -492,6 +499,7 @@ function FiltriOkno({
   naMejo,
   naPocisti,
   onZapri,
+  children,
 }: {
   nadnaslov: string
   skupine: Skupina[]
@@ -505,10 +513,12 @@ function FiltriOkno({
   naMejo: (obmocje: string, stran: 'od' | 'do', vrednost: number | null) => void
   naPocisti: () => void
   onZapri: () => void
+  children?: React.ReactNode
 }) {
   return (
     <ModalnoOkno naslov="Filtriraj po" nadnaslov={nadnaslov} onZapri={onZapri}>
       <div className="filtri">
+        {children}
         {skupine.map((s) => (
           <SkupinaMeril
             key={s.kljuc}
@@ -682,6 +692,51 @@ function SkupinaMeril({
           Pokaži vse ({najdene.length})
         </button>
       )}
+    </div>
+  )
+}
+
+/* Izbira natanko ene vrednosti v oknu z merili (lestvica: spol). Ni filter:
+   odznaciti se je ne da, "Pocisti" je ne odnese in med zetoni je ni - stran
+   jo pokaze sama (lestvica ob naslovu). Vrstica je videti kot vrstica meril,
+   ker gledalec v oknu isce "kaj vidim" in dve obliki za to bi bili dve zgodbi;
+   bralnik zaslona pa jo prebere kot izbirni gumb. */
+export function IzbiraEne({
+  oznaka,
+  moznosti,
+  izbrana,
+  naIzbiro,
+}: {
+  oznaka: string
+  moznosti: MoznostFiltra[]
+  izbrana: string
+  naIzbiro: (vrednost: string) => void
+}) {
+  const idNaslova = useId()
+
+  return (
+    <div className="filtri__skupina" role="radiogroup" aria-labelledby={idNaslova}>
+      <h3 className="filtri__naslov" id={idNaslova}>
+        {oznaka}
+      </h3>
+
+      {moznosti.map((m) => {
+        const jeIzbrana = m.vrednost === izbrana
+        return (
+          <button
+            type="button"
+            role="radio"
+            key={m.vrednost}
+            className={'filtri__vrstica' + (jeIzbrana ? ' filtri__vrstica--izbrana' : '')}
+            aria-checked={jeIzbrana}
+            onClick={() => naIzbiro(m.vrednost)}
+          >
+            <span className={'kljukica' + (jeIzbrana ? ' kljukica--polna' : '')} aria-hidden="true" />
+            <span className="filtri__ime">{m.napis}</span>
+            <span className="filtri__stevec">{m.stevec}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }

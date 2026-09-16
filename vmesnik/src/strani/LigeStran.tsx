@@ -15,7 +15,11 @@
    organizator) in ob njem izbor razvrstitve — glej komponente/Filtri. Prej
    jih je namizje sploh ni imelo (seznam je štel vse uvožene sezone naenkrat,
    torej stotine lig), telefon pa le štiri gumbe po statusu. Sezona je tu
-   pravo polje lige in ne izpeljanka iz datuma kot pri turnirjih. */
+   pravo polje lige in ne izpeljanka iz datuma kot pri turnirjih.
+
+   Iskanje teče čez ime in sezono (isto kot v IzborLigOkno) in zoži seznam PRED
+   filtri - glej komponente/IskanjeSeznama. Sistem srečanja se v seznamu izpiše
+   samo z imenom (»SNTL«); sestava v oklepaju je v pravilih lige. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -23,9 +27,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ligeApi } from '../api/zahteve'
 import type { LigaDto } from '../api/tipi'
 import {
-  OZNAKE_FORMAT,
   OZNAKE_SPOL_KATEGORIJA,
   OZNAKE_STATUS_TEKMOVANJA,
+  imeSistema,
   type FormatSrecanja,
   type SpolKategorija,
 } from '../api/tipi'
@@ -38,13 +42,16 @@ import {
   type Razvrstitev,
   type SkupinaFiltra,
 } from '../komponente/Filtri'
-import { GlavaDejanja } from '../komponente/GlavaTelefona'
+import { IskalnikSeznama, IskanjeTelefona } from '../komponente/IskanjeSeznama'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PalicaMobi } from '../komponente/Napredek'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
+import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import { intervalOsvezevanja, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useTelefon } from '../pomozno/telefon'
+
+const ISKANJE_PO = 'po imenu ali sezoni'
 
 /* Merila nad seznamom lig. Sezona je prosto besedilo (uvoz jo je zapisal v
    dveh oblikah — »2023/24« in »2024-2025«), zato se ne razlaga, le razvrsti
@@ -74,7 +81,7 @@ const SKUPINE: SkupinaFiltra<LigaDto>[] = [
     kljuc: 'format',
     oznaka: 'Format srečanja',
     vrednost: (l) => l.formatSrecanja,
-    napis: (v) => OZNAKE_FORMAT[v as FormatSrecanja],
+    napis: (v) => imeSistema(v as FormatSrecanja),
   },
   { kljuc: 'organizator', oznaka: 'Organizator', vrednost: (l) => l.klubLastnik },
 ]
@@ -110,9 +117,16 @@ export function LigeStran() {
         : false,
   })
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
+  const [iskanje, nastaviIskanje] = useState('')
 
   const vse = useMemo(() => lige.data ?? [], [lige.data])
-  const filtri = useFiltri(vse, SKUPINE, RAZVRSTITVE)
+  const najdene = useMemo(() => {
+    const besede = besedeIskanja(iskanje)
+    return besede.length === 0
+      ? vse
+      : vse.filter((l) => ustrezaBesedam(`${l.ime} ${l.sezona ?? ''}`, besede))
+  }, [vse, iskanje])
+  const filtri = useFiltri(najdene, SKUPINE, RAZVRSTITVE)
   const prikazane = filtri.prikazani
   const vTeku = useMemo(() => vse.filter((l) => l.status === 'V_TEKU'), [vse])
   const osvezenoOb = uraOsvezitve(lige.dataUpdatedAt)
@@ -138,10 +152,16 @@ export function LigeStran() {
 
       {vse.length > 0 && prikazane.length === 0 && (
         <p className="obvestilo">
-          Izbranim merilom ne ustreza nobena liga.{' '}
-          <button type="button" className="povezava-gumb" onClick={filtri.pocisti}>
-            Počisti filtre
-          </button>
+          {najdene.length === 0 ? (
+            'Iskanju ne ustreza nobena liga.'
+          ) : (
+            <>
+              Izbranim merilom ne ustreza nobena liga.{' '}
+              <button type="button" className="povezava-gumb" onClick={filtri.pocisti}>
+                Počisti filtre
+              </button>
+            </>
+          )}
         </p>
       )}
     </>
@@ -159,17 +179,22 @@ export function LigeStran() {
       <section>
         {/* Dejanje urejevalca stoji v lepljivi glavi in ne nad seznamom:
             gledalec pride po lige, ne po gumb. */}
-        <GlavaDejanja>
-          {smeUstvarjati && (
-            <button
-              type="button"
-              className="glava-telefon__gumb"
-              onClick={() => nastaviOdprtObrazec(true)}
-            >
-              + Liga
-            </button>
-          )}
-        </GlavaDejanja>
+        <IskanjeTelefona
+          iskanje={iskanje}
+          naIskanje={nastaviIskanje}
+          poCem={ISKANJE_PO}
+          dejanja={
+            smeUstvarjati && (
+              <button
+                type="button"
+                className="glava-telefon__gumb"
+                onClick={() => nastaviOdprtObrazec(true)}
+              >
+                + Liga
+              </button>
+            )
+          }
+        />
 
         <div>
           <span className="naslov-mobi__nad">Ekipna tekmovanja</span>
@@ -203,7 +228,7 @@ export function LigeStran() {
         )}
 
         <div>
-          <div className="naslovna-mobi">
+          <div className="naslovna-mobi naslovna-mobi--brez-crte">
             <h2>Vse lige</h2>
             <span className="naslovna-mobi__stevec">
               {prikazane.length === vse.length
@@ -237,14 +262,17 @@ export function LigeStran() {
       )}
 
       <div>
-        <div className="naslovna-vrstica">
+        <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
           <h2>Vse lige</h2>
           {vse.length > 0 && (
-            <span className="sekcija__meta">
-              {prikazane.length === vse.length
-                ? `${vse.length} ${ligTekst(vse.length)}`
-                : `Prikazanih ${prikazane.length} od ${vse.length}`}
-            </span>
+            <div className="naslovna-vrstica__desno">
+              <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
+              <span className="sekcija__meta">
+                {prikazane.length === vse.length
+                  ? `${vse.length} ${ligTekst(vse.length)}`
+                  : `Prikazanih ${prikazane.length} od ${vse.length}`}
+              </span>
+            </div>
           )}
         </div>
 
@@ -275,7 +303,7 @@ export function LigeStran() {
                 <span className="vrstica__pod">
                   {liga.steviloEkip} {ekipTekst(liga.steviloEkip)}
                 </span>
-                <span className="vrstica__mono">{OZNAKE_FORMAT[liga.formatSrecanja]}</span>
+                <span className="vrstica__mono">{imeSistema(liga.formatSrecanja)}</span>
                 <span className="vrstica__mono">
                   {liga.stNapreduje > 0 || liga.stIzpade > 0
                     ? `${liga.stNapreduje} ↑ · ${liga.stIzpade} ↓`

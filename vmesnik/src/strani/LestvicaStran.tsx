@@ -6,25 +6,23 @@
    mesto, ime z mono vrstico »klub · Z–P · gibanje« in rating kot največja
    številka ob desnem robu. Stolpec »Δ 30 dni« odpade, ker isto pove gibanje.
 
-   Nad seznamom je odpadlo vse, kar je prvo vrstico razvrstitve potiskalo na
-   ~620 px: uvodni odstavek, stalno polje iskanja, pas števcev in osem gumbov
-   filtra v štirih vrstah. Ostane ena vrstica krmil (gumb »Filtriraj« in izbor
-   razvrstitve), iskanje pa je preklopnik v lepljivi glavi.
+   Nad seznamom je ena sama vrstica krmil (gumb »Filtriraj« in izbor
+   razvrstitve), iskanje pa je na telefonu preklopnik v lepljivi glavi. Pasova
+   segmentiranih gumbov (spol, tekmovalci/rekreativci) sta odšla v okno z
+   merili: nad tabelo sta bila dve vrsti krmil, preden je gledalec prišel do
+   prvega imena.
 
-   LESTVIC JE VEČ IN NISO ENA. Spol ni filter, ampak IZBIRA LESTVICE: med
-   moškimi in ženskami ni niti ene obračunane tekme (0 od 91.741), zato sta
-   skali neprimerljivi in skupno mesto ne pomeni ničesar — mešan seznam je
-   bral kot razvrstitev, kar ni bil. Enako velja za rekreativce: dober
-   rekreativec ne sme prehiteti nekoliko slabšega igralca, ki hodi na članske
-   turnirje NTZS (teža tekmovanja to ublaži, ne odpravi). Zato sta nad tabelo
-   dva segmentirana izbirnika, pas rekreativcev pa se pokaže šele, ko kdo tam
-   sploh je.
+   SPOL NI FILTER, AMPAK IZBIRA LESTVICE: med moškimi in ženskami ni niti ene
+   obračunane tekme (0 od 91.741), zato sta skali neprimerljivi in skupno mesto
+   ne pomeni ničesar. V oknu je zato izbira natanko ene možnosti (IzbiraEne) —
+   odznačiti se je ne da in »Počisti« je ne odnese —, izbrana lestvica pa
+   stoji ob naslovu, ker med žetoni filtrov ni. Privzeto se odpre lestvica
+   gledalčevega spola, če je gledalec na njej; sicer moška (večja).
 
-   Privzeto se odpre lestvica gledalčevega spola, če je gledalec na njej;
-   sicer moška (večja). Starost ostane filter, ker U19 in člani igrajo skupaj
-   in se na isti lestvici primerjajo; kategorija (»Člani/Članice«) spol nosi
-   samo pri članih, zato filtra »vse igralke« iz nje ni bilo mogoče sestaviti.
-   Druga skupina filtra je klub.
+   Kategorija je navaden filter: U11 … U21, člani in rekreativci, več hkrati,
+   brez izbire vsi. Rekreativci so svoja kategorija ne glede na starost —
+   dober rekreativec ne sme med mladinci prehiteti nekoliko slabšega igralca,
+   ki hodi na turnirje NTZS. Druga skupina filtra je klub.
 
    Iskanje po imenu ni skupina filtra, ampak zoži seznam PRED njim — števci ob
    merilih so tako vedno števci tega, kar gledalec vidi. */
@@ -35,13 +33,14 @@ import { useQuery } from '@tanstack/react-query'
 import { statistikaApi } from '../api/zahteve'
 import type { LestvicaIgralcaDto, Spol } from '../api/tipi'
 import {
+  IzbiraEne,
   KrmilaSeznama,
   poSeznamu,
   useFiltri,
   type Razvrstitev,
   type SkupinaFiltra,
 } from '../komponente/Filtri'
-import { GlavaDejanja, GlavaNaslov } from '../komponente/GlavaTelefona'
+import { IskalnikSeznama, IskanjeTelefona } from '../komponente/IskanjeSeznama'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { useTelefon } from '../pomozno/telefon'
@@ -56,36 +55,46 @@ interface Vrstica {
   mesto: number
 }
 
-/* Katera lestvica se gleda. Tip je ločen od spola, ker sta to dve neodvisni
-   vprašanji in ne štiri enakovredne možnosti v enem pasu. */
-type TipLestvice = 'TEKMOVALCI' | 'REKREATIVCI'
+const ISKANJE_PO = 'po imenu ali klubu'
 
 const OZNAKE_SPOLA: Record<Spol, string> = { MOSKI: 'Moški', ZENSKI: 'Ženske' }
 
+/* Kategorije lestvice od najmlajše navzgor; rekreativci na koncu, ker niso
+   starost, ampak svoja lestvica. */
+const KATEGORIJE = ['U11', 'U13', 'U15', 'U17', 'U19', 'U21', 'CLANI', 'REKREATIVCI']
+
+const OZNAKE_KATEGORIJ: Record<string, string> = {
+  U11: 'U11',
+  U13: 'U13',
+  U15: 'U15',
+  U17: 'U17',
+  U19: 'U19',
+  U21: 'U21',
+  CLANI: 'Člani',
+  REKREATIVCI: 'Rekreativci',
+}
+
 const SKUPINE: SkupinaFiltra<Vrstica>[] = [
   {
-    kljuc: 'starost',
-    oznaka: 'Starost',
-    vrednost: ({ igralec }) => (igralec.kategorija === null ? null : starost(igralec)),
-    napis: (v) => OZNAKE_STAROSTI[v] ?? v,
-    vrstniRed: poSeznamu(['U19', 'CLANSKA', 'VETERANI']),
+    kljuc: 'kategorija',
+    oznaka: 'Kategorija',
+    vrednost: ({ igralec }) => kategorija(igralec),
+    napis: (v) => OZNAKE_KATEGORIJ[v] ?? v,
+    vrstniRed: poSeznamu(KATEGORIJE),
   },
   { kljuc: 'klub', oznaka: 'Klub', vrednost: ({ igralec }) => igralec.klub },
 ]
 
-/* Starostna skupina brez spola. Izpelje se iz kategorije, ki jo računa
-   strežnik (KategorijaIgralca) — datuma rojstva vmesnik nima in ga tudi ne
-   sme imeti, ker je osebni podatek. */
-const OZNAKE_STAROSTI: Record<string, string> = {
-  U19: 'Mladinci (do 19)',
-  CLANSKA: 'Člani (19–39)',
-  VETERANI: 'Veterani (40+)',
-}
-
-function starost(igralec: LestvicaIgralcaDto): string | null {
-  if (igralec.kategorija === 'U19') return 'U19'
-  if (igralec.kategorija === 'VETERANI') return 'VETERANI'
-  return igralec.kategorija === null ? null : 'CLANSKA'
+/* Kategorija igralca na lestvici. Starost je starostni pas, ki ga izpelje
+   strežnik (isti kot pri prijavah na dogodek) — datuma rojstva vmesnik nima in
+   ga tudi ne sme imeti, ker je osebni podatek. Veterani so na lestvici člani:
+   kategorij je osem in veteranske med njimi ni. Rekreativec je rekreativec ne
+   glede na starost (glej uvod). Brez letnice kategorije ni in igralca izbor
+   kategorije ne zajame. */
+function kategorija(igralec: LestvicaIgralcaDto): string | null {
+  if (igralec.rekreativec) return 'REKREATIVCI'
+  if (igralec.starostniPas === 'VETERANI') return 'CLANI'
+  return igralec.starostniPas
 }
 
 const RAZVRSTITVE: Razvrstitev<Vrstica>[] = [
@@ -102,13 +111,6 @@ const RAZVRSTITVE: Razvrstitev<Vrstica>[] = [
     oznaka: 'Odigrane',
     primerjaj: (a, b) => b.igralec.odigrane - a.igralec.odigrane || a.mesto - b.mesto,
   },
-  {
-    kljuc: 'priimek',
-    oznaka: 'Priimek (A–Ž)',
-    primerjaj: (a, b) =>
-      a.igralec.priimek.localeCompare(b.igralec.priimek, 'sl') ||
-      a.igralec.ime.localeCompare(b.igralec.ime, 'sl'),
-  },
 ]
 
 export function LestvicaStran() {
@@ -116,44 +118,35 @@ export function LestvicaStran() {
   const { mojIdIgralec } = useAvtentikacija()
   const jeTelefon = useTelefon()
   const [iskanje, nastaviIskanje] = useState('')
-  /* Iskanje na telefonu živi v stanju strani in ne v naslovu: je opravilo
-     enega obiska, ne stanje, ki bi ga kdo delil s povezavo. */
-  const [iskanjeOdprto, nastaviIskanjeOdprto] = useState(false)
-  const [tip, nastaviTip] = useState<TipLestvice>('TEKMOVALCI')
   const [spol, nastaviSpol] = useState<Spol | null>(null)
 
-  /* Igralci ene lestvice: en spol in ena skupina. Mesto se pripne TU, ker je
-     mesto na svoji lestvici in ne v skupnem seznamu vseh. */
-  const izbranaLestvica = useMemo(() => {
-    const vse = lestvica.data ?? []
-    /* Privzeti spol: gledalčev, če je na lestvici; sicer moška (večja).
-       Izbira ene od dveh lestvic kot "prve" je neizogibna, zato naj bo
-       gledalčeva. */
-    const mojSpol = vse.find((v) => v.idIgralca === mojIdIgralec)?.spol ?? null
-    const izbrani = spol ?? mojSpol ?? 'MOSKI'
-    const rekreativci = tip === 'REKREATIVCI'
-    return vse
-      .filter((v) => v.spol === izbrani && v.rekreativec === rekreativci)
-      .map((igralec, indeks) => ({ igralec, mesto: indeks + 1 }))
-  }, [lestvica.data, spol, tip, mojIdIgralec])
-
-  /* Koliko igralcev je na kateri lestvici - za števce ob gumbih in za to, da
-     se pas rekreativcev ne pokaže, dokler tam ni nikogar. */
+  /* Koliko igralcev je na kateri lestvici - za števce v oknu in za privzetek.
+     Igralec brez spola (v bazi je obvezen, a tip dopušča null) ne pripada
+     nobeni od obeh lestvic in se ne šteje nikjer. */
   const steviloNaLestvici = useMemo(() => {
-    const stevci = { MOSKI: 0, ZENSKI: 0, TEKMOVALCI: 0, REKREATIVCI: 0 } as Record<string, number>
+    const stevci: Record<Spol, number> = { MOSKI: 0, ZENSKI: 0 }
     for (const v of lestvica.data ?? []) {
-      if (v.rekreativec) stevci.REKREATIVCI++
-      else stevci.TEKMOVALCI++
-      /* Igralec brez spola (v bazi je obvezen, a tip dopušča null) ne pripada
-         nobeni od obeh lestvic in se ne šteje nikjer. */
-      if (v.spol !== null && v.rekreativec === (tip === 'REKREATIVCI')) stevci[v.spol]++
+      if (v.spol !== null) stevci[v.spol]++
     }
     return stevci
-  }, [lestvica.data, tip])
+  }, [lestvica.data])
 
-  const izbraniSpol = spol
+  /* Privzeti spol: gledalčev, če je na lestvici; sicer moška (večja), razen
+     kadar moških na lestvici ni. Izbira ene od dveh lestvic kot "prve" je
+     neizogibna, zato naj bo gledalčeva. */
+  const izbraniSpol: Spol = spol
     ?? (lestvica.data ?? []).find((v) => v.idIgralca === mojIdIgralec)?.spol
-    ?? 'MOSKI'
+    ?? (steviloNaLestvici.MOSKI > 0 || steviloNaLestvici.ZENSKI === 0 ? 'MOSKI' : 'ZENSKI')
+
+  /* Igralci ene lestvice. Mesto se pripne TU, ker je mesto na svoji lestvici
+     in ne v skupnem seznamu obeh spolov. */
+  const izbranaLestvica = useMemo(
+    () =>
+      (lestvica.data ?? [])
+        .filter((v) => v.spol === izbraniSpol)
+        .map((igralec, indeks) => ({ igralec, mesto: indeks + 1 })),
+    [lestvica.data, izbraniSpol],
+  )
 
   const najdeni = useMemo(() => {
     const iskano = iskanje.trim().toLocaleLowerCase('sl')
@@ -185,22 +178,50 @@ export function LestvicaStran() {
   /* Ali gledalec gleda izsek ali celo lestvico. Od tega je odvisen števec ob
      naslovu: dokler ni zoženo, je "Prikazanih 1703 od 1703" prazna poved in
      namesto nje pove obseg lestvice (igralci, klubi). Merilo je isto na obeh
-     širinah. */
+     širinah. Spol se ne šteje: je izbira lestvice in ne izsek iz nje. */
   const zozeno = filtri.steviloIzbranih > 0 || iskanje.trim() !== ''
+
+  const sklon = izbraniSpol === 'ZENSKI' ? sklonIgralk : sklonIgralcev
+
+  /* Izbrana lestvica stoji ob naslovu in ne med žetoni: žeton se da
+     odstraniti, lestvica pa je vedno natanko ena. Na telefonu število klubov
+     odpade — ob spolu se je števec pri 375 px odrezal sredi besede. */
+  const stevecLestvice =
+    `${OZNAKE_SPOLA[izbraniSpol]} · ` +
+    (zozeno
+      ? `prikazanih ${prikazani.length} od ${vseh}`
+      : `${vseh} ${sklon(vseh)}` + (jeTelefon ? '' : ` · ${klubov} ${sklonKlubov(klubov)}`))
+
+  /* Obe lestvici morata obstajati, sicer ni česa izbirati (isto pravilo kot
+     skupina filtra z eno samo vrednostjo). */
+  const izbiraSpola =
+    steviloNaLestvici.MOSKI > 0 && steviloNaLestvici.ZENSKI > 0 ? (
+      <IzbiraEne
+        oznaka="Spol"
+        moznosti={(['MOSKI', 'ZENSKI'] as Spol[]).map((v) => ({
+          vrednost: v,
+          napis: OZNAKE_SPOLA[v],
+          stevec: steviloNaLestvici[v],
+        }))}
+        izbrana={izbraniSpol}
+        naIzbiro={(v) => nastaviSpol(v as Spol)}
+      />
+    ) : undefined
 
   const krmila = (
     <KrmilaSeznama
       stanje={filtri}
       razvrstitve={RAZVRSTITVE}
       naslovOkna="Lestvica"
-      imeZadetkov={sklonIgralcev}
+      imeZadetkov={sklon}
+      vOknu={izbiraSpola}
     />
   )
 
   const opisTabele =
-    'Lestvica igralcev po Turnirko ratingu' +
+    `Lestvica igralcev po Turnirko ratingu — ${OZNAKE_SPOLA[izbraniSpol]}` +
     (filtri.zetoni.length > 0
-      ? ` — izbrano: ${filtri.zetoni.map((z) => `${z.oznaka} ${z.napis}`).join(', ')}`
+      ? `; izbrano: ${filtri.zetoni.map((z) => `${z.oznaka} ${z.napis}`).join(', ')}`
       : '')
 
   /* Stanja, ki jih rišemo enako na obeh širinah. */
@@ -230,110 +251,35 @@ export function LestvicaStran() {
     </>
   )
 
-  /* Segmentirana izbirnika: spol vedno, tip samo, kadar rekreativci obstajajo.
-     Isti razred kot podnavigacija dogodka - ista poteza naj bo videti enako. */
-  const izbirnikLestvice = (
-    <div className="izbirnik-lestvic">
-      <div className="izbirnik">
-        {(['MOSKI', 'ZENSKI'] as Spol[]).map((v) => (
-          <button
-            key={v}
-            type="button"
-            className={'izbirnik__gumb' + (izbraniSpol === v ? ' izbirnik__gumb--aktiven' : '')}
-            aria-pressed={izbraniSpol === v}
-            onClick={() => nastaviSpol(v)}
-          >
-            {OZNAKE_SPOLA[v]} · {steviloNaLestvici[v]}
-          </button>
-        ))}
-      </div>
-      {steviloNaLestvici.REKREATIVCI > 0 && (
-        <div className="izbirnik">
-          {(['TEKMOVALCI', 'REKREATIVCI'] as TipLestvice[]).map((v) => (
-            <button
-              key={v}
-              type="button"
-              className={'izbirnik__gumb' + (tip === v ? ' izbirnik__gumb--aktiven' : '')}
-              aria-pressed={tip === v}
-              onClick={() => nastaviTip(v)}
-            >
-              {v === 'TEKMOVALCI' ? 'Tekmovalci' : 'Rekreativci'}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-
   const namig = (
     <p className="namig">
       Igralci brez obračunane tekme še niso na lestvici; po 18 mesecih brez tekme z nje
       izginejo. Moška in ženska lestvica sta ločeni, ker med spoloma ni obračunanih tekem
-      in številki nista primerljivi.{' '}
-      {steviloNaLestvici.REKREATIVCI > 0
-        ? 'Rekreativci imajo svojo lestvico, dokler ne odigrajo treh tekem na uradnem ali klubskem tekmovanju.'
-        : ''}
-      Ime igralca vodi na profil s statistiko.
+      in številki nista primerljivi. Rekreativci so svoja kategorija, dokler ne odigrajo
+      treh tekem na uradnem ali klubskem tekmovanju. Ime igralca vodi na profil s
+      statistiko.
     </p>
   )
 
   if (jeTelefon) {
-    /* Preklic izbriše iskanje in pas zapre: pas, ki ostane odprt s praznim
-       poljem, gledalcu jemlje 68 px zaslona za nič. */
-    const zapriIskanje = () => {
-      nastaviIskanje('')
-      nastaviIskanjeOdprto(false)
-    }
-
     return (
       <section className="stran-mobi--lestvica">
-        <GlavaDejanja>
-          <button
-            type="button"
-            className="glava-telefon__gumb glava-telefon__gumb--preklop"
-            aria-pressed={iskanjeOdprto}
-            onClick={() => (iskanjeOdprto ? zapriIskanje() : nastaviIskanjeOdprto(true))}
-          >
-            Išči
-          </button>
-        </GlavaDejanja>
-
-        {iskanjeOdprto && (
-          <GlavaNaslov>
-            <div className="iskanje-mobi">
-              <input
-                className="iskalnik"
-                /* Pas se odpre na gledalčevo dejanje, zato tipkovnica sme
-                   priti z njim - drugega opravila v pasu ni. */
-                autoFocus
-                aria-label="Išči po imenu ali klubu"
-                placeholder="Išči po imenu ali klubu …"
-                value={iskanje}
-                onChange={(dogodek) => nastaviIskanje(dogodek.target.value)}
-              />
-              <button type="button" className="iskanje-mobi__preklic" onClick={zapriIskanje}>
-                Prekliči
-              </button>
-            </div>
-          </GlavaNaslov>
-        )}
+        <IskanjeTelefona iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
 
         <div>
           <span className="naslov-mobi__nad">Turnirko rating</span>
           <h1 className="naslov-mobi naslov-mobi--seznam">Lestvica</h1>
 
-          {izbirnikLestvice}
           {vseh > 0 && krmila}
         </div>
 
         <div>
-          <div className="naslovna-mobi">
-            <h2>Razvrstitev</h2>
+          {/* Brez črte: krmila tik nad naslovom sodijo k istemu seznamu. */}
+          <div className="naslovna-mobi naslovna-mobi--brez-crte">
+            <h2>Lestvica</h2>
             {lestvica.data && (
               <span className="naslovna-mobi__stevec naslovna-mobi__stevec--drobno">
-                {zozeno
-                  ? `Prikazanih ${prikazani.length} od ${vseh}`
-                  : `${vseh} ${sklonIgralcev(vseh)} · ${klubov} ${sklonKlubov(klubov)}`}
+                {stevecLestvice}
               </span>
             )}
           </div>
@@ -373,25 +319,11 @@ export function LestvicaStran() {
           vrstici — iskalnik in ob njem števec, isti par kot v seznamu prijav
           (DogodekStran). */}
       <div>
-        {izbirnikLestvice}
-        <div className="naslovna-vrstica">
-          <h2>Razvrstitev</h2>
+        <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
+          <h2>Lestvica</h2>
           <div className="naslovna-vrstica__desno">
-            <input
-              className="iskalnik iskalnik--kratek"
-              type="search"
-              value={iskanje}
-              onChange={(d) => nastaviIskanje(d.target.value)}
-              placeholder="išči po imenu ali klubu"
-              aria-label="Išči po imenu ali klubu"
-            />
-            {lestvica.data && (
-              <span className="sekcija__meta">
-                {zozeno
-                  ? `Prikazanih ${prikazani.length} od ${vseh}`
-                  : `${vseh} ${sklonIgralcev(vseh)} · ${klubov} ${sklonKlubov(klubov)}`}
-              </span>
-            )}
+            <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
+            {lestvica.data && <span className="sekcija__meta">{stevecLestvice}</span>}
           </div>
         </div>
 
@@ -584,4 +516,14 @@ function sklonKlubov(n: number): string {
   if (ostanek === 2) return 'kluba'
   if (ostanek === 3 || ostanek === 4) return 'klubi'
   return 'klubov'
+}
+
+/* Isto za žensko lestvico: "400 igralcev" pod naslovom Ženske se bere kot
+   napaka v števcu. */
+function sklonIgralk(n: number): string {
+  const ostanek = n % 100
+  if (ostanek === 1) return 'igralka'
+  if (ostanek === 2) return 'igralki'
+  if (ostanek === 3 || ostanek === 4) return 'igralke'
+  return 'igralk'
 }

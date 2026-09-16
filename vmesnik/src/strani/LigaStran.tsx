@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
 import type { EkipaDto, LestvicaEkipeDto, LigaDto, SrecanjeDto } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_RAVEN, OZNAKE_SPOL_KATEGORIJA, OZNAKE_VIR, TEZA_RAVNI } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_RAVEN, OZNAKE_VIR, TEZA_RAVNI } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   GlavaDejanja,
@@ -166,17 +166,6 @@ export function LigaStran() {
   const privzetoKolo = naslednjeKolo ?? kola[kola.length - 1] ?? 1
   const kolo = rocnoKolo != null && kola.includes(rocnoKolo) ? rocnoKolo : privzetoKolo
 
-  const uvod = [
-    `${l.steviloEkip} ${ekipTekst(l.steviloEkip)}`,
-    l.dvokrozno ? 'dvokrožno' : 'enokrožno',
-    imaRazpored ? `${odigranihKol}. od ${kola.length} kol odigranih` : 'razpored ni generiran',
-    /* Od kod je razpored, je javen podatek: igralci papirnati žreb že imajo in
-       morajo videti, da gre za isti razpored in ne za nov naključni. */
-    imaRazpored && l.rocniZreb ? 'ročni žreb' : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-
   /* Zavihek se ponudi, ko je odigrano vsaj eno kolo — takrat je tekem že
      dovolj, da katera od vrstic kaj pove. */
   const imaZanimivosti = odigranihKol > 0
@@ -189,7 +178,7 @@ export function LigaStran() {
     </>
   )
 
-  const nivojiPiramide = lige.data ? piramidaSezone(l, lige.data) : []
+  const nivojiPiramide = lige.data ? piramidaLig(l, lige.data) : []
   /* Samostojna liga (nima višje in nobena ne kaže nanjo) piramide ne dobi -
      ena sama vrstica z eno ligo ne pove nič. */
   const kaziPiramido = nivojiPiramide.length > 1 || (nivojiPiramide[0]?.lige.length ?? 0) > 1
@@ -285,16 +274,6 @@ export function LigaStran() {
 
   if (jeTelefon) {
     const delez = imaRazpored ? Math.round((odigranihKol / kola.length) * 100) : 0
-    /* »Liga · 2025/26 · moški« - sezona je prosto besedilo, zato je ne
-       opremljamo s predpono. */
-    const nadnaslov = [
-      'Liga',
-      l.sezona,
-      OZNAKE_SPOL_KATEGORIJA[l.spolKategorija].toLowerCase(),
-    ]
-      .filter(Boolean)
-      .join(' · ')
-
     return (
       <section className={'liga' + (imaRazpored ? ' stran-mobi--zavihki' : '')}>
         {/* Glavnega dejanja liga nima, zato gre vse urejevalsko pod »⋯«:
@@ -397,12 +376,13 @@ export function LigaStran() {
             lestvici - pri 390 px je sicer po nekaj potegih vseeno, katero
             ligo gledaš. */}
         <GlavaNaslov>
+          {/* Ime zgoraj, sezona pod njim - isti vrstni red kot na namizju. */}
           <div className="glava-telefon__naslov">
-            <span className="naslov-mobi__nad">{nadnaslov}</span>
-            <div className="naslov-mobi__vrsta naslov-mobi__vrsta--odmik">
+            <div className="naslov-mobi__vrsta">
               <h1 className="naslov-mobi naslov-mobi--ena-vrsta">{l.ime}</h1>
               <ZnackaVNaslovu status={l.status} />
             </div>
+            {l.sezona && <span className="naslov-mobi__pod">{l.sezona}</span>}
             <div className="liga-mobi__stanje">
               <span>{stanjeMobi(l, vsa, kola, odigranihKol, naslednjeKolo, tekmeKoncnice)}</span>
               {imaRazpored && <span className="liga-mobi__delez">{delez} %</span>}
@@ -543,13 +523,15 @@ export function LigaStran() {
 
         <div className="stran-glava stran-glava--dno">
           <div>
+            {/* Ime lige zgoraj, sezona pod njim - zavestno drugače od para
+                nadnaslov/naslov drugod: ligo gledalec išče po imenu, sezona
+                (prosto besedilo, »2025/26«, »8. sezona«) jo le umesti. Vrstice
+                »10 ekip · dvokrožno« pod naslovom ni več: sistem je v pravilih,
+                potek pa v napredku ob strani. */}
             <h1 className="naslov-strani naslov-strani--podstran">
-              {/* Sezona je prosto besedilo (»2025/26«, »8. sezona«), zato je ne
-                  opremljamo s predpono - v nadnaslovu stoji taka, kot je vpisana. */}
-              <span className="naslov-strani__nad">{l.sezona ?? 'Liga'}</span>
               <span className="naslov-strani__glavni">{l.ime}</span>
+              {l.sezona && <span className="naslov-strani__pod">{l.sezona}</span>}
             </h1>
-            <p className="uvod uvod--tesno">{uvod}</p>
             {uvozena && l.vir && (
               <span className="oznaka-vira">{OZNAKE_VIR[l.vir]} · uvoženo, samo za branje</span>
             )}
@@ -862,8 +844,7 @@ function stanjeKoncnice(liga: LigaDto, tekme: SrecanjeDto[], naslednja: string):
 
 /* Ista vrsta na telefonu, a z napredkom spredaj: v lepljivi glavi je ena sama
    mono vrstica, zato mora nositi oboje - koliko kol je za nami in kdaj je
-   naslednje. Uvod (»10 ekip · dvokrožno«) na telefonu odpade: ekipe prešteje
-   lestvica pod njim, sistem pa je v pravilih. */
+   naslednje. */
 function stanjeMobi(
   liga: LigaDto,
   srecanja: SrecanjeDto[],
@@ -915,7 +896,7 @@ function metaKola(srecanja: SrecanjeDto[], kolo: number, odigrano: boolean): str
   return termin || 'razpored'
 }
 
-/* ---------- Piramida sezone ---------- */
+/* ---------- Piramida lig ---------- */
 
 interface PiramidaNivo {
   nivo: number
@@ -932,7 +913,7 @@ interface PiramidaNivo {
    na eno samo ligo — vpisana je bila namenoma. Filter je zato tiho razdrl
    piramide, kjer je bila sezona zapisana drugače (»8. Sezona« proti »25/26«), in
    človek ni imel kje videti, zakaj. Lige druge sezone so v izrisu označene. */
-function piramidaSezone(liga: LigaDto, vse: LigaDto[]): PiramidaNivo[] {
+function piramidaLig(liga: LigaDto, vse: LigaDto[]): PiramidaNivo[] {
   const poId = new Map(vse.map((k) => [k.id, k]))
   const nizje = new Map<number, LigaDto[]>()
   for (const k of vse) {
@@ -990,21 +971,17 @@ function nivoLige(liga: LigaDto, poId: Map<number, LigaDto>): number {
 function Piramida({ liga, nivoji }: { liga: LigaDto; nivoji: PiramidaNivo[] }) {
   /* Piramida naj bi bila ena sezona. Če povezave vežejo lige različnih sezon,
      tega ne skrijemo za sezono izbrane lige — v glavi piše, da jih je več,
-     posamezne pa nosijo svojo. */
+     posamezne pa nosijo svojo. Kategorije (»Mešano«) glava ne nosi: pove jo
+     že ime lige. */
   const sezone = new Set(nivoji.flatMap((n) => n.lige).map((k) => k.sezona ?? ''))
-  const meta = [
-    OZNAKE_SPOL_KATEGORIJA[liga.spolKategorija],
-    sezone.size > 1 ? 'več sezon' : liga.sezona,
-  ]
-    .filter(Boolean)
-    .join(' · ')
   const razlicneSezone = sezone.size > 1
+  const meta = razlicneSezone ? 'več sezon' : liga.sezona
 
   return (
     <div className="liga__piramida">
       <div className="liga__piramida-glava">
-        <span className="podnaslov-sekcije liga__podnaslov--vrstica">Piramida sezone</span>
-        <span className="sekcija__meta">{meta}</span>
+        <span className="podnaslov-sekcije liga__podnaslov--vrstica">Piramida lig</span>
+        {meta && <span className="sekcija__meta">{meta}</span>}
       </div>
       {nivoji.map((n) => {
         const tok = tokNivoja(n)
@@ -1196,7 +1173,6 @@ function Lestvica({
               {cilji.nizja ? `Izpade v ${cilji.nizja}` : 'Izpade'}
             </span>
           )}
-          <span>Klik na vrstico odpre kader</span>
         </div>
       )}
     </div>
@@ -1378,7 +1354,7 @@ function Kader({ idEkipa, ekipa }: { idEkipa: number; ekipa: string }) {
     <div className="liga__kader">
       <div className="liga__kader-glava">
         <span className="liga__kader-naslov">Kader — {ekipa}</span>
-        <span className="sekcija__meta">Po zmagah v ligi · rating · bilanca</span>
+        <span className="sekcija__meta">rating · score</span>
       </div>
       {kader.isPending && <p className="obvestilo">Nalaganje kadra …</p>}
       <NapakaPoizvedbe poizvedba={kader} kaj="kadra" />

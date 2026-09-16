@@ -83,9 +83,11 @@ export function DomacaStran() {
 
   return (
     <section className="domov">
+      {/* Naslova prve vrste sta brez črte: nad njima ni vsebine, od katere bi ju
+          ločila — stran se z njima šele začne. Sklopi niže ločnico obdržijo. */}
       <div className="domov__vrh">
         <div className="domov__sklop">
-          <div className="naslovna-vrstica">
+          <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
             <h2>Turnirji</h2>
             <Link to="/turnirji" className="sekcija__meta">
               Vsi →
@@ -104,7 +106,7 @@ export function DomacaStran() {
         </div>
 
         <div className="domov__sklop">
-          <div className="naslovna-vrstica">
+          <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
             {/* »Moje lige« samo takrat, ko sklop res kaže lasten izbor. Kdor si
                 ga ni sestavil, tu vidi lige, ki jih je postavil admin — in
                 naslov, ki bi jim rekel »moje«, bi lagal. */}
@@ -218,6 +220,9 @@ function VrsticaTurnirja({ turnir }: { turnir: TurnirDto }) {
   const odstotek = turnir.vsehTekem > 0
     ? Math.round((turnir.odigranihTekem / turnir.vsehTekem) * 100)
     : 0
+  /* Uvožen zaključen turnir nima ne kraja ne česa drugega za podnaslov;
+     prazna vrstica bi pod imenom pustila odmik brez besedila. */
+  const opis = opisTurnirja(turnir)
 
   return (
     <Link to={`/turnirji/${turnir.id}`} className="domov__turnir">
@@ -225,7 +230,7 @@ function VrsticaTurnirja({ turnir }: { turnir: TurnirDto }) {
         <span className="domov__turnir-ime">{turnir.ime}</span>
         <ZnackaStatusa status={turnir.status} />
       </span>
-      <span className="domov__turnir-opis">{opisTurnirja(turnir)}</span>
+      {opis && <span className="domov__turnir-opis">{opis}</span>}
       {spalica && (
         <>
           <span className="palica">
@@ -244,7 +249,8 @@ function VrsticaTurnirja({ turnir }: { turnir: TurnirDto }) {
 }
 
 /* Podnaslov vrstice: kraj in nato tisto, kar o turnirju v tem stanju največ
-   pove — koliko jih igra in kje je, kdaj se začne oz. kdo ga je dobil. */
+   pove — koliko jih igra in kje je oz. kdaj se začne. Zmagovalca domača stran
+   ne izpiše: sklop pove, kaj se igra, izid pa stoji na strani turnirja. */
 function opisTurnirja(turnir: TurnirDto): string {
   const deli: string[] = []
   if (turnir.kraj) deli.push(turnir.kraj.ime)
@@ -256,8 +262,6 @@ function opisTurnirja(turnir: TurnirDto): string {
   } else if (turnir.status === 'PRIPRAVA') {
     const datum = oblikujDatum(turnir.datumZacetka)
     deli.push(datum ? `začetek ${datum}` : 'datum še ni znan')
-  } else if (turnir.zmagovalec) {
-    deli.push(`zmagal ${turnir.zmagovalec}`)
   }
   return deli.join(' · ')
 }
@@ -316,13 +320,14 @@ function KarticaLige({
         </div>
       )}
 
+      {/* Samo kdaj in ne kdo: kolo igra več parov hkrati, izpisan prvi med
+          njimi pa se je bral kot edino srečanje kola. Pare nosi razpored lige. */}
       {liga.naslednje && (
         <div className="domov__liga-noga">
           Naslednje kolo{' '}
           {liga.naslednje.datum
             ? oblikujDanKratekMesec(liga.naslednje.datum)
-            : `${liga.naslednje.kolo}.`}{' '}
-          · {liga.naslednje.domaci} – {liga.naslednje.gost}
+            : `${liga.naslednje.kolo}.`}
         </div>
       )}
     </div>
