@@ -305,10 +305,7 @@ export function KoledarStran() {
   if (jeTelefon) {
     return (
       <section>
-        <div>
-          <span className="naslov-mobi__nad">Turnirji in lige</span>
-          <h1 className="naslov-mobi naslov-mobi--seznam">Koledar</h1>
-        </div>
+        <h1 className="naslov-mobi naslov-mobi--seznam">Koledar</h1>
         {telo}
       </section>
     )

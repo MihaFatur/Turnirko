@@ -1,17 +1,18 @@
 /* Iskanje po imenu nad seznamom: lestvica, turnirji, lige.
 
    Na namizju je iskalnik polje v naslovni vrstici seznama, ob števcu - krmilo
-   TE tabele in ne svoj pas nad njo. Na telefonu je preklopnik »Išči« v
-   lepljivi glavi, pas s poljem pa se odpre pod debelo črto šele na klik:
-   stalno polje nad seznamom bi stalo 60 px zaslona, iskanje pa je redko
-   opravilo.
+   TE tabele in ne svoj pas nad njo. Na telefonu je preklopnik »Išči« v vrsti
+   naslova strani, desno ob njem (»Turnirji … Išči«), pas s poljem pa se odpre
+   pod debelo črto lepljive glave šele na klik: stalno polje nad seznamom bi
+   stalo 60 px zaslona, iskanje pa je redko opravilo. Pas ostane v glavi, da
+   polje med drsenjem po zadetkih ne uide z zaslona.
 
    Vpisano živi v stanju strani in ne v naslovu - je opravilo enega obiska, ne
    stanje, ki bi ga kdo delil s povezavo. Stran z njim zoži seznam PRED filtri,
    zato so števci ob merilih števci tega, kar gledalec vidi. */
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 
-import { GlavaDejanja, GlavaNaslov } from './GlavaTelefona'
+import { GlavaNaslov } from './GlavaTelefona'
 
 interface LastnostiIskanja {
   iskanje: string
@@ -34,16 +35,11 @@ export function IskalnikSeznama({ iskanje, naIskanje, poCem }: LastnostiIskanja)
   )
 }
 
-/* Preklopnik v glavi in pas s poljem. Ostala dejanja glave strani (»+ Turnir«)
-   gredo skozi `dejanja` v ISTI portal: dva portala v isti cilj bi vrstni red
-   gumbov prepustila trenutku, ko se kateri izriše (dejanje urejevalca pride
-   šele z naloženo prijavo). */
-export function IskanjeTelefona({
-  iskanje,
-  naIskanje,
-  poCem,
-  dejanja,
-}: LastnostiIskanja & { dejanja?: ReactNode }) {
+/* Preklopnik in pas s poljem. Preklopnik se izriše tam, kamor ga postavi
+   stran (v .naslov-mobi__vrsta ob h1), pas pa gre skozi portal v glavo.
+   Dejanja urejevalca (»+ Turnir«) ostanejo v glavi in jih stran vloži sama
+   skozi GlavaDejanja. */
+export function IskanjeTelefona({ iskanje, naIskanje, poCem }: LastnostiIskanja) {
   const [odprto, nastaviOdprto] = useState(false)
 
   /* Preklic izbriše iskanje in pas zapre: pas, ki ostane odprt s praznim
@@ -55,17 +51,16 @@ export function IskanjeTelefona({
 
   return (
     <>
-      <GlavaDejanja>
-        <button
-          type="button"
-          className="glava-telefon__gumb glava-telefon__gumb--preklop"
-          aria-pressed={odprto}
-          onClick={() => (odprto ? zapri() : nastaviOdprto(true))}
-        >
-          Išči
-        </button>
-        {dejanja}
-      </GlavaDejanja>
+      {/* Mere (36 px vidno, 44 px zadetek) so iste kot pri gumbih glave,
+          zato si razred deli z njimi, čeprav stoji ob naslovu. */}
+      <button
+        type="button"
+        className="glava-telefon__gumb glava-telefon__gumb--preklop"
+        aria-pressed={odprto}
+        onClick={() => (odprto ? zapri() : nastaviOdprto(true))}
+      >
+        Išči
+      </button>
 
       {odprto && (
         <GlavaNaslov>

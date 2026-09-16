@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
 import type { EkipaDto, LestvicaEkipeDto, LigaDto, SrecanjeDto } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_RAVEN, OZNAKE_VIR, TEZA_RAVNI } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_RAVEN, TEZA_RAVNI } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   GlavaDejanja,
@@ -459,10 +459,6 @@ export function LigaStran() {
           </GlavaZavihki>
         )}
 
-        {uvozena && l.vir && (
-          <p className="oznaka-vira">{OZNAKE_VIR[l.vir]} · uvoženo, samo za branje</p>
-        )}
-
         {vPripravi && smem && (
           <EkipeUredi liga={l} onUrediPravila={() => nastaviObrazecOdprt(true)} />
         )}
@@ -532,9 +528,6 @@ export function LigaStran() {
               <span className="naslov-strani__glavni">{l.ime}</span>
               {l.sezona && <span className="naslov-strani__pod">{l.sezona}</span>}
             </h1>
-            {uvozena && l.vir && (
-              <span className="oznaka-vira">{OZNAKE_VIR[l.vir]} · uvoženo, samo za branje</span>
-            )}
           </div>
 
           <div className="liga__stanje-blok">
@@ -1684,17 +1677,12 @@ function PravilaOkno({
 
   return (
     <ModalnoOkno naslov="Pravila lige" onZapri={onZapri}>
-      {lahkoUreja ? (
+      {lahkoUreja && (
         <div className="liga__pravila-dejanje">
           <button type="button" className="gumb gumb--majhen" onClick={onUredi}>
             Uredi pravila
           </button>
         </div>
-      ) : (
-        <p className="liga__pravila-opomba">
-          Zaklenjena, ker je razpored že generiran. Popravek bi razveljavil odigrana
-          srečanja.
-        </p>
       )}
       {smemUrejatiPrehode && (
         <div className="liga__pravila-dejanje">

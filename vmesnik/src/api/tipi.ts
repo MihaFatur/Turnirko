@@ -60,10 +60,6 @@ export type SistemTekmovanja = 'IZLOCILNI' | 'SKUPINE_IZLOCILNI' | 'KROZNI' | 'S
    v Turnirku. */
 export type VirTekmovanja = 'STUPA' | 'STARA_NTZS'
 
-export const OZNAKE_VIR: Record<VirTekmovanja, string> = {
-  STUPA: 'NTZS · Stupa Events',
-  STARA_NTZS: 'NTZS · stara stran',
-}
 export type StatusPrijave =
   | 'PRIJAVLJEN'
   | 'ODJAVLJEN'
@@ -1586,13 +1582,13 @@ export interface StatKlub {
   igralcev: number
 }
 
+/* Preobrat: tekma, dobljena po zaostanku 0 : 2 v nizih. */
 export interface StatObrat {
   zmagovalec: StatOseba
   porazenec: StatOseba
   izid: string
   nizi: string
   kontekst: string
-  koliko: number
 }
 
 export interface StatNajdaljsiNiz {
@@ -1663,7 +1659,8 @@ export interface StatistikaTekmovanjaDto {
   zid: StatZid[]
   delavci: StatDelavec[]
   klubi: StatKlub[]
-  obrat: StatObrat | null
+  /* Vsi preobrati, najbolj borben (največ točk) prvi. */
+  obrati: StatObrat[]
   najdaljsiNiz: StatNajdaljsiNiz | null
   najdaljsaTekma: StatNajdaljsaTekma | null
   prviNaslovi: StatPrviNaslov[]

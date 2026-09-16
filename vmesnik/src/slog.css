@@ -574,13 +574,6 @@ textarea:focus-visible,
   grid-column: 2;
 }
 
-/* Seznami (turnirji, lige) glave strani nimajo vec; ostane samo dejanje
-   urejevalca in to stoji desno, tam kjer je stalo prej v glavi. */
-.stran-dejanja {
-  display: flex;
-  justify-content: flex-end;
-}
-
 /* Stolpec dejanj v glavi strani: gumbi eden pod drugim, pod njimi pojasnilo,
    zakaj dejanje (se) ni mogoce. */
 .stran-glava__dejanja {
@@ -1442,6 +1435,12 @@ a.gumb {
    splošnih polj (do pet v oknu navadne širine). */
 .obrazec__vrstica--ure {
   grid-template-columns: repeat(auto-fill, minmax(min(112px, 100%), 1fr));
+}
+
+/* Ime in priimek: vedno dva stolpca, tudi v ozkem oknu na telefonu - par
+   se bere kot eno polje (»Ana | Novak«), 140 px pa za ime zadošča. */
+.obrazec__vrstica--par {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .obrazec__vrstica--dodajanje {
@@ -6647,23 +6646,13 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
-/* Razlaga spremembe pod grafom: cel obrazec v eni vrstici. Mono pisava in
-   drobna stopnja, ker je to opomba k stevilki nad njo in ne samostojna poved;
-   na telefonu se prelomi, zato brez nowrap. */
+/* Poved pod grafom za spremembo, ki ni navaden korak po tekmi (postavitev,
+   odbitek, uvrstitev novinca, zunanja uvrstitev). Pisava telesa in ne mono:
+   mono na drobni stopnji je za stavek ali dva nebranljiv. */
 .graf__razlaga {
   margin: var(--r1) 0 0;
-  font: 400 var(--tip-drobno) / 1.6 var(--pisava-mono);
-  font-variant-numeric: tabular-nums;
+  font: 400 var(--tip-drobno) / 1.6 var(--pisava-telo);
   color: var(--barva-crnilo-3);
-}
-
-/* Nacini, ki obrazca koraka ne uporabljajo (postavitev, odbitek, uvrstitev
-   novinca, zunanja uvrstitev), imajo POVED in ne formule. Mono pisava na
-   drobni stopnji je za stavek ali dva pojasnila nebranljiva, zato tam velja
-   pisava telesa - mono ostane tistemu, za kar je: poravnanim stevilkam. */
-.graf__razlaga--poved {
-  font-family: var(--pisava-telo);
-  font-variant-numeric: normal;
 }
 
 .graf__sprememba {
@@ -6871,15 +6860,6 @@ a.domov__lestvica-vrstica--jaz {
   margin: 0;
   padding-bottom: 0;
   border-bottom: none;
-}
-
-/* Kratka opomba v modalnem oknu (zakaj so pravila zaklenjena). */
-.liga__pravila-opomba {
-  margin: 0 0 var(--r2);
-  font-size: var(--tip-telo);
-  font-weight: 300;
-  line-height: 1.5;
-  color: var(--barva-crnilo-2);
 }
 
 .liga__pravila-dejanje {
@@ -7189,16 +7169,6 @@ a.domov__lestvica-vrstica--jaz {
   flex-wrap: wrap;
   gap: var(--r1);
   margin-left: auto;
-}
-
-/* Uvozeno tekmovanje: vir in "samo za branje" v eni mono vrstici pod naslovom. */
-.oznaka-vira {
-  display: block;
-  margin-top: var(--r1);
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
 }
 
 /* --- Zlozljiva sekcija (lestvici posameznikov in dvojic na dnu lige) --- */
@@ -9293,6 +9263,44 @@ a.domov__lestvica-vrstica--jaz {
   text-align: right;
 }
 
+/* Stevec, ki razpre ostale primere (preobrati). Modra, ker je dejanje; ista
+   mono vrstica kot podatek, da glava zgodbe ne skoci. Zadetkovna povrsina
+   sega 14 px nad in pod besedilo (44 px na dotik), negativni rob pa jo
+   vzame iz postavitve. */
+.zanimivost__stevec--gumb {
+  margin: -14px 0;
+  padding: 14px 0;
+  border: none;
+  background: none;
+  color: var(--barva-glavna-tekst);
+  cursor: pointer;
+}
+
+.zanimivost__stevec--gumb:hover,
+.zanimivost__stevec--gumb[aria-expanded='true'] {
+  text-decoration: underline;
+}
+
+/* Ostali primeri pod zgodbo: vrstice s crto, manjse od stavka zgodbe, da je
+   najboljsi primer se vedno naslov. */
+.zanimivost__primeri {
+  margin: var(--r2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zanimivost__primer {
+  padding: var(--r1) 0;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.zanimivost__primer-stavek {
+  margin: 0 0 2px;
+  font: 800 var(--tip-vrstica) / 1.2 var(--pisava-display);
+  letter-spacing: -0.01em;
+  color: var(--barva-crnilo);
+}
+
 .zanimivost__stavek {
   margin: 6px 0 4px;
   font: 800 var(--tip-h3) / 1.15 var(--pisava-display);
@@ -9995,9 +10003,10 @@ a.domov__lestvica-vrstica--jaz {
   transform: translateY(-50%);
 }
 
-/* Preklopnik in ne dejanje ("Isci" na lestvici): prozorna ploskev z obrobo
-   crnila. Ko je iskanje odprto, dobi polno crno ploskev - isti zapis kot
-   aktiven gumb izbirnika, da je stikalo prepoznavno tudi brez barve. */
+/* Preklopnik in ne dejanje ("Isci" ob naslovu turnirjev, lig in lestvice):
+   prozorna ploskev z obrobo crnila. Ko je iskanje odprto, dobi polno crno
+   ploskev - isti zapis kot aktiven gumb izbirnika, da je stikalo prepoznavno
+   tudi brez barve. */
 .glava-telefon__gumb--preklop {
   border-color: var(--barva-crnilo);
   background: none;
@@ -10073,10 +10082,10 @@ a.domov__lestvica-vrstica--jaz {
 /* IZJEMA OD HISNEGA ZAPISA, ODOBRENA IN OMEJENA NA TA RAZDELEK.
    Dvoje, kar drugod v vmesniku ni dovoljeno:
    1. IKONE (DESIGN.md, razdelek 5, tocka 9 - "edina ikona je logotip"):
-      postavke spodnje vrstice nosijo ikono in ne besede. Pet mono oznak je
-      pri 390 px zaseglo cel stolpec, ikona pa je v pasu, ki ga palec bere v
-      pol sekunde, hitrejsa od branja. Oznaka ostane v drevesu skrita v
-      .samo-za-bralnik, zato bralnik zaslona ni na slabsem.
+      postavke spodnje vrstice nosijo ikono, pod njo pa drobno oznako.
+      Pet mono oznak BREZ ikon je pri 390 px zaseglo cel stolpec; ikona je
+      v pasu, ki ga palec bere v pol sekunde, hitrejsa od branja, oznaka pod
+      njo pa pove, kam vodi, tistemu, ki znaka se ne pozna.
    2. GIBANJE, DALJSE OD 120 ms (DESIGN.md, tocka 12): modra poteza ZDRSNE s
       prejsnjega stolpca na novega v 260 ms. To je isti premik podcrtaja
       navigacije, ki ga zapis dovoljuje - le da je viden, ker je pot dolga.
@@ -10129,13 +10138,17 @@ a.domov__lestvica-vrstica--jaz {
 }
 
 /* 56 px je visina glave telefona: vrstici zaslon zgoraj in spodaj zapreta
-   enako debela pasova. Brez oznake pod ikono je to se vedno dalec cez 44 px
-   zadetkovne povrsine. */
+   enako debela pasova. Ikona in oznaka pod njo (22 + 3 + 13 px) gresta
+   vanj brez visanja, zadetkovna povrsina pa ostane cez 44 px. */
 .spodnja-vrstica__postavka {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
+  min-width: 0;
   min-height: 56px;
+  padding: 6px 0;
   border: none;
   border-radius: 0;
   background: none;
@@ -10166,6 +10179,23 @@ a.domov__lestvica-vrstica--jaz {
    prisla nadnjo. */
 .spodnja-vrstica__postavka--aktivna .spodnja-vrstica__ikona {
   transform: translateY(-2px);
+}
+
+/* Oznaka pod ikono je v Karli in ne mono: »Domača stran« v mono verzalkah
+   v stolpec ne gre. Pri zelo ozkem zaslonu se raje odreze, kot da bi
+   prelomila in dvignila vrstico. */
+.spodnja-vrstica__oznaka {
+  max-width: 100%;
+  overflow: hidden;
+  font: 600 11px / 13px var(--pisava-telo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pet postavk (urejevalec): »Domača stran« pri 11 px meri 73 px, stolpec pri
+   360 px sirine pa 72 - zato 10 px, ki gre brez reza do 330 px. */
+.spodnja-vrstica:not(.spodnja-vrstica--stiri) .spodnja-vrstica__oznaka {
+  font-size: 10px;
 }
 
 /* --- Predal "Vec" --- */
@@ -10283,20 +10313,17 @@ a.domov__lestvica-vrstica--jaz {
 
 /* --- Naslov strani na telefonu --- */
 
-/* Nadnaslov ni vec display 200 v veliki meri, ampak mono oznaka: naslov 36 px
-   pod njim mora spraviti prvo vrstico seznama na zaslon brez drsenja. */
-.naslov-mobi__nad,
+/* Vstopni seznami (turnirji, lige, lestvica, koledar) na telefonu nadnaslova
+   nimajo (odlocitev lastnika, september 2026): kje si, pove spodnja vrstica,
+   mono oznaka nad naslovom pa je le potisnila prvo vrstico seznama nizje.
+   Mono oznaka ostane samo POD naslovom (sezona pod imenom lige). */
 .naslov-mobi__pod {
   display: block;
+  margin-top: 6px;
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--barva-crnilo-3);
-}
-
-/* Ista oznaka pod naslovom (sezona pod imenom lige). */
-.naslov-mobi__pod {
-  margin-top: 6px;
 }
 
 .naslov-mobi__vrsta {
@@ -10304,6 +10331,12 @@ a.domov__lestvica-vrstica--jaz {
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+/* Naslov seznama z iskanjem: »Turnirji« levo, preklopnik »Išči« skrajno
+   desno v isti vrsti. */
+.naslov-mobi__vrsta--iskanje {
+  justify-content: space-between;
 }
 
 .naslov-mobi {
@@ -10314,9 +10347,8 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo);
 }
 
-/* Seznam (Turnirji): 36 px pod mono nadnaslovom. */
+/* Seznam (Turnirji): 36 px, brez nadnaslova. */
 .naslov-mobi--seznam {
-  margin-top: 4px;
   font-size: 36px;
   line-height: 0.95;
 }
@@ -10744,15 +10776,6 @@ a.domov__lestvica-vrstica--jaz {
 
 .lestvica-mobi__vrstica--jaz .lestvica-mobi__rating {
   color: var(--barva-glavna-tekst);
-}
-
-/* Opomba pod lestvico: kaj primerjata gibanje in Δ. */
-.lestvica-mobi__opomba {
-  margin: 12px 0 0;
-  font: 500 11px / 1.5 var(--pisava-mono);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-4);
 }
 
 /* Pas iskanja pod debelo crto. Odpre se sele na klik "Isci" - stalno polje

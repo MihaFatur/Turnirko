@@ -16,10 +16,10 @@
    pa vanjo vlagajo svoje skozi GlavaTelefona. »Več« je predal z urejevalskimi
    stranmi; gost in igralec vidita štiri postavke, ker ostalih nimata.
 
-   Postavke spodnje vrstice nosijo IKONO in ne besede - namerna izjema od
-   hišnega pravila (glej IkoneNavigacije.tsx). Oznaka ostane v drevesu za
-   bralnik zaslona, kje si pa oko prebere iz modre poteze, ki ob zamenjavi
-   zavihka zdrsne nad novi stolpec. */
+   Postavke spodnje vrstice nosijo IKONO z drobno oznako pod njo - ikona je
+   namerna izjema od hišnega pravila (glej IkoneNavigacije.tsx), oznaka pa
+   pove, kam ikona vodi, brez ugibanja. Kje si, oko prebere iz modre poteze,
+   ki ob zamenjavi zavihka zdrsne nad novi stolpec. */
 import { type ComponentType, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -68,14 +68,15 @@ const povezave: Povezava[] = [
    pride gledalec do tekmovanja. Peta ("Vec") je predal in ne povezava. */
 const spodnjePovezave: Povezava[] = povezave.slice(0, 4)
 
-/* Ikona postavke stoji ob poti in ne v Povezavi: ikone imajo samo stiri
-   postavke spodnje vrstice, namizna navigacija je besedilna in bi polje
-   nosila prazno. */
-const spodnjeIkone: Record<string, ComponentType> = {
-  '/': IkonaDomov,
-  '/turnirji': IkonaTurnirji,
-  '/lige': IkonaLige,
-  '/lestvica': IkonaLestvica,
+/* Ikona in oznaka postavke stojita ob poti in ne v Povezavi: ikone imajo samo
+   stiri postavke spodnje vrstice, namizna navigacija je besedilna in bi polje
+   nosila prazno. Oznaka spodaj je lahko daljsa od namizne (»Domača stran«
+   namesto »Domov«), ker pod ikono stoji sama in ne v vrsti z ostalimi. */
+const spodnjePostavke: Record<string, { Ikona: ComponentType; oznaka: string }> = {
+  '/': { Ikona: IkonaDomov, oznaka: 'Domača stran' },
+  '/turnirji': { Ikona: IkonaTurnirji, oznaka: 'Turnirji' },
+  '/lige': { Ikona: IkonaLige, oznaka: 'Lige' },
+  '/lestvica': { Ikona: IkonaLestvica, oznaka: 'Lestvica' },
 }
 
 /* Podstrani, ki v spodnji vrstici pripadajo sklopu, a nimajo njegove poti:
@@ -250,7 +251,7 @@ export function Postavitev() {
             />
 
             {spodnjePovezave.map((povezava, indeks) => {
-              const Ikona = spodnjeIkone[povezava.pot]
+              const { Ikona, oznaka } = spodnjePostavke[povezava.pot]
               return (
                 <NavLink
                   key={povezava.pot}
@@ -266,9 +267,9 @@ export function Postavitev() {
                   <span className="spodnja-vrstica__ikona">
                     <Ikona />
                   </span>
-                  {/* Ikona sama nima imena; oznaka ostane v drevesu, da jo
-                      bralnik zaslona in glasovno krmiljenje najdeta. */}
-                  <span className="samo-za-bralnik">{povezava.oznaka}</span>
+                  {/* Ikona je aria-hidden, zato je vidna oznaka hkrati ime
+                      povezave za bralnik zaslona in glasovno krmiljenje. */}
+                  <span className="spodnja-vrstica__oznaka">{oznaka}</span>
                 </NavLink>
               )
             })}
@@ -287,7 +288,7 @@ export function Postavitev() {
                 <span className="spodnja-vrstica__ikona">
                   <IkonaVec />
                 </span>
-                <span className="samo-za-bralnik">Več</span>
+                <span className="spodnja-vrstica__oznaka">Več</span>
               </button>
             )}
           </nav>

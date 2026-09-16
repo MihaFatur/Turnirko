@@ -35,6 +35,7 @@ import {
   type Razvrstitev,
   type SkupinaFiltra,
 } from '../komponente/Filtri'
+import { GlavaDejanja } from '../komponente/GlavaTelefona'
 import { IskalnikSeznama, IskanjeTelefona } from '../komponente/IskanjeSeznama'
 import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
@@ -193,26 +194,23 @@ export function TurnirjiStran() {
       <section>
         {/* Dejanje urejevalca stoji v lepljivi glavi in ne nad seznamom:
             gledalec (uporabnik st. 1) pride po turnirje, ne po gumb. */}
-        <IskanjeTelefona
-          iskanje={iskanje}
-          naIskanje={nastaviIskanje}
-          poCem="po imenu"
-          dejanja={
-            smeUstvarjati && (
-              <button
-                type="button"
-                className="glava-telefon__gumb"
-                onClick={() => nastaviOdprtObrazec(true)}
-              >
-                + Turnir
-              </button>
-            )
-          }
-        />
+        {smeUstvarjati && (
+          <GlavaDejanja>
+            <button
+              type="button"
+              className="glava-telefon__gumb"
+              onClick={() => nastaviOdprtObrazec(true)}
+            >
+              + Turnir
+            </button>
+          </GlavaDejanja>
+        )}
 
         <div>
-          <span className="naslov-mobi__nad">Tekmovanja</span>
-          <h1 className="naslov-mobi naslov-mobi--seznam">Turnirji</h1>
+          <div className="naslov-mobi__vrsta naslov-mobi__vrsta--iskanje">
+            <h1 className="naslov-mobi naslov-mobi--seznam">Turnirji</h1>
+            <IskanjeTelefona iskanje={iskanje} naIskanje={nastaviIskanje} poCem="po imenu" />
+          </div>
 
           {vsi.length > 0 && krmila}
         </div>
@@ -267,14 +265,7 @@ export function TurnirjiStran() {
   return (
     <section>
       {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija,
-          in seznam se sme začeti z vsebino. Ostane le dejanje urejevalca. */}
-      {smeUstvarjati && (
-        <div className="stran-dejanja">
-          <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
-            + Nov turnir
-          </button>
-        </div>
-      )}
+          in seznam se sme začeti z vsebino. */}
 
       {/* Brez turnirja v teku se pas ne izrise - prazno stanje bi bilo samo
           se ena vrstica, ki jo mora sodnik prebrati in preskociti. */}
@@ -295,14 +286,27 @@ export function TurnirjiStran() {
       <div>
         <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
           <h2>Vsi turnirji</h2>
-          {turnirji.data && vsi.length > 0 && (
+          {/* Dejanje urejevalca stoji skrajno desno v naslovni vrstici seznama,
+              ki ga ustvarja - svoj pas nad seznamom je bil prazna vrsta z enim
+              gumbom. Izrise se tudi ob praznem seznamu, ker je takrat edina
+              pot naprej. */}
+          {((turnirji.data && vsi.length > 0) || smeUstvarjati) && (
             <div className="naslovna-vrstica__desno">
-              <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem="po imenu" />
-              <span className="sekcija__meta">
-                {prikazani.length === vsi.length
-                  ? `${vsi.length} ${sklonTurnirjev(vsi.length)}`
-                  : `Prikazanih ${prikazani.length} od ${vsi.length}`}
-              </span>
+              {turnirji.data && vsi.length > 0 && (
+                <>
+                  <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem="po imenu" />
+                  <span className="sekcija__meta">
+                    {prikazani.length === vsi.length
+                      ? `${vsi.length} ${sklonTurnirjev(vsi.length)}`
+                      : `Prikazanih ${prikazani.length} od ${vsi.length}`}
+                  </span>
+                </>
+              )}
+              {smeUstvarjati && (
+                <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
+                  + Nov turnir
+                </button>
+              )}
             </div>
           )}
         </div>

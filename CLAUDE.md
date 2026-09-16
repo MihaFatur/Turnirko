@@ -350,8 +350,10 @@
     stotih letih«. Iz istega razloga gre zadnji termin samo naprej — rezultat
     se lahko vnese tudi za nazaj.
 - **Vrstica dnevnika razloži svojo številko** (`rating_zgodovina.k`,
-  `margina`, `teza`, `pricakovano`, V24). Igralec, ki vidi »+27«, dobi pod
-  grafom zapisan obrazec: **+27 = K 64 × 1,37 (nizi) × 0,75 (teža) × (1 − 0,58)**.
+  `margina`, `teza`, `pricakovano`, V24): **+27 = K 64 × 1,37 (nizi) × 0,75
+  (teža) × (1 − 0,58)**. Sestavine gredo v `TockaGrafa.razclenitev`, a jih
+  vmesnik pod grafom **ne izpiše** (odločitev lastnika, september 2026 —
+  gledalcu je bil obrazec šum); poved dobijo samo načini brez obrazca.
   - **Sestavine se ZAPIŠEJO in se ne računajo nazaj.** K je odvisen od števila
     tekem IN od tega, ali se je igralec takrat vračal; težo tekmovanja lahko
     kdo vmes spremeni. Poznejši izračun bi torej dal današnje številke za staro
@@ -363,7 +365,8 @@
     iz vseh izidov prvega dne. Vrstica, ki ima tekmo in nima `k`, je torej
     natanko uvrstitev — a vmesnik tega ne ugiba: strežnik pošlje
     `ProfilDto.NacinSpremembe` (`KORAK`, `UVRSTITEV`, `POSTAVITEV`,
-    `NEAKTIVNOST`, `ZUNANJA_UVRSTITEV`) in vsak način ima svojo poved.
+    `NEAKTIVNOST`, `ZUNANJA_UVRSTITEV`) in vsak način razen `KORAK` ima svojo
+    poved.
   - **Za nazaj jih napolni ponovni preračun**, ne migracija: sestavine so
     izpeljanka iz zaporedja tekem in jih pozna samo obračun.
   - Test `RazclenitevSpremembeTest` drži edino obljubo, ki šteje: zapisane
@@ -833,8 +836,11 @@
     zavihka sploh ni (`dovoljPodatkov`), vmesnik pa gumba ne ponudi že prej
     (`odigranihTekem`, oz. pri ligi odigrano vsaj eno kolo).
   - **Dvojice ne vstopajo v vrstice o posamezniku** (isto pravilo kot pri ratingu).
-    Štejejo v »V številkah« in v svojo vrstico. Edina izjema je »Največ tekem«,
-    kjer se štejejo **nastopi** in ne izkupiček — a v svoj števec.
+    Štejejo v »V številkah« in v svojo vrstico. Edina izjema je »Največji
+    garač«, kjer se štejejo **nastopi** in ne izkupiček — a v svoj števec.
+  - **Preobratov pride seznam, ne en sam** (`obrati`, najbolj borben — največ
+    točk — prvi). Zgodba pokaže prvega, števec »3 preobrati na tekmovanju« pa
+    je gumb, ki pod njo razpre ostale.
   - **»Prvi naslov« se meri po datumu začetka turnirja in strogo »prej«.**
     Merilo »vsi njegovi naslovi so s tega turnirja« bi lanskemu turnirju
     vrstico odvzelo v trenutku, ko isti človek zmaga še enkrat — zapis o
@@ -866,7 +872,8 @@
   popravi. Izjemi sta opis lige v piramidi (prehodi) in uredniška izbira lig na
   domači strani — nista pravilo tekmovanja. Uvoz sam piše mimo storitev
   (repozitoriji), zato ga pravilo ne ustavi. Vmesnik dejanja skrije
-  (`smem = … && vir == null`) in pod naslov izpiše `.oznaka-vira`.
+  (`smem = … && vir == null`); oznake vira pod naslovom **ni** (odstranjena
+  septembra 2026 na željo lastnika).
 - **Sinhronizacija s Stupo je ročna in dokazana** (`si.turnirko.uvoz.stupa`,
   stran `/uvoz`, API `/api/v1/uvoz/stupa/**` samo za `ADMIN` — poročilo nosi
   datume rojstva). Potek za eno tekmovanje:
@@ -1022,7 +1029,7 @@
 - Za nepovratna dejanja uporabi `PotrditvenoOkno`, nikoli `window.confirm`.
 - **Zavihek »Zanimivosti« pozna dve obliki in nič več**
   (`komponente/ZanimivostiTekmovanja.tsx`, slog razdelek 15b): **zgodba** je
-  enkraten dogodek (presenečenje, obrat, najdaljši niz) v obliki mono oznaka →
+  enkraten dogodek (presenečenje, preobrat, najdaljši niz) v obliki mono oznaka →
   stavek z imeni → mono kontekst; **lestvička** je primerjava (vzpon rating, zid,
   klubi) in uporablja običajno `.vrstica`. Kartic s številkami tu ni.
   - Imena so **brez glagolov** (»A proti B«, ne »A je premagal B«): zapisnik
@@ -1070,10 +1077,13 @@
     na lestvici.
   - **Iskanje po imenu** (lestvica, turnirji, lige) teče skozi
     `komponente/IskanjeSeznama.tsx`: na namizju polje v naslovni vrstici
-    seznama ob števcu, na telefonu preklopnik »Išči« v lepljivi glavi, ki
-    odpre pas pod črto (ostala dejanja glave gredo skozi `dejanja` v isti
-    portal, da se vrstni red gumbov ne premeša). Iskanje zoži seznam **pred**
-    filtri. Turnirji iščejo po imenu, lige po imenu in sezoni.
+    seznama ob števcu, na telefonu preklopnik »Išči« skrajno desno v vrsti
+    naslova strani (`.naslov-mobi__vrsta--iskanje`), ki odpre pas pod črto
+    lepljive glave (tam ostane, da polje med drsenjem ne uide). Dejanja
+    urejevalca (»+ Turnir«) stran vloži v glavo sama skozi `GlavaDejanja`.
+    Vstopni seznami na telefonu **nadnaslova nimajo** (»Tekmovanja«,
+    »Turnirko rating« … so odšli septembra 2026). Iskanje zoži seznam
+    **pred** filtri. Turnirji iščejo po imenu, lige po imenu in sezoni.
   - **Turnir sezone nima kot polje**; izpelje jo `sezonaIzDatuma`
     (`pomozno/oblikovanje.ts`) z rezom 1. julija. Uvožena zgodovina se začne
     najprej sredi septembra in konča najkasneje sredi junija, zato skozi rez
@@ -1084,11 +1094,17 @@
     obračunanih tekem in skali nista primerljivi. V oknu z merili stoji kot
     `IzbiraEne` (podaja jo stran prek `KrmilaSeznama vOknu`): vedno je
     izbrana natanko ena vrednost, »Počisti« je ne odnese, med žetoni je ni —
-    izbrana lestvica se zato izpiše ob naslovu (»Moški · 1234 igralcev«).
-    Segmentiranih pasov nad tabelo ni več. **Kategorija** je navaden filter
-    z natanko temi vrednostmi: U11, U13, U15, U17, U19, U21, Člani,
-    Rekreativci — izpelje se iz `starostniPas` (veterani so člani), rekreativec
-    pa je v svoji kategoriji ne glede na starost. Razvrstitve po priimku na
+    izbrana lestvica se zato izpiše ob naslovu (»Moški · Člani · 1234
+    igralcev«). Segmentiranih pasov nad tabelo ni več. **Kategorija je prav
+    tako `IzbiraEne`, ne filter**, ker so kategorije **vgnezdene**: Člani so
+    vsi razen rekreativcev (privzeto), U21 vsi razen članov in rekreativcev,
+    U19 še brez U21 … do U11; Rekreativci so samo rekreativci ne glede na
+    starost. Igralec bi imel v skupini več vrednosti hkrati, česar
+    `SkupinaFiltra` ne pozna. Izpelje se iz `starostniPas` (veterani in
+    igralci brez letnice so samo med člani). Števci kategorij in spola so
+    navzkrižni (iskanje, klub, druga izbira). Na telefonu je kategorija naslov
+    seznama namesto podvojenega »Lestvica«, števec pa »Moški · 110 od 121« —
+    vse v enem števcu se pri 375 px odreže. Razvrstitve po priimku na
     lestvici ni. **Prikazani seznam se vedno oštevilči od 1 naprej** — številka
     pove mesto v tem, kar gledalec gleda, ne v celi lestvici. Filter »U19«,
     ki se je začel pri 35., se je bral kot izsek sredine, koliko mladincev je
@@ -1161,7 +1177,8 @@
     devetimi ligami bi jih naštel nekaj sto.
 - **Izbor spremljanih lig ureja `IzborLigOkno`, ne stran `/lige`.** Izbor je
   nastavitev domače strani in ne pot v ligo, zato »Uredi izbor« odpre okno —
-  gledalec ostane, kjer je, in takoj vidi, kaj se je spremenilo; na `/lige` je
+  gledalec ostane, kjer je, in takoj vidi, kaj se je spremenilo (gost izbora
+  nima, zato mu isti napis odpre `PrijavaOkno` na zavihku »Nov račun«); na `/lige` je
   vsaka vrstica povezava v ligo in preklopa ne more nositi. Okno mora zdržati
   **stotine lig** (uvožene sezone), zato: spremljane so v svoji skupini na
   vrhu in tam **obstanejo, dokler je okno odprto** (posnetek ob odprtju — sicer

@@ -11,8 +11,9 @@
    Vrstice s sezono in števci pod mastheadom namenoma ni: stran naj se začne z
    vsebino, ne s povzetkom o sebi. Vse je bralno in vidno tudi gostom;
    spremljanje lig je edino dejanje in zahteva prijavo — gostu zato krmil
-   računa (kvadratki, filtri lestvice, poziv k prijavi) sploh ne pokažemo,
-   namesto da bi jih pokazali in ob kliku zahtevali prijavo. */
+   računa (kvadratki, filtri lestvice) sploh ne pokažemo, namesto da bi jih
+   pokazali in ob kliku zahtevali prijavo. Izjema je »Uredi izbor« ob ligah:
+   ena mono povezava, ki gostu odpre okno za nov račun. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -24,6 +25,7 @@ import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { KoledarSklop } from '../komponente/KoledarSklop'
 import { DomaceLigeOkno, IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { PrijavaOkno } from '../komponente/PrijavaOkno'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { oblikujDanKratekMesec, oblikujDatum, sklonIgralcev } from '../pomozno/oblikovanje'
@@ -41,6 +43,7 @@ export function DomacaStran() {
   const [filter, nastaviFilter] = useState<FilterLestvice>('vsi')
   const [izborOdprt, nastaviIzborOdprt] = useState(false)
   const [domaceOdprt, nastaviDomaceOdprt] = useState(false)
+  const [registracijaOdprta, nastaviRegistracijaOdprta] = useState(false)
 
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
   const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
@@ -63,7 +66,8 @@ export function DomacaStran() {
     queryFn: () => domovApi.lige(izbraneRacuna, ogledane),
   })
 
-  /* Vrstni red na domači strani je vrstni red dogajanja: kar teče, je zgoraj. */
+  /* Najnovejši turnir je zgoraj — isti vrstni red kot privzeti »Najnovejši«
+     na /turnirji, da sklop ostane začetek seznama, v katerega vodi »Vsi →«. */
   const prikazaniTurnirji = useMemo(() => razvrstiTurnirje(turnirji.data), [turnirji.data])
 
   const mojaVrstica = lestvica.data?.find((v) => v.idIgralca === mojIdIgralec) ?? null
@@ -114,16 +118,18 @@ export function DomacaStran() {
             <div className="naslovna-vrstica__desno">
               {/* Izbor je nastavitev domače strani, zato okno in ne pot na
                   /lige — tam vrstica lige vodi v ligo in preklopa ne nosi.
-                  Gost izbora nima, zato zanj gumba ni. */}
-              {jePrijavljen && (
-                <button
-                  type="button"
-                  className="sekcija__meta"
-                  onClick={() => nastaviIzborOdprt(true)}
-                >
-                  Uredi izbor →
-                </button>
-              )}
+                  Izbor je last računa, zato gost na istem mestu dobi okno za
+                  nov račun: napis mu pove, kaj račun prinese, namesto da bi
+                  gumb skrili in bi za možnost sploh ne vedel. */}
+              <button
+                type="button"
+                className="sekcija__meta"
+                onClick={() =>
+                  jePrijavljen ? nastaviIzborOdprt(true) : nastaviRegistracijaOdprta(true)
+                }
+              >
+                Uredi izbor →
+              </button>
               {/* Kaj stoji tu privzeto, je uredniška odločitev zveze in ne
                   osebna nastavitev — zato svoje okno in samo za admina. */}
               {jeAdmin && (
@@ -198,6 +204,12 @@ export function DomacaStran() {
       </div>
 
       {izborOdprt && <IzborLigOkno onZapri={() => nastaviIzborOdprt(false)} />}
+      {registracijaOdprta && (
+        <PrijavaOkno
+          zacetniNacin="registracija"
+          onZapri={() => nastaviRegistracijaOdprta(false)}
+        />
+      )}
       {domaceOdprt && <DomaceLigeOkno onZapri={() => nastaviDomaceOdprt(false)} />}
     </section>
   )
@@ -205,12 +217,16 @@ export function DomacaStran() {
 
 /* ---------- Turnirji ---------- */
 
-/* V teku najprej, nato priprava, na koncu zaključeni. */
-const VRSTNI_RED_STATUSA = { V_TEKU: 0, PRIPRAVA: 1, ZAKLJUCEN: 2 }
-
+/* Po datumu začetka navzdol, ne po id: uvožena zgodovina je vnesena isti dan
+   in id bi jo razvrstil naključno. Turnir brez datuma gre na konec (pravilo
+   poDatumu v TurnirjiStran): datum manjka, ker ga organizator še ni vpisal. */
 function razvrstiTurnirje(turnirji: TurnirDto[] | undefined): TurnirDto[] {
   return [...(turnirji ?? [])]
-    .sort((a, b) => VRSTNI_RED_STATUSA[a.status] - VRSTNI_RED_STATUSA[b.status] || b.id - a.id)
+    .sort((a, b) => {
+      if (!a.datumZacetka) return b.datumZacetka ? 1 : 0
+      if (!b.datumZacetka) return -1
+      return b.datumZacetka.localeCompare(a.datumZacetka) || a.ime.localeCompare(b.ime, 'sl')
+    })
     .slice(0, TURNIRJEV)
 }
 

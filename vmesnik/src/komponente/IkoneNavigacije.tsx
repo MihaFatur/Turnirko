@@ -3,7 +3,8 @@
    Namerna izjema od hišnega pravila »edina ikona v vmesniku je logotip«
    (DESIGN.md, razdelek 5, točka 9), omejena SAMO na spodnjo vrstico: pas je
    ozek, palec ga bere v pol sekunde, pet mono oznak pa je pri 390 px že
-   stiskalo »LESTVICA« na rob stolpca. Nikjer drugje (glava, gumbi, meniji,
+   stiskalo »LESTVICA« na rob stolpca. Pod ikono stoji drobna oznaka v Karli
+   (glej .spodnja-vrstica__oznaka). Nikjer drugje (glava, gumbi, meniji,
    predal »Več«) ikon ni.
 
    Poti so iz zbirke Lucide (ISC licenca), nespremenjene; prilagojena je le

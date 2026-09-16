@@ -17,7 +17,7 @@ import type {
   StranEkipe,
   TekmaSrecanjaDto,
 } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_VIR, izidNizov, nizovZaZmago } from '../api/tipi'
+import { OZNAKE_FORMAT, izidNizov, nizovZaZmago } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
@@ -95,7 +95,6 @@ export function SrecanjeStran() {
         <p className="uvod uvod--tesno">
           {[k.tekmovanje, k.sezona, k.dogodek].filter(Boolean).join(' · ')}
         </p>
-        {k.vir && <span className="oznaka-vira">{OZNAKE_VIR[k.vir]} · uvoženo, samo za branje</span>}
 
         {/* Maketa nad semaforjem nima naslova, dokument pa mora imeti ime -
             sicer bralnik zaslona strani ne zna poimenovati. */}

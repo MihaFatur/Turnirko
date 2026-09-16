@@ -11,12 +11,12 @@
    istih podatkov, izpis "ni podatka" pa je slabsi od odsotnosti vrstice.
 
    Kaj je turnirsko in kaj ligasko:
-     - skupno: stevilke, vzponi, presenecenje, zid, delavci, klubi, obrat,
+     - skupno: stevilke, vzponi, presenecenje, zid, delavci, klubi, preobrati,
        najdaljsi niz, najdaljsa tekma, dvojica;
      - samo turnir: prvi naslovi (1. mesto v karieri);
      - samo liga: srecanje na noz, najboljsi gostje, nosilci ekip.
 
-   DVOJICE: v vrstice o posamezniku (vzponi, presenecenje, zid, obrat,
+   DVOJICE: v vrstice o posamezniku (vzponi, presenecenje, zid, preobrati,
    najdaljsi niz/tekma, klubi) ne vstopajo - izida para ni mogoce pripisati
    posamezniku, isto pravilo kot pri ratingu. Stejejo samo v "V stevilkah" in v
    svojo vrstico. */
@@ -39,7 +39,8 @@ public record StatistikaTekmovanjaDto(
         List<Zid> zid,
         List<Delavec> delavci,
         List<KlubVrstica> klubi,
-        Obrat obrat,
+        /* Vsi preobrati, najbolj borben prvi; prazen seznam, kadar jih ni. */
+        List<Obrat> obrati,
         NajdaljsiNiz najdaljsiNiz,
         NajdaljsaTekma najdaljsaTekma,
         List<PrviNaslov> prviNaslovi,
@@ -93,15 +94,13 @@ public record StatistikaTekmovanjaDto(
 
     public record KlubVrstica(String ime, int zmage, int odigrane, int igralcev) {}
 
-    /* Tekma, dobljena po zaostanku 0 : 2 v nizih. "koliko" je stevilo vseh
-       takih tekem na tekmovanju - ena vrstica pokaze najbolj borbeno. */
+    /* Preobrat: tekma, dobljena po zaostanku 0 : 2 v nizih. */
     public record Obrat(
             Oseba zmagovalec,
             Oseba porazenec,
             String izid,
             String nizi,
-            String kontekst,
-            int koliko
+            String kontekst
     ) {}
 
     /* Niz z najvec skupnimi tockami (npr. 18 : 16). "prvi" je tisti, ki je

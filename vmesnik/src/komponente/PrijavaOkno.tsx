@@ -164,6 +164,18 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
 
   return (
     <form className="obrazec" onSubmit={obOddaji}>
+      {/* Ime in priimek sta prva: to vpiše vsak, ne glede na vlogo. */}
+      <div className="obrazec__vrstica obrazec__vrstica--par">
+        <label className="obrazec__polje">
+          <span>Ime *</span>
+          <input value={ime} onChange={(d) => nastaviIme(d.target.value)} required />
+        </label>
+        <label className="obrazec__polje">
+          <span>Priimek *</span>
+          <input value={priimek} onChange={(d) => nastaviPriimek(d.target.value)} required />
+        </label>
+      </div>
+
       {/* Vloga je navadno polje obrazca, ne zavihek: zavihki obljubljajo
           preklop med dvema pogledoma, tu pa gre za en sam vnos, ki potuje na
           streznik skupaj z ostalimi. Igralec vidi svoj profil, organizator
@@ -179,22 +191,15 @@ function RegistracijaObrazec({ onNazaj }: { onNazaj: () => void }) {
         </select>
       </label>
 
-      <p className="modal__podnaslov">
-        {organizator
-          ? 'Registracija organizatorja (klub oz. oseba, ki vodi tekmovanja). Vpiši kontaktno ime in klub, ki ga zastopaš; administrator ti po potrditvi dodeli vlogo in klub.'
-          : 'Vpiši svoje ime, priimek in klub, da te administrator lahko poveže s pravim zapisom igralca. Dostop do profila dobiš po njegovi potrditvi.'}
-      </p>
-
-      <div className="obrazec__vrstica">
-        <label className="obrazec__polje">
-          <span>Ime *</span>
-          <input value={ime} onChange={(d) => nastaviIme(d.target.value)} required />
-        </label>
-        <label className="obrazec__polje">
-          <span>Priimek *</span>
-          <input value={priimek} onChange={(d) => nastaviPriimek(d.target.value)} required />
-        </label>
-      </div>
+      {/* Pojasnilo ostane samo organizatorju: njegova vloga ni samoumevna,
+          igralcu pa polja sama povedo dovolj. */}
+      {organizator && (
+        <p className="modal__podnaslov">
+          Registracija organizatorja (klub oz. oseba, ki vodi tekmovanja). Vpiši
+          kontaktno ime in klub, ki ga zastopaš; administrator ti po potrditvi dodeli
+          vlogo in klub.
+        </p>
+      )}
 
       <IzbirnikKluba
         oznaka={organizator ? 'Klub, ki ga zastopaš' : 'Klub'}

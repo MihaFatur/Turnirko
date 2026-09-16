@@ -11,13 +11,13 @@
      nimajo istih podatkov; »ni podatka« je slabše od odsotnosti vrstice.
      Zato je vsak sklop pogojen in ne pokaže ničle.
    - **Zgodba je blok, lestvička je vrstica.** Enkratni dogodki (presenečenje,
-     obrat, najdaljši niz) so trditve in imajo obliko oznaka → stavek → mono
+     preobrat, najdaljši niz) so trditve in imajo obliko oznaka → stavek → mono
      kontekst; primerjave (vzpon ratinga, zid, klubi) so vrstice s črtami kot
      povsod drugod. Nikoli mreža kartic s številkami.
 
    Imena so brez glagolov (»A proti B« in ne »A je premagal B«) — zapisnik
    nikogar ne sklanja po spolu, tekmo pa opiše izid. */
-import type { ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import type {
@@ -25,6 +25,7 @@ import type {
   StatGostovanje,
   StatKlub,
   StatNosilec,
+  StatObrat,
   StatOseba,
   StatVzpon,
   StatZid,
@@ -33,6 +34,7 @@ import type {
 import {
   oblikujStevilo,
   sklonIgralcev,
+  sklonPreobratov,
   sklonTekem,
   sklonTock,
   sklonZmag,
@@ -55,7 +57,12 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
   }
 
   const imaZgodbe =
-    s.presenecenje || s.obrat || s.najdaljsaTekma || s.najdaljsiNiz || s.naNoz || s.dvojica
+    s.presenecenje
+    || s.obrati.length > 0
+    || s.najdaljsaTekma
+    || s.najdaljsiNiz
+    || s.naNoz
+    || s.dvojica
 
   return (
     <div className="zanimivosti">
@@ -113,23 +120,7 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
             </Zgodba>
           )}
 
-          {s.obrat && (
-            <Zgodba
-              oznaka="Obrat"
-              stevec={
-                s.obrat.koliko > 1
-                  ? `${s.obrat.koliko} obratov na tekmovanju`
-                  : undefined
-              }
-              meta={[
-                `${s.obrat.izid} po zaostanku 0 : 2`,
-                s.obrat.nizi,
-                s.obrat.kontekst,
-              ]}
-            >
-              <Ime oseba={s.obrat.zmagovalec} /> <Proti /> <Ime oseba={s.obrat.porazenec} />
-            </Zgodba>
-          )}
+          {s.obrati.length > 0 && <Preobrati obrati={s.obrati} />}
 
           {s.najdaljsiNiz && (
             <Zgodba
@@ -234,7 +225,7 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
       )}
 
       {s.zid.length > 0 && (
-        <Lestvicka naslov="Zid" meta="Najmanj prejetih nizov">
+        <Lestvicka naslov="Zid" meta="Najmanj oddanih nizov">
           {s.zid.map((z: StatZid) => (
             <VrsticaZanimivosti
               key={z.oseba.idIgralec}
@@ -251,7 +242,7 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
       )}
 
       {s.delavci.length > 0 && (
-        <Lestvicka naslov="Največ tekem" meta="Kdo je bil največ za mizo">
+        <Lestvicka naslov="Največji garač" meta="Največ odigranih tekem">
           {s.delavci.map((d: StatDelavec) => (
             <VrsticaZanimivosti
               key={d.oseba.idIgralec}
@@ -268,7 +259,7 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
       )}
 
       {s.klubi.length > 0 && (
-        <Lestvicka naslov="Klubi" meta="Po zmagah v posamičnih tekmah">
+        <Lestvicka naslov="Klubi" meta="Posamične zmage njegovih igralcev">
           {s.klubi.map((k: StatKlub) => (
             <VrsticaZanimivosti
               key={k.ime}
@@ -324,28 +315,87 @@ function Kazalnik({ oznaka, vrednost }: { oznaka: string; vrednost: number }) {
 
 /* Enkraten dogodek: mono oznaka, stavek z imeni, mono kontekst pod njim.
    »stevec« pove, kolikokrat se je isto zgodilo — vrstica pokaže najboljši
-   primer, števec pa, da ni bil edini. */
+   primer, števec pa, da ni bil edini. Besedilo je samo podatek, gumb (pri
+   preobratih) pa pod zgodbo razpre še ostale primere (»dodatek«). */
 function Zgodba({
   oznaka,
   meta,
   stevec,
+  dodatek,
   children,
 }: {
   oznaka: string
   meta: string[]
-  stevec?: string
+  stevec?: ReactNode
+  dodatek?: ReactNode
   children: ReactNode
 }) {
   return (
     <div className="zanimivost">
       <div className="zanimivost__glava">
         <span className="zanimivost__oznaka">{oznaka}</span>
-        {stevec && <span className="zanimivost__stevec">{stevec}</span>}
+        {typeof stevec === 'string' ? (
+          <span className="zanimivost__stevec">{stevec}</span>
+        ) : (
+          stevec
+        )}
       </div>
       <p className="zanimivost__stavek">{children}</p>
       <p className="zanimivost__meta">{meta.filter(Boolean).join(' · ')}</p>
+      {dodatek}
     </div>
   )
+}
+
+/* Preobrat je zmaga po zaostanku 0 : 2. Zgodba pokaže najbolj borbenega
+   (strežnik jih pošlje po številu točk), števec »3 preobrati na tekmovanju«
+   pa je gumb, ki pod njim razpre še ostale — skupaj so tako na očeh vsi.
+   Ostali so vrstice in ne nove zgodbe: štirje enaki bloki zapored bi bili
+   ponavljanje (isto pravilo kot pri »Prvem naslovu«). */
+function Preobrati({ obrati }: { obrati: StatObrat[] }) {
+  const [odprto, nastaviOdprto] = useState(false)
+  const idSeznama = useId()
+  const [prvi, ...ostali] = obrati
+
+  return (
+    <Zgodba
+      oznaka="Preobrat"
+      stevec={
+        ostali.length > 0 ? (
+          <button
+            type="button"
+            className="zanimivost__stevec zanimivost__stevec--gumb"
+            aria-expanded={odprto}
+            aria-controls={idSeznama}
+            onClick={() => nastaviOdprto((o) => !o)}
+          >
+            {obrati.length} {sklonPreobratov(obrati.length)} na tekmovanju
+          </button>
+        ) : undefined
+      }
+      meta={metaPreobrata(prvi)}
+      dodatek={
+        ostali.length > 0 && (
+          <ul id={idSeznama} className="zanimivost__primeri" hidden={!odprto}>
+            {ostali.map((o, i) => (
+              <li key={i} className="zanimivost__primer">
+                <p className="zanimivost__primer-stavek">
+                  <Ime oseba={o.zmagovalec} /> <Proti /> <Ime oseba={o.porazenec} />
+                </p>
+                <p className="zanimivost__meta">{metaPreobrata(o).filter(Boolean).join(' · ')}</p>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    >
+      <Ime oseba={prvi.zmagovalec} /> <Proti /> <Ime oseba={prvi.porazenec} />
+    </Zgodba>
+  )
+}
+
+function metaPreobrata(o: StatObrat): string[] {
+  return [`${o.izid} po zaostanku 0 : 2`, o.nizi, o.kontekst]
 }
 
 /* Beseda »proti« nosi vlogo dvopičja v zapisniku: ne sklanja nikogar po

@@ -4,13 +4,13 @@
      - dvojice ne vstopajo v vrstice o posamezniku (stejejo le v "V stevilkah"
        in v svojo vrstico),
      - vrstica, ki je podatki ne napolnijo, je odsotna in ne nicelna (liga brez
-       vpisanih tock po nizih nima ne obrata ne najdaljsega niza),
+       vpisanih tock po nizih nima ne preobrata ne najdaljsega niza),
      - pod pragom odigranih tekem zavihka sploh ni,
      - "srecanje na noz" je res tisto, ki ga je odlocila zadnja tekma, in ne
        vsako tesno srecanje.
 
    Turnirski del je krozni dogodek sestih igralcev (15 tekem), kjer izidi
-   sledijo jakosti - z eno samo izjemo, ki je hkrati presenecenje, obrat,
+   sledijo jakosti - z eno samo izjemo, ki je hkrati presenecenje, preobrat,
    najdaljsi niz in najdaljsa tekma. Tako je vsaka trditev preverljiva na
    roke. */
 package si.turnirko.storitve;
@@ -117,11 +117,10 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
                 s.presenecenje().razlika());
         assertEquals("3 : 2", s.presenecenje().izid());
 
-        // --- Obrat: edina tekma, dobljena po zaostanku 0 : 2 ---
-        assertNotNull(s.obrat());
-        assertEquals(1, s.obrat().koliko());
-        assertEquals(najsibkejsi.getId(), s.obrat().zmagovalec().idIgralec());
-        assertEquals("8:11, 9:11, 11:9, 15:13, 11:6", s.obrat().nizi());
+        // --- Preobrat: edina tekma, dobljena po zaostanku 0 : 2 ---
+        assertEquals(1, s.obrati().size());
+        assertEquals(najsibkejsi.getId(), s.obrati().get(0).zmagovalec().idIgralec());
+        assertEquals("8:11, 9:11, 11:9, 15:13, 11:6", s.obrati().get(0).nizi());
 
         // --- Najdaljsi niz in najdaljsa tekma ---
         assertNotNull(s.najdaljsiNiz());
@@ -206,6 +205,31 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
                 .prviNaslovi().size(), "na prvem turnirju je bil naslov prvi");
     }
 
+    /* Preobratov je lahko vec in vmesnik jih na klik razpre vse - zato pridejo
+       vsi, najbolj borben (najvec odigranih tock) prvi. */
+    @Test
+    void vsiPreobratiNajboljBorbenPrvi() {
+        Dogodek dogodek = kroznoSestih();
+        List<Igralec> poJakosti = poJakosti(dogodek);
+        List<int[]> kratek = List.of(
+                new int[] {5, 11}, new int[] {6, 11}, new int[] {11, 5},
+                new int[] {11, 6}, new int[] {11, 7});
+        odigraj(dogodek, poJakosti, List.of(
+                new Izjema(1, 4, kratek),
+                new Izjema(0, 5, TOCKE_PRESENECENJA)));
+
+        StatistikaTekmovanjaDto s =
+                statistikaTekmovanjaStoritev.zaTurnir(dogodek.getTurnir().getId());
+
+        assertEquals(2, s.obrati().size());
+        assertEquals(poJakosti.get(5).getId(), s.obrati().get(0).zmagovalec().idIgralec(),
+                "104 tock je vec kot 84");
+        assertEquals(poJakosti.get(4).getId(), s.obrati().get(1).zmagovalec().idIgralec());
+        assertEquals(poJakosti.get(1).getId(), s.obrati().get(1).porazenec().idIgralec());
+        assertEquals("5:11, 6:11, 11:5, 11:6, 11:7", s.obrati().get(1).nizi());
+        assertEquals("3 : 2", s.obrati().get(1).izid());
+    }
+
     /* Pod pragom odigranih tekem zavihka ni - in ni prazen, ampak ga ni. */
     @Test
     void podPragomZavihkaNi() {
@@ -275,8 +299,8 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         assertNull(s.stevilke().dogodkov(), "liga dogodkov nima");
         assertNull(s.stevilke().tock(), "tock po nizih nihce ni vpisal");
 
-        // --- Brez tock ni ne obrata ne najdaljsega niza; vrstic preprosto ni ---
-        assertNull(s.obrat());
+        // --- Brez tock ni ne preobrata ne najdaljsega niza; vrstic preprosto ni ---
+        assertTrue(s.obrati().isEmpty());
         assertNull(s.najdaljsiNiz());
         assertNull(s.najdaljsaTekma());
 
@@ -358,10 +382,18 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         return dogodek;
     }
 
+    /* Dvoboj, ki ga sibkejsi (visji indeks) dobi 3 : 2 po zaostanku 0 : 2;
+       tocke nizov so z vidika zmagovalca. */
+    private record Izjema(int mocnejsi, int sibkejsi, List<int[]> tocke) {}
+
     /* Odigra vseh 15 tekem: mocnejsi (nizji indeks v poJakosti) zmaga 3 : 0,
        edina izjema je dvoboj najmocnejsega z najsibkejsim - tam najsibkejsi
        zmaga 3 : 2 po zaostanku 0 : 2. */
     private void odigraj(Dogodek dogodek, List<Igralec> poJakosti) {
+        odigraj(dogodek, poJakosti, List.of(new Izjema(0, 5, TOCKE_PRESENECENJA)));
+    }
+
+    private void odigraj(Dogodek dogodek, List<Igralec> poJakosti, List<Izjema> izjeme) {
         Map<Long, Integer> mesta = new HashMap<>();
         for (Prijava p : prijavaRepozitorij.najdiZaDogodek(dogodek.getId())) {
             mesta.put(p.getId(), poJakosti.indexOf(p.getIgralec()));
@@ -370,25 +402,28 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         for (Tekma t : tekmeDogodka(dogodek.getId())) {
             int prvi = mesta.get(t.getPrijava1().getId());
             int drugi = mesta.get(t.getPrijava2().getId());
-            boolean presenecenje = Math.min(prvi, drugi) == 0 && Math.max(prvi, drugi) == 5;
-            if (!presenecenje) {
+            Izjema izjema = izjeme.stream()
+                    .filter(i -> Math.min(prvi, drugi) == i.mocnejsi()
+                            && Math.max(prvi, drugi) == i.sibkejsi())
+                    .findFirst().orElse(null);
+            if (izjema == null) {
                 boolean prviMocnejsi = prvi < drugi;
                 tekmaStoritev.vnesiRezultat(t.getId(), new VnosRezultata(
                         null, prviMocnejsi ? 3 : 0, prviMocnejsi ? 0 : 3, null, null));
                 continue;
             }
-            boolean prviJeSibkejsi = prvi == 5;
+            boolean prviJeSibkejsi = prvi == izjema.sibkejsi();
             tekmaStoritev.vnesiRezultat(t.getId(), new VnosRezultata(
                     null, prviJeSibkejsi ? 3 : 2, prviJeSibkejsi ? 2 : 3, null,
-                    tockeZaStran(prviJeSibkejsi)));
+                    tockeZaStran(izjema.tocke(), prviJeSibkejsi)));
         }
     }
 
-    /* Tocke presenecenja z vidika prijave 1: ce je tam zmagovalec, gredo
-       naravnost, sicer obrnjeno. */
-    private static List<NizVnos> tockeZaStran(boolean zmagovalecJePrvi) {
+    /* Tocke nizov z vidika prijave 1: ce je tam zmagovalec, gredo naravnost,
+       sicer obrnjeno. */
+    private static List<NizVnos> tockeZaStran(List<int[]> tocke, boolean zmagovalecJePrvi) {
         List<NizVnos> nizi = new ArrayList<>();
-        for (int[] niz : TOCKE_PRESENECENJA) {
+        for (int[] niz : tocke) {
             nizi.add(zmagovalecJePrvi ? new NizVnos(niz[0], niz[1]) : new NizVnos(niz[1], niz[0]));
         }
         return nizi;

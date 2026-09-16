@@ -49,7 +49,6 @@ import {
   OZNAKE_SPOL_KATEGORIJA,
   OZNAKE_STAROSTNI_PAS,
   OZNAKE_STATUS_PRIJAVE,
-  OZNAKE_VIR,
   VRSTNI_RED_STAROSTNIH_PASOV,
   igralcevFormata,
   imePrijave,
@@ -250,9 +249,6 @@ export function DogodekStran() {
         naKlik: (t) => (vnosRezultata(t) ? nastaviIzbranoTekmo(t) : nastaviTekmoZNizi(t)),
         namig: (t) => (vnosRezultata(t) ? 'Klikni za vnos rezultata' : 'Pokaži točke po nizih'),
       }
-  const oznakaVira = dogodek.vir && (
-    <span className="oznaka-vira">{OZNAKE_VIR[dogodek.vir]} · uvoženo, samo za branje</span>
-  )
 
   return (
     <section>
@@ -318,7 +314,6 @@ export function DogodekStran() {
               <p className="naslov-mobi__meta naslov-mobi__meta--tesno">{lastnosti}</p>
             </div>
           </GlavaNaslov>
-          {oznakaVira}
         </>
       ) : (
         <>
@@ -331,7 +326,6 @@ export function DogodekStran() {
             <div>
               <h1 className="naslov-strani naslov-strani--enovrsticni">{dogodek.ime}</h1>
               <p className="uvod">{lastnosti}</p>
-              {oznakaVira}
             </div>
             <div className="naslovna-vrstica__desno">
               {smem && dogodek.status === 'V_TEKU' && !ekipno && (

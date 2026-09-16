@@ -27,7 +27,6 @@ import {
   OZNAKE_SISTEM_KRATKO,
   OZNAKE_SISTEM_MOBI,
   OZNAKE_SPOL_KATEGORIJA,
-  OZNAKE_VIR,
   RAZPORED_FORMATA,
   kategorijeZaDisciplino,
 } from '../api/tipi'
@@ -253,7 +252,6 @@ export function TurnirStran() {
 
         <div>
           <div className="naslov-mobi__vrsta">
-            <span className="naslov-mobi__nad">Turnir</span>
             <ZnackaVNaslovu status={podatki.status} />
           </div>
           <h1 className="naslov-mobi naslov-mobi--podstran">{podatki.ime}</h1>
@@ -262,9 +260,6 @@ export function TurnirStran() {
               .filter(Boolean)
               .join(' · ') || 'kraj in datum še nista določena'}
           </p>
-          {podatki.vir && (
-            <span className="oznaka-vira">{OZNAKE_VIR[podatki.vir]} · uvoženo, samo za branje</span>
-          )}
           {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
         </div>
 
@@ -306,10 +301,7 @@ export function TurnirStran() {
 
             <NapakaPoizvedbe poizvedba={dogodki} kaj="dogodkov" />
             {dogodki.data && dogodki.data.length === 0 && (
-              <p className="obvestilo">
-                Turnir še nima dogodkov. Dogodek je eno tekmovanje — npr. »Člani« ali
-                »Članice do 21 let«. Igralci se prijavljajo na posamezen dogodek.
-              </p>
+              <p className="obvestilo">Turnir še nima dogodkov.</p>
             )}
 
             {dogodki.data && dogodki.data.length > 0 && (
@@ -334,7 +326,6 @@ export function TurnirStran() {
       <div className="stran-glava">
         <div>
           <h1 className="naslov-strani naslov-strani--podstran">
-            <span className="naslov-strani__nad">Turnir</span>
             <span className="naslov-strani__glavni">{podatki.ime}</span>
           </h1>
           <p className="uvod">
@@ -342,9 +333,6 @@ export function TurnirStran() {
               .filter(Boolean)
               .join(' · ') || 'kraj in datum še nista določena'}
           </p>
-          {podatki.vir && (
-            <span className="oznaka-vira">{OZNAKE_VIR[podatki.vir]} · uvoženo, samo za branje</span>
-          )}
           {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
         </div>
         <div>
@@ -415,10 +403,7 @@ export function TurnirStran() {
 
         <NapakaPoizvedbe poizvedba={dogodki} kaj="dogodkov" />
         {dogodki.data && dogodki.data.length === 0 && (
-          <p className="obvestilo">
-            Turnir še nima dogodkov. Dogodek je eno tekmovanje — npr. »Člani« ali
-            »Članice do 21 let«. Igralci se prijavljajo na posamezen dogodek.
-          </p>
+          <p className="obvestilo">Turnir še nima dogodkov.</p>
         )}
 
         {dogodki.data && dogodki.data.length > 0 && (
@@ -464,14 +449,6 @@ export function TurnirStran() {
             </div>
           </>
         )}
-
-        {/* Ko dogodkov ni, isto pojasnilo stoji ze v praznem stanju zgoraj. */}
-        {dogodki.data && dogodki.data.length > 0 && (
-          <p className="namig">
-            Dogodek je eno tekmovanje — npr. »Člani« ali »Članice do 21 let«. Igralci se
-            prijavljajo na posamezen dogodek.
-          </p>
-        )}
       </div>
 
       {okna}
@@ -480,9 +457,7 @@ export function TurnirStran() {
 }
 
 /* Vrstica kategorije na telefonu (~72 px): ime in ena mono vrstica
-   "sistem · prijave · odigranost". Namig "Dogodek je eno tekmovanje ..." tu
-   ne stoji - pri petih kategorijah bi zasedel prostor ene od njih; na
-   namizju ostane. */
+   "sistem · prijave · odigranost". */
 function VrsticaKategorije({ dogodek }: { dogodek: DogodekDto }) {
   const meta = [
     dogodek.disciplina === 'DVOJICE'

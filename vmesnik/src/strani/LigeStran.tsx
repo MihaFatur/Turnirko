@@ -42,6 +42,7 @@ import {
   type Razvrstitev,
   type SkupinaFiltra,
 } from '../komponente/Filtri'
+import { GlavaDejanja } from '../komponente/GlavaTelefona'
 import { IskalnikSeznama, IskanjeTelefona } from '../komponente/IskanjeSeznama'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
@@ -179,26 +180,23 @@ export function LigeStran() {
       <section>
         {/* Dejanje urejevalca stoji v lepljivi glavi in ne nad seznamom:
             gledalec pride po lige, ne po gumb. */}
-        <IskanjeTelefona
-          iskanje={iskanje}
-          naIskanje={nastaviIskanje}
-          poCem={ISKANJE_PO}
-          dejanja={
-            smeUstvarjati && (
-              <button
-                type="button"
-                className="glava-telefon__gumb"
-                onClick={() => nastaviOdprtObrazec(true)}
-              >
-                + Liga
-              </button>
-            )
-          }
-        />
+        {smeUstvarjati && (
+          <GlavaDejanja>
+            <button
+              type="button"
+              className="glava-telefon__gumb"
+              onClick={() => nastaviOdprtObrazec(true)}
+            >
+              + Liga
+            </button>
+          </GlavaDejanja>
+        )}
 
         <div>
-          <span className="naslov-mobi__nad">Ekipna tekmovanja</span>
-          <h1 className="naslov-mobi naslov-mobi--seznam">Lige</h1>
+          <div className="naslov-mobi__vrsta naslov-mobi__vrsta--iskanje">
+            <h1 className="naslov-mobi naslov-mobi--seznam">Lige</h1>
+            <IskanjeTelefona iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
+          </div>
 
           {vse.length > 0 && krmila}
         </div>
@@ -252,26 +250,30 @@ export function LigeStran() {
   return (
     <section>
       {/* Glave strani (nadnaslov, naslov, uvod) ni: kje smo, pove navigacija,
-          in seznam se sme začeti z vsebino. Ostane le dejanje urejevalca. */}
-      {smeUstvarjati && (
-        <div className="stran-dejanja">
-          <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
-            + Nova liga
-          </button>
-        </div>
-      )}
-
+          in seznam se sme začeti z vsebino. */}
       <div>
         <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
           <h2>Vse lige</h2>
-          {vse.length > 0 && (
+          {/* Dejanje urejevalca stoji skrajno desno v naslovni vrstici seznama,
+              ki ga ustvarja (isto kot pri turnirjih). Izriše se tudi ob praznem
+              seznamu, ker je takrat edina pot naprej. */}
+          {(vse.length > 0 || smeUstvarjati) && (
             <div className="naslovna-vrstica__desno">
-              <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
-              <span className="sekcija__meta">
-                {prikazane.length === vse.length
-                  ? `${vse.length} ${ligTekst(vse.length)}`
-                  : `Prikazanih ${prikazane.length} od ${vse.length}`}
-              </span>
+              {vse.length > 0 && (
+                <>
+                  <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
+                  <span className="sekcija__meta">
+                    {prikazane.length === vse.length
+                      ? `${vse.length} ${ligTekst(vse.length)}`
+                      : `Prikazanih ${prikazane.length} od ${vse.length}`}
+                  </span>
+                </>
+              )}
+              {smeUstvarjati && (
+                <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
+                  + Nova liga
+                </button>
+              )}
             </div>
           )}
         </div>

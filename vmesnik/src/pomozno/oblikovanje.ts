@@ -211,6 +211,10 @@ export function sklonPorazov(n: number): string {
   return sklon(n, 'poraz', 'poraza', 'porazi', 'porazov')
 }
 
+export function sklonPreobratov(n: number): string {
+  return sklon(n, 'preobrat', 'preobrata', 'preobrati', 'preobratov')
+}
+
 export function sklonTock(n: number): string {
   return sklon(n, 'točka', 'točki', 'točke', 'točk')
 }

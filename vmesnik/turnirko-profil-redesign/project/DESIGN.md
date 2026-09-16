@@ -293,10 +293,12 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
 9. **Ikone, ki nadomeščajo besedo.** Edina ikona v vsebini vmesnika je logotip.
    Namesto ikone uporabi besedo ali mono oznako.
    *Edina odobrena izjema: spodnja navigacijska vrstica na telefonu*
-   (`.spodnja-vrstica`, ≤ 640 px). Tam so postavke ikone brez oznak — pet mono
-   besed je pri 390 px zaseglo cel stolpec, ikona pa je v pasu, ki ga palec
-   bere v pol sekunde, hitrejša od branja. Oznake ostanejo v drevesu
-   (`.samo-za-bralnik`). Ikone so iz zbirke Lucide, 22 px, poteza 1.75,
+   (`.spodnja-vrstica`, ≤ 640 px). Tam so postavke ikone z drobno oznako pod
+   njo (»Domača stran«, »Turnirji«, »Lige«, »Lestvica«, »Več«; Karla 600
+   11 px, ne mono — mono verzalke v stolpec pri petih postavkah ne gredo).
+   Samo pet mono besed je pri 390 px zaseglo cel stolpec, ikona pa je v pasu,
+   ki ga palec bere v pol sekunde, hitrejša od branja; oznaka pove, kam vodi.
+   Ikone so iz zbirke Lucide, 22 px, poteza 1.75,
    `currentColor`. Nikjer drugje — v glavi, gumbih, menijih, predalu »Več« —
    ikon ni.
 10. **`color: inherit` na obarvani podlagi** — barvo besedila zapiši izrecno.

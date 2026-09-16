@@ -300,7 +300,7 @@ public class StatistikaTekmovanjaStoritev {
                                             List<Gostovanje> gostje, List<Nosilec> nosilci) {
         if (nastopi.size() < PRAG_TEKEM) {
             return new StatistikaTekmovanjaDto(false, vTeku, stejeVElo, null,
-                    List.of(), null, List.of(), List.of(), List.of(), null, null, null,
+                    List.of(), null, List.of(), List.of(), List.of(), List.of(), null, null,
                     List.of(), null, List.of(), List.of(), null);
         }
         return new StatistikaTekmovanjaDto(
@@ -311,7 +311,7 @@ public class StatistikaTekmovanjaStoritev {
                 zid(nastopi),
                 delavci(nastopi),
                 klubi(nastopi),
-                obrat(nastopi),
+                obrati(nastopi),
                 najdaljsiNiz(nastopi),
                 najdaljsaTekma(nastopi),
                 prviNaslovi,
@@ -536,16 +536,16 @@ public class StatistikaTekmovanjaStoritev {
         igralci.computeIfAbsent(o.klub(), k -> new HashSet<>()).add(o.idIgralec());
     }
 
-    /* ---------- 7. Obrat ---------- */
+    /* ---------- 7. Preobrat ---------- */
 
-    /* Obrat je zmaga po izgubljenih PRVIH DVEH nizih. Merilo je zavestno
+    /* Preobrat je zmaga po izgubljenih PRVIH DVEH nizih. Merilo je zavestno
        preprosto (in tako, kot o tem ljudje govorijo); pri dveh dobljenih nizih
        na tri je nemogoc, zato vrstice pri kratkih tekmah preprosto ni.
-       Izmed vseh obratov pokazemo najbolj borbenega - tistega z najvec
-       odigranimi tockami. */
-    private static Obrat obrat(List<Nastop> nastopi) {
-        Nastop najboljsi = null;
-        int koliko = 0;
+       Vrnemo VSE preobrate, najbolj borbenega (z najvec odigranimi tockami)
+       prvega - vrstica pokaze njega, ostale gledalec razpre. Pri enakem
+       stevilu tock ostane vrstni red nastopov (razvrscanje je stabilno). */
+    private static List<Obrat> obrati(List<Nastop> nastopi) {
+        List<Nastop> najdeni = new ArrayList<>();
         for (Nastop n : nastopi) {
             if (!n.posamicno() || n.nizi().size() < 3) {
                 continue;
@@ -555,16 +555,13 @@ public class StatistikaTekmovanjaStoritev {
             if (prvi[0] >= prvi[1] || drugi[0] >= drugi[1]) {
                 continue;
             }
-            koliko++;
-            if (najboljsi == null || n.tock() > najboljsi.tock()) {
-                najboljsi = n;
-            }
+            najdeni.add(n);
         }
-        if (najboljsi == null) {
-            return null;
-        }
-        return new Obrat(najboljsi.zmagovalec(), najboljsi.porazenec(), najboljsi.izid(),
-                zapisNizov(najboljsi.nizi()), najboljsi.kontekst(), koliko);
+        najdeni.sort(Comparator.comparingInt(Nastop::tock).reversed());
+        return najdeni.stream()
+                .map(n -> new Obrat(n.zmagovalec(), n.porazenec(), n.izid(),
+                        zapisNizov(n.nizi()), n.kontekst()))
+                .toList();
     }
 
     /* ---------- 8. Najdaljsi niz in najdaljsa tekma ---------- */

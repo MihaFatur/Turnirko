@@ -246,18 +246,12 @@ export function GrafRatinga({
             </p>
           )}
 
-          {/* Od kod je številka prišla. Igralec, ki vidi »+27«, ima pravico
-              vedeti, kaj ga je premaknilo — in prav tu je edino mesto, kjer
-              so vse štiri sestavine hkrati znane. */}
-          {podrobnost && (
-            <p
-              className={
-                'graf__razlaga'
-                + (podrobnost.nacin === 'KORAK' ? '' : ' graf__razlaga--poved')
-              }
-            >
-              {razlaga(podrobnost)}
-            </p>
+          {/* Sprememba, ki ni nastala iz tekme po običajni poti (postavitev,
+              odbitek, uvrstitev), dobi pod točko poved — brez nje bi se
+              skok brez nasprotnika bral kot napaka. Navadna tekma razlage
+              nima. */}
+          {podrobnost && razlaga(podrobnost) && (
+            <p className="graf__razlaga">{razlaga(podrobnost)}</p>
           )}
         </>
       )}
@@ -281,11 +275,9 @@ function casTocke(t: TockaGrafa): string {
   return t.datum ?? t.kdaj
 }
 
-/* Razlaga spremembe v eni vrstici. Obrazec je zapisan tako, kot se bere:
-     +27 = K 64 × 1,37 (nizi) × 0,75 (klubsko) × (1 − 0,58)
-   Uvrstitev, postavitev, odbitek in zunanja uvrstitev obrazca koraka ne
-   uporabljajo, zato ima vsak svoj stavek - prazna vrstica bi bila slabša od
-   povedi. */
+/* Poved pod točko za spremembe, ki niso navaden korak po tekmi. Obrazca
+   koraka (K × nizi × teža × izid) pod grafom ni: gledalcu je bil šum,
+   sestavine pa ostanejo zapisane v dnevniku. */
 function razlaga(t: TockaGrafa): string {
   if (t.nacin === 'POSTAVITEV') {
     return 'Postavitev ratinga: vrednost je določil organizator, ni izračunana iz tekem.'
@@ -304,18 +296,7 @@ function razlaga(t: TockaGrafa): string {
       + (t.pojasnilo ? ` ${t.pojasnilo}` : '')
     )
   }
-  const r = t.razclenitev
-  if (!r) return ''
-  const znak = t.sprememba >= 0 ? '+' : '−'
-  return `${znak}${Math.abs(t.sprememba)} = K ${r.k}`
-    + ` × ${stevilo(r.margina)} (nizi)`
-    + (r.teza < 1 ? ` × ${stevilo(r.teza)} (teža tekmovanja)` : '')
-    + ` × (${r.tocke} − ${stevilo(r.pricakovano)})`
-}
-
-/* Dve decimalki z vejico - tako, kot se piše v slovenščini. */
-function stevilo(v: number): string {
-  return v.toFixed(2).replace('.', ',')
+  return ''
 }
 
 /* Isti zapis za nativni namig (<title>) in za bralnik zaslona. */
