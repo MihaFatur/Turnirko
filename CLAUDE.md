@@ -1018,6 +1018,15 @@
   ker se ime, velikost kadra in dva gumba v 390 px ne zložijo v eno vrsto.
   Oznaka pod imenom (`.liga__ekipa-oznaka`) se izpiše samo, kadar kaj pove:
   klub pri klubski ekipi z lastnim imenom, »prosta ekipa« pri prosti.
+- **Tema je vedno svetla** (odločitev lastnika, sep 2026): temne različice
+  spremenljivk v `slog.css` ni več, `:root` in `index.html` nosita
+  `color-scheme: only light`, ki prepreči tudi samodejno temnjenje brskalnika
+  (Chrome na Androidu, Samsung Internet). Temne teme ne vračaj.
+- **Dolgi seznami na telefonu** (`.seznam-mobi`, `.lestvica-mobi`) imajo na
+  vrsticah `content-visibility: auto`: vrstice pod robom se izrišejo šele
+  blizu zaslona, kar je ob preklopu v spodnji vrstici skrajšalo čas do
+  izrisa za ~40 % (4× upočasnjen procesor). V taki vrstici ne sme stati nič,
+  kar sega čez njen rob (predlogi comboboxa, meni) — porezalo bi se.
 - **Razlike med širinama nosi CSS, ne JS** — izjema so mesta, kjer se
   razlikuje *vsebina* (druga mera vrstice turnirja, zavihek »Tekme« pri
   krožnem sistemu, dejanja v glavi). Tam odloča `useTelefon()`.
@@ -1041,6 +1050,13 @@
     široki pogled svoj preklop dveh gumbov (`.liga__zavihki-namizje`,
     »Lestvica in razpored« ↔ »Zanimivosti«). Trije gumbi bi iz lestvice in
     razporeda naredili zavihka — to je zavestno drugače.
+  - **Telefon: zavihki lige v lepljivi glavi so Lestvica · Razpored ·
+    (Končnica) · Piramida lig · (Zanimivosti) · Pravila** (odločitev lastnika,
+    sep 2026). Piramida je svoj pogled (`MobilniPogled 'PIRAMIDA'`) in ne več
+    dno zavihka z lestvico; ponujena je **vsaki** ligi — samostojni pove, da
+    piramide ni (lastniku ponudi »Uredi prehode«). Štirje zavihki gredo brez
+    drsenja do 360 px (`.podnavigacija--enakomerna`: enake širine, a nikoli
+    ožji od oznake); šele s Končnico ali Zanimivostmi pas drsi.
 - **Filtriranje in razvrščanje seznamov teče skozi `komponente/Filtri.tsx`**
   (`useFiltri` + `KrmilaSeznama`) — turnirji, lige in lestvica. Nad seznamom
   stoji ena vrstica: gumb »Filtriraj«, ki odpre okno z **vsemi** merili, in ob
@@ -1075,10 +1091,13 @@
     odstraniti.
   - Izbor živi v stanju strani in **ne v naslovu** — isto pravilo kot iskanje
     na lestvici.
-  - **Iskanje po imenu** (lestvica, turnirji, lige) teče skozi
-    `komponente/IskanjeSeznama.tsx`: na namizju polje v naslovni vrstici
-    seznama ob števcu, na telefonu preklopnik »Išči« skrajno desno v vrsti
-    naslova strani (`.naslov-mobi__vrsta--iskanje`), ki odpre pas pod črto
+  - **Iskanje po imenu** (lestvica, turnirji, lige, udeleženci dogodka) teče
+    skozi `komponente/IskanjeSeznama.tsx`: na namizju polje **skrajno desno**
+    v naslovni vrstici seznama in števec seznama (»329 turnirjev«) **pod
+    njim** (`IskalnikSeznama stevec`, `.naslovna-vrstica__desno--iskanje`;
+    gumb urejevalca stoji levo od polja), na telefonu preklopnik »Išči«
+    skrajno desno v vrsti naslova strani (`.naslov-mobi__vrsta--iskanje`),
+    ki odpre pas pod črto
     lepljive glave (tam ostane, da polje med drsenjem ne uide). Dejanja
     urejevalca (»+ Turnir«) stran vloži v glavo sama skozi `GlavaDejanja`.
     Vstopni seznami na telefonu **nadnaslova nimajo** (»Tekmovanja«,

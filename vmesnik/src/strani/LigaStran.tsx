@@ -54,7 +54,7 @@ type Faza = 'REDNI' | 'KONCNICA'
    sta obe sekciji vidni), stanje pa vseeno živi tu, ker si ga zavihka delita.
    »Zanimivosti« so izjema: tudi v širokem pogledu so svoj pogled in ne tretji
    stolpec — zgodbe o sezoni se ne berejo ob lestvici, ampak namesto nje. */
-type MobilniPogled = 'LESTVICA' | 'RAZPORED' | 'KONCNICA' | 'ZANIMIVOSTI'
+type MobilniPogled = 'LESTVICA' | 'RAZPORED' | 'KONCNICA' | 'PIRAMIDA' | 'ZANIMIVOSTI'
 
 export function LigaStran() {
   const { id } = useParams()
@@ -433,6 +433,21 @@ export function LigaStran() {
                   Končnica
                 </button>
               )}
+              {/* Piramida je svoj zavihek (odločitev lastnika, sep 2026); prej
+                  je stala na dnu zavihka z lestvico. Ponujena je tudi
+                  samostojni ligi in tam pove, da piramide ni - zavihek, ki se
+                  od lige do lige pojavlja in izginja, bi zmedel. */}
+              <button
+                type="button"
+                className={
+                  'izbirnik__gumb' +
+                  (mobilniPogled === 'PIRAMIDA' ? ' izbirnik__gumb--aktiven' : '')
+                }
+                aria-pressed={mobilniPogled === 'PIRAMIDA'}
+                onClick={() => nastaviMobilniPogled('PIRAMIDA')}
+              >
+                Piramida lig
+              </button>
               {imaZanimivosti && (
                 <button
                   type="button"
@@ -485,13 +500,39 @@ export function LigaStran() {
               odprtaEkipa={odprtaEkipa}
               onPreklopiKader={razsiriKader}
             />
-            {/* Piramida je kontekst in ne stanje tekmovanja, zato na telefonu
-                stoji na koncu zavihka in ne nad lestvico. */}
-            {kaziPiramido && <Piramida liga={l} nivoji={nivojiPiramide} />}
             {/* Osebni izkupički so drugo branje iste lige - zato zaprta sklopa
                 na dnu zavihka z lestvico in ne svoj zavihek. */}
             <LestviceLige idLiga={idLiga} jeTelefon />
           </>
+        )}
+
+        {imaRazpored && mobilniPogled === 'PIRAMIDA' && (
+          kaziPiramido ? (
+            <Piramida liga={l} nivoji={nivojiPiramide} />
+          ) : (
+            <div className="liga__piramida">
+              <div className="liga__piramida-glava">
+                <span className="podnaslov-sekcije liga__podnaslov--vrstica">Piramida lig</span>
+                {l.sezona && <span className="sekcija__meta">{l.sezona}</span>}
+              </div>
+              <p className="obvestilo">
+                Liga ni povezana v piramido — višja ali nižja liga zanjo ni vpisana.
+              </p>
+              {/* Prehodi niso pravilo tekmovanja, zato jih lastnik ureja v
+                  vsakem stanju lige (tudi uvožene) - isti pogoj kot v Pravilih. */}
+              {smemPoLastnistvu && (
+                <div>
+                  <button
+                    type="button"
+                    className="gumb gumb--majhen"
+                    onClick={() => nastaviPrehodiOdprte(true)}
+                  >
+                    Uredi prehode
+                  </button>
+                </div>
+              )}
+            </div>
+          )
         )}
 
         {imaRazpored && mobilniPogled === 'RAZPORED' && (

@@ -141,12 +141,12 @@ ne raste s številom tekmovanj.
 `opacity: 0.32`, njegova vrstica v seznamu `0.62`. To ni tretji ton: motnost
 pove »to je isto, samo že za nami«, prihajajoče pa izstopi brez nove barve.
 
-### Temna tema
+### Tema: vedno svetla
 
-Ohrani se prek `@media (prefers-color-scheme: dark)` — samo z **zamenjavo
-vrednosti spremenljivk**, nikoli s podvojenimi pravili. Papir → `#12100F`,
-črnilo → `#F2F0EA`, črta → `#2A2622`, glavna ostane `#0088CE`, glavna-tekst
-posvetli na `#4FB3E8`, poudarek-tekst posvetli na `#9FD62E`.
+Od septembra 2026 (odločitev lastnika) **temne teme ni**: zapisnik je papir
+tudi na telefonu v temnem načinu. `:root` in `index.html` nosita
+`color-scheme: only light`, ki brskalniku prepove tudi samodejno temnjenje
+strani. Temnih vrednosti spremenljivk ne dodajaj nazaj.
 **Vsaka barva besedila mora biti izrecna** — nikoli `color: inherit` na elementu,
 ki stoji na drugačni podlagi kot koren.
 
@@ -306,8 +306,8 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
 12. **Animacije stanja »zaradi lepšega«.** Dovoljen je samo `transition` barve
     ali obrobe do `120ms`, in premik podčrtaja navigacije.
     *Izjema, vezana na točko 9:* v spodnji vrstici na telefonu modra poteza
-    **zdrsne** s prejšnjega stolpca na novega — `transform` 260 ms
-    `cubic-bezier(.2,.8,.2,1)`, z njo ploskev in barva postavke (260 ms `ease`)
+    **zdrsne** s prejšnjega stolpca na novega — `transform` 160 ms
+    `cubic-bezier(.2,.8,.2,1)`, z njo ploskev in barva postavke (160 ms `ease`)
     in dvig aktivne ikone za 2 px. Daljši čas je tu premik podčrtaja, ki ga
     točka že dovoljuje; viden je samo zato, ker je pot dolga cel stolpec.
 

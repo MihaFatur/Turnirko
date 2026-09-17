@@ -254,25 +254,28 @@ export function LigeStran() {
       <div>
         <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
           <h2>Vse lige</h2>
-          {/* Dejanje urejevalca stoji skrajno desno v naslovni vrstici seznama,
-              ki ga ustvarja (isto kot pri turnirjih). Izriše se tudi ob praznem
-              seznamu, ker je takrat edina pot naprej. */}
+          {/* Dejanje urejevalca stoji v naslovni vrstici seznama, ki ga
+              ustvarja (isto kot pri turnirjih). Izriše se tudi ob praznem
+              seznamu, ker je takrat edina pot naprej. Skrajno desno je
+              iskalnik s števcem pod njim. */}
           {(vse.length > 0 || smeUstvarjati) && (
-            <div className="naslovna-vrstica__desno">
-              {vse.length > 0 && (
-                <>
-                  <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
-                  <span className="sekcija__meta">
-                    {prikazane.length === vse.length
-                      ? `${vse.length} ${ligTekst(vse.length)}`
-                      : `Prikazanih ${prikazane.length} od ${vse.length}`}
-                  </span>
-                </>
-              )}
+            <div className="naslovna-vrstica__desno naslovna-vrstica__desno--iskanje">
               {smeUstvarjati && (
                 <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
                   + Nova liga
                 </button>
+              )}
+              {vse.length > 0 && (
+                <IskalnikSeznama
+                  iskanje={iskanje}
+                  naIskanje={nastaviIskanje}
+                  poCem={ISKANJE_PO}
+                  stevec={
+                    prikazane.length === vse.length
+                      ? `${vse.length} ${ligTekst(vse.length)}`
+                      : `Prikazanih ${prikazane.length} od ${vse.length}`
+                  }
+                />
               )}
             </div>
           )}

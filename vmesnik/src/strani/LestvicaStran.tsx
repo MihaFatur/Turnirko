@@ -410,14 +410,18 @@ export function LestvicaStran() {
           Iskanje in števci tudi ne stojijo več v svojem pasu nad seznamom:
           zavzeli so 380 px stolpca in prvo vrstico razvrstitve potisnili
           nizko, čeprav sta oba krmilo TE tabele. Zdaj sta v njeni naslovni
-          vrstici — iskalnik in ob njem števec, isti par kot v seznamu prijav
-          (DogodekStran). */}
+          vrstici — iskalnik skrajno desno in pod njim števec, isti par kot v
+          seznamu prijav (DogodekStran). */}
       <div>
         <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
           <h2>Lestvica</h2>
-          <div className="naslovna-vrstica__desno">
-            <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem={ISKANJE_PO} />
-            {lestvica.data && <span className="sekcija__meta">{stevecLestvice}</span>}
+          <div className="naslovna-vrstica__desno naslovna-vrstica__desno--iskanje">
+            <IskalnikSeznama
+              iskanje={iskanje}
+              naIskanje={nastaviIskanje}
+              poCem={ISKANJE_PO}
+              stevec={lestvica.data ? stevecLestvice : null}
+            />
           </div>
         </div>
 

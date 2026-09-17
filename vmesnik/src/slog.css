@@ -11,7 +11,7 @@
      - vsaka mera je veckratnik 8 (izjema: 14-20 px navpicni odmik vrstice).
 
    Organizacija datoteke:
-    1. spremenljivke (svetla + temna tema) in osnove
+    1. spremenljivke (samo svetla tema) in osnove
     2. postavitev: masthead, vsebina
     3. naslov strani, kolofon, naslovi sekcij
     4. gumbi, znacke, segmentirani izbirnik
@@ -99,8 +99,7 @@
   --barva-negativna-tekst: #8c2b14;
   --barva-negativna-mehko: #f8e5df;
   --barva-negativna-srednje: #e2a793;
-  /* Besedilo na polni rjasti ploskvi; v temni temi je rjasta svetla, zato
-     tam ni belo, ampak crnilo. */
+  /* Besedilo na polni rjasti ploskvi. */
   --barva-na-negativni: #ffffff;
 
   /* --- Papir in crnilo --- */
@@ -142,58 +141,17 @@
   --barva-ton-1: #0071ab;
   --barva-ton-2: #5a8a00;
 
-  /* Zastor pod predalom "Vec". Ne sme biti izpeljan iz crnila: v temni temi je
-     crnilo SVETLO in bi vsebino pod predalom posvetlil namesto zatemnil. V
-     temi je tudi gostejsi - 28 % crne cez skoraj crn papir se ne vidi. */
+  /* Zastor pod predalom "Vec". */
   --barva-zastor: rgb(20 17 15 / 0.28);
 
-  /* Podlaga polja za vnos je "bela" tudi v temni temi (tam potemni). */
   --sirina-okvirja: 1280px;
-}
 
-/* Temna tema samo z zamenjavo vrednosti — nikoli s podvojenimi pravili. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Polna modra ostane ista kot v svetli temi: natisnjena ploskev je
-       predmet in se z osvetlitvijo prostora ne spreminja. Crnilo pa se -
-       modra crta in modro besedilo v temi posvetlita. */
-    --barva-glavna: #0088ce;
-    --barva-glavna-polna: #0071ab;
-    --barva-glavna-polna-mocna: #005a88;
-    --barva-glavna-tekst: #4fb3e8;
-    --barva-glavna-mehko: #10293a;
-    --barva-na-glavni: #ffffff;
-    --barva-na-glavni-2: #e8f5c4;
-
-    --barva-poudarek: #7bb900;
-    --barva-poudarek-tekst: #9fd62e;
-    --barva-poudarek-mehko: #1e2610;
-    --barva-poudarek-srednje: #3f5c14;
-    --barva-na-poudarku: #12100f;
-
-    --barva-negativna: #e0704c;
-    --barva-negativna-tekst: #f0a184;
-    --barva-negativna-mehko: #2f1610;
-    --barva-negativna-srednje: #6b2a18;
-    --barva-na-negativni: #12100f;
-
-    --barva-papir: #12100f;
-    --barva-namizje: #080706;
-    --barva-crnilo: #f2f0ea;
-    --barva-crnilo-2: #d9d4cb;
-    --barva-crnilo-3: #a79f96;
-    --barva-crnilo-4: #8c847b;
-    --barva-crta: #2a2622;
-    --barva-polnilo: #221e1a;
-    --barva-bela: #1a1714;
-    --barva-vrstica-hover: #1c1917;
-
-    /* Toni koledarja posvetlijo kot vse drugo crnilo; polne ploskve pri njih
-       ni, zato tu ni loceno "risoce" in "polne" razlicice. */
-    --barva-ton-1: #4fb3e8;
-    --barva-ton-2: #9fd62e;
-    --barva-zastor: rgb(0 0 0 / 0.62);
-  }
+  /* Tema je vedno svetla - odlocitev lastnika (sep 2026): zapisnik je papir,
+     tudi kadar ima telefon vklopljen temni nacin. "only" brskalniku prepove
+     tudi samodejno temnjenje strani (Chrome na Androidu, Samsung Internet),
+     ki bi sicer obrnil barve mimo teh spremenljivk; nativna polja, izbori in
+     drsniki ostanejo svetli. Temne razlicice spremenljivk zato ni vec. */
+  color-scheme: only light;
 }
 
 * {
@@ -638,6 +596,15 @@ textarea:focus-visible,
   color: var(--barva-crnilo);
 }
 
+/* Pri vrstici 0,88 se stresica velike crke ("Šegula", "Čeh", "Žnidar") dvigne
+   nad vrstico in je segla v ime nad njo (profil igralca). Del odmika raste z
+   naslovom, del je stalen, ker je nadnaslov na telefonu v razmerju vecji
+   (28/44 px namesto 48/88): tako ostane med dnom imena in vrhom stresice
+   izmerjenih 7-9 px pri vseh velikostih (360-1280 px zaslona). */
+.naslov-strani__nad + .naslov-strani__glavni {
+  margin-top: calc(0.08em + 6px);
+}
+
 /* Isti glas POD naslovom (sezona pod imenom lige). Vrstica 0,88 bi jo
    prilepila na spodnji rob imena, zato en korak ritma zraka. */
 .naslov-strani__pod {
@@ -915,9 +882,7 @@ a.gumb {
   cursor: not-allowed;
 }
 
-/* Polnilo je "glavna-polna" (bela besedila zdrzi), obroba pa ostra "glavna":
-   ta tanka svetlejsa crta drzi rob gumba tudi v temni temi, kjer bi se polna
-   modra sicer skoraj zlila s papirjem. */
+/* Polnilo je "glavna-polna" (bela besedila zdrzi), obroba pa ostra "glavna". */
 .gumb--glavni {
   background: var(--barva-glavna-polna);
   border-color: var(--barva-glavna);
@@ -4093,6 +4058,23 @@ td.nizi-okno__niz--dobljen {
   max-width: 100%;
 }
 
+/* Iskalnik seznama stoji skrajno desno v naslovni vrstici, stevec seznama
+   ("329 turnirjev") pa pod njim, poravnan na isti desni rob - odlocitev
+   lastnika (sep 2026; prej je stevec stal desno ob polju). Gumb urejevalca
+   ("+ Nov turnir") je levo od iskalnika, poravnan po osnovnici z besedilom
+   v polju, kot tudi naslov seznama. */
+.naslovna-vrstica__desno--iskanje {
+  align-items: baseline;
+}
+
+.naslovna-vrstica__iskanje {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--r1);
+  min-width: 0;
+}
+
 /* --- Podnavigacija dogodka ---
    Lepljiv pas pod glavo strani: gumbi pogleda levo, povzetek desno. Sega cez
    ves okvir vsebine, zato negativni rob izniciti odmik .vsebine. */
@@ -4166,7 +4148,7 @@ td.nizi-okno__niz--dobljen {
 }
 
 /* Znak igralca (glava in rame) je oznaka strani semaforja in ne ikona namesto
-   besede - ime stoji tik pod njim. Barve nosi CSS, da drzi tudi v temni temi. */
+   besede - ime stoji tik pod njim. Barve nosi CSS in ne atributi SVG. */
 .enanaena__znak {
   display: block;
   fill: none;
@@ -5264,12 +5246,15 @@ a.domov__lestvica-vrstica--jaz {
   gap: var(--r7);
 }
 
-/* Vrstica nad imenom: mesto na lestvici + percentil. */
+/* Vrstica nad imenom: mesto na lestvici + percentil. Odmik pod njo drzi
+   stresico velike zacetnice imena ("Žan", "Črt"), ki se pri vrstici 0,88
+   dvigne nad naslov - brez njega je segla v zeleno znacko. */
 .profil__uvrstitev {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
 .profil__mesto-znacka {
@@ -10087,7 +10072,7 @@ a.domov__lestvica-vrstica--jaz {
       v pasu, ki ga palec bere v pol sekunde, hitrejsa od branja, oznaka pod
       njo pa pove, kam vodi, tistemu, ki znaka se ne pozna.
    2. GIBANJE, DALJSE OD 120 ms (DESIGN.md, tocka 12): modra poteza ZDRSNE s
-      prejsnjega stolpca na novega v 260 ms. To je isti premik podcrtaja
+      prejsnjega stolpca na novega v 160 ms. To je isti premik podcrtaja
       navigacije, ki ga zapis dovoljuje - le da je viden, ker je pot dolga.
    Nikjer drugje (glava, gumbi, meniji, predal "Vec") ikon in daljsih
    prehodov ne dodajaj. */
@@ -10123,7 +10108,7 @@ a.domov__lestvica-vrstica--jaz {
   width: 20%;
   height: 3px;
   background: var(--barva-glavna);
-  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .spodnja-vrstica--stiri .spodnja-vrstica__poteza {
@@ -10154,7 +10139,7 @@ a.domov__lestvica-vrstica--jaz {
   background: none;
   color: var(--barva-crnilo-3);
   cursor: pointer;
-  transition: background 260ms ease, color 260ms ease;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .spodnja-vrstica__postavka:hover {
@@ -10172,7 +10157,7 @@ a.domov__lestvica-vrstica--jaz {
 
 .spodnja-vrstica__ikona {
   display: flex;
-  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Ikona aktivnega zavihka se dvigne za 2 px - proti potezi, ki je pravkar
@@ -10445,6 +10430,24 @@ a.domov__lestvica-vrstica--jaz {
   flex-direction: column;
 }
 
+/* Vrstice pod robom zaslona brskalnik postavi in izrise sele, ko pridejo
+   blizu. Turnirjev in lig je po uvozu zgodovine vec sto, lestvica pa ima
+   stiristo igralcev: ob preklopu v spodnji vrstici je bil izris vseh vrstic
+   vecji del zamika (4x upocasnjen procesor, sep 2026: 220 → 125 ms do
+   izrisa). Visina je zacetna ocena (izmerjena vrstica turnirja/lige 65 px,
+   lestvice 62 px) - "auto" si zapomni pravo, ko je vrstica enkrat izrisana,
+   zato drsnik ne skace. Iskanje po strani in bralnik zaslona vrstice se
+   vedno najdeta. */
+.seznam-mobi > *,
+.lestvica-mobi > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 65px;
+}
+
+.lestvica-mobi > * {
+  contain-intrinsic-size: auto 62px;
+}
+
 /* Seznam, ki mu naslovna vrstica stoji tik nad njim (kategorije turnirja). */
 .seznam-mobi--odmik {
   margin-top: 10px;
@@ -10613,15 +10616,22 @@ a.domov__lestvica-vrstica--jaz {
   letter-spacing: 0.08em;
 }
 
-/* Trije zavihki lige (Lestvica · Razpored · Pravila) si razdelijo sirino:
-   vsi so hkrati na zaslonu, zato pas ne rabi drsenja - vodoravno drsenje
-   je tisto, kar je na telefonu skrivalo polovico postavk. */
-.podnavigacija--enakomerna {
-  overflow-x: visible;
-}
-
+/* Zavihki lige (Lestvica · Razpored · Piramida lig · Pravila) si razdelijo
+   sirino: stirje so hkrati na zaslonu vse do 360 px, zato pas zanje ne rabi
+   drsenja - vodoravno drsenje je tisto, kar je na telefonu skrivalo polovico
+   postavk. Enake sirine dobijo, dokler gredo; zavihek se nikoli ne stisne pod
+   svojo oznako (sicer bi se "Piramida lig" prelomila ali odrezala). Zato sta
+   tu razmik crk in odmik tesnejsa kot pri ostalih zavihkih: "PIRAMIDA LIG"
+   s 0,08 em in 12 px odmika meri 116 px, dobro tretjino pasu pri 360 px
+   zaslona. Sele ko se
+   pridruzita Koncnica ali Zanimivosti, pas preide v drsenje in zadnji zavihek
+   pokuka izza roba. */
 .podnavigacija--enakomerna .izbirnik__gumb {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: max-content;
+  padding-left: 6px;
+  padding-right: 6px;
+  letter-spacing: 0.04em;
 }
 
 /* --- Vrstica lige (/lige) --- */
@@ -11104,6 +11114,14 @@ a.domov__lestvica-vrstica--jaz {
 
 .vsebina--telefon > .stran-mobi--zavihki {
   gap: var(--r2);
+}
+
+/* Piramida lige kot svoj zavihek: pod crto pasu zavihkov je ne loci se ena
+   crta - tako se zacne tudi razpored. Na namizju (in prej na dnu lestvice)
+   jo crta loci od vsebine nad njo. */
+.stran-mobi--zavihki > .liga__piramida {
+  border-top: none;
+  padding-top: 0;
 }
 
 /* Lestvica ima en sam sklop pod naslovom, zato je razmik 24 in ne 32 px -

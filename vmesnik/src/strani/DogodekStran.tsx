@@ -66,6 +66,7 @@ import {
 } from '../komponente/Filtri'
 import { GlavaDejanja, GlavaNaslov, useNazaj } from '../komponente/GlavaTelefona'
 import { IskalniIzbirnik, type MoznostIzbirnika } from '../komponente/IskalniIzbirnik'
+import { IskalnikSeznama } from '../komponente/IskanjeSeznama'
 import { Lestvica } from '../komponente/Lestvica'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
@@ -563,18 +564,13 @@ function SeznamPrijavljenih({
     <div>
       <div className="naslovna-vrstica">
         <h2>{naslov}</h2>
-        <div className="naslovna-vrstica__desno">
-          <input
-            className="iskalnik iskalnik--kratek"
-            type="search"
-            value={iskanje}
-            onChange={(dogodek) => nastaviIskanje(dogodek.target.value)}
-            placeholder="išči po priimku"
-            aria-label="Išči po priimku"
+        <div className="naslovna-vrstica__desno naslovna-vrstica__desno--iskanje">
+          <IskalnikSeznama
+            iskanje={iskanje}
+            naIskanje={nastaviIskanje}
+            poCem="po priimku"
+            stevec={`${prikazane.length} od ${urejene.length} prikazanih`}
           />
-          <span className="sekcija__meta">
-            {prikazane.length} od {urejene.length} prikazanih
-          </span>
         </div>
       </div>
 

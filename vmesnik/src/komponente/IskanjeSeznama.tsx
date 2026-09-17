@@ -1,7 +1,7 @@
-/* Iskanje po imenu nad seznamom: lestvica, turnirji, lige.
+/* Iskanje po imenu nad seznamom: lestvica, turnirji, lige (in prijave dogodka).
 
-   Na namizju je iskalnik polje v naslovni vrstici seznama, ob števcu - krmilo
-   TE tabele in ne svoj pas nad njo. Na telefonu je preklopnik »Išči« v vrsti
+   Na namizju je iskalnik polje skrajno desno v naslovni vrstici seznama, števec
+   seznama pa pod njim - krmilo TE tabele in ne svoj pas nad njo. Na telefonu je preklopnik »Išči« v vrsti
    naslova strani, desno ob njem (»Turnirji … Išči«), pas s poljem pa se odpre
    pod debelo črto lepljive glave šele na klik: stalno polje nad seznamom bi
    stalo 60 px zaslona, iskanje pa je redko opravilo. Pas ostane v glavi, da
@@ -10,7 +10,7 @@
    Vpisano živi v stanju strani in ne v naslovu - je opravilo enega obiska, ne
    stanje, ki bi ga kdo delil s povezavo. Stran z njim zoži seznam PRED filtri,
    zato so števci ob merilih števci tega, kar gledalec vidi. */
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 
 import { GlavaNaslov } from './GlavaTelefona'
 
@@ -22,16 +22,28 @@ interface LastnostiIskanja {
   poCem: string
 }
 
-export function IskalnikSeznama({ iskanje, naIskanje, poCem }: LastnostiIskanja) {
+/* Polje in pod njim števec seznama (»329 turnirjev«), oba na desnem robu.
+   Stran ga postavi kot ZADNJEGA otroka .naslovna-vrstica__desno--iskanje, da
+   stoji skrajno desno tudi ob gumbu urejevalca. Brez števca (lestvica, ki se
+   še nalaga) ostane samo polje. */
+export function IskalnikSeznama({
+  iskanje,
+  naIskanje,
+  poCem,
+  stevec,
+}: LastnostiIskanja & { stevec?: ReactNode }) {
   return (
-    <input
-      className="iskalnik iskalnik--kratek"
-      type="search"
-      value={iskanje}
-      onChange={(dogodek) => naIskanje(dogodek.target.value)}
-      placeholder={`išči ${poCem}`}
-      aria-label={`Išči ${poCem}`}
-    />
+    <div className="naslovna-vrstica__iskanje">
+      <input
+        className="iskalnik iskalnik--kratek"
+        type="search"
+        value={iskanje}
+        onChange={(dogodek) => naIskanje(dogodek.target.value)}
+        placeholder={`išči ${poCem}`}
+        aria-label={`Išči ${poCem}`}
+      />
+      {stevec != null && <span className="sekcija__meta">{stevec}</span>}
+    </div>
   )
 }
 

@@ -286,26 +286,28 @@ export function TurnirjiStran() {
       <div>
         <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
           <h2>Vsi turnirji</h2>
-          {/* Dejanje urejevalca stoji skrajno desno v naslovni vrstici seznama,
-              ki ga ustvarja - svoj pas nad seznamom je bil prazna vrsta z enim
+          {/* Dejanje urejevalca stoji v naslovni vrstici seznama, ki ga
+              ustvarja - svoj pas nad seznamom je bil prazna vrsta z enim
               gumbom. Izrise se tudi ob praznem seznamu, ker je takrat edina
-              pot naprej. */}
+              pot naprej. Skrajno desno je iskalnik s stevcem pod njim. */}
           {((turnirji.data && vsi.length > 0) || smeUstvarjati) && (
-            <div className="naslovna-vrstica__desno">
-              {turnirji.data && vsi.length > 0 && (
-                <>
-                  <IskalnikSeznama iskanje={iskanje} naIskanje={nastaviIskanje} poCem="po imenu" />
-                  <span className="sekcija__meta">
-                    {prikazani.length === vsi.length
-                      ? `${vsi.length} ${sklonTurnirjev(vsi.length)}`
-                      : `Prikazanih ${prikazani.length} od ${vsi.length}`}
-                  </span>
-                </>
-              )}
+            <div className="naslovna-vrstica__desno naslovna-vrstica__desno--iskanje">
               {smeUstvarjati && (
                 <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
                   + Nov turnir
                 </button>
+              )}
+              {turnirji.data && vsi.length > 0 && (
+                <IskalnikSeznama
+                  iskanje={iskanje}
+                  naIskanje={nastaviIskanje}
+                  poCem="po imenu"
+                  stevec={
+                    prikazani.length === vsi.length
+                      ? `${vsi.length} ${sklonTurnirjev(vsi.length)}`
+                      : `Prikazanih ${prikazani.length} od ${vsi.length}`
+                  }
+                />
               )}
             </div>
           )}
