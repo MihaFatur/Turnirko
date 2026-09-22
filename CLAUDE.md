@@ -236,10 +236,13 @@
   — vsak `LocalDateTime` skozi gonilnik torej izgubi uro (`liga.ustvarjen_ob`
   je v bazi `2026-07-23`). Nastavitve `timestamp_string_format` gonilnik ne
   pozna in jo tiho spregleda. Pretvornik naredi iz stolpca navaden niz in ura
-  obstane; uporabljata ga `srecanje.predviden_zacetek` in
-  `liga.zacetek_prvega_kola`. **Testi tega sami ne ujamejo**: `@Transactional`
+  obstane; uporabljajo ga `srecanje.predviden_zacetek`,
+  `liga.zacetek_prvega_kola` in vsi časi računov ter potrditvenih kod (V33 —
+  brez njega je koda potekla že ob nastanku, ker je bil potek zapisan kot
+  polnoč). **Testi tega sami ne ujamejo**: `@Transactional`
   test dobi entiteto iz predpomnilnika seje, zato mora preverba ure izrecno
-  `flush()` + `clear()` (glej `uraTerminaPrezivizapisVBazo`).
+  `flush()` + `clear()` (glej `uraTerminaPrezivizapisVBazo`,
+  `kodaInCasiRacunaPrezivijoZapisVBazo`).
 - **Sistem se imenuje »Turnirko rating«** — tako v kodi, v bazi in v vmesniku.
   V bazi je to vrednost stolpca `sistem` obeh ratinških tabel: **`TURNIRKO`**
   (prej `KLUBSKI_ELO`, preimenovano v V23). Stolpec je odprto besedilo zato, da
@@ -458,7 +461,8 @@
   uvrstitev novinca), ostanejo pri `z.sistem` — tam indeks s `sistem` je
   pravi. Varuje `NacrtiDnevnikaTest`; nova poizvedba po tekmah gre tja.
 - **Rating je izpeljanka: `PreracunRatingaStoritev.preracunajOd(datum)` ga zna
-  sestaviti znova** (`POST /api/v1/rating/preracun?od=`, admin).
+  sestaviti znova** (`POST /api/v1/rating/preracun?od=`, admin; v vmesniku
+  stran `/rating`, gl. razdelek Vmesnik).
   Pobriše obračune od datuma, iz preostanka dnevnika obnovi `rating_stanje`
   in vse skupaj odigra znova v pravem zaporedju. Brez tega je dnevnik enosmeren:
   varovalka `existsByTekmaId` drugi obračun iste tekme zavrne, zato popravljen
@@ -473,6 +477,46 @@
   - Preračun celotne uvožene zgodovine (91.741 tekem) traja ~3,5 minute in
     reproducira obstoječe ratinge do zadnje točke — to je merilo, da je
     dnevnik res rekonstruirljiv.
+  - **`Porocilo.igralcevZRatingom` je stanje PO preračunu** in ne število
+    obnovljenih stanj (tako je bilo prej): pri preračunu od začetka je dnevnik
+    ob obnovi prazen, zato bi bila tista številka vedno 0 — vmesnik bi trdil,
+    da se ni zgodilo nič, medtem ko se je izračunalo vse.
+- **Obračun teče v vrstnem redu VNOSA, ne po datumu tekme.** `RatingStoritev`
+  vzame stanje, kakršno je *zdaj*, in nanj prišteje spremembo; v dnevnik pa
+  zapiše `velja_ob` **tekme**. Rezultat, vpisan za nazaj (novembrsko kolo
+  vneseno pred oktobrskim), zato ni napačen le za tisto tekmo: oktobrska je
+  računana proti številkam, ki že vsebujejo november, na grafu pa stoji na
+  oktobrskem datumu z vrednostjo, ki je takrat ni bilo. Isto zamakne vrnitev po
+  odsotnosti (`SledilnikVrnitve` termin premika samo naprej) in prvi dan
+  igranja novinca (`prva_tekma_ob` se postavi ob **prvem vnosu**). Popravek je
+  `preracunajOd(datum)` — in prav to je razlog, da preračun sploh obstaja.
+- **Popravek že shranjenega rezultata**
+  (`TekmaStoritev.popraviRezultat`, `SrecanjeStoritev.popraviRezultat`;
+  `PUT /tekme/{id}/rezultat` in `PUT /srecanja/tekme/{id}/rezultat`).
+  Rezultat se prepisuje s papirja in papir se bere z napako — del napak se
+  pokaže šele čez nekaj dni, ko je turnir že zaključen. Zato **PUT in ne POST**:
+  vnos ustvari izid, popravek ga zamenja; `vnesiRezultat` končano tekmo še
+  naprej zavrne.
+  - **Popravek ne sme spremeniti ZMAGOVALCA.** Zmagovalec ni podatek o tekmi,
+    ampak vozlišče tekmovanja: po njem je bilo napredovano po mreži, iz njega
+    so nastala mesta v skupinah in končna mesta, v ligi pa je odločil, katere
+    tekme srečanja so se sploh še igrale (prag zmag) in kako teče serija
+    končnice. Obrnjen izid je *razveljavitev poteka tekmovanja* in ne popravek
+    vpisa — zavrne se s pojasnilom (409) in se ne ugiba.
+  - **Zmagovalec se preveri PRED zapisom** (`predvidenZmagovalec`, oz.
+    `preberiIzid` pri srečanju). Preklic po zapisu bi se zanašal na povrnitev
+    transakcije, ta pa ob zunanji transakciji (test) ni takojšnja.
+  - Turnirska tekma po popravku znova požene `posledice` (mesta v skupini in
+    končna mesta se z razliko nizov lahko premaknejo; napredovanje je
+    idempotentno, ker se v zaseden slot ne piše). Ligaška povzetka srečanja
+    **ne** osvežuje — pri istem zmagovalcu se ne more spremeniti.
+  - **Točke po nizih se zapišejo znova**: stare se pobrišejo in izbris se
+    **izpere takoj** (`deleteAll` + `flush`), ker Hibernate vstavke izvede pred
+    izbrisi in bi nov prvi niz trčil ob starega (`UNIQUE (id_tekma,
+    zaporedna_st)`).
+  - Popravek na koncu pokliče `preracunajPoPopravku` (= `preracunajOd` dneva
+    tekme). Sam obračun te tekme ne zadošča — njen izid je vstopal v vse
+    poznejše tekme obeh igralcev. Regresija je `PopravekRezultataTest`.
 - **Postavitveni (začetni) rating** (`RatingStoritev.nastaviZacetniRating`):
   admin sme novincu določiti vstopni rating **samo dokler `stTekem == 0`**; potem
   ga določajo le rezultati. Zabeleži se kot zapis v `rating_zgodovina` **brez
@@ -545,6 +589,61 @@
   (`RacuniStoritev.nastaviGeslo`) ali naključno (`ponastaviGeslo`) — in ga
   izroči igralcu. Nastavljanje tujega gesla ne zahteva starega (admin ureja
   tuje račune); zamenjava lastnega gesla ga zahteva (`zamenjajGeslo`).
+- **E-pošta velja šele s kodo** (V33, `RegistracijaStoritev`). Registracija
+  ustvari račun v `CAKA` z `email_potrjen_ob = NULL` in lastniku naslova pošlje
+  šestmestno kodo; »naslov ni potrjen« je **izpeljanka**, ne novo stanje
+  (`Uporabnik.jeEmailPotrjen()`), obstoječi računi so ob migraciji dobili
+  datum nastanka. Pravila, ki jih ne razbij:
+  - **Odgovori ne razkrivajo obstoja naslova.** Registracija, ponovno
+    pošiljanje in pozabljeno geslo vrnejo vedno isto (odgovor je izpeljan
+    samo iz vnosa); lastnika obstoječega računa obvesti pošta, klicatelja ne.
+    Napačna, potekla in neobstoječa koda dobijo isto sporočilo
+    (`NAPACNA_KODA`), tudi čas je enak (`KodeStoritev.preveriNeznanega`).
+    Drži `AvtentikacijaDostopTest`.
+  - **Nepotrjen naslov nova registracija zamenja**, potrjen, adminov in
+    **zavrnjen** račun pa naslov zasedejo. Nočno čiščenje
+    (`CiscenjeRacunovStoritev`, 3.45) po 48 urah pobriše nepotrjene, po 30
+    dneh račune brez skrbnikovega soglasja; zavrnjenih ne (adminova odločitev).
+  - **Kode** (`potrditvena_koda`) so BCrypt zgostitve, žive so največ ena na
+    račun in namen (`NamenKode`: EPOSTA 10 min, SKRBNIK 24 h, GESLO 10 min),
+    po 5 napačnih vnosih propadejo. Milijon možnosti brez teh mej ni nič —
+    omejitve so obramba, ne udobje. Množični izbris poteklih
+    (`pobrisiPotekle`) gre mimo enote dela, zato jo **izprazni**
+    (`clearAutomatically`); pred izbrisom računa se njegove kode pobrišejo
+    tudi v enoti dela (`KodeStoritev.pobrisiVse`), ne le v bazi — sicer
+    Hibernate ob izpisu naleti na kodo, ki kaže na izbrisan račun.
+  - **Omejevalnik poskusov** (`OmejevalnikPoskusov`, v pomnilniku, en
+    strežnik): kode 1/min in 5/h na naslov, 20/h na IP; prijava v 15 min
+    največ 10 neuspehov za **račun z istega IP**, 100 za račun skupaj in 50 za
+    IP → `OmejitevPrijavFilter` vrne 429 **pred** preverbo gesla, uspešna
+    prijava števca računa pobriše (`PrijavaDogodki`), novo geslo s kodo vse
+    (`pocistiPrijaveRacuna`). Meja samo po računu bi bila vrata za nagajanje
+    (desetkrat napačno geslo zaklene tuj račun), zato je nizka meja vezana na
+    par račun + IP. Odgovor registracije za zaseden naslov stane enako
+    (BCrypt se izračuna vedno). Testi, ki isti naslov registrirajo večkrat,
+    kličejo `pocistiVse()`.
+  - **Pošta gre ven šele po potrditvi transakcije** (`PostaStoritev`), sicer
+    bi koda za razveljavljen račun prišla do prejemnika. Kanal izbere
+    `turnirko.posta.nacin`: `dnevnik` (razvoj: besedilo s kodo v dnevnik),
+    `smtp` (`spring.mail.*`, brez gostitelja se zagon ustavi), `pomnilnik`
+    (testi berejo kodo iz `PomnilniskiPosiljatelj`, ki se ne odloži — testna
+    transakcija nikoli ne potrdi). Naslov prejemnika v dnevniku zakrij.
+  - **Mlajši od 15 let** (ZVOP-2) navedejo naslov starša oz. skrbnika, ki
+    dobi svojo kodo; brez nje računa ni mogoče povezati z igralcem. Meja je
+    `RegistracijaStoritev.STAROST_SKRBNIKA`, računa jo strežnik, vmesnik
+    polje le pokaže.
+  - **Samodejna povezava z igralcem** (`poskusiSamodejnoPovezavo`): ob
+    potrjenem naslovu (in skrbniku) se ime, priimek (brez šumnikov in velikih
+    črk, `RacuniStoritev.normaliziraj`) in **datum rojstva** ujamejo z
+    natanko enim aktivnim igralcem brez računa → `POTRJEN`,
+    `vir_povezave = SAMODEJNO`. Dva zadetka ali nobeden pomenita čakanje na
+    admina; **organizator kluba ne potrjuje** (odločitev lastnika, sep 2026).
+    Admin samodejno povezavo vidi in jo sme razvezati (`razvezi`), po tem
+    račun spet čaka. Admina štejejo samo zahteve s potrjenim naslovom
+    (`steviloCakajocihNaAdmina`).
+  - **Admin se ne registrira in gesla ne ponastavlja po pošti**: najmočnejši
+    račun ostane izven te poti (`Vloga.ADMIN` se v `RegistracijaStoritev`
+    povsod izloči).
 - **Sistem tekmovanja** izbere dogodek; `ZrebStoritev` po njem razveji žreb
   (`IZLOCILNI`/`KROZNI`/`SKUPINE_IZLOCILNI`/`SKUPINE`). Lestvice računa
   `RazvrstitevStoritev` (zmage → porazi → **krog**: razlika nizov, nato
@@ -668,11 +767,34 @@
   se pri turnirskih *in* ligaških tekmah; pravila (veljaven niz do 11 z razliko
   2, ujemanje z izidom, **mogoč vrstni red**) so v enem samem razredu
   `NiziPravila`, ki ga kličeta `TekmaStoritev.shraniTockeNizov` in
-  `SrecanjeStoritev.vnesiRezultat` — dve kopiji bi se sčasoma razšli in ligaški
+  `SrecanjeStoritev.preberiIzid` — dve kopiji bi se sčasoma razšli in ligaški
   zapisnik bi sprejel vnos, ki ga turnirski zavrne. Vrstni red: tekma se konča v
   trenutku odločitve, zato noben niz ne sme slediti izidu, ko je zmagovalec že
   dosegel dovolj nizov. V vmesniku isto vlogo igra skupna komponenta
   `komponente/TockeNizov` (vrstice vnosa + `preveriNize`).
+- **Vnos točk po nizih je narejen za prepis papirja z eno roko**
+  (`komponente/TockeNizov`). Trije prijemi, vsi v isti komponenti:
+  - **Okence se ob dokončani številki samo premakne naprej.** Dokončana je
+    dvomestna (niz nad 99 točk ne obstaja) in enomestna, ki ne more biti prva
+    števka dvomestne — torej vse razen `1` (10–19). Ničla je enako varna;
+    rezultat se ne piše »05«. Z 2–9 se dvomestni izid (22:20) *lahko* začne, a
+    tako redko, da je premik pri stotih vpisih prihranek, pri enem pa vrnitev
+    s puščico levo.
+  - **Po mreži se hodi s puščicami**: levo/desno med stranema in čez konec
+    vrstice (samo z roba vpisa, da ostane mogoče postaviti kazalec sredi
+    dvomestne številke), gor/dol po istem stolpcu, `Backspace` iz praznega
+    polja nazaj. Polja so v **enem seznamu** (niz × stran), zato je »naprej«
+    povsod isti korak.
+  - **Nad stolpcem stoji PRIIMEK igralca** (`priimek`/`priimek2` v
+    `TekmaDto.Udelezenec`, `priimekDomaci…` v `TekmaSrecanjaDto`). To je edina
+    kratka oblika imena v vmesniku in ne izjema od pravila »ime pred priimkom«:
+    polna imena ostanejo »Ana Novak«, glava stolpca pa je široka kot polje pod
+    njo. Priimek pride **iz baze in ne iz rezanja polnega imena** — pri »Ana
+    Marija Novak« bi rezanje dalo napačno besedo. Isti priimek nosi oznaka
+    polja »Dobljeni nizi — …« v zapisniku srečanja (prej »domači/gost«).
+  - Postavitev je **mreža** (`.obrazec__nizi`, štirje stolpci), vrstica niza
+    pa samo ovoj za ključ (`display: contents`) — drugače priimek v glavi ne
+    stoji nad svojim stolpcem.
   Shrani jih **svoja tabela na vrsto tekme**: `niz` (`id_tekma`) in
   `niz_srecanja` (`id_tekma_srecanja`, V15). Loženi sta, ker je ločena že tekma
   sama in `niz.id_tekma` je `NOT NULL` — skupna tabela bi terjala prezidavo in
@@ -997,6 +1119,18 @@
   dvorani. Razredi sistema (`.naslov-strani`, `.kolofon`, `.naslovna-vrstica`,
   `.izbirnik`, `.elo-blok`, `.vrstica` …) so v `vmesnik/src/slog.css`; preden
   napišeš nov razred, preveri, ali obstoječi zadošča.
+- **Števila se vpisujejo, ne vrtijo: `komponente/StevilskoPolje`, nikoli
+  `type="number"`.** Kolesce miške nad ostrenim številskim poljem tiho spremeni
+  vpisano vrednost — organizator, ki med vnosom rezultata podrsa po zapisniku,
+  dobi drugo številko in tega ne opazi, ker se je premaknila stran, ne kazalec.
+  Isto naredita puščici gor/dol, ti pa sta pri točkah nizov potrebni za premik
+  med okenci. Polje je zato besedilno s `inputMode="numeric"` (številčna
+  tipkovnica na telefonu ostane), vpis pa filtrira: kar ni števka (oz. ločilo
+  pri `decimalno`), se sploh ne zapiše. Ker `min`/`max` na besedilnem polju ne
+  veljata, gre zgornja meja v `najvec` (vpis čez njo se zavrne), spodnjo meja
+  pa **napiši v oznako polja** (»Srečanje se konča pri zmagah (3–5)«) — brez
+  vrtavke je drugje ni videti. Nova številska polja gredo skozi to komponento;
+  `type="number"` v `.tsx` je napaka.
 - **Namizje in telefon imata ločeni navigaciji.** Nad 640 px je masthead mreža
   (`grid-template-areas`, `.glava`): logotip, navigacija, kontekst uporabnika;
   1 px in 3 px črto nosi `.glava__crta`. Pod 640 px se ta glava sploh ne
@@ -1333,8 +1467,15 @@
   **Končana tekma z vpisanimi točkami** (`TekmaDto.nizi`, ena poizvedba na
   dogodek — `NizRepozitorij.tockeZaDogodek`) pa **vsakemu gledalcu** odpre
   `NiziTekmeOkno` (samo branje); isto okno odpre vrstica zapisnika srečanja
-  (`TekmaSrecanjaDto.nizi`). Brez točk končana tekma ni klikljiva — okno bi
-  ponovilo izid s kartice. Okno ne ve, od kod tekma pride: obe vrsti se pred
+  (`TekmaSrecanjaDto.nizi`). Brez točk končana tekma **gostu** ni klikljiva —
+  okno bi ponovilo izid s kartice; organizatorju pa je, ker je to njegov vhod
+  v **popravek**: `NiziTekmeOkno` dobi `onPopravi` in pod tabelo gumb »Popravi
+  rezultat«, ki odpre `VnosRezultataOkno popravek` (polja napolnjena s
+  shranjenim izidom). V zapisniku srečanja isto vlogo igra gumb »Popravi« v
+  stolpcu stanja (klik ustavi širjenje, ker vrstica sama odpira točke).
+  Popravek je mogoč **tudi po zaključku dogodka** — takrat se napake največkrat
+  odkrijejo —, ne pa pri prostem prehodu, prenesenem izidu in ekipni tekmi
+  (ta ima izid iz zapisnika). Okno ne ve, od kod tekma pride: obe vrsti se pred
   klicem prevedeta v dve `StranTekme`. Pod 640 px gre ime v svojo vrstico nad
   izid in nize, sicer tekma na 7 nizov imenu pusti 36 px.
   **Ekipni dogodek**: vsakemu gledalcu zapisnik srečanja (javen), prenesen izid
@@ -1371,6 +1512,24 @@
   velja samo za predogled z istimi odločitvami**: vsaka sprememba odločitev
   gumb »Uvozi« ugasne, dokler se predogled ne ponovi (strežnik bi uvoz sicer
   zavrnil).
+- **Stran `/rating` (Rating, samo admin)** je vmesnik za obe vzdrževalni
+  opravili ratinga: ponovni preračun (`POST /rating/preracun?od=`) in
+  uveljavitev zapadlih odbitkov (`POST /rating/neaktivnost`). Dotlej sta
+  obstajali samo kot končni točki — torej za nikogar, ki ne piše `curl`
+  ukazov, preračun pa ni izjemen poseg: potreben je vsakič, ko se zaporedje
+  **vnosov** razide s časom **tekem** (rezultat, vpisan za nazaj), in tega
+  aplikacija ne opazi sama.
+  - **Stran nosi razlago, ne samo gumba.** Pove, kaj se pokvari (napačni
+    ratingi ob obračunu, vrednost na napačnem datumu v grafu, zamaknjena
+    vrnitev in prvi dan novinca), kaj preračun naredi in — v svojem razdelku
+    »Kdaj ga poženeš« — kdaj je potreben in kdaj ne (popravek tekme in uvoz ga
+    poženeta sama). Gumb, ki rating vsem igralcem izračuna znova, je brez tega
+    bolj nevaren kot koristen.
+  - Prazno polje »Od dneva« pomeni **od začetka**; pred zagonom je
+    `PotrditvenoOkno` z oceno trajanja, ker opravilo teče **sinhrono** (stran
+    mora ostati odprta) in ob koncu razveljavi **ves** predpomnilnik poizvedb
+    (`invalidateQueries()` brez ključa) — rating stoji na lestvici, v profilih,
+    na karticah tekem in v napovedih.
 - Preverba pred zaključkom dela: `cd vmesnik && npm run build` (tsc + vite).
 
 ## Objava na splet

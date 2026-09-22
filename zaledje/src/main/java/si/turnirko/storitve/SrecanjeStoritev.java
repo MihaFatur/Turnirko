@@ -86,6 +86,7 @@ public class SrecanjeStoritev {
     private final TekmaStoritev tekmaStoritev;
     private final KoncnicaStoritev koncnicaStoritev;
     private final LastnistvoStoritev lastnistvo;
+    private final PreracunRatingaStoritev preracunRatinga;
 
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
                             PostavaSrecanjaRepozitorij postavaRepozitorij,
@@ -100,7 +101,8 @@ public class SrecanjeStoritev {
                             LestvicaLigeStoritev lestvicaLigeStoritev,
                             TekmaStoritev tekmaStoritev,
                             KoncnicaStoritev koncnicaStoritev,
-                            LastnistvoStoritev lastnistvo) {
+                            LastnistvoStoritev lastnistvo,
+                            PreracunRatingaStoritev preracunRatinga) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -115,6 +117,7 @@ public class SrecanjeStoritev {
         this.tekmaStoritev = tekmaStoritev;
         this.koncnicaStoritev = koncnicaStoritev;
         this.lastnistvo = lastnistvo;
+        this.preracunRatinga = preracunRatinga;
     }
 
     @Transactional(readOnly = true)
@@ -229,70 +232,13 @@ public class SrecanjeStoritev {
             throw new DomenskaIzjema("Ta tekma se po pravilih ne igra (srecanje je bilo ze odloceno).");
         }
 
-        int zaZmago = t.nizovZaZmago();
-        IzidTekme izid = v.izidTip() != null ? v.izidTip() : IzidTekme.IGRANO;
-        int niziDomaci;
-        int niziGost;
-        StranEkipe zmagovalec;
-
-        if (izid == IzidTekme.IGRANO) {
-            if (v.dobljeniNiziDomaci() == null || v.dobljeniNiziGost() == null) {
-                throw new NeveljavenVnosIzjema("Manjkata dobljena niza.");
-            }
-            niziDomaci = v.dobljeniNiziDomaci();
-            niziGost = v.dobljeniNiziGost();
-            if (niziDomaci < 0 || niziGost < 0) {
-                throw new NeveljavenVnosIzjema("Stevilo dobljenih nizov ne sme biti negativno.");
-            }
-            if (niziDomaci == niziGost) {
-                throw new NeveljavenVnosIzjema("Neodlocen izid posamicne tekme ni mozen.");
-            }
-            int zmagNizi = Math.max(niziDomaci, niziGost);
-            int porazNizi = Math.min(niziDomaci, niziGost);
-            if (zmagNizi != zaZmago) {
-                throw new NeveljavenVnosIzjema("Zmagovalec mora dobiti natanko " + zaZmago + " nizov.");
-            }
-            if (porazNizi > zaZmago - 1) {
-                throw new NeveljavenVnosIzjema("Porazenec ima prevec dobljenih nizov.");
-            }
-            zmagovalec = niziDomaci > niziGost ? StranEkipe.DOMACI : StranEkipe.GOST;
-            // tocke po nizih so neobvezne - preverimo jih pred vsako spremembo
-            // stanja, po istih pravilih kot pri turnirski tekmi
-            if (v.nizi() != null && !v.nizi().isEmpty()) {
-                NiziPravila.preveri(v.nizi(), niziDomaci, niziGost, zaZmago);
-            }
-        } else if (izid == IzidTekme.PROSTO) {
-            throw new NeveljavenVnosIzjema("Izid PROSTO v srecanju ni mogoc.");
-        } else {
-            if (v.zmagovalecStran() == null) {
-                throw new NeveljavenVnosIzjema("Za posebni izid je obvezna zmagovalna stran.");
-            }
-            zmagovalec = v.zmagovalecStran();
-            niziDomaci = zmagovalec == StranEkipe.DOMACI ? zaZmago : 0;
-            niziGost = zmagovalec == StranEkipe.GOST ? zaZmago : 0;
-        }
-
-        t.setDobljeniNiziDomaci(niziDomaci);
-        t.setDobljeniNiziGost(niziGost);
-        t.setZmagovalecStran(zmagovalec);
-        t.setIzidTip(izid);
-        t.setStatus(StatusTekmeSrecanja.KONCANA);
-        tekmaRepozitorij.save(t);
-
-        // Tocke nizov obstajajo samo pri dejansko odigrani tekmi: pri w.o.,
-        // diskvalifikaciji in predaji dobi zmagovalec nize pripisane in
-        // posameznih izidov ni (enako kot pri turnirjih).
-        List<NizVnos> vneseniNizi = izid == IzidTekme.IGRANO && v.nizi() != null
-                ? v.nizi() : List.of();
-        int zaporedna = 1;
-        for (NizVnos niz : vneseniNizi) {
-            nizRepozitorij.save(new NizSrecanja(t, zaporedna, niz.tocke1(), niz.tocke2()));
-            zaporedna++;
-        }
+        Izid izid = preberiIzid(t, v);
+        List<NizVnos> vneseniNizi = zapisiIzid(t, izid);
 
         // rating samo za posamicne tekme, ce tekmovanje steje in izid steje
         // (w.o. in diskvalifikacija ne stejeta - enako kot pri turnirjih)
-        if (t.getTip() == TipTekmeSrecanja.POSAMICNA && pravila.raven().steje() && stejeVElo(izid)) {
+        if (t.getTip() == TipTekmeSrecanja.POSAMICNA && pravila.raven().steje()
+                && stejeVElo(izid.tip())) {
             ratingStoritev.obracunajZaLigasko(t);
         }
 
@@ -300,6 +246,121 @@ public class SrecanjeStoritev {
 
         Map<Long, Map<Long, Integer>> delte = delteRatinga(List.of(t.getId()));
         return tekmaDto(t, delte, vneseniNizi, postavaRepozitorij.najdiZaSrecanje(s.getId()));
+    }
+
+    /* POPRAVEK ze shranjenega rezultata posamicne tekme srecanja.
+
+       Zakaj in s kaksno omejitvijo - glej TekmaStoritev.popraviRezultat; pravilo
+       je isto in iz istega razloga: zmagovalec tekme je stevilka na semaforju
+       srecanja, po njej pa je bilo odloceno, katere tekme se sploh se igrajo
+       (prag zmag), kdo je dobil srecanje in kako tece serija koncnice oz.
+       ekipna tekma turnirja. Popravek zato spremeni izid, ne pa zmagovalca.
+
+       Ker je zmagovalec isti, povzetek srecanja (dobljene tekme, status,
+       predcasni konec) ostane, kar je - posodobiSrecanje tu namenoma ne tece.
+       Preracuna se rating: izid te tekme je vstopal v vse poznejse tekme obeh
+       igralcev. */
+    @Transactional
+    public TekmaSrecanjaDto popraviRezultat(Long idTekma, VnosRezultataSrecanja v) {
+        lastnistvo.preveriPoTekmiSrecanja(idTekma);
+        TekmaSrecanja t = tekmaRepozitorij.najdiZaObracun(idTekma)
+                .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja."));
+        Srecanje s = t.getSrecanje();
+
+        if (t.getStatus() != StatusTekmeSrecanja.KONCANA) {
+            throw new DomenskaIzjema("Popraviti je mogoce samo koncano tekmo -"
+                    + " tej rezultat se ni bil vnesen.");
+        }
+
+        Izid izid = preberiIzid(t, v);
+        if (izid.zmagovalec() != t.getZmagovalecStran()) {
+            throw new DomenskaIzjema("Popravek ne more spremeniti zmagovalca tekme:"
+                    + " po njem je bilo srecanje odloceno (predcasni konec, izid srecanja,"
+                    + " serija koncnice). Popravi lahko izid v nizih, tocke po nizih in"
+                    + " nacin zakljucka.");
+        }
+
+        /* Stare tocke gredo, nove se pisejo od prvega niza naprej. Izbris se
+           izpere TAKOJ: Hibernate sicer vstavke izvede pred izbrisi in nov prvi
+           niz bi trcil ob starega (UNIQUE (id_tekma_srecanja, zaporedna_st)). */
+        nizRepozitorij.deleteAll(nizRepozitorij.findByTekmaIdOrderByZaporednaStAsc(idTekma));
+        nizRepozitorij.flush();
+        List<NizVnos> vneseniNizi = zapisiIzid(t, izid);
+
+        preracunRatinga.preracunajPoPopravku(RatingStoritev.casLigaskeTekme(t));
+
+        Map<Long, Map<Long, Integer>> delte = delteRatinga(List.of(t.getId()));
+        return tekmaDto(t, delte, vneseniNizi, postavaRepozitorij.najdiZaSrecanje(s.getId()));
+    }
+
+    /* Preverjen izid vnosa, se preden se karkoli zapise - popravek iz njega
+       prebere zmagovalca, preden se odloci, ali sme nadaljevati. */
+    private record Izid(IzidTekme tip, int niziDomaci, int niziGost, StranEkipe zmagovalec,
+                        List<NizVnos> nizi) {}
+
+    private static Izid preberiIzid(TekmaSrecanja t, VnosRezultataSrecanja v) {
+        int zaZmago = t.nizovZaZmago();
+        IzidTekme izid = v.izidTip() != null ? v.izidTip() : IzidTekme.IGRANO;
+
+        if (izid == IzidTekme.PROSTO) {
+            throw new NeveljavenVnosIzjema("Izid PROSTO v srecanju ni mogoc.");
+        }
+        if (izid != IzidTekme.IGRANO) {
+            if (v.zmagovalecStran() == null) {
+                throw new NeveljavenVnosIzjema("Za posebni izid je obvezna zmagovalna stran.");
+            }
+            StranEkipe zmagovalec = v.zmagovalecStran();
+            // Tocke nizov obstajajo samo pri dejansko odigrani tekmi: pri w.o.,
+            // diskvalifikaciji in predaji dobi zmagovalec nize pripisane in
+            // posameznih izidov ni (enako kot pri turnirjih).
+            return new Izid(izid,
+                    zmagovalec == StranEkipe.DOMACI ? zaZmago : 0,
+                    zmagovalec == StranEkipe.GOST ? zaZmago : 0,
+                    zmagovalec, List.of());
+        }
+
+        if (v.dobljeniNiziDomaci() == null || v.dobljeniNiziGost() == null) {
+            throw new NeveljavenVnosIzjema("Manjkata dobljena niza.");
+        }
+        int niziDomaci = v.dobljeniNiziDomaci();
+        int niziGost = v.dobljeniNiziGost();
+        if (niziDomaci < 0 || niziGost < 0) {
+            throw new NeveljavenVnosIzjema("Stevilo dobljenih nizov ne sme biti negativno.");
+        }
+        if (niziDomaci == niziGost) {
+            throw new NeveljavenVnosIzjema("Neodlocen izid posamicne tekme ni mozen.");
+        }
+        if (Math.max(niziDomaci, niziGost) != zaZmago) {
+            throw new NeveljavenVnosIzjema("Zmagovalec mora dobiti natanko " + zaZmago + " nizov.");
+        }
+        if (Math.min(niziDomaci, niziGost) > zaZmago - 1) {
+            throw new NeveljavenVnosIzjema("Porazenec ima prevec dobljenih nizov.");
+        }
+        // tocke po nizih so neobvezne - preverimo jih pred vsako spremembo
+        // stanja, po istih pravilih kot pri turnirski tekmi
+        List<NizVnos> nizi = v.nizi() != null ? v.nizi() : List.<NizVnos>of();
+        if (!nizi.isEmpty()) {
+            NiziPravila.preveri(nizi, niziDomaci, niziGost, zaZmago);
+        }
+        return new Izid(izid, niziDomaci, niziGost,
+                niziDomaci > niziGost ? StranEkipe.DOMACI : StranEkipe.GOST, nizi);
+    }
+
+    /* Zapise preverjen izid v tekmo in njene nize; vrne vpisane nize za DTO. */
+    private List<NizVnos> zapisiIzid(TekmaSrecanja t, Izid izid) {
+        t.setDobljeniNiziDomaci(izid.niziDomaci());
+        t.setDobljeniNiziGost(izid.niziGost());
+        t.setZmagovalecStran(izid.zmagovalec());
+        t.setIzidTip(izid.tip());
+        t.setStatus(StatusTekmeSrecanja.KONCANA);
+        tekmaRepozitorij.save(t);
+
+        int zaporedna = 1;
+        for (NizVnos niz : izid.nizi()) {
+            nizRepozitorij.save(new NizSrecanja(t, zaporedna, niz.tocke1(), niz.tocke2()));
+            zaporedna++;
+        }
+        return izid.nizi();
     }
 
     // ---------- Menjava ----------

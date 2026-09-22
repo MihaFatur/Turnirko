@@ -48,6 +48,9 @@ EXPOSE 8080
 
 ENV SPRING_PROFILES_ACTIVE=splet
 ENV SPRING_DATASOURCE_URL=jdbc:sqlite:/podatki/turnirko.db
+# Posnetki uvoza iz Stupe; privzeta pot ./podatki bi bila /app/podatki,
+# kamor aplikacija ne sme pisati.
+ENV TURNIRKO_UVOZ_POSNETKI=/podatki/stupa-posnetki
 # TURNIRKO_ADMIN_PRIVZETO_GESLO tu NAMENOMA ni: ce bi bilo, bi bilo enako
 # pri vsaki namestitvi. Poda se ob zagonu (glej compose.yaml in .env).
 

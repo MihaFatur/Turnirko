@@ -20,6 +20,14 @@ public record TekmaSrecanjaDto(
         String domaci2,
         String gost,
         String gost2,
+        /* Kratka oblika za ozka mesta (glava stolpca pri vnosu tock po nizih).
+           Ne urejevalni kljuc in ne obrnjen vrstni red - polna imena ostanejo
+           "Ana Novak"; priimek pride iz baze, ker rezanje polnega imena pri
+           "Ana Marija Novak" odpove. */
+        String priimekDomaci,
+        String priimekDomaci2,
+        String priimekGost,
+        String priimekGost2,
         /* Id-ji istih igralcev - okno za menjavo z njimi izbere trenutno
            zasedbo tekme. */
         Long idDomaci,
@@ -56,6 +64,10 @@ public record TekmaSrecanjaDto(
                 t.getIgralecDomaci2() != null ? t.getIgralecDomaci2().polnoIme() : null,
                 t.getIgralecGost() != null ? t.getIgralecGost().polnoIme() : null,
                 t.getIgralecGost2() != null ? t.getIgralecGost2().polnoIme() : null,
+                t.getIgralecDomaci() != null ? t.getIgralecDomaci().getPriimek() : null,
+                t.getIgralecDomaci2() != null ? t.getIgralecDomaci2().getPriimek() : null,
+                t.getIgralecGost() != null ? t.getIgralecGost().getPriimek() : null,
+                t.getIgralecGost2() != null ? t.getIgralecGost2().getPriimek() : null,
                 t.getIgralecDomaci() != null ? t.getIgralecDomaci().getId() : null,
                 t.getIgralecDomaci2() != null ? t.getIgralecDomaci2().getId() : null,
                 t.getIgralecGost() != null ? t.getIgralecGost().getId() : null,

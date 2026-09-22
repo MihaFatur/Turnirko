@@ -17,6 +17,7 @@ import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
+import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { letnica } from '../pomozno/oblikovanje'
 
@@ -295,12 +296,10 @@ function ZacetniRatingOkno({
         </p>
         <label className="obrazec__polje">
           <span>Turnirko rating (100–3000)</span>
-          <input
-            type="number"
-            min={100}
-            max={3000}
-            value={vrednost}
-            onChange={(d) => nastaviVrednost(d.target.value)}
+          <StevilskoPolje
+            najvec={3000}
+            vrednost={vrednost}
+            naSpremembo={nastaviVrednost}
             autoFocus
           />
         </label>
@@ -385,12 +384,10 @@ function ZunanjaUvrstitevOkno({
         </p>
         <label className="obrazec__polje">
           <span>Turnirko rating (100–3000)</span>
-          <input
-            type="number"
-            min={100}
-            max={3000}
-            value={vrednost}
-            onChange={(d) => nastaviVrednost(d.target.value)}
+          <StevilskoPolje
+            najvec={3000}
+            vrednost={vrednost}
+            naSpremembo={nastaviVrednost}
             autoFocus
           />
         </label>

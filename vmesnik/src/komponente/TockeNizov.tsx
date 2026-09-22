@@ -3,8 +3,16 @@
    Vnos je povsod neobvezen: brez njega se shrani samo izid v nizih.
 
    Komponenta stanja ne hrani — vrstice so v obrazcu, ki jo uporablja, ker ta
-   ve, iz katerega izida izhaja njihovo število. */
+   ve, iz katerega izida izhaja njihovo število.
+
+   Vpis je narejen za prepis papirnatega zapisnika z eno roko na številčnici:
+   polje se ob dokončani številki samo premakne naprej, po mreži pa se da
+   hoditi s puščicami. Priimka v glavi povesta, čigav je stolpec — brez njiju
+   je »11 : 7« brez pomena, dokler se vnašalec ne spomni, kdo je bil prvi. */
+import { useRef, type KeyboardEvent } from 'react'
+
 import type { NizVnos } from '../api/tipi'
+import { StevilskoPolje } from './StevilskoPolje'
 
 /* Ena vrstica vnosa: točki sta besedili, ker je prazno polje veljavno stanje
    med tipkanjem (Number('') bi bil 0). */
@@ -59,39 +67,118 @@ export function preveriNize(
   return null
 }
 
+/* Ali vpisana številka ne more več zrasti in se sme premakniti v naslednje
+   okence. Dvomestna ne more (niz nad 99 točk ne obstaja), enomestna pa samo
+   tedaj, kadar se z njo ne more začeti dvomestna: to je vse razen ena
+   (10–19). Ničla je enako varna — noben rezultat se ne piše »05«.
+
+   Dvomestni rezultati se z 2–9 sicer začnejo (22:20 je veljaven podaljšek), a
+   so tako redki, da je premik naprej pri stotih vpisih prihranek, pri enem pa
+   klik nazaj oz. puščica levo. */
+function dokoncana(vrednost: string): boolean {
+  if (vrednost.length >= 2) return true
+  return vrednost.length === 1 && vrednost !== '1'
+}
+
 export function TockeNizov({
   vrstice,
   nastaviVrstice,
+  priimek1,
+  priimek2,
 }: {
   vrstice: VrsticaNiza[]
   nastaviVrstice: (posodobi: (prejsnje: VrsticaNiza[]) => VrsticaNiza[]) => void
+  /* Čigav je stolpec — priimek, ker je glava ozka kot polje pod njo. */
+  priimek1: string
+  priimek2: string
 }) {
-  const spremeni = (indeks: number, stran: 'tocke1' | 'tocke2', vrednost: string) =>
+  /* Polja v enem samem seznamu (niz × stran), da je premik »naprej« povsod
+     isti korak: konec vrstice se nadaljuje v naslednji vrstici. */
+  const polja = useRef<(HTMLInputElement | null)[]>([])
+
+  const naMesto = (mesto: number) => {
+    const polje = polja.current[mesto]
+    if (!polje) return false
+    polje.focus()
+    polje.select()
+    return true
+  }
+
+  const spremeni = (mesto: number, vrednost: string) => {
+    const indeks = Math.floor(mesto / 2)
+    const stran = mesto % 2 === 0 ? 'tocke1' : 'tocke2'
     nastaviVrstice((prejsnje) =>
       prejsnje.map((vrstica, i) => (i === indeks ? { ...vrstica, [stran]: vrednost } : vrstica)),
     )
+    if (dokoncana(vrednost)) naMesto(mesto + 1)
+  }
+
+  /* Puščice hodijo po mreži: levo/desno med stranema (in čez konec vrstice),
+     gor/dol po istem stolpcu. Levo in desno skočita samo z ROBA vpisa, da
+     ostane mogoče postaviti kazalec sredi dvomestne številke; pri označeni
+     celi vrednosti (tako pride polje ob samodejnem premiku) sta oba roba
+     hkrati, zato skok stopi takoj in ne šele po razveljavitvi izbire. */
+  const obTipki = (dogodek: KeyboardEvent<HTMLInputElement>, mesto: number) => {
+    const polje = dogodek.currentTarget
+    const naZacetku = polje.selectionStart === 0
+    const naKoncu = polje.selectionEnd === polje.value.length
+
+    switch (dogodek.key) {
+      case 'ArrowRight':
+        if (naKoncu && naMesto(mesto + 1)) dogodek.preventDefault()
+        break
+      case 'ArrowLeft':
+        if (naZacetku && naMesto(mesto - 1)) dogodek.preventDefault()
+        break
+      case 'ArrowDown':
+        if (naMesto(mesto + 2)) dogodek.preventDefault()
+        break
+      case 'ArrowUp':
+        if (naMesto(mesto - 2)) dogodek.preventDefault()
+        break
+      case 'Backspace':
+        // prazno polje nima česa brisati - vrzi nazaj v prejšnje
+        if (polje.value === '' && naMesto(mesto - 1)) dogodek.preventDefault()
+        break
+      default:
+        break
+    }
+  }
 
   return (
     <div className="obrazec__nizi">
+      <span className="obrazec__niz-oznaka obrazec__niz-glava" aria-hidden="true" />
+      <span className="obrazec__niz-glava">{priimek1}</span>
+      <span aria-hidden="true" />
+      <span className="obrazec__niz-glava">{priimek2}</span>
+
+      {/* Vrstica niza je samo ovoj za ključ — stolpce določa mreža okrog nje
+          (display: contents), da priimka v glavi stojita nad svojim poljem. */}
       {vrstice.map((niz, indeks) => (
-        <div className="obrazec__niz" key={indeks}>
+        <div className="obrazec__niz-vrsta" key={indeks}>
           <span className="obrazec__niz-oznaka">{indeks + 1}. niz</span>
-          <input
-            type="number"
-            min={0}
-            max={99}
+          <StevilskoPolje
+            ref={(polje) => {
+              polja.current[indeks * 2] = polje
+            }}
+            najvec={99}
             placeholder="11"
-            value={niz.tocke1}
-            onChange={(dogodek) => spremeni(indeks, 'tocke1', dogodek.target.value)}
+            aria-label={`${indeks + 1}. niz — ${priimek1}`}
+            vrednost={niz.tocke1}
+            naSpremembo={(vrednost) => spremeni(indeks * 2, vrednost)}
+            onKeyDown={(dogodek) => obTipki(dogodek, indeks * 2)}
           />
           <span>:</span>
-          <input
-            type="number"
-            min={0}
-            max={99}
+          <StevilskoPolje
+            ref={(polje) => {
+              polja.current[indeks * 2 + 1] = polje
+            }}
+            najvec={99}
             placeholder="7"
-            value={niz.tocke2}
-            onChange={(dogodek) => spremeni(indeks, 'tocke2', dogodek.target.value)}
+            aria-label={`${indeks + 1}. niz — ${priimek2}`}
+            vrednost={niz.tocke2}
+            naSpremembo={(vrednost) => spremeni(indeks * 2 + 1, vrednost)}
+            onKeyDown={(dogodek) => obTipki(dogodek, indeks * 2 + 1)}
           />
         </div>
       ))}

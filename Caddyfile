@@ -3,14 +3,14 @@
 #      brez skript in brez opomnikov v koledarju;
 #   2. zahteve poslje naprej aplikaciji po notranjem omrezju vsebnikov.
 #
-# Zamenjaj turnirko.si s svojo domeno in e-posto. E-posta gre Let's
-# Encryptu za opozorila, ce bi obnavljanje certifikata kdaj odpovedalo.
+# E-posta gre Let's Encryptu za opozorila, ce bi obnavljanje certifikata kdaj
+# odpovedalo. Naslov mora biti tak, ki ga res beres.
 
 {
-	email tvoj-email@primer.si
+	email info@turnirko-nt.si
 }
 
-turnirko.si, www.turnirko.si {
+turnirko-nt.si, www.turnirko-nt.si {
 	# Stisnjeni odgovori - v dvorani je mobilno omrezje pogosto slabo,
 	# vmesnik pa je nekaj sto kilobajtov.
 	encode zstd gzip
@@ -24,8 +24,15 @@ turnirko.si, www.turnirko.si {
 	# stran odslej odpiraj samo prek HTTPS, tudi ce kdo poslje povezavo
 	# http://. Vklopi ga sele, ko stran deluje - velja eno leto in ga ni
 	# mogoce hitro preklicati.
+	#
+	# NAMENOMA brez "includeSubDomains": poddomene te domene niso na tem
+	# strezniku. webmail. in mail. sta pri gostitelju domene, poddomene za
+	# povezave v posti pa pri ponudniku transakcijske poste. Pravilo, ki bi
+	# veljalo za vse poddomene, bi brskalniku vsililo HTTPS tudi tam, kjer
+	# ga ne nadziramo - in ce kateri od njih odpove, tega ni mogoce hitro
+	# popraviti, ker si brskalnik pravilo zapomni za eno leto.
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "same-origin"

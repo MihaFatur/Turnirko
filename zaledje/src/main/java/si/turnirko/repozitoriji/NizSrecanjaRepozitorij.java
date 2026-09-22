@@ -44,4 +44,5 @@ public interface NizSrecanjaRepozitorij extends JpaRepository<NizSrecanja, Long>
     List<Object[]> tockeZaLigo(@Param("idLiga") Long idLiga);
 
     List<NizSrecanja> findByTekmaIdOrderByZaporednaStAsc(Long idTekma);
+
 }

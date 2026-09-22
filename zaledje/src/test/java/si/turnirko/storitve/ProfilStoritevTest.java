@@ -58,11 +58,14 @@ class ProfilStoritevTest extends IntegracijskiTest {
     @Autowired private LigaStoritev ligaStoritev;
     @Autowired private SrecanjeStoritev srecanjeStoritev;
     @Autowired private RacuniStoritev racuniStoritev;
+    @Autowired private RegistracijaStoritev registracijaStoritev;
+    @Autowired private OmejevalnikPoskusov omejevalnik;
     @Autowired private UporabnikRepozitorij uporabnikRepozitorij;
     @Autowired private PasswordEncoder kodirnik;
 
     @BeforeEach
     void deterministicniZreb() {
+        omejevalnik.pocistiVse();
         zrebStoritev.nastaviNakljucje(new Random(42));
     }
 
@@ -307,8 +310,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
         Tekma tekma = odigrajEnoTekmo(3, 1);
         Igralec prvi = tekma.getPrijava1().getIgralec();
 
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                prvi.getIme(), prvi.getPriimek(), null, "caka@test.si", "geslo123", false));
+        registriraj(prvi, "caka@test.si");
 
         assertThrows(PrepovedanoIzjema.class,
                 () -> profilStoritev.zasebno(prvi.getId(), "caka@test.si"));
@@ -319,15 +321,16 @@ class ProfilStoritevTest extends IntegracijskiTest {
         Tekma tekma = odigrajEnoTekmo(3, 1);
         Igralec igralec = tekma.getPrijava1().getIgralec();
 
-        var profil = racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "nov@test.si", "geslo123", false));
+        registriraj(igralec, "nov@test.si");
+        var profil = racuniStoritev.profil("nov@test.si");
         assertEquals(StatusRacuna.CAKA, profil.status());
         assertEquals(Vloga.IGRALEC, profil.vloga());
         assertEquals(null, profil.idIgralec(), "nepotrjen racun se ni povezan z igralcem");
 
-        // ista e-posta se ne more registrirati dvakrat
-        assertThrows(DomenskaIzjema.class, () -> racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "nov@test.si", "geslo123", false)));
+        // ista e-posta ne da drugega racuna (nepotrjeno registracijo nova zamenja)
+        registriraj(igralec, "nov@test.si");
+        assertEquals(1, uporabnikRepozitorij.findAll().stream()
+                .filter(u -> u.getUporabniskoIme().equals("nov@test.si")).count());
 
         // administrator vidi zahtevo in predlagane igralce (ujemanje po priimku)
         RacunIgralcaDto zahteva = racuniStoritev.racuni().stream()
@@ -345,10 +348,8 @@ class ProfilStoritevTest extends IntegracijskiTest {
         Tekma tekma = odigrajEnoTekmo(3, 1);
         Igralec igralec = tekma.getPrijava1().getIgralec();
 
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "prvi@test.si", "geslo123", false));
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, "drugi@test.si", "geslo123", false));
+        registriraj(igralec, "prvi@test.si");
+        registriraj(igralec, "drugi@test.si");
 
         List<RacunIgralcaDto> racuni = racuniStoritev.racuni();
         Long idPrvega = racuni.stream().filter(r -> r.email().equals("prvi@test.si"))
@@ -364,26 +365,27 @@ class ProfilStoritevTest extends IntegracijskiTest {
     /* Zavrnjen racun sicer za vedno zasede svojo e-posto; izbris jo sprosti. */
     @Test
     void izbrisRacunaSprostiEposto() {
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123", false));
+        registriraj("Ana", "Novak", LocalDate.of(1990, 1, 1), "ana@test.si");
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals("ana@test.si")).findFirst().orElseThrow().id();
         racuniStoritev.zavrni(idRacuna);
 
-        // dokler racun obstaja, je e-posta zasedena
-        assertThrows(DomenskaIzjema.class, () -> racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123", false)));
+        // dokler zavrnjen racun obstaja, je e-posta zasedena: nova registracija
+        // ne vrze napake (ne razkriva obstoja), a racuna ne zamenja
+        registriraj("Ana", "Novak", LocalDate.of(1990, 1, 1), "ana@test.si");
+        assertEquals(idRacuna, uporabnikRepozitorij.findByUporabniskoIme("ana@test.si").orElseThrow().getId());
 
         racuniStoritev.zbrisi(idRacuna);
         assertTrue(uporabnikRepozitorij.findByUporabniskoIme("ana@test.si").isEmpty());
-        assertNotNull(racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123", false)));
+        registriraj("Ana", "Novak", LocalDate.of(1990, 1, 1), "ana@test.si");
+        // po izbrisu nastane nov racun (SQLite lahko id ponovno uporabi, zato stanje)
+        assertEquals(StatusRacuna.CAKA,
+                uporabnikRepozitorij.findByUporabniskoIme("ana@test.si").orElseThrow().getStatus());
     }
 
     @Test
     void zamenjavaGeslaZahtevaPravilnoStaro() {
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123", false));
+        registriraj("Ana", "Novak", LocalDate.of(1990, 1, 1), "ana@test.si");
 
         assertThrows(NeveljavenVnosIzjema.class, () -> racuniStoritev.zamenjajGeslo(
                 "ana@test.si", new SpremembaGeslaVnos("napacno", "novogeslo1")));
@@ -397,8 +399,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
        in v bazo se shrani zgolj zgostitev - nikoli cistopis. */
     @Test
     void adminNastaviGesloRacunu() {
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                "Ana", "Novak", null, "ana@test.si", "geslo123", false));
+        registriraj("Ana", "Novak", LocalDate.of(1990, 1, 1), "ana@test.si");
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals("ana@test.si")).findFirst().orElseThrow().id();
 
@@ -412,10 +413,22 @@ class ProfilStoritevTest extends IntegracijskiTest {
 
     // ---------- pomozne metode ----------
 
+    /* Registracija igralca iz sifranta (z njegovim datumom rojstva). Naslov
+       ostane nepotrjen - povezavo v teh testih naredi admin. */
+    private void registriraj(Igralec igralec, String email) {
+        registriraj(igralec.getIme(), igralec.getPriimek(), igralec.getDatumRojstva(), email);
+    }
+
+    private void registriraj(String ime, String priimek, LocalDate datumRojstva, String email) {
+        // omejevalnik posiljanja kod bi isti naslov v isti minuti zavrnil
+        omejevalnik.pocistiVse();
+        registracijaStoritev.registriraj(new RegistracijaVnos(
+                ime, priimek, null, email, "geslo123", false, datumRojstva, null), "127.0.0.1");
+    }
+
     /* Registrira in potrdi racun za igralca; vrne njegovo prijavno ime. */
     private String racunZa(Igralec igralec, String email) {
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, email, "geslo123", false));
+        registriraj(igralec, email);
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals(email)).findFirst().orElseThrow().id();
         racuniStoritev.potrdi(idRacuna, new PotrditevRacunaVnos(igralec.getId()));

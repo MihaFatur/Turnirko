@@ -25,6 +25,7 @@ import { NiziTekmeOkno } from '../komponente/NiziTekmeOkno'
 import { obTipki } from '../komponente/TekmaKartica'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { SpremembaRatinga } from '../komponente/SpremembaRatinga'
+import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import {
   TockeNizov,
   preveriNize,
@@ -190,6 +191,9 @@ function razbijCas(iso: string | null): { datum: string; ura: string } {
 
 function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmin: boolean }) {
   const [urejana, nastaviUrejano] = useState<TekmaSrecanjaDto | null>(null)
+  /* Končana tekma, katere rezultat organizator popravlja (napačen vpis ali
+     napaka v papirnatem zapisniku, ki se pokaže šele čez nekaj dni). */
+  const [popravljana, nastaviPopravljano] = useState<TekmaSrecanjaDto | null>(null)
   const [menjava, nastaviMenjavo] = useState<TekmaSrecanjaDto | null>(null)
   const [tekmaZNizi, nastaviTekmoZNizi] = useState<TekmaSrecanjaDto | null>(null)
   const s = podrobno.srecanje
@@ -277,7 +281,22 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
                   </td>
                   <td className="tabela__dejanja">
                     {konec ? (
-                      <span className="srecanje__stanje">Končana</span>
+                      jeAdmin ? (
+                        /* Ustavi klik vrstice: ta odpre točke po nizih, gumb pa
+                           popravek — obojega naenkrat ni mogoče hoteti. */
+                        <button
+                          className="gumb gumb--majhen"
+                          aria-label={`Popravi rezultat – ${t.oznaka}`}
+                          onClick={(d) => {
+                            d.stopPropagation()
+                            nastaviPopravljano(t)
+                          }}
+                        >
+                          Popravi
+                        </button>
+                      ) : (
+                        <span className="srecanje__stanje">Končana</span>
+                      )
                     ) : jeAdmin && !koncano && t.status === 'CAKA' ? (
                       <div>
                         <button
@@ -311,6 +330,15 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
             nastaviUrejano(null)
             nastaviMenjavo(urejana)
           }}
+        />
+      )}
+      {popravljana && (
+        <RezultatOkno
+          tekma={popravljana}
+          idSrecanje={s.id}
+          popravek
+          onZapri={() => nastaviPopravljano(null)}
+          onMenjava={() => nastaviPopravljano(null)}
         />
       )}
       {menjava && (
@@ -471,11 +499,21 @@ function imeStrani(t: TekmaSrecanjaDto, stran: StranEkipe): string {
   return [t.gost, t.gost2].filter(Boolean).join(' / ') || '—'
 }
 
+/* Priimek(a) strani — za glave stolpcev pri vnosu, kjer za polno ime ni
+   prostora, brez imena pa se ne vidi, čigav je stolpec. */
+function priimekStrani(t: TekmaSrecanjaDto, stran: StranEkipe): string {
+  if (stran === 'DOMACI') {
+    return [t.priimekDomaci, t.priimekDomaci2].filter(Boolean).join(' / ') || 'Domači'
+  }
+  return [t.priimekGost, t.priimekGost2].filter(Boolean).join(' / ') || 'Gost'
+}
+
 function RezultatOkno({
   tekma,
   idSrecanje,
   onZapri,
   onMenjava,
+  popravek = false,
 }: {
   tekma: TekmaSrecanjaDto
   idSrecanje: number
@@ -483,16 +521,34 @@ function RezultatOkno({
   /* Rezultat se vpisuje s papirja; če je tam drug igralec, je to trenutek, ko
      organizator razliko opazi. Na telefonu je to tudi edini vhod v menjavo. */
   onMenjava: () => void
+  /* Popravek že shranjenega rezultata: ista polja, napolnjena s tem, kar je
+     vpisano, in druga končna točka (SrecanjeStoritev.popraviRezultat). */
+  popravek?: boolean
 }) {
   const odjemalec = useQueryClient()
   const zaZmago = nizovZaZmago(tekma.steviloNizov)
-  const [izid, nastaviIzid] = useState<'IGRANO' | Exclude<IzidTekme, 'IGRANO' | 'PROSTO'>>('IGRANO')
-  const [niziDomaci, nastaviNiziDomaci] = useState('')
-  const [niziGost, nastaviNiziGost] = useState('')
-  const [zmagovalec, nastaviZmagovalca] = useState<StranEkipe>('DOMACI')
+  const [izid, nastaviIzid] = useState<'IGRANO' | Exclude<IzidTekme, 'IGRANO' | 'PROSTO'>>(
+    popravek && tekma.izidTip && tekma.izidTip !== 'PROSTO' ? tekma.izidTip : 'IGRANO',
+  )
+  const [niziDomaci, nastaviNiziDomaci] = useState(
+    popravek ? String(tekma.dobljeniNiziDomaci) : '',
+  )
+  const [niziGost, nastaviNiziGost] = useState(popravek ? String(tekma.dobljeniNiziGost) : '')
+  const [zmagovalec, nastaviZmagovalca] = useState<StranEkipe>(
+    popravek ? (tekma.zmagovalecStran ?? 'DOMACI') : 'DOMACI',
+  )
   /* Točke po nizih so tudi v ligi neobvezne (enako kot pri turnirjih). */
-  const [vnasamTocke, nastaviVnasamTocke] = useState(false)
-  const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>([])
+  const [vnasamTocke, nastaviVnasamTocke] = useState(popravek && tekma.nizi.length > 0)
+  /* Pri popravku je izid že vpisan, zato se vrstice ne morejo pojaviti ob
+     njegovem vnosu — pripravimo jih takoj (glej VnosRezultataOkno). */
+  const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>(() =>
+    popravek && (tekma.izidTip === 'IGRANO' || tekma.izidTip === null)
+      ? vrsticeZaIzid(
+          tekma.nizi.map((niz) => ({ tocke1: String(niz.tocke1), tocke2: String(niz.tocke2) })),
+          tekma.dobljeniNiziDomaci + tekma.dobljeniNiziGost,
+        )
+      : [],
+  )
   const [napakaVnosa, nastaviNapakoVnosa] = useState<string | null>(null)
 
   /* Koliko nizov je bilo odigranih — po tem se ravna število vrstic za točke;
@@ -510,14 +566,18 @@ function RezultatOkno({
   }
 
   const shrani = useMutation({
-    mutationFn: (nizi: NizVnos[] | null) =>
-      srecanjaApi.vnesiRezultat(tekma.id, {
+    mutationFn: (nizi: NizVnos[] | null) => {
+      const vnos = {
         izidTip: izid === 'IGRANO' ? null : izid,
         dobljeniNiziDomaci: izid === 'IGRANO' ? Number(niziDomaci) : null,
         dobljeniNiziGost: izid === 'IGRANO' ? Number(niziGost) : null,
         zmagovalecStran: izid === 'IGRANO' ? null : zmagovalec,
         nizi,
-      }),
+      }
+      return popravek
+        ? srecanjaApi.popraviRezultat(tekma.id, vnos)
+        : srecanjaApi.vnesiRezultat(tekma.id, vnos)
+    },
     onSuccess: () => {
       odjemalec.invalidateQueries({ queryKey: ['srecanje', idSrecanje] })
       odjemalec.invalidateQueries({ queryKey: ['srecanja'] })
@@ -552,16 +612,27 @@ function RezultatOkno({
   }
 
   return (
-    <ModalnoOkno naslov={`Rezultat – ${tekma.oznaka}`} onZapri={onZapri}>
+    <ModalnoOkno
+      naslov={`${popravek ? 'Popravek' : 'Rezultat'} – ${tekma.oznaka}`}
+      onZapri={onZapri}
+    >
       <form className="obrazec" onSubmit={obOddaji}>
         <p className="srecanje__pari">
           <strong>{imeStrani(tekma, 'DOMACI')}</strong> proti <strong>{imeStrani(tekma, 'GOST')}</strong>
         </p>
-        <div>
-          <button type="button" className="gumb gumb--majhen" onClick={onMenjava}>
-            Menjava igralcev
-          </button>
-        </div>
+        {popravek ? (
+          <p className="namig">
+            Popravek sme spremeniti izid, ne pa zmagovalca — po njem je bilo srečanje
+            odločeno. Turnirko rating se preračuna od dneva te tekme naprej, kar lahko
+            traja nekaj trenutkov.
+          </p>
+        ) : (
+          <div>
+            <button type="button" className="gumb gumb--majhen" onClick={onMenjava}>
+              Menjava igralcev
+            </button>
+          </div>
+        )}
 
         <label className="obrazec__polje">
           <span>Izid</span>
@@ -575,16 +646,18 @@ function RezultatOkno({
 
         {izid === 'IGRANO' ? (
           <>
+            {/* Nad poljema stoji priimek in ne »domači/gost«: s papirja se
+                prepisuje ime, ne stran mize. */}
             <div className="obrazec__vrstica">
               <label className="obrazec__polje">
-                <span>Dobljeni nizi (domači)</span>
-                <input type="number" min={0} value={niziDomaci}
-                  onChange={(d) => obSpremembiNizov('domaci', d.target.value)} required />
+                <span>Dobljeni nizi — {priimekStrani(tekma, 'DOMACI')}</span>
+                <StevilskoPolje najvec={zaZmago} vrednost={niziDomaci}
+                  naSpremembo={(v) => obSpremembiNizov('domaci', v)} required />
               </label>
               <label className="obrazec__polje">
-                <span>Dobljeni nizi (gost)</span>
-                <input type="number" min={0} value={niziGost}
-                  onChange={(d) => obSpremembiNizov('gost', d.target.value)} required />
+                <span>Dobljeni nizi — {priimekStrani(tekma, 'GOST')}</span>
+                <StevilskoPolje najvec={zaZmago} vrednost={niziGost}
+                  naSpremembo={(v) => obSpremembiNizov('gost', v)} required />
               </label>
             </div>
 
@@ -598,7 +671,12 @@ function RezultatOkno({
             </label>
 
             {vnasamTocke && odigranihNizov > 0 && (
-              <TockeNizov vrstice={tockeNizov} nastaviVrstice={nastaviTockeNizov} />
+              <TockeNizov
+                vrstice={tockeNizov}
+                nastaviVrstice={nastaviTockeNizov}
+                priimek1={priimekStrani(tekma, 'DOMACI')}
+                priimek2={priimekStrani(tekma, 'GOST')}
+              />
             )}
           </>
         ) : (

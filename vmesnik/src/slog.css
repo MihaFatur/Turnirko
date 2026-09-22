@@ -1696,10 +1696,31 @@ input[type='radio'] {
   margin-bottom: var(--r1);
 }
 
+/* Tocke nizov so MREZA in ne vrsta vrstic: priimek v glavi mora stati natanko
+   nad svojim stolpcem, sicer glava ne pove nicesar. Vrstica niza je zato samo
+   ovoj za kljuc (display: contents) - stolpce doloca ta mreza. */
 .obrazec__nizi {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 4.5rem) auto minmax(0, 4.5rem);
+  align-items: center;
   gap: var(--r1);
+  justify-content: start;
+}
+
+.obrazec__niz-vrsta {
+  display: contents;
+}
+
+/* Priimek nad stolpcem: v mrezi ni prostora za ime in priimek, pri prepisu s
+   papirja pa je vprasanje vedno isto - cigav je levi stolpec. */
+.obrazec__niz-glava {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .obrazec__niz {
@@ -1711,6 +1732,12 @@ input[type='radio'] {
 .obrazec__niz input,
 .obrazec__niz select {
   max-width: 7rem;
+}
+
+.obrazec__nizi input {
+  text-align: center;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 .obrazec__niz-oznaka {
@@ -11664,4 +11691,66 @@ a.domov__lestvica-vrstica--jaz {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
   }
+}
+
+/* Šestmestna koda s pošte (potrditev e-pošte, novo geslo): mono, velika in
+   razmaknjena, ker se prepisuje s telefona. */
+.obrazec__koda {
+  font-family: var(--pisava-mono);
+  font-size: 1.5rem;
+  letter-spacing: 0.35em;
+  text-align: center;
+}
+
+/* V obrazcu okna je povezava samostojno dejanje (»Pozabljeno geslo?«,
+   »Pošlji kodo znova«) in na telefonu edina tarča v svoji vrstici, zato dobi
+   polno zadetkovno višino; sredinska, ker se sicer raztegne kot gumb. Med
+   odštevanjem do nove kode je onemogočena in to mora biti vidno. */
+.obrazec > .povezava-gumb {
+  min-height: 44px;
+  align-self: center;
+}
+
+.obrazec > .povezava-gumb:disabled {
+  color: var(--barva-crnilo-3);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* ============================================================
+   Vzdrzevanje ratinga (stran /rating)
+   ============================================================ */
+
+/* Datum in gumb v eni vrsti: gumb ne sme dobiti svoje 1fr kot polje, ker se
+   "Preracunaj rating" razlezene cez pol sirine in izgleda kot glavno dejanje
+   strani - to je razlaga nad njim. */
+.rating-vzdrzevanje__vrstica {
+  grid-template-columns: minmax(0, 220px) auto;
+  justify-content: start;
+  margin-top: var(--r3);
+}
+
+.rating-vzdrzevanje__gumbi {
+  justify-content: flex-start;
+  margin-top: var(--r3);
+}
+
+/* Izid dolgotrajnega vzdrzevalnega opravila (preracun, odbitki). Ista oblika
+   kot izid uvoza - crta ob mehki podlagi, brez radija in sence. */
+.izid-opravila {
+  margin-top: var(--r3);
+  padding: 12px 16px;
+  border-left: 4px solid var(--barva-poudarek);
+  background: var(--barva-poudarek-mehko);
+  font-size: var(--tip-vrstica);
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
+
+.izid-opravila__pod {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--barva-crnilo-3);
 }

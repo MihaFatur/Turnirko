@@ -27,6 +27,7 @@
 import { useId, useMemo, useState } from 'react'
 
 import { ModalnoOkno } from './ModalnoOkno'
+import { StevilskoPolje } from './StevilskoPolje'
 
 /* Ena skupina meril nad seznamom postavk tipa T. */
 export interface SkupinaFiltra<T> {
@@ -561,8 +562,8 @@ function FiltriOkno({
    gumba "uporabi" ni. Namestnica (placeholder) je dejanski razpon seznama:
    organizator vidi, med cim sploh reze.
 
-   Polji sta type="number": na telefonu odpreta stevilcno tipkovnico, in ker
-   sta meji ratinga celi stevili, drugih znakov ni treba loviti. */
+   Polji sta stevilski (StevilskoPolje): na telefonu odpreta stevilcno
+   tipkovnico, drugih znakov pa ne sprejmeta - meji ratinga sta celi stevili. */
 function MeriloObmocja({
   razpon,
   meja,
@@ -592,22 +593,18 @@ function MeriloObmocja({
       <div className="filtri__obmocje">
         <label className="filtri__meja">
           <span className="filtri__meja-oznaka">Od</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={meja.od ?? ''}
+          <StevilskoPolje
+            vrednost={meja.od === null ? '' : String(meja.od)}
             placeholder={String(razpon.najmanj)}
-            onChange={(dogodek) => naMejo(razpon.kljuc, 'od', preberi(dogodek.target.value))}
+            naSpremembo={(vrednost) => naMejo(razpon.kljuc, 'od', preberi(vrednost))}
           />
         </label>
         <label className="filtri__meja">
           <span className="filtri__meja-oznaka">Do</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={meja.do ?? ''}
+          <StevilskoPolje
+            vrednost={meja.do === null ? '' : String(meja.do)}
             placeholder={String(razpon.najvec)}
-            onChange={(dogodek) => naMejo(razpon.kljuc, 'do', preberi(dogodek.target.value))}
+            naSpremembo={(vrednost) => naMejo(razpon.kljuc, 'do', preberi(vrednost))}
           />
         </label>
       </div>

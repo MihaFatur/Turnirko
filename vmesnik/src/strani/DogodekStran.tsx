@@ -143,6 +143,9 @@ export function DogodekStran() {
   const [ekipnaTekma, nastaviEkipnoTekmo] = useState<TekmaDto | null>(null)
   /* Končana tekma, za katero je odprto okno s točkami po nizih. */
   const [tekmaZNizi, nastaviTekmoZNizi] = useState<TekmaDto | null>(null)
+  /* Končana tekma, katere rezultat organizator popravlja — napačen vpis ali
+     napaka v zapisniku, ki se pokaže šele čez nekaj dni. */
+  const [popravljana, nastaviPopravljano] = useState<TekmaDto | null>(null)
   const [potrjujemZreb, nastaviPotrjujemZreb] = useState(false)
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['dogodek', idDogodka] })
@@ -233,6 +236,17 @@ export function DogodekStran() {
      z vpisanimi točkami pa vsakemu gledalcu okno z nizi - to je le branje. */
   const vnosRezultata = (t: TekmaDto) =>
     smem && !koncan && (t.status === 'PRIPRAVLJENA' || t.status === 'V_IGRI')
+  /* Popravek je mogoč tudi po zaključku dogodka — napaka se pogosto pokaže
+     šele takrat. Prosti prehod ni vpis (določi ga žreb), prenesen izid pa se
+     popravi na svoji izvorni tekmi. */
+  const popravekMozen = (t: TekmaDto) =>
+    smem
+    && !ekipno
+    && t.status === 'KONCANA'
+    && t.izidTip !== 'PROSTO'
+    && t.idPrenesena === null
+    && t.udelezenec1 !== null
+    && t.udelezenec2 !== null
   const klik: KlikTekme | undefined = ekipno
     ? {
         klikljiva: (t) => srecanjeTekme(t) !== null || izbiraEkipne(t),
@@ -246,9 +260,14 @@ export function DogodekStran() {
             : 'Odpri zapisnik srečanja',
       }
     : {
-        klikljiva: (t) => vnosRezultata(t) || imaTocke(t),
+        klikljiva: (t) => vnosRezultata(t) || imaTocke(t) || popravekMozen(t),
         naKlik: (t) => (vnosRezultata(t) ? nastaviIzbranoTekmo(t) : nastaviTekmoZNizi(t)),
-        namig: (t) => (vnosRezultata(t) ? 'Klikni za vnos rezultata' : 'Pokaži točke po nizih'),
+        namig: (t) =>
+          vnosRezultata(t)
+            ? 'Klikni za vnos rezultata'
+            : popravekMozen(t)
+              ? 'Pokaži točke po nizih ali popravi rezultat'
+              : 'Pokaži točke po nizih',
       }
 
   return (
@@ -423,6 +442,23 @@ export function DogodekStran() {
           nizi={tekmaZNizi.nizi}
           izidTip={tekmaZNizi.izidTip}
           onZapri={() => nastaviTekmoZNizi(null)}
+          onPopravi={
+            popravekMozen(tekmaZNizi)
+              ? () => {
+                  nastaviPopravljano(tekmaZNizi)
+                  nastaviTekmoZNizi(null)
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {popravljana && (
+        <VnosRezultataOkno
+          tekma={popravljana}
+          popravek
+          onZapri={() => nastaviPopravljano(null)}
+          onShranjeno={osvezi}
         />
       )}
     </section>

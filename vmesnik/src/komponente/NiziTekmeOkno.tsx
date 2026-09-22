@@ -29,9 +29,12 @@ interface Lastnosti {
   nizi: NizVnos[]
   izidTip: IzidTekme | null
   onZapri: () => void
+  /* Organizatorju je to okno tudi vhod v popravek: tu vidi, kaj je vpisano,
+     in prav tu ugotovi, da je vpisano narobe. Gostu se gumb ne izriše. */
+  onPopravi?: () => void
 }
 
-export function NiziTekmeOkno({ nadnaslov, strani, nizi, izidTip, onZapri }: Lastnosti) {
+export function NiziTekmeOkno({ nadnaslov, strani, nizi, izidTip, onZapri, onPopravi }: Lastnosti) {
   /* Predana tekma ima tocke samo do predaje - brez opombe bi zadnji niz
      izgledal kot napaka v vpisu. */
   const posebni = izidTip && izidTip !== 'IGRANO' ? OZNAKE_IZID[izidTip] : null
@@ -90,7 +93,15 @@ export function NiziTekmeOkno({ nadnaslov, strani, nizi, izidTip, onZapri }: Las
           ))}
         </tbody>
       </table>
+      {nizi.length === 0 && <p className="namig">Točke po nizih niso vpisane.</p>}
       {posebni && <p className="namig">Tekma je končana z izidom »{posebni.toLowerCase()}«.</p>}
+      {onPopravi && (
+        <div className="obrazec__gumbi">
+          <button type="button" className="gumb" onClick={onPopravi}>
+            Popravi rezultat
+          </button>
+        </div>
+      )}
     </ModalnoOkno>
   )
 }

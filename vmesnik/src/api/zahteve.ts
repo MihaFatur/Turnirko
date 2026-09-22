@@ -31,7 +31,9 @@ import type {
   MrezaDto,
   NakljucniParDto,
   NapovedTekmeDto,
+  NeaktivnostPorociloDto,
   ParRazporedaDto,
+  PreracunPorociloDto,
   PostavaVnos,
   PredogledUvozaDto,
   PrehodiVnos,
@@ -39,7 +41,12 @@ import type {
   PrijavaDto,
   ProfilDto,
   ProfilZasebnoDto,
+  NamenKode,
+  NovoGesloVnos,
+  PotrditevKodeVnos,
+  PotrditevOdgovorDto,
   RacunIgralcaDto,
+  RegistracijaOdgovorDto,
   RegistracijaVnos,
   RocniRazporedVnos,
   SpremembaGeslaVnos,
@@ -111,6 +118,11 @@ export const dogodkiApi = {
 export const tekmeApi = {
   vnesiRezultat: (id: number, vnos: VnosRezultata) =>
     api.objavi<TekmaDto>(`/tekme/${id}/rezultat`, vnos),
+  /* Popravek že shranjenega rezultata. Ločena pot in ne isti POST: vnos je
+     dejanje nad tekmo, ki še nima izida, popravek pa poseg v zgodovino, ki
+     zmagovalca ne sme spremeniti in sproži preračun ratinga. */
+  popraviRezultat: (id: number, vnos: VnosRezultata) =>
+    api.posodobi<TekmaDto>(`/tekme/${id}/rezultat`, vnos),
 }
 
 export const igralciApi = {
@@ -132,6 +144,16 @@ export const igralciApi = {
      vidno na profilu. */
   zunanjaUvrstitev: (id: number, vnos: ZunanjaUvrstitevVnos) =>
     api.objavi<IgralecDto>(`/igralci/${id}/zunanja-uvrstitev`, vnos),
+}
+
+/* Vzdrževanje Turnirko ratinga (samo admin). Oboje je dolgotrajno opravilo,
+   ki teče sinhrono — odgovor pride šele, ko je preračun končan. */
+export const ratingApi = {
+  /* Ponovni preračun od danega dneva (ISO »2026-10-01«); null = od začetka. */
+  preracunaj: (od: string | null) =>
+    api.objavi<PreracunPorociloDto>(`/rating/preracun${od ? `?od=${od}` : ''}`),
+  /* Uveljavi vse zapadle odbitke za neaktivnost (isto kot nočno opravilo). */
+  neaktivnost: () => api.objavi<NeaktivnostPorociloDto>('/rating/neaktivnost'),
 }
 
 export interface ZunanjaUvrstitevVnos {
@@ -159,9 +181,21 @@ export const authApi = {
   /* Preveri poverilnice in vrne profil prijavljenega uporabnika
      (zahteva veljavno glavo Authorization; sicer strežnik vrne 401). */
   jaz: () => api.vrni<UporabnikDto>('/auth/me'),
-  /* Edina mutacija brez prijave; račun nastane v stanju CAKA. */
+  /* Brez prijave; račun nastane v stanju CAKA, lastnik naslova dobi kodo.
+     Odgovor je enak, če naslov že obstaja (obstoja računa ne razkriva). */
   registracija: (vnos: RegistracijaVnos) =>
-    api.objavi<UporabnikDto>('/auth/registracija', vnos),
+    api.objavi<RegistracijaOdgovorDto>('/auth/registracija', vnos),
+  /* Vpis kode s pošte: lastni naslov oz. skrbnikova koda. */
+  potrdiEposto: (vnos: PotrditevKodeVnos) =>
+    api.objavi<PotrditevOdgovorDto>('/auth/potrdi-eposto', vnos),
+  potrdiSkrbnika: (vnos: PotrditevKodeVnos) =>
+    api.objavi<PotrditevOdgovorDto>('/auth/potrdi-skrbnika', vnos),
+  /* Nova koda (naslov ali skrbnik); strežnik omejuje pogostost. */
+  ponovnoPoslji: (email: string, namen: NamenKode) =>
+    api.objavi<void>('/auth/ponovno-poslji', { email, namen }),
+  /* Pozabljeno geslo: koda gre na potrjen naslov; odgovor je vedno enak. */
+  pozabljenoGeslo: (email: string) => api.objavi<void>('/auth/pozabljeno-geslo', { email }),
+  novoGeslo: (vnos: NovoGesloVnos) => api.objavi<void>('/auth/novo-geslo', vnos),
   zamenjajGeslo: (vnos: SpremembaGeslaVnos) => api.objavi<void>('/auth/geslo', vnos),
 }
 
@@ -179,6 +213,9 @@ export const racuniApi = {
   seznam: () => api.vrni<RacunIgralcaDto[]>('/racuni'),
   potrdi: (id: number, idIgralec: number) =>
     api.objavi<RacunIgralcaDto>(`/racuni/${id}/potrdi`, { idIgralec }),
+  /* Razveže račun od igralca (npr. zgrešena samodejna povezava); račun se
+     vrne v čakanje in ga je mogoče povezati znova. */
+  razvezi: (id: number) => api.objavi<RacunIgralcaDto>(`/racuni/${id}/razvezi`),
   /* Potrditev organizatorja z (neobveznim) klubom. */
   potrdiOrganizatorja: (id: number, idKlub: number | null) =>
     api.objavi<RacunIgralcaDto>(`/racuni/${id}/potrdi-organizatorja`, { idKlub }),
@@ -265,6 +302,10 @@ export const srecanjaApi = {
     api.posodobi<SrecanjePodrobnoDto>(`/srecanja/${id}/postava`, vnos),
   vnesiRezultat: (idTekma: number, vnos: VnosRezultataSrecanja) =>
     api.objavi<TekmaSrecanjaDto>(`/srecanja/tekme/${idTekma}/rezultat`, vnos),
+  /* Popravek že shranjenega rezultata (isti razlog za ločeno pot kot pri
+     turnirski tekmi — glej tekmeApi). */
+  popraviRezultat: (idTekma: number, vnos: VnosRezultataSrecanja) =>
+    api.posodobi<TekmaSrecanjaDto>(`/srecanja/tekme/${idTekma}/rezultat`, vnos),
   zamenjajIgralce: (idTekma: number, vnos: MenjavaVnos) =>
     api.posodobi<SrecanjePodrobnoDto>(`/srecanja/tekme/${idTekma}/igralci`, vnos),
   /* Tekma končnice ima svoj termin (redni del ga ima po kolih). */

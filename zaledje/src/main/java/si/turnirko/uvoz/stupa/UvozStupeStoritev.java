@@ -15,6 +15,7 @@
 package si.turnirko.uvoz.stupa;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -340,6 +341,10 @@ public class UvozStupeStoritev {
             Path mapa = Path.of(mapaPosnetkov).resolve(oznaka);
             odjemalec.posnemiDogodek(vrstica, sezona, mapa);
             return mapa;
+        } catch (AccessDeniedException e) {
+            // sporocilo te izjeme je gola pot, iz katere se ne vidi, kaj je narobe
+            throw new DomenskaIzjema("Posnetka dogodka " + idDogodka + " ni bilo mogoce narediti: aplikacija nima "
+                    + "pravice pisati v " + e.getFile() + " (nastavitev turnirko.uvoz.posnetki).");
         } catch (IOException e) {
             throw new DomenskaIzjema("Posnetka dogodka " + idDogodka + " ni bilo mogoce narediti: " + e.getMessage());
         }

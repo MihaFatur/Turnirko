@@ -36,6 +36,12 @@ public class GlobalniObravnavalecIzjem {
         return sestavi(HttpStatus.CONFLICT, "Krsitev pravila", izjema.getMessage());
     }
 
+    /* Prevec zahtev z istega naslova v kratkem casu (kode, prijave). */
+    @ExceptionHandler(PrevecZahtevIzjema.class)
+    ProblemDetail prevecZahtev(PrevecZahtevIzjema izjema) {
+        return sestavi(HttpStatus.TOO_MANY_REQUESTS, "Prevec zahtev", izjema.getMessage());
+    }
+
     /* Napake anotacij @NotBlank, @NotNull ... na DTO-jih. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ProblemDetail napakaPreverjanja(MethodArgumentNotValidException izjema) {

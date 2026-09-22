@@ -14,6 +14,7 @@ public interface NizRepozitorij extends JpaRepository<Niz, Long> {
 
     List<Niz> findByTekmaIdOrderByZaporednaStAsc(Long idTekma);
 
+
     /* Nizi vec tekem hkrati - za statistiko tock na profilu igralca.
        Vrne vrstice [idTekme, tocke1, tocke2]; entitet ne vracamo, ker bi
        vsaka potegnila se tekmo. */

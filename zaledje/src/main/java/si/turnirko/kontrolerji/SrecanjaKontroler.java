@@ -59,6 +59,14 @@ public class SrecanjaKontroler {
         return srecanjeStoritev.vnesiRezultat(idTekma, vnos);
     }
 
+    /* Popravek ze vpisanega rezultata (PUT, ker rezultat zamenja - glej
+       TekmeKontroler). Zmagovalca ne sme spremeniti in sam preracuna rating. */
+    @PutMapping("/tekme/{idTekma}/rezultat")
+    public TekmaSrecanjaDto popraviRezultat(@PathVariable Long idTekma,
+                                            @Valid @RequestBody VnosRezultataSrecanja vnos) {
+        return srecanjeStoritev.popraviRezultat(idTekma, vnos);
+    }
+
     /* Termin tekme koncnice (redni del ima termine po kolih - /lige/{id}/termini). */
     @PutMapping("/{id}/termin")
     public SrecanjeDto nastaviTermin(@PathVariable Long id, @RequestBody TerminSrecanjaVnos vnos) {

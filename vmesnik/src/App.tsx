@@ -22,6 +22,7 @@ import { SrecanjeStran } from './strani/SrecanjeStran'
 import { ListkiSrecanjaStran } from './strani/ListkiSrecanjaStran'
 import { ProfilStran } from './strani/ProfilStran'
 import { RacuniStran } from './strani/RacuniStran'
+import { RatingStran } from './strani/RatingStran'
 import { UvozStran } from './strani/UvozStran'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
@@ -51,10 +52,26 @@ function MojProfil() {
   if (nalaganje) return <p className="obvestilo">Preverjanje prijave …</p>
   if (mojIdIgralec !== null) return <Navigate to={`/igralci/${mojIdIgralec}/profil`} replace />
   if (uporabnik?.vloga === 'IGRALEC') {
+    if (uporabnik.status === 'ZAVRNJEN') {
+      return <p className="obvestilo">Tvoj račun je bil zavrnjen.</p>
+    }
+    /* Dokler naslov (ali skrbnik) ni potrjen, admin računa sploh ne vidi -
+       kar manjka, je koda, ne potrditev. */
+    if (!uporabnik.emailPotrjen || uporabnik.potrebnaKodaSkrbnika) {
+      return (
+        <p className="obvestilo">
+          {uporabnik.emailPotrjen
+            ? 'Tvoj račun čaka na kodo, ki jo je po e-pošti dobil starš oz. skrbnik.'
+            : 'Tvoja e-pošta še ni potrjena. Vpiši kodo, ki si jo dobil po pošti.'}{' '}
+          Vpis kode najdeš v meniju v desnem kotu (»Vpiši kodo«).
+        </p>
+      )
+    }
     return (
       <p className="obvestilo">
-        Tvoj račun {uporabnik.status === 'ZAVRNJEN' ? 'je bil zavrnjen.' : 'čaka na potrditev administratorja.'}{' '}
-        Ko ga poveže s tvojim zapisom med igralci, se tu odpre tvoj profil s statistiko.
+        Tvoj račun čaka na potrditev administratorja. Med igralci ni bilo natanko enega
+        zapisa s tvojim imenom in datumom rojstva, zato ga administrator poveže ročno; ko ga
+        poveže, se tu odpre tvoj profil s statistiko.
       </p>
     )
   }
@@ -145,6 +162,14 @@ export function App() {
           element={
             <SamoAdmin>
               <UvozStran />
+            </SamoAdmin>
+          }
+        />
+        <Route
+          path="/rating"
+          element={
+            <SamoAdmin>
+              <RatingStran />
             </SamoAdmin>
           }
         />

@@ -35,6 +35,7 @@ import { GlavaDejanja, GlavaZavihki, useNazaj } from '../komponente/GlavaTelefon
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
+import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
@@ -679,13 +680,13 @@ function NovDogodekOkno({
                 </select>
               </label>
               <label className="obrazec__polje">
-                <span>Srečanje se konča pri zmagah</span>
-                <input
-                  type="number"
-                  min={najmanjsiPrag}
-                  max={tekemFormata}
-                  value={prag}
-                  onChange={(d) => nastaviPrag(Number(d.target.value))}
+                {/* Meji sta v oznaki in ne v polju: števke se vpisujejo, ne
+                    vrtijo, zato ju brez zapisa nikjer ne bi bilo videti. */}
+                <span>Srečanje se konča pri zmagah ({najmanjsiPrag}–{tekemFormata})</span>
+                <StevilskoPolje
+                  najvec={tekemFormata}
+                  vrednost={String(prag)}
+                  naSpremembo={(v) => nastaviPrag(Number(v))}
                   required
                 />
               </label>
@@ -718,23 +719,19 @@ function NovDogodekOkno({
             <div className="obrazec__vrstica">
               <label className="obrazec__polje">
                 <span>Število skupin *</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={26}
-                  value={steviloSkupin}
-                  onChange={(d) => nastaviSteviloSkupin(d.target.value)}
+                <StevilskoPolje
+                  najvec={26}
+                  vrednost={steviloSkupin}
+                  naSpremembo={nastaviSteviloSkupin}
                   required
                 />
               </label>
               <label className="obrazec__polje">
                 <span>Igralcev v skupini *</span>
-                <input
-                  type="number"
-                  min={2}
-                  max={24}
-                  value={velikostSkupine}
-                  onChange={(d) => nastaviVelikostSkupine(d.target.value)}
+                <StevilskoPolje
+                  najvec={24}
+                  vrednost={velikostSkupine}
+                  naSpremembo={nastaviVelikostSkupine}
                   required
                 />
               </label>
@@ -765,12 +762,10 @@ function NovDogodekOkno({
           </label>
           <label className="obrazec__polje">
             <span>Prijavnina (€)</span>
-            <input
-              type="number"
-              min={0}
-              step="0.5"
-              value={prijavnina}
-              onChange={(d) => nastaviPrijavnino(d.target.value)}
+            <StevilskoPolje
+              decimalno
+              vrednost={prijavnina}
+              naSpremembo={nastaviPrijavnino}
             />
           </label>
         </div>

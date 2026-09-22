@@ -92,8 +92,11 @@ public class PreracunRatingaStoritev {
         this.transakcija = new TransactionTemplate(upravitelj);
     }
 
-    /* Kaj je preracun naredil. */
-    public record Porocilo(LocalDateTime od, int obracunanihTekem, int prizadetihIgralcev) {}
+    /* Kaj je preracun naredil. `igralcevZRatingom` je stanje PO preracunu in ne
+       stevilo obnovljenih stanj: pri preracunu od zacetka je dnevnik takrat
+       prazen in bi bila ta stevilka vedno 0 - kar bralcu pove, da ni bilo
+       nicesar, medtem ko se je izracunalo vse. */
+    public record Porocilo(LocalDateTime od, int obracunanihTekem, int igralcevZRatingom) {}
 
     /* En korak casovne vrste: tekma ALI zunanja uvrstitev. Oba premakneta
        rating in oba imata cas, zato morata biti v ENI vrsti - zunanja
@@ -107,6 +110,16 @@ public class PreracunRatingaStoritev {
         boolean jeUvrstitev() {
             return idUvrstitve != null;
         }
+    }
+
+    /* Preracun po POPRAVKU ene tekme: vse od njenega dneva naprej. Popravljena
+       tekma je s starim izidom ze v dnevniku, njen obracun pa je vstopal v vse
+       poznejse tekme obeh igralcev - zato ne zadosca, da se obracuna znova
+       sama. Tekma brez znanega datuma pomeni preracun od zacetka: o njenem
+       mestu v casovni vrsti ne vemo nicesar, zato ne moremo rezati. */
+    public Porocilo preracunajPoPopravku(LocalDateTime velja) {
+        boolean znan = velja != null && !velja.equals(VrstaRatinskeTekme.BREZ_DATUMA);
+        return preracunajOd(znan ? velja.toLocalDate() : null);
     }
 
     /* Preracuna rating od datuma naprej (vkljucno). null pomeni "vse od zacetka". */
@@ -143,7 +156,7 @@ public class PreracunRatingaStoritev {
                in izracunamo znova. */
             zgodovinaRepozitorij.pobrisiOdbitke(RatingStanje.SISTEM_TURNIRKO, meja);
         });
-        int igralcev = transakcija.execute(
+        transakcija.executeWithoutResult(
                 stanje -> obnoviStanjaIzDnevnika(meja, uvrstitvePredMejo));
 
         /* Tekme in zunanje uvrstitve v eni casovni vrsti. Razvrscanje je
@@ -166,7 +179,8 @@ public class PreracunRatingaStoritev {
         transakcija.executeWithoutResult(
                 stanje -> neaktivnostStoritev.uveljaviVse(LocalDateTime.now()));
 
-        return new Porocilo(meja, zaPreracun.size(), igralcev);
+        return new Porocilo(meja, zaPreracun.size(),
+                (int) stanjeRepozitorij.countBySistem(RatingStanje.SISTEM_TURNIRKO));
     }
 
     /* Vse tekme, ki stejejo v rating - turnirske in ligaske skupaj, urejene v
@@ -280,7 +294,7 @@ public class PreracunRatingaStoritev {
        prebrati - sta posledica CELOTNEGA zaporedja, zato case igralcevih tekem
        po vrsti spustimo skozi isti SledilnikVrnitve, ki ga uporablja redni
        obracun. En sam prehod da oboje: stevec tekem in sledilnik. */
-    private int obnoviStanjaIzDnevnika(LocalDateTime meja, List<Object[]> uvrstitvePredMejo) {
+    private void obnoviStanjaIzDnevnika(LocalDateTime meja, List<Object[]> uvrstitvePredMejo) {
         String sistem = RatingStanje.SISTEM_TURNIRKO;
         stanjeRepozitorij.deleteAll(stanjeRepozitorij.findBySistem(sistem));
         stanjeRepozitorij.flush();
@@ -324,6 +338,5 @@ public class PreracunRatingaStoritev {
             nova.add(stanje);
         }
         stanjeRepozitorij.saveAll(nova);
-        return nova.size();
     }
 }

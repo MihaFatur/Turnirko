@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { klubiApi, krajiApi } from '../api/zahteve'
 import type { KlubDto, KrajDto } from '../api/tipi'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
+import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 
 export function SifrantiStran() {
@@ -227,14 +228,12 @@ function KrajiPlosca() {
       </div>
 
       <form className="obrazec__vrstica obrazec__vrstica--dodajanje" onSubmit={obDodajanju}>
-        <input
-          placeholder="Poštna št."
+        <StevilskoPolje
+          placeholder="Pošt. št. (1000–9999)"
           className="vnos--ozek"
-          type="number"
-          min={1000}
-          max={9999}
-          value={novaPostnaSt}
-          onChange={(dogodek) => nastaviNovoPostnoSt(dogodek.target.value)}
+          najvec={9999}
+          vrednost={novaPostnaSt}
+          naSpremembo={nastaviNovoPostnoSt}
           required
         />
         <input

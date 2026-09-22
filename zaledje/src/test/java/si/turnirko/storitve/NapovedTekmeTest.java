@@ -34,7 +34,15 @@ class NapovedTekmeTest extends IntegracijskiTest {
 
     @Autowired private NapovedTekmeStoritev napovedStoritev;
     @Autowired private RacuniStoritev racuniStoritev;
+    @Autowired private RegistracijaStoritev registracijaStoritev;
+    @Autowired private OmejevalnikPoskusov omejevalnik;
     @Autowired private UporabnikRepozitorij uporabnikRepozitorij;
+
+    /* Omejevalnik posiljanja kod zivi v pomnilniku cez vse teste. */
+    @org.junit.jupiter.api.BeforeEach
+    void pocistiOmejitve() {
+        omejevalnik.pocistiVse();
+    }
 
     /* Prva pripravljena tekma zrebanega dogodka s postavljenimi ratingi.
        Ratingi so POSTAVLJENI (nastaviRatinge), zato novincev tu ni in rating
@@ -212,8 +220,9 @@ class NapovedTekmeTest extends IntegracijskiTest {
     }
 
     private String racunZa(Igralec igralec, String email) {
-        racuniStoritev.registriraj(new RegistracijaVnos(
-                igralec.getIme(), igralec.getPriimek(), null, email, "geslo123", false));
+        registracijaStoritev.registriraj(new RegistracijaVnos(
+                igralec.getIme(), igralec.getPriimek(), null, email, "geslo123", false,
+                igralec.getDatumRojstva(), null), "127.0.0.1");
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals(email)).findFirst().orElseThrow().id();
         racuniStoritev.potrdi(idRacuna, new PotrditevRacunaVnos(igralec.getId()));

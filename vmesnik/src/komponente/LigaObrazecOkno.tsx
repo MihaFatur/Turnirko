@@ -20,6 +20,7 @@ import {
   TEZA_RAVNI,
 } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
+import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
 
 interface Lastnosti {
@@ -246,8 +247,8 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           {konec === 'PRAG' && (
             <label className="obrazec__polje">
               <span>Prag zmag (največ {tekme.length})</span>
-              <input type="number" min={1} max={tekme.length} value={prag}
-                onChange={(d) => nastaviPrag(Number(d.target.value))} required />
+              <StevilskoPolje najvec={tekme.length} vrednost={String(prag)}
+                naSpremembo={(v) => nastaviPrag(Number(v))} required />
             </label>
           )}
         </div>
@@ -276,9 +277,9 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             )}
             <label className="obrazec__polje">
               <span>Na koliko dni</span>
-              <input type="number" min={1} max={365} value={razmik}
+              <StevilskoPolje najvec={365} vrednost={String(razmik)}
                 disabled={!datumPrvega}
-                onChange={(d) => nastaviRazmik(Number(d.target.value))} />
+                naSpremembo={(v) => nastaviRazmik(Number(v))} />
             </label>
           </div>
           <p className="namig">
@@ -353,15 +354,15 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           <div className="obrazec__vrstica">
             <label className="obrazec__polje">
               <span>Zmaga</span>
-              <input type="number" min={0} value={tockeZmaga} onChange={(d) => nastaviTockeZmaga(Number(d.target.value))} />
+              <StevilskoPolje vrednost={String(tockeZmaga)} naSpremembo={(v) => nastaviTockeZmaga(Number(v))} />
             </label>
             <label className="obrazec__polje">
               <span>Neodločeno</span>
-              <input type="number" min={0} value={tockeNeodloceno} onChange={(d) => nastaviTockeNeodloceno(Number(d.target.value))} />
+              <StevilskoPolje vrednost={String(tockeNeodloceno)} naSpremembo={(v) => nastaviTockeNeodloceno(Number(v))} />
             </label>
             <label className="obrazec__polje">
               <span>Poraz</span>
-              <input type="number" min={0} value={tockePoraz} onChange={(d) => nastaviTockePoraz(Number(d.target.value))} />
+              <StevilskoPolje vrednost={String(tockePoraz)} naSpremembo={(v) => nastaviTockePoraz(Number(v))} />
             </label>
           </div>
           <label className="obrazec__polje obrazec__polje--stikalo">

@@ -1,8 +1,9 @@
 /* Kontekst uporabnika v desnem kotu masthead-a. V novem oblikovnem sistemu
    ikon ni: prožilnik je mono oznaka (vloga in klub oz. »GOST«), ki odpre
    spustni meni. Gost dobi možnost prijave in registracije, prijavljen
-   uporabnik pa svojo identiteto, povezavo do profila in odjavo. Meni se zapre
-   ob kliku zunaj njega ali ob tipki Escape. */
+   uporabnik pa svojo identiteto, povezavo do profila in odjavo. Račun, ki
+   naslova (ali skrbnika) še ni potrdil, dobi postavko »Vpiši kodo«. Meni se
+   zapre ob kliku zunaj njega ali ob tipki Escape. */
 import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
@@ -10,7 +11,7 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { OZNAKE_VLOGA } from '../api/tipi'
 import { PrijavaOkno } from './PrijavaOkno'
 
-type PrijavaNacin = 'prijava' | 'registracija'
+type PrijavaNacin = 'prijava' | 'registracija' | 'koda'
 
 export function UporabniskiMeni() {
   const { uporabnik, odjava } = useAvtentikacija()
@@ -38,6 +39,12 @@ export function UporabniskiMeni() {
   /* Povezavo do profila vidi vsak prijavljen igralec (tudi tak, ki se caka na
      potrditev); tam mu stran pojasni, zakaj profila se ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
+
+  /* Račun brez potrjenega naslova ali skrbnikove kode: kar manjka, je koda. */
+  const cakaKodo =
+    uporabnik !== null
+    && uporabnik.vloga !== 'ADMIN'
+    && (!uporabnik.emailPotrjen || uporabnik.potrebnaKodaSkrbnika)
 
   /* Oznaka konteksta je IME osebe, ne njena vloga: v kotu zapisnika stoji,
      kdo ga vodi (»NEJC VRHOVNIK«). Vloga in klub sta v glavi spustnega
@@ -73,9 +80,30 @@ export function UporabniskiMeni() {
                   {uporabnik.imeIgralca ?? uporabnik.uporabniskoIme}
                 </span>
                 <span className="uporabnik-meni__vloga">
-                  {[OZNAKE_VLOGA[uporabnik.vloga], uporabnik.klub].filter(Boolean).join(' · ')}
+                  {[
+                    OZNAKE_VLOGA[uporabnik.vloga],
+                    uporabnik.klub,
+                    cakaKodo
+                      ? uporabnik.emailPotrjen
+                        ? 'čaka kodo skrbnika'
+                        : 'e-pošta ni potrjena'
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </div>
+
+              {cakaKodo && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="uporabnik-meni__postavka"
+                  onClick={() => odpriPrijavo('koda')}
+                >
+                  Vpiši kodo
+                </button>
+              )}
 
               {jePrijavljenIgralec && (
                 <NavLink
@@ -124,7 +152,12 @@ export function UporabniskiMeni() {
       )}
 
       {prijavaNacin && (
-        <PrijavaOkno zacetniNacin={prijavaNacin} onZapri={() => nastaviPrijavaNacin(null)} />
+        <PrijavaOkno
+          zacetniNacin={prijavaNacin}
+          email={prijavaNacin === 'koda' ? (uporabnik?.uporabniskoIme ?? null) : null}
+          kodaSkrbnika={prijavaNacin === 'koda' && uporabnik?.emailPotrjen === true}
+          onZapri={() => nastaviPrijavaNacin(null)}
+        />
       )}
     </div>
   )

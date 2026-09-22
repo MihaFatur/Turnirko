@@ -62,6 +62,7 @@ const povezave: Povezava[] = [
   { pot: '/racuni', oznaka: 'Dostopi', samoAdmin: true },
   { pot: '/sifranti', oznaka: 'Šifranti', samoAdmin: true },
   { pot: '/uvoz', oznaka: 'Uvoz NTZS', samoAdmin: true },
+  { pot: '/rating', oznaka: 'Rating', samoAdmin: true },
 ]
 
 /* Prve stiri postavke spodnje vrstice so iste za vse - to so poti, po katerih
@@ -319,7 +320,12 @@ function PredalVec({ jeAdmin, onZapri }: { jeAdmin: boolean; onZapri: () => void
     queryFn: racuniApi.seznam,
     enabled: jeAdmin,
   })
-  const cakajo = racuni.data?.filter((r) => r.status === 'CAKA').length ?? 0
+  /* Steje samo zahteve, ki admina res cakajo: naslov potrjen, skrbnik (ce je
+     potreben) tudi. Nepotrjene registracije se same izbrisejo. */
+  const cakajo =
+    racuni.data?.filter(
+      (r) => r.status === 'CAKA' && r.emailPotrjen && r.skrbnikPotrjen !== false,
+    ).length ?? 0
 
   const okvir = useRef<HTMLDivElement>(null)
   const sprozilec = useRef<HTMLElement | null>(null)
@@ -398,6 +404,13 @@ function PredalVec({ jeAdmin, onZapri }: { jeAdmin: boolean; onZapri: () => void
             <NavLink to="/uvoz" className="predal__postavka" onClick={onZapri}>
               Uvoz NTZS
               <span className="predal__kontekst">Stupa</span>
+            </NavLink>
+          )}
+
+          {jeAdmin && (
+            <NavLink to="/rating" className="predal__postavka" onClick={onZapri}>
+              Rating
+              <span className="predal__kontekst">Preračun</span>
             </NavLink>
           )}
         </div>

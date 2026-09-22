@@ -21,6 +21,7 @@ import { useMutation } from '@tanstack/react-query'
 import { ligeApi } from '../api/zahteve'
 import type { LigaDto, SrecanjeDto } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
+import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
 
 interface Lastnosti {
@@ -161,8 +162,8 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
             )}
             <label className="obrazec__polje">
               <span>Na koliko dni</span>
-              <input type="number" min={1} max={365} value={razmik}
-                onChange={(d) => nastaviRazmik(Number(d.target.value))} />
+              <StevilskoPolje najvec={365} vrednost={String(razmik)}
+                naSpremembo={(v) => nastaviRazmik(Number(v))} />
             </label>
           </div>
           {zUrami && (

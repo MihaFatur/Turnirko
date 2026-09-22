@@ -1,7 +1,12 @@
 /* Administracija dostopov igralcev: potrjevanje registracij (s povezavo na
-   zapis igralca), zavrnitev, vklop/izklop ter nastavitev gesla (po izbiri ali
-   naključno). Gesla ni mogoče prebrati — shranjena je le zgostitev — zato ga
-   admin ne "vidi", ampak ga poljubno nastavi in izroči igralcu.
+   zapis igralca), razvezava, zavrnitev, vklop/izklop ter nastavitev gesla (po
+   izbiri ali naključno). Gesla ni mogoče prebrati — shranjena je le zgostitev
+   — zato ga admin ne "vidi", ampak ga poljubno nastavi in izroči igralcu.
+
+   Admina čakajo samo računi s potrjenim naslovom (in skrbnikom, če je
+   potreben); registracije brez kode se same izbrišejo in so tu le za
+   pregled. Računi, ki so se povezali samodejno, so označeni — admin jih
+   lahko razveže, če je ujemanje zgrešilo soimenjaka.
    Vidi jo samo administrator. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -14,6 +19,12 @@ import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 
+/* Zahteva, ki jo admin lahko obdela: naslov potrjen, skrbnik (če je
+   potreben) tudi. */
+function pripravljenaZaAdmina(r: RacunIgralcaDto): boolean {
+  return r.status === 'CAKA' && r.emailPotrjen && r.skrbnikPotrjen !== false
+}
+
 export function RacuniStran() {
   const racuni = useQuery({ queryKey: ['racuni'], queryFn: racuniApi.seznam })
 
@@ -21,7 +32,8 @@ export function RacuniStran() {
   if (racuni.error) return <SporociloNapake napaka={racuni.error} />
 
   const vsi = racuni.data ?? []
-  const cakajoci = vsi.filter((r) => r.status === 'CAKA')
+  const cakajoci = vsi.filter(pripravljenaZaAdmina)
+  const nepotrjeni = vsi.filter((r) => r.status === 'CAKA' && !pripravljenaZaAdmina(r))
   const ostali = vsi.filter((r) => r.status !== 'CAKA')
 
   return (
@@ -70,6 +82,37 @@ export function RacuniStran() {
           )
         )}
       </div>
+
+      {nepotrjeni.length > 0 && (
+        <div>
+          <div className="naslovna-vrstica">
+            <h2>Brez potrjene e-pošte</h2>
+            <span className="sekcija__meta">{nepotrjeni.length} registracij</span>
+          </div>
+          <p className="obvestilo">
+            Lastnik naslova še ni vpisal kode (oz. skrbnik ni dal soglasja). Take
+            registracije se po 48 urah (skrbnik: 30 dneh) izbrišejo same; potrjevati jih
+            ni treba.
+          </p>
+          <div className="tabela-ovoj">
+            <table className="tabela">
+              <thead>
+                <tr>
+                  <th scope="col">E-pošta</th>
+                  <th scope="col">Navedeno ime</th>
+                  <th scope="col">Stanje</th>
+                  <th scope="col" className="tabela__dejanja"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {nepotrjeni.map((r) => (
+                  <NepotrjenaVrstica key={r.id} racun={r} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="naslovna-vrstica">
@@ -159,6 +202,7 @@ function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
           </span>
           <span className="racun__podrobnost">
             {racun.email}
+            {racun.prijavljeniDatumRojstva && ` · rojen ${datum(racun.prijavljeniDatumRojstva)}`}
             {racun.klubZelja && ` · navedel klub: ${racun.klubZelja}`}
           </span>
         </div>
@@ -168,12 +212,13 @@ function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
         <span className="racun__cas">{datum(racun.ustvarjenOb)}</span>
       </div>
 
-      {racun.predlogi.length === 0 && (
-        <p className="racun__namig">
-          Med igralci ni nikogar s tem priimkom — morda je vpisan drugače. Poišči ga
-          z vpisom imena.
-        </p>
-      )}
+      {/* Samodejna povezava je izostala: ali ni bilo nikogar s tem imenom in
+          datumom, ali sta dva, ali igralec dostop že ima. Admin izbere sam. */}
+      <p className="racun__namig">
+        {racun.predlogi.length === 0
+          ? 'Med igralci ni nikogar s tem priimkom — morda je vpisan drugače. Poišči ga z vpisom imena.'
+          : 'Naslov je potrjen. Samodejna povezava ni nastala (ni bilo natanko enega igralca brez računa z istim imenom in datumom rojstva) ali je bila razvezana — izberi pravega.'}
+      </p>
 
       <div className="obrazec__vrstica racun__izbira">
         <IskalniIzbirnik
@@ -264,8 +309,8 @@ function ZahtevaOrganizator({ racun }: { racun: RacunIgralcaDto }) {
       </div>
 
       <p className="racun__namig">
-        Dodeli klub, po katerem bo soupravljal tekmovanja. Brez kluba upravlja samo
-        turnirje in lige, ki jih ustvari sam.
+        Naslov je potrjen. Dodeli klub, po katerem bo soupravljal tekmovanja. Brez
+        kluba upravlja samo turnirje in lige, ki jih ustvari sam.
       </p>
 
       <div className="obrazec__vrstica racun__izbira">
@@ -303,6 +348,49 @@ function ZahtevaOrganizator({ racun }: { racun: RacunIgralcaDto }) {
   )
 }
 
+/* Registracija, ki še čaka na kodo. Edino dejanje je izbris (npr. očitno
+   lažen vnos) — sicer jo odnese nočno čiščenje. */
+function NepotrjenaVrstica({ racun }: { racun: RacunIgralcaDto }) {
+  const odjemalec = useQueryClient()
+  const [brisanje, nastaviBrisanje] = useState(false)
+  const izbrisi = useMutation({
+    mutationFn: () => racuniApi.izbrisi(racun.id),
+    onSuccess: () => {
+      odjemalec.invalidateQueries({ queryKey: ['racuni'] })
+      nastaviBrisanje(false)
+    },
+  })
+
+  return (
+    <tr>
+      <td>{racun.email}</td>
+      <td>
+        {racun.prijavljenoIme} {racun.prijavljeniPriimek}
+        <span className="enanaena__vir">{OZNAKE_VLOGA[racun.vloga]}</span>
+      </td>
+      <td>{racun.emailPotrjen ? 'čaka kodo skrbnika' : 'e-pošta ni potrjena'}</td>
+      <td className="racun__dejanja">
+        <button
+          className="gumb gumb--majhen gumb--nevaren"
+          onClick={() => nastaviBrisanje(true)}
+        >
+          Izbriši
+        </button>
+        <SporociloNapake napaka={izbrisi.error} />
+        {brisanje && (
+          <PotrditvenoOkno
+            naslov="Izbris registracije"
+            sporocilo={`Izbrišem registracijo ${racun.email}? Naslov se sprosti takoj (sicer se registracija izbriše sama).`}
+            besedaPotrditve="Izbriši"
+            onPotrdi={() => izbrisi.mutate()}
+            onZapri={() => nastaviBrisanje(false)}
+          />
+        )}
+      </td>
+    </tr>
+  )
+}
+
 function ObstojecaVrstica({ racun }: { racun: RacunIgralcaDto }) {
   const odjemalec = useQueryClient()
   /* Geslo, ki ga admin pravkar nastavi ali generira — prikaže se enkrat,
@@ -312,6 +400,7 @@ function ObstojecaVrstica({ racun }: { racun: RacunIgralcaDto }) {
   const [urejanje, nastaviUrejanje] = useState(false)
   const [vnos, nastaviVnos] = useState('')
   const [brisanje, nastaviBrisanje] = useState(false)
+  const [razvezava, nastaviRazvezavo] = useState(false)
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['racuni'] })
   const preklop = useMutation({
@@ -341,14 +430,27 @@ function ObstojecaVrstica({ racun }: { racun: RacunIgralcaDto }) {
       nastaviBrisanje(false)
     },
   })
+  const razvezi = useMutation({
+    mutationFn: () => racuniApi.razvezi(racun.id),
+    onSuccess: () => {
+      osvezi()
+      nastaviRazvezavo(false)
+    },
+  })
 
   const prekratko = vnos.trim().length < 8
+  const povezanIgralec = racun.vloga === 'IGRALEC' && racun.idIgralec !== null
 
   return (
     <tr>
       <td>{racun.email}</td>
       <td>{OZNAKE_VLOGA[racun.vloga]}</td>
-      <td>{racun.vloga === 'ORGANIZATOR' ? (racun.klub ?? '—') : (racun.imeIgralca ?? '—')}</td>
+      <td>
+        {racun.vloga === 'ORGANIZATOR' ? (racun.klub ?? '—') : (racun.imeIgralca ?? '—')}
+        {povezanIgralec && racun.virPovezave === 'SAMODEJNO' && (
+          <span className="enanaena__vir">samodejno</span>
+        )}
+      </td>
       <td>
         {OZNAKE_STATUSA_RACUNA[racun.status]}
         {!racun.aktiven && <span className="enanaena__vir">izklopljen</span>}
@@ -366,6 +468,11 @@ function ObstojecaVrstica({ racun }: { racun: RacunIgralcaDto }) {
         >
           {urejanje ? 'Prekliči' : 'Nastavi geslo'}
         </button>
+        {povezanIgralec && (
+          <button className="gumb gumb--majhen" onClick={() => nastaviRazvezavo(true)}>
+            Razveži
+          </button>
+        )}
         <button
           className="gumb gumb--majhen gumb--nevaren"
           onClick={() => nastaviBrisanje(true)}
@@ -404,12 +511,23 @@ function ObstojecaVrstica({ racun }: { racun: RacunIgralcaDto }) {
 
         <SporociloNapake napaka={nastavi.error} />
         <SporociloNapake napaka={generiraj.error} />
+        <SporociloNapake napaka={razvezi.error} />
 
         {novoGeslo && (
           <div className="racun__geslo">
             Geslo za <strong>{racun.email}</strong>: <code>{novoGeslo}</code> — izroči ga
             igralcu, kasneje ga ni več mogoče prebrati.
           </div>
+        )}
+
+        {razvezava && (
+          <PotrditvenoOkno
+            naslov="Razvezava računa"
+            sporocilo={`Razvežem račun ${racun.email} od igralca ${racun.imeIgralca}? Račun se vrne med čakajoče in ga lahko povežeš z drugim igralcem.`}
+            besedaPotrditve="Razveži"
+            onPotrdi={() => razvezi.mutate()}
+            onZapri={() => nastaviRazvezavo(false)}
+          />
         )}
 
         {brisanje && (

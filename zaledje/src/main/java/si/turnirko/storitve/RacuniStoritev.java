@@ -1,12 +1,14 @@
-/* Racuni igralcev: registracija, potrjevanje s strani administratorja in
-   zamenjava gesla.
+/* Racuni igralcev: potrjevanje s strani administratorja, razvezava,
+   zamenjava gesla in upravljanje dostopa. Registracija, potrditev e-poste in
+   pozabljeno geslo so v RegistracijaStoritev.
 
-   Registracija je prosta, zato racun nastane v stanju CAKA in sam po sebi ne
-   daje nobene pravice - dokler ga administrator ne poveze z zapisom igralca,
+   Racun nastane v stanju CAKA in sam po sebi ne daje nobene pravice - dokler
+   ni povezan z zapisom igralca (administrator ali samodejna povezava),
    uporabnik ne vidi nicesar zasebnega. Povezava je enolicna v obe smeri:
    en igralec ima najvec en racun. */
 package si.turnirko.storitve;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -17,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.PotrditevRacunaVnos;
 import si.turnirko.dto.RacunIgralcaDto;
-import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.dto.SpremembaGeslaVnos;
 import si.turnirko.dto.UporabnikDto;
 import si.turnirko.izjeme.DomenskaIzjema;
@@ -27,6 +28,7 @@ import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.VirPovezave;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
@@ -39,41 +41,21 @@ public class RacuniStoritev {
     private final IgralecRepozitorij igralecRepozitorij;
     private final KlubRepozitorij klubRepozitorij;
     private final PasswordEncoder kodirnik;
+    private final KodeStoritev kode;
 
     public RacuniStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                           IgralecRepozitorij igralecRepozitorij,
                           KlubRepozitorij klubRepozitorij,
-                          PasswordEncoder kodirnik) {
+                          PasswordEncoder kodirnik,
+                          KodeStoritev kode) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
         this.kodirnik = kodirnik;
+        this.kode = kode;
     }
 
-    // ---------- Registracija in prijava ----------
-
-    /* Registracija osebe (igralca ali organizatorja). E-posta je hkrati
-       prijavno ime, zato mora biti enolicna. Racun nastane v stanju CAKA in
-       sam po sebi ne daje pravice; potrdi ga administrator. Vrne profil novega
-       (se nepotrjenega) racuna. */
-    @Transactional
-    public UporabnikDto registriraj(RegistracijaVnos v) {
-        String email = v.email().trim().toLowerCase(Locale.ROOT);
-        if (uporabnikRepozitorij.existsByUporabniskoImeIgnoreCase(email)) {
-            throw new DomenskaIzjema("Racun z e-posto " + email + " ze obstaja.");
-        }
-        Vloga vloga = Boolean.TRUE.equals(v.organizator()) ? Vloga.ORGANIZATOR : Vloga.IGRALEC;
-        Uporabnik u = new Uporabnik(email, kodirnik.encode(v.geslo()), vloga);
-        u.setStatus(StatusRacuna.CAKA);
-        u.setPrijavljenoIme(v.ime().trim());
-        u.setPrijavljeniPriimek(v.priimek().trim());
-        if (v.idKlub() != null) {
-            Klub klub = klubRepozitorij.findById(v.idKlub())
-                    .orElseThrow(() -> new NiNajdenoIzjema("Klub z id " + v.idKlub() + " ne obstaja."));
-            u.setKlubZelja(klub);
-        }
-        return UporabnikDto.iz(uporabnikRepozitorij.save(u));
-    }
+    // ---------- Lastni racun ----------
 
     /* Profil trenutno prijavljenega uporabnika. */
     @Transactional(readOnly = true)
@@ -109,10 +91,11 @@ public class RacuniStoritev {
         return seznam;
     }
 
+    /* Igralci IN organizatorji, ki cakajo na admina in so za to pripravljeni
+       (naslov potrjen, skrbnik tudi) - nepotrjene registracije ne stejejo. */
     @Transactional(readOnly = true)
     public long steviloCakajocih() {
-        // igralci IN organizatorji, ki cakajo na potrditev
-        return uporabnikRepozitorij.countByStatus(StatusRacuna.CAKA);
+        return uporabnikRepozitorij.steviloCakajocihNaAdmina();
     }
 
     /* Potrditev igralca: racun se poveze z igralcem in s tem dobi dostop do
@@ -135,6 +118,24 @@ public class RacuniStoritev {
         u.setIgralec(igralec);
         u.setStatus(StatusRacuna.POTRJEN);
         u.setAktiven(true);
+        u.setVirPovezave(VirPovezave.ADMIN);
+        u.setPovezanOb(LocalDateTime.now());
+        return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
+    }
+
+    /* Razvezava: racun ostane (z e-posto in geslom), a brez igralca in spet v
+       stanju CAKA - za primer, ko je samodejna povezava zgresila soimenjaka
+       ali je admin izbral napacnega. Nato ga lahko poveze znova. */
+    @Transactional
+    public RacunIgralcaDto razvezi(Long idRacuna) {
+        Uporabnik u = najdiRacun(idRacuna);
+        if (u.getVloga() != Vloga.IGRALEC || u.getIgralec() == null) {
+            throw new DomenskaIzjema("Racun ni povezan z igralcem.");
+        }
+        u.setIgralec(null);
+        u.setStatus(StatusRacuna.CAKA);
+        u.setVirPovezave(null);
+        u.setPovezanOb(null);
         return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
     }
 
@@ -166,6 +167,8 @@ public class RacuniStoritev {
         Uporabnik u = najdiRacun(idRacuna);
         u.setStatus(StatusRacuna.ZAVRNJEN);
         u.setIgralec(null);
+        u.setVirPovezave(null);
+        u.setPovezanOb(null);
         u.setAktiven(false);
         return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
     }
@@ -184,7 +187,9 @@ public class RacuniStoritev {
        Zapisi igralca in njegovih tekem se s tem ne dotaknejo. */
     @Transactional
     public void zbrisi(Long idRacuna) {
-        uporabnikRepozitorij.delete(najdiRacun(idRacuna));
+        Uporabnik u = najdiRacun(idRacuna);
+        kode.pobrisiVse(u);
+        uporabnikRepozitorij.delete(u);
     }
 
     /* Ponastavitev gesla: administrator ga ne vidi, zato mu vrnemo novo
@@ -236,8 +241,9 @@ public class RacuniStoritev {
                 .toList();
     }
 
-    /* Primerjava brez sumnikov in velikih crk, da "Zagar" najde "Žagar". */
-    private static String normaliziraj(String v) {
+    /* Primerjava brez sumnikov in velikih crk, da "Zagar" najde "Žagar".
+       Isto pravilo uporablja samodejna povezava (RegistracijaStoritev). */
+    static String normaliziraj(String v) {
         if (v == null) {
             return "";
         }

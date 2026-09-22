@@ -5,7 +5,10 @@
    ni potrebno (SessionCreationPolicy.STATELESS) - odjemalec ob vsakem
    spreminjanju poslje poverilnice. Ob manjkajoci/napacni prijavi vrnemo
    401 BREZ glave "WWW-Authenticate", da brskalnik ne odpre svojega
-   vgrajenega okna za prijavo - to okno prikaze aplikacija sama. */
+   vgrajenega okna za prijavo - to okno prikaze aplikacija sama.
+
+   Pred Basic filtrom stoji OmejitevPrijavFilter: racun ali naslov IP s
+   prevec neuspelimi prijavami dobi 429, se preden se geslo preveri. */
 package si.turnirko.nastavitve;
 
 import org.springframework.context.annotation.Bean;
@@ -23,10 +26,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
+import si.turnirko.storitve.OmejevalnikPoskusov;
 
 @Configuration
 @EnableWebSecurity
@@ -43,7 +48,8 @@ public class VarnostneNastavitve {
        Racun, ki ga administrator se ni potrdil (ali ga je zavrnil) - naj bo
        igralec ali organizator -, se sme prijaviti, da izve, v kaksnem stanju
        je, vendar dobi le pravico ROLE_CAKAJOCI, ki ne odpira nicesar razen
-       lastnega profila racuna (/auth/me). */
+       lastnega profila racuna (/auth/me). Isto velja za racun, ki naslova se
+       ni potrdil: vmesnik mu tako lahko ponudi vpis kode. */
     @Bean
     UserDetailsService uporabnikiIzBaze(UporabnikRepozitorij repozitorij) {
         return prijavnoIme -> repozitorij.findByUporabniskoIme(prijavnoIme)
@@ -81,7 +87,8 @@ public class VarnostneNastavitve {
 
     @Bean
     SecurityFilterChain varnostnaVeriga(HttpSecurity http,
-                                        AuthenticationEntryPoint vstopnaTocka) throws Exception {
+                                        AuthenticationEntryPoint vstopnaTocka,
+                                        OmejevalnikPoskusov omejevalnik) throws Exception {
         http
                 // uporabi bean CorsConfigurationSource po imenu (corsConfigurationSource)
                 .cors(Customizer.withDefaults())
@@ -89,13 +96,30 @@ public class VarnostneNastavitve {
                 // zato CSRF zascita ni potrebna
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(seje -> seje.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // HSTS postavi Caddy, ne aplikacija - ta HTTPS sploh ne prekine
+                // in ne ve, katere poddomene obstajajo. Privzetek Spring
+                // Security doda "includeSubDomains", kar brskalniku za CELO LETO
+                // vsili HTTPS tudi na webmail. in mail., ki nista na tem
+                // strezniku in imata certifikat gostitelja domene. Brskalnik bi
+                // ju zavrnil, opozorila pod HSTS ni mogoce obiti, posta pa bi
+                // postala nedosegljiva. Izmerjeno 22. 9. 2026 na turnirko-nt.si.
+                .headers(glave -> glave.httpStrictTransportSecurity(hsts -> hsts.disable()))
+                // blokada po prevec neuspelih prijavah - pred preverbo gesla
+                .addFilterBefore(new OmejitevPrijavFilter(omejevalnik), BasicAuthenticationFilter.class)
                 .authorizeHttpRequests(dovoljenja -> dovoljenja
                         // predpregled (CORS) mora skozi brez prijave
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // registracija (igralca ali organizatorja) je edina mutacija
-                        // brez prijave; racun nastane v stanju CAKA in sam po sebi ne
-                        // da nobene pravice, dokler ga administrator ne potrdi
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/registracija").permitAll()
+                        // poti brez prijave: registracija, vpis kode s poste (naslov,
+                        // skrbnik), ponovno posiljanje kode in pozabljeno geslo. Racun
+                        // nastane v stanju CAKA in sam po sebi ne da nobene pravice;
+                        // edini dokaz na teh poteh je koda, ki jo je dobil lastnik naslova
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/auth/registracija",
+                                "/api/v1/auth/potrdi-eposto",
+                                "/api/v1/auth/potrdi-skrbnika",
+                                "/api/v1/auth/ponovno-poslji",
+                                "/api/v1/auth/pozabljeno-geslo",
+                                "/api/v1/auth/novo-geslo").permitAll()
                         // /auth/me sluzi za preverbo poverilnic - zahteva veljavno prijavo
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         // zasebni del profila (analize in napoved tekme) vidi samo

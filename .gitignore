@@ -9,6 +9,10 @@ podatki/
 # V repozitoriju ostane samo .env.primer z vzorcem.
 .env
 
+# Lokalne nastavitve razvijalca (geslo SMTP za preizkus posiljanja).
+# Spring Boot to mapo prebere sam in z njo prepise application.properties.
+zaledje/config/
+
 # Dnevniki in varnostne kopije s streznika
 dnevniki/
 kopije/

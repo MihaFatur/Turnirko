@@ -212,14 +212,28 @@ export interface Udelezenec {
   klub: string | null
   polnoIme2: string | null
   klub2: string | null
+  /* Kratka oblika za ozka mesta (glava stolpca pri vnosu točk po nizih);
+     izpis imena povsod drugod ostane »Ana Novak«. Pri ekipi je to ime ekipe. */
+  priimek: string
+  priimek2: string | null
 }
 
-/* Ime udeleženca v eni vrstici: »Novak Ana« oz. »Novak Ana / Zajc Eva«. */
+/* Ime udeleženca v eni vrstici: »Ana Novak« oz. »Ana Novak / Eva Zajc«. */
 export function imeUdelezenca(udelezenec: Udelezenec | null | undefined): string | null {
   if (!udelezenec) return null
   return udelezenec.polnoIme2
     ? `${udelezenec.polnoIme} / ${udelezenec.polnoIme2}`
     : udelezenec.polnoIme
+}
+
+/* Priimek udeleženca za ozka mesta (glava stolpca točk po nizih): »Novak«
+   oz. »Novak / Zajc«. Ni nadomestek za ime — samo tam, kjer za ime ni
+   prostora, pomen stolpca pa je brez njega izgubljen. */
+export function priimekUdelezenca(udelezenec: Udelezenec | null | undefined): string {
+  if (!udelezenec) return ''
+  return udelezenec.priimek2
+    ? `${udelezenec.priimek} / ${udelezenec.priimek2}`
+    : udelezenec.priimek
 }
 
 /* Isto za vrstico prijave (v pripravi in med udeleženci). */
@@ -347,6 +361,11 @@ export interface UporabnikDto {
   /* Klub organizatorja (po njem soupravlja klubska tekmovanja); sicer null. */
   idKlub: number | null
   klub: string | null
+  /* Ali je lastnik naslova vpisal kodo s pošte; brez tega vmesnik ponudi
+     vpis kode namesto čakanja na administratorja. */
+  emailPotrjen: boolean
+  /* Račun mlajšega od 15 let še čaka na kodo starša oz. skrbnika. */
+  potrebnaKodaSkrbnika: boolean
 }
 
 export type StatusRacuna = 'CAKA' | 'POTRJEN' | 'ZAVRNJEN'
@@ -371,7 +390,43 @@ export interface RegistracijaVnos {
   geslo: string
   /* true = registracija organizatorja; sicer (false/undefined) igralec. */
   organizator?: boolean
+  /* Obvezen pri igralcu (ISO datum); podlaga za samodejno povezavo z zapisom
+     v šifrantu in za pravilo o skrbniku. Javno nikoli. */
+  datumRojstva: string | null
+  /* Obvezna pri mlajših od 15 let: naslov starša oz. skrbnika. */
+  emailSkrbnika: string | null
 }
+
+/* Odgovor na registracijo je izpeljan samo iz vnosa - enak, če naslov že
+   obstaja (obstoja računa ne razkriva). */
+export interface RegistracijaOdgovorDto {
+  email: string
+  potrebnaKodaSkrbnika: boolean
+}
+
+export interface PotrditevKodeVnos {
+  email: string
+  koda: string
+}
+
+/* Kaj se je zgodilo po pravilni kodi: račun je povezan (prijava), čaka
+   skrbnikovo kodo ali administratorja. */
+export interface PotrditevOdgovorDto {
+  povezan: boolean
+  potrebnaKodaSkrbnika: boolean
+  organizator: boolean
+}
+
+export type NamenKode = 'EPOSTA' | 'SKRBNIK' | 'GESLO'
+
+export interface NovoGesloVnos {
+  email: string
+  koda: string
+  geslo: string
+}
+
+/* Kdo je račun povezal z igralcem: administrator ali samodejno ujemanje. */
+export type VirPovezave = 'ADMIN' | 'SAMODEJNO'
 
 export interface SpremembaGeslaVnos {
   staro: string
@@ -399,6 +454,14 @@ export interface RacunIgralcaDto {
   aktiven: boolean
   idIgralec: number | null
   imeIgralca: string | null
+  /* Navedeni datum rojstva (pogled je samo administratorjev). */
+  prijavljeniDatumRojstva: string | null
+  /* Nepotrjene registracije se same izbrišejo; admina ne zaposlujejo. */
+  emailPotrjen: boolean
+  /* null = skrbnik ni potreben; false = še čaka; true = soglasje dano. */
+  skrbnikPotrjen: boolean | null
+  virPovezave: VirPovezave | null
+  povezanOb: string | null
   ustvarjenOb: string
   predlogi: PredlogIgralcaDto[]
 }
@@ -1085,6 +1148,11 @@ export interface TekmaSrecanjaDto {
   domaci2: string | null
   gost: string | null
   gost2: string | null
+  /* Kratka oblika za ozka mesta (glava stolpca pri vnosu točk po nizih). */
+  priimekDomaci: string | null
+  priimekDomaci2: string | null
+  priimekGost: string | null
+  priimekGost2: string | null
   idDomaci: number | null
   idDomaci2: number | null
   idGost: number | null
@@ -1813,4 +1881,24 @@ export interface IzidUvozaDto {
   preracunanihTekem: number | null
   napaka: string | null
   porocilo: PorociloUvozaDto | null
+}
+
+/* ---------- Vzdrževanje Turnirko ratinga (samo admin) ---------- */
+
+/* Izid ponovnega preračuna. `od` je meja, od katere je tekel: pri preračunu od
+   začetka je to 1. 1. 1900 (VrstaRatinskeTekme.BREZ_DATUMA v zaledju), ker
+   tekme brez znanega datuma veljajo takrat. */
+export interface PreracunPorociloDto {
+  od: string
+  obracunanihTekem: number
+  /* Stanje PO preračunu (in ne število obnovljenih stanj) — pri preračunu od
+     začetka je dnevnik takrat prazen in bi bila druga številka vedno 0. */
+  igralcevZRatingom: number
+}
+
+/* Izid uveljavljanja zapadlih odbitkov za neaktivnost. */
+export interface NeaktivnostPorociloDto {
+  prizadetihIgralcev: number
+  zapisanihOdbitkov: number
+  odbitihTock: number
 }

@@ -47,6 +47,14 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
+		<!-- Posiljanje e-poste (potrditvene kode ob registraciji, pozabljeno
+		     geslo, soglasje skrbnika). Brez SMTP (turnirko.posta.nacin=dnevnik)
+		     gre besedilo sporocila v dnevnik - dovolj za razvoj. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- Verzionirane migracije sheme baze - shema je definirana IZKLJUČNO
 		     v datotekah db/migration, Hibernate je nikoli ne spreminja.
 		     V Boot 4 je Flyway integracija v modulu spring-boot-flyway;

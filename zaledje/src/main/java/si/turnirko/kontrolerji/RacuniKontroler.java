@@ -1,5 +1,5 @@
 /* Administracija racunov igralcev: pregled zahtev, potrditev (s povezavo na
-   igralca), zavrnitev, vklop/izklop in ponastavitev gesla.
+   igralca), razvezava, zavrnitev, vklop/izklop in ponastavitev gesla.
    Vse te poti so mutacije oz. niso GET pod /api/**, zato jih varnostna
    veriga ze omejuje na administratorja. */
 package si.turnirko.kontrolerji;
@@ -47,6 +47,13 @@ public class RacuniKontroler {
     public RacunIgralcaDto potrdi(@PathVariable Long id,
                                   @Valid @RequestBody PotrditevRacunaVnos vnos) {
         return racuniStoritev.potrdi(id, vnos);
+    }
+
+    /* Razveze racun od igralca (npr. zgresena samodejna povezava); racun se
+       vrne v cakanje in ga je mogoce povezati znova. */
+    @PostMapping("/{id}/razvezi")
+    public RacunIgralcaDto razvezi(@PathVariable Long id) {
+        return racuniStoritev.razvezi(id);
     }
 
     /* Potrditev organizatorja: mu dodeli vlogo in (neobvezni) klub. */

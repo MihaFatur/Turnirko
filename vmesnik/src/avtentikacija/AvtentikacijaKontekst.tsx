@@ -5,9 +5,9 @@
    prijava preživi osvežitev strani (do zaprtja zavihka). Ob zagonu se
    morebitne shranjene poverilnice preverijo prek /auth/me.
 
-   Igralec se prijavi z e-pošto. Dokler njegovega računa administrator ne
-   potrdi, je `status` CAKA in `idIgralec` prazen — takrat še nima dostopa
-   do svojega profila. */
+   Igralec se prijavi z e-pošto. Dokler naslova ne potrdi s kodo in dokler
+   račun ni povezan z zapisom igralca (samodejno ali admin), je `status` CAKA
+   in `idIgralec` prazen — takrat še nima dostopa do svojega profila. */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -34,7 +34,10 @@ interface Avtentikacija {
   smemUrejati: (idLastnik: number | null, idKlubLastnik: number | null) => boolean
   /* Med začetnim preverjanjem shranjenih poverilnic. */
   nalaganje: boolean
-  prijava: (uporabniskoIme: string, geslo: string) => Promise<void>
+  /* Vrne profil, da okno za prijavo ve, ali naslov še čaka na kodo. */
+  prijava: (uporabniskoIme: string, geslo: string) => Promise<UporabnikDto>
+  /* Ponovno prebere profil prijavljenega (npr. po vpisu kode). */
+  osvezi: () => Promise<void>
   odjava: () => void
 }
 
@@ -68,7 +71,7 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
       .finally(() => nastaviNalaganje(false))
   }, [])
 
-  async function prijava(uporabniskoIme: string, geslo: string) {
+  async function prijava(uporabniskoIme: string, geslo: string): Promise<UporabnikDto> {
     const osnova = vBase64(`${uporabniskoIme}:${geslo}`)
     nastaviPoverilnice(osnova)
     try {
@@ -77,10 +80,24 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
       sessionStorage.setItem(KLJUC_SHRAMBE, osnova)
       // po prijavi osveži vse poglede (nekateri prikažejo dodatne možnosti)
       odjemalec.invalidateQueries()
+      return profil
     } catch (napaka) {
       nastaviPoverilnice(null)
       sessionStorage.removeItem(KLJUC_SHRAMBE)
       throw napaka
+    }
+  }
+
+  /* Po vpisu kode se stanje računa spremeni (naslov potrjen, morda že
+     povezan) - profil se prebere znova, da meni in "Moj profil" to vidita. */
+  async function osvezi() {
+    if (!sessionStorage.getItem(KLJUC_SHRAMBE)) return
+    try {
+      const profil = await authApi.jaz()
+      nastaviUporabnika(profil)
+      odjemalec.invalidateQueries()
+    } catch {
+      /* poverilnice ne veljajo več - stanje ostane, odjava jo počisti */
     }
   }
 
@@ -119,6 +136,7 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     smemUrejati,
     nalaganje,
     prijava,
+    osvezi,
     odjava,
   }
 

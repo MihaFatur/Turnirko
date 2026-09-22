@@ -47,9 +47,15 @@ public record TekmaDto(
     /* Udelezenec tekme (stran 1 ali 2) - igralec, PAR ali EKIPA.
        polnoIme2/klub2 sta zapolnjena samo pri dvojicah; vmesnik iz njiju
        sestavi dvovrsticni zapis na kartici mreze. Pri ekipi je polnoIme ime
-       ekipe. */
+       ekipe.
+
+       priimek/priimek2 sta KRATKA OBLIKA za ozka mesta (glava stolpca pri
+       vnosu tock po nizih), ne urejevalni kljuc in ne obrnjen vrstni red -
+       izpis imena ostane "Ana Novak" (glej polnoIme). Prihajata iz baze in
+       ne iz rezanja polnega imena: "Ana Marija Novak" bi ga dalo napacno. */
     public record Udelezenec(Long idPrijave, String polnoIme, String klub,
-                             String polnoIme2, String klub2) {
+                             String polnoIme2, String klub2,
+                             String priimek, String priimek2) {
 
         static Udelezenec iz(Prijava prijava) {
             if (prijava == null) return null;
@@ -58,7 +64,9 @@ public record TekmaDto(
                     prijava.jeEkipa() ? prijava.getEkipa().prikazanoIme() : prijava.getIgralec().polnoIme(),
                     prijava.getKlubObPrijavi() != null ? prijava.getKlubObPrijavi().getIme() : null,
                     prijava.jePar() ? prijava.getIgralec2().polnoIme() : null,
-                    prijava.getKlubObPrijavi2() != null ? prijava.getKlubObPrijavi2().getIme() : null);
+                    prijava.getKlubObPrijavi2() != null ? prijava.getKlubObPrijavi2().getIme() : null,
+                    prijava.jeEkipa() ? prijava.getEkipa().prikazanoIme() : prijava.getIgralec().getPriimek(),
+                    prijava.jePar() ? prijava.getIgralec2().getPriimek() : null);
         }
     }
 

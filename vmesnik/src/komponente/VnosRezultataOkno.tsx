@@ -8,12 +8,17 @@
      toliko, kot je odigranih nizov. Vnos in preverba sta v skupni komponenti
      TockeNizov - isti kot pri ligaski tekmi, ker so pravila niza ista.
    - Predaja: delni rezultat pred koncem tekme + zmagovalec.
-   - Brez boja / diskvalifikacija: samo zmagovalec, nizi se pripisejo. */
+   - Brez boja / diskvalifikacija: samo zmagovalec, nizi se pripisejo.
+
+   POPRAVEK (lastnost popravek) je isti obrazec nad ze koncano tekmo: polja so
+   napolnjena s shranjenim izidom, shrani pa se na drugo koncno tocko, ki
+   zmagovalca ne sme spremeniti (glej TekmaStoritev.popraviRezultat). Isti
+   obrazec zato, ker je popravek isti vpis - drugacen je samo njegov ucinek. */
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
 import { tekmeApi } from '../api/zahteve'
-import { imeUdelezenca, nizovZaZmago } from '../api/tipi'
+import { imeUdelezenca, nizovZaZmago, priimekUdelezenca } from '../api/tipi'
 import type { IzidTekme, NizVnos, TekmaDto, VnosRezultata } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
@@ -27,6 +32,8 @@ interface Lastnosti {
   /* Ekipna tekma: izid nastane iz zapisnika srecanja, neposredno sta mogoca
      samo brez boja in diskvalifikacija (TekmaStoritev.vnesiRezultat). */
   samoBrezIgre?: boolean
+  /* Popravek ze shranjenega rezultata (tekma je KONCANA). */
+  popravek?: boolean
 }
 
 /* Izidi, ki jih rocno vnasa sodnik (PROSTO doloci sistem sam pri zrebu). */
@@ -37,7 +44,13 @@ const ROCNI_IZIDI: { vrednost: IzidTekme; oznaka: string }[] = [
   { vrednost: 'DISKVALIFIKACIJA', oznaka: 'Diskvalifikacija' },
 ]
 
-export function VnosRezultataOkno({ tekma, onZapri, onShranjeno, samoBrezIgre = false }: Lastnosti) {
+export function VnosRezultataOkno({
+  tekma,
+  onZapri,
+  onShranjeno,
+  samoBrezIgre = false,
+  popravek = false,
+}: Lastnosti) {
   const zaZmago = nizovZaZmago(tekma.steviloNizov)
   const ime1 = imeUdelezenca(tekma.udelezenec1) ?? 'Igralec 1'
   const ime2 = imeUdelezenca(tekma.udelezenec2) ?? 'Igralec 2'
@@ -45,20 +58,50 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno, samoBrezIgre = 
     ? ROCNI_IZIDI.filter((izid) => izid.vrednost === 'BREZ_BOJA' || izid.vrednost === 'DISKVALIFIKACIJA')
     : ROCNI_IZIDI
 
-  const [izidTip, nastaviIzidTip] = useState<IzidTekme>(samoBrezIgre ? 'BREZ_BOJA' : 'IGRANO')
+  /* Popravek izhaja iz shranjenega izida - organizator popravlja tisto, kar
+     je vpisano, in ne izpolnjuje praznega obrazca znova. */
+  const shranjenaStran: '' | '1' | '2' =
+    tekma.idZmagovalcaPrijave === null
+      ? ''
+      : tekma.idZmagovalcaPrijave === tekma.udelezenec1?.idPrijave
+        ? '1'
+        : '2'
+
+  const [izidTip, nastaviIzidTip] = useState<IzidTekme>(
+    popravek ? (tekma.izidTip ?? 'IGRANO') : samoBrezIgre ? 'BREZ_BOJA' : 'IGRANO',
+  )
   /* Koncni rezultat v obliki "3:1" - izbran s seznama veljavnih izidov. */
-  const [rezultat, nastaviRezultat] = useState('')
-  const [vnasamTocke, nastaviVnasamTocke] = useState(false)
-  const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>([])
+  const [rezultat, nastaviRezultat] = useState(
+    popravek && tekma.izidTip === 'IGRANO' ? `${tekma.dobljeniNizi1}:${tekma.dobljeniNizi2}` : '',
+  )
+  const [vnasamTocke, nastaviVnasamTocke] = useState(popravek && tekma.nizi.length > 0)
+  /* Pri popravku je rezultat že izbran, zato se vrstice ne morejo pojaviti ob
+     njegovi izbiri — pripravimo jih takoj, sicer bi organizator, ki točke
+     dodaja k tekmi brez njih, dobil prazno mrežo in nerazumljivo napako. */
+  const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>(() =>
+    popravek && tekma.izidTip === 'IGRANO'
+      ? vrsticeZaIzid(
+          tekma.nizi.map((niz) => ({ tocke1: String(niz.tocke1), tocke2: String(niz.tocke2) })),
+          tekma.dobljeniNizi1 + tekma.dobljeniNizi2,
+        )
+      : [],
+  )
   /* Za posebne izide: katera stran je zmagala (1 ali 2). */
-  const [zmagovalecStran, nastaviZmagovalecStran] = useState<'' | '1' | '2'>('')
+  const [zmagovalecStran, nastaviZmagovalecStran] = useState<'' | '1' | '2'>(
+    popravek ? shranjenaStran : '',
+  )
   /* Delni rezultat ob predaji. */
-  const [predajaNizi1, nastaviPredajaNizi1] = useState('0')
-  const [predajaNizi2, nastaviPredajaNizi2] = useState('0')
+  const [predajaNizi1, nastaviPredajaNizi1] = useState(
+    popravek && tekma.izidTip === 'PREDAJA' ? String(tekma.dobljeniNizi1) : '0',
+  )
+  const [predajaNizi2, nastaviPredajaNizi2] = useState(
+    popravek && tekma.izidTip === 'PREDAJA' ? String(tekma.dobljeniNizi2) : '0',
+  )
   const [napakaVnosa, nastaviNapakoVnosa] = useState<string | null>(null)
 
   const shranjevanje = useMutation({
-    mutationFn: (vnos: VnosRezultata) => tekmeApi.vnesiRezultat(tekma.id, vnos),
+    mutationFn: (vnos: VnosRezultata) =>
+      popravek ? tekmeApi.popraviRezultat(tekma.id, vnos) : tekmeApi.vnesiRezultat(tekma.id, vnos),
     onSuccess: () => {
       onShranjeno()
       onZapri()
@@ -137,17 +180,27 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno, samoBrezIgre = 
   const delniNizi = Array.from({ length: zaZmago }, (_, indeks) => String(indeks))
 
   return (
-    <ModalnoOkno naslov={samoBrezIgre ? 'Izid brez igre' : 'Vnos rezultata'} onZapri={onZapri}>
+    <ModalnoOkno
+      naslov={popravek ? 'Popravek rezultata' : samoBrezIgre ? 'Izid brez igre' : 'Vnos rezultata'}
+      onZapri={onZapri}
+    >
       <p className="modal__podnaslov">
         {ime1} : {ime2}
         {!samoBrezIgre && (
           <span className="modal__namig"> (najboljši od {tekma.steviloNizov} nizov)</span>
         )}
       </p>
-      {samoBrezIgre && (
+      {samoBrezIgre && !popravek && (
         <p className="namig">
           Ekipna tekma dobi izid iz zapisnika srečanja. Tu zapišeš samo, da ekipa ni
           nastopila ali je bila izključena — srečanje, ki se še ni začelo, se ob tem izbriše.
+        </p>
+      )}
+      {popravek && (
+        <p className="namig">
+          Popravek sme spremeniti izid, ne pa zmagovalca — po njem je turnir tekel naprej.
+          Turnirko rating se preračuna od dneva te tekme naprej, kar lahko traja nekaj
+          trenutkov.
         </p>
       )}
 
@@ -202,7 +255,12 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno, samoBrezIgre = 
             </label>
 
             {vnasamTocke && rezultat && (
-              <TockeNizov vrstice={tockeNizov} nastaviVrstice={nastaviTockeNizov} />
+              <TockeNizov
+                vrstice={tockeNizov}
+                nastaviVrstice={nastaviTockeNizov}
+                priimek1={priimekUdelezenca(tekma.udelezenec1)}
+                priimek2={priimekUdelezenca(tekma.udelezenec2)}
+              />
             )}
           </>
         )}
@@ -272,7 +330,11 @@ export function VnosRezultataOkno({ tekma, onZapri, onShranjeno, samoBrezIgre = 
             Prekliči
           </button>
           <button type="submit" className="gumb gumb--glavni" disabled={shranjevanje.isPending}>
-            {shranjevanje.isPending ? 'Shranjujem …' : 'Shrani rezultat'}
+            {shranjevanje.isPending
+              ? 'Shranjujem …'
+              : popravek
+                ? 'Shrani popravek'
+                : 'Shrani rezultat'}
           </button>
         </div>
       </form>

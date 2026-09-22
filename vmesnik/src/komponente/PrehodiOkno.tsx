@@ -16,6 +16,7 @@ import { ligeApi } from '../api/zahteve'
 import type { LigaDto } from '../api/tipi'
 import { IskalniIzbirnik, type MoznostIzbirnika } from './IskalniIzbirnik'
 import { ModalnoOkno } from './ModalnoOkno'
+import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
 
 interface Lastnosti {
@@ -143,13 +144,13 @@ export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">
             <span>Napreduje (ekip)</span>
-            <input type="number" min={0} value={napreduje}
-              onChange={(d) => nastaviNapreduje(Number(d.target.value))} />
+            <StevilskoPolje vrednost={String(napreduje)}
+              naSpremembo={(v) => nastaviNapreduje(Number(v))} />
           </label>
           <label className="obrazec__polje">
             <span>Izpade (ekip)</span>
-            <input type="number" min={0} value={izpade}
-              onChange={(d) => nastaviIzpade(Number(d.target.value))} />
+            <StevilskoPolje vrednost={String(izpade)}
+              naSpremembo={(v) => nastaviIzpade(Number(v))} />
           </label>
         </div>
 

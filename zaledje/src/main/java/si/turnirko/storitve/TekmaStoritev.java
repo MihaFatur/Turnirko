@@ -1,8 +1,8 @@
 /* Vnos rezultata tekme - avtomat stanj z jasnimi pravili:
    - rezultat je mogoce vnesti samo na tekmi v stanju PRIPRAVLJENA ali V_IGRI
      in samo, dokler je dogodek V_TEKU,
-   - vnos na ze KONCANO tekmo je zavrnjen (naknadni popravki z razveljavitvijo
-     ratinga in napredovanja so predvideni kot posebna operacija v nacrtu),
+   - vnos na ze KONCANO tekmo je zavrnjen; zanjo je popraviRezultat, ki izida
+     ne sme obrniti (zmagovalec ostane) in sam preracuna rating,
    - ob koncu tekme se (enkrat!) obracuna rating, izvede napredovanje po mrezi
      in po zadnji tekmi zakljuci dogodek ter dodeli koncna mesta.
 
@@ -56,6 +56,7 @@ public class TekmaStoritev {
     private final RazvrstitevStoritev razvrstitevStoritev;
     private final EkipneTekmeStoritev ekipneTekme;
     private final LastnistvoStoritev lastnistvo;
+    private final PreracunRatingaStoritev preracunRatinga;
 
     public TekmaStoritev(TekmaRepozitorij tekmaRepozitorij,
                          NizRepozitorij nizRepozitorij,
@@ -66,7 +67,8 @@ public class TekmaStoritev {
                          SkupineStoritev skupineStoritev,
                          RazvrstitevStoritev razvrstitevStoritev,
                          EkipneTekmeStoritev ekipneTekme,
-                         LastnistvoStoritev lastnistvo) {
+                         LastnistvoStoritev lastnistvo,
+                         PreracunRatingaStoritev preracunRatinga) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
@@ -77,6 +79,7 @@ public class TekmaStoritev {
         this.razvrstitevStoritev = razvrstitevStoritev;
         this.ekipneTekme = ekipneTekme;
         this.lastnistvo = lastnistvo;
+        this.preracunRatinga = preracunRatinga;
     }
 
     /* Vnese koncni rezultat tekme in sprozi vse posledice. */
@@ -122,6 +125,107 @@ public class TekmaStoritev {
 
         posledice(tekma);
         return tekma;
+    }
+
+    /* POPRAVEK ze shranjenega rezultata.
+
+       Zakaj sploh: rezultat se prepisuje s papirja, papir pa se bere z napako -
+       vpisano 3:1 je bilo 3:2, tocke drugega niza sta zamenjani, napacna tekma
+       je dobila izid. Del teh napak se pokaze sele cez nekaj dni, ko je turnir
+       ze zakljucen. Doslej je bil edini izhod pustiti napako v bazi: vsak vnos
+       na koncano tekmo je bil zavrnjen, rating pa se ni znal popraviti.
+
+       Kaj popravek SME: izid v nizih, tocke po nizih in nacin zakljucka
+       (odigrano / predaja / brez boja / diskvalifikacija).
+
+       Cesa NE sme: spremeniti zmagovalca. Zmagovalec ni podatek o tekmi, ampak
+       vozlisce tekmovanja - po njem je bilo napredovano po mrezi, iz njega so
+       nastale finalne skupine in koncna mesta. To ni popravek vpisa, ampak
+       razveljavitev poteka tekmovanja, in bi morala biti svoje dejanje s svojimi
+       jamstvi. Zato ga tu zavrnemo s pojasnilom in ne ugibamo.
+
+       Posledice, ki jih popravek SPROZI:
+       - posledice(tekma): mesta v koncani skupini in koncna mesta se dodelijo
+         znova (razlika nizov se je lahko spremenila). Napredovanje po mrezi
+         je ze zapisano in vpis v zaseden slot ne more spremeniti nicesar -
+         zmagovalec je isti.
+       - preracun ratinga od dneva te tekme naprej. Sam obracun te tekme ne
+         zadosca: njen izid je vstopal v vse poznejse tekme obeh igralcev. */
+    @Transactional
+    public Tekma popraviRezultat(Long idTekme, VnosRezultata vnos) {
+        lastnistvo.preveriTurnirPoTekmi(idTekme);
+        Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme)
+                .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
+
+        preveriPopravek(tekma);
+
+        IzidTekme izid = vnos.izidTip() == null ? IzidTekme.IGRANO : vnos.izidTip();
+        /* Zmagovalec se preveri, PREDEN se karkoli spremeni. Preklic po zapisu
+           bi se zanasal na povrnitev transakcije, ta pa ob zunanji transakciji
+           (npr. v testu) ni takojsnja - v seji bi ostala popravljena tekma. */
+        if (!tekma.getZmagovalec().getId().equals(predvidenZmagovalec(tekma, vnos, izid).getId())) {
+            throw new DomenskaIzjema("Popravek ne more spremeniti zmagovalca tekme:"
+                    + " po njem je tekmovanje ze teklo naprej (napredovanje po mrezi,"
+                    + " mesta v skupinah, koncna mesta). Popravi lahko izid v nizih,"
+                    + " tocke po nizih in nacin zakljucka.");
+        }
+
+        /* Stare tocke gredo, nove se pisejo od prvega niza naprej. Izbris se
+           izpere TAKOJ: Hibernate sicer vstavke izvede pred izbrisi in nov prvi
+           niz bi trcil ob starega (UNIQUE (id_tekma, zaporedna_st)). */
+        nizRepozitorij.deleteAll(nizRepozitorij.findByTekmaIdOrderByZaporednaStAsc(idTekme));
+        nizRepozitorij.flush();
+
+        switch (izid) {
+            case IGRANO -> vnesiIgrano(tekma, vnos);
+            case BREZ_BOJA, DISKVALIFIKACIJA -> vnesiPosebenIzid(tekma, vnos, izid);
+            case PREDAJA -> vnesiPredajo(tekma, vnos);
+            case PROSTO -> throw new NeveljavenVnosIzjema(
+                    "Prostega prehoda ni mogoce vnesti rocno - doloci ga zreb.");
+        }
+        tekmaRepozitorij.save(tekma);
+
+        posledice(tekma);
+        preracunRatinga.preracunajPoPopravku(RatingStoritev.casTurnirskeTekme(tekma));
+        return tekma;
+    }
+
+    /* Kdo bi bil po tem vnosu zmagovalec - brez spreminjanja tekme. Podrobno
+       veljavnost izida preverijo sele vnesi* metode; tu je dovolj, da je
+       zmagovalec razpoznaven. */
+    private static Prijava predvidenZmagovalec(Tekma tekma, VnosRezultata vnos, IzidTekme izid) {
+        if (izid != IzidTekme.IGRANO) {
+            return zahtevajZmagovalca(tekma, vnos);
+        }
+        if (vnos.dobljeniNizi1() == null || vnos.dobljeniNizi2() == null) {
+            throw new NeveljavenVnosIzjema("Manjkata dobljena niza (dobljeniNizi1, dobljeniNizi2).");
+        }
+        if (vnos.dobljeniNizi1().equals(vnos.dobljeniNizi2())) {
+            throw new NeveljavenVnosIzjema("Neodlocen izid ni mogoc.");
+        }
+        return vnos.dobljeniNizi1() > vnos.dobljeniNizi2() ? tekma.getPrijava1() : tekma.getPrijava2();
+    }
+
+    /* Kaj mora drzati, da je popravek sploh popravek vpisa. */
+    private static void preveriPopravek(Tekma tekma) {
+        if (tekma.getStatus() != StatusTekme.KONCANA) {
+            throw new DomenskaIzjema("Popraviti je mogoce samo koncano tekmo -"
+                    + " tej rezultat se ni bil vnesen.");
+        }
+        if (tekma.getDogodek().jeEkipno()) {
+            throw new DomenskaIzjema("Izid ekipne tekme nastane iz zapisnika srecanja -"
+                    + " popravi posamicno tekmo v njem.");
+        }
+        if (tekma.jePrenesena()) {
+            throw new DomenskaIzjema("Ta tekma nosi izid iz predtekmovanja in se ni bila"
+                    + " odigrana - popravi izvorno tekmo.");
+        }
+        if (tekma.getIzidTip() == IzidTekme.PROSTO) {
+            throw new DomenskaIzjema("Prosti prehod ni vpisan rezultat - doloci ga zreb.");
+        }
+        if (tekma.getZmagovalec() == null || tekma.getPrijava1() == null || tekma.getPrijava2() == null) {
+            throw new DomenskaIzjema("Tekma nima obeh udelezencev oz. zmagovalca.");
+        }
     }
 
     /* Ekipna tekma se je zacela: srecanje ima postavo. Enako stanje kot tekma
@@ -272,7 +376,7 @@ public class TekmaStoritev {
         }
         switch (tekma.getStatus()) {
             case KONCANA -> throw new DomenskaIzjema(
-                    "Tekma je ze koncana. Naknadni popravki rezultata se niso podprti.");
+                    "Tekma je ze koncana - njen rezultat se popravi (PUT /tekme/{id}/rezultat).");
             case CAKA -> throw new DomenskaIzjema(
                     "Tekma se caka na igralce iz prejsnjih kol.");
             default -> { /* PRIPRAVLJENA ali V_IGRI - v redu */ }
@@ -359,7 +463,7 @@ public class TekmaStoritev {
         tekma.setZmagovalec(zmagovalec);
     }
 
-    private Prijava zahtevajZmagovalca(Tekma tekma, VnosRezultata vnos) {
+    private static Prijava zahtevajZmagovalca(Tekma tekma, VnosRezultata vnos) {
         Integer stran = vnos.zmagovalecStran();
         if (stran == null || (stran != 1 && stran != 2)) {
             throw new NeveljavenVnosIzjema(

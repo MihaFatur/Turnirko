@@ -19,9 +19,21 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: splet
       SPRING_DATASOURCE_URL: jdbc:sqlite:/podatki/turnirko.db
+      # Posnetki dogodkov Stupe (stran /uvoz). Privzeta relativna pot bi
+      # kazala v /app, kamor uporabnik 10001 ne sme pisati.
+      TURNIRKO_UVOZ_POSNETKI: /podatki/stupa-posnetki
       # Brez tega se aplikacija ob PRAZNI bazi noce zagnati (namerno).
       # Ko admin ze obstaja, vrednost ni vec v rabi.
       TURNIRKO_ADMIN_PRIVZETO_GESLO: ${TURNIRKO_ADMIN_GESLO:?nastavi TURNIRKO_ADMIN_GESLO v .env}
+      # E-posta za potrditvene kode (registracija, pozabljeno geslo). Brez
+      # SMTP gredo kode v dnevnik in registracija ne deluje - glej .env.primer.
+      TURNIRKO_POSTA_NACIN: ${TURNIRKO_POSTA_NACIN:-dnevnik}
+      TURNIRKO_POSTA_OD: ${TURNIRKO_POSTA_OD:-Turnirko <posta@localhost>}
+      TURNIRKO_POSTA_ODGOVOR: ${TURNIRKO_POSTA_ODGOVOR:-}
+      TURNIRKO_SMTP_STREZNIK: ${TURNIRKO_SMTP_STREZNIK:-}
+      TURNIRKO_SMTP_VRATA: ${TURNIRKO_SMTP_VRATA:-587}
+      TURNIRKO_SMTP_UPORABNIK: ${TURNIRKO_SMTP_UPORABNIK:-}
+      TURNIRKO_SMTP_GESLO: ${TURNIRKO_SMTP_GESLO:-}
 
     volumes:
       # Baza lezi na strezniku, ne v vsebniku - tako prezivi vsako

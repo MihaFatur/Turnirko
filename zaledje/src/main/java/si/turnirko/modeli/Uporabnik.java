@@ -7,13 +7,19 @@
    dveh vzporednih identifikatorjev, ki bi lahko razpadla narazen.
 
    Racun igralca ob registraciji dobi status CAKA in ni povezan z zapisom v
-   sifrantu; povezavo (in s tem dostop do lastne statistike) mu dodeli
-   administrator ob potrditvi. */
+   sifrantu. Naslov steje sele, ko lastnik vpise kodo s poste
+   (email_potrjen_ob); mlajsi od 15 let potrebujejo se soglasje skrbnika
+   (email_skrbnika + skrbnik_potrjen_ob). Povezavo z igralcem (in s tem
+   dostop do lastne statistike) naredi administrator ali pa nastane
+   samodejno, ce se ime, priimek in datum rojstva ujemajo z natanko enim
+   igralcem brez racuna (vir_povezave). */
 package si.turnirko.modeli;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -65,20 +71,52 @@ public class Uporabnik {
     private Klub klub;
 
     /* Kar je oseba navedla ob registraciji - podlaga administratorju, da
-       racun poveze s pravim igralcem. Po potrditvi ostane kot sled. */
+       racun poveze s pravim igralcem, in samodejni povezavi. Po potrditvi
+       ostane kot sled. Datum rojstva je osebni podatek: javno nikoli. */
     @Column(name = "prijavljeno_ime")
     private String prijavljenoIme;
 
     @Column(name = "prijavljeni_priimek")
     private String prijavljeniPriimek;
 
+    @Column(name = "prijavljeni_datum_rojstva")
+    private LocalDate prijavljeniDatumRojstva;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_klub_zelja")
     private Klub klubZelja;
 
+    /* Kdaj je lastnik naslova vpisal kodo s poste; NULL = naslov se ni potrjen.
+       Casi racuna so besedilo s pretvornikom (CasKotBesedilo): gonilnik bi
+       sicer uro zavrgel, nocno ciscenje pa steje ure (48 h), ne dni. */
+    @Convert(converter = CasKotBesedilo.class)
+    @Column(name = "email_potrjen_ob")
+    private LocalDateTime emailPotrjenOb;
+
+    /* Naslov starsa oz. skrbnika (samo pri mlajsih od 15 let ob registraciji)
+       in kdaj je skrbnikova koda bila vpisana. */
+    @Column(name = "email_skrbnika")
+    private String emailSkrbnika;
+
+    @Convert(converter = CasKotBesedilo.class)
+    @Column(name = "skrbnik_potrjen_ob")
+    private LocalDateTime skrbnikPotrjenOb;
+
+    /* Kdo je racun povezal z igralcem in kdaj; prazno, dokler povezave ni. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vir_povezave")
+    private VirPovezave virPovezave;
+
+    @Convert(converter = CasKotBesedilo.class)
+    @Column(name = "povezan_ob")
+    private LocalDateTime povezanOb;
+
     @Column(name = "aktiven", nullable = false)
     private boolean aktiven = true;
 
+    /* Stari zapisi so brez ure ("2026-08-16"); pretvornik jih bere kot polnoc,
+       ISO besedilo pa se leksikalno primerja pravilno tudi z njimi. */
+    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "ustvarjen_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenOb;
 
@@ -104,6 +142,16 @@ public class Uporabnik {
        tekmovanja). Za razliko od igralca ne potrebuje povezave na sifrant. */
     public boolean jePotrjenOrganizator() {
         return vloga == Vloga.ORGANIZATOR && status == StatusRacuna.POTRJEN;
+    }
+
+    /* Ali je lastnik naslova vpisal kodo s poste. */
+    public boolean jeEmailPotrjen() {
+        return emailPotrjenOb != null;
+    }
+
+    /* Ali racun se caka na skrbnikovo kodo (samo mlajsi od 15 let). */
+    public boolean cakaSkrbnika() {
+        return emailSkrbnika != null && skrbnikPotrjenOb == null;
     }
 
     public Long getId() { return id; }
@@ -132,8 +180,26 @@ public class Uporabnik {
     public String getPrijavljeniPriimek() { return prijavljeniPriimek; }
     public void setPrijavljeniPriimek(String prijavljeniPriimek) { this.prijavljeniPriimek = prijavljeniPriimek; }
 
+    public LocalDate getPrijavljeniDatumRojstva() { return prijavljeniDatumRojstva; }
+    public void setPrijavljeniDatumRojstva(LocalDate datum) { this.prijavljeniDatumRojstva = datum; }
+
     public Klub getKlubZelja() { return klubZelja; }
     public void setKlubZelja(Klub klubZelja) { this.klubZelja = klubZelja; }
+
+    public LocalDateTime getEmailPotrjenOb() { return emailPotrjenOb; }
+    public void setEmailPotrjenOb(LocalDateTime emailPotrjenOb) { this.emailPotrjenOb = emailPotrjenOb; }
+
+    public String getEmailSkrbnika() { return emailSkrbnika; }
+    public void setEmailSkrbnika(String emailSkrbnika) { this.emailSkrbnika = emailSkrbnika; }
+
+    public LocalDateTime getSkrbnikPotrjenOb() { return skrbnikPotrjenOb; }
+    public void setSkrbnikPotrjenOb(LocalDateTime skrbnikPotrjenOb) { this.skrbnikPotrjenOb = skrbnikPotrjenOb; }
+
+    public VirPovezave getVirPovezave() { return virPovezave; }
+    public void setVirPovezave(VirPovezave virPovezave) { this.virPovezave = virPovezave; }
+
+    public LocalDateTime getPovezanOb() { return povezanOb; }
+    public void setPovezanOb(LocalDateTime povezanOb) { this.povezanOb = povezanOb; }
 
     public boolean isAktiven() { return aktiven; }
     public void setAktiven(boolean aktiven) { this.aktiven = aktiven; }

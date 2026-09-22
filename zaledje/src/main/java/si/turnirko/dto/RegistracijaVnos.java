@@ -1,7 +1,12 @@
 /* Registracija osebe (igralca ali organizatorja). Ime, priimek in klub
    sluzijo administratorju pri potrjevanju (igralca poveze z zapisom v
-   sifrantu, organizatorju potrdi klub); e-posta je hkrati prijavno ime. */
+   sifrantu, organizatorju potrdi klub); e-posta je hkrati prijavno ime in jo
+   je treba potrditi s kodo. Datum rojstva (samo igralec) je podlaga za
+   samodejno povezavo z zapisom v sifrantu in za pravilo o skrbniku; javno
+   nikoli ne gre ven. */
 package si.turnirko.dto;
+
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -26,5 +31,12 @@ public record RegistracijaVnos(
 
         /* true = registracija organizatorja (klub/oseba, ki bo vodila
            tekmovanja); privzeto (null/false) je registracija igralca. */
-        Boolean organizator
+        Boolean organizator,
+
+        /* Obvezen pri igralcu (preveri storitev, ker organizator ga ne navaja). */
+        LocalDate datumRojstva,
+
+        /* Obvezna pri mlajsih od 15 let: naslov starsa oz. skrbnika, ki dobi
+           svojo kodo. */
+        @Size(max = 120, message = "e-posta skrbnika je predolga") String emailSkrbnika
 ) {}

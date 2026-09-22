@@ -45,4 +45,8 @@ public interface RatingStanjeRepozitorij extends JpaRepository<RatingStanje, Lon
        iz dnevnika. */
     List<RatingStanje> findBySistem(String sistem);
 
+    /* Koliko igralcev ima v tem sistemu rating - stevilka za porocilo o
+       preracunu; entitet zanjo ni treba nalagati. */
+    long countBySistem(String sistem);
+
 }
