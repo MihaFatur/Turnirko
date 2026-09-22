@@ -1547,6 +1547,22 @@
   samo skozi Caddy, torej samo prek HTTPS (HTTP Basic bi bil sicer berljiv).
 - SQLite baze **nikoli ne kopiraj z `cp`** med delovanjem; uporabi
   `sqlite3 ... ".backup"` (tako dela skripta za varnostne kopije).
+- **HSTS postavlja Caddy, ne aplikacija.** Spring Security privzeto pošilja
+  `Strict-Transport-Security` z `includeSubDomains`, takoj ko zahteva pride po
+  HTTPS. Poddomene niso na tem strežniku (`webmail.` in `mail.` sta pri
+  gostitelju domene in imata certifikat za *njegovo* ime, poddomene za povezave
+  v pošti pa pri ponudniku transakcijske pošte), zato bi to brskalniku za leto
+  dni vsililo HTTPS tam, kjer certifikat ne ustreza — opozorila pod HSTS pa ni
+  mogoče obiti in webmail postane nedosegljiv. Zato je v
+  `VarnostneNastavitve` HSTS izklopljen, glavo pa doda `Caddyfile`, namenoma
+  brez `includeSubDomains`. (Izmerjeno 22. 9. 2026 na turnirko-nt.si.)
+- **Lokalne skrivnosti gredo v `zaledje/config/application-<profil>.properties`,
+  nikoli v `zaledje/config/application.properties`.** Mapo `./config` Spring
+  Boot bere ob vsakem zagonu in ima prednost pred `application-test.properties`
+  iz razreda, zato brezprofilna datoteka nastavitve podtakne tudi testom —
+  `turnirko.posta.nacin=smtp` je tako podrl 20 testov, ker
+  `PomnilniskiPosiljatelj` ni bil ustvarjen. Profilna datoteka se brez
+  `-Dspring-boot.run.profiles=<profil>` sploh ne prebere.
 
 ## Kontekst projekta
 
