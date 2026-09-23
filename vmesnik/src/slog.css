@@ -340,8 +340,16 @@ textarea:focus-visible,
   flex: none;
 }
 
+/* Prvi dve potezi sta črnilo, zato jih na črni podlagi ni videti. Barvo nosi
+   spremenljivka, ki jo temna podlaga (levi stolpec in trak registracije)
+   zamenja s papirjem; modra in zelena poteza ostaneta enaki na obeh. */
 .logo-znak__poteza {
-  fill: var(--barva-crnilo);
+  fill: var(--logo-poteza, var(--barva-crnilo));
+}
+
+.registracija__stolpec,
+.registracija__trak {
+  --logo-poteza: var(--barva-papir);
 }
 
 .logo-znak__poteza--glavna {
