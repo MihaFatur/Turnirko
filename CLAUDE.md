@@ -1351,7 +1351,7 @@
 - **Izbor spremljanih lig ureja `IzborLigOkno`, ne stran `/lige`.** Izbor je
   nastavitev domače strani in ne pot v ligo, zato »Uredi izbor« odpre okno —
   gledalec ostane, kjer je, in takoj vidi, kaj se je spremenilo (gost izbora
-  nima, zato mu isti napis odpre `PrijavaOkno` na zavihku »Nov račun«); na `/lige` je
+  nima, zato mu isti napis odpre `PrijavaOkno` naravnost na registraciji); na `/lige` je
   vsaka vrstica povezava v ligo in preklopa ne more nositi. Okno mora zdržati
   **stotine lig** (uvožene sezone), zato: spremljane so v svoji skupini na
   vrhu in tam **obstanejo, dokler je okno odprto** (posnetek ob odprtju — sicer

@@ -46,8 +46,8 @@ export function RegistracijaZakljucenaStran() {
             {uspeh
               ? 'Stripe je potrdil plačilo. Račun se ustvarja in čez trenutek dobiš ' +
                 'šestmestno kodo za potrditev e-pošte - z njo dokončaš prijavo.'
-              : 'Plačilo ni bilo dokončano in račun zato ni nastal. Poskusi znova iz menija ' +
-                '»Ustvari račun« v desnem zgornjem kotu.'}
+              : 'Plačilo ni bilo dokončano in račun zato ni nastal. Poskusi znova: v ' +
+                'desnem zgornjem kotu odpri »Gost · prijava« in izberi »Ustvari nov račun«.'}
           </p>
         </div>
       </div>

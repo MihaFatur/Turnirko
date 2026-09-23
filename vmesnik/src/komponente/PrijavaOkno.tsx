@@ -50,8 +50,8 @@ export function PrijavaOkno({
   obnovljenoStanjePlacila = null,
 }: {
   onZapri: () => void
-  /* Zavihek, na katerem se okno odpre (npr. iz menija "Ustvari račun" ali
-     "Vpiši kodo" za prijavljenega, ki naslova še ni potrdil). */
+  /* Korak, na katerem se okno odpre (npr. "registracija" z domače strani ali
+     "koda" za prijavljenega, ki naslova še ni potrdil). */
   zacetniNacin?: Nacin
   /* Naslov računa, ki čaka na kodo (samo z načinom "koda"). */
   email?: string | null
@@ -95,15 +95,17 @@ export function PrijavaOkno({
 
   return (
     <ModalnoOkno nadnaslov="Turnirko" naslov={NASLOVI[nacin]} onZapri={onZapri}>
+      {/* Registracija je gumb, ne zavihek: prijava je edino, kar okno počne, ko ga
+          gost odpre, nov račun pa je korak v drugo okno (onboarding). Ista teža
+          kot »Prijava« spodaj - obe poti sta enakovredni vstopni točki. */}
       {nacin === 'prijava' && (
-        <div className="zavihki">
-          <button className="zavihki__gumb zavihki__gumb--aktiven" onClick={() => naPrijavo()}>
-            Prijava
-          </button>
-          <button className="zavihki__gumb" onClick={() => nastaviNacin('registracija')}>
-            Nov račun
-          </button>
-        </div>
+        <button
+          type="button"
+          className="gumb gumb--glavni"
+          onClick={() => nastaviNacin('registracija')}
+        >
+          Ustvari nov račun
+        </button>
       )}
 
       {nacin === 'prijava' && (

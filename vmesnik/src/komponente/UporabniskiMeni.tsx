@@ -1,9 +1,11 @@
 /* Kontekst uporabnika v desnem kotu masthead-a. V novem oblikovnem sistemu
-   ikon ni: prožilnik je mono oznaka (vloga in klub oz. »GOST«), ki odpre
-   spustni meni. Gost dobi možnost prijave in registracije, prijavljen
-   uporabnik pa svojo identiteto, povezavo do profila in odjavo. Račun, ki
-   naslova (ali skrbnika) še ni potrdil, dobi postavko »Vpiši kodo«. Meni se
-   zapre ob kliku zunaj njega ali ob tipki Escape. */
+   ikon ni: prožilnik je mono oznaka (ime osebe oz. »Gost · prijava«).
+   Gostu oznaka odpre okno za prijavo naravnost - spustni meni z dvema
+   postavkama bi bil samo korak več, registracija pa je gumb v oknu samem.
+   Prijavljen uporabnik dobi spustni meni s svojo identiteto, povezavo do
+   profila in odjavo. Račun, ki naslova (ali skrbnika) še ni potrdil, dobi
+   postavko »Vpiši kodo«. Meni se zapre ob kliku zunaj njega ali ob tipki
+   Escape. */
 import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
@@ -11,7 +13,7 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { OZNAKE_VLOGA } from '../api/tipi'
 import { PrijavaOkno } from './PrijavaOkno'
 
-type PrijavaNacin = 'prijava' | 'registracija' | 'koda'
+type PrijavaNacin = 'prijava' | 'koda'
 
 export function UporabniskiMeni() {
   const { uporabnik, odjava } = useAvtentikacija()
@@ -59,106 +61,89 @@ export function UporabniskiMeni() {
     nastaviPrijavaNacin(nacin)
   }
 
+  /* Gost meni nima kaj pokazati: prijava je edino, kar mu oznaka lahko da. */
+  function obKliku() {
+    if (uporabnik) nastaviOdprt((v) => !v)
+    else odpriPrijavo('prijava')
+  }
+
   return (
     <div className="glava__uporabnik" ref={ovoj}>
       <button
         type="button"
         className={'uporabnik-gumb' + (uporabnik ? ' uporabnik-gumb--prijavljen' : '')}
-        aria-haspopup="menu"
-        aria-expanded={odprt}
-        onClick={() => nastaviOdprt((v) => !v)}
+        aria-haspopup={uporabnik ? 'menu' : 'dialog'}
+        aria-expanded={uporabnik ? odprt : undefined}
+        onClick={obKliku}
       >
         {oznaka}
       </button>
 
-      {odprt && (
+      {odprt && uporabnik && (
         <div className="uporabnik-meni" role="menu">
-          {uporabnik ? (
-            <>
-              <div className="uporabnik-meni__glava">
-                <span className="uporabnik-meni__ime">
-                  {uporabnik.imeIgralca ?? uporabnik.uporabniskoIme}
-                </span>
-                <span className="uporabnik-meni__vloga">
-                  {[
-                    OZNAKE_VLOGA[uporabnik.vloga],
-                    uporabnik.klub,
-                    cakaKodo
-                      ? uporabnik.emailPotrjen
-                        ? 'čaka kodo skrbnika'
-                        : 'e-pošta ni potrjena'
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              </div>
+          <div className="uporabnik-meni__glava">
+            <span className="uporabnik-meni__ime">
+              {uporabnik.imeIgralca ?? uporabnik.uporabniskoIme}
+            </span>
+            <span className="uporabnik-meni__vloga">
+              {[
+                OZNAKE_VLOGA[uporabnik.vloga],
+                uporabnik.klub,
+                cakaKodo
+                  ? uporabnik.emailPotrjen
+                    ? 'čaka kodo skrbnika'
+                    : 'e-pošta ni potrjena'
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </div>
 
-              {cakaKodo && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="uporabnik-meni__postavka"
-                  onClick={() => odpriPrijavo('koda')}
-                >
-                  Vpiši kodo
-                </button>
-              )}
-
-              {jePrijavljenIgralec && (
-                <NavLink
-                  to="/moj-profil"
-                  role="menuitem"
-                  className="uporabnik-meni__postavka"
-                  onClick={() => nastaviOdprt(false)}
-                >
-                  Moj profil
-                </NavLink>
-              )}
-
-              {uporabnik.vloga !== 'ADMIN' && (
-                <NavLink
-                  to="/narocnina"
-                  role="menuitem"
-                  className="uporabnik-meni__postavka"
-                  onClick={() => nastaviOdprt(false)}
-                >
-                  Naročnina
-                </NavLink>
-              )}
-
-              <button
-                type="button"
-                role="menuitem"
-                className="uporabnik-meni__postavka uporabnik-meni__postavka--nevaren"
-                onClick={() => {
-                  nastaviOdprt(false)
-                  odjava()
-                }}
-              >
-                Odjava
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                role="menuitem"
-                className="uporabnik-meni__postavka"
-                onClick={() => odpriPrijavo('prijava')}
-              >
-                Prijava
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="uporabnik-meni__postavka"
-                onClick={() => odpriPrijavo('registracija')}
-              >
-                Ustvari račun
-              </button>
-            </>
+          {cakaKodo && (
+            <button
+              type="button"
+              role="menuitem"
+              className="uporabnik-meni__postavka"
+              onClick={() => odpriPrijavo('koda')}
+            >
+              Vpiši kodo
+            </button>
           )}
+
+          {jePrijavljenIgralec && (
+            <NavLink
+              to="/moj-profil"
+              role="menuitem"
+              className="uporabnik-meni__postavka"
+              onClick={() => nastaviOdprt(false)}
+            >
+              Moj profil
+            </NavLink>
+          )}
+
+          {uporabnik.vloga !== 'ADMIN' && (
+            <NavLink
+              to="/narocnina"
+              role="menuitem"
+              className="uporabnik-meni__postavka"
+              onClick={() => nastaviOdprt(false)}
+            >
+              Naročnina
+            </NavLink>
+          )}
+
+          <button
+            type="button"
+            role="menuitem"
+            className="uporabnik-meni__postavka uporabnik-meni__postavka--nevaren"
+            onClick={() => {
+              nastaviOdprt(false)
+              odjava()
+            }}
+          >
+            Odjava
+          </button>
         </div>
       )}
 

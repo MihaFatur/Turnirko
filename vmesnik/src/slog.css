@@ -2788,36 +2788,6 @@ td.nizi-okno__niz--dobljen {
   max-width: 64ch;
 }
 
-/* Zavihka prijava / nov racun. */
-.zavihki {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-  border-bottom: 1px solid var(--barva-crta);
-}
-
-.zavihki__gumb {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  min-height: 44px;
-  padding: 12px;
-  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-  cursor: pointer;
-}
-
-.zavihki__gumb:hover {
-  color: var(--barva-crnilo);
-}
-
-.zavihki__gumb--aktiven {
-  color: var(--barva-crnilo);
-  border-bottom-color: var(--barva-glavna);
-}
-
 /* --- Registracija: razdeljeno okno (design_handoff_onboarding) ---
 
    Smer 1b: siroko okno z dvema stolpcema, levi temen s koraki. Na telefonu
