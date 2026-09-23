@@ -95,25 +95,13 @@ export function PrijavaOkno({
 
   return (
     <ModalnoOkno nadnaslov="Turnirko" naslov={NASLOVI[nacin]} onZapri={onZapri}>
-      {/* Registracija je gumb, ne zavihek: prijava je edino, kar okno počne, ko ga
-          gost odpre, nov račun pa je korak v drugo okno (onboarding). Ista teža
-          kot »Prijava« spodaj - obe poti sta enakovredni vstopni točki. */}
-      {nacin === 'prijava' && (
-        <button
-          type="button"
-          className="gumb gumb--glavni"
-          onClick={() => nastaviNacin('registracija')}
-        >
-          Ustvari nov račun
-        </button>
-      )}
-
       {nacin === 'prijava' && (
         <PrijavaObrazec
           obvestilo={obvestilo}
           onZapri={onZapri}
           onKoda={naKodo}
           onPozabljeno={() => nastaviNacin('pozabljeno')}
+          onRegistracija={() => nastaviNacin('registracija')}
         />
       )}
       {nacin === 'koda' && koda && (
@@ -131,11 +119,13 @@ function PrijavaObrazec({
   onZapri,
   onKoda,
   onPozabljeno,
+  onRegistracija,
 }: {
   obvestilo: string | null
   onZapri: () => void
   onKoda: (email: string, korak?: KorakKode) => void
   onPozabljeno: () => void
+  onRegistracija: () => void
 }) {
   const { prijava } = useAvtentikacija()
   const [uporabniskoIme, nastaviUporabniskoIme] = useState('')
@@ -194,10 +184,16 @@ function PrijavaObrazec({
 
       {napaka && <div className="napaka">{napaka}</div>}
 
-      {/* Edino dejanje obrazca: gumb je neposreden otrok .obrazec (flex stolpec),
-          zato se raztegne cez celo sirino okna. Okno se zapre z Escape ali krizem. */}
+      {/* Gumba sta neposredna otroka .obrazec (flex stolpec), zato se razteg-
+          neta cez celo sirino okna. Nov racun je korak v drugo okno (onboarding)
+          in ne del obrazca, a ima isto tezo kot prijava: to sta dve enakovredni
+          vstopni tocki, gost pa pride sem, ker racuna se nima. Okno se zapre z
+          Escape ali krizem. */}
       <button type="submit" className="gumb gumb--glavni" disabled={poteka}>
         {poteka ? 'Prijavljam …' : 'Prijava'}
+      </button>
+      <button type="button" className="gumb gumb--glavni" onClick={onRegistracija}>
+        Ustvari nov račun
       </button>
       <button type="button" className="povezava-gumb" onClick={onPozabljeno}>
         Pozabljeno geslo?
