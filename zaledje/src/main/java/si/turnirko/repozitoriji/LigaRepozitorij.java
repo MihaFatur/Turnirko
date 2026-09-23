@@ -3,6 +3,7 @@
    transakcije. */
 package si.turnirko.repozitoriji;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +13,10 @@ import org.springframework.data.jpa.repository.Query;
 import si.turnirko.modeli.Liga;
 
 public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
+
+    /* Koliko lig je ta organizator ustvaril od zacetka tekoce sezone - meja
+       placilnega paketa (NarocninaStoritev). */
+    long countByUstvarilIdAndUstvarjenObGreaterThanEqual(Long idUstvaril, LocalDateTime odSezone);
 
     @Query("""
             SELECT l FROM Liga l

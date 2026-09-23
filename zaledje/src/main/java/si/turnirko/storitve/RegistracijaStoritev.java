@@ -99,6 +99,24 @@ public class RegistracijaStoritev {
 
     // ---------- Registracija ----------
 
+    /* Rezultat preverbe polj BREZ ustvarjanja racuna - deli ga brezplacna
+       registracija in placilni tok (PlacilaStoritev), da vnosa, ki bi ga
+       registriraj() itak zavrnil, ne zaracuna prek Stripe. Oboje prazno pri
+       organizatorju (nima datuma rojstva). */
+    record PreverjenVnos(LocalDate datumRojstva, String emailSkrbnika) {}
+
+    /* Isti validatorji kot registriraj(), locen od ustvarjanja racuna. */
+    PreverjenVnos preveriPolja(RegistracijaVnos v) {
+        if (Boolean.TRUE.equals(v.organizator())) {
+            return new PreverjenVnos(null, null);
+        }
+        LocalDate datumRojstva = preverjenDatumRojstva(v.datumRojstva());
+        String emailSkrbnika = potrebujeSkrbnika(datumRojstva)
+                ? preverjenEmailSkrbnika(v.emailSkrbnika(), normalizirajEmail(v.email()))
+                : null;
+        return new PreverjenVnos(datumRojstva, emailSkrbnika);
+    }
+
     /* Ustvari racun v stanju CAKA in poslje kodo za potrditev naslova (pri
        mlajsih od 15 let se kodo skrbniku). Odgovor je enak, ce naslov ze
        pripada potrjenemu racunu - takrat nov racun ne nastane, lastnik pa
@@ -106,22 +124,43 @@ public class RegistracijaStoritev {
     @Transactional
     public RegistracijaOdgovorDto registriraj(RegistracijaVnos v, String naslovIp) {
         String email = normalizirajEmail(v.email());
-        boolean organizator = Boolean.TRUE.equals(v.organizator());
-
-        LocalDate datumRojstva = null;
-        String emailSkrbnika = null;
-        if (!organizator) {
-            datumRojstva = preverjenDatumRojstva(v.datumRojstva());
-            if (potrebujeSkrbnika(datumRojstva)) {
-                emailSkrbnika = preverjenEmailSkrbnika(v.emailSkrbnika(), email);
-            }
-        }
+        PreverjenVnos preverjen = preveriPolja(v);
         preveriOmejitevPosiljanja(email, naslovIp);
 
         /* Zgostitev gesla se izracuna VEDNO, tudi ce racun ne bo nastal - BCrypt
            je najdrazji korak in brez njega bi bil odgovor za zaseden naslov
            merljivo hitrejsi, torej bi cas razkril, kaj odgovor skriva. */
         String gesloHash = kodirnik.encode(v.geslo());
+
+        ustvariRacunInPosljiKodo(v, email, gesloHash, preverjen);
+        return new RegistracijaOdgovorDto(email, preverjen.emailSkrbnika() != null);
+    }
+
+    /* Isto kot registriraj(), a za placljiv paket: geslo je ze zgosceno
+       (izracunano ob zacetku Stripe placila) in racuna se ne sme ustvariti,
+       dokler PlacilaStoritev ne dobi potrditve placila prek webhooka - zato
+       tu ni ne omejitve posiljanja (klic pride s Stripovega streznika, ne
+       s klientovega IP-ja) ne ponovnega izracuna zgostitve. Vnos je bil
+       preverjen ze ob zacetku placila (preveriPolja), a se preveri znova -
+       med placilom je lahko admin racun ze povezal ali zavrnil.
+
+       Vrne prazno, ce racun NI nastal (naslov je medtem postal potrjen,
+       admin ali zavrnjen - glej ustvariRacunInPosljiKodo): PlacilaStoritev
+       takrat placane narocnine noce obesiti na tuj racun in placilo pusti
+       za rocno obravnavo. */
+    @Transactional
+    public Optional<Uporabnik> registrirajPoPlacilu(RegistracijaVnos v, String gesloHash) {
+        String email = normalizirajEmail(v.email());
+        return ustvariRacunInPosljiKodo(v, email, gesloHash, preveriPolja(v));
+    }
+
+    /* Vrne novo ustvarjen racun, ali prazno, ce je naslov medtem postal
+       neuporaben za novo registracijo (glej komentar ob registrirajPoPlacilu). */
+    private Optional<Uporabnik> ustvariRacunInPosljiKodo(RegistracijaVnos v, String email,
+                                                          String gesloHash, PreverjenVnos preverjen) {
+        boolean organizator = Boolean.TRUE.equals(v.organizator());
+        LocalDate datumRojstva = preverjen.datumRojstva();
+        String emailSkrbnika = preverjen.emailSkrbnika();
 
         Optional<Uporabnik> obstojeci = uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(email);
         if (obstojeci.isPresent()) {
@@ -134,7 +173,7 @@ public class RegistracijaStoritev {
                 posta.poslji(email, SporocilaPoste.obstojeciRacun());
                 // enak strosek kot zgostitev kode, ki bi sicer nastala
                 kode.preveriNeznanega("000000");
-                return new RegistracijaOdgovorDto(email, emailSkrbnika != null);
+                return Optional.empty();
             }
             /* Nepotrjen ostanek prejsnjega poskusa: lastnistva naslova ni
                dokazal nihce, zato ga nova registracija zamenja. */
@@ -161,7 +200,18 @@ public class RegistracijaStoritev {
         if (emailSkrbnika != null) {
             posljiKodo(u, NamenKode.SKRBNIK);
         }
-        return new RegistracijaOdgovorDto(email, emailSkrbnika != null);
+        return Optional.of(u);
+    }
+
+    /* Isti pogoj kot v ustvariRacunInPosljiKodo - izpostavljen placilnemu
+       toku, da ne zaracuna registracije na naslov, ki bi jo tako ali tako
+       zavrnil. Namenoma preverja SAMO ta pogoj (ne posilja obvestila kot
+       registriraj) - klicatelj se odloci, kaj z odgovorom. */
+    boolean jeEmailProstZaRegistracijo(String email) {
+        return uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(email)
+                .map(o -> !(o.jeEmailPotrjen() || o.getVloga() == Vloga.ADMIN
+                        || o.getStatus() == StatusRacuna.ZAVRNJEN))
+                .orElse(true);
     }
 
     /* Vpis kode s potrjenega naslova. Ob uspehu se racun poskusi samodejno

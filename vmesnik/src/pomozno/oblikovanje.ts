@@ -132,6 +132,27 @@ export function sezonaIzDatuma(datum: string | null | undefined): string | null 
   return `${zacetna}/${String((zacetna + 1) % 100).padStart(2, '0')}`
 }
 
+/* Ali je racun za ceno Premium (CenikStoritev na zaledju, odlocitev lastnika
+   17.-23. 9. 2026) "starejsi od 21": starost se meri na 31. december leta, v
+   katerem se SEZONA zacne (isti rez kot zgoraj, isto pravilo kot
+   StarostniPas.izpelji) - NE tocna starost danes kot funkcija starost() v
+   PrijavaOkno.tsx (tista meri natancno leto, ker ureja prag skrbnika).
+   Meja je OSTRA: dopolnjenih 21 let v sezoni je ze CLANI, ne vec U21. Samo za
+   takojsen predogled cene v obrazcu - zaledje ob placilu prera racuna znova. */
+export function jeStarejsiOd21ZaCeno(datumRojstva: string | null): boolean | null {
+  const razstavljen = razstaviDatum(datumRojstva)
+  if (!razstavljen) return null
+  const danes = new Date()
+  const zacetnoLetoSezone = danes.getMonth() + 1 >= 7 ? danes.getFullYear() : danes.getFullYear() - 1
+  return zacetnoLetoSezone - razstavljen.leto >= 21
+}
+
+/* "3.99" -> "3,99 €" - edino mesto, kjer se cena paketa izpiše kot besedilo
+   (PrijavaOkno, NarocninaStran). */
+export function oblikujCeno(znesek: number): string {
+  return znesek.toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+}
+
 /* Letnica rojstva iz datuma "YYYY-MM-DD". */
 export function letnica(datum: string | null | undefined): string {
   if (!datum) return ''

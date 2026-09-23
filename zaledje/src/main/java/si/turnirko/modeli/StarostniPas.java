@@ -33,11 +33,6 @@ public enum StarostniPas {
     private static final StarostniPas[] MLADINSKI = { U11, U13, U15, U17, U19, U21 };
     private static final int LET_VETERAN = 40;
 
-    /* Prvi mesec nove sezone. Sezona tece od septembra do julija (PST), rez
-       postavimo na 1. julij - isto kot sezonaIzDatuma v vmesniku, zato imata
-       tekmovanje in igralec isto sezono. */
-    private static final int PRVI_MESEC_SEZONE = 7;
-
     /* Starost se za sezono doloca na 31. december v letu, v katerem se sezona
        zacne (11. clen PST): igralec mora biti na ta dan MLAJSI od stevilke
        kategorije. Zato od januarja do junija se vedno velja letnica prejsnjega
@@ -68,11 +63,6 @@ public enum StarostniPas {
         if (datumRojstva == null || danes == null) {
             return null;
         }
-        return letoSezone(danes) - datumRojstva.getYear();
-    }
-
-    /* Leto, v katerem se je zacela sezona, ki tece na dani dan. */
-    private static int letoSezone(LocalDate danes) {
-        return danes.getMonthValue() >= PRVI_MESEC_SEZONE ? danes.getYear() : danes.getYear() - 1;
+        return Sezona.zacetnoLeto(danes) - datumRojstva.getYear();
     }
 }

@@ -122,6 +122,17 @@ public class VarnostneNastavitve {
                                 "/api/v1/auth/novo-geslo").permitAll()
                         // /auth/me sluzi za preverbo poverilnic - zahteva veljavno prijavo
                         .requestMatchers("/api/v1/auth/**").authenticated()
+                        // placana registracija: racun se ustvari sele v webhooku, zato
+                        // zacetek placila ne sme zahtevati prijave. Webhook klice Stripov
+                        // streznik (podpis, ne prijava, je njegov dokaz - PlacilaStoritev).
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/placila/registracija",
+                                "/api/v1/placila/webhook").permitAll()
+                        // nadgradnja obstojecega racuna in Stripe portal zahtevata prijavo,
+                        // ne pa nobene posebne vloge (velja za igralca IN organizatorja)
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/placila/nadgradnja",
+                                "/api/v1/placila/portal").authenticated()
                         // zasebni del profila (analize in napoved tekme) vidi samo
                         // igralec sam ali administrator; lastnistvo preveri
                         // DostopDoProfila - veriga pozna samo vlogo, ne lastnistva

@@ -116,6 +116,17 @@ export function UporabniskiMeni() {
                 </NavLink>
               )}
 
+              {uporabnik.vloga !== 'ADMIN' && (
+                <NavLink
+                  to="/narocnina"
+                  role="menuitem"
+                  className="uporabnik-meni__postavka"
+                  onClick={() => nastaviOdprt(false)}
+                >
+                  Naročnina
+                </NavLink>
+              )}
+
               <button
                 type="button"
                 role="menuitem"

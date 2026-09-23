@@ -23,6 +23,8 @@ import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Turnir;
+import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KrajRepozitorij;
@@ -38,19 +40,22 @@ public class TurnirjiStoritev {
     private final IgralecRepozitorij igralecRepozitorij;
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final LastnistvoStoritev lastnistvo;
+    private final NarocninaStoritev narocnina;
 
     public TurnirjiStoritev(TurnirRepozitorij turnirRepozitorij,
                             DogodekRepozitorij dogodekRepozitorij,
                             KrajRepozitorij krajRepozitorij,
                             IgralecRepozitorij igralecRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
-                            LastnistvoStoritev lastnistvo) {
+                            LastnistvoStoritev lastnistvo,
+                            NarocninaStoritev narocnina) {
         this.turnirRepozitorij = turnirRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.krajRepozitorij = krajRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.lastnistvo = lastnistvo;
+        this.narocnina = narocnina;
     }
 
     @Transactional
@@ -68,6 +73,12 @@ public class TurnirjiStoritev {
         turnir.setOpombe(vnos.opombe());
         // null = privzeto (tekme stejejo v rating)
         turnir.setRaven(vnos.raven() == null ? RavenTekmovanja.KLUBSKO : vnos.raven());
+        // organizator sme ustvariti samo toliko turnirjev na sezono, kolikor
+        // dovoljuje njegov paket; admin ni organizator in sem ne pride
+        Uporabnik jaz = lastnistvo.trenutni();
+        if (jaz != null && jaz.getVloga() == Vloga.ORGANIZATOR) {
+            narocnina.preveriOmejitevTurnirja(jaz);
+        }
         // zabelezi lastnika (organizator oz. admin, ki ga ustvarja)
         lastnistvo.oznaciLastnika(turnir);
         // status vedno doloci streznik (PRIPRAVA je privzeti)

@@ -24,6 +24,9 @@ interface Avtentikacija {
   jeOrganizator: boolean
   /* Prijavljen igralec s potrjenim in povezanim računom. */
   jeIgralec: boolean
+  /* Ali ima prijavljeni igralec Premium (zasebna statistika, spremljanje
+     lig) - brez tega je (tudi lastniku) na voljo enako kot gostu. */
+  jePremium: boolean
   /* Sme ustvarjati turnirje in lige (administrator ali organizator). */
   smeUstvarjati: boolean
   /* Id igralca, čigar profil je "moj"; null za admina in nepotrjene račune. */
@@ -114,6 +117,7 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
 
   const jeAdmin = uporabnik?.vloga === 'ADMIN'
   const jeOrganizator = uporabnik?.vloga === 'ORGANIZATOR' && uporabnik.status === 'POTRJEN'
+  const jePremium = uporabnik?.paket === 'PREMIUM' && uporabnik.paketAktiven
 
   /* Ali sme prijavljeni urejati turnir/ligo z danim lastništvom. */
   function smemUrejati(idLastnik: number | null, idKlubLastnik: number | null): boolean {
@@ -131,6 +135,7 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     jeAdmin,
     jeOrganizator,
     jeIgralec,
+    jePremium,
     smeUstvarjati: jeAdmin || jeOrganizator,
     mojIdIgralec: jeIgralec ? uporabnik!.idIgralec : null,
     smemUrejati,

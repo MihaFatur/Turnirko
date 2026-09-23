@@ -41,8 +41,11 @@ import type {
   PrijavaDto,
   ProfilDto,
   ProfilZasebnoDto,
+  NadgradnjaVnos,
   NamenKode,
   NovoGesloVnos,
+  PlacanaRegistracijaVnos,
+  PlacilnaSejaDto,
   PotrditevKodeVnos,
   PotrditevOdgovorDto,
   RacunIgralcaDto,
@@ -197,6 +200,17 @@ export const authApi = {
   pozabljenoGeslo: (email: string) => api.objavi<void>('/auth/pozabljeno-geslo', { email }),
   novoGeslo: (vnos: NovoGesloVnos) => api.objavi<void>('/auth/novo-geslo', vnos),
   zamenjajGeslo: (vnos: SpremembaGeslaVnos) => api.objavi<void>('/auth/geslo', vnos),
+}
+
+export const placilaApi = {
+  /* Brez prijave; račun (šele) nastane, ko Stripe webhook potrdi plačilo.
+     Odgovor je naslov Stripe Checkouta - vmesnik nanj preusmeri brskalnik. */
+  registracija: (vnos: PlacanaRegistracijaVnos) =>
+    api.objavi<PlacilnaSejaDto>('/placila/registracija', vnos),
+  /* Nadgradnja že prijavljenega (brezplačnega) računa. */
+  nadgradnja: (vnos: NadgradnjaVnos) => api.objavi<PlacilnaSejaDto>('/placila/nadgradnja', vnos),
+  /* Stripe Billing Portal - upravljanje/preklic obstoječe naročnine. */
+  portal: () => api.objavi<PlacilnaSejaDto>('/placila/portal'),
 }
 
 export const profiliApi = {

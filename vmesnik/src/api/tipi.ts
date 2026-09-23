@@ -366,6 +366,57 @@ export interface UporabnikDto {
   emailPotrjen: boolean
   /* Račun mlajšega od 15 let še čaka na kodo starša oz. skrbnika. */
   potrebnaKodaSkrbnika: boolean
+  /* null = brezplačno oz. admin (brez vrstice v narocnina). */
+  paket: Paket | null
+  /* Ali paket zdaj daje pravice (Narocnina.jeVeljavna) - preklican paket
+     ostane true do konca že plačanega obdobja. */
+  paketAktiven: boolean
+  ciklus: CiklusPlacila | null
+  /* Izpeljanka iz datuma rojstva (kot starostniPas) - NE datum sam. Pove
+     ceno Premium brez razkritja letnice; null pri organizatorju oz. če
+     datum (še) ni znan. */
+  starejsiOd21: boolean | null
+}
+
+/* Placilni paket racuna - igralec izbira med BREZPLACNO in PREMIUM (cena po
+   starostnem pasu ob registraciji), organizator med tremi obsegovnimi
+   paketi. Glej CenikStoritev na zaledju za cene in NarocninaStoritev za
+   kaj kateri paket dovoli. */
+export type Paket = 'BREZPLACNO' | 'PREMIUM' | 'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO'
+
+export type CiklusPlacila = 'MESECNO' | 'LETNO'
+
+export const OZNAKE_PAKET: Record<Paket, string> = {
+  BREZPLACNO: 'Brezplačno',
+  PREMIUM: 'Premium',
+  ORGANIZATOR_BASIC: 'Organizator Basic',
+  ORGANIZATOR_PLUS: 'Organizator Plus',
+  ORGANIZATOR_PRO: 'Organizator Pro',
+}
+
+/* Cene so odločitev lastnika (17.–23. 9. 2026); zrcalijo CenikStoritev na
+   zaledju, ki je zadnja beseda - to tu je samo za takojšen predogled cene v
+   obrazcu (isto načelo kot funkcija starost() v PrijavaOkno.tsx). Letno je
+   VEDNO 11x mesečna cena (brez navideznega popusta, ZVPot-1); organizatorski
+   paketi so samo letni. */
+export const CENA_PREMIUM_MESECNO = { mlajsi: 3.99, starejsi: 4.99 } as const
+export const MESECEV_V_LETNI_NAROCNINI = 11
+export const CENA_ORGANIZATOR_LETNO: Record<
+  'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO',
+  number
+> = {
+  ORGANIZATOR_BASIC: 89.99,
+  ORGANIZATOR_PLUS: 169.99,
+  ORGANIZATOR_PRO: 249.99,
+}
+/* [tekoče lige, ustvarjeni turnirji] na sezono - glej NarocninaStoritev. */
+export const OMEJITVE_ORGANIZATORJA: Record<
+  'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO',
+  { lig: number; turnirjev: number }
+> = {
+  ORGANIZATOR_BASIC: { lig: 1, turnirjev: 2 },
+  ORGANIZATOR_PLUS: { lig: 3, turnirjev: 5 },
+  ORGANIZATOR_PRO: { lig: 5, turnirjev: 10 },
 }
 
 export type StatusRacuna = 'CAKA' | 'POTRJEN' | 'ZAVRNJEN'
@@ -402,6 +453,24 @@ export interface RegistracijaVnos {
 export interface RegistracijaOdgovorDto {
   email: string
   potrebnaKodaSkrbnika: boolean
+}
+
+/* Registracija s plačljivim paketom - račun NE nastane ob tem klicu, ampak
+   šele ko Stripe webhook potrdi plačilo (glej PlacilaStoritev). Odgovor je
+   naslov Stripe Checkouta, kamor vmesnik preusmeri brskalnik. */
+export interface PlacanaRegistracijaVnos {
+  racun: RegistracijaVnos
+  paket: Paket
+  ciklus: CiklusPlacila | null
+}
+
+export interface NadgradnjaVnos {
+  paket: Paket
+  ciklus: CiklusPlacila | null
+}
+
+export interface PlacilnaSejaDto {
+  url: string
 }
 
 export interface PotrditevKodeVnos {

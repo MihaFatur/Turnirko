@@ -23,6 +23,7 @@ import si.turnirko.modeli.SpremljanaLiga;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SpremljanaLigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -44,17 +45,20 @@ public class DomovStoritev {
     private final SpremljanaLigaRepozitorij spremljanaLigaRepozitorij;
     private final LestvicaLigeStoritev lestvicaLigeStoritev;
     private final LastnistvoStoritev lastnistvo;
+    private final NarocninaStoritev narocnina;
 
     public DomovStoritev(LigaRepozitorij ligaRepozitorij,
                          SrecanjeRepozitorij srecanjeRepozitorij,
                          SpremljanaLigaRepozitorij spremljanaLigaRepozitorij,
                          LestvicaLigeStoritev lestvicaLigeStoritev,
-                         LastnistvoStoritev lastnistvo) {
+                         LastnistvoStoritev lastnistvo,
+                         NarocninaStoritev narocnina) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.spremljanaLigaRepozitorij = spremljanaLigaRepozitorij;
         this.lestvicaLigeStoritev = lestvicaLigeStoritev;
         this.lastnistvo = lastnistvo;
+        this.narocnina = narocnina;
     }
 
     // ---------- Izbor spremljanih lig ----------
@@ -66,10 +70,16 @@ public class DomovStoritev {
     }
 
     /* Doda ligo v izbor; ponovni klic ne naredi nicesar (idempotentno, ker je
-       kvadratek preklop in ne stevec). */
+       kvadratek preklop in ne stevec). Dodajanje je Premium funkcija - brez
+       nje racun ostane na kar mu je admin postavil oz. kar je gost ze videl
+       (glej NarocninaStoritev); ODJAVA spremljanja (nehajSpremljati) in BRANJE
+       (mojeLige) ostaneta odprta vsakemu prijavljenemu. */
     @Transactional
     public List<Long> spremljaj(Long idLiga) {
         Uporabnik jaz = zahtevajPrijavo();
+        if (jaz.getVloga() != Vloga.ADMIN && !narocnina.imaPremium(jaz)) {
+            throw new PrepovedanoIzjema("Spremljanje lig je Premium funkcija.");
+        }
         if (!ligaRepozitorij.existsById(idLiga)) {
             throw new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja.");
         }

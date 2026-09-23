@@ -1,4 +1,5 @@
-/* Kdo sme videti zasebni del profila: igralec sam in administrator.
+/* Kdo sme videti zasebni del profila: igralec sam (s Premium paketom) in
+   administrator.
 
    Pravilo zivi tu in ne v posamezni storitvi, ker ga potrebujeta dva pogleda
    (zasebne analize in napoved tekme), pozneje pa jih bo vec. Dve kopiji istega
@@ -20,12 +21,15 @@ import si.turnirko.repozitoriji.UporabnikRepozitorij;
 public class DostopDoProfila {
 
     private final UporabnikRepozitorij uporabnikRepozitorij;
+    private final NarocninaStoritev narocnina;
 
-    public DostopDoProfila(UporabnikRepozitorij uporabnikRepozitorij) {
+    public DostopDoProfila(UporabnikRepozitorij uporabnikRepozitorij, NarocninaStoritev narocnina) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
+        this.narocnina = narocnina;
     }
 
-    /* Administrator sme vse; igralec samo svoj profil.
+    /* Administrator sme vse; igralec samo svoj profil, in samo s Premium
+       paketom - brez njega je (tudi lastniku) na voljo enako kot gostu.
        "prijavnoIme" je ime prijavljenega uporabnika iz varnostnega konteksta. */
     @Transactional(readOnly = true)
     public void preveriLastnistvo(Long idIgralec, String prijavnoIme) {
@@ -40,6 +44,10 @@ public class DostopDoProfila {
         }
         if (!u.getIgralec().getId().equals(idIgralec)) {
             throw new PrepovedanoIzjema("Zasebno statistiko lahko vidi samo igralec sam.");
+        }
+        if (!narocnina.imaPremium(u)) {
+            throw new PrepovedanoIzjema(
+                    "Zasebna statistika je Premium funkcija. Nadgradi paket, da jo vidis.");
         }
     }
 }

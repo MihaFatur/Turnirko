@@ -24,6 +24,8 @@ import { ProfilStran } from './strani/ProfilStran'
 import { RacuniStran } from './strani/RacuniStran'
 import { RatingStran } from './strani/RatingStran'
 import { UvozStran } from './strani/UvozStran'
+import { NarocninaStran } from './strani/NarocninaStran'
+import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStran'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
    pokaže obvestilo, gosta pa preusmeri na lestvico. */
@@ -133,6 +135,8 @@ export function App() {
         <Route path="/koledar" element={<KoledarStran />} />
         <Route path="/igralci/:id/profil" element={<ProfilStran />} />
         <Route path="/moj-profil" element={<MojProfil />} />
+        <Route path="/narocnina" element={<NarocninaStran />} />
+        <Route path="/registracija/zakljucena" element={<RegistracijaZakljucenaStran />} />
         <Route
           path="/racuni"
           element={

@@ -27,13 +27,17 @@ import si.turnirko.dto.TurnirVnos;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.SpolKategorija;
+import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
+import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
@@ -46,6 +50,7 @@ class LastnistvoTest {
     @Autowired KlubRepozitorij klubRepozitorij;
     @Autowired TurnirRepozitorij turnirRepozitorij;
     @Autowired LigaRepozitorij ligaRepozitorij;
+    @Autowired NarocninaRepozitorij narocninaRepozitorij;
     @Autowired LastnistvoStoritev lastnistvo;
     @Autowired TurnirjiStoritev turnirjiStoritev;
     @Autowired LigaStoritev ligaStoritev;
@@ -149,11 +154,17 @@ class LastnistvoTest {
         return klubRepozitorij.save(new Klub(ime, null));
     }
 
+    /* Organizator s prostim (Pro) paketom, da ta test meri LASTNISTVO in ne
+       trci ob mejo NarocninaStoritev - ta ima svoje teste. */
     private Uporabnik organizator(String prijavnoIme, Klub klub) {
         Uporabnik u = new Uporabnik(prijavnoIme, "{bcrypt}x", Vloga.ORGANIZATOR);
         u.setStatus(StatusRacuna.POTRJEN);
         u.setKlub(klub);
-        return uporabnikRepozitorij.save(u);
+        u = uporabnikRepozitorij.save(u);
+        Narocnina n = new Narocnina(u, Paket.ORGANIZATOR_PRO);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
+        return u;
     }
 
     private Uporabnik admin(String prijavnoIme) {

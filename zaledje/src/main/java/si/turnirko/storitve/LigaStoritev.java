@@ -51,6 +51,8 @@ import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmovanja;
+import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
@@ -80,6 +82,7 @@ public class LigaStoritev {
     private final LestvicaLigeStoritev lestvicaLigeStoritev;
     private final SpremembeRatingaStoritev spremembeRatinga;
     private final LastnistvoStoritev lastnistvo;
+    private final NarocninaStoritev narocnina;
 
     public LigaStoritev(LigaRepozitorij ligaRepozitorij,
                         EkipaRepozitorij ekipaRepozitorij,
@@ -91,7 +94,8 @@ public class LigaStoritev {
                         RazporedStoritev razporedStoritev,
                         LestvicaLigeStoritev lestvicaLigeStoritev,
                         SpremembeRatingaStoritev spremembeRatinga,
-                        LastnistvoStoritev lastnistvo) {
+                        LastnistvoStoritev lastnistvo,
+                        NarocninaStoritev narocnina) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.ekipaRepozitorij = ekipaRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
@@ -103,6 +107,7 @@ public class LigaStoritev {
         this.lestvicaLigeStoritev = lestvicaLigeStoritev;
         this.spremembeRatinga = spremembeRatinga;
         this.lastnistvo = lastnistvo;
+        this.narocnina = narocnina;
     }
 
     // ---------- Liga ----------
@@ -160,6 +165,12 @@ public class LigaStoritev {
     public LigaDto ustvari(LigaVnos v) {
         Liga liga = new Liga();
         uporabiVnos(liga, v);
+        // organizator sme ustvariti samo toliko lig na sezono, kolikor
+        // dovoljuje njegov paket; admin ni organizator in sem ne pride
+        Uporabnik jaz = lastnistvo.trenutni();
+        if (jaz != null && jaz.getVloga() == Vloga.ORGANIZATOR) {
+            narocnina.preveriOmejitevLige(jaz);
+        }
         // zabelezi lastnika (organizator oz. admin, ki jo ustvarja)
         lastnistvo.oznaciLastnika(liga);
         liga = ligaRepozitorij.save(liga);

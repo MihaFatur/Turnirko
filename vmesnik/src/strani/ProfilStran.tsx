@@ -49,7 +49,7 @@ import {
 export function ProfilStran() {
   const { id } = useParams()
   const idIgralec = Number(id)
-  const { jeAdmin, mojIdIgralec } = useAvtentikacija()
+  const { jeAdmin, mojIdIgralec, jePremium } = useAvtentikacija()
 
   const profil = useQuery({
     queryKey: ['profil', idIgralec],
@@ -57,8 +57,12 @@ export function ProfilStran() {
   })
 
   /* Zasebni del zahtevamo samo, kadar imamo pravico — da uporabnik ne dobi
-     nepotrebne napake 403 v konzoli. */
-  const smemZasebno = jeAdmin || mojIdIgralec === idIgralec
+     nepotrebne napake 403 v konzoli. Lastnik brez Premium pravice nima -
+     zanj je profil enak gostovemu (glej DostopDoProfila na zaledju). */
+  const smemZasebno = jeAdmin || (mojIdIgralec === idIgralec && jePremium)
+  /* Lastnik profila, ki bi zasebni del videl, ko bi imel Premium - tu dobi
+     jasno povabilo k nadgradnji namesto tihega izpusta razdelkov. */
+  const lastnikBrezPremium = !jeAdmin && mojIdIgralec === idIgralec && !jePremium
   const zasebno = useQuery({
     queryKey: ['profil-zasebno', idIgralec],
     queryFn: () => profiliApi.zasebno(idIgralec),
@@ -234,6 +238,12 @@ export function ProfilStran() {
         </>
       )}
       {smemZasebno && zasebno.error && <SporociloNapake napaka={zasebno.error} />}
+      {lastnikBrezPremium && (
+        <div className="obvestilo">
+          Forma, nasprotniki, napoved tekme, nizi in točke ter razrezi so Premium funkcija.{' '}
+          <Link to="/narocnina">Nadgradi na Premium</Link>, da jih vidiš.
+        </div>
+      )}
 
       <div>
         <div className="naslovna-vrstica">

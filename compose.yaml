@@ -34,6 +34,11 @@ services:
       TURNIRKO_SMTP_VRATA: ${TURNIRKO_SMTP_VRATA:-587}
       TURNIRKO_SMTP_UPORABNIK: ${TURNIRKO_SMTP_UPORABNIK:-}
       TURNIRKO_SMTP_GESLO: ${TURNIRKO_SMTP_GESLO:-}
+      # Placila (Stripe) - Premium igralca in organizatorski paketi. Brez
+      # tajnega kljuca placilo ne deluje (jasna napaka, ne sesutje) - glej
+      # .env.primer za navodila, kje kljuce dobis.
+      TURNIRKO_STRIPE_TAJNI_KLJUC: ${TURNIRKO_STRIPE_TAJNI_KLJUC:-}
+      TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST: ${TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST:-}
 
     volumes:
       # Baza lezi na strezniku, ne v vsebniku - tako prezivi vsako

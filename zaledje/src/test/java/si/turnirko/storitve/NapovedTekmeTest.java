@@ -22,12 +22,16 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Igralec;
+import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RavenTekmovanja;
+import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 class NapovedTekmeTest extends IntegracijskiTest {
@@ -37,6 +41,7 @@ class NapovedTekmeTest extends IntegracijskiTest {
     @Autowired private RegistracijaStoritev registracijaStoritev;
     @Autowired private OmejevalnikPoskusov omejevalnik;
     @Autowired private UporabnikRepozitorij uporabnikRepozitorij;
+    @Autowired private NarocninaRepozitorij narocninaRepozitorij;
 
     /* Omejevalnik posiljanja kod zivi v pomnilniku cez vse teste. */
     @org.junit.jupiter.api.BeforeEach
@@ -219,6 +224,8 @@ class NapovedTekmeTest extends IntegracijskiTest {
                 .orElseThrow().getVrednost();
     }
 
+    /* Napoved (kot zasebne analize profila) je Premium funkcija - racun tu
+       dobi Premium takoj, ker ta test meri NAPOVED, ne placilni paket. */
     private String racunZa(Igralec igralec, String email) {
         registracijaStoritev.registriraj(new RegistracijaVnos(
                 igralec.getIme(), igralec.getPriimek(), null, email, "geslo123", false,
@@ -226,6 +233,10 @@ class NapovedTekmeTest extends IntegracijskiTest {
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals(email)).findFirst().orElseThrow().id();
         racuniStoritev.potrdi(idRacuna, new PotrditevRacunaVnos(igralec.getId()));
+        Uporabnik u = uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(email).orElseThrow();
+        Narocnina n = new Narocnina(u, Paket.PREMIUM);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
         return email;
     }
 

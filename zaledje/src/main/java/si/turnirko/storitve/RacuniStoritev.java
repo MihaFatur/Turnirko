@@ -32,6 +32,7 @@ import si.turnirko.modeli.VirPovezave;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
+import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 @Service
@@ -40,17 +41,23 @@ public class RacuniStoritev {
     private final UporabnikRepozitorij uporabnikRepozitorij;
     private final IgralecRepozitorij igralecRepozitorij;
     private final KlubRepozitorij klubRepozitorij;
+    private final NarocninaRepozitorij narocninaRepozitorij;
+    private final CenikStoritev cenik;
     private final PasswordEncoder kodirnik;
     private final KodeStoritev kode;
 
     public RacuniStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                           IgralecRepozitorij igralecRepozitorij,
                           KlubRepozitorij klubRepozitorij,
+                          NarocninaRepozitorij narocninaRepozitorij,
+                          CenikStoritev cenik,
                           PasswordEncoder kodirnik,
                           KodeStoritev kode) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
+        this.narocninaRepozitorij = narocninaRepozitorij;
+        this.cenik = cenik;
         this.kodirnik = kodirnik;
         this.kode = kode;
     }
@@ -60,7 +67,12 @@ public class RacuniStoritev {
     /* Profil trenutno prijavljenega uporabnika. */
     @Transactional(readOnly = true)
     public UporabnikDto profil(String prijavnoIme) {
-        return UporabnikDto.iz(najdiPoPrijavnemImenu(prijavnoIme));
+        Uporabnik u = najdiPoPrijavnemImenu(prijavnoIme);
+        Boolean starejsiOd21 = u.getVloga() == Vloga.IGRALEC && u.getPrijavljeniDatumRojstva() != null
+                ? cenik.stariEnaindvajset(u.getPrijavljeniDatumRojstva())
+                : null;
+        return UporabnikDto.iz(u, narocninaRepozitorij.findByUporabnikId(u.getId()).orElse(null),
+                starejsiOd21);
     }
 
     /* Zamenjava lastnega gesla; staro geslo se mora ujemati. */

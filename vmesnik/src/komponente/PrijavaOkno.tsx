@@ -12,8 +12,18 @@ import { useQuery } from '@tanstack/react-query'
 
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { opisNapake } from '../api/odjemalec'
-import { authApi, klubiApi } from '../api/zahteve'
-import type { NamenKode, PotrditevOdgovorDto } from '../api/tipi'
+import { authApi, klubiApi, placilaApi } from '../api/zahteve'
+import {
+  CENA_ORGANIZATOR_LETNO,
+  CENA_PREMIUM_MESECNO,
+  MESECEV_V_LETNI_NAROCNINI,
+  OMEJITVE_ORGANIZATORJA,
+  type CiklusPlacila,
+  type NamenKode,
+  type Paket,
+  type PotrditevOdgovorDto,
+} from '../api/tipi'
+import { jeStarejsiOd21ZaCeno, oblikujCeno } from '../pomozno/oblikovanje'
 import { IzbirnikKluba } from './IzbirnikKluba'
 import { ModalnoOkno } from './ModalnoOkno'
 
@@ -229,6 +239,11 @@ function RegistracijaObrazec({
   const [emailSkrbnika, nastaviEmailSkrbnika] = useState('')
   const [email, nastaviEmail] = useState('')
   const [geslo, nastaviGeslo] = useState('')
+  /* Plan je ločen od vloge, a je vezan nanjo: Premium je samo igralčev,
+     organizatorski trije paketi samo njegovi - preklop vloge zato ponastavi
+     tudi plan (glej vlogaSePrestavi). */
+  const [paket, nastaviPaket] = useState<Paket>('BREZPLACNO')
+  const [ciklus, nastaviCiklus] = useState<CiklusPlacila>('MESECNO')
   const [napaka, nastaviNapako] = useState<string | null>(null)
   const [poteka, nastaviPoteka] = useState(false)
 
@@ -236,12 +251,23 @@ function RegistracijaObrazec({
   const potrebujeSkrbnika = leta !== null && leta < 15
   const danes = new Date().toISOString().slice(0, 10)
 
+  /* Samo za PREDOGLED cene v obrazcu - zaledje (CenikStoritev) ob placilu
+     ceno prera znova iz res vpisanega datuma, to je zadnja beseda. */
+  const starejsiOd21 = jeStarejsiOd21ZaCeno(datumRojstva) ?? false
+  const cenaPremiumMesecno = starejsiOd21 ? CENA_PREMIUM_MESECNO.starejsi : CENA_PREMIUM_MESECNO.mlajsi
+  const cenaPremiumLetno = Math.round(cenaPremiumMesecno * MESECEV_V_LETNI_NAROCNINI * 100) / 100
+
+  function vlogaSePrestavi(novOrganizator: boolean) {
+    nastaviOrganizator(novOrganizator)
+    nastaviPaket(novOrganizator ? 'ORGANIZATOR_BASIC' : 'BREZPLACNO')
+  }
+
   async function obOddaji(dogodek: FormEvent) {
     dogodek.preventDefault()
     nastaviNapako(null)
     nastaviPoteka(true)
     try {
-      const odgovor = await authApi.registracija({
+      const racun = {
         ime: ime.trim(),
         priimek: priimek.trim(),
         idKlub: idKlub ? Number(idKlub) : null,
@@ -250,11 +276,22 @@ function RegistracijaObrazec({
         organizator,
         datumRojstva: organizator ? null : datumRojstva,
         emailSkrbnika: potrebujeSkrbnika ? emailSkrbnika.trim() : null,
+      }
+      if (paket === 'BREZPLACNO') {
+        const odgovor = await authApi.registracija(racun)
+        onKoda(odgovor.email)
+        return
+      }
+      /* Placljiv paket: racun NE nastane tu, ampak sele ko Stripe webhook
+         potrdi placilo - odgovor je naslov Stripe Checkouta. */
+      const seja = await placilaApi.registracija({
+        racun,
+        paket,
+        ciklus: paket === 'PREMIUM' ? ciklus : 'LETNO',
       })
-      onKoda(odgovor.email)
+      window.location.href = seja.url
     } catch (e) {
       nastaviNapako(opisNapake(e))
-    } finally {
       nastaviPoteka(false)
     }
   }
@@ -281,7 +318,7 @@ function RegistracijaObrazec({
         <span>Vloga *</span>
         <select
           value={organizator ? 'organizator' : 'igralec'}
-          onChange={(d) => nastaviOrganizator(d.target.value === 'organizator')}
+          onChange={(d) => vlogaSePrestavi(d.target.value === 'organizator')}
         >
           <option value="igralec">Igralec</option>
           <option value="organizator">Organizator</option>
@@ -362,6 +399,54 @@ function RegistracijaObrazec({
         />
       </label>
 
+      {/* Plan: brezplačno je na voljo samo igralcu (kot gost, le prijavljen);
+          organizator vedno izbere enega od treh plačljivih paketov - obseg
+          (koliko lig/turnirjev na sezono) je edina razlika med njimi. */}
+      {!organizator && (
+        <label className="obrazec__polje">
+          <span>Plan *</span>
+          <select value={paket} onChange={(d) => nastaviPaket(d.target.value as Paket)}>
+            <option value="BREZPLACNO">Brezplačno — kot gost, le prijavljen</option>
+            <option value="PREMIUM">Premium — zasebna statistika in spremljanje lig</option>
+          </select>
+        </label>
+      )}
+
+      {!organizator && paket === 'PREMIUM' && (
+        <label className="obrazec__polje">
+          <span>Plačevanje *</span>
+          <select value={ciklus} onChange={(d) => nastaviCiklus(d.target.value as CiklusPlacila)}>
+            <option value="MESECNO">{oblikujCeno(cenaPremiumMesecno)} / mesec</option>
+            <option value="LETNO">
+              {oblikujCeno(cenaPremiumLetno)} / leto ({MESECEV_V_LETNI_NAROCNINI}× mesečna cena)
+            </option>
+          </select>
+        </label>
+      )}
+
+      {organizator && (
+        <label className="obrazec__polje">
+          <span>Paket *</span>
+          <select value={paket} onChange={(d) => nastaviPaket(d.target.value as Paket)}>
+            <option value="ORGANIZATOR_BASIC">
+              Basic — {oblikujCeno(CENA_ORGANIZATOR_LETNO.ORGANIZATOR_BASIC)}/leto (
+              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_BASIC.lig} tekoča liga,{' '}
+              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_BASIC.turnirjev} turnirja na sezono)
+            </option>
+            <option value="ORGANIZATOR_PLUS">
+              Plus — {oblikujCeno(CENA_ORGANIZATOR_LETNO.ORGANIZATOR_PLUS)}/leto (
+              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PLUS.lig} tekoče lige,{' '}
+              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PLUS.turnirjev} turnirjev na sezono)
+            </option>
+            <option value="ORGANIZATOR_PRO">
+              Pro — {oblikujCeno(CENA_ORGANIZATOR_LETNO.ORGANIZATOR_PRO)}/leto (
+              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PRO.lig} tekočih lig,{' '}
+              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PRO.turnirjev} turnirjev na sezono)
+            </option>
+          </select>
+        </label>
+      )}
+
       {napaka && <div className="napaka">{napaka}</div>}
 
       <div className="obrazec__gumbi">
@@ -369,7 +454,13 @@ function RegistracijaObrazec({
           Prekliči
         </button>
         <button type="submit" className="gumb gumb--glavni" disabled={poteka}>
-          {poteka ? 'Ustvarjam …' : 'Ustvari račun'}
+          {poteka
+            ? paket === 'BREZPLACNO'
+              ? 'Ustvarjam …'
+              : 'Preusmerjam na plačilo …'
+            : paket === 'BREZPLACNO'
+              ? 'Ustvari račun'
+              : 'Nadaljuj na plačilo'}
         </button>
       </div>
     </form>

@@ -38,12 +38,16 @@ import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrevecZahtevIzjema;
 import si.turnirko.modeli.NamenKode;
+import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.PotrditvenaKoda;
 import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.VirPovezave;
 import si.turnirko.posta.PomnilniskiPosiljatelj;
+import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.PotrditvenaKodaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
@@ -62,6 +66,7 @@ class RegistracijaTest {
     @Autowired CiscenjeRacunovStoritev ciscenje;
     @Autowired DostopDoProfila dostopDoProfila;
     @Autowired UporabnikRepozitorij uporabnikRepozitorij;
+    @Autowired NarocninaRepozitorij narocninaRepozitorij;
     @Autowired PotrditvenaKodaRepozitorij kodaRepozitorij;
     @Autowired PomnilniskiPosiljatelj posta;
     @Autowired OmejevalnikPoskusov omejevalnik;
@@ -280,7 +285,10 @@ class RegistracijaTest {
         assertEquals(igralec.id(), u.getIgralec().getId());
         assertEquals(VirPovezave.SAMODEJNO, u.getVirPovezave());
         assertNotNull(u.getPovezanOb());
-        // s tem sme videti svoj zasebni profil
+        // s Premium paketom sme videti svoj zasebni profil (brez njega ne bi)
+        Narocnina n = new Narocnina(u, Paket.PREMIUM);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
         dostopDoProfila.preveriLastnistvo(igralec.id(), "ziga@test.si");
     }
 
@@ -435,6 +443,40 @@ class RegistracijaTest {
         ciscenje.pocisti(LocalDateTime.now().plusDays(31));
         assertTrue(uporabnikRepozitorij.findByUporabniskoIme("otrok@test.si").isEmpty());
         assertTrue(uporabnikRepozitorij.findByUporabniskoIme("potrjen@test.si").isPresent());
+    }
+
+    // ---------- Placilni tok (PlacilaStoritev klice registrirajPoPlacilu) ----------
+
+    /* Geslo je ze zgosceno PRED klicem (izracunano ob zacetku Stripe placila) -
+       registrirajPoPlacilu ga ne sme znova zgostiti, drugace se uporabnik ne
+       bi mogel prijaviti s svojim geslom. */
+    @Test
+    void registracijaPoPlaciluUporabiZeZgoscenoGeslo() {
+        String zeZgosceno = kodirnik.encode("mojeGeslo123");
+        var racun = registracija.registrirajPoPlacilu(igralec("Ana", "Novak", "placano@test.si"),
+                zeZgosceno);
+
+        assertTrue(racun.isPresent());
+        assertEquals(zeZgosceno, racun.get().getGesloHash());
+        assertEquals(StatusRacuna.CAKA, racun.get().getStatus());
+        // koda za potrditev e-poste je bila poslana enako kot pri brezplacni poti
+        assertNotNull(koda("placano@test.si"));
+    }
+
+    /* Naslov, ki med Stripe placilom postane potrjen racun nekoga drugega,
+       se ne sme prepisati - placilo ostane brez novega racuna (rocna obravnava). */
+    @Test
+    void registracijaPoPlaciluNaPotrjenNaslovNeUstvariRacuna() {
+        registracija.registriraj(igralec("Ana", "Novak", "zaseden@test.si"), IP);
+        registracija.potrdiEposto(new PotrditevKodeVnos("zaseden@test.si", koda("zaseden@test.si")));
+        assertEquals(StatusRacuna.CAKA, racun("zaseden@test.si").getStatus());
+
+        var rezultat = registracija.registrirajPoPlacilu(
+                igralec("Ana", "Novak", "zaseden@test.si"), kodirnik.encode("drugoGeslo"));
+
+        assertTrue(rezultat.isEmpty());
+        assertEquals(1, uporabnikRepozitorij.findAll().stream()
+                .filter(u -> u.getUporabniskoIme().equals("zaseden@test.si")).count());
     }
 
     // ---------- Pomozno ----------

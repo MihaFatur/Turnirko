@@ -41,15 +41,19 @@ import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IgralnaRoka;
 import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StranEkipe;
+import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 class ProfilStoritevTest extends IntegracijskiTest {
@@ -61,6 +65,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
     @Autowired private RegistracijaStoritev registracijaStoritev;
     @Autowired private OmejevalnikPoskusov omejevalnik;
     @Autowired private UporabnikRepozitorij uporabnikRepozitorij;
+    @Autowired private NarocninaRepozitorij narocninaRepozitorij;
     @Autowired private PasswordEncoder kodirnik;
 
     @BeforeEach
@@ -340,6 +345,7 @@ class ProfilStoritevTest extends IntegracijskiTest {
 
         racuniStoritev.potrdi(zahteva.id(), new PotrditevRacunaVnos(igralec.getId()));
         assertEquals(igralec.getId(), racuniStoritev.profil("nov@test.si").idIgralec());
+        podeliPremium("nov@test.si");
         assertNotNull(profilStoritev.zasebno(igralec.getId(), "nov@test.si"));
     }
 
@@ -426,13 +432,23 @@ class ProfilStoritevTest extends IntegracijskiTest {
                 ime, priimek, null, email, "geslo123", false, datumRojstva, null), "127.0.0.1");
     }
 
-    /* Registrira in potrdi racun za igralca; vrne njegovo prijavno ime. */
+    /* Registrira in potrdi racun za igralca; vrne njegovo prijavno ime.
+       Zasebni profil (kot NapovedTekmeTest.racunZa) je Premium funkcija -
+       racun ga dobi takoj, ker ti testi merijo LASTNISTVO, ne placilni paket. */
     private String racunZa(Igralec igralec, String email) {
         registriraj(igralec, email);
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals(email)).findFirst().orElseThrow().id();
         racuniStoritev.potrdi(idRacuna, new PotrditevRacunaVnos(igralec.getId()));
+        podeliPremium(email);
         return email;
+    }
+
+    private void podeliPremium(String email) {
+        Uporabnik u = uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(email).orElseThrow();
+        Narocnina n = new Narocnina(u, Paket.PREMIUM);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
     }
 
     /* Administrator za preverbo, da sme videti tuj zasebni profil. */
