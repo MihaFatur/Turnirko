@@ -3,6 +3,7 @@
    nima in bi jo notranji stik tiho izpustil iz razporeda in lestvice. */
 package si.turnirko.repozitoriji;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,13 +15,22 @@ import si.turnirko.modeli.Ekipa;
 public interface EkipaRepozitorij extends JpaRepository<Ekipa, Long> {
 
     /* Razvrsca po imenu kluba, prosto ekipo pa po njenem lastnem imenu, da se
-       oba tipa v seznamu prepletata po abecedi in ne v dveh kupih. */
+       oba tipa v seznamu prepletata po abecedi in ne v dveh kupih. Abecedo
+       (slovensko) uredi Java, ker SQLite besedilo primerja po kodnih tockah
+       (Č, Š, Ž za Z) - glej Ekipa.PO_ABECEDI. */
+    default List<Ekipa> najdiZaLigo(Long idLiga) {
+        List<Ekipa> ekipe = new ArrayList<>(najdiZaLigoNeurejene(idLiga));
+        ekipe.sort(Ekipa.PO_ABECEDI);
+        return ekipe;
+    }
+
+    /* Le za najdiZaLigo(): vrstni red je vrstni red vpisa. */
     @Query("""
-            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub k
+            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub
             WHERE e.liga.id = :idLiga
-            ORDER BY COALESCE(k.ime, e.ime), e.zaporedna
+            ORDER BY e.id
             """)
-    List<Ekipa> najdiZaLigo(Long idLiga);
+    List<Ekipa> najdiZaLigoNeurejene(Long idLiga);
 
     /* Ekipe lige po jakostnem vrstnem redu (1 = najmocnejsa). Uporablja se pri
        ligi z enakomerno razvrstitvijo - tam seznam ni abecedni sifrant, ampak
@@ -37,12 +47,19 @@ public interface EkipaRepozitorij extends JpaRepository<Ekipa, Long> {
     Optional<Ekipa> najdiZKlubomInLigo(Long id);
 
     /* Ekipe ekipnega dogodka turnirja (V28), po abecedi kot pri ligi. */
+    default List<Ekipa> najdiZaDogodek(Long idDogodek) {
+        List<Ekipa> ekipe = new ArrayList<>(najdiZaDogodekNeurejene(idDogodek));
+        ekipe.sort(Ekipa.PO_ABECEDI);
+        return ekipe;
+    }
+
+    /* Le za najdiZaDogodek(): vrstni red je vrstni red vpisa. */
     @Query("""
-            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub k
+            SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub
             WHERE e.dogodek.id = :idDogodek
-            ORDER BY COALESCE(k.ime, e.ime), e.zaporedna
+            ORDER BY e.id
             """)
-    List<Ekipa> najdiZaDogodek(Long idDogodek);
+    List<Ekipa> najdiZaDogodekNeurejene(Long idDogodek);
 
     @Query("""
             SELECT e FROM Ekipa e LEFT JOIN FETCH e.klub

@@ -2,6 +2,7 @@
 package si.turnirko.repozitoriji;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -14,15 +15,24 @@ import si.turnirko.modeli.Igralec;
 public interface IgralecRepozitorij extends JpaRepository<Igralec, Long> {
 
     /* Vsi aktivni (nearhivirani) igralci s klubom in krajem v eni poizvedbi -
-       "join fetch" prepreci N+1 poizvedb pri izpisu seznama. */
+       "join fetch" prepreci N+1 poizvedb pri izpisu seznama. Urejeni po
+       priimku in imenu v slovenski abecedi (SQLite ORDER BY ne zna: Č, Š, Ž bi
+       pristali za Z), zato uredi Java. */
+    default List<Igralec> najdiAktivne() {
+        List<Igralec> igralci = new ArrayList<>(najdiAktivneNeurejene());
+        igralci.sort(Igralec.PO_ABECEDI);
+        return igralci;
+    }
+
+    /* Le za najdiAktivne(): vrstni red je vrstni red vpisa, ne abecedni. */
     @Query("""
             SELECT i FROM Igralec i
             LEFT JOIN FETCH i.klub
             LEFT JOIN FETCH i.kraj
             WHERE i.arhiviran = false
-            ORDER BY i.priimek, i.ime
+            ORDER BY i.id
             """)
-    List<Igralec> najdiAktivne();
+    List<Igralec> najdiAktivneNeurejene();
 
     @Query("""
             SELECT i FROM Igralec i

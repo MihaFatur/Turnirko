@@ -283,3 +283,14 @@ export function imeKolaKratko(kolo: number, zadnjeKolo: number): string {
 export function oblikujStevilo(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
+
+/* Veliko začetnico dobi vsaka beseda imena ali priimka: "ana marija" -> "Ana
+   Marija", "kos-novak" -> "Kos-Novak". Beseda se začne na začetku, za
+   presledkom ali za vezajem. Preostalih črk ne dotakne, da "McDonald" ostane,
+   kot je vpisan — pravilo dopolni pozabljeno začetnico in ne prepisuje pisave
+   imena. */
+export function zVelikoZacetnico(besedilo: string): string {
+  return besedilo.replace(/(^|[\s-])(\p{L})/gu, (_, pred: string, crka: string) =>
+    pred + crka.toLocaleUpperCase('sl'),
+  )
+}

@@ -10,6 +10,8 @@
    (Prijava.ekipa) - enako kot igralca njegova. */
 package si.turnirko.modeli;
 
+import java.util.Comparator;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -21,9 +23,20 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+import si.turnirko.pomozno.SlovenskaAbeceda;
+
 @Entity
 @Table(name = "ekipa")
 public class Ekipa {
+
+    /* Vrstni red seznamov ekip: klubska po imenu kluba, prosta po lastnem imenu,
+       da se oba tipa prepletata po (slovenski) abecedi in ne v dveh kupih; ekipe
+       istega kluba po zaporedni stevilki. Klub mora biti nalozen (LEFT JOIN
+       FETCH e.klub). */
+    public static final Comparator<Ekipa> PO_ABECEDI = Comparator
+            .comparing((Ekipa e) -> e.getKlub() != null ? e.getKlub().getIme() : e.getIme(),
+                    SlovenskaAbeceda.RED)
+            .thenComparingInt(Ekipa::getZaporedna);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

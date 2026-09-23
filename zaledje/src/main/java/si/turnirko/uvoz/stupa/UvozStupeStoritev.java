@@ -57,6 +57,7 @@ import si.turnirko.modeli.Spol;
 import si.turnirko.modeli.UvozZagon;
 import si.turnirko.modeli.VirTekmovanja;
 import si.turnirko.modeli.ZunanjaPovezava;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.UvozZagonRepozitorij;
 import si.turnirko.storitve.LestvicaLigeStoritev;
 import si.turnirko.storitve.PreracunRatingaStoritev;
@@ -142,7 +143,7 @@ public class UvozStupeStoritev {
                     z == null ? null : UvozZagonDto.iz(z)));
         }
         r.sort(Comparator.comparing(UvozDogodekDto::zacetek, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(UvozDogodekDto::ime));
+                .thenComparing(UvozDogodekDto::ime, SlovenskaAbeceda.RED));
         return r;
     }
 

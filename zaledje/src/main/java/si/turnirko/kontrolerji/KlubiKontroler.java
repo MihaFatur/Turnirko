@@ -34,7 +34,7 @@ public class KlubiKontroler {
 
     @GetMapping
     public List<KlubDto> seznam() {
-        return klubRepozitorij.findAll(org.springframework.data.domain.Sort.by("ime"))
+        return klubRepozitorij.najdiVsePoAbecedi()
                 .stream().map(KlubDto::iz).toList();
     }
 

@@ -185,13 +185,12 @@ public class DomovStoritev {
         int vsehKol = 0;
         int odigranihKol = 0;
         Srecanje naslednje = null;
+        LocalDate danes = LocalDate.now();
         for (Srecanje s : srecanja) {
             vsehKol = Math.max(vsehKol, s.getKolo());
             if (s.getStatus() == StatusSrecanja.KONCANO) {
                 odigranihKol = Math.max(odigranihKol, s.getKolo());
-            } else if (naslednje == null) {
-                // srecanja pridejo urejena po kolu in zacetku, zato je prvo
-                // nekoncano tudi prvo na vrsti
+            } else if (jeNaslednje(s, naslednje, danes)) {
                 naslednje = s;
             }
         }
@@ -210,6 +209,29 @@ public class DomovStoritev {
                 naslednje == null ? null
                         : new DomovLigaDto.Naslednje(naslednje.getKolo(), datum(naslednje)),
                 izEkipe);
+    }
+
+    /* "Naslednje kolo" je prvo nekoncano srecanje, ki ga termin se ni prehitel.
+       Srecanje, ki je ostalo neodigrano (igralca sta se dogovorila za drug
+       dan, izida ni nihce vpisal), bi sicer s starim datumom ostalo
+       "naslednje" cele tedne, domaca stran pa obljublja, kdaj se igra NASLEDNJIC.
+       Kolo zaradi tega ni odigrano - to se vidi v razporedu lige in v stevcu
+       kol, ne v tej vrstici. Danasnji dan se steje, srecanje brez termina
+       ni ze mimo (ne vemo, da je), zato ostane kandidat.
+
+       Srecanja pridejo urejena po kolu in zacetku, zato prvi kandidat ostane
+       na mestu - razen ce za njim pride srecanje z datumom, ki je prej
+       (prestavljeno srecanje starejsega kola je lahko pozneje od naslednjega). */
+    private static boolean jeNaslednje(Srecanje s, Srecanje trenutno, LocalDate danes) {
+        LocalDate datum = datum(s);
+        if (datum != null && datum.isBefore(danes)) {
+            return false;
+        }
+        if (trenutno == null) {
+            return true;
+        }
+        LocalDate trenutniDatum = datum(trenutno);
+        return datum != null && trenutniDatum != null && datum.isBefore(trenutniDatum);
     }
 
     private static LocalDate datum(Srecanje srecanje) {

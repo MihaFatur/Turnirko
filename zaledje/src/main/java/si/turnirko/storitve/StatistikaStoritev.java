@@ -41,6 +41,7 @@ import si.turnirko.modeli.StarostniPas;
 import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.TekmaSrecanja;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
@@ -199,8 +200,8 @@ public class StatistikaStoritev {
                 .comparing((LestvicaIgralcaDto v) -> v.rating() == null ? Integer.MIN_VALUE : v.rating())
                 .reversed()
                 .thenComparing(Comparator.comparingInt(LestvicaIgralcaDto::zmage).reversed())
-                .thenComparing(LestvicaIgralcaDto::priimek)
-                .thenComparing(LestvicaIgralcaDto::ime);
+                .thenComparing(LestvicaIgralcaDto::priimek, SlovenskaAbeceda.RED)
+                .thenComparing(LestvicaIgralcaDto::ime, SlovenskaAbeceda.RED);
     }
 
     /* Crte gibanja ratinga in ratingi izpred meseca - oboje iz istega dnevnika,

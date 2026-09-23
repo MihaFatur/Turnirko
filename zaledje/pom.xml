@@ -74,6 +74,16 @@
 			<artifactId>sqlite-jdbc</artifactId>
 		</dependency>
 
+		<!-- Slovenski abecedni vrstni red (a b c č d ... s š t ... z ž): JDK-jev
+		     Collator ignorira presledke, zato "Kos Marko" pade za "Kosem".
+		     ICU je isti standard (CLDR) kot Intl.Collator v brskalniku, zato
+		     zaledje in vmesnik razvrstita enako. -->
+		<dependency>
+			<groupId>com.ibm.icu</groupId>
+			<artifactId>icu4j</artifactId>
+			<version>78.3</version>
+		</dependency>
+
 		<!-- Placila (Stripe Checkout + webhook) za placljive pakete -->
 		<dependency>
 			<groupId>com.stripe</groupId>

@@ -1,11 +1,14 @@
 /* Dostop do kadra ekip. Igralec in njegov klub se nalozita vnaprej za DTO. */
 package si.turnirko.repozitoriji;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.KaderEkipe;
 
 public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
@@ -25,13 +28,25 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
             """)
     List<java.time.LocalDate> datumiEkipnihTurnirjevIgralca(Long idIgralec);
 
+    /* Kader po jakostnem vrstnem redu (brez mesta najprej, kot pri SQL ORDER BY),
+       znotraj tega po priimku in imenu v slovenski abecedi - to uredi Java, ker
+       SQLite besedilo primerja po kodnih tockah (Č, Š, Ž za Z). */
+    default List<KaderEkipe> najdiZaEkipo(Long idEkipa) {
+        List<KaderEkipe> kader = new ArrayList<>(najdiZaEkipoNeurejeno(idEkipa));
+        kader.sort(Comparator
+                .comparing(KaderEkipe::getVrstniRed, Comparator.nullsFirst(Comparator.<Integer>naturalOrder()))
+                .thenComparing(KaderEkipe::getIgralec, Igralec.PO_ABECEDI));
+        return kader;
+    }
+
+    /* Le za najdiZaEkipo(): vrstni red je vrstni red vpisa. */
     @Query("""
             SELECT k FROM KaderEkipe k
             JOIN FETCH k.igralec i LEFT JOIN FETCH i.klub
             WHERE k.ekipa.id = :idEkipa
-            ORDER BY k.vrstniRed, i.priimek, i.ime
+            ORDER BY k.id
             """)
-    List<KaderEkipe> najdiZaEkipo(Long idEkipa);
+    List<KaderEkipe> najdiZaEkipoNeurejeno(Long idEkipa);
 
     boolean existsByEkipaIdAndIgralecId(Long idEkipa, Long idIgralec);
 

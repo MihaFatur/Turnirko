@@ -28,6 +28,7 @@ import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.Turnir;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
 
@@ -66,7 +67,7 @@ public class KoledarStoritev {
         vnosi.addAll(turnirji(od, doKdaj));
         vnosi.addAll(kolaLig(od, doKdaj));
         vnosi.sort(Comparator.comparing(KoledarVnosDto::datum)
-                .thenComparing(KoledarVnosDto::ime)
+                .thenComparing(KoledarVnosDto::ime, SlovenskaAbeceda.RED)
                 .thenComparing(v -> v.kolo() == null ? 0 : v.kolo()));
         return vnosi;
     }

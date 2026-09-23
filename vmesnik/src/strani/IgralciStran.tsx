@@ -1,6 +1,6 @@
 /* Register igralcev: pregled s trenutnim ratingom, dodajanje, urejanje
    in arhiviranje (namesto brisanja - zgodovina tekem mora ostati). */
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, krajiApi } from '../api/zahteve'
@@ -19,7 +19,7 @@ import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { letnica } from '../pomozno/oblikovanje'
+import { letnica, zVelikoZacetnico } from '../pomozno/oblikovanje'
 
 /* Do toliko odigranih tekem je rating še provizoričen (ujema se s strežniškim
    pragom dinamičnega K, TurnirkoRatingStoritev.PRAG_PROVIZORICNI). */
@@ -467,6 +467,20 @@ function IgralecOkno({
     },
   })
 
+  /* Začetnica se popravi med tipkanjem. Vrednost polja zapišemo že tu, ne šele
+     z novim izrisom: ko React polju zamenja vrednost, kazalec skoči na konec,
+     popravek sredi besedila pa bi ga vsakič odnesel. Ker se spremeni le velikost
+     črk, ostane dolžina ista in izbor se natančno obnovi. */
+  function obSpremembiImena(nastavi: (vrednost: string) => void) {
+    return (dogodek: ChangeEvent<HTMLInputElement>) => {
+      const polje = dogodek.target
+      const { selectionStart: zacetek, selectionEnd: konec } = polje
+      polje.value = zVelikoZacetnico(polje.value)
+      polje.setSelectionRange(zacetek, konec)
+      nastavi(polje.value)
+    }
+  }
+
   function obOddaji(dogodek: FormEvent) {
     dogodek.preventDefault()
     shranjevanje.mutate({
@@ -491,11 +505,11 @@ function IgralecOkno({
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">
             <span>Ime *</span>
-            <input value={ime} onChange={(d) => nastaviIme(d.target.value)} required />
+            <input value={ime} onChange={obSpremembiImena(nastaviIme)} required />
           </label>
           <label className="obrazec__polje">
             <span>Priimek *</span>
-            <input value={priimek} onChange={(d) => nastaviPriimek(d.target.value)} required />
+            <input value={priimek} onChange={obSpremembiImena(nastaviPriimek)} required />
           </label>
         </div>
 

@@ -17,6 +17,7 @@
 package si.turnirko.modeli;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -33,9 +34,29 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+import si.turnirko.pomozno.SlovenskaAbeceda;
+
 @Entity
 @Table(name = "prijava")
 public class Prijava {
+
+    /* Vrstni red seznama prijav: igralec po priimku in imenu, ekipa po imenu
+       (ali po imenu kluba, ce lastnega nima), v slovenski abecedi. Igralec in
+       ekipa (s klubom) morata biti nalozena. */
+    public static final Comparator<Prijava> PO_ABECEDI = Comparator
+            .comparing(Prijava::imeZaVrstniRed, SlovenskaAbeceda.RED)
+            .thenComparing(p -> p.getIgralec() == null ? null : p.getIgralec().getIme(),
+                    SlovenskaAbeceda.RED)
+            .thenComparing(p -> p.getEkipa() == null ? null : p.getEkipa().getZaporedna(),
+                    Comparator.nullsFirst(Comparator.<Integer>naturalOrder()));
+
+    private static String imeZaVrstniRed(Prijava p) {
+        if (p.getIgralec() != null) return p.getIgralec().getPriimek();
+        Ekipa ekipa = p.getEkipa();
+        if (ekipa == null) return null;
+        if (ekipa.getIme() != null) return ekipa.getIme();
+        return ekipa.getKlub() == null ? null : ekipa.getKlub().getIme();
+    }
 
     /* PRIJAVLJEN      - igra (oz. bo igral),
        ODJAVLJEN       - odjavil se je sam pred zrebom,

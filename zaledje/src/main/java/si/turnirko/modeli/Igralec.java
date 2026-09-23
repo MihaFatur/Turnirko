@@ -5,6 +5,7 @@ package si.turnirko.modeli;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,9 +21,18 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
+import si.turnirko.pomozno.SlovenskaAbeceda;
+
 @Entity
 @Table(name = "igralec")
 public class Igralec {
+
+    /* Vrstni red seznamov igralcev: priimek, nato ime, po slovenski abecedi.
+       Nadomesca ORDER BY i.priimek, i.ime - SQLite besedilo primerja po kodnih
+       tockah in bi Č, Š, Ž postavil za Z. */
+    public static final Comparator<Igralec> PO_ABECEDI = Comparator
+            .comparing(Igralec::getPriimek, SlovenskaAbeceda.RED)
+            .thenComparing(Igralec::getIme, SlovenskaAbeceda.RED);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

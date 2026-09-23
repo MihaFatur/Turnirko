@@ -30,6 +30,7 @@ import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.VirPovezave;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
@@ -243,7 +244,7 @@ public class RacuniStoritev {
         // ujemanje priimka je pogoj; kdor se ujema tudi po imenu, gre na vrh
         ujemajoci.sort(java.util.Comparator
                 .comparing((Igralec i) -> !normaliziraj(i.getIme()).equals(ime))
-                .thenComparing(Igralec::abecedno));
+                .thenComparing(Igralec::abecedno, SlovenskaAbeceda.RED));
 
         return ujemajoci.stream()
                 .map(i -> new RacunIgralcaDto.PredlogIgralcaDto(

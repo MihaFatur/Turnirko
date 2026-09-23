@@ -4,6 +4,8 @@
 package si.turnirko.repozitoriji;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,6 +13,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import si.turnirko.modeli.Liga;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 
 public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
 
@@ -63,8 +66,16 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
 
     /* Lige, ki kazejo na dano ligo kot na svojo visjo - torej nivo pod njo.
        Bere jih urejanje prehodov, ko usklajuje izbor nizjih lig. */
-    @Query("SELECT l FROM Liga l WHERE l.visjaLiga.id = :idVisja ORDER BY l.ime")
-    List<Liga> najdiNizje(Long idVisja);
+    default List<Liga> najdiNizje(Long idVisja) {
+        List<Liga> lige = new ArrayList<>(najdiNizjeNeurejene(idVisja));
+        lige.sort(Comparator.comparing(Liga::getIme, SlovenskaAbeceda.RED));
+        return lige;
+    }
+
+    /* Le za najdiNizje(): imena po slovenski abecedi uredi Java, ker SQLite
+       besedilo primerja po kodnih tockah (Č, Š, Ž za Z). */
+    @Query("SELECT l FROM Liga l WHERE l.visjaLiga.id = :idVisja ORDER BY l.id")
+    List<Liga> najdiNizjeNeurejene(Long idVisja);
 
     // ---------- Lastnistvo (za preverjanje pravice organizatorja) ----------
 

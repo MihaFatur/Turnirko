@@ -34,6 +34,7 @@ import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.TekmaSrecanja;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -171,7 +172,7 @@ public class LestvicaLigeStoritev {
             if (xrn != yrn) {
                 return Integer.compare(yrn, xrn);
             }
-            return x.ekipa.compareToIgnoreCase(y.ekipa);
+            return SlovenskaAbeceda.primerjaj(x.ekipa, y.ekipa);
         });
 
         int stEkip = vrstice.size();
@@ -328,7 +329,7 @@ public class LestvicaLigeStoritev {
 
     /* Par se zapise vedno enako - abecedno, ne po strani ali mestu v postavi. */
     private static List<Igralec> vrstniRedVParu(Igralec a, Igralec b) {
-        return a.abecedno().compareToIgnoreCase(b.abecedno()) <= 0
+        return SlovenskaAbeceda.primerjaj(a.abecedno(), b.abecedno()) <= 0
                 ? List.of(a, b) : List.of(b, a);
     }
 
@@ -351,7 +352,7 @@ public class LestvicaLigeStoritev {
         if (xr != yr) {
             return Integer.compare(yr, xr);
         }
-        return x.ime.compareToIgnoreCase(y.ime);
+        return SlovenskaAbeceda.primerjaj(x.ime, y.ime);
     };
 
     /* Kljuc dvojice: ista dva igralca sta ista dvojica ne glede na to, na kateri

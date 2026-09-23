@@ -9,6 +9,7 @@
    notranji stik bi celo ekipo tiho izpustil iz mreze in skupin (V28). */
 package si.turnirko.repozitoriji;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,18 +50,26 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
     Optional<Prijava> najdiPoSoigralcu(Long idDogodek, Long idIgralec);
 
     /* Vse prijave dogodka z igralci (ekipami) in klubi v eni poizvedbi.
-       Urejene po priimku igralca oz. imenu ekipe. */
+       Urejene po priimku igralca oz. imenu ekipe v slovenski abecedi - to uredi
+       Java, ker SQLite besedilo primerja po kodnih tockah (Č, Š, Ž za Z). */
+    default List<Prijava> najdiZaDogodek(Long idDogodek) {
+        List<Prijava> prijave = new ArrayList<>(najdiZaDogodekNeurejene(idDogodek));
+        prijave.sort(Prijava.PO_ABECEDI);
+        return prijave;
+    }
+
+    /* Le za najdiZaDogodek(): vrstni red je vrstni red vpisa. */
     @Query("""
             SELECT p FROM Prijava p
-            LEFT JOIN FETCH p.igralec i
+            LEFT JOIN FETCH p.igralec
             LEFT JOIN FETCH p.igralec2
-            LEFT JOIN FETCH p.ekipa e LEFT JOIN FETCH e.klub ek
+            LEFT JOIN FETCH p.ekipa e LEFT JOIN FETCH e.klub
             LEFT JOIN FETCH p.klubObPrijavi
             LEFT JOIN FETCH p.klubObPrijavi2
             WHERE p.dogodek.id = :idDogodek
-            ORDER BY COALESCE(i.priimek, e.ime, ek.ime), i.ime, e.zaporedna
+            ORDER BY p.id
             """)
-    List<Prijava> najdiZaDogodek(Long idDogodek);
+    List<Prijava> najdiZaDogodekNeurejene(Long idDogodek);
 
     /* Prijave dogodka z danim statusom (za zreb: PRIJAVLJEN).
        Klub je nalozen vnaprej, ker gredo ustvarjene tekme takoj v DTO. */

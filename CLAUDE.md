@@ -27,12 +27,23 @@
   je *vsak* izpis igralca — v zaledju ga sestavi `Igralec.polnoIme()`, v
   vmesniku pa vsako mesto, ki ime in priimek izpiše ločeno (izbirniki,
   šifrant, kader, predlogi računov). Obrnjeni vrstni red živi samo kot
-  **urejevalni ključ**: `Igralec.abecedno()` (»Novak Ana«) in `ORDER BY
-  i.priimek, i.ime` v repozitorijih — seznam torej *teče* po priimku, a se
-  *bere* po imenu. `abecedno()` ne sme nikoli v DTO. Kjer DTO nosi `ime` in
+  **urejevalni ključ**: `Igralec.abecedno()` (»Novak Ana«) in
+  `Igralec.PO_ABECEDI` (priimek, ime) v repozitorijih — seznam torej *teče* po
+  priimku, a se *bere* po imenu. `abecedno()` ne sme nikoli v DTO. Kjer DTO nosi `ime` in
   `priimek` ločeno (`LestvicaIgralcaDto`, `IgralecDto`, `DvobojDto.Igralec`),
   je to urejevalni ključ (razvrstitev po priimku; na lestvici izenačeni v
   strežniku) — ne zato, da bi ju kje izpisal obrnjeno.
+- **Abecedni vrstni red je slovenski** (a b c č d … s š t … z ž). Besedilo
+  (imena, priimki, klubi, ekipe, lige) razvrščaj v zaledju *vedno* prek
+  `SlovenskaAbeceda.RED` (ICU, isti standard kot `Intl.Collator` v brskalniku),
+  v vmesniku prek `localeCompare(…, 'sl')`. **Nikoli** `ORDER BY` po besedilu
+  (SQLite primerja kodne točke: Č, Š, Ž pristanejo za Z, velike črke pred
+  malimi), `Sort.by("ime")`, `String.compareTo`, `compareToIgnoreCase` ali
+  JDK-jev `Collator` (ta ignorira presledke, zato »Kos Marko« pade za
+  »Kosem«). Repozitorij z imenskim vrstnim redom zato izpostavi metodo z
+  `default` telesom, ki uredi v Javi (`Igralec.PO_ABECEDI`, `Ekipa.PO_ABECEDI`,
+  `Prijava.PO_ABECEDI`), poizvedba pod njo (`…Neurejene`, `…Neurejeno`)
+  pa vrača vrstni red vpisa; varuje ju `SlovenskoUrejanjeTest`.
 - **Starostni pas je izpeljanka, ne osebni podatek** (`StarostniPas`, polje
   `starostniPas` v `IgralecJavniDto` in `LestvicaIgralcaDto`). Iz letnice se izpelje najožji pas, ki
   mu igralec ustreza (`U11`…`U21`, `CLANI`, `VETERANI`); brez njega organizator

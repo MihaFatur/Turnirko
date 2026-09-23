@@ -70,6 +70,7 @@ import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.modeli.Turnir;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.NizRepozitorij;
 import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
@@ -384,7 +385,7 @@ public class StatistikaTekmovanjaStoritev {
                     vnos.getValue()[1], koncni));
         }
         vrstice.sort(Comparator.comparingInt((Vzpon v) -> v.pridobil()).reversed()
-                .thenComparing(v -> v.oseba().polnoIme()));
+                .thenComparing(v -> v.oseba().polnoIme(), SlovenskaAbeceda.RED));
         return prvih(vrstice);
     }
 
@@ -446,7 +447,7 @@ public class StatistikaTekmovanjaStoritev {
             if (a.odigrane() != b.odigrane()) {
                 return Integer.compare(b.odigrane(), a.odigrane());
             }
-            return a.oseba().polnoIme().compareTo(b.oseba().polnoIme());
+            return SlovenskaAbeceda.primerjaj(a.oseba().polnoIme(), b.oseba().polnoIme());
         });
         return prvih(vrstice);
     }
@@ -491,7 +492,7 @@ public class StatistikaTekmovanjaStoritev {
         vrstice.sort(Comparator
                 .comparingInt((Delavec d) -> d.odigrane() + d.dvojic()).reversed()
                 .thenComparing(Comparator.comparingInt(Delavec::zmage).reversed())
-                .thenComparing(d -> d.oseba().polnoIme()));
+                .thenComparing(d -> d.oseba().polnoIme(), SlovenskaAbeceda.RED));
         return prvih(vrstice);
     }
 
@@ -519,7 +520,7 @@ public class StatistikaTekmovanjaStoritev {
         }
         vrstice.sort(Comparator.comparingInt((KlubVrstica k) -> k.zmage()).reversed()
                 .thenComparing(KlubVrstica::odigrane)
-                .thenComparing(KlubVrstica::ime));
+                .thenComparing(KlubVrstica::ime, SlovenskaAbeceda.RED));
         return prvih(vrstice);
     }
 
@@ -797,7 +798,7 @@ public class StatistikaTekmovanjaStoritev {
         }
         vrstice.sort(Comparator.comparingInt((Gostovanje g) -> g.zmage()).reversed()
                 .thenComparing(Comparator.comparingInt(Gostovanje::odstotek).reversed())
-                .thenComparing(Gostovanje::ekipa));
+                .thenComparing(Gostovanje::ekipa, SlovenskaAbeceda.RED));
         return prvih(vrstice);
     }
 
@@ -846,7 +847,7 @@ public class StatistikaTekmovanjaStoritev {
 
         List<Nosilec> vrstice = new ArrayList<>(najboljsi.values());
         vrstice.sort(Comparator.comparingInt((Nosilec n) -> n.zmage()).reversed()
-                .thenComparing(Nosilec::ekipa));
+                .thenComparing(Nosilec::ekipa, SlovenskaAbeceda.RED));
         return List.copyOf(vrstice);
     }
 
@@ -861,7 +862,7 @@ public class StatistikaTekmovanjaStoritev {
         if (kandidat.porazi() != dosedanji.porazi()) {
             return kandidat.porazi() < dosedanji.porazi();
         }
-        return kandidat.oseba().polnoIme().compareTo(dosedanji.oseba().polnoIme()) < 0;
+        return SlovenskaAbeceda.primerjaj(kandidat.oseba().polnoIme(), dosedanji.oseba().polnoIme()) < 0;
     }
 
     /* ---------- Najuspesnejsa dvojica ---------- */

@@ -33,6 +33,7 @@ import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.StatusTekmovanja;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
@@ -96,7 +97,7 @@ public class IzborStoritev {
                             return r == null ? 0 : r;
                         }).reversed())
                 // 4. abecedno, da je vrstni red vedno enolicen in ponovljiv
-                .thenComparing(IzborStoritev::abecedno));
+                .thenComparing(IzborStoritev::abecedno, SlovenskaAbeceda.RED));
         return urejene;
     }
 

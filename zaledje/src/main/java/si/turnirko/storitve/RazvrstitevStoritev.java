@@ -49,6 +49,7 @@ import si.turnirko.dto.VrsticaLestviceDto;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
+import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.NizRepozitorij;
 
 @Service
@@ -91,7 +92,7 @@ public class RazvrstitevStoritev {
         if (nosilecA != null && nosilecB != null && !nosilecA.equals(nosilecB)) {
             return nosilecA - nosilecB;
         }
-        return abecedno(a.prijava).compareTo(abecedno(b.prijava));
+        return SlovenskaAbeceda.primerjaj(abecedno(a.prijava), abecedno(b.prijava));
     };
 
     /* Urejevalni kljuc po imenu: igralec po priimku, ekipa po imenu (V28). */
