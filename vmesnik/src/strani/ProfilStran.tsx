@@ -11,8 +11,9 @@
 
    Vsi izpeljani prikazi (kolobar, toplotna karta, trak izidov, razsevni graf,
    osi razrezov) se izracunajo iz ProfilDto in ProfilZasebnoDto med izrisom -
-   brez novih poizvedb. Okolico na lestvici izracunamo iz globalne lestvice,
-   ki jo vmesnik ima ze predpomnjeno (isti kljuc kot LestvicaStran). */
+   brez novih poizvedb. Okolico na lestvici izracunamo iz lestvice, ki jo
+   vmesnik ima ze predpomnjeno (isti kljuc kot LestvicaStran), zozene na
+   lestvico igralcevega spola. */
 import type { CSSProperties } from 'react'
 import { useCallback, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -476,8 +477,9 @@ function Kolobar({ odstotek }: { odstotek: number }) {
   )
 }
 
-/* Igralec pred in za tem igralcem na lestvici — pokaže, koliko točk ratinga manjka
-   do naslednjega mesta. Brez lestvice (ali brez uvrstitve) se blok ne izriše. */
+/* Igralec pred in za tem igralcem na lestvici njegovega spola — pokaže, koliko
+   točk ratinga manjka do naslednjega mesta. Brez lestvice (ali brez uvrstitve)
+   se blok ne izriše. */
 function OkolicaBlok({ okolica }: { okolica: Okolica | null }) {
   if (!okolica) return null
   return (
@@ -1155,14 +1157,24 @@ type Okolica = {
    (K med 20 in 32, pomnožen z verjetnostjo poraza). */
 const TOCK_NA_ZMAGO = 15
 
+/* Sosedi so sosedi na lestvici, na kateri igralec STOJI: njegov spol in njegova
+   skupina (tekmovalci ali rekreativci). Med moškimi in ženskami ni niti ene
+   obračunane tekme, zato skupna lestvica ne pomeni ničesar — »do 5. mesta«, ki
+   šteje tudi igralce drugega spola, bi bilo drugo število kot mesto v glavi
+   profila, ki ga strežnik (ProfilStoritev.uvrstitev) meri po isti lestvici. */
 function izracunajOkolico(
-  vrstice: LestvicaIgralcaDto[] | undefined,
+  skupna: LestvicaIgralcaDto[] | undefined,
   idIgralec: number,
   mesto: number | null,
 ): Okolica | null {
-  if (!vrstice || mesto === null) return null
+  if (!skupna || mesto === null) return null
+  const igralec = skupna.find((v) => v.idIgralca === idIgralec)
+  // igralec brez spola ne pripada nobeni lestvici (isto kot na strani lestvice)
+  if (!igralec || igralec.spol === null) return null
+  const vrstice = skupna.filter(
+    (v) => v.spol === igralec.spol && v.rekreativec === igralec.rekreativec,
+  )
   const indeks = vrstice.findIndex((v) => v.idIgralca === idIgralec)
-  if (indeks < 0) return null
 
   const od = Math.max(0, indeks - 1)
   const jaz = vrstice[indeks]

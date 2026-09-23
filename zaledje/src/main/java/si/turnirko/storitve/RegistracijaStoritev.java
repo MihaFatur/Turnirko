@@ -35,6 +35,8 @@ import si.turnirko.dto.NovoGesloVnos;
 import si.turnirko.dto.PonovnoPosiljanjeVnos;
 import si.turnirko.dto.PotrditevKodeVnos;
 import si.turnirko.dto.PotrditevOdgovorDto;
+import si.turnirko.dto.PredogledZapisaDto;
+import si.turnirko.dto.PredogledZapisaVnos;
 import si.turnirko.dto.RegistracijaOdgovorDto;
 import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
@@ -70,6 +72,12 @@ public class RegistracijaStoritev {
     static final int NA_NASLOV_NA_MINUTO = 1;
     static final int NA_NASLOV_NA_URO = 5;
     static final int NA_IP_NA_URO = 20;
+    /* Predogled zapisa (ime + priimek + datum rojstva) je brez posledic za
+       racun, zato mu ni treba deliti omejitve s posiljanjem kod - a brez
+       lastne meje bi bil orodje za ugibanje datuma rojstva znanega imena
+       (ime in priimek sta itak javna). Meja je zato izrecno nizja od splosne
+       IP meje zgoraj. */
+    static final int NA_IP_NA_URO_PREDOGLED = 30;
     private static final Duration MINUTA = Duration.ofMinutes(1);
     private static final Duration URA = Duration.ofHours(1);
 
@@ -80,6 +88,7 @@ public class RegistracijaStoritev {
     private final KodeStoritev kode;
     private final PostaStoritev posta;
     private final OmejevalnikPoskusov omejevalnik;
+    private final IgralciStoritev igralci;
 
     public RegistracijaStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                                 IgralecRepozitorij igralecRepozitorij,
@@ -87,7 +96,8 @@ public class RegistracijaStoritev {
                                 PasswordEncoder kodirnik,
                                 KodeStoritev kode,
                                 PostaStoritev posta,
-                                OmejevalnikPoskusov omejevalnik) {
+                                OmejevalnikPoskusov omejevalnik,
+                                IgralciStoritev igralci) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -95,6 +105,7 @@ public class RegistracijaStoritev {
         this.kode = kode;
         this.posta = posta;
         this.omejevalnik = omejevalnik;
+        this.igralci = igralci;
     }
 
     // ---------- Registracija ----------
@@ -307,6 +318,40 @@ public class RegistracijaStoritev {
         /* Kdor je dokazal lastnistvo naslova, ni napadalec: morebitna blokada
            prijave zaradi prejsnjega ugibanja odpade. */
         omejevalnik.pocistiPrijaveRacuna(u.getUporabniskoIme());
+    }
+
+    // ---------- Predogled zapisa (pred registracijo) ----------
+
+    /* Predogled zapisa med igralci PRED registracijo (korak "Klub in zapis"
+       registracijskega toka v vmesniku): isto ujemanje kot samodejna
+       povezava (ime, priimek, datum rojstva - brez sumnikov/velikih crk), a
+       brez racuna in e-poste, da gost vidi, kateri zapis se bo povezal, se
+       preden vpise geslo. Odgovor samo NAPOVE ujemanje; dejansko povezavo
+       naredi sele poskusiSamodejnoPovezavo ob potrditvi e-poste (isti
+       pogoji, plus da racun med tem ni bil ze povezan drugam). */
+    @Transactional(readOnly = true)
+    public PredogledZapisaDto predogledZapisa(PredogledZapisaVnos v, String naslovIp) {
+        preveriOmejitevPredogleda(naslovIp);
+        LocalDate datum = preverjenDatumRojstva(v.datumRojstva());
+        String ime = RacuniStoritev.normaliziraj(v.ime());
+        String priimek = RacuniStoritev.normaliziraj(v.priimek());
+        List<Igralec> kandidati = igralecRepozitorij.najdiPoDatumihRojstva(List.of(datum)).stream()
+                .filter(i -> !i.isArhiviran())
+                .filter(i -> RacuniStoritev.normaliziraj(i.getIme()).equals(ime)
+                        && RacuniStoritev.normaliziraj(i.getPriimek()).equals(priimek))
+                .toList();
+        if (kandidati.size() != 1 || uporabnikRepozitorij.existsByIgralecId(kandidati.get(0).getId())) {
+            return PredogledZapisaDto.BREZ_ZADETKA;
+        }
+        return PredogledZapisaDto.iz(igralci.najdi(kandidati.get(0).getId()));
+    }
+
+    private void preveriOmejitevPredogleda(String naslovIp) {
+        String kljuc = "predogled-ip:" + (naslovIp == null ? "?" : naslovIp);
+        if (omejevalnik.jeCezMejo(kljuc, NA_IP_NA_URO_PREDOGLED, URA)) {
+            throw new PrevecZahtevIzjema("Preveč poskusov. Poskusi čez eno uro.");
+        }
+        omejevalnik.zabelezi(kljuc);
     }
 
     // ---------- Samodejna povezava ----------

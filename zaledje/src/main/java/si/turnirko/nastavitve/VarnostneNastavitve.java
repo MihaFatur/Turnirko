@@ -119,7 +119,8 @@ public class VarnostneNastavitve {
                                 "/api/v1/auth/potrdi-skrbnika",
                                 "/api/v1/auth/ponovno-poslji",
                                 "/api/v1/auth/pozabljeno-geslo",
-                                "/api/v1/auth/novo-geslo").permitAll()
+                                "/api/v1/auth/novo-geslo",
+                                "/api/v1/auth/predogled-zapisa").permitAll()
                         // /auth/me sluzi za preverbo poverilnic - zahteva veljavno prijavo
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         // placana registracija: racun se ustvari sele v webhooku, zato

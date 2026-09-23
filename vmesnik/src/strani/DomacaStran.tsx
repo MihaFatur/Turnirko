@@ -53,16 +53,20 @@ export function DomacaStran() {
      jih je nazadnje ogledal (zapomni si jih njegov brskalnik). */
   const { jePrijavljen, spremljane, preklopi } = useSpremljanjeLig()
 
-  /* Sklop ima tri vire in strežnik med njimi razsodi sam (glej
+  /* Sklop ima več virov in strežnik med njimi razsodi sam (glej
      DomovStoritev.povzetkiLig), zato mu povemo, katere vrste je seznam, ki ga
      pošiljamo: izbor RAČUNA prevlada, gostov spomin brskalnika pa obvelja šele,
      če admin domače strani ni uredil. Ogled namreč ni izbira — ena odprta liga
-     pred tednom ne sme povoziti tega, kar je zveza postavila na vhodno stran. */
+     pred tednom ne sme povoziti tega, kar je zveza postavila na vhodno stran.
+     Igralcu s Premium strežnik brez lastnega izbora pokaže lige njegovih ekip —
+     odgovor je zato odvisen tudi od računa, ki je zahtevo poslal, in račun je
+     del ključa (drugače bi si odjavljen gost in prijavljen igralec delila
+     predpomnjen odgovor). */
   const izbraneRacuna = jePrijavljen ? spremljane : []
   const ogledane = jePrijavljen ? [] : spremljane
 
   const povzetkiLig = useQuery({
-    queryKey: ['domov-lige', izbraneRacuna, ogledane],
+    queryKey: ['domov-lige', uporabnik?.id ?? null, izbraneRacuna, ogledane],
     queryFn: () => domovApi.lige(izbraneRacuna, ogledane),
   })
 
@@ -81,6 +85,17 @@ export function DomacaStran() {
   const lastenIzbor = jePrijavljen && spremljane.length > 0
 
   const prikazaneLige = (povzetkiLig.data ?? []).map((l) => l.id)
+
+  /* Strežnik po vrstici pove, da je liga tu zato, ker igralec v njej nastopa.
+     Take lige so »moje«, čeprav izbora ni sestavil; adminovim bi naslov
+     »moje« lagal. */
+  const izEkipe = (povzetkiLig.data ?? []).some((l) => l.izEkipe)
+  const mojeLige = lastenIzbor || izEkipe
+
+  /* Filter »Moje lige« na lestvici mora meriti isto, kar sklop nad njim
+     imenuje »moje«. */
+  const idjiMojihLig = !lastenIzbor && izEkipe ? prikazaneLige : spremljane
+
   const nespremljanihVTeku = (lige.data ?? []).filter(
     (l) => l.status === 'V_TEKU' && !prikazaneLige.includes(l.id),
   ).length
@@ -111,10 +126,11 @@ export function DomacaStran() {
 
         <div className="domov__sklop">
           <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
-            {/* »Moje lige« samo takrat, ko sklop res kaže lasten izbor. Kdor si
-                ga ni sestavil, tu vidi lige, ki jih je postavil admin — in
-                naslov, ki bi jim rekel »moje«, bi lagal. */}
-            <h2>{lastenIzbor ? 'Moje lige' : 'Lige'}</h2>
+            {/* »Moje lige« samo takrat, ko sklop res kaže moje: lasten izbor ali
+                lige, v katerih igram. Kdor ni ne eno ne drugo, tu vidi lige, ki
+                jih je postavil admin — in naslov, ki bi jim rekel »moje«, bi
+                lagal. */}
+            <h2>{mojeLige ? 'Moje lige' : 'Lige'}</h2>
             <div className="naslovna-vrstica__desno">
               {/* Izbor je nastavitev domače strani, zato okno in ne pot na
                   /lige — tam vrstica lige vodi v ligo in preklopa ne nosi.
@@ -190,7 +206,7 @@ export function DomacaStran() {
         naFilter={nastaviFilter}
         mojIdIgralec={mojIdIgralec}
         mojIdKluba={mojIdKluba}
-        spremljane={spremljane}
+        spremljane={idjiMojihLig}
         jePrijavljen={jePrijavljen}
       />
 

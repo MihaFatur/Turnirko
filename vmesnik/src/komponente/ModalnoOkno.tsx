@@ -13,6 +13,12 @@ interface Lastnosti {
   nevarno?: boolean
   /* Sirse okno za obrazce z vec stolpci. */
   siroko?: boolean
+  /* Razdeljeno okno (registracija): temen stolpec korakov na levi, glava/
+     noga/telo pa NISO standardni .modal__glava/.modal__telo, ampak jih v
+     celoti izriše klicatelj (glej slog.css ".registracija" in README v
+     design_handoff_onboarding) - okno tu poskrbi le za lupino (zastor,
+     portal, fokus, Escape), ne za njeno vsebino. */
+  razdeljeno?: boolean
   onZapri: () => void
   children: ReactNode
 }
@@ -22,6 +28,7 @@ export function ModalnoOkno({
   nadnaslov,
   nevarno,
   siroko,
+  razdeljeno,
   onZapri,
   children,
 }: Lastnosti) {
@@ -75,7 +82,10 @@ export function ModalnoOkno({
   }, [])
 
   const razredi =
-    'modal' + (siroko ? ' modal--siroko' : '') + (nevarno ? ' modal--nevarno' : '')
+    'modal'
+    + (siroko ? ' modal--siroko' : '')
+    + (nevarno ? ' modal--nevarno' : '')
+    + (razdeljeno ? ' modal--razdeljeno' : '')
 
   return createPortal(
     <div className="modal__zastor" onClick={onZapri}>
@@ -88,17 +98,23 @@ export function ModalnoOkno({
         aria-label={naslov}
         onClick={(dogodek) => dogodek.stopPropagation()}
       >
-        <div className="modal__glava">
-          <h2>
-            {nadnaslov && <span className="modal__nad">{nadnaslov}</span>}
-            {naslov}
-          </h2>
-          {/* Ikon v vmesniku ni; pomen kriza nosi aria-label. */}
-          <button type="button" className="modal__zapri" onClick={onZapri} aria-label="Zapri">
-            ✕
-          </button>
-        </div>
-        <div className="modal__telo">{children}</div>
+        {razdeljeno ? (
+          children
+        ) : (
+          <>
+            <div className="modal__glava">
+              <h2>
+                {nadnaslov && <span className="modal__nad">{nadnaslov}</span>}
+                {naslov}
+              </h2>
+              {/* Ikon v vmesniku ni; pomen kriza nosi aria-label. */}
+              <button type="button" className="modal__zapri" onClick={onZapri} aria-label="Zapri">
+                ✕
+              </button>
+            </div>
+            <div className="modal__telo">{children}</div>
+          </>
+        )}
       </div>
     </div>,
     document.body,

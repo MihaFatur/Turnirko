@@ -21,7 +21,11 @@ public record DomovLigaDto(
         int odigranihKol,
         int vsehKol,
         List<Vrh> vrh,
-        Naslednje naslednje
+        Naslednje naslednje,
+        // Liga je na seznamu, ker prijavljeni igralec v njej nastopa (kader
+        // ekipe) - ne zaradi njegovega izbora in ne zaradi izloga zveze. Po tem
+        // se vmesnik odloci, ali sklop sme reci "Moje lige".
+        boolean izEkipe
 ) {
 
     /* Ena vrstica mini razpredelnice (prve tri ekipe). */

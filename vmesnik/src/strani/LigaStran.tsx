@@ -1278,7 +1278,9 @@ function LestvicaMobi({
                   <span className="lestvica-mobi__ime">{v.ekipa}</span>
                   <span className="lestvica-mobi__izkupicek">
                     <span className="lestvica-mobi__bilanca">
-                      {v.zmage}-{v.neodlocene}-{v.porazi}
+                      {liga.dovoljenoNeodloceno
+                        ? `${v.zmage}-${v.neodlocene}-${v.porazi}`
+                        : `${v.zmage}-${v.porazi}`}
                     </span>
                     <Forma znaki={forma(v.idEkipa, srecanja)} />
                   </span>

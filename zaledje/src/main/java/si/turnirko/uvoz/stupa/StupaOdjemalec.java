@@ -31,6 +31,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class StupaOdjemalec {
 
     private static final Duration CAKANJE = Duration.ofSeconds(120);
+    private static final int POSKUSOV = 3;
+
+    /* Premor pred ponovnim poskusom (drugi je dvakrat daljsi); test ga skrajsa. */
+    private Duration premor = Duration.ofSeconds(3);
 
     private final ObjectMapper json = new ObjectMapper();
     private final HttpClient http = HttpClient.newBuilder()
@@ -95,19 +99,47 @@ public class StupaOdjemalec {
         Files.write(mapa.resolve("tekme.json"), tekme);
     }
 
+    /* Posnetek enega dogodka je osem zahtev, zato bi ena sama prehodna napaka
+       vira (502 z njihovega posrednika, prekinjena povezava) podrla ves
+       predogled. Prehodna napaka se zato poskusi znova; trajna (404, 401)
+       takoj pade, ker ponavljanje ne more pomagati. */
     private byte[] prenesi(String pot) throws IOException {
-        HttpRequest zahteva = HttpRequest.newBuilder(URI.create(naslov + pot))
+        for (int poskus = 1;; poskus++) {
+            IOException napaka;
+            boolean prehodna;
+            try {
+                HttpResponse<byte[]> odgovor = http.send(zahtevaZa(pot), HttpResponse.BodyHandlers.ofByteArray());
+                if (odgovor.statusCode() == 200) {
+                    return odgovor.body();
+                }
+                napaka = new IOException("Stupa je na " + pot + " vrnila status " + odgovor.statusCode() + ".");
+                prehodna = odgovor.statusCode() >= 500 || odgovor.statusCode() == 429;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Prenos iz Stupe je bil prekinjen.", e);
+            } catch (IOException e) {
+                napaka = e;
+                prehodna = true;
+            }
+            if (!prehodna || poskus >= POSKUSOV) {
+                throw napaka;
+            }
+            pocakaj(poskus);
+        }
+    }
+
+    private HttpRequest zahtevaZa(String pot) {
+        return HttpRequest.newBuilder(URI.create(naslov + pot))
                 .header("tenant", tenant)
                 .header("Accept", "application/json")
                 .timeout(CAKANJE)
                 .GET()
                 .build();
+    }
+
+    private void pocakaj(int poskus) throws IOException {
         try {
-            HttpResponse<byte[]> odgovor = http.send(zahteva, HttpResponse.BodyHandlers.ofByteArray());
-            if (odgovor.statusCode() != 200) {
-                throw new IOException("Stupa je na " + pot + " vrnila status " + odgovor.statusCode() + ".");
-            }
-            return odgovor.body();
+            Thread.sleep(premor.multipliedBy(poskus));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Prenos iz Stupe je bil prekinjen.", e);

@@ -48,6 +48,19 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
             """)
     List<Liga> najdiNaDomaci();
 
+    /* Lige, ki se niso zakljucene in imajo igralca v kadru katere od ekip -
+       za domaco stran igralca s Premium. Zakljucene izpadejo: uvozena
+       zgodovina ima pri dolgoletnem igralcu ducat starih sezon in domaca stran
+       ni arhiv. Ekipe turnirjev izpadejo po izrecnem notranjem stiku na ligo
+       (glej KaderEkipeRepozitorij.ligePoIgralcih). */
+    @Query("""
+            SELECT DISTINCT l FROM KaderEkipe k JOIN k.ekipa e JOIN e.liga l
+            WHERE k.igralec.id = :idIgralec
+              AND l.status <> si.turnirko.modeli.StatusTekmovanja.ZAKLJUCEN
+            ORDER BY l.id
+            """)
+    List<Liga> najdiNezakljuceneZaIgralca(Long idIgralec);
+
     /* Lige, ki kazejo na dano ligo kot na svojo visjo - torej nivo pod njo.
        Bere jih urejanje prehodov, ko usklajuje izbor nizjih lig. */
     @Query("SELECT l FROM Liga l WHERE l.visjaLiga.id = :idVisja ORDER BY l.ime")

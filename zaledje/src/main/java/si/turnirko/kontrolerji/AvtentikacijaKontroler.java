@@ -31,6 +31,8 @@ import si.turnirko.dto.PonovnoPosiljanjeVnos;
 import si.turnirko.dto.PotrditevKodeVnos;
 import si.turnirko.dto.PotrditevOdgovorDto;
 import si.turnirko.dto.PozabljenoGesloVnos;
+import si.turnirko.dto.PredogledZapisaDto;
+import si.turnirko.dto.PredogledZapisaVnos;
 import si.turnirko.dto.RegistracijaOdgovorDto;
 import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.dto.SpremembaGeslaVnos;
@@ -72,6 +74,14 @@ public class AvtentikacijaKontroler {
     @PostMapping("/potrdi-skrbnika")
     public PotrditevOdgovorDto potrdiSkrbnika(@Valid @RequestBody PotrditevKodeVnos vnos) {
         return registracijaStoritev.potrdiSkrbnika(vnos);
+    }
+
+    /* Predogled zapisa med igralci pred registracijo (korak "Klub in zapis"
+       v vmesniku) - glej RegistracijaStoritev.predogledZapisa. */
+    @PostMapping("/predogled-zapisa")
+    public PredogledZapisaDto predogledZapisa(@Valid @RequestBody PredogledZapisaVnos vnos,
+                                              HttpServletRequest zahteva) {
+        return registracijaStoritev.predogledZapisa(vnos, zahteva.getRemoteAddr());
     }
 
     @PostMapping("/ponovno-poslji")

@@ -8,6 +8,7 @@ package si.turnirko.storitve;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -114,32 +115,59 @@ public class DomovStoritev {
          1. "idji" - izbor prijavljenega racuna. Kdor si je sklop sestavil sam,
             ga vidi takega, kot ga je sestavil (dolzine ne omejujemo: to je
             njegova odlocitev in ne izlozba).
-         2. lige, ki jih je admin postavil na domaco stran (najvec dve) - to je
+         2. lige, v katerih igra igralec s Premium (kader ekipe, ne zakljucene)
+            - njegovo dejstvo, ne zvezina izlozba: kdor v ligi igra, jo pricakuje
+            na vhodni strani, prej kot ligo, ki jo je zveza izbrala za vse. Brez
+            Premium in za gosta te stopnje ni.
+         3. lige, ki jih je admin postavil na domaco stran (najvec dve) - to je
             privzeti pogled gosta in vsakega, ki svojega izbora nima.
-         3. "ogledane" - lige, ki si jih je gost nazadnje ogledal (spomin
+         4. "ogledane" - lige, ki si jih je gost nazadnje ogledal (spomin
             njegovega brskalnika). Sele TU, ker ogled ni izbira: adminova
             uredniska odlocitev ne sme odpasti zato, ker je gost pred tednom
             odprl neko ligo.
-         4. lige v teku - nova namestitev, kjer se ni odlocil nihce. */
+         5. lige v teku - nova namestitev, kjer se ni odlocil nihce. */
     @Transactional(readOnly = true)
     public List<DomovLigaDto> povzetkiLig(List<Long> idji, List<Long> ogledane) {
-        List<Liga> lige;
         if (idji != null && !idji.isEmpty()) {
-            lige = poIzboru(idji);
-        } else {
-            List<Liga> izpostavljene = ligaRepozitorij.najdiNaDomaci();
-            if (!izpostavljene.isEmpty()) {
-                lige = izpostavljene.stream().limit(PRIVZETO_LIG).toList();
-            } else if (ogledane != null && !ogledane.isEmpty()) {
-                lige = poIzboru(ogledane).stream().limit(PRIVZETO_LIG).toList();
-            } else {
-                lige = ligaRepozitorij.najdiVse().stream()
-                        .filter(l -> l.getStatus() == StatusTekmovanja.V_TEKU)
-                        .limit(PRIVZETO_LIG)
-                        .toList();
-            }
+            return povzetki(poIzboru(idji), false);
         }
-        return lige.stream().map(this::povzetek).toList();
+        List<Liga> igralceve = ligeIgralcevihEkip();
+        if (!igralceve.isEmpty()) {
+            return povzetki(igralceve, true);
+        }
+        List<Liga> lige;
+        List<Liga> izpostavljene = ligaRepozitorij.najdiNaDomaci();
+        if (!izpostavljene.isEmpty()) {
+            lige = izpostavljene.stream().limit(PRIVZETO_LIG).toList();
+        } else if (ogledane != null && !ogledane.isEmpty()) {
+            lige = poIzboru(ogledane).stream().limit(PRIVZETO_LIG).toList();
+        } else {
+            lige = ligaRepozitorij.najdiVse().stream()
+                    .filter(l -> l.getStatus() == StatusTekmovanja.V_TEKU)
+                    .limit(PRIVZETO_LIG)
+                    .toList();
+        }
+        return povzetki(lige, false);
+    }
+
+    private List<DomovLigaDto> povzetki(List<Liga> lige, boolean izEkipe) {
+        return lige.stream().map(l -> povzetek(l, izEkipe)).toList();
+    }
+
+    /* Lige, v katerih igra prijavljeni igralec s Premium. Samo s paketom, ker
+       je to del iste funkcije kot spremljanje lig (glej spremljaj): brez njega
+       racun ostane pri tem, kar mu je postavil admin. Lige v teku so pred
+       tistimi v pripravi - tam se igra zdaj. Stevila ne omejujemo: to so lige,
+       v katerih res nastopa, in ne izlozba. */
+    private List<Liga> ligeIgralcevihEkip() {
+        Uporabnik jaz = lastnistvo.trenutni();
+        if (jaz == null || !jaz.jePotrjenIgralec() || !narocnina.imaPremium(jaz)) {
+            return List.of();
+        }
+        // razvrscanje je stabilno: znotraj stanja ostane vrstni red vpisa (id)
+        return ligaRepozitorij.najdiNezakljuceneZaIgralca(jaz.getIgralec().getId()).stream()
+                .sorted(Comparator.comparing(l -> l.getStatus() != StatusTekmovanja.V_TEKU))
+                .toList();
     }
 
     /* Vrstni red sledi izboru, neobstojece lige tiho odpadejo. */
@@ -151,7 +179,7 @@ public class DomovStoritev {
         return lige;
     }
 
-    private DomovLigaDto povzetek(Liga liga) {
+    private DomovLigaDto povzetek(Liga liga, boolean izEkipe) {
         List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(liga.getId());
 
         int vsehKol = 0;
@@ -180,7 +208,8 @@ public class DomovStoritev {
                 liga.getId(), liga.getIme(), liga.getSezona(), liga.getStatus(),
                 odigranihKol, vsehKol, vrh,
                 naslednje == null ? null
-                        : new DomovLigaDto.Naslednje(naslednje.getKolo(), datum(naslednje)));
+                        : new DomovLigaDto.Naslednje(naslednje.getKolo(), datum(naslednje)),
+                izEkipe);
     }
 
     private static LocalDate datum(Srecanje srecanje) {

@@ -34,6 +34,8 @@ import si.turnirko.dto.PonovnoPosiljanjeVnos;
 import si.turnirko.dto.PotrditevKodeVnos;
 import si.turnirko.dto.PotrditevOdgovorDto;
 import si.turnirko.dto.PotrditevRacunaVnos;
+import si.turnirko.dto.PredogledZapisaDto;
+import si.turnirko.dto.PredogledZapisaVnos;
 import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrevecZahtevIzjema;
@@ -266,6 +268,57 @@ class RegistracijaTest {
                 () -> registracija.ponovnoPoslji(new PonovnoPosiljanjeVnos("ana@test.si", NamenKode.EPOSTA), IP));
         assertThrows(PrevecZahtevIzjema.class,
                 () -> registracija.registriraj(igralec("Ana", "Novak", "ana@test.si"), IP));
+    }
+
+    // ---------- Predogled zapisa (pred registracijo) ----------
+
+    @Test
+    void predogledZapisaVrneZadetekBrezRacuna() {
+        IgralecJavniDto igralec = igralecVSifrantu("Žiga", "Šuštar", ODRASEL);
+
+        PredogledZapisaDto odgovor = registracija.predogledZapisa(
+                new PredogledZapisaVnos("ZIGA", "Sustar", ODRASEL), IP);
+
+        assertTrue(odgovor.najden());
+        assertEquals(igralec.id(), odgovor.idIgralec());
+        assertEquals("Žiga", odgovor.ime());
+        assertEquals("Šuštar", odgovor.priimek());
+    }
+
+    @Test
+    void predogledZapisaBrezZadetkaAliDrugDatum() {
+        assertFalse(registracija.predogledZapisa(
+                new PredogledZapisaVnos("Ne", "Obstaja", ODRASEL), IP).najden());
+
+        igralecVSifrantu("Ana", "Kovač", ODRASEL);
+        assertFalse(registracija.predogledZapisa(
+                new PredogledZapisaVnos("Ana", "Kovač", ODRASEL.plusDays(1)), IP).najden(),
+                "drug datum rojstva ni isti clovek");
+
+        igralecVSifrantu("Ana", "Kovač", ODRASEL); // soimenjakinja z istim datumom
+        assertFalse(registracija.predogledZapisa(
+                new PredogledZapisaVnos("Ana", "Kovač", ODRASEL), IP).najden(),
+                "dva zadetka - odloci admin, predogled ne izbira");
+    }
+
+    @Test
+    void predogledZapisaIgralcaZRacunomNeVrneZadetka() {
+        IgralecJavniDto igralec = igralecVSifrantu("Ana", "Kovač", ODRASEL);
+        registracija.registriraj(igralec("Ana", "Kovač", "ana@test.si"), IP);
+        racuni.potrdi(racun("ana@test.si").getId(), new PotrditevRacunaVnos(igralec.id()));
+
+        assertFalse(registracija.predogledZapisa(
+                new PredogledZapisaVnos("Ana", "Kovač", ODRASEL), IP).najden(),
+                "igralec ze ima racun - poveze ga lahko samo admin");
+    }
+
+    @Test
+    void omejitevPredogledaPoIp() {
+        for (int i = 0; i < RegistracijaStoritev.NA_IP_NA_URO_PREDOGLED; i++) {
+            registracija.predogledZapisa(new PredogledZapisaVnos("Ana", "Kovač", ODRASEL), IP);
+        }
+        assertThrows(PrevecZahtevIzjema.class, () -> registracija.predogledZapisa(
+                new PredogledZapisaVnos("Ana", "Kovač", ODRASEL), IP));
     }
 
     // ---------- Samodejna povezava ----------

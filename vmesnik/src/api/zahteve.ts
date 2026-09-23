@@ -36,6 +36,8 @@ import type {
   PreracunPorociloDto,
   PostavaVnos,
   PredogledUvozaDto,
+  PredogledZapisaDto,
+  PredogledZapisaVnos,
   PrehodiVnos,
   SezonaUvozaDto,
   PrijavaDto,
@@ -196,6 +198,10 @@ export const authApi = {
   /* Nova koda (naslov ali skrbnik); strežnik omejuje pogostost. */
   ponovnoPoslji: (email: string, namen: NamenKode) =>
     api.objavi<void>('/auth/ponovno-poslji', { email, namen }),
+  /* Predogled zapisa med igralci med registracijo (korak "Klub in zapis"),
+     brez prijave. Strežnik omejuje pogostost po IP. */
+  predogledZapisa: (vnos: PredogledZapisaVnos) =>
+    api.objavi<PredogledZapisaDto>('/auth/predogled-zapisa', vnos),
   /* Pozabljeno geslo: koda gre na potrjen naslov; odgovor je vedno enak. */
   pozabljenoGeslo: (email: string) => api.objavi<void>('/auth/pozabljeno-geslo', { email }),
   novoGeslo: (vnos: NovoGesloVnos) => api.objavi<void>('/auth/novo-geslo', vnos),

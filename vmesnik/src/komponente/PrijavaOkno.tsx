@@ -8,24 +8,15 @@
    račun povezan takoj; sicer ga poveže administrator. Kdor se prijavi z
    računom, ki naslova še ni potrdil, pristane naravnost pri vpisu kode. */
 import { useEffect, useState, type FormEvent } from 'react'
-import { useQuery } from '@tanstack/react-query'
 
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { opisNapake } from '../api/odjemalec'
-import { authApi, klubiApi, placilaApi } from '../api/zahteve'
-import {
-  CENA_ORGANIZATOR_LETNO,
-  CENA_PREMIUM_MESECNO,
-  MESECEV_V_LETNI_NAROCNINI,
-  OMEJITVE_ORGANIZATORJA,
-  type CiklusPlacila,
-  type NamenKode,
-  type Paket,
-  type PotrditevOdgovorDto,
-} from '../api/tipi'
-import { jeStarejsiOd21ZaCeno, oblikujCeno } from '../pomozno/oblikovanje'
-import { IzbirnikKluba } from './IzbirnikKluba'
+import { authApi } from '../api/zahteve'
+import type { NamenKode, PotrditevOdgovorDto } from '../api/tipi'
+import type { ShranjenoStanjePlacila } from '../pomozno/registracijaSeja'
+import { KodaVnos } from './KodaVnos'
 import { ModalnoOkno } from './ModalnoOkno'
+import { RegistracijaTok } from './RegistracijaTok'
 
 type Nacin = 'prijava' | 'registracija' | 'koda' | 'pozabljeno'
 
@@ -56,6 +47,7 @@ export function PrijavaOkno({
   zacetniNacin = 'prijava',
   email = null,
   kodaSkrbnika = false,
+  obnovljenoStanjePlacila = null,
 }: {
   onZapri: () => void
   /* Zavihek, na katerem se okno odpre (npr. iz menija "Ustvari račun" ali
@@ -65,6 +57,9 @@ export function PrijavaOkno({
   email?: string | null
   /* Naslov je že potrjen, manjka skrbnikova koda. */
   kodaSkrbnika?: boolean
+  /* Nadaljevanje registracijskega toka po vrnitvi s Stripe Checkouta (glej
+     RegistracijaZakljucenaStran): okno se odpre naravnost na koraku "koda". */
+  obnovljenoStanjePlacila?: ShranjenoStanjePlacila | null
 }) {
   const [nacin, nastaviNacin] = useState<Nacin>(zacetniNacin)
   const [koda, nastaviKodo] = useState<StanjeKode | null>(
@@ -83,24 +78,29 @@ export function PrijavaOkno({
     nastaviNacin('koda')
   }
 
-  const zavihki = nacin === 'prijava' || nacin === 'registracija'
+  /* Registracija ima svojo lupino (razdeljeno okno s temnim stolpcem korakov
+     - glej design_handoff_onboarding) in ne deli je s prijavo/kodo/pozabljenim
+     geslom, ki ostanejo pri običajnem ModalnoOkno z zavihkoma. */
+  if (nacin === 'registracija') {
+    return (
+      <ModalnoOkno razdeljeno naslov={NASLOVI.registracija} onZapri={onZapri}>
+        <RegistracijaTok
+          onZapri={onZapri}
+          onNazajNaPrijavo={() => naPrijavo()}
+          obnovljenoStanje={obnovljenoStanjePlacila}
+        />
+      </ModalnoOkno>
+    )
+  }
 
   return (
     <ModalnoOkno nadnaslov="Turnirko" naslov={NASLOVI[nacin]} onZapri={onZapri}>
-      {zavihki && (
+      {nacin === 'prijava' && (
         <div className="zavihki">
-          <button
-            className={'zavihki__gumb' + (nacin === 'prijava' ? ' zavihki__gumb--aktiven' : '')}
-            onClick={() => naPrijavo()}
-          >
+          <button className="zavihki__gumb zavihki__gumb--aktiven" onClick={() => naPrijavo()}>
             Prijava
           </button>
-          <button
-            className={
-              'zavihki__gumb' + (nacin === 'registracija' ? ' zavihki__gumb--aktiven' : '')
-            }
-            onClick={() => nastaviNacin('registracija')}
-          >
+          <button className="zavihki__gumb" onClick={() => nastaviNacin('registracija')}>
             Nov račun
           </button>
         </div>
@@ -112,12 +112,6 @@ export function PrijavaOkno({
           onZapri={onZapri}
           onKoda={naKodo}
           onPozabljeno={() => nastaviNacin('pozabljeno')}
-        />
-      )}
-      {nacin === 'registracija' && (
-        <RegistracijaObrazec
-          onNazaj={() => naPrijavo()}
-          onKoda={(emailRacuna) => naKodo(emailRacuna, 'EPOSTA', true)}
         />
       )}
       {nacin === 'koda' && koda && (
@@ -176,7 +170,7 @@ function PrijavaObrazec({
     <form className="obrazec" onSubmit={obOddaji}>
       {obvestilo && <p className="obvestilo">{obvestilo}</p>}
       <label className="obrazec__polje">
-        <span>Uporabniško ime ali e-pošta</span>
+        <span>E-pošta</span>
         <input
           value={uporabniskoIme}
           onChange={(d) => nastaviUporabniskoIme(d.target.value)}
@@ -206,263 +200,6 @@ function PrijavaObrazec({
       <button type="button" className="povezava-gumb" onClick={onPozabljeno}>
         Pozabljeno geslo?
       </button>
-    </form>
-  )
-}
-
-/* Starost v letih iz ISO datuma; null, če datum ni berljiv. Isto pravilo
-   kot na strežniku (Period), ki je zadnja beseda. */
-function starost(iso: string): number | null {
-  if (!iso) return null
-  const rojstvo = new Date(iso)
-  if (Number.isNaN(rojstvo.getTime())) return null
-  const danes = new Date()
-  let leta = danes.getFullYear() - rojstvo.getFullYear()
-  const mesec = danes.getMonth() - rojstvo.getMonth()
-  if (mesec < 0 || (mesec === 0 && danes.getDate() < rojstvo.getDate())) leta--
-  return leta
-}
-
-function RegistracijaObrazec({
-  onNazaj,
-  onKoda,
-}: {
-  onNazaj: () => void
-  onKoda: (email: string) => void
-}) {
-  const klubi = useQuery({ queryKey: ['klubi'], queryFn: klubiApi.seznam })
-  const [organizator, nastaviOrganizator] = useState(false)
-  const [ime, nastaviIme] = useState('')
-  const [priimek, nastaviPriimek] = useState('')
-  const [idKlub, nastaviKlub] = useState('')
-  const [datumRojstva, nastaviDatumRojstva] = useState('')
-  const [emailSkrbnika, nastaviEmailSkrbnika] = useState('')
-  const [email, nastaviEmail] = useState('')
-  const [geslo, nastaviGeslo] = useState('')
-  /* Plan je ločen od vloge, a je vezan nanjo: Premium je samo igralčev,
-     organizatorski trije paketi samo njegovi - preklop vloge zato ponastavi
-     tudi plan (glej vlogaSePrestavi). */
-  const [paket, nastaviPaket] = useState<Paket>('BREZPLACNO')
-  const [ciklus, nastaviCiklus] = useState<CiklusPlacila>('MESECNO')
-  const [napaka, nastaviNapako] = useState<string | null>(null)
-  const [poteka, nastaviPoteka] = useState(false)
-
-  const leta = organizator ? null : starost(datumRojstva)
-  const potrebujeSkrbnika = leta !== null && leta < 15
-  const danes = new Date().toISOString().slice(0, 10)
-
-  /* Samo za PREDOGLED cene v obrazcu - zaledje (CenikStoritev) ob placilu
-     ceno prera znova iz res vpisanega datuma, to je zadnja beseda. */
-  const starejsiOd21 = jeStarejsiOd21ZaCeno(datumRojstva) ?? false
-  const cenaPremiumMesecno = starejsiOd21 ? CENA_PREMIUM_MESECNO.starejsi : CENA_PREMIUM_MESECNO.mlajsi
-  const cenaPremiumLetno = Math.round(cenaPremiumMesecno * MESECEV_V_LETNI_NAROCNINI * 100) / 100
-
-  function vlogaSePrestavi(novOrganizator: boolean) {
-    nastaviOrganizator(novOrganizator)
-    nastaviPaket(novOrganizator ? 'ORGANIZATOR_BASIC' : 'BREZPLACNO')
-  }
-
-  async function obOddaji(dogodek: FormEvent) {
-    dogodek.preventDefault()
-    nastaviNapako(null)
-    nastaviPoteka(true)
-    try {
-      const racun = {
-        ime: ime.trim(),
-        priimek: priimek.trim(),
-        idKlub: idKlub ? Number(idKlub) : null,
-        email: email.trim(),
-        geslo,
-        organizator,
-        datumRojstva: organizator ? null : datumRojstva,
-        emailSkrbnika: potrebujeSkrbnika ? emailSkrbnika.trim() : null,
-      }
-      if (paket === 'BREZPLACNO') {
-        const odgovor = await authApi.registracija(racun)
-        onKoda(odgovor.email)
-        return
-      }
-      /* Placljiv paket: racun NE nastane tu, ampak sele ko Stripe webhook
-         potrdi placilo - odgovor je naslov Stripe Checkouta. */
-      const seja = await placilaApi.registracija({
-        racun,
-        paket,
-        ciklus: paket === 'PREMIUM' ? ciklus : 'LETNO',
-      })
-      window.location.href = seja.url
-    } catch (e) {
-      nastaviNapako(opisNapake(e))
-      nastaviPoteka(false)
-    }
-  }
-
-  return (
-    <form className="obrazec" onSubmit={obOddaji}>
-      {/* Ime in priimek sta prva: to vpiše vsak, ne glede na vlogo. */}
-      <div className="obrazec__vrstica obrazec__vrstica--par">
-        <label className="obrazec__polje">
-          <span>Ime *</span>
-          <input value={ime} onChange={(d) => nastaviIme(d.target.value)} required />
-        </label>
-        <label className="obrazec__polje">
-          <span>Priimek *</span>
-          <input value={priimek} onChange={(d) => nastaviPriimek(d.target.value)} required />
-        </label>
-      </div>
-
-      {/* Vloga je navadno polje obrazca, ne zavihek: zavihki obljubljajo
-          preklop med dvema pogledoma, tu pa gre za en sam vnos, ki potuje na
-          streznik skupaj z ostalimi. Igralec vidi svoj profil, organizator
-          vodi tekmovanja; organizatorja potrdi administrator. */}
-      <label className="obrazec__polje">
-        <span>Vloga *</span>
-        <select
-          value={organizator ? 'organizator' : 'igralec'}
-          onChange={(d) => vlogaSePrestavi(d.target.value === 'organizator')}
-        >
-          <option value="igralec">Igralec</option>
-          <option value="organizator">Organizator</option>
-        </select>
-      </label>
-
-      {/* Pojasnilo ostane samo organizatorju: njegova vloga ni samoumevna,
-          igralcu pa polja sama povedo dovolj. */}
-      {organizator && (
-        <p className="modal__podnaslov">
-          Registracija organizatorja (klub oz. oseba, ki vodi tekmovanja). Vpiši
-          kontaktno ime in klub, ki ga zastopaš; administrator ti po potrditvi dodeli
-          vlogo in klub.
-        </p>
-      )}
-
-      <IzbirnikKluba
-        oznaka={organizator ? 'Klub, ki ga zastopaš' : 'Klub'}
-        namig="Vpiši ime kluba ali pusti prazno"
-        klubi={klubi.data ?? []}
-        izbrano={idKlub ? Number(idKlub) : null}
-        naSpremembo={(id) => nastaviKlub(id === null ? '' : String(id))}
-      />
-
-      {/* Datum rojstva: po njem se račun samodejno poveže z zapisom igralca
-          in določi starostna kategorija. Javno ni viden. */}
-      {!organizator && (
-        <label className="obrazec__polje">
-          <span>Datum rojstva * (za povezavo s tvojim zapisom med igralci; javno ni viden)</span>
-          <input
-            type="date"
-            value={datumRojstva}
-            max={danes}
-            onChange={(d) => nastaviDatumRojstva(d.target.value)}
-            required
-          />
-        </label>
-      )}
-
-      {/* Pojasnilo stoji zunaj oznake: span v .obrazec__polje dobi slog
-          oznake (mono, velike črke) in bi se bral kot drugo polje. */}
-      {potrebujeSkrbnika && (
-        <>
-          <label className="obrazec__polje">
-            <span>E-pošta starša oz. skrbnika * (mlajši od 15 let)</span>
-            <input
-              type="email"
-              value={emailSkrbnika}
-              onChange={(d) => nastaviEmailSkrbnika(d.target.value)}
-              required
-            />
-          </label>
-          <p className="modal__podnaslov">
-            Na ta naslov gre koda s soglasjem. Vpišeš jo po svoji kodi.
-          </p>
-        </>
-      )}
-
-      <label className="obrazec__polje">
-        <span>E-pošta * (z njo se prijaviš; nanjo dobiš kodo)</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(d) => nastaviEmail(d.target.value)}
-          autoComplete="email"
-          required
-        />
-      </label>
-      <label className="obrazec__polje">
-        <span>Geslo * (vsaj 8 znakov)</span>
-        <input
-          type="password"
-          value={geslo}
-          onChange={(d) => nastaviGeslo(d.target.value)}
-          autoComplete="new-password"
-          minLength={8}
-          required
-        />
-      </label>
-
-      {/* Plan: brezplačno je na voljo samo igralcu (kot gost, le prijavljen);
-          organizator vedno izbere enega od treh plačljivih paketov - obseg
-          (koliko lig/turnirjev na sezono) je edina razlika med njimi. */}
-      {!organizator && (
-        <label className="obrazec__polje">
-          <span>Plan *</span>
-          <select value={paket} onChange={(d) => nastaviPaket(d.target.value as Paket)}>
-            <option value="BREZPLACNO">Brezplačno — kot gost, le prijavljen</option>
-            <option value="PREMIUM">Premium — zasebna statistika in spremljanje lig</option>
-          </select>
-        </label>
-      )}
-
-      {!organizator && paket === 'PREMIUM' && (
-        <label className="obrazec__polje">
-          <span>Plačevanje *</span>
-          <select value={ciklus} onChange={(d) => nastaviCiklus(d.target.value as CiklusPlacila)}>
-            <option value="MESECNO">{oblikujCeno(cenaPremiumMesecno)} / mesec</option>
-            <option value="LETNO">
-              {oblikujCeno(cenaPremiumLetno)} / leto ({MESECEV_V_LETNI_NAROCNINI}× mesečna cena)
-            </option>
-          </select>
-        </label>
-      )}
-
-      {organizator && (
-        <label className="obrazec__polje">
-          <span>Paket *</span>
-          <select value={paket} onChange={(d) => nastaviPaket(d.target.value as Paket)}>
-            <option value="ORGANIZATOR_BASIC">
-              Basic — {oblikujCeno(CENA_ORGANIZATOR_LETNO.ORGANIZATOR_BASIC)}/leto (
-              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_BASIC.lig} tekoča liga,{' '}
-              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_BASIC.turnirjev} turnirja na sezono)
-            </option>
-            <option value="ORGANIZATOR_PLUS">
-              Plus — {oblikujCeno(CENA_ORGANIZATOR_LETNO.ORGANIZATOR_PLUS)}/leto (
-              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PLUS.lig} tekoče lige,{' '}
-              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PLUS.turnirjev} turnirjev na sezono)
-            </option>
-            <option value="ORGANIZATOR_PRO">
-              Pro — {oblikujCeno(CENA_ORGANIZATOR_LETNO.ORGANIZATOR_PRO)}/leto (
-              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PRO.lig} tekočih lig,{' '}
-              {OMEJITVE_ORGANIZATORJA.ORGANIZATOR_PRO.turnirjev} turnirjev na sezono)
-            </option>
-          </select>
-        </label>
-      )}
-
-      {napaka && <div className="napaka">{napaka}</div>}
-
-      <div className="obrazec__gumbi">
-        <button type="button" className="gumb" onClick={onNazaj}>
-          Prekliči
-        </button>
-        <button type="submit" className="gumb gumb--glavni" disabled={poteka}>
-          {poteka
-            ? paket === 'BREZPLACNO'
-              ? 'Ustvarjam …'
-              : 'Preusmerjam na plačilo …'
-            : paket === 'BREZPLACNO'
-              ? 'Ustvari račun'
-              : 'Nadaljuj na plačilo'}
-        </button>
-      </div>
     </form>
   )
 }
@@ -500,14 +237,11 @@ function KodaObrazec({
     return () => clearTimeout(stevec)
   }, [odstevanje])
 
-  const stevke = koda.replace(/\s/g, '')
-
-  async function obOddaji(dogodek: FormEvent) {
-    dogodek.preventDefault()
+  async function potrdiKodo(vpisanaKoda: string) {
     nastaviNapako(null)
     nastaviPoteka(true)
     try {
-      const vnos = { email: stanje.email, koda: stevke }
+      const vnos = { email: stanje.email, koda: vpisanaKoda }
       const odgovor =
         korak === 'EPOSTA' ? await authApi.potrdiEposto(vnos) : await authApi.potrdiSkrbnika(vnos)
       await osvezi()
@@ -525,6 +259,11 @@ function KodaObrazec({
     } finally {
       nastaviPoteka(false)
     }
+  }
+
+  function obOddaji(dogodek: FormEvent) {
+    dogodek.preventDefault()
+    void potrdiKodo(koda)
   }
 
   async function posljiZnova() {
@@ -575,20 +314,20 @@ function KodaObrazec({
             : `E-pošta ${stanje.email} še ni potrjena. Vpiši kodo iz sporočila; če je potekla (velja 10 minut), zahtevaj novo.`
           : 'Starš oz. skrbnik je na svoj naslov dobil kodo, ki velja 24 ur. Vpiši jo tukaj.'}
       </p>
-      <label className="obrazec__polje">
+      <div
+        className="obrazec__polje"
+        role="group"
+        aria-label={korak === 'EPOSTA' ? 'Koda iz e-pošte' : 'Koda skrbnika'}
+      >
         <span>{korak === 'EPOSTA' ? 'Koda iz e-pošte' : 'Koda skrbnika'}</span>
-        <input
-          className="obrazec__koda"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="[0-9 ]*"
-          maxLength={7}
-          value={koda}
-          onChange={(d) => nastaviKodo(d.target.value)}
+        <KodaVnos
+          vrednost={koda}
+          naSpremembo={nastaviKodo}
+          naDokoncano={(v) => void potrdiKodo(v)}
+          disabled={poteka}
           autoFocus
-          required
         />
-      </label>
+      </div>
 
       {napaka && <div className="napaka">{napaka}</div>}
       {poslano && <p className="obvestilo">{poslano}</p>}
@@ -596,7 +335,7 @@ function KodaObrazec({
       <button
         type="submit"
         className="gumb gumb--glavni"
-        disabled={poteka || stevke.length !== 6}
+        disabled={poteka || koda.length !== 6}
       >
         {poteka ? 'Preverjam …' : 'Potrdi'}
       </button>
@@ -628,8 +367,6 @@ function PozabljenoObrazec({
   const [napaka, nastaviNapako] = useState<string | null>(null)
   const [poteka, nastaviPoteka] = useState(false)
 
-  const stevke = koda.replace(/\s/g, '')
-
   async function obOddaji(dogodek: FormEvent) {
     dogodek.preventDefault()
     nastaviNapako(null)
@@ -639,7 +376,7 @@ function PozabljenoObrazec({
         await authApi.pozabljenoGeslo(email.trim())
         nastaviKorak('koda')
       } else {
-        await authApi.novoGeslo({ email: email.trim(), koda: stevke, geslo })
+        await authApi.novoGeslo({ email: email.trim(), koda, geslo })
         onKonec('Geslo je nastavljeno. Prijavi se z novim geslom.')
       }
     } catch (e) {
@@ -675,21 +412,13 @@ function PozabljenoObrazec({
             Če račun s tem naslovom obstaja, si dobil kodo. Velja 10 minut.
           </p>
           {/* key: brez njega React ponovno uporabi polje za e-pošto s prejšnjega
-              koraka (isto mesto v drevesu) in autoFocus se ne sproži. */}
-          <label key="koda" className="obrazec__polje">
+              koraka (isto mesto v drevesu) in autoFocus se ne sproži. Koda tu
+              ne potrdi samodejno (naDokoncano ni podan) - sledi ji še novo
+              geslo, zato oddajo obrazca sproži šele gumb spodaj. */}
+          <div key="koda" className="obrazec__polje" role="group" aria-label="Koda iz e-pošte">
             <span>Koda iz e-pošte</span>
-            <input
-              className="obrazec__koda"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9 ]*"
-              maxLength={7}
-              value={koda}
-              onChange={(d) => nastaviKodo(d.target.value)}
-              autoFocus
-              required
-            />
-          </label>
+            <KodaVnos vrednost={koda} naSpremembo={nastaviKodo} disabled={poteka} autoFocus />
+          </div>
           <label key="geslo" className="obrazec__polje">
             <span>Novo geslo (vsaj 8 znakov)</span>
             <input
@@ -713,7 +442,7 @@ function PozabljenoObrazec({
         <button
           type="submit"
           className="gumb gumb--glavni"
-          disabled={poteka || (korak === 'koda' && stevke.length !== 6)}
+          disabled={poteka || (korak === 'koda' && koda.length !== 6)}
         >
           {poteka ? 'Pošiljam …' : korak === 'email' ? 'Pošlji kodo' : 'Nastavi geslo'}
         </button>

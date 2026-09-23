@@ -387,8 +387,8 @@ export type Paket = 'BREZPLACNO' | 'PREMIUM' | 'ORGANIZATOR_BASIC' | 'ORGANIZATO
 export type CiklusPlacila = 'MESECNO' | 'LETNO'
 
 export const OZNAKE_PAKET: Record<Paket, string> = {
-  BREZPLACNO: 'Brezplačno',
-  PREMIUM: 'Premium',
+  BREZPLACNO: 'Igralec Free',
+  PREMIUM: 'Igralec Premium',
   ORGANIZATOR_BASIC: 'Organizator Basic',
   ORGANIZATOR_PLUS: 'Organizator Plus',
   ORGANIZATOR_PRO: 'Organizator Pro',
@@ -446,6 +446,26 @@ export interface RegistracijaVnos {
   datumRojstva: string | null
   /* Obvezna pri mlajših od 15 let: naslov starša oz. skrbnika. */
   emailSkrbnika: string | null
+}
+
+export interface PredogledZapisaVnos {
+  ime: string
+  priimek: string
+  datumRojstva: string
+}
+
+/* Predogled zapisa med igralci PRED registracijo (korak "Klub in zapis") -
+   isto ujemanje kot samodejna povezava ob potrditvi e-pošte, a brez računa.
+   "najden: false" pomeni isto kot tam: nobenega zadetka, dva zadetka ali
+   zadetek, ki že ima račun - v vseh treh primerih poveže administrator. */
+export interface PredogledZapisaDto {
+  najden: boolean
+  idIgralec: number | null
+  ime: string | null
+  priimek: string | null
+  klub: string | null
+  rating: number | null
+  steviloTekem: number
 }
 
 /* Odgovor na registracijo je izpeljan samo iz vnosa - enak, če naslov že
@@ -591,6 +611,10 @@ export interface DomovLigaDto {
   vsehKol: number
   vrh: VrhLigeDto[]
   naslednje: NaslednjeKoloDto | null
+  /* Liga je na seznamu, ker prijavljeni igralec v njej nastopa (Premium:
+     kader ekipe) — ne zaradi izbora ali izloga zveze. Po tem sklop sme reči
+     »Moje lige«. */
+  izEkipe: boolean
 }
 
 export interface VrhLigeDto {

@@ -382,6 +382,11 @@
   - **Premik mesta se šteje LE znotraj skupine** (spol × tekmovalci/rekreativci)
     — sicer bi se ženski del lestvice premikal zato, ker je kdo v moškem delu
     zmagal.
+  - **Isto velja za profil igralca:** »Okolica na lestvici« in »Do N. mesta«
+    (`izracunajOkolico` v `ProfilStran`) štejeta lestvico igralčevega spola in
+    njegove skupine (tekmovalci/rekreativci), ne skupne — številka v glavi
+    profila (`ProfilStoritev.uvrstitev`) je merjena po isti lestvici in se z
+    »Do N. mesta« mora ujemati.
   - **Zastavica rekreativca se IZPELJE iz dnevnika in se ne hrani.** Število
     tekmovalnih tekem je stvar zgodovine, ki se ne more zmanjšati; hranjenje bi
     zahtevalo še eno polje, ki ga mora preračun obnoviti. Poizvedba seže do
@@ -844,12 +849,27 @@
     terjal prožilec), sporočilo pa **našteje ligi, ki sta na poti** — drugače
     admin ugiba, kaj naj odkljuka. Okno tretje kljukice sploh ne ponudi.
   - **Vrstni red odločanja v `DomovStoritev.povzetkiLig(idji, ogledane)` je
-    vrstni red namernosti:** izbor računa → adminov izbor → gostove zadnje
-    ogledane lige → lige v teku. Parametra sta zato **ločena** in ne en seznam:
-    ogled ni izbira in ena odprta liga izpred tedna ne sme povoziti tega, kar
-    je zveza postavila na vhodno stran.
-  - Naslov sklopa je »Moje lige« **samo**, kadar sklop res kaže lasten izbor;
-    sicer »Lige«. Naslov, ki bi adminovima ligama rekel »moje«, bi lagal.
+    vrstni red namernosti:** izbor računa → lige igralca s Premium (kader
+    ekipe) → adminov izbor → gostove zadnje ogledane lige → lige v teku.
+    Parametra sta zato **ločena** in ne en seznam: ogled ni izbira in ena odprta
+    liga izpred tedna ne sme povoziti tega, kar je zveza postavila na vhodno
+    stran.
+  - **Igralčeve lige (`ligeIgralcevihEkip`) so drugi korak in ne izbor
+    računa:** sledijo iz kadra (`najdiNezakljuceneZaIgralca`), zato jih
+    igralec ne vpisuje, lasten izbor pa jih **v celoti** nadomesti (kot
+    adminov izbor). **Samo Premium** (isti pogoj kot `spremljaj`) **in samo
+    potrjen, z igralcem povezan račun**; gost in račun brez paketa vidita
+    adminov izbor kot prej. **Zaključene lige izpadejo** — uvožena zgodovina
+    ima pri dolgoletnem igralcu ducat starih sezon in domača stran ni arhiv;
+    lige v teku so pred tistimi v pripravi. Števila ne omejujemo (adminov izbor
+    ima mejo dve, ker je izlog; tu gre za lige, kjer igralec res nastopa).
+    Pot `GET /domov/lige` je javna, a strežnik račun prebere iz glave
+    `Authorization` — to varuje `DomovLigeDostopTest`. Zato je odgovor odvisen
+    od računa in je račun v ključu poizvedbe na domači strani.
+  - Naslov sklopa je »Moje lige« **samo**, kadar sklop res kaže moje: lasten
+    izbor ali lige, v katerih igralec nastopa (`DomovLigaDto.izEkipe`, pove
+    strežnik po vrstici); sicer »Lige«. Naslov, ki bi adminovima ligama rekel
+    »moje«, bi lagal. Filter »Moje lige« pod sklopom meri isto.
 - **Razpored pri neodigranem kolu izpiše termin, ne besede »razpored«.**
   Merilo je `metaKola` v `LigaStran`: odigrano kolo dobi datum in oznako
   »odigrano«, kolo, ki šele pride, pa termin (`oblikujTermin` → »ned, 4. okt ·
