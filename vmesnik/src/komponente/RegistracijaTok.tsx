@@ -17,8 +17,8 @@ import { opisNapake } from '../api/odjemalec'
 import { authApi, klubiApi, placilaApi } from '../api/zahteve'
 import {
   CENA_ORGANIZATOR_LETNO,
+  CENA_PREMIUM_LETNO,
   CENA_PREMIUM_MESECNO,
-  MESECEV_V_LETNI_NAROCNINI,
   OMEJITVE_ORGANIZATORJA,
   OZNAKE_PAKET,
   type CiklusPlacila,
@@ -29,6 +29,7 @@ import { shraniStanjePlacila, type ShranjenoStanjePlacila } from '../pomozno/reg
 import { useTelefon } from '../pomozno/telefon'
 import { IskalniIzbirnik } from './IskalniIzbirnik'
 import { KodaVnos } from './KodaVnos'
+import { MaskotaTabela } from './MaskotaTabela'
 import { ZnakTurnirko } from './Postavitev'
 
 /* Sekund, preden je mogoče zahtevati novo kodo (isto pravilo kot v
@@ -86,8 +87,8 @@ function izracunajCeno(paket: Paket, ciklus: CiklusPlacila, datumRojstva: string
   if (paket === 'BREZPLACNO') return 0
   if (paket === 'PREMIUM') {
     const starejsi = jeStarejsiOd21ZaCeno(datumRojstva) ?? false
-    const mesecna = starejsi ? CENA_PREMIUM_MESECNO.starejsi : CENA_PREMIUM_MESECNO.mlajsi
-    return ciklus === 'MESECNO' ? mesecna : Math.round(mesecna * MESECEV_V_LETNI_NAROCNINI * 100) / 100
+    const cene = ciklus === 'MESECNO' ? CENA_PREMIUM_MESECNO : CENA_PREMIUM_LETNO
+    return starejsi ? cene.starejsi : cene.mlajsi
   }
   return CENA_ORGANIZATOR_LETNO[paket]
 }
@@ -124,7 +125,7 @@ interface Stanje {
   placanoZnesek: number | null
 }
 
-function zacetnoStanje(obnovljeno: ShranjenoStanjePlacila | null): Stanje {
+function zacetnoStanje(obnovljeno: ShranjenoStanjePlacila | null, naPaketu: boolean): Stanje {
   if (obnovljeno) {
     return {
       vloga: obnovljeno.vloga,
@@ -154,9 +155,11 @@ function zacetnoStanje(obnovljeno: ShranjenoStanjePlacila | null): Stanje {
   }
   return {
     vloga: 'igralec',
-    korak: 0,
-    paket: 'BREZPLACNO',
-    ciklus: 'MESECNO',
+    /* Klik na maskoto: izbrana vloga (igralec) je že jasna, zato okno začne na
+       paketu z Igralcem Premium za eno leto. */
+    korak: naPaketu ? koraki('igralec', false).indexOf('paket') : 0,
+    paket: naPaketu ? 'PREMIUM' : 'BREZPLACNO',
+    ciklus: naPaketu ? 'LETNO' : 'MESECNO',
     ime: '',
     priimek: '',
     datumRojstva: '',
@@ -183,16 +186,23 @@ export function RegistracijaTok({
   onZapri,
   onNazajNaPrijavo,
   obnovljenoStanje = null,
+  naPaketu = false,
 }: {
   onZapri: () => void
   onNazajNaPrijavo: () => void
   /* Nadaljevanje po vrnitvi s Stripe Checkouta (glej RegistracijaZakljucenaStran):
      okno se odpre naravnost na koraku "koda". */
   obnovljenoStanje?: ShranjenoStanjePlacila | null
+  /* Okno se odpre na koraku "paket" z izbranim Igralcem Premium za eno leto
+     (klik na maskoto, glej Maskota.tsx). */
+  naPaketu?: boolean
 }) {
   const telefon = useTelefon()
   const { prijava } = useAvtentikacija()
-  const [s, nastavi] = useState<Stanje>(() => zacetnoStanje(obnovljenoStanje))
+  const [s, nastavi] = useState<Stanje>(() => zacetnoStanje(obnovljenoStanje, naPaketu))
+  /* Lik v tabeli paketov nastopi enkrat na odprto okno: ob vrnitvi na korak
+     (Nazaj/Naprej) ga ne bi bilo treba spet gledati. */
+  const [tabelaKoncana, nastaviTabelaKoncana] = useState(false)
   const odstevalnik = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function posodobi(delno: Partial<Stanje>) {
@@ -250,7 +260,11 @@ export function RegistracijaTok({
   const placljiv = cena > 0
   const starejsiOd21 = jeStarejsiOd21ZaCeno(s.datumRojstva)
   const cenaPremiumMesecno = (starejsiOd21 ?? false) ? CENA_PREMIUM_MESECNO.starejsi : CENA_PREMIUM_MESECNO.mlajsi
-  const cenaPremiumLetno = Math.round(cenaPremiumMesecno * MESECEV_V_LETNI_NAROCNINI * 100) / 100
+  const cenaPremiumLetno = (starejsiOd21 ?? false) ? CENA_PREMIUM_LETNO.starejsi : CENA_PREMIUM_LETNO.mlajsi
+  /* Obe ceni izbranega plačevanja za pojasnilo pod tabelo (starost je na
+     tem koraku še neznana, zato sta prikazani obe). */
+  const cenePremium = s.ciklus === 'MESECNO' ? CENA_PREMIUM_MESECNO : CENA_PREMIUM_LETNO
+  const enotaCene = s.ciklus === 'MESECNO' ? 'na mesec' : 'na leto'
 
   const imePaketa = jeIgralec
     ? (s.paket === 'BREZPLACNO' ? 'Brezplačno' : 'Premium')
@@ -520,22 +534,15 @@ export function RegistracijaTok({
             </div>
           )}
           <h2 className="registracija__naslov">
-            <span className="registracija__nad">
-              {trenutniKorak === 'vloga'
-                ? 'Nov račun'
-                : trenutniKorak === 'konec'
-                  ? 'Registracija'
-                  : jeIgralec ? 'Igralec' : 'Organizator'}
-            </span>
             <span className="registracija__glavni-naslov">{imeKoraka(trenutniKorak)}</span>
           </h2>
           {!telefon && trenutniKorak !== 'konec' && (
             <div className="registracija__napredek">
               <div className="registracija__napredek-vrstica">
                 <span className="registracija__napredek-trenutni">{imeKoraka(trenutniKorak)}</span>
-                <span className="registracija__korak-napis">
-                  {k + 1 < seznamKorakov.length - 1 ? `Nato: ${imeKoraka(seznamKorakov[k + 1])}` : 'Zadnji korak'}
-                </span>
+                {k + 1 >= seznamKorakov.length - 1 && (
+                  <span className="registracija__korak-napis">Zadnji korak</span>
+                )}
               </div>
               <div className="registracija__napredek-segmenti">
                 {seznamKorakov.slice(0, -1).map((_, i) => (
@@ -555,9 +562,6 @@ export function RegistracijaTok({
         <div className="registracija__telo">
           {trenutniKorak === 'vloga' && (
             <>
-              <p className="registracija__uvod">
-                Igralec vidi svoj profil in statistiko. Organizator vodi turnirje in lige. Vlogo izbereš enkrat.
-              </p>
               <div className="registracija__vloge">
                 <button
                   type="button"
@@ -572,7 +576,7 @@ export function RegistracijaTok({
                   <span className="registracija__vloga-opis">
                     Tvoj profil, rating in zgodovina tekem. Račun povežemo z zapisom med igralci.
                   </span>
-                  <span className="registracija__vloga-noga">Brezplačno ali Premium od 3,99 € / mesec</span>
+                  <span className="registracija__vloga-noga">Premium od 3,99 € / mesec</span>
                 </button>
                 <button
                   type="button"
@@ -595,10 +599,6 @@ export function RegistracijaTok({
 
           {trenutniKorak === 'paket' && jeIgralec && (
             <>
-              <p className="registracija__uvod">
-                Brezplačno je račun kot gost, le prijavljen. Premium odklene zasebno statistiko profila in
-                spremljanje lig.
-              </p>
               <div className="izbirnik">
                 <button
                   type="button"
@@ -609,10 +609,13 @@ export function RegistracijaTok({
                 </button>
                 <button
                   type="button"
-                  className={'izbirnik__gumb' + (s.ciklus === 'LETNO' ? ' izbirnik__gumb--aktiven' : '')}
+                  className={
+                    'izbirnik__gumb izbirnik__gumb--trak' + (s.ciklus === 'LETNO' ? ' izbirnik__gumb--aktiven' : '')
+                  }
                   onClick={() => posodobi({ ciklus: 'LETNO' })}
                 >
-                  Letno · 11 × mesečna
+                  Letno
+                  <span className="izbirnik__trak">−10%</span>
                 </button>
               </div>
               <div className="registracija__primerjava">
@@ -691,11 +694,16 @@ export function RegistracijaTok({
                     </span>
                   </div>
                 ))}
+                {/* Lik skače po vrsticah tabele in kaže, kaj doda Premium (glej
+                    MaskotaTabela.tsx); samo namizje in samo prvič. */}
+                {trenutniKorak === 'paket' && !telefon && !tabelaKoncana && (
+                  <MaskotaTabela obKoncu={() => nastaviTabelaKoncana(true)} />
+                )}
               </div>
               <p className="registracija__pojasnilo">
                 {starejsiOd21 === null
-                  ? 'Premium stane 3,99 € na mesec do 21. leta in 4,99 € po njem. Točno ceno določi datum rojstva v naslednjem koraku.'
-                  : `${starejsiOd21 ? 'Cena od 21. leta naprej; mlajši plačajo 3,99 € na mesec.' : 'Cena do 21. leta.'} Letna naročnina je 11 mesečnih — en mesec je vključen. Preklic kadarkoli.`}
+                  ? `Premium stane ${oblikujCeno(cenePremium.mlajsi)} ${enotaCene} do 21. leta in ${oblikujCeno(cenePremium.starejsi)} po njem.`
+                  : `${starejsiOd21 ? `Cena od 21. leta naprej; mlajši plačajo ${oblikujCeno(cenePremium.mlajsi)} ${enotaCene}.` : 'Cena do 21. leta.'} Preklic kadarkoli.`}
               </p>
             </>
           )}
@@ -739,11 +747,7 @@ export function RegistracijaTok({
 
           {trenutniKorak === 'podatki' && (
             <>
-              <p className="registracija__uvod">
-                {jeIgralec
-                  ? 'Z e-pošto se prijaviš in nanjo dobiš kodo. Ime in datum rojstva morata biti taka kot v zapisniku.'
-                  : 'Kontaktna oseba organizatorja. Z e-pošto se prijaviš in nanjo dobiš kodo.'}
-              </p>
+              {!jeIgralec && <p className="registracija__uvod">Kontaktna oseba organizatorja.</p>}
               <div className="obrazec__vrstica obrazec__vrstica--par">
                 <label className="obrazec__polje">
                   <span>Ime</span>
@@ -768,7 +772,7 @@ export function RegistracijaTok({
                     onChange={(d) => posodobi({ datumRojstva: d.target.value })}
                   />
                   <span className="registracija__polje-pripis">
-                    Javno ni viden. Z njim poiščemo tvoj zapis med igralci in določimo ceno Premium.
+                    Javno ni viden. Z njim poiščemo tvoj zapis med igralci.
                     {potrebujeSkrbnika ? ' Mlajši od 15 let: sledi korak za skrbnika.' : ''}
                   </span>
                 </label>
@@ -811,11 +815,11 @@ export function RegistracijaTok({
 
           {trenutniKorak === 'klub' && (
             <>
-              <p className="registracija__uvod">
-                {jeIgralec
-                  ? 'Po imenu, priimku in datumu rojstva smo poiskali tvoj zapis med igralci.'
-                  : 'Klub, ki ga zastopaš. Vlogo organizatorja in klub potrdi administrator.'}
-              </p>
+              {!jeIgralec && (
+                <p className="registracija__uvod">
+                  Klub, ki ga zastopaš. Vlogo organizatorja in klub potrdi administrator.
+                </p>
+              )}
 
               {klubIzbran ? (
                 <div className="registracija__klub-izbran">
@@ -973,7 +977,6 @@ export function RegistracijaTok({
 
           {trenutniKorak === 'povzetek' && (
             <>
-              <p className="registracija__uvod">Preveri podatke. Vsak del lahko še urediš.</p>
               <div className="registracija__povzetek">
                 {povzetekVrstice.map((vrstica) => (
                   <div className="registracija__povzetek-vrstica" key={vrstica.oznaka}>

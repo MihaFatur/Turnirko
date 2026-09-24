@@ -36,6 +36,7 @@ import {
   IkonaTurnirji,
   IkonaVec,
 } from './IkoneNavigacije'
+import { Maskota } from './Maskota'
 import { UporabniskiMeni } from './UporabniskiMeni'
 
 interface Povezava {
@@ -200,6 +201,10 @@ export function Postavitev() {
             </NavLink>
 
             <UporabniskiMeni />
+
+            {/* Absolutno postavljena v območje uporabnika (levo od njegove
+                oznake), zato glave ne premakne, ko se pojavi. */}
+            <Maskota />
 
             <div className="glava__crta" />
 

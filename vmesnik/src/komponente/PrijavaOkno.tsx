@@ -48,6 +48,7 @@ export function PrijavaOkno({
   email = null,
   kodaSkrbnika = false,
   obnovljenoStanjePlacila = null,
+  naPaketu = false,
 }: {
   onZapri: () => void
   /* Korak, na katerem se okno odpre (npr. "registracija" z domače strani ali
@@ -60,6 +61,9 @@ export function PrijavaOkno({
   /* Nadaljevanje registracijskega toka po vrnitvi s Stripe Checkouta (glej
      RegistracijaZakljucenaStran): okno se odpre naravnost na koraku "koda". */
   obnovljenoStanjePlacila?: ShranjenoStanjePlacila | null
+  /* Samo z načinom "registracija": čarovnik se odpre na koraku "paket" z
+     izbranim Igralcem Premium za eno leto (klik na maskoto). */
+  naPaketu?: boolean
 }) {
   const [nacin, nastaviNacin] = useState<Nacin>(zacetniNacin)
   const [koda, nastaviKodo] = useState<StanjeKode | null>(
@@ -88,6 +92,7 @@ export function PrijavaOkno({
           onZapri={onZapri}
           onNazajNaPrijavo={() => naPrijavo()}
           obnovljenoStanje={obnovljenoStanjePlacila}
+          naPaketu={naPaketu}
         />
       </ModalnoOkno>
     )

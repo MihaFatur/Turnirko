@@ -10,6 +10,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -181,19 +184,17 @@ public class DomovStoritev {
 
     private DomovLigaDto povzetek(Liga liga, boolean izEkipe) {
         List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(liga.getId());
-
-        int vsehKol = 0;
-        int odigranihKol = 0;
-        Srecanje naslednje = null;
         LocalDate danes = LocalDate.now();
+
+        Srecanje naslednje = null;
         for (Srecanje s : srecanja) {
-            vsehKol = Math.max(vsehKol, s.getKolo());
-            if (s.getStatus() == StatusSrecanja.KONCANO) {
-                odigranihKol = Math.max(odigranihKol, s.getKolo());
-            } else if (jeNaslednje(s, naslednje, danes)) {
+            if (s.getStatus() != StatusSrecanja.KONCANO && jeNaslednje(s, naslednje, danes)) {
                 naslednje = s;
             }
         }
+        Kola kola = presteji(srecanja, danes);
+        int odigranihKol = kola.odigranih();
+        int vsehKol = kola.vseh();
 
         List<DomovLigaDto.Vrh> vrh = new ArrayList<>();
         for (LestvicaEkipeDto v : lestvicaLigeStoritev.lestvica(liga.getId())) {
@@ -209,6 +210,45 @@ public class DomovStoritev {
                 naslednje == null ? null
                         : new DomovLigaDto.Naslednje(naslednje.getKolo(), datum(naslednje)),
                 izEkipe);
+    }
+
+    /* Kola rednega dela lige: koliko jih je in koliko je odigranih. */
+    record Kola(int odigranih, int vseh) {}
+
+    /* Kolo je ODIGRANO, ko je njegov datum ze mimo (danasnji dan se ne steje:
+       kolo je se "naslednje", glej jeNaslednje). Datum kola je najzgodnejsi
+       predvideni zacetek njegovih srecanj - isti kot v razporedu lige.
+
+       Zakaj ne po koncanih srecanjih: ekipe se neuradno dogovorijo za menjavo
+       terminov in odigrajo srecanje, ki spada v pozno kolo, ze zdaj. Ce bi
+       kolo steli za odigrano ob prvem koncanem srecanju, bi po taki menjavi v
+       vsakem kolu domaca stran trdila, da je odigrano vse - v resnici je le
+       eno. Kolo brez datuma (organizator termina ni vpisal) datuma nima, zato
+       je odigrano, ko je koncano vsako njegovo srecanje (kot v razporedu lige).
+
+       Koncnica ni kolo rednega dela (njena "kola" so krogi serij) in ne steje. */
+    static Kola presteji(List<Srecanje> srecanja, LocalDate danes) {
+        Map<Integer, List<Srecanje>> poKolih = new TreeMap<>();
+        for (Srecanje s : srecanja) {
+            if (s.getSerija() == null) {
+                poKolih.computeIfAbsent(s.getKolo(), k -> new ArrayList<>()).add(s);
+            }
+        }
+        int odigranih = 0;
+        for (List<Srecanje> kolo : poKolih.values()) {
+            LocalDate datumKola = kolo.stream()
+                    .map(DomovStoritev::datum)
+                    .filter(Objects::nonNull)
+                    .min(Comparator.naturalOrder())
+                    .orElse(null);
+            boolean odigrano = datumKola != null
+                    ? datumKola.isBefore(danes)
+                    : kolo.stream().allMatch(s -> s.getStatus() == StatusSrecanja.KONCANO);
+            if (odigrano) {
+                odigranih++;
+            }
+        }
+        return new Kola(odigranih, poKolih.size());
     }
 
     /* "Naslednje kolo" je prvo nekoncano srecanje, ki ga termin se ni prehitel.

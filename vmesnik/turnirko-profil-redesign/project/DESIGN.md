@@ -206,6 +206,7 @@ primitivi sistema.** Preden napišeš nov razred, preveri, ali obstoječi zadoš
 | `.gumb`, `.gumb--glavni`, `.gumb--majhen`, `.gumb--nevaren` | gumbi; `--glavni` = polna modra, privzeti = 1px obroba, `--nevaren` = rjasto besedilo |
 | `.obrazec`, `.obrazec__polje`, `.obrazec__vrstica`, `.obrazec__sklop`, `.obrazec__gumbi` | obrazci |
 | `.znacka`, `.znacka--sistem`, `.znacka--opozorilo` | značke; `ZnackaStatusa` za status |
+| `.izbirnik`, `.izbirnik__gumb`, `.izbirnik__gumb--aktiven`, `.izbirnik__gumb--trak`, `.izbirnik__trak` | segmentirani izbirnik; `--trak` nosi v zgornjem desnem kotu diagonalen trak v modri polni z belo mono oznako (»Letno −10%« pri izbiri plačevanja Premium): pravokoten pas, zavrten za 45° in odrezan na rob gumba, brez zaobljenih robov; besedilo traku je del imena gumba |
 | `.naslovna-vrstica`, `.naslovna-vrstica--tesno`, `.naslovna-vrstica__desno` | glava sekcije z dejanji |
 | `.podnaslov`, `.namig`, `.obvestilo`, `.obvestilo--opozorilo`, `.opombe` | pomožno besedilo |
 | `.dvostolpicno`, `.dvostolpicno--lestvica`, `.skupine`, `.kartice`, `.kartica` | postavitve |
@@ -301,6 +302,7 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
    Ikone so iz zbirke Lucide, 22 px, poteza 1.75,
    `currentColor`. Nikjer drugje — v glavi, gumbih, menijih, predalu »Več« —
    ikon ni.
+   *Druga izjema (ilustracija, ne ikona): maskota »Igralec Premium«, razdelek 5b.*
 10. **`color: inherit` na obarvani podlagi** — barvo besedila zapiši izrecno.
 11. **Novi razredi za obstoječ vzorec.** Najprej poglej razdelek 4.
 12. **Animacije stanja »zaradi lepšega«.** Dovoljen je samo `transition` barve
@@ -310,6 +312,65 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
     `cubic-bezier(.2,.8,.2,1)`, z njo ploskev in barva postavke (160 ms `ease`)
     in dvig aktivne ikone za 2 px. Daljši čas je tu premik podčrtaja, ki ga
     točka že dovoljuje; viden je samo zato, ker je pot dolga cel stolpec.
+    *Druga izjema: maskota »Igralec Premium«, razdelek 5b.*
+
+### 5b. Izjema: maskota »Igralec Premium«
+
+Odločitev lastnika, 23. 9. 2026. Ob naključnih trenutkih se v glavi pojavi
+risan lik in izgine (`komponente/Maskota.tsx`, lik v
+`komponente/MaskotaPrizori.tsx`, prizori v `pomozno/prizoriMaskote.ts`, napisi
+v `pomozno/napisiMaskote.ts`, umestitev v `pomozno/umestitevMaskote.ts`, urnik
+v `pomozno/urnikMaskote.ts`). Vsak nastop je naključna kombinacija **prizora**
+(kaj se dogaja; trenutno pet) in **napisa** (kaj piše tabla oz. zastavica;
+trenutno pet). Prizori ob oznaki uporabnika (`tabla`, `kukaj`, `zogica`): lik
+stoji na črti in drži tablo. Prizora čez glavo: `letalo` (izza logotipa do
+povezave »Domov«, za sabo vleče zastavico) in `lestev` (z vrha strani se spusti
+vrvna lestev, tabla prekrije povezavo »Lestvica«, lik pleza do sredine lestve).
+To je edina ilustracija in edina animacija »zaradi lepšega« v vmesniku. Isti
+lik nastopi (odločitev lastnika, 24. 9. 2026) še na **enem** mestu: na koraku
+»Paket« registracije skoči z vrha tabele »Kaj dobiš« in po vrsticah navzdol
+pokaže vse funkcije, ki jih doda Premium (`komponente/MaskotaTabela.tsx`,
+`pomozno/prizorTabela.ts`, pogoj 8). Gost, ki klikne maskoto v glavi, pristane
+prav tam, z izbranim Igralcem Premium za eno leto. Izjema velja samo za lik in
+samo, če veljajo **vsi** pogoji hkrati:
+
+1. **Samo namizje (nad 640 px) in samo v glavi** (poleg tabele iz pogoja 8), z
+   eno dodatno izjemo: lestev sega pod črto glave v prazen zgornji rob vsebine
+   (največ 192 px od zgornjega roba strani). Prizora čez glavo se vežeta na izmerjene elemente (logotip,
+   »Domov«, »Lestvica«) in se ne pokažeta, če se ne prilegata (preozko okno,
+   predolg napis). Na telefonu je ni; telefon zahteva novo odločitev (glava je
+   tam visoka 56 px).
+2. **Samo gost in igralec brez Premium.** Nikoli organizator, admin, igralec s
+   Premium, stran `/narocnina`, odprto okno ali predal.
+3. **Vsak nastop traja največ 5 s** (WCAG 2.2.2: krajše gibanje ne potrebuje
+   gumba za ustavitev). Prvi nastop 10–25 s po nalaganju strani, nato po 60–80 s
+   od konca prejšnjega, največ 3 na sejo. Nikoli ob `prefers-reduced-motion`, ob skritem zavihku ali
+   kadar med navigacijo in oznako uporabnika ni prostora.
+4. **Animirata se samo `transform` in `opacity`**; glava se ob nastopu ne
+   premakne (platno je absolutno postavljeno, ne zavzame mesta v mreži).
+5. **Barve so samo hišne** (črnilo, modra polna, zelena, bela) — lik je barvit,
+   a paleta ostane ista. Brez senc, gradientov, emojijev in vijolične. Črtni
+   deli lika so okrogli (risba, ne vmesnik), zato zanje ne velja radij 0.
+   **Napisi so kratki in šaljivi** (odločitev lastnika; edino mesto v vmesniku,
+   kjer zapisniški ton popusti), a vsak omenja Premium, napis pa je vedno
+   berljiv (najmanj ~12 px na zaslonu, tabla se prilagodi njegovi širini). Če
+   napis nosi ceno, je to `{cena}`, ki jo izračuna koda iz
+   `CENA_PREMIUM_MESECNO` (gledalec do 21 let 3,99 €, sicer 4,99 €; gost, ki
+   starosti ne pove, višjo) — nikoli vtipkana številka, ker bi se ob spremembi
+   cenika razšla z ceno na strani naročnine.
+6. **Lik je dekorativen**: `aria-hidden`, brez fokusa. Dostopna pot do istega
+   cilja ostane uporabniški meni (»Naročnina«); gostu tabla odpre registracijo
+   na koraku »Paket« (ne prijave), prijavljenemu igralcu `/narocnina`.
+7. **Drugih ilustracij in animacij ni.** Novi prizori in napisi istega lika so
+   v okviru izjeme (nov zapis v `PRIZORI` oz. `NAPISI`); nov lik ali drugo
+   mesto pojavljanja (razen tabele iz pogoja 8) je nova odločitev.
+8. **Lik v tabeli paketov**: samo igralec na koraku »Paket« in samo namizje
+   (nad 640 px); en nastop na odprto okno, prvič ko se korak pokaže (ne po
+   urniku iz pogoja 3), pod 5 s; nikoli ob `prefers-reduced-motion`. Prizor se
+   izmeri iz tabele in se ne pokaže, če se ne prilega (prelomljena vrstica,
+   preozko okno). Platno je čez tabelo, a ne ujame nobenega klika in ne
+   spremeni postavitve; animira se samo `transform` in `opacity`. Edina dodatna
+   oblika je okvir okoli celice Premium: pravokotna obroba 2 px v modri polni.
 
 ---
 

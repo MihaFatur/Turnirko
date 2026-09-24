@@ -16,8 +16,10 @@ public record DomovLigaDto(
         String ime,
         String sezona,
         StatusTekmovanja status,
-        // Kje je sezona: "7. od 10 kol". Odigrano je najvisje kolo, ki ima vsaj
-        // eno koncano srecanje - liga se v tistem kolu igra.
+        // Kje je sezona: "7. od 10 kol". Kolo je odigrano, ko je njegov datum ze
+        // mimo (ne po koncanih srecanjih: neuradne menjave terminov so lahko
+        // vsakemu kolu ze prinesle eno koncano srecanje); kolo brez datuma je
+        // odigrano, ko je koncano vsako njegovo srecanje. Koncnica ne steje.
         int odigranihKol,
         int vsehKol,
         List<Vrh> vrh,

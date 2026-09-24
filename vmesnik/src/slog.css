@@ -277,6 +277,9 @@ textarea:focus-visible,
   align-items: baseline;
   column-gap: var(--r3);
   padding: var(--r3) var(--r5) 0;
+  /* Osnova za absolutno postavljene otroke: maskota (razdelek »Maskota«)
+     sedi v mrežnem območju uporabnika in se ne poteguje za svojo celico. */
+  position: relative;
 }
 
 /* Tanka in za njo debela crta pod mastheadom — nosilni element "zapisnika".
@@ -1135,6 +1138,32 @@ a.gumb {
   background: var(--barva-crnilo);
   border-color: var(--barva-crnilo);
   color: var(--barva-papir);
+}
+
+/* Diagonalen trak v zgornjem desnem kotu gumba (»Letno −10%« pri izbiri
+   plačevanja Premium). Gumb odreže trak na svoj rob (`overflow: hidden`), desni
+   odmik pa je večji, da napis gumba ne zaide pod trak. Trak je pravokoten pas,
+   samo zavrten za 45° (brez zaobljenih robov); sredina traku je 18 px od
+   zgornjega in desnega roba. Besedilo traku je del imena gumba. */
+.izbirnik__gumb--trak {
+  position: relative;
+  overflow: hidden;
+  padding-right: 36px;
+}
+
+.izbirnik__trak {
+  position: absolute;
+  top: 10px;
+  right: -22px;
+  width: 80px;
+  height: 16px;
+  background: var(--barva-glavna-polna);
+  color: var(--barva-na-glavni);
+  font: 700 var(--tip-mono) / 16px var(--pisava-mono);
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: none;
+  transform: rotate(45deg);
 }
 
 /* --- Krmila nad seznamom: filter in razvrstitev --- */
@@ -3076,14 +3105,6 @@ td.nizi-okno__niz--dobljen {
   text-wrap: balance;
 }
 
-.registracija__nad {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 200;
-  font-size: 32px;
-  color: var(--barva-crnilo-3);
-}
-
 .registracija__glavni-naslov {
   display: block;
   font-weight: 800;
@@ -3236,6 +3257,8 @@ td.nizi-okno__niz--dobljen {
   display: flex;
   flex-direction: column;
   container-type: inline-size;
+  /* Sidro za lik, ki skače po vrsticah (MaskotaTabela.tsx). */
+  position: relative;
 }
 
 .registracija__primerjava-glava,
@@ -3838,11 +3861,6 @@ td.nizi-okno__niz--dobljen {
   .registracija__noga {
     padding-left: 20px;
     padding-right: 20px;
-  }
-
-  .registracija__nad,
-  .registracija__glavni-naslov {
-    font-size: 32px;
   }
 
   .registracija__glavni-naslov {
@@ -12818,4 +12836,268 @@ a.domov__lestvica-vrstica--jaz {
   font-size: 14px;
   font-weight: 400;
   color: var(--barva-crnilo-3);
+}
+
+/* ============================================================
+   Maskota »Igralec Premium« (izjema od DESIGN.md, razdelek 5b)
+   ============================================================ */
+
+/* Lik stoji na 1 px črti pod glavo: spodnji rob platna je zgornji rob črte
+   (8 px pod vrstico glave = margin-top na .glava__crta). Sedi v mrežnem
+   območju uporabnika, zato je `right: 100%` levi rob njegove oznake. Ne zavzame
+   mesta v mreži (absolutna), torej se glava ob nastopu ne premakne. */
+.maskota {
+  grid-area: uporabnik;
+  position: absolute;
+  right: 100%;
+  bottom: calc(var(--r1) * -1);
+  margin: 0 var(--r2) 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: block;
+  z-index: 5;
+  /* Klik zaznajo samo pobarvani deli lika, ne prazno platno okoli njega:
+     drugače bi nevidna ploskev (~200 x 68 px) ob navigaciji hkrati požrla
+     klike na kar je pod njo. Širino platna nastavi gostitelj (odvisna je od
+     napisa). */
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.maskota__platno {
+  display: block;
+  overflow: hidden;
+}
+
+.maskota__figura {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Barve so samo hišne: črnilo, modra, zelena, bela. Črtni deli lika (noge,
+   roke) so okrogli na koncih - to je risba, ne vmesnik, zato zanje ne velja
+   pravokotnost iz DESIGN.md. */
+.maskota__noge,
+.maskota__roka {
+  fill: none;
+  stroke: var(--barva-crnilo);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Noge se stiskajo samo po višini; brez tega bi se z njimi stanjšala tudi
+   vodoravna stopala. Debelina je tu v pikslih zaslona (ne v enotah lika), zato
+   je 3 x 0,92 = 2,8 enaka kot pri rokah, ki merilo lika podedujejo. */
+.maskota__noge path {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2.8px;
+}
+
+.maskota__majica {
+  fill: var(--barva-glavna-polna);
+  stroke: var(--barva-crnilo);
+  stroke-width: 2px;
+}
+
+.maskota__hlacke {
+  fill: var(--barva-crnilo);
+  stroke: var(--barva-crnilo);
+  stroke-width: 2px;
+}
+
+.maskota__obraz {
+  fill: var(--barva-bela);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.8px;
+}
+
+.maskota__celni-trak {
+  fill: none;
+  stroke: var(--barva-poudarek);
+  stroke-width: 2.6px;
+}
+
+.maskota__pentlja {
+  fill: none;
+  stroke: var(--barva-poudarek);
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+
+.maskota__oko {
+  fill: var(--barva-crnilo);
+}
+
+.maskota__usta {
+  fill: none;
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.4px;
+  stroke-linecap: round;
+}
+
+.maskota__zapestnica {
+  stroke: var(--barva-poudarek);
+  stroke-width: 4.4px;
+  stroke-linecap: butt;
+}
+
+.maskota__dlan {
+  fill: var(--barva-bela);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.6px;
+}
+
+.maskota__plosca {
+  fill: var(--barva-glavna-polna);
+  stroke: var(--barva-crnilo);
+  stroke-width: 2px;
+}
+
+.maskota__poudarek {
+  fill: var(--barva-poudarek);
+}
+
+/* Velikost napisa (13) je skupna s PISAVA_NAPISA v pomozno/napisiMaskote.ts:
+   po njej se izmeri širina table, lik pa je pomanjšan na 0,92, zato je napis
+   na zaslonu ~12 px (najmanjša velikost besedila po DESIGN.md). */
+.maskota__napis {
+  font: 800 13px var(--pisava-display);
+  fill: var(--barva-na-glavni);
+}
+
+/* Lopar in žogica (samo prizor »zogica«): lopar ima zeleno glavo, žogica je
+   bela s črnim robom, da se loči od papirja. */
+.maskota__rocaj {
+  fill: none;
+  stroke: var(--barva-crnilo);
+  stroke-width: 2.4px;
+  stroke-linecap: round;
+}
+
+.maskota__lopar-glava {
+  fill: var(--barva-poudarek);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.6px;
+}
+
+.maskota__zoga {
+  fill: var(--barva-bela);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.4px;
+}
+
+/* Prizora čez celo glavo (letalo, lestev): platno stoji v zgornjem levem kotu
+   glave in je široko kot glava, mere pa so v pikslih strani. Lestev sega pod
+   črto glave v prazen zgornji rob vsebine. */
+.maskota--glava {
+  grid-area: auto;
+  top: 0;
+  left: 0;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+}
+
+.maskota__klik {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Lik s palcem gor: pest in palec sta bela z robom kot dlan. */
+.maskota__pest,
+.maskota__palec {
+  fill: var(--barva-bela);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.5px;
+}
+
+/* Lestev: vrvi tanjše od prečk, oboje v črnilu. */
+.maskota__vrv {
+  fill: none;
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.8px;
+  stroke-linecap: round;
+}
+
+.maskota__precka {
+  fill: none;
+  stroke: var(--barva-crnilo);
+  stroke-width: 3px;
+  stroke-linecap: round;
+}
+
+/* Letalo: modri trup, zelen rep in nos, bela krila, črnilo za obrise in
+   propeler. */
+.maskota__trup {
+  fill: var(--barva-glavna-polna);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.8px;
+}
+
+.maskota__rep,
+.maskota__nos {
+  fill: var(--barva-poudarek);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
+}
+
+.maskota__pas {
+  fill: none;
+  stroke: var(--barva-poudarek);
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+
+.maskota__krilo {
+  fill: var(--barva-bela);
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.6px;
+}
+
+.maskota__kolo,
+.maskota__propeler {
+  fill: var(--barva-crnilo);
+}
+
+.maskota__podvozje,
+.maskota__vrvica {
+  fill: none;
+  stroke: var(--barva-crnilo);
+  stroke-width: 1.4px;
+  stroke-linecap: round;
+}
+
+/* Lik v tabeli paketov (registracija, MaskotaTabela.tsx): platno je čez celo
+   tabelo, lik pa ne sme ujeti nobenega klika - pod njim so gumbi stolpcev. Okvir
+   je okoli celice Premium in se ob vrstici pojavi in izgine (samo `opacity`). */
+.maskota-tabela {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.maskota-tabela .maskota__figura {
+  pointer-events: none;
+  cursor: default;
+}
+
+.maskota-tabela__okvir {
+  fill: none;
+  stroke: var(--barva-glavna-polna);
+  stroke-width: 2px;
+}
+
+/* Gibanje ne živi v CSS-u: prizore predvaja pomozno/animatorMaskote.ts (Web
+   Animations API), ker so podatki in ne slog. Tu je samo druga ključavnica za
+   primer, da bi se lik ob `prefers-reduced-motion` vseeno znašel v drevesu
+   (gostitelj ga takrat sploh ne sproži). */
+@media (prefers-reduced-motion: reduce) {
+  .maskota,
+  .maskota-tabela {
+    display: none;
+  }
 }

@@ -394,13 +394,14 @@ export const OZNAKE_PAKET: Record<Paket, string> = {
   ORGANIZATOR_PRO: 'Organizator Pro',
 }
 
-/* Cene so odločitev lastnika (17.–23. 9. 2026); zrcalijo CenikStoritev na
+/* Cene so odločitev lastnika (17.–24. 9. 2026); zrcalijo CenikStoritev na
    zaledju, ki je zadnja beseda - to tu je samo za takojšen predogled cene v
-   obrazcu (isto načelo kot funkcija starost() v PrijavaOkno.tsx). Letno je
-   VEDNO 11x mesečna cena (brez navideznega popusta, ZVPot-1); organizatorski
-   paketi so samo letni. */
+   obrazcu (isto načelo kot funkcija starost() v PrijavaOkno.tsx). Letna cena
+   Premium je FIKSNA številka, ne izračun: ~10 % ceneje kot dvanajst mesečnih
+   (47,88 → 42,99 €; 59,88 → 53,49 €), zato oznaka »−10 %« pri izbiri
+   plačevanja. Organizatorski paketi so samo letni. */
 export const CENA_PREMIUM_MESECNO = { mlajsi: 3.99, starejsi: 4.99 } as const
-export const MESECEV_V_LETNI_NAROCNINI = 11
+export const CENA_PREMIUM_LETNO = { mlajsi: 42.99, starejsi: 53.49 } as const
 export const CENA_ORGANIZATOR_LETNO: Record<
   'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO',
   number

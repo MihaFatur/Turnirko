@@ -10,8 +10,8 @@ import { placilaApi } from '../api/zahteve'
 import { opisNapake } from '../api/odjemalec'
 import {
   CENA_ORGANIZATOR_LETNO,
+  CENA_PREMIUM_LETNO,
   CENA_PREMIUM_MESECNO,
-  MESECEV_V_LETNI_NAROCNINI,
   OMEJITVE_ORGANIZATORJA,
   OZNAKE_PAKET,
   type CiklusPlacila,
@@ -60,7 +60,7 @@ export function NarocninaStran() {
   const cenaMesecno = uporabnik.starejsiOd21
     ? CENA_PREMIUM_MESECNO.starejsi
     : CENA_PREMIUM_MESECNO.mlajsi
-  const cenaLetno = Math.round(cenaMesecno * MESECEV_V_LETNI_NAROCNINI * 100) / 100
+  const cenaLetno = uporabnik.starejsiOd21 ? CENA_PREMIUM_LETNO.starejsi : CENA_PREMIUM_LETNO.mlajsi
 
   const jePremiumAktiven = jeIgralec && uporabnik.paket === 'PREMIUM' && uporabnik.paketAktiven
 
@@ -110,7 +110,7 @@ export function NarocninaStran() {
                 >
                   <option value="MESECNO">{oblikujCeno(cenaMesecno)} / mesec</option>
                   <option value="LETNO">
-                    {oblikujCeno(cenaLetno)} / leto ({MESECEV_V_LETNI_NAROCNINI}× mesečna cena)
+                    {oblikujCeno(cenaLetno)} / leto (−10 %)
                   </option>
                 </select>
               </label>

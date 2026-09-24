@@ -881,6 +881,15 @@
     izbor ali lige, v katerih igralec nastopa (`DomovLigaDto.izEkipe`, pove
     strežnik po vrstici); sicer »Lige«. Naslov, ki bi adminovima ligama rekel
     »moje«, bi lagal. Filter »Moje lige« pod sklopom meri isto.
+  - **»N. od M kol« na kartici lige se šteje po DATUMU kola** (`DomovStoritev.
+    presteji`): kolo je odigrano, ko je njegov datum (najzgodnejši predvideni
+    začetek srečanj) že mimo; današnje kolo je še »naslednje«. **Nikoli po
+    prvem končanem srečanju**: ekipe se neuradno menjajo za termine in vsako
+    kolo ima že eno končano srečanje, kar bi domačo stran prepričalo, da je
+    odigrano vse (`DomovOdigranaKolaTest`). Kolo brez datuma je odigrano, ko je
+    končano vsako njegovo srečanje; končnica (`serija`) ne šteje. Stran lige
+    (`LigaStran`) in seznam lig (`LigaStoritev.presteji`) štejeta po končanosti
+    vseh srečanj kola — to je drugo merilo, namerno.
 - **Razpored pri neodigranem kolu izpiše termin, ne besede »razpored«.**
   Merilo je `metaKola` v `LigaStran`: odigrano kolo dobi datum in oznako
   »odigrano«, kolo, ki šele pride, pa termin (`oblikujTermin` → »ned, 4. okt ·
@@ -1171,6 +1180,92 @@
   Lestvica · Več). Vodoravno drsna vrstica zavihkov v glavi je polovico
   postavk skrivala pred očmi. »Več« je predal z urejevalskimi stranmi
   (Igralci, Dostopi, Šifranti) in se izriše samo adminu/organizatorju.
+- **Maskota »Igralec Premium« je namerna izjema od DESIGN.md** (razdelek 5b,
+  odločitev lastnika 23. 9. 2026): risan lik se ob naključnih trenutkih pojavi
+  v glavi. Vsak nastop = naključen PRIZOR (pet) × naključen NAPIS (pet). Prizori
+  ob oznaki uporabnika: `tabla`, `kukaj`, `zogica` (lik stoji na črti, drži
+  tablo). Prizora ČEZ GLAVO: `letalo` (izza logotipa do »Domov«, vleče
+  zastavico, ki plapola) in `lestev` (vrvna lestev z vrha strani nad
+  »Lestvica«, tabla jo prekrije, lik pleza do sredine in pokaže palec). Ostali
+  trije prizori (`padec`, `ples`, `prevrat`) so bili na željo lastnika
+  odstranjeni — ne vračaj jih. Datoteke: `komponente/Maskota.tsx` (gostitelj),
+  `MaskotaPrizori.tsx` (lik, tabla, letalo, lestev), `pomozno/prizoriMaskote.ts`
+  (prizori), `animatorMaskote.ts` (predvajalnik), `umestitevMaskote.ts`
+  (merjenje glave, poti), `napisiMaskote.ts`, `urnikMaskote.ts`, razdelek
+  »Maskota« na koncu `slog.css` (samo statični slogi). Pravila, ki jih ne
+  razbij:
+  - **Prizora čez glavo se vežeta na DEJANSKO glavo**, ne na fiksne
+    koordinate: `izmeriGlavo()` prebere desni rob logotipa, levi rob `a[href="/"]`
+    (»Domov«) in sredino `a[href="/lestvica"]`; iz njih `potLetala` in
+    `potLestve` izračunata pot ali vrneta `null` (preozko okno, predolg napis).
+    `sestaviNastop` zato lahko vrne `null` in gostitelj izbere le med prizori, ki
+    se prilegajo. Letalo se pri ~1100 px ne pokaže več (koridor je prekratek za
+    zastavico).
+  - **Letalo izza logotipa in za »Domov« ne zakriva nič v DOM-u**: platno je
+    nad glavo, letalo pa je odrezano z `clipPath` med desnim robom logotipa in
+    levim robom »Domov« — izven okna ga ni, zato se zdi, da se pokaže izza
+    logotipa in izgine za povezavo. Zastavica mora biti vsaj ~2,5 s cela v
+    oknu (počasen prelet po polni vidnosti), sicer se napis ne prebere.
+  - **Zastavica plapola s pasovi** (`val0…`, cikli): isti napis je izrezan na
+    ozke pasove (~12 enot), vsak niha po višini z zamikom faze. Širši pasovi so
+    ob valu videti kot stopnice v napisu.
+  - **Lestev**: lik je otrok lestve (jo potegne s sabo pri dvigu), tabla je
+    zunaj nje in pred njo, zato lik med plezanjem za njo izgine in izpod nje
+    spet pride. Palec je PRAVOKOTEN na podlaket in roka iztegnjena vstran:
+    nadaljevanje podlakti bi ob dvignjeni roki zašlo za tablo.
+  - **Cikli** (`Cikel`): neskončna kratka gibanja (propeler, zastavica) so
+    ločena od ključev, ker bi bili sto ključev na sekundo. Pojemanje je na
+    ključih cikla, ne na možnosti `animate` (ta bi zgladila celoten cikel).
+  - **Inline SVG + Web Animations API, brez knjižnice in brez keyframes v
+    CSS.** Prizor je PODATEK: ključi po delih lika (`figura`, `rokaL`, `tabla`,
+    `oko` …), čas 0–1; del, ki polje izpusti, obdrži prejšnjo vrednost. Ključi
+    so po delih in ne skupne poze, sicer bi mežikanje vsiljevalo vmesne
+    stopnje poskakovanju. Animira se samo `transform` in `opacity`. Sklepi lika
+    so vrtišča: zunanja skupina (`transform` kot atribut) postavi izhodišče v
+    sklep, notranja (`data-del`) se vrti okoli svojega (0, 0).
+  - **Noge ne dobijo lastnega sleda**: `izpeljiNoge(y)` jih naredi iz ključev
+    telesa z istimi časi in pojemanjem, da stopala ostanejo na tleh (ključ
+    telesa jih sme prepisati z `noge`). Nikoli ne preračunavaj nog na roke.
+  - **Tabla se prilagodi napisu.** Širino izmeri `izmeriNapis` (canvas, po
+    izrecnem `document.fonts.load` — šumniki so v podmnožici `latin-ext`), lik
+    je pomanjšan (`MERILO_LIKA` 0,92), nagib table pa omejen glede na širino
+    (`sestaviNastop`): širša tabla ima pri istem kotu višji vogal in ta ne sme
+    uiti čez rob platna. Isto velja, če prizor telo (ne le tablo) nagiba okoli trupa: nagib telesa in
+    table se seštejeta.
+  - **Napis se bere najmanj ~2 s** (dolg napis ~28 znakov), vsak prizor ostane
+    pod 5 s. Ob novem prizoru to preveri po sličicah.
+  - **Cena v napisu je `{cena}`**, izračunana iz `CENA_PREMIUM_MESECNO` po
+    gledalcu (`cenaPremium`): mlajši od 21 let 3,99 €, sicer 4,99 €, gost višja.
+    Nikoli vtipkana številka.
+  - **Samo namizje, samo gost in igralec brez Premium, največ 3 nastopi na
+    sejo**, ne ob `prefers-reduced-motion`, skritem zavihku, odprtem oknu
+    (`#koren[inert]`) ali kadar med navigacijo in uporabnikom ni prostora
+    (`jePrimernTrenutek`, `jeProstor`). Ne dodajaj je na telefon ali na strani
+    urejevalcev, dokler lastnik ne odloči drugače.
+  - **Dekorativna**: `aria-hidden` in `tabIndex={-1}`; dostopna pot je meni
+    »Naročnina«. **Klik gosta odpre registracijo NARAVNOST NA KORAKU »PAKET«**
+    z izbranim Igralcem Premium za eno leto (`PrijavaOkno zacetniNacin=
+    "registracija" naPaketu` → `RegistracijaTok naPaketu`; `/narocnina` gosta
+    pošlje nazaj, prijava ni prvi korak). Prijavljen igralec brez Premium gre
+    na `/narocnina`.
+  - **Lik v tabeli paketov** (`komponente/MaskotaTabela.tsx`,
+    `pomozno/prizorTabela.ts`): na koraku »Paket« (samo igralec, samo namizje)
+    isti lik pade z vrha tabele, skače po vrsticah, ki jih ima le Premium, in
+    ob vsaki pokaže z roko; okvir okoli celice Premium se pojavi z njim. Igra
+    ga isti predvajalnik (`predvajaj<K>` je generičen po kontekstu), prizor je
+    funkcija IZMERE (`izmeriTabelo`: tla vrstic, konec besedila vrstice, stolpec
+    Premium) in se ne pokaže, če se ne prilega (prelomljena vrstica, preozko
+    okno). Odmiki telesa so merjeni od tal PRVE vrstice; noge so na vsakem
+    ključu izrecne (`noge`), ker izpeljava iz telesa zaradi velikih odmikov ne
+    velja. En nastop na odprto okno, pod 5 s, platno `pointer-events: none`.
+    Ob spremembi vrstic tabele preveri po sličicah (stopala na črti vrstice,
+    okvir na celici, potop do konca izven spodnjega roba).
+  - **Predogled brez čakanja: `/?maskota`**, `?maskota=<prizor>` in
+    `&napis=<1..5>`. V skritem zavihku urnik pravilno počaka (`document.hidden`),
+    animacijska ura tam ne teče — za pregled po sličicah ustavi animacije
+    (`getAnimations()`, `pause()`, `currentTime`).
+  - Nov prizor = zapis v `PRIZORI` (ključi po delih, `trajanjeMs`); če rabi
+    rekvizit, ga doda izris v `Lik`. Nov napis = zapis v `NAPISI`.
 - **V lepljivo glavo telefona vlagajo strani svoje skozi `GlavaTelefona`**
   (`useNazaj` za puščico nazaj, portali `GlavaDejanja` / `GlavaNaslov` /
   `GlavaZavihki`). Portal in ne podvojen izris: dejanje je v drevesu natanko

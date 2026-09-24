@@ -25,9 +25,11 @@ public class CenikStoritev {
     static final double PREMIUM_MESECNO_MLAJSI = 3.99;
     static final double PREMIUM_MESECNO_STAREJSI = 4.99;
 
-    /* Letna narocnina je 11x mesecna cena - namesto navideznega popusta
-       (ZVPot-1) je "en mesec zastonj" edina stopnja med njima. */
-    static final int MESECEV_V_LETNI_NAROCNINI = 11;
+    /* Letna narocnina je FIKSNA cena (odlocitev lastnika, 24. 9. 2026), ne
+       izracun: ~10 % ceneje kot dvanajst mesecnih (47,88 -> 42,99; 59,88 ->
+       53,49). Vmesnik pokaze oznako "-10 %" in isti stevilki (api/tipi.ts). */
+    static final double PREMIUM_LETNO_MLAJSI = 42.99;
+    static final double PREMIUM_LETNO_STAREJSI = 53.49;
 
     /* Organizatorski paketi so SAMO letni. */
     static final double ORGANIZATOR_BASIC_LETNO = 89.99;
@@ -59,8 +61,10 @@ public class CenikStoritev {
         if (ciklus == null) {
             throw new NeveljavenVnosIzjema("Za Premium izberi mesecno ali letno placevanje.");
         }
-        double mesecna = starejsiOd21 ? PREMIUM_MESECNO_STAREJSI : PREMIUM_MESECNO_MLAJSI;
-        return ciklus == CiklusPlacila.LETNO ? letno(mesecna) : mesecna;
+        if (ciklus == CiklusPlacila.LETNO) {
+            return starejsiOd21 ? PREMIUM_LETNO_STAREJSI : PREMIUM_LETNO_MLAJSI;
+        }
+        return starejsiOd21 ? PREMIUM_MESECNO_STAREJSI : PREMIUM_MESECNO_MLAJSI;
     }
 
     private double cenaOrganizatorja(CiklusPlacila ciklus, double letnaCena) {
@@ -68,10 +72,6 @@ public class CenikStoritev {
             throw new NeveljavenVnosIzjema("Organizatorski paketi so na voljo samo letno.");
         }
         return zaokrozi(letnaCena);
-    }
-
-    private static double letno(double mesecna) {
-        return zaokrozi(mesecna * MESECEV_V_LETNI_NAROCNINI);
     }
 
     /* Na cente - mnozenje z doubli sicer pusti npr. 43.89000000000001. */
