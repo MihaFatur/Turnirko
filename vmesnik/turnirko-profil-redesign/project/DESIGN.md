@@ -255,6 +255,8 @@ iz `../api/tipi`. Poizvedbe vedno prek `@tanstack/react-query`.
 
 1. **Glava strani** — masthead: logotip 24 px display 800 + navigacija 15 px
    Karla + kontekst desno mono, ločeno s `1px` in nato `3px` polno črto.
+   Na namizju je glava lepljiva (ostane na zaslonu med drsenjem, neprosojna
+   papirna podlaga, brez sence — loči jo debela črta).
 2. **Naslov strani** — nadnaslov 200 / naslov 800 v dveh vrsticah, levo;
    desno bodisi blok rezultata (polna modra) bodisi kolofon.
 3. **Kolofon** — 4–5 vrstic `oznaka mono ↔ vrednost mono`, ločenih s hairline.

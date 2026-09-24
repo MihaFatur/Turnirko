@@ -170,6 +170,9 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Namizna glava je lepljiva: element, ki dobi fokus ali skok, ne sme pristati
+     pod njo. Višino izmeri Postavitev (--visina-glave); na telefonu je ni. */
+  scroll-padding-top: var(--visina-glave, 0px);
 }
 
 body {
@@ -277,9 +280,19 @@ textarea:focus-visible,
   align-items: baseline;
   column-gap: var(--r3);
   padding: var(--r3) var(--r5) 0;
-  /* Osnova za absolutno postavljene otroke: maskota (razdelek »Maskota«)
-     sedi v mrežnem območju uporabnika in se ne poteguje za svojo celico. */
-  position: relative;
+  /* Masthead ostane na zaslonu tudi po drsenju (telefon ima svojo lepljivo
+     glavo, .glava-telefon). Podlaga je neprosojna, sicer bi vsebina presvetevala
+     skozi logotip in navigacijo; senca je prepovedana, loči jo že debela črta
+     pod njo. z-index je nad vsem, kar v vsebini lebdi (predlogi izbirnika 20,
+     podnavigacija 5), in pod modalnim oknom (50).
+     Lepljiv element je hkrati osnova za absolutno postavljene otroke: maskota
+     (razdelek »Maskota«) sedi v mrežnem območju uporabnika in se ne poteguje
+     za svojo celico - ker je del glave, jo glava ob drsenju odnese s seboj in
+     nastop se predvaja enako kot na vrhu strani. */
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--barva-papir);
 }
 
 /* Tanka in za njo debela crta pod mastheadom — nosilni element "zapisnika".
@@ -4478,7 +4491,8 @@ td.nizi-okno__niz--dobljen {
 
 .lestvica--globalna thead th {
   position: sticky;
-  top: 0;
+  /* Pod lepljivo namizno glavo (Postavitev izmeri njeno višino). */
+  top: var(--visina-glave, 0px);
   z-index: 1;
   /* Neprosojna podlaga: skozi lepljivo glavo se vrstice ne smejo videti. */
   background: var(--barva-papir);
@@ -5172,7 +5186,11 @@ td.nizi-okno__niz--dobljen {
    ves okvir vsebine, zato negativni rob izniciti odmik .vsebine. */
 .podnavigacija {
   position: sticky;
-  top: 0;
+  /* Prilepi se tik pod lepljivo namizno glavo, njena 3 px črta pa zaide pod
+     debelo črto glave (- 3 px): sicer bi se dve črni črti sešteli v 6 px.
+     Na telefonu pas stoji v lepljivi glavi in spremenljivke ni: rezerva 3 px
+     odšteta s 3 px pa da top 0. */
+  top: calc(var(--visina-glave, 3px) - 3px);
   z-index: 5;
   margin: 0 calc(var(--r5) * -1);
   padding: 12px var(--r5);

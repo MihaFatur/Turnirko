@@ -1,6 +1,6 @@
-/* Skupna postavitev vseh strani. Na namizju je to masthead z navigacijo,
-   kontekst uporabnika desno in prostor za vsebino; na telefonu lepljiva glava
-   in spodnja vrstica.
+/* Skupna postavitev vseh strani. Na namizju je to LEPLJIV masthead z
+   navigacijo (ostane na zaslonu med drsenjem), kontekst uporabnika desno in
+   prostor za vsebino; na telefonu lepljiva glava in spodnja vrstica.
 
    Masthead je nosilni vzorec sistema: logotip 24 px display 800 levo,
    navigacija 15 px na sredini, kontekst v mono desno; pod vsem tanka 1 px in
@@ -20,7 +20,14 @@
    namerna izjema od hišnega pravila (glej IkoneNavigacije.tsx), oznaka pa
    pove, kam ikona vodi, brez ugibanja. Kje si, oko prebere iz modre poteze,
    ki ob zamenjavi zavihka zdrsne nad novi stolpec. */
-import { type ComponentType, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type ComponentType,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { onlineManager, useQuery } from '@tanstack/react-query'
@@ -144,6 +151,29 @@ export function Postavitev() {
     if (!jeTelefon) nastaviOdprtVec(false)
   }, [jeTelefon])
 
+  /* Namizna glava je lepljiva, zato se ji morajo prilagoditi elementi, ki se
+     sami prilepijo na vrh (podnavigacija dogodka, glava lestvice) in skoki na
+     fokus (`scroll-padding-top`): brez tega bi zdrsnili pod njo. Višino
+     izmerimo in ne zapišemo v CSS, ker jo določata pisava in vrsta kazalca
+     (na dotik imajo povezave 44 px). Pred izrisom (layout effect), da prvi
+     izris ob obnovljenem drsenju ne kaže pasu na napačni višini. Na telefonu
+     namizne glave ni: spremenljivka ostane nenastavljena in CSS pade na 0. */
+  const glavaNamizja = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    const glava = glavaNamizja.current
+    if (!glava) return
+    const koren = document.documentElement
+    const zapisi = () =>
+      koren.style.setProperty('--visina-glave', `${glava.getBoundingClientRect().height}px`)
+    zapisi()
+    const opazovalec = new ResizeObserver(zapisi)
+    opazovalec.observe(glava)
+    return () => {
+      opazovalec.disconnect()
+      koren.style.removeProperty('--visina-glave')
+    }
+  }, [jeTelefon])
+
   /* Kateri stolpec spodnje vrstice nosi modro potezo. Odprt predal prevlada
      (kot pri ozadju postavke): dokler je "Več" odprt, si v njem in ne na
      strani pod njim. -1 pomeni, da pot ni v nobenem sklopu (npr. moj profil,
@@ -194,7 +224,7 @@ export function Postavitev() {
             <div ref={nastaviCiljZavihkov} />
           </header>
         ) : (
-          <header className="glava">
+          <header className="glava" ref={glavaNamizja}>
             <NavLink to="/" className="glava__logotip">
               <ZnakTurnirko />
               Turnirko

@@ -1173,7 +1173,15 @@
   `type="number"` v `.tsx` je napaka.
 - **Namizje in telefon imata ločeni navigaciji.** Nad 640 px je masthead mreža
   (`grid-template-areas`, `.glava`): logotip, navigacija, kontekst uporabnika;
-  1 px in 3 px črto nosi `.glava__crta`. Pod 640 px se ta glava sploh ne
+  1 px in 3 px črto nosi `.glava__crta`. **Namizna glava je lepljiva**
+  (`position: sticky`, neprosojna papirna podlaga, `z-index: 30`: nad predlogi
+  izbirnika 20, pod modalnim oknom 50). Kar se samo prilepi na vrh strani
+  (`.podnavigacija` dogodka, `.lestvica--globalna thead th`) in skoki na fokus
+  (`html { scroll-padding-top }`) berejo njeno višino iz `--visina-glave`, ki
+  jo `Postavitev` **izmeri** (ResizeObserver, ni konstanta: ~74,5 px, na dotik
+  več) in zapiše na `<html>`; na telefonu je ni in CSS pade na 0. Nov lepljiv
+  element na namizju mora imeti `top: var(--visina-glave, 0px)`, sicer zdrsne
+  pod glavo. Pod 640 px se ta glava sploh ne
   izriše — `Postavitev` po `useTelefon()` (`src/pomozno/telefon.ts`, ista
   prelomna točka kot v `slog.css`) izriše `.glava-telefon` (56 px, lepljiva)
   in **spodnjo vrstico** `.spodnja-vrstica` (Domov · Turnirji · Lige ·
@@ -1201,6 +1209,13 @@
     `sestaviNastop` zato lahko vrne `null` in gostitelj izbere le med prizori, ki
     se prilegajo. Letalo se pri ~1100 px ne pokaže več (koridor je prekratek za
     zastavico).
+  - **Nastop se predvaja enako ob vsakem drsenju**: namizna glava je lepljiva,
+    maskota pa je njen otrok, zato ostane na zaslonu, `izmeriGlavo()` pa meri
+    razlike med elementi glave (ne položaja na strani) in drsenja ne pozna.
+    Lestev sega 176 px od vrha zaslona, torej po drsenju čez vsebino pod glavo
+    (dekorativno, 3 s). Preverjeno z brezglavim Chromom: pasovi glave pri
+    `?maskota=lestev` in `?maskota=letalo` so na vrhu in po drsenju bajt za
+    bajtom enaki.
   - **Letalo izza logotipa in za »Domov« ne zakriva nič v DOM-u**: platno je
     nad glavo, letalo pa je odrezano z `clipPath` med desnim robom logotipa in
     levim robom »Domov« — izven okna ga ni, zato se zdi, da se pokaže izza
