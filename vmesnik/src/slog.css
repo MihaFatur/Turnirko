@@ -3885,6 +3885,413 @@ td.nizi-okno__niz--dobljen {
   }
 }
 
+/* --- Naročnina igralca (design_handoff_narocnina) ---
+
+   Vizualni jezik je isti kot pri razdeljenem oknu registracije: temen levi
+   stolpec na namizju, temen trak na telefonu, kolofonske vrstice, segmenti
+   napredka, izbirnik z diagonalnim trakom. Zato je plošča navaden
+   `.registracija` z obrobo, stolpec, trak, desni stolpec, kolofon, znesek in
+   primerjalna tabela pa so razredi `.registracija__*`; tu je samo tisto, česar
+   registracija nima (glava strani z blokom obnove, potrditev preklica, seznam
+   prednosti pod ploščo).
+
+   Naslov strani in število dni rasteta z zaslonom (`vw` z zgornjo in spodnjo
+   mejo): prototip je uporabljal `cqw` na koreni širini strani, ta pa je do
+   1280 px enaka širini okna, zato so končne mere iste (naslov 88/44, dni
+   96/72). Prelom levi stolpec ↔ trak je 640 px, kot pri registraciji. */
+
+.narocnina__glava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--r3) 56px;
+}
+
+.narocnina__glava-naslov {
+  flex: 999 1 420px;
+  min-width: 0;
+}
+
+/* Razmik črk je -1,19 px (in ne -0,035em od 88 px): prototip ga je zapisal na
+   h1 s privzeto velikostjo 34 px in ga span podeduje kot dolžino. Posnetki iz
+   predaje kažejo prav to, zato ga zapišemo izrecno. */
+.narocnina__ime-paketa {
+  font-size: clamp(44px, 8vw, 88px);
+  letter-spacing: -1.19px;
+}
+
+.narocnina__glava-stanje {
+  flex: 1 1 300px;
+  min-width: 0;
+  max-width: 380px;
+}
+
+/* Blok obnove (Premium): število dni, ki jih je še do obnove, kot rezultat. */
+.narocnina__blok {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--r2) var(--r2) 14px;
+  background: var(--barva-glavna-polna);
+  color: var(--barva-na-glavni);
+}
+
+.narocnina__blok-vrstica {
+  display: flex;
+  align-items: baseline;
+  gap: var(--r2);
+}
+
+.narocnina__blok-st {
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  font-size: clamp(72px, 9vw, 96px);
+  letter-spacing: -0.04em;
+  line-height: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.narocnina__blok-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-na-glavni-2);
+}
+
+.narocnina__blok-noga {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding-top: 10px;
+  border-top: 1px solid var(--barva-glavna);
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.narocnina__blok-noga > :last-child {
+  color: var(--barva-na-glavni-2);
+}
+
+/* Preklicana: isti blok na polnilu, brez modre - Premium ni več "vklopljen"
+   v enakem smislu, dni pa še štejejo. */
+.narocnina__blok--preklicano {
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo);
+  border-left: 4px solid var(--barva-crnilo-4);
+}
+
+.narocnina__blok--preklicano .narocnina__blok-oznaka {
+  color: var(--barva-crnilo-3);
+}
+
+.narocnina__blok--preklicano .narocnina__blok-noga {
+  border-top-color: var(--barva-crta);
+}
+
+.narocnina__blok--preklicano .narocnina__blok-noga > :last-child {
+  color: var(--barva-negativna-tekst);
+}
+
+/* Free: kolofon s črno črto (paket in obe ceni) namesto bloka obnove. */
+.narocnina__kolofon--crn {
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+/* Plošča: `.registracija` (dva stolpca, prelom) z obrobo in papirjem. */
+.narocnina__plosca {
+  border: 1px solid var(--barva-crnilo);
+  background: var(--barva-papir);
+}
+
+.narocnina__seznam {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Vrstica seznama funkcij v levem stolpcu: v registraciji je korak gumb s
+   `width: 100%`, tu je div, ki se raztegne sam - s 100 % bi se črta končala
+   12 px pred robom stolpca (negativni levi odmik jo že pomakne levo). */
+.narocnina__korak {
+  width: auto;
+}
+
+.narocnina__trak-cena {
+  flex: none;
+}
+
+.narocnina__trak-segment--pretecen {
+  background: var(--barva-glavna);
+}
+
+.narocnina__glava-vrstica {
+  min-height: 44px;
+}
+
+/* Naslov plošče: isto kot pri naslovu strani - prototip ima razmik črk na h2
+   s privzeto velikostjo 25,5 px (-0,035em = -0,8925 px), ki ga span podeduje. */
+.narocnina__plosca .registracija__naslov {
+  letter-spacing: -0.8925px;
+}
+
+/* Obdobje in dni: na telefonu se prelomita v dve vrstici (obdobje, pod njim
+   "še N dni"). */
+.narocnina__napredek-vrstica {
+  flex-wrap: wrap;
+}
+
+/* Kolofon obdobja: vrednosti se ne lomijo (datum ne sme pasti čez dve vrstici),
+   zato se lomi oznaka. */
+.narocnina__kolofon--obdobje .registracija__kolofon-vrednost {
+  white-space: nowrap;
+}
+
+.narocnina__vrednost--negativna {
+  color: var(--barva-negativna-tekst);
+}
+
+/* Telo Premium: kolofon, plačevanje in preklic, med sklopi 32 px. */
+.narocnina__sklopi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r4);
+}
+
+.narocnina__sklop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+/* Telo Free: izbirnik, primerjalna tabela, pojasnilo cene. */
+.narocnina__nakup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r3);
+}
+
+/* Stolpca primerjave sta tu oznaka stanja in ne gumba (kot v registraciji):
+   kazalec ostane puščica. */
+.narocnina__stolp {
+  cursor: default;
+}
+
+.narocnina__pojasnilo {
+  max-width: 60ch;
+}
+
+.narocnina__besedilo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-2);
+  max-width: 56ch;
+  text-wrap: pretty;
+}
+
+/* Predogled preklopa: odstavek, znesek pod črno črto, dva gumba. */
+.narocnina__preklop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+.narocnina__znesek {
+  padding-top: var(--r2);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+/* 56 px na namizju, 40 px na telefonu; registracija ima za telefon svoje
+   pravilo (--tip-h2 se tam zmanjša na 32 px), ki bi znesek preveč skrčilo. */
+.narocnina__znesek .registracija__znesek-st {
+  font-size: clamp(40px, 6vw, 56px);
+}
+
+.narocnina__znesek-prihranek {
+  color: var(--barva-poudarek-tekst);
+}
+
+.narocnina__dejanja {
+  display: flex;
+  gap: var(--r1);
+  flex-wrap: wrap;
+}
+
+.narocnina__dejanje {
+  white-space: nowrap;
+}
+
+.narocnina__dejanje--glavno {
+  flex: 1 1 200px;
+}
+
+.narocnina__dejanje--drugo {
+  flex: 1 1 160px;
+}
+
+.narocnina__dejanje--obnova {
+  flex: 0 1 320px;
+}
+
+.narocnina__obvestilo-gumb {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 15px / 1.2 var(--pisava-telo);
+  color: var(--barva-glavna-tekst);
+  cursor: pointer;
+}
+
+.narocnina__obvestilo-gumb:hover {
+  text-decoration: underline;
+}
+
+/* Potrditev preklica: rjasta črta ob robu in mehka rjasta podlaga, kot pri
+   drugih sporočilih o izgubi (.napaka). */
+.narocnina__potrditev {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--r2);
+  border-left: 4px solid var(--barva-negativna);
+  background: var(--barva-negativna-mehko);
+}
+
+.narocnina__potrditev-naslov {
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  font-size: var(--tip-h3);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--barva-crnilo);
+}
+
+.narocnina__potrditev-besedilo {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--barva-crnilo-2);
+}
+
+.narocnina__gumb--preklic {
+  background: var(--barva-negativna);
+  border-color: var(--barva-negativna);
+  color: var(--barva-na-negativni);
+  font-weight: 700;
+}
+
+.narocnina__gumb--preklic:hover:not(:disabled) {
+  background: var(--barva-negativna-tekst);
+  border-color: var(--barva-negativna-tekst);
+  color: var(--barva-na-negativni);
+}
+
+/* Gumb na rjasti podlagi potrditve: papir, ne prosojnost. */
+.narocnina__gumb--papir {
+  background: var(--barva-papir);
+}
+
+/* Prednosti pod ploščo: naslov s črto, pet vrstic z imenom, opisom in
+   povezavo (Premium) oz. oznako "Premium" (Free). */
+.narocnina__prednosti {
+  display: flex;
+  flex-direction: column;
+}
+
+.narocnina__prednosti-glava {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--r2);
+  flex-wrap: wrap;
+  padding-top: var(--r2);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+/* 40 px tudi na telefonu (--tip-h2 se tam zmanjša), in brez uravnoteženja
+   vrstic: "Kaj dobiš s / Premium", kot je narisano. */
+.narocnina__prednosti-naslov {
+  font-size: 40px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--barva-crnilo);
+  text-wrap: wrap;
+}
+
+.narocnina__prednosti-meta {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.narocnina__prednosti-seznam {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--r2);
+}
+
+.narocnina__prednost {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 4px var(--r2);
+  align-items: baseline;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.narocnina__prednost-st {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  color: var(--barva-crnilo-3);
+}
+
+.narocnina__prednost-st--vkljuceno {
+  color: var(--barva-poudarek-tekst);
+}
+
+.narocnina__prednost-besedilo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--r4);
+  align-items: baseline;
+  min-width: 0;
+}
+
+.narocnina__prednost-ime {
+  flex: 1 1 260px;
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  font-size: var(--tip-h3);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--barva-crnilo);
+}
+
+.narocnina__prednost-opis {
+  flex: 2 1 320px;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-2);
+  text-wrap: pretty;
+}
+
+.narocnina__prednost-povezava {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--barva-glavna-tekst);
+}
+
+/* Brez Premium vrstica ni povezava, ampak oznaka: kaj bi odprla, ne obstaja. */
+.narocnina__prednost-povezava--oznaka {
+  color: var(--barva-crnilo-4);
+}
+
 /* ============================================================
    8. Seznami tekmovanj (turnirji, lige, dogodki)
    ============================================================ */

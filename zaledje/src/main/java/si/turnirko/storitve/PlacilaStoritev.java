@@ -17,10 +17,8 @@
    zato je obdelava idempotentna po stripe_narocnina_id. */
 package si.turnirko.storitve;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 import java.util.Optional;
 
@@ -91,6 +89,7 @@ public class PlacilaStoritev {
     private final CenikStoritev cenik;
     private final LastnistvoStoritev lastnistvo;
     private final PasswordEncoder kodirnik;
+    private final StripeNarocnine stripe;
 
     public PlacilaStoritev(
             @Value("${turnirko.stripe.tajni-kljuc:}") String tajniKljuc,
@@ -101,7 +100,8 @@ public class PlacilaStoritev {
             UporabnikRepozitorij uporabnikRepozitorij,
             CenikStoritev cenik,
             LastnistvoStoritev lastnistvo,
-            PasswordEncoder kodirnik) {
+            PasswordEncoder kodirnik,
+            StripeNarocnine stripe) {
         Stripe.apiKey = tajniKljuc;
         this.webhookSkrivnost = webhookSkrivnost;
         this.vrniNaKoren = vrniNaKoren;
@@ -111,6 +111,7 @@ public class PlacilaStoritev {
         this.cenik = cenik;
         this.lastnistvo = lastnistvo;
         this.kodirnik = kodirnik;
+        this.stripe = stripe;
     }
 
     // ---------- Zacetek placila: nova registracija ----------
@@ -307,7 +308,9 @@ public class PlacilaStoritev {
         n.setStripeNarocninaId(session.getSubscription());
         n.setStatus(StatusNarocnine.AKTIVNA);
         n.setZacetekOb(LocalDateTime.now());
-        n.setTrenutnoObdobjeDo(obdobjeDo(session.getSubscription()));
+        // nova narocnina nima dogovorjenega preklopa (stara, potekla, ga je imela lahko)
+        n.setNaslednjiCiklus(null);
+        zapisiObdobje(n, session.getSubscription());
         narocninaRepozitorij.save(n);
     }
 
@@ -321,21 +324,52 @@ public class PlacilaStoritev {
         n.setStripeNarocninaId(subscriptionId);
         n.setStatus(StatusNarocnine.AKTIVNA);
         n.setZacetekOb(LocalDateTime.now());
-        n.setTrenutnoObdobjeDo(obdobjeDo(subscriptionId));
+        zapisiObdobje(n, subscriptionId);
         narocninaRepozitorij.save(n);
     }
 
     /* Preklic ob koncu obdobja pusti narocnino AKTIVNO do konca placanega
        casa (Narocnina.jeVeljavna); dejanski konec pride pozneje kot
        customer.subscription.deleted. Reaktivacija (cancel_at_period_end
-       nazaj na false) obratno vrne status na AKTIVNA. */
+       nazaj na false) obratno vrne status na AKTIVNA.
+
+       Isti dogodek pride tudi ob vsaki obnovi in ob izvedenem preklopu cikla
+       (Stripe urnik zamenja postavko), zato iz njega beremo se obdobje, cikel
+       in ceno: preklop je z njim izveden in zabelezena namera odpade. Namera
+       odpade tudi, ko urnika ni vec (uporabnik ga je umaknil) - Stripe tedaj
+       prispe brez polja schedule. Vrstni red ni pomemben: storitev za
+       upravljanje narocnine zapise isto stanje, ki ga vrne Stripe. */
     private void obdelajPosodobitevNarocnine(Subscription sub) {
         narocninaRepozitorij.findByStripeNarocninaId(sub.getId()).ifPresent(n -> {
             boolean preklicOKoncu = Boolean.TRUE.equals(sub.getCancelAtPeriodEnd());
             n.setStatus(preklicOKoncu ? StatusNarocnine.PREKLICANA : StatusNarocnine.AKTIVNA);
-            n.setTrenutnoObdobjeDo(obdobjeDoIzSeje(sub));
+            StripeNarocnine.Stanje stanje = StripeNarocnine.stanje(sub);
+            StripeNarocnine.uskladi(n, stanje);
+            boolean preklopIzveden = stanje.urnikId() != null && n.getNaslednjiCiklus() != null
+                    && n.getNaslednjiCiklus() == n.getCiklus();
+            if (stanje.urnikId() == null || preklopIzveden) {
+                n.setNaslednjiCiklus(null);
+            }
             narocninaRepozitorij.save(n);
+            if (preklopIzveden) {
+                sprostiUrnikPoPreklopu(n);
+            }
         });
+    }
+
+    /* Urnik po izvedenem preklopu ostane prikljucen se cel novi cikel (Stripe:
+       faza z iterations 1). Prikljucen urnik pa vodi narocnino, zato bi v Stripe
+       portalu ne bilo mogoce niti preklicati - sprostimo ga takoj, ko je preklop
+       izveden. Samo takrat: ob nastanku urnika (isti dogodek) bi sprostitev
+       odnesla ravnokar zabelezen preklop. Neuspeh je brez posledic za dostop:
+       naslednji preklop ali preklic urnik vseeno sprosti sam. */
+    private void sprostiUrnikPoPreklopu(Narocnina n) {
+        try {
+            stripe.sprostiUrnik(n.getStripeNarocninaId());
+        } catch (DomenskaIzjema e) {
+            dnevnik.warn("Urnika narocnine {} po izvedenem preklopu ni bilo mogoce sprostiti: {}",
+                    n.getStripeNarocninaId(), e.getMessage());
+        }
     }
 
     private void obdelajIzbrisNarocnine(Subscription sub) {
@@ -407,19 +441,6 @@ public class PlacilaStoritev {
         }
     }
 
-    /* Konec tekocega placanega obdobja - potreben za "Narocnina.jeVeljavna"
-       po preklicu. Stripe je s "flexible billing mode" current_period_end
-       preselil s Subscription na posamezne postavke (SubscriptionItem);
-       Checkout seja tu vedno ustvari natanko eno postavko (vrsticaSeje). */
-    private static LocalDateTime obdobjeDoIzSeje(Subscription sub) {
-        if (sub.getItems() == null || sub.getItems().getData().isEmpty()) {
-            return null;
-        }
-        Long konec = sub.getItems().getData().get(0).getCurrentPeriodEnd();
-        return konec == null ? null
-                : LocalDateTime.ofInstant(Instant.ofEpochSecond(konec), ZoneId.systemDefault());
-    }
-
     /* Invoice nima vec neposrednega getSubscription() (flexible billing) -
        sled je zdaj pod parent.subscriptionDetails, in sicer samo pri racunih,
        ki sploh izhajajo iz narocnine. */
@@ -430,12 +451,16 @@ public class PlacilaStoritev {
         return invoice.getParent().getSubscriptionDetails().getSubscription();
     }
 
-    private LocalDateTime obdobjeDo(String subscriptionId) {
+    /* Zacetek in konec tekocega placanega obdobja - potrebna za
+       "Narocnina.jeVeljavna" po preklicu in za stran "Narocnina". Ce Stripe
+       ne odgovori, obdobje ostane prazno; prvi webhook customer.subscription.
+       updated ga zapise. (Stripe je s "flexible billing mode" obdobje preselil
+       s Subscription na postavko - beri StripeNarocnine.) */
+    private void zapisiObdobje(Narocnina n, String subscriptionId) {
         try {
-            return obdobjeDoIzSeje(Subscription.retrieve(subscriptionId));
+            StripeNarocnine.uskladi(n, StripeNarocnine.stanje(Subscription.retrieve(subscriptionId)));
         } catch (StripeException e) {
             dnevnik.warn("Obdobja narocnine {} ni bilo mogoce prebrati: {}", subscriptionId, e.getMessage());
-            return null;
         }
     }
 

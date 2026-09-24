@@ -1131,6 +1131,38 @@
   skupino prenese (`tekma.id_prenesena`) in se ne igra ter ne šteje znova.
   Tekma za 3. mesto je `TOLAZILNI` z izvorom `PORAZENEC` iz polfinal.
 
+- **Upravljanje obstoječe naročnine** (V35, `UpravljanjeNarocnineStoritev`,
+  `StripeNarocnine`, `/api/v1/narocnina`): pregled (obdobje, cikel, cena, zabeležen
+  preklop), preklic ob koncu obdobja, obnova preklicane in preklop mesečno ↔ letno
+  ob NASLEDNJI obnovi. Nadgradnja Free → Premium ostane v `PlacilaStoritev`
+  (Checkout); tu je samo, kar naročnina že ima.
+  - **Stripe ostane vir resnice, vrstica pa je predpomnilnik.** Vsak klic vrne
+    Stripovo stanje in `StripeNarocnine.uskladi` ga zapiše; webhook
+    `customer.subscription.updated` isto stanje prebere še enkrat, zato zamik ali
+    dvojna dostava ne pokvarita ničesar. Stripe klici so v `StripeNarocnine`, da
+    jih test nadomesti z lažnim (`@MockitoBean`); brez tega bi test rabil pravi ključ.
+  - **`naslednji_ciklus` je zabeležena NAMERA, `ciklus` je tisto, kar Stripe
+    zaračunava zdaj.** Preklop je Stripe subscription schedule z dvema fazama
+    (tekoča, nato nov cikel z `iterations 1`, `proration none`). Preverjeno na
+    testnem načinu s testno uro: po koncu obdobja je račun natanko ena postavka
+    po novi ceni (53,49 €), brez obračuna razlike.
+  - **Urnik po izvedenem preklopu OSTANE priključen še cel novi cikel**, Stripe
+    pa pri naročnini z urnikom zavrne `cancel_at_period_end` (»updating any
+    cancelation behavior directly is not allowed«). Zato preklic in vsak nov
+    preklop urnik najprej **sprostita** (`sprostiUrnik`), preklop pa naredi
+    svež urnik namesto da bi posodabljal obstoječega (njegova prva faza je lahko
+    že pretekla). Webhook urnik sprosti takoj po izvedenem preklopu — **samo
+    takrat**: ob nastanku urnika pride isti dogodek in sprostitev bi odnesla
+    ravnokar zabeleženo namero.
+  - **Cena preklopa je po pasu ob sklenitvi** (`narocnina.starejsi_od_21`), ne po
+    današnji starosti; tekoči cikel prikazuje ceno, ki jo Stripe res zaračunava
+    (`cena_ob_sklenitvi`) — starejše letne naročnine so lahko po prejšnjem ceniku.
+  - Datumi gredo navzven kot koledarski dnevi po **slovenskem** času
+    (`Europe/Ljubljana`), ne po času strežnika: konec obdobja ob 00.30 po CEST je
+    na strežniku v UTC še prejšnji dan (`datumiGredoNavzvenPoSlovenskemCasu`).
+  - `GET /api/v1/narocnina` je GET, zato mora pravilo v `VarnostneNastavitve`
+    stati pred splošnim »GET je javen« (varuje ga `NarocninaDostopTest`).
+
 ## Vmesnik (vmesnik/)
 
 - **Oblikovni sistem je zavezujoč:** `vmesnik/turnirko-profil-redesign/project/DESIGN.md`
@@ -1672,6 +1704,31 @@
     mora ostati odprta) in ob koncu razveljavi **ves** predpomnilnik poizvedb
     (`invalidateQueries()` brez ključa) — rating stoji na lestvici, v profilih,
     na karticah tekem in v napovedih.
+- **Stran `/narocnina` za igralca** (`komponente/NarocninaIgralec`, razdelek
+  »Naročnina igralca« v `slog.css`; organizatorski del je ostal v
+  `strani/NarocninaStran`) je poustvarjena po `design_handoff_narocnina` in
+  uporablja **iste razrede kot razdeljeno okno registracije** (`.registracija__*`):
+  plošča je `.registracija` z obrobo, levi stolpec/trak, kolofon, znesek in
+  primerjalna tabela pa so skupni. Tri stanja določa zaledje (`aktivna`,
+  `preklicana`, sicer Free); preklop, preklic in obnova so mutacije, ki vrnejo
+  posodobljeno naročnino.
+  - **Merilo ujemanja je prototip, ne posnetek.** Posnetki iz predaje niso
+    ponovljivi na piksel (stran je pri njih 7–9 px nižja); prototip `*.dc.html`
+    v istem brezglavem Chromu in aplikacija se ujemata do anti-aliasinga pisave
+    (namizje 6 stanj: 0–330 pikslov razlike od 2 milijonov; telefon enako,
+    razen spodnje vrstice, ki ni del strani).
+  - **Prototipove mere so posledica podedovanih velikosti:** razmik črk
+    naslova (−1,19 px) in naslova plošče (−0,8925 px) je `-0.035em` od privzete
+    velikosti `h1` (34 px) oz. `h2` (25,5 px), ki ga `span` podeduje kot dolžino.
+    Ko izrecno zapišeš `-0.035em` na svojem elementu, je naslov ožji od posnetka.
+    Znesek predogleda preklopa je 40 px na telefonu; `--tip-h2` se tam zmanjša na
+    32 px, zato ga razred `.narocnina__znesek` postavi sam.
+  - Vrnitev s Checkouta (`?stanje=uspeh`) potrdi plačilo šele, ko webhook zapiše
+    naročnino, zato stran nekajkrat povpraša znova (`POSKUSI_PO_VRNITVI`) in
+    parameter takoj pobriše iz naslova.
+  - Zabeležen preklop se da umakniti tudi po osvežitvi strani: obvestilo
+    »Od 12. 10. 2026 plačuješ letno …« z gumbom »Razveljavi« se izpelje iz
+    `naslednjiCiklus`, ne živi samo od potrditve.
 - Preverba pred zaključkom dela: `cd vmesnik && npm run build` (tsc + vite).
 
 ## Objava na splet

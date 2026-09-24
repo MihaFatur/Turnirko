@@ -69,5 +69,7 @@ export const api = {
   vrni: <T>(pot: string) => zahteva<T>(pot, 'GET'),
   objavi: <T>(pot: string, telo?: unknown) => zahteva<T>(pot, 'POST', telo),
   posodobi: <T>(pot: string, telo: unknown) => zahteva<T>(pot, 'PUT', telo),
-  izbrisi: (pot: string) => zahteva<void>(pot, 'DELETE'),
+  /* Večina brisanj vrne 204 brez telesa; umik preklopa naročnine vrne
+     posodobljeno naročnino, zato je tip odgovora izbiren. */
+  izbrisi: <T = void>(pot: string) => zahteva<T>(pot, 'DELETE'),
 }

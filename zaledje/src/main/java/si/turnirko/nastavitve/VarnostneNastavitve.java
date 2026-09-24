@@ -134,6 +134,10 @@ public class VarnostneNastavitve {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/placila/nadgradnja",
                                 "/api/v1/placila/portal").authenticated()
+                        // pregled in upravljanje lastne narocnine (obdobje, preklic,
+                        // preklop cikla): osebno kot izbor lig - prijava, ne vloga.
+                        // Pravilo mora stati pred splosnim "GET je javen".
+                        .requestMatchers("/api/v1/narocnina", "/api/v1/narocnina/**").authenticated()
                         // zasebni del profila (analize in napoved tekme) vidi samo
                         // igralec sam ali administrator; lastnistvo preveri
                         // DostopDoProfila - veriga pozna samo vlogo, ne lastnistva

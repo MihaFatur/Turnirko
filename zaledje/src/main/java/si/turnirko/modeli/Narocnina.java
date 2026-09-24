@@ -77,6 +77,19 @@ public class Narocnina {
     @Column(name = "trenutno_obdobje_do")
     private LocalDateTime trenutnoObdobjeDo;
 
+    /* Zacetek tekocega placanega obdobja (Stripe current_period_start).
+       NULL pri vrsticah izpred V35 - glej obdobjeOd(). */
+    @Convert(converter = CasKotBesedilo.class)
+    @Column(name = "obdobje_od")
+    private LocalDateTime obdobjeOd;
+
+    /* Cikel, ki zacne veljati ob NASLEDNJI obnovi (zabelezen preklop; Stripe
+       ga izvede prek subscription schedule). NULL = preklopa ni. Ciklus
+       ostane tak, kot ga Stripe zaracunava zdaj, dokler obdobje ne potece. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "naslednji_ciklus")
+    private CiklusPlacila naslednjiCiklus;
+
     @Convert(converter = CasKotBesedilo.class)
     @Column(name = "ustvarjena_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenaOb;
@@ -135,6 +148,27 @@ public class Narocnina {
 
     public LocalDateTime getTrenutnoObdobjeDo() { return trenutnoObdobjeDo; }
     public void setTrenutnoObdobjeDo(LocalDateTime trenutnoObdobjeDo) { this.trenutnoObdobjeDo = trenutnoObdobjeDo; }
+
+    public LocalDateTime getObdobjeOd() { return obdobjeOd; }
+    public void setObdobjeOd(LocalDateTime obdobjeOd) { this.obdobjeOd = obdobjeOd; }
+
+    public CiklusPlacila getNaslednjiCiklus() { return naslednjiCiklus; }
+    public void setNaslednjiCiklus(CiklusPlacila naslednjiCiklus) { this.naslednjiCiklus = naslednjiCiklus; }
+
+    /* Zacetek tekocega obdobja za prikaz. Vrstice izpred V35 ga nimajo
+       zapisanega: izpelje se kot konec obdobja minus en cikel (Stripe obdobje
+       je natanko mesec oz. leto), dokler ga prvi webhook ne zapise prav. */
+    public LocalDateTime obdobjeOd() {
+        if (obdobjeOd != null) {
+            return obdobjeOd;
+        }
+        if (trenutnoObdobjeDo == null || ciklus == null) {
+            return null;
+        }
+        return ciklus == CiklusPlacila.LETNO
+                ? trenutnoObdobjeDo.minusYears(1)
+                : trenutnoObdobjeDo.minusMonths(1);
+    }
 
     public LocalDateTime getUstvarjenaOb() { return ustvarjenaOb; }
 

@@ -494,6 +494,39 @@ export interface PlacilnaSejaDto {
   url: string
 }
 
+/* Naročnina prijavljenega uporabnika za stran »Naročnina« (NarocninaDto na
+   zaledju). Kdor naročnine nima, dobi `aktivna: false` in prazna polja - ne
+   404. Datumi so koledarski dnevi (ISO), berejo jih oblikujDatum in izračuni
+   dni v NarocninaIgralec. */
+export interface NarocninaDto {
+  paket: Paket
+  /* Ali naročnina zdaj daje pravice - preklicana ostane true do konca
+     plačanega obdobja. */
+  aktivna: boolean
+  /* Preklicana ob koncu obdobja, a plačano obdobje še ni poteklo. */
+  preklicana: boolean
+  status: StatusNarocnine | null
+  /* Cikel, ki ga Stripe zaračunava ZDAJ. */
+  ciklus: CiklusPlacila | null
+  /* Cena tekočega cikla, kot jo Stripe zaračunava (starejše naročnine imajo
+     lahko drugo od današnjega cenika). */
+  cena: number | null
+  /* Cenovni pas ob sklenitvi; po njem je cena DRUGEGA cikla za predogled. */
+  starejsiOd21: boolean | null
+  narocenOd: string | null
+  obdobjeOd: string | null
+  obdobjeDo: string | null
+  /* Zabeležen preklop, ki začne veljati ob obnovi; null = preklopa ni. */
+  naslednjiCiklus: CiklusPlacila | null
+}
+
+export type StatusNarocnine = 'CAKA_PLACILO' | 'AKTIVNA' | 'PREKLICANA' | 'ZAPADLA'
+
+/* Izbran cikel pri preklopu in obnovi preklicane naročnine. */
+export interface NarocninaCiklusVnos {
+  ciklus: CiklusPlacila | null
+}
+
 export interface PotrditevKodeVnos {
   email: string
   koda: string

@@ -3,6 +3,7 @@
 
 import { api } from './odjemalec'
 import type {
+  CiklusPlacila,
   DogodekDto,
   DogodekVnos,
   DomovLigaDto,
@@ -31,6 +32,8 @@ import type {
   MrezaDto,
   NakljucniParDto,
   NapovedTekmeDto,
+  NarocninaCiklusVnos,
+  NarocninaDto,
   NeaktivnostPorociloDto,
   ParRazporedaDto,
   PreracunPorociloDto,
@@ -217,6 +220,22 @@ export const placilaApi = {
   nadgradnja: (vnos: NadgradnjaVnos) => api.objavi<PlacilnaSejaDto>('/placila/nadgradnja', vnos),
   /* Stripe Billing Portal - upravljanje/preklic obstoječe naročnine. */
   portal: () => api.objavi<PlacilnaSejaDto>('/placila/portal'),
+}
+
+/* Upravljanje obstoječe naročnine (stran »Naročnina«). Vsaka mutacija vrne
+   posodobljeno naročnino, zato stran ne bere znova. */
+export const narocninaApi = {
+  pregled: () => api.vrni<NarocninaDto>('/narocnina'),
+  /* Preklic ob koncu obdobja: Premium velja do konca plačanega časa. */
+  preklici: () => api.objavi<NarocninaDto>('/narocnina/preklic'),
+  /* Umik preklica; izbran cikel, drugačen od tekočega, se zabeleži kot
+     preklop ob obnovi. */
+  obnovi: (ciklus: CiklusPlacila | null) =>
+    api.objavi<NarocninaDto>('/narocnina/obnova', { ciklus } satisfies NarocninaCiklusVnos),
+  /* Preklop mesečno ↔ letno; začne veljati ob naslednji obnovi. */
+  preklopi: (ciklus: CiklusPlacila) =>
+    api.posodobi<NarocninaDto>('/narocnina/preklop', { ciklus } satisfies NarocninaCiklusVnos),
+  razveljaviPreklop: () => api.izbrisi<NarocninaDto>('/narocnina/preklop'),
 }
 
 export const profiliApi = {

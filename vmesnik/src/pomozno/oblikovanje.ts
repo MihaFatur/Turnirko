@@ -153,6 +153,32 @@ export function oblikujCeno(znesek: number): string {
   return znesek.toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }
 
+/* Današnji koledarski dan v ISO obliki po uporabnikovi uri ("2026-09-24"). */
+export function danesIso(): string {
+  const d = new Date()
+  const mesec = String(d.getMonth() + 1).padStart(2, '0')
+  const dan = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mesec}-${dan}`
+}
+
+/* Koledarskih dni od `od` do `dokler` (oba ISO "YYYY-MM-DD"), negativno, če je
+   `dokler` pred `od`; null, če kateri datum ni berljiv. Računa v UTC, da
+   prehod na poletni čas ne pomakne dneva (23 ali 25 ur bi dalo napačno
+   celo število). */
+export function dniMed(od: string | null | undefined, dokler: string | null | undefined): number | null {
+  const a = razstaviDatum(od ?? null)
+  const b = razstaviDatum(dokler ?? null)
+  if (!a || !b) return null
+  const dan = 24 * 60 * 60 * 1000
+  return Math.round((Date.UTC(b.leto, b.mesec - 1, b.dan) - Date.UTC(a.leto, a.mesec - 1, a.dan)) / dan)
+}
+
+/* »še 1 dan«, »še 2 dni«, »še 18 dni«. Števniki od 5 naprej (tudi 21, 31 ...)
+   zahtevajo rodilnik množine, zato je edina izjema natanko ena. */
+export function sklonDni(n: number): string {
+  return n === 1 ? 'dan' : 'dni'
+}
+
 /* Letnica rojstva iz datuma "YYYY-MM-DD". */
 export function letnica(datum: string | null | undefined): string {
   if (!datum) return ''
