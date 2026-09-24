@@ -1238,7 +1238,8 @@
     gledalcu (`cenaPremium`): mlajši od 21 let 3,99 €, sicer 4,99 €, gost višja.
     Nikoli vtipkana številka.
   - **Samo namizje, samo gost in igralec brez Premium, največ 3 nastopi na
-    sejo**, ne ob `prefers-reduced-motion`, skritem zavihku, odprtem oknu
+    nalaganje strani** (prvi po 10–25 s, nato po 60–80 s; osvežitev zaporedje
+    začne znova, števec je spremenljivka v modulu in ne `sessionStorage`), ne ob `prefers-reduced-motion`, skritem zavihku, odprtem oknu
     (`#koren[inert]`) ali kadar med navigacijo in uporabnikom ni prostora
     (`jePrimernTrenutek`, `jeProstor`). Ne dodajaj je na telefon ali na strani
     urejevalcev, dokler lastnik ne odloči drugače.

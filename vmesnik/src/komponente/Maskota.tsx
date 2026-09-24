@@ -25,7 +25,7 @@ import { NAPISI, besediloNapisa, cenaPremium, izmeriNapis } from '../pomozno/nap
 import { PRIZORI } from '../pomozno/prizoriMaskote'
 import { useTelefon } from '../pomozno/telefon'
 import {
-  NAJVEC_NASTOPOV_NA_SEJO,
+  NAJVEC_NASTOPOV_NA_NALAGANJE,
   PONOVNI_POSKUS_MS,
   PRVI_NASTOP_MS,
   ZAMIK_MED_NASTOPI_MS,
@@ -80,9 +80,9 @@ export function Maskota() {
     if (nastop) return
 
     /* Predogled iz naslova (?maskota) velja enkrat na nalaganje strani in
-       mimo meje na sejo — sicer bi po treh ogledih prizor ne pokazal več. */
+       mimo meje na nalaganje — sicer bi po treh ogledih prizor ne pokazal več. */
     const predogled = predogledPokazan.current ? null : predogledIzNaslova()
-    if (!predogled && steviloNastopov() >= NAJVEC_NASTOPOV_NA_SEJO) return
+    if (!predogled && steviloNastopov() >= NAJVEC_NASTOPOV_NA_NALAGANJE) return
 
     const zamik = predogled
       ? 1200

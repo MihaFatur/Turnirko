@@ -5,8 +5,9 @@
    jih da brati (in spreminjati) na enem mestu. */
 
 /* Razpon [najmanj, največ] v ms (odločitev lastnika, 24. 9. 2026): prvi nastop
-   10–25 s po nalaganju, nato v enakih razmakih 60–80 s do meje na sejo
-   (`NAJVEC_NASTOPOV_NA_SEJO`). Razmik se šteje od konca prejšnjega nastopa. */
+   10–25 s po nalaganju, nato v enakih razmakih 60–80 s do meje na nalaganje
+   (`NAJVEC_NASTOPOV_NA_NALAGANJE`). Razmik se šteje od konca prejšnjega
+   nastopa. */
 export const PRVI_NASTOP_MS: readonly [number, number] = [10_000, 25_000]
 export const ZAMIK_MED_NASTOPI_MS: readonly [number, number] = [60_000, 80_000]
 
@@ -14,32 +15,24 @@ export const ZAMIK_MED_NASTOPI_MS: readonly [number, number] = [60_000, 80_000]
    nastopa ne štejemo, ampak poskusimo znova čez ta čas. */
 export const PONOVNI_POSKUS_MS = 15_000
 
-/* Na sejo (zavihek brskalnika), ne na obisk: osvežitev strani števca ne
-   ponastavi, zato ga ne more zaobiti niti nestrpen gledalec. */
-export const NAJVEC_NASTOPOV_NA_SEJO = 3
+/* Na nalaganje strani (odločitev lastnika, 24. 9. 2026): osvežitev zaporedje
+   začne znova (prvi nastop spet po 10–25 s). Števec zato živi v modulu in ne v
+   `sessionStorage`; premikanje po aplikaciji strani ne naloži znova, torej
+   števca ne ponastavi. */
+export const NAJVEC_NASTOPOV_NA_NALAGANJE = 3
 
-const KLJUC_NASTOPOV = 'turnirko-maskota-nastopi'
+let nastopovOdNalaganja = 0
 
 export function nakljucniZamik([najmanj, najvec]: readonly [number, number]): number {
   return najmanj + Math.random() * (najvec - najmanj)
 }
 
 export function steviloNastopov(): number {
-  try {
-    const stevilo = Number(sessionStorage.getItem(KLJUC_NASTOPOV))
-    return Number.isInteger(stevilo) && stevilo > 0 ? stevilo : 0
-  } catch {
-    /* Zasebni način brskanja: brez števca velja meja samo v tej strani. */
-    return 0
-  }
+  return nastopovOdNalaganja
 }
 
 export function zabeleziNastop() {
-  try {
-    sessionStorage.setItem(KLJUC_NASTOPOV, String(steviloNastopov() + 1))
-  } catch {
-    /* Nastop se vseeno zgodi; meja na sejo pač ne velja. */
-  }
+  nastopovOdNalaganja += 1
 }
 
 /* Ali je zdaj primeren trenutek za nastop (ne glede na širino platna). */

@@ -344,7 +344,8 @@ samo, če veljajo **vsi** pogoji hkrati:
    Premium, stran `/narocnina`, odprto okno ali predal.
 3. **Vsak nastop traja največ 5 s** (WCAG 2.2.2: krajše gibanje ne potrebuje
    gumba za ustavitev). Prvi nastop 10–25 s po nalaganju strani, nato po 60–80 s
-   od konca prejšnjega, največ 3 na sejo. Nikoli ob `prefers-reduced-motion`, ob skritem zavihku ali
+   od konca prejšnjega, največ 3 na nalaganje strani (osvežitev zaporedje
+   začne znova). Nikoli ob `prefers-reduced-motion`, ob skritem zavihku ali
    kadar med navigacijo in oznako uporabnika ni prostora.
 4. **Animirata se samo `transform` in `opacity`**; glava se ob nastopu ne
    premakne (platno je absolutno postavljeno, ne zavzame mesta v mreži).
