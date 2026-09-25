@@ -43,6 +43,7 @@ import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RatingZgodovina;
+import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
@@ -196,7 +197,8 @@ public class PreracunRatingaStoritev {
                     ((Number) r[4]).intValue()));
         }
         for (Object[] r : tekmaSrecanjaRepozitorij.ratinskeTekme(TipTekmeSrecanja.POSAMICNA, ODIGRANE)) {
-            LocalDateTime cas = (r[1] != null) ? (LocalDateTime) r[1] : (LocalDateTime) r[2];
+            // isto pravilo kot ob obracunu (RatingStoritev.casLigaskeTekme)
+            LocalDateTime cas = Srecanje.casOdigranja((LocalDateTime) r[2], (LocalDateTime) r[1]);
             vrsta.add(VrstaRatinskeTekme.ligaska(
                     ((Number) r[0]).longValue(),
                     cas,

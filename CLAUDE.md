@@ -322,6 +322,25 @@
   - Surova mediana po letih je sunkovita in ponekod pada z leti; seme V21 je
     zato zravnano (drseče okno ±1 leto, monotono nepadajoče, odrasli 26+ ena
     vrednost z mostom od 21. leta).
+  - **Rekreativni vstop** (V36, `igralec.rekreativni_vstop`, kljukica
+    »Rekreativec — začetni rating 800« v obrazcu igralca): kdor je ob vpisu
+    označen, začne pri `SidroStoritev.REKREATIVNI_ZACETEK` (800) namesto pri
+    sidru. Sidro je mediana registriranih igralcev NTZS (odrasel 1533) in je
+    za igralca iz rekreacije 700–900 točk previsoko: v Savinja ligi so
+    novinci, ki so prvi večer igrali samo novince, obstali pri 1500–1700 (47.
+    mesto od 459 aktivnih moških). 800 je **odločitev lastnika**, ne meritev.
+    - Odloča **ena metoda** (`SidroStoritev.zacetniRating`), zato 800 velja
+      povsod, kjer se bere sidro: vstopna vrednost, **izhodišče uvrstitve
+      novinca** (navidezni remiji so proti 800) in napoved tekme. `postavljen`
+      se ne prižge — uvrstitev prvega dne še vedno teče po izidih.
+    - **Ni zastavica lestvice rekreativcev** (`RekreativecStoritev`, izpeljana
+      iz treh tekem na uradnih/klubskih tekmovanjih). Zato ime `rekreativni_vstop`
+      in ne `rekreativec`.
+    - Oznaka velja ob **prvi** tekmi. Igralec, ki tekme že ima, dobi nov začetek
+      šele s preračunom od dneva prve tekme — samodejno ga urejanje ne sproži
+      (admin označi več igralcev in požene en preračun); obrazec to pove.
+    - V javni DTO ne gre (samo `IgralecDto` za `/podrobno`); nastavi pa jo lahko
+      tudi organizator ob vpisu igralca. Drži `RekreativniVstopTest`.
   - **Poizvedba uvrstitve potrebuje `idx_rating_zgodovina_igralec_velja`**
     (V21). Brez njega sqlite samopovezavo dnevnika zažene z nasprotnikove
     strani in za vsako poizvedbo prebere vseh 183 tisoč vrstic: 2,7 s namesto
@@ -497,6 +516,17 @@
     obnovljenih stanj (tako je bilo prej): pri preračunu od začetka je dnevnik
     ob obnovi prazen, zato bi bila tista številka vedno 0 — vmesnik bi trdil,
     da se ni zgodilo nič, medtem ko se je izračunalo vse.
+- **Čas ligaške tekme je eno pravilo: `Srecanje.casOdigranja`** (obračun v
+  `RatingStoritev.casLigaskeTekme`, preračun v `vsaVrsta`, datum na profilu v
+  `OpisSrecanja.cas`). Velja **termin**, razen kadar je bil **prvi izid**
+  (`srecanje.odigran_ob`, od septembra 2026 s pretvornikom in postavljen ob
+  PRVEM izidu, pred obračunom, po slovenskem času na minuto) vpisan pred
+  dnem termina — takrat sta se ekipi zamenjali za termin in velja trenutek
+  vpisa (star zapis brez ure dobi uro termina). Prej je obračun bral termin,
+  preračun pa dan zaključka vnosa: vsak popravek je premešal tekme večera
+  (vse na polnoč dneva vnosa), srečanje 4. kola, odigrano na večer 1., pa je
+  stalo dva meseca v prihodnosti. Merilo: preračun ponovi obračun ob vnosu
+  (`srecanjePredTerminomVeljaObVpisuInPreracunObdrziCasInRating`).
 - **Obračun teče v vrstnem redu VNOSA, ne po datumu tekme.** `RatingStoritev`
   vzame stanje, kakršno je *zdaj*, in nanj prišteje spremembo; v dnevnik pa
   zapiše `velja_ob` **tekme**. Rezultat, vpisan za nazaj (novembrsko kolo
@@ -513,19 +543,32 @@
   pokaže šele čez nekaj dni, ko je turnir že zaključen. Zato **PUT in ne POST**:
   vnos ustvari izid, popravek ga zamenja; `vnesiRezultat` končano tekmo še
   naprej zavrne.
-  - **Popravek ne sme spremeniti ZMAGOVALCA.** Zmagovalec ni podatek o tekmi,
-    ampak vozlišče tekmovanja: po njem je bilo napredovano po mreži, iz njega
-    so nastala mesta v skupinah in končna mesta, v ligi pa je odločil, katere
-    tekme srečanja so se sploh še igrale (prag zmag) in kako teče serija
-    končnice. Obrnjen izid je *razveljavitev poteka tekmovanja* in ne popravek
-    vpisa — zavrne se s pojasnilom (409) in se ne ugiba.
+  - **Turnirska tekma ZMAGOVALCA ne spremeni.** Zmagovalec tam ni podatek o
+    tekmi, ampak vozlišče tekmovanja: po njem je bilo napredovano po mreži, iz
+    njega so nastala mesta v skupinah in končna mesta. Obrnjen izid je
+    *razveljavitev poteka tekmovanja* in ne popravek vpisa — zavrne se s
+    pojasnilom (409) in se ne ugiba. Isto velja za tekmo v ekipni tekmi
+    turnirja (izid srečanja je postal izid tekme v mreži).
+  - **Ligaška tekma zmagovalca SME spremeniti, dokler ostane potek isti**
+    (`SrecanjeStoritev.preveriZamenjavoZmagovalca`, september 2026 — v
+    Savinja ligi sta se pri prepisu zamenjali imeni in zmagal je napačni).
+    Pogoja: (1) **iste tekme so odigrane in iste neodigrane** — pri pragu
+    zmag mora popravljen zapisnik dati isto točko odločitve
+    (`preveriEnakPotek`); liga brez praga (vse tekme se igrajo) ta pogoj
+    izpolni vedno; (2) **izid srečanja se ne obrne tam, kjer je že kaj teklo
+    po njem**: tekma končnice (serija) in srečanje rednega dela, kadar je
+    končnica že sestavljena iz lestvice (`KoncnicaStoritev.jeSestavljena`).
+    Povzetek srečanja osveži `posodobiSrecanje` (ista pot kot vnos:
+    srečanju v teku lahko prinese odločitev, pri končanem le prešteje),
+    lestvica lige je izpeljanka. Vmesnik ob obrnjenem izidu v oknu popravka
+    izpiše novi izid srečanja, preden organizator shrani.
   - **Zmagovalec se preveri PRED zapisom** (`predvidenZmagovalec`, oz.
-    `preberiIzid` pri srečanju). Preklic po zapisu bi se zanašal na povrnitev
-    transakcije, ta pa ob zunanji transakciji (test) ni takojšnja.
+    `preberiIzid` + `preveriZamenjavoZmagovalca` pri srečanju). Preklic po
+    zapisu bi se zanašal na povrnitev transakcije, ta pa ob zunanji
+    transakciji (test) ni takojšnja.
   - Turnirska tekma po popravku znova požene `posledice` (mesta v skupini in
     končna mesta se z razliko nizov lahko premaknejo; napredovanje je
-    idempotentno, ker se v zaseden slot ne piše). Ligaška povzetka srečanja
-    **ne** osvežuje — pri istem zmagovalcu se ne more spremeniti.
+    idempotentno, ker se v zaseden slot ne piše).
   - **Točke po nizih se zapišejo znova**: stare se pobrišejo in izbris se
     **izpere takoj** (`deleteAll` + `flush`), ker Hibernate vstavke izvede pred
     izbrisi in bi nov prvi niz trčil ob starega (`UNIQUE (id_tekma,

@@ -38,10 +38,24 @@ public class SidroStoritev {
         this.repozitorij = repozitorij;
     }
 
-    /* Izhodiscni rating igralca za tekmo na dani dan. Ce letnice rojstva ni
-       ali starost pade izven tabele, se vrnemo na enotno zacetno vrednost -
-       ugibati sidro brez starosti nima smisla. */
+    /* Izhodisce igralca, ki ga je clovek ob vpisu oznacil kot rekreativca
+       (V36). Sidro je mediana registriranih igralcev NTZS in je za igralca iz
+       rekreacije 700-900 tock previsoko (v Savinja ligi B imajo ze ocenjeni
+       igralci 550-1350, odrasel novinec pa je zacel pri 1533). Vrednost je odlocitev
+       lastnika (september 2026), ne meritev - uvrstitev prvega dne jo nato
+       popravi po izidih. */
+    public static final int REKREATIVNI_ZACETEK = 800;
+
+    /* Izhodiscni rating igralca za tekmo na dani dan - vstopna vrednost IN
+       izhodisce, proti kateremu vlece uvrstitev novinca (vsi, ki to
+       potrebujejo, berejo tu: obracun, preracun, napoved tekme). Rekreativec
+       zacne pri REKREATIVNI_ZACETEK. Ce letnice rojstva ni ali starost pade
+       izven tabele, se vrnemo na enotno zacetno vrednost - ugibati sidro brez
+       starosti nima smisla. */
     public int zacetniRating(Igralec igralec, LocalDate danTekme) {
+        if (igralec.isRekreativniVstop()) {
+            return REKREATIVNI_ZACETEK;
+        }
         Integer sidro = sidro(igralec.getSpol(),
                 StarostniPas.letaVSezoni(igralec.getDatumRojstva(), danTekme));
         return sidro != null ? sidro : TurnirkoRatingStoritev.ZACETNI_RATING;

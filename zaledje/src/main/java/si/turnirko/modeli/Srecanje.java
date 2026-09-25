@@ -12,6 +12,7 @@ package si.turnirko.modeli;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -90,6 +91,10 @@ public class Srecanje {
     @Column(name = "ura_v_kolu")
     private Integer uraVKolu;
 
+    /* Kdaj je srecanje v aplikaciji dobilo PRVI izid - zgornja meja za cas,
+       ko je bilo odigrano (glej casOdigranja). Pretvornik iz istega razloga
+       kot pri terminu; starejsi zapisi so brez ure. */
+    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "odigran_ob")
     private LocalDateTime odigranOb;
 
@@ -173,6 +178,40 @@ public class Srecanje {
 
     public LocalDateTime getOdigranOb() { return odigranOb; }
     public void setOdigranOb(LocalDateTime odigranOb) { this.odigranOb = odigranOb; }
+
+    /* Kdaj je bilo srecanje ODIGRANO - eno pravilo za obracun ratinga, za
+       ponovni preracun in za datum tekme na profilu.
+
+       Iz prve roke tega aplikacija ne ve. Pozna TERMIN in trenutek PRVEGA
+       IZIDA (odigranOb). Velja termin, razen kadar je bil izid vpisan pred
+       dnem termina: srecanja ni mogoce vpisati, preden je odigrano, zato sta
+       se ekipi za termin zamenjali (Savinja liga: srecanje 4. kola odigrano
+       na vecer 1. kola) in je trenutek vpisa najboljse, kar vemo. Brez tega
+       je tak izid v dnevniku ratinga stal dva meseca v prihodnosti, preracun
+       pa bi ga postavil za tekme, ki so bile v resnici odigrane za njim.
+
+       Pravilo bere samo SHRANJENI vrednosti, zato obracun ob vnosu in
+       poznejsi preracun dasta isti cas - odigranOb se zato postavi ob prvem
+       izidu, se pred obracunom. Primerja se DAN in ne ura: starejsi zapisi
+       odigranOb so brez ure (polnoc) in bi sicer povozili uro termina
+       istega vecera. Polnoc pomeni "ura ni dolocena" (isto kot pri terminu),
+       zato tak zapis dobi uro termina - srecanje se je igralo na dan vpisa,
+       najverjetneje ob uri svojega kola, in ne pred vsemi tekmami vecera. */
+    public static LocalDateTime casOdigranja(LocalDateTime termin, LocalDateTime prviIzid) {
+        if (termin == null) {
+            return prviIzid;
+        }
+        if (prviIzid == null || !prviIzid.toLocalDate().isBefore(termin.toLocalDate())) {
+            return termin;
+        }
+        return prviIzid.toLocalTime().equals(LocalTime.MIDNIGHT)
+                ? prviIzid.toLocalDate().atTime(termin.toLocalTime())
+                : prviIzid;
+    }
+
+    public LocalDateTime casOdigranja() {
+        return casOdigranja(predvidenZacetek, odigranOb);
+    }
 
     public SerijaKoncnice getSerija() { return serija; }
     public Integer getTekmaVSeriji() { return tekmaVSeriji; }

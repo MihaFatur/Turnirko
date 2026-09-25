@@ -540,7 +540,7 @@ class RegistracijaTest {
 
     private IgralecJavniDto igralecVSifrantu(String ime, String priimek, LocalDate datumRojstva) {
         return igralci.ustvari(new IgralecVnos(ime, priimek, Spol.MOSKI, datumRojstva,
-                null, null, null, null, "SLO", null, null, null));
+                null, null, null, null, "SLO", null, null, null, null));
     }
 
     private Uporabnik racun(String email) {

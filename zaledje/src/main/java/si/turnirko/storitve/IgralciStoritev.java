@@ -133,6 +133,11 @@ public class IgralciStoritev {
         igralec.setDrzavljanstvo(vnos.drzavljanstvo() == null || vnos.drzavljanstvo().isBlank()
                 ? "SLO" : vnos.drzavljanstvo().trim());
         igralec.setNaslov(ocisti(vnos.naslov()));
+        /* Velja ob igralcevi PRVI tekmi (SidroStoritev.zacetniRating). Kdor
+           tekme ze ima, dobi nov zacetek sele s preracunom od dneva prve tekme
+           - samodejno ga ne sprozimo, ker admin oznaci vec igralcev naenkrat
+           in je en preracun na koncu dovolj. */
+        igralec.setRekreativniVstop(Boolean.TRUE.equals(vnos.rekreativniVstop()));
 
         if (vnos.postnaSt() == null) {
             igralec.setKraj(null);

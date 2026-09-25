@@ -85,6 +85,12 @@ public class Igralec {
     @Column(name = "arhiviran", nullable = false)
     private boolean arhiviran = false;
 
+    /* Igralec pride iz rekreacije: rating zacne pri SidroStoritev.
+       REKREATIVNI_ZACETEK namesto pri starostnem sidru (V36). Ni zastavica
+       lestvice rekreativcev - ta se izpelje iz tekem (RekreativecStoritev). */
+    @Column(name = "rekreativni_vstop", nullable = false)
+    private boolean rekreativniVstop = false;
+
     @Column(name = "ustvarjen_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenOb;
 
@@ -150,6 +156,9 @@ public class Igralec {
 
     public boolean isArhiviran() { return arhiviran; }
     public void setArhiviran(boolean arhiviran) { this.arhiviran = arhiviran; }
+
+    public boolean isRekreativniVstop() { return rekreativniVstop; }
+    public void setRekreativniVstop(boolean rekreativniVstop) { this.rekreativniVstop = rekreativniVstop; }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
     public LocalDateTime getPosodobljenOb() { return posodobljenOb; }

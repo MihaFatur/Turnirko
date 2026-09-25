@@ -111,6 +111,8 @@ export interface IgralecPodrobenDto extends IgralecDto {
   drzavljanstvo: string | null
   naslov: string | null
   kraj: KrajDto | null
+  /* Rating začne pri 800 namesto pri starostnem sidru (glej IgralecVnos). */
+  rekreativniVstop: boolean
 }
 
 export interface TurnirDto {
@@ -776,6 +778,9 @@ export interface IgralecVnos {
   naslov: string | null
   postnaSt: number | null
   idKlub: number | null
+  /* Igralec pride iz rekreacije: rating začne pri 800 namesto pri starostnem
+     sidru. Ni oznaka lestvice rekreativcev (ta se izpelje iz tekem). */
+  rekreativniVstop: boolean
 }
 
 export interface KlubVnos {

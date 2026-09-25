@@ -153,7 +153,13 @@ export function IgralciStran() {
                 </td>
                 <td className="vrstica__mono">{OZNAKE_SPOL[igralec.spol]}</td>
                 {podroben && (
-                  <td className="vrstica__mono">{letnica(podroben.datumRojstva)}</td>
+                  <td className="vrstica__mono">
+                    {letnica(podroben.datumRojstva)}
+                    {/* Pri urejanju več igralcev naenkrat se vidi, kdo je že označen. */}
+                    {podroben.rekreativniVstop && (
+                      <span title="Rekreativec — začetni rating 800"> · rekr.</span>
+                    )}
+                  </td>
                 )}
                 <td
                   className={
@@ -457,6 +463,13 @@ function IgralecOkno({
   const [postnaSt, nastaviPostnaSt] = useState(
     igralec?.kraj ? String(igralec.kraj.postnaSt) : '',
   )
+  const [rekreativniVstop, nastaviRekreativniVstop] = useState(
+    igralec?.rekreativniVstop ?? false,
+  )
+  /* Oznaka velja ob prvi tekmi. Kdor jih že ima, dobi nov začetek šele s
+     preračunom — to mora urejevalec vedeti, preden shrani. */
+  const potrebenPreracun =
+    igralec != null && igralec.steviloTekem > 0 && rekreativniVstop !== igralec.rekreativniVstop
 
   const shranjevanje = useMutation({
     mutationFn: (vnos: IgralecVnos) =>
@@ -496,6 +509,7 @@ function IgralecOkno({
       naslov: naslov.trim() || null,
       postnaSt: postnaSt ? Number(postnaSt) : null,
       idKlub: idKlub ? Number(idKlub) : null,
+      rekreativniVstop,
     })
   }
 
@@ -534,6 +548,26 @@ function IgralecOkno({
             />
           </label>
         </div>
+
+        {/* Takoj pod datumom rojstva: tudi ta pove, kje igralec začne. */}
+        <label className="obrazec__potrditev">
+          <input
+            type="checkbox"
+            checked={rekreativniVstop}
+            onChange={(d) => nastaviRekreativniVstop(d.target.checked)}
+          />
+          <span>Rekreativec — začetni rating 800</span>
+        </label>
+        <p className="namig">
+          Brez oznake novinec začne pri povprečju registriranih igralcev svoje starosti (odrasel
+          okoli 1500). Po prvem dnevu ga v obeh primerih uvrstijo izidi.
+        </p>
+        {potrebenPreracun && (
+          <p className="obvestilo obvestilo--opozorilo" role="status">
+            Igralec že ima odigrane tekme. Nov začetek obvelja šele, ko na strani Rating poženeš
+            preračun od dneva njegove prve tekme.
+          </p>
+        )}
 
         <div className="obrazec__vrstica">
           <IzbirnikKluba

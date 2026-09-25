@@ -13,6 +13,7 @@ import type {
   IzidTekme,
   MestoVnos,
   NizVnos,
+  SrecanjeDto,
   SrecanjePodrobnoDto,
   StranEkipe,
   TekmaSrecanjaDto,
@@ -324,7 +325,7 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
       {urejana && (
         <RezultatOkno
           tekma={urejana}
-          idSrecanje={s.id}
+          srecanje={s}
           onZapri={() => nastaviUrejano(null)}
           onMenjava={() => {
             nastaviUrejano(null)
@@ -335,7 +336,7 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
       {popravljana && (
         <RezultatOkno
           tekma={popravljana}
-          idSrecanje={s.id}
+          srecanje={s}
           popravek
           onZapri={() => nastaviPopravljano(null)}
           onMenjava={() => nastaviPopravljano(null)}
@@ -510,13 +511,13 @@ function priimekStrani(t: TekmaSrecanjaDto, stran: StranEkipe): string {
 
 function RezultatOkno({
   tekma,
-  idSrecanje,
+  srecanje,
   onZapri,
   onMenjava,
   popravek = false,
 }: {
   tekma: TekmaSrecanjaDto
-  idSrecanje: number
+  srecanje: SrecanjeDto
   onZapri: () => void
   /* Rezultat se vpisuje s papirja; če je tam drug igralec, je to trenutek, ko
      organizator razliko opazi. Na telefonu je to tudi edini vhod v menjavo. */
@@ -579,12 +580,32 @@ function RezultatOkno({
         : srecanjaApi.vnesiRezultat(tekma.id, vnos)
     },
     onSuccess: () => {
-      odjemalec.invalidateQueries({ queryKey: ['srecanje', idSrecanje] })
-      odjemalec.invalidateQueries({ queryKey: ['srecanja'] })
-      odjemalec.invalidateQueries({ queryKey: ['lestvica'] })
+      if (popravek) {
+        /* Popravek preračuna rating vsem, ki so igrali od dneva tekme naprej
+           (lestvica, profili, kartice), popravljen zmagovalec pa premakne še
+           lestvice lige — isto kot po preračunu na strani Rating. */
+        odjemalec.invalidateQueries()
+      } else {
+        odjemalec.invalidateQueries({ queryKey: ['srecanje', srecanje.id] })
+        odjemalec.invalidateQueries({ queryKey: ['srecanja'] })
+        odjemalec.invalidateQueries({ queryKey: ['lestvica'] })
+      }
       onZapri()
     },
   })
+
+  /* Kdo bi po tem vnosu tekmo dobil — null, dokler izid ni cel. Po njem
+     popravek pove, da se zmagovalec obrne (strežnik to dovoli le v ligi in le,
+     če potek srečanja ostane isti). */
+  const noviZmagovalec: StranEkipe | null =
+    izid !== 'IGRANO'
+      ? zmagovalec
+      : niziDomaci !== '' && niziGost !== '' && Number(niziDomaci) !== Number(niziGost)
+        ? Number(niziDomaci) > Number(niziGost) ? 'DOMACI' : 'GOST'
+        : null
+  const obrnjen = popravek && noviZmagovalec != null && noviZmagovalec !== tekma.zmagovalecStran
+  const ligasko = srecanje.idLiga != null
+  const premik = noviZmagovalec === 'DOMACI' ? 1 : -1
 
   function obOddaji(e: FormEvent) {
     e.preventDefault()
@@ -622,9 +643,11 @@ function RezultatOkno({
         </p>
         {popravek ? (
           <p className="namig">
-            Popravek sme spremeniti izid, ne pa zmagovalca — po njem je bilo srečanje
-            odločeno. Turnirko rating se preračuna od dneva te tekme naprej, kar lahko
-            traja nekaj trenutkov.
+            {ligasko
+              ? 'Popravek sme spremeniti tudi zmagovalca, če s tem ostanejo odigrane iste tekme srečanja. '
+              : 'Popravek sme spremeniti izid, ne pa zmagovalca — po njem je turnir tekel naprej. '}
+            Turnirko rating se preračuna od dneva te tekme naprej, kar lahko traja nekaj
+            trenutkov.
           </p>
         ) : (
           <div>
@@ -690,6 +713,12 @@ function RezultatOkno({
         )}
 
         <p className="namig">Najboljši od {tekma.steviloNizov} nizov (za zmago {zaZmago}).</p>
+        {obrnjen && ligasko && noviZmagovalec && (
+          <p className="obvestilo obvestilo--opozorilo" role="status">
+            Zmagovalec se obrne: tekmo dobi {imeStrani(tekma, noviZmagovalec)}. Izid srečanja
+            bo {srecanje.dobljeneDomaci + premik} : {srecanje.dobljeneGost - premik}.
+          </p>
+        )}
         {napakaVnosa && <div className="napaka">{napakaVnosa}</div>}
         <SporociloNapake napaka={shrani.error} />
         <div className="obrazec__gumbi">

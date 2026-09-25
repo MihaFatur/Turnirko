@@ -203,6 +203,13 @@ public class KoncnicaStoritev {
         serijaRepozitorij.deleteAll(serijaRepozitorij.najdiZaLigo(idLiga));
     }
 
+    /* Ali ima liga koncnico ze sestavljeno - takrat so pari nastali iz koncne
+       lestvice rednega dela in izid srecanja rednega dela ni vec samo
+       izpeljanka (glej SrecanjeStoritev.popraviRezultat). */
+    public boolean jeSestavljena(Long idLiga) {
+        return serijaRepozitorij.existsByLigaId(idLiga);
+    }
+
     // ---------- Potek ----------
 
     /* Poklice ga SrecanjeStoritev, ko se tekma serije konca: presteje zmage,

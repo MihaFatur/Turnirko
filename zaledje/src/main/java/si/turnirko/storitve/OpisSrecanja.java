@@ -41,14 +41,14 @@ public final class OpisSrecanja {
     }
 
     /* Kdaj je bilo srecanje: pri ekipni tekmi turnirja dan turnirja (kot vse
-       turnirske tekme), pri ligi zakljucek srecanja, sicer termin. "odigranOb"
-       postavi sele zakljucek v aplikaciji - uvozena zgodovina ga nima, termin
-       pa ima vsako uvozeno srecanje. */
+       turnirske tekme), pri ligi cas odigranja (Srecanje.casOdigranja - isti,
+       pod katerim stoji v dnevniku ratinga). Uvozena zgodovina prvega izida
+       nima, termin pa ima vsako uvozeno srecanje. */
     public static LocalDateTime cas(Srecanje s) {
         if (s.jeTurnirsko()) {
             LocalDate datum = s.datumTurnirja();
             return datum == null ? null : datum.atStartOfDay();
         }
-        return s.getOdigranOb() != null ? s.getOdigranOb() : s.getPredvidenZacetek();
+        return s.casOdigranja();
     }
 }

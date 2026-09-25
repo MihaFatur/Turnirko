@@ -26,5 +26,8 @@ public record IgralecVnos(
         String drzavljanstvo,
         String naslov,
         Integer postnaSt,
-        Long idKlub
+        Long idKlub,
+        // igralec pride iz rekreacije: rating zacne pri 800 namesto pri
+        // starostnem sidru (V36); null = ne
+        Boolean rekreativniVstop
 ) {}

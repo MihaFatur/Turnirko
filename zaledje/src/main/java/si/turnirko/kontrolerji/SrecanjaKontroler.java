@@ -60,7 +60,8 @@ public class SrecanjaKontroler {
     }
 
     /* Popravek ze vpisanega rezultata (PUT, ker rezultat zamenja - glej
-       TekmeKontroler). Zmagovalca ne sme spremeniti in sam preracuna rating. */
+       TekmeKontroler). Zmagovalca sme spremeniti le, ce ostane potek
+       tekmovanja isti (SrecanjeStoritev.popraviRezultat); rating preracuna sam. */
     @PutMapping("/tekme/{idTekma}/rezultat")
     public TekmaSrecanjaDto popraviRezultat(@PathVariable Long idTekma,
                                             @Valid @RequestBody VnosRezultataSrecanja vnos) {

@@ -253,8 +253,8 @@ public class ProfilStoritev {
         return datum != null ? datum.atStartOfDay() : null;
     }
 
-    /* Kdaj je bilo srecanje odigrano: zakljucek, sicer termin kola. "odigranOb"
-       postavi sele zakljucek srecanja v aplikaciji, zato ga uvozena zgodovina
+    /* Kdaj je bilo srecanje odigrano (Srecanje.casOdigranja): termin kola,
+       razen ce je bil izid vpisan ze pred njim. Uvozena zgodovina prvega izida
        nima - termin kola pa ima vsako uvozeno srecanje. Brez tega bi vsaka
        uvozena ligaska tekma nosila dan uvoza in bi izbirnik obdobja v grafu
        rating ne odrezal nicesar. */

@@ -17,6 +17,8 @@
 package si.turnirko.storitve;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -71,6 +73,10 @@ import si.turnirko.storitve.LestvicaLigeStoritev.BilanceLige;
 
 @Service
 public class SrecanjeStoritev {
+
+    /* Termin kola je vpisan v slovenskem casu, zato v njem zapisemo tudi
+       trenutek prvega izida - sicer bi ju primerjali v dveh casovnih pasovih. */
+    private static final ZoneId SLOVENIJA = ZoneId.of("Europe/Ljubljana");
 
     private final SrecanjeRepozitorij srecanjeRepozitorij;
     private final PostavaSrecanjaRepozitorij postavaRepozitorij;
@@ -233,6 +239,13 @@ public class SrecanjeStoritev {
         }
 
         Izid izid = preberiIzid(t, v);
+        /* Prvi izid srecanja zabelezi, kdaj je bilo najkasneje odigrano - PRED
+           obracunom, da ga obracun in poznejsi preracun preberata enako (glej
+           Srecanje.casOdigranja). Slovenski cas, ker je v njem tudi termin;
+           na minuto kot termin, da obracun in preracun zapiseta isti niz. */
+        if (s.getOdigranOb() == null) {
+            s.setOdigranOb(LocalDateTime.now(SLOVENIJA).truncatedTo(ChronoUnit.MINUTES));
+        }
         List<NizVnos> vneseniNizi = zapisiIzid(t, izid);
 
         // rating samo za posamicne tekme, ce tekmovanje steje in izid steje
@@ -250,14 +263,22 @@ public class SrecanjeStoritev {
 
     /* POPRAVEK ze shranjenega rezultata posamicne tekme srecanja.
 
-       Zakaj in s kaksno omejitvijo - glej TekmaStoritev.popraviRezultat; pravilo
-       je isto in iz istega razloga: zmagovalec tekme je stevilka na semaforju
-       srecanja, po njej pa je bilo odloceno, katere tekme se sploh se igrajo
-       (prag zmag), kdo je dobil srecanje in kako tece serija koncnice oz.
-       ekipna tekma turnirja. Popravek zato spremeni izid, ne pa zmagovalca.
+       Rezultat se prepisuje s papirja in papir se bere z napako - tudi tako,
+       da se zamenjata imeni in v zapisniku zmaga drugi. Zato sme popravek v
+       srecanju spremeniti tudi ZMAGOVALCA tekme, a samo, dokler s tem ne
+       razveljavi poteka tekmovanja (preveriZamenjavoZmagovalca):
+         * potek srecanja ostane isti - iste tekme so odigrane in iste
+           neodigrane (pri pragu zmag bi drug zmagovalec lahko pomenil, da se
+           srecanje konca prej ali pozneje, tega pa papir ne more vedeti),
+         * izid srecanja, po katerem je ze teklo nekaj drugega (serija
+           koncnice, koncnica iz lestvice, ekipna tekma turnirja v mrezi), se
+           ne spremeni.
+       Liga, ki odigra vse tekme srecanja (Savinja), zato zmagovalca popravi
+       vedno; lestvica lige je izpeljanka in sledi sama.
 
-       Ker je zmagovalec isti, povzetek srecanja (dobljene tekme, status,
-       predcasni konec) ostane, kar je - posodobiSrecanje tu namenoma ne tece.
+       Pri spremenjenem zmagovalcu se osvezi povzetek srecanja (dobljene
+       tekme), status pa ostane - enak potek je pogoj. Nadaljevanja (serija,
+       ekipna tekma) se ne sprozijo znova: izid, po katerem sta tekla, je isti.
        Preracuna se rating: izid te tekme je vstopal v vse poznejse tekme obeh
        igralcev. */
     @Transactional
@@ -273,11 +294,10 @@ public class SrecanjeStoritev {
         }
 
         Izid izid = preberiIzid(t, v);
-        if (izid.zmagovalec() != t.getZmagovalecStran()) {
-            throw new DomenskaIzjema("Popravek ne more spremeniti zmagovalca tekme:"
-                    + " po njem je bilo srecanje odloceno (predcasni konec, izid srecanja,"
-                    + " serija koncnice). Popravi lahko izid v nizih, tocke po nizih in"
-                    + " nacin zakljucka.");
+        boolean drugZmagovalec = izid.zmagovalec() != t.getZmagovalecStran();
+        // preveri se PRED zapisom - zavrnjen popravek ne sme nicesar spremeniti
+        if (drugZmagovalec) {
+            preveriZamenjavoZmagovalca(s, t, izid.zmagovalec());
         }
 
         /* Stare tocke gredo, nove se pisejo od prvega niza naprej. Izbris se
@@ -287,10 +307,109 @@ public class SrecanjeStoritev {
         nizRepozitorij.flush();
         List<NizVnos> vneseniNizi = zapisiIzid(t, izid);
 
+        if (drugZmagovalec) {
+            /* Ista pot kot ob vnosu: pri enakem poteku le presteje dobljene
+               tekme, srecanju v teku pa lahko prinese odlocitev (prag). */
+            posodobiSrecanje(s, s.pravila().zmagZaSrecanje());
+        }
+
         preracunRatinga.preracunajPoPopravku(RatingStoritev.casLigaskeTekme(t));
 
         Map<Long, Map<Long, Integer>> delte = delteRatinga(List.of(t.getId()));
         return tekmaDto(t, delte, vneseniNizi, postavaRepozitorij.najdiZaSrecanje(s.getId()));
+    }
+
+    /* Izid srecanja iz koncanih tekem - 1 domaci, -1 gost, 0 izenaceno; tekmi
+       `popravljena` se pri tem steje zmagovalec `novi` (null = kot je zapisano). */
+    private static int izidSrecanja(List<TekmaSrecanja> tekme, TekmaSrecanja popravljena,
+                                    StranEkipe novi) {
+        int razlika = 0;
+        for (TekmaSrecanja t : tekme) {
+            if (t.getStatus() != StatusTekmeSrecanja.KONCANA) {
+                continue;
+            }
+            StranEkipe zmagovalec = popravljena != null && t.getId().equals(popravljena.getId())
+                    ? novi : t.getZmagovalecStran();
+            if (zmagovalec == StranEkipe.DOMACI) {
+                razlika++;
+            } else if (zmagovalec == StranEkipe.GOST) {
+                razlika--;
+            }
+        }
+        return Integer.signum(razlika);
+    }
+
+    /* Ali sme popravek tekmi dati drugega zmagovalca - glej popraviRezultat. */
+    private void preveriZamenjavoZmagovalca(Srecanje s, TekmaSrecanja popravljena, StranEkipe novi) {
+        if (s.jeTurnirsko()) {
+            throw new DomenskaIzjema("Zmagovalca tekme v ekipni tekmi turnirja ni mogoce"
+                    + " spremeniti: izid srecanja je postal izid tekme v mrezi oz. skupini in"
+                    + " po njem je turnir ze tekel. Popravi lahko izid v nizih, tocke po nizih"
+                    + " in nacin zakljucka.");
+        }
+
+        List<TekmaSrecanja> tekme = tekmaRepozitorij.najdiZaSrecanje(s.getId());
+        preveriEnakPotek(tekme, popravljena, novi, s.pravila().zmagZaSrecanje());
+
+        if (s.getStatus() != StatusSrecanja.KONCANO) {
+            return; // srecanje se tece - izid srecanja se ni nikamor vstopil
+        }
+        if (izidSrecanja(tekme, popravljena, novi) == izidSrecanja(tekme, null, null)) {
+            return;
+        }
+        if (s.jeKoncnica()) {
+            throw new DomenskaIzjema("Popravek bi spremenil zmagovalca tekme koncnice, po njem"
+                    + " pa je serija ze tekla. Popravi lahko tekmo, ki izida srecanja ne obrne.");
+        }
+        if (koncnicaStoritev.jeSestavljena(s.getLiga().getId())) {
+            throw new DomenskaIzjema("Popravek bi spremenil izid srecanja rednega dela, koncnica"
+                    + " pa je ze sestavljena iz koncne lestvice. Najprej razveljavi koncnico.");
+        }
+    }
+
+    /* Po pravilu praga (prvi do N zmag) se srecanje konca s tekmo, v kateri ena
+       stran doseze prag; poznejse tekme se ne igrajo. Popravljen zapisnik mora
+       biti z njim skladen - sicer bi popravek trdil, da so bile odigrane tekme,
+       ki jih po pravilih ni bilo, ali da manjkajo tekme, ki so se morale
+       odigrati (te so neodigrane in jih ni mogoce vpisati). Tekme, ki se
+       CAKAJO, so v redu v obeh primerih: srecanju v teku lahko popravek
+       prinese odlocitev (posodobiSrecanje), kot bi jo prinesel vnos. Brez
+       praga se odigrajo vse tekme in potek je vedno isti. */
+    private static void preveriEnakPotek(List<TekmaSrecanja> tekme, TekmaSrecanja popravljena,
+                                         StranEkipe novi, Integer prag) {
+        if (prag == null) {
+            return;
+        }
+        int domaci = 0;
+        int gost = 0;
+        Integer odlocitev = null; // zaporedje tekme, v kateri je bil dosezen prag
+        for (TekmaSrecanja t : tekme) {
+            if (t.getStatus() != StatusTekmeSrecanja.KONCANA) {
+                continue;
+            }
+            StranEkipe zmagovalec = t.getId().equals(popravljena.getId()) ? novi : t.getZmagovalecStran();
+            if (zmagovalec == StranEkipe.DOMACI) {
+                domaci++;
+            } else {
+                gost++;
+            }
+            if (odlocitev == null && (domaci >= prag || gost >= prag)) {
+                odlocitev = t.getZaporedje();
+            }
+        }
+        for (TekmaSrecanja t : tekme) {
+            boolean odigrana = t.getStatus() == StatusTekmeSrecanja.KONCANA;
+            if (odlocitev != null && odigrana && t.getZaporedje() > odlocitev) {
+                throw new DomenskaIzjema("Popravek bi spremenil potek srecanja: s tem izidom bi bilo"
+                        + " srecanje odloceno ze po " + odlocitev + ". tekmi, v zapisniku pa so"
+                        + " odigrane tudi poznejse. Preveri zapisnik - zmagovalca tu ni mogoce obrniti.");
+            }
+            if (odlocitev == null && t.getStatus() == StatusTekmeSrecanja.NEODIGRANA) {
+                throw new DomenskaIzjema("Popravek bi spremenil potek srecanja: s tem izidom srecanje"
+                        + " ne bi bilo odloceno, preostale tekme pa so v zapisniku neodigrane."
+                        + " Preveri zapisnik - zmagovalca tu ni mogoce obrniti.");
+            }
+        }
     }
 
     /* Preverjen izid vnosa, se preden se karkoli zapise - popravek iz njega
@@ -550,9 +669,6 @@ public class SrecanjeStoritev {
 
         if (odloceno) {
             s.setStatus(StatusSrecanja.KONCANO);
-            if (s.getOdigranOb() == null) {
-                s.setOdigranOb(LocalDateTime.now());
-            }
         } else {
             s.setStatus(StatusSrecanja.POTEKA);
         }

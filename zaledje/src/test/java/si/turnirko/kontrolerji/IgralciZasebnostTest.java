@@ -49,7 +49,7 @@ class IgralciZasebnostTest {
         igralec = igralciStoritev.ustvari(new IgralecVnos(
                 "Zasebni", "Preizkus", Spol.MOSKI, LocalDate.of(2000, 1, 1),
                 "zasebni@primer.si", "070 000 000", null, "L-123",
-                "SLO", "Skrivna ulica 1", null, null));
+                "SLO", "Skrivna ulica 1", null, null, null));
     }
 
     @Test

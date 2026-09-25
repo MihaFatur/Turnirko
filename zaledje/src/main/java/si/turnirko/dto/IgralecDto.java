@@ -24,7 +24,9 @@ public record IgralecDto(
         Integer rating, // trenutni Turnirko rating; null, ce igralec se ni igral
         // stevilo ze odigranih ratinskih tekem; 0 -> se je mogoce postaviti
         // zacetni rating; nizko stevilo -> rating je se provizoricen
-        int steviloTekem
+        int steviloTekem,
+        // rating zacne pri 800 namesto pri starostnem sidru (V36)
+        boolean rekreativniVstop
 ) {
 
     public static IgralecDto iz(Igralec igralec, Integer rating) {
@@ -47,7 +49,8 @@ public record IgralecDto(
                 igralec.getKraj() != null ? KrajDto.iz(igralec.getKraj()) : null,
                 KlubDto.iz(igralec.getKlub()),
                 rating,
-                steviloTekem
+                steviloTekem,
+                igralec.isRekreativniVstop()
         );
     }
 }

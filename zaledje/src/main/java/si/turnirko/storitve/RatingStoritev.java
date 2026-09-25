@@ -170,23 +170,19 @@ public class RatingStoritev {
         return datum == null ? VrstaRatinskeTekme.BREZ_DATUMA : datum.atStartOfDay();
     }
 
-    /* Kdaj tekma srecanja VELJA: pri ligi cas odigranega srecanja, sicer
-       predvideni termin. Ekipna tekma turnirja velja na dan turnirja ob
-       polnoci - isto kot vse turnirske tekme (vir pove samo dan) in isto,
-       kot jo razvrsti preracun (VrstaRatinskeTekme). */
+    /* Kdaj tekma srecanja VELJA: pri ligi cas odigranja srecanja
+       (Srecanje.casOdigranja - isto pravilo uporabi preracun). Ekipna tekma
+       turnirja velja na dan turnirja ob polnoci - isto kot vse turnirske
+       tekme (vir pove samo dan) in isto, kot jo razvrsti preracun
+       (VrstaRatinskeTekme). */
     public static LocalDateTime casLigaskeTekme(TekmaSrecanja tekma) {
         Srecanje srecanje = tekma.getSrecanje();
         if (srecanje.jeTurnirsko()) {
             LocalDate datum = srecanje.datumTurnirja();
             return datum == null ? VrstaRatinskeTekme.BREZ_DATUMA : datum.atStartOfDay();
         }
-        if (srecanje.getOdigranOb() != null) {
-            return srecanje.getOdigranOb();
-        }
-        if (srecanje.getPredvidenZacetek() != null) {
-            return srecanje.getPredvidenZacetek();
-        }
-        return VrstaRatinskeTekme.BREZ_DATUMA;
+        LocalDateTime cas = srecanje.casOdigranja();
+        return cas != null ? cas : VrstaRatinskeTekme.BREZ_DATUMA;
     }
 
     /* Postavitveni (zacetni) rating: admin igralcu doloci vstopni rating,
