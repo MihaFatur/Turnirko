@@ -18,35 +18,58 @@
    plapolanje zastavice), ki teče ves prizor in ga ob koncu prekliče
    `ustavi`. Ključi bi za propeler pomenili sto ključev na sekundo.
 
-   Animira se samo `transform` in `opacity`. Sklepi so vrtišča: zunanja
-   skupina v SVG-ju postavi izhodišče v sklep, notranja (`data-del`) se vrti
-   okoli svojega (0, 0). */
+   Animira se samo `transform` in `opacity` (poleg njiju `visibility` pri
+   delih, ki so nevidni tudi za klike: znak in oznaka uporabnika). Sklepi so
+   vrtišča: zunanja skupina v SVG-ju postavi izhodišče v sklep, notranja
+   (`data-del`) se vrti okoli svojega (0, 0). */
 
 export type Kljuc = { t: number; e?: string; [polje: string]: number | string | undefined }
 export type Sledi = Record<string, Kljuc[]>
 
+export type Naprava = 'namizje' | 'telefon'
+
 /* Izmerjena glava strani (px, glede na njen zgornji levi kot): sidra, ob
-   katerih se odvijata prizora čez celo glavo (letalo, lestev). */
+   katerih se odvijajo prizori. Glava je namizna (masthead) ali telefonska
+   (56 px visoka vrstica); `naprava` pove, katera, ostala polja pa imajo v obeh
+   isti pomen, zato prizori ne rabijo dveh različic izračuna. */
 export interface Glava {
+  naprava: Naprava
   sirina: number
-  /* Desni rob logotipa »Turnirko«: od tu se letalo pokaže. */
+  /* Kje lik stoji: zgornji rob tanke črte pod vrstico. Vse pod njo je zunaj
+     platna, zato se lik »potopi« za črto. */
+  tla: number
+  /* Desni rob skrajno levega elementa: logotipa »Turnirko« (na telefonu ob
+     podstrani puščice nazaj). Od tu se letalo pokaže. */
   logotipDesno: number
-  /* Levi rob povezave »Domov«: tu letalo izgine. */
+  /* Desni rob navigacije; na telefonu je ni, zato enako `logotipDesno`. */
+  navDesno: number
+  /* Sredina povezave »Lestvica«, nad katero visi lestev: samo namizje. */
+  lestvicaSredina?: number
+  /* Kje letalo izgine: levi rob povezave »Domov«; na telefonu rob zaslona. */
   domovLevo: number
-  /* Sredina povezave »Lestvica«: nad njo visi lestev, nanjo pade tabla. */
-  lestvicaSredina: number
   /* Navpična sredina vrstice z navigacijo. */
   vrsticaSredina: number
+  /* Oznaka uporabnika (»Gost · prijava« oz. ime): levi in desni rob besedila ter
+     njegova navpična sredina. Na telefonu jo prizori skrijejo, v prizoru
+     »zogica« na namizju se spremeni v znak. */
+  oznakaLevo: number
+  oznakaDesno: number
+  oznakaY: number
 }
 
-/* Kje in kako velik je nastop. `uporabnik`: platno levo od oznake uporabnika,
-   lik stoji na črti. `glava`: platno čez celo glavo (in lestev pod njo), vse
-   mere so v pikslih strani. */
+/* Kje in kako velik je nastop. Platno je VEDNO čez celo glavo (od zgornjega roba
+   do črte, na kateri lik stoji); mere so v pikslih strani. `x` je vodoravna
+   sredina lika, `merilo` in `pisava` sta mera lika na tej napravi (glej
+   MERA_LIKA v umestitevMaskote.ts). */
 export interface Umestitev {
-  vrsta: 'uporabnik' | 'glava'
   sirina: number
   visina: number
-  glava?: Glava
+  glava: Glava
+  x: number
+  merilo: number
+  pisava: number
+  /* Višina table v enotah lika (na telefonu višja, da 12 px besedilo diha). */
+  visinaTable: number
 }
 
 export interface Kontekst {
@@ -81,11 +104,22 @@ export interface Predvajljiv<K> {
 }
 
 export interface PrizorPodatki extends Predvajljiv<Kontekst> {
-  /* Kje se prizor odvija (glej Umestitev) in kateri izris ga igra. */
-  postavitev: 'uporabnik' | 'glava'
+  /* Na katerih napravah se prizor igra. Isti `id` sme obstajati v dveh
+     različicah (po eni na napravo): vreča izbire šteje `id`, ne različice. */
+  naprave: readonly Naprava[]
+  /* Kateri izris ga igra. */
   slika: 'lik' | 'letalo' | 'lestev'
   /* Ali prizor rabi lopar in žogico (izris ju doda samo tedaj). */
   lopar?: boolean
+  /* Ali ima izris dodatni roki, ki se dvigneta izza črte in povlečeta tablo
+     pod črto (»kukaj«). */
+  vlek?: boolean
+  /* Tabla se izriše pred rokami, ne za njimi: ko jo lik spusti na črto, roke
+     izginejo za njo (»kukaj«). */
+  tablaNaprej?: boolean
+  /* Lik nima table nad glavo; znak nastane na mestu oznake uporabnika
+     (»zogica« na namizju). */
+  znakNaOznaki?: boolean
 }
 
 type Stanje = Record<string, number>
@@ -101,7 +135,7 @@ const vrti = (kot: number): Okvir => ({ transform: `rotate(${kot}deg)` })
 
 /* Splošen sled za del, ki se premika, vrti in bledi: x, y (px), r (stopinje),
    sx, sy (merilo), o (motnost). Za dele, ki nimajo posebnega pomena (letalo,
-   lestev, palec). */
+   lestev, palec, roki izza črte, okvir v tabeli). */
 function splosen(ime: string): Sled {
   return {
     privzeto: { x: 0, y: 0, r: 0, sx: 1, sy: 1, o: 1 },
@@ -113,6 +147,9 @@ function splosen(ime: string): Sled {
     },
   }
 }
+
+/* Deli, ki niso v platnu, ampak v glavi strani: ime sleda -> izbirnik. */
+const ZUNANJI: Record<string, string> = { oznaka: '.uporabnik-gumb' }
 
 /* Roke: predznak loči levo od desne, da imata isti ključi isti pomen
    (pozitivno = dvig navzven). */
@@ -169,6 +206,34 @@ const SLEDI: Record<string, Sled> = {
   lestev: splosen('lestev'),
   zibanje: splosen('zibanje'),
   palec: splosen('palec'),
+  /* Znak, ki nastane na mestu oznake uporabnika (»zogica« na namizju): do
+     zadetka je nevidno IN neprijemljivo (`visibility`), sicer bi prekril
+     oznako in ujel klik namesto nje. */
+  znak: {
+    privzeto: { x: 0, y: 0, r: 0, sx: 1, sy: 1, o: 1 },
+    deli: {
+      znak: (s) => ({
+        transform: `translate(${s.x}px, ${s.y}px) rotate(${s.r}deg) scale(${s.sx}, ${s.sy})`,
+        opacity: s.o,
+        visibility: s.o > 0 ? 'visible' : 'hidden',
+      }),
+    },
+  },
+  /* Roki, ki tablo povlečeta pod črto (»kukaj«). */
+  vlekL: splosen('vlekL'),
+  vlekD: splosen('vlekD'),
+  /* Oznaka uporabnika (»Gost · prijava«) je v glavi in ne v platnu: prizor jo
+     skrije ali zamenja, zato jo predvajalnik poišče v dokumentu (glej
+     ZUNANJI). `visibility` poskrbi, da skrita oznaka ne ujame klika. */
+  oznaka: {
+    privzeto: { vidna: 1 },
+    deli: {
+      oznaka: (s) => ({
+        opacity: s.vidna,
+        visibility: s.vidna > 0 ? 'visible' : 'hidden',
+      }),
+    },
+  },
   /* Okvir okoli celice v tabeli paketov (prizorTabela.ts). */
   okvir: splosen('okvir'),
 }
@@ -260,7 +325,9 @@ export function predvajaj<K>(koren: Element, prizor: Predvajljiv<K>, kontekst: K
     }
 
     for (const [del, okviri] of okvirji) {
-      const element = koren.querySelector(`[data-del="${del}"]`)
+      const element =
+        koren.querySelector(`[data-del="${del}"]`) ??
+        (ZUNANJI[del] ? document.querySelector(ZUNANJI[del]) : null)
       if (!element) continue
       animacije.push(element.animate(okviri, { duration: prizor.trajanjeMs, fill: 'both' }))
     }

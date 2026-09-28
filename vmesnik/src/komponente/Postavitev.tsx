@@ -222,6 +222,10 @@ export function Postavitev() {
             <div className="glava-telefon__crta" />
             <div ref={nastaviCiljNaslova} />
             <div ref={nastaviCiljZavihkov} />
+
+            {/* Platno čez celo glavo (absolutno, zato višine ne spremeni); med
+                nastopom oznaka uporabnika izgine. */}
+            <Maskota />
           </header>
         ) : (
           <header className="glava" ref={glavaNamizja}>
@@ -232,8 +236,8 @@ export function Postavitev() {
 
             <UporabniskiMeni />
 
-            {/* Absolutno postavljena v območje uporabnika (levo od njegove
-                oznake), zato glave ne premakne, ko se pojavi. */}
+            {/* Absolutno postavljena čez celo glavo, zato glave ne premakne,
+                ko se pojavi. */}
             <Maskota />
 
             <div className="glava__crta" />

@@ -318,16 +318,22 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
 
 ### 5b. Izjema: maskota »Igralec Premium«
 
-Odločitev lastnika, 23. 9. 2026. Ob naključnih trenutkih se v glavi pojavi
-risan lik in izgine (`komponente/Maskota.tsx`, lik v
-`komponente/MaskotaPrizori.tsx`, prizori v `pomozno/prizoriMaskote.ts`, napisi
-v `pomozno/napisiMaskote.ts`, umestitev v `pomozno/umestitevMaskote.ts`, urnik
-v `pomozno/urnikMaskote.ts`). Vsak nastop je naključna kombinacija **prizora**
-(kaj se dogaja; trenutno pet) in **napisa** (kaj piše tabla oz. zastavica;
-trenutno pet). Prizori ob oznaki uporabnika (`tabla`, `kukaj`, `zogica`): lik
-stoji na črti in drži tablo. Prizora čez glavo: `letalo` (izza logotipa do
-povezave »Domov«, za sabo vleče zastavico) in `lestev` (z vrha strani se spusti
-vrvna lestev, tabla prekrije povezavo »Lestvica«, lik pleza do sredine lestve).
+Odločitev lastnika, 23. 9. 2026; razširitev na telefon 26. 9. 2026. Ob
+naključnih trenutkih se v glavi pojavi risan lik in izgine
+(`komponente/Maskota.tsx`, lik v `komponente/MaskotaPrizori.tsx`, prizori v
+`pomozno/prizoriMaskote.ts`, napisi v `pomozno/napisiMaskote.ts`, umestitev v
+`pomozno/umestitevMaskote.ts`, izbira v `pomozno/vrecaMaskote.ts`, urnik v
+`pomozno/urnikMaskote.ts`). Vsak nastop je kombinacija **prizora** (kaj se
+dogaja; trenutno pet na namizju, štirje na telefonu) in **napisa** (kaj piše
+tabla oz. zastavica; trenutno pet), oba izbrana z vrečo, da se vsak pokaže
+enako pogosto. Prizori: `tabla`
+(lik stoji na črti pod vrstico in drži znak nad glavo), `kukaj` (pokuka izza
+črte, se ozre, znak odloži na črto in se potopi; znak nato izza črte povlečeta
+navzdol dve roki), `zogica` (na namizju žogico pošlje v oznako uporabnika »Gost ·
+prijava«, ki se ob zadetku spremeni v znak; na telefonu jo pošlje iz glave in
+razgrne znak), `letalo` (izza logotipa vleče zastavico) in `lestev` (samo
+namizje: z vrha strani se spusti vrvna lestev, tabla prekrije povezavo
+»Lestvica«, lik pleza do sredine lestve in pokaže palec).
 To je edina ilustracija in edina animacija »zaradi lepšega« v vmesniku. Isti
 lik nastopi (odločitev lastnika, 24. 9. 2026) še na **enem** mestu: na koraku
 »Paket« registracije skoči z vrha tabele »Kaj dobiš« in po vrsticah navzdol
@@ -336,21 +342,31 @@ pokaže vse funkcije, ki jih doda Premium (`komponente/MaskotaTabela.tsx`,
 prav tam, z izbranim Igralcem Premium za eno leto. Izjema velja samo za lik in
 samo, če veljajo **vsi** pogoji hkrati:
 
-1. **Samo namizje (nad 640 px) in samo v glavi** (poleg tabele iz pogoja 8), z
-   eno dodatno izjemo: lestev sega pod črto glave v prazen zgornji rob vsebine
-   (največ 192 px od zgornjega roba strani). Prizora čez glavo se vežeta na izmerjene elemente (logotip,
-   »Domov«, »Lestvica«) in se ne pokažeta, če se ne prilegata (preozko okno,
-   predolg napis). Na telefonu je ni; telefon zahteva novo odločitev (glava je
-   tam visoka 56 px).
+1. **Namizje in telefon, samo v glavi** (poleg tabele iz pogoja 8), z eno
+   dodatno izjemo: `lestev` (samo namizje) sega pod črto glave v prazen
+   zgornji rob vsebine (največ 192 px od zgornjega roba strani). Sicer lik ne
+   sega pod črto glave: platno je čez celo glavo, lik stoji na tanki črti
+   pod vrstico in se »potopi« za njo. Prizori se vežejo na izmerjene elemente
+   (logotip, navigacija, »Domov«, oznaka uporabnika, črta) in se ne pokažejo,
+   če se ne prilegajo (preozko okno, predolg napis). Na telefonu je glava
+   visoka 56 px, zato je lik manjši (merilo 0,75 proti 0,92), napis na tabli pa
+   večji, da ostane ~12 px; **oznaka uporabnika (»Gost · prijava« oz. ime)
+   med nastopom izgine** in se ob koncu vrne (`visibility`, da skrita ne ujame
+   klika), ker lik stoji v njenem prostoru. Tam, kjer glava oznake ne kaže
+   (podstran s puščico nazaj) ali jo stran zapolni z dejanji, maskote ni.
 2. **Samo gost in igralec brez Premium.** Nikoli organizator, admin, igralec s
    Premium, stran `/narocnina`, odprto okno ali predal.
 3. **Vsak nastop traja največ 5 s** (WCAG 2.2.2: krajše gibanje ne potrebuje
    gumba za ustavitev). Prvi nastop 10–25 s po nalaganju strani, nato po 60–80 s
    od konca prejšnjega, največ 3 na nalaganje strani (osvežitev zaporedje
-   začne znova). Nikoli ob `prefers-reduced-motion`, ob skritem zavihku ali
-   kadar med navigacijo in oznako uporabnika ni prostora.
-4. **Animirata se samo `transform` in `opacity`**; glava se ob nastopu ne
-   premakne (platno je absolutno postavljeno, ne zavzame mesta v mreži).
+   začne znova). Prizor in napis vleče **vreča** (vsak enkrat na krog, krog teče
+   prek nalaganj strani), ne kocka: kdor vidi le nekaj nastopov, ne sme dobiti
+   občutka, da je en prizor pogostejši od drugih. Nikoli ob
+   `prefers-reduced-motion`, ob skritem zavihku, odprtem oknu ali meniju ali
+   kadar se prizor glavi ne prilega.
+4. **Animirata se samo `transform` in `opacity`** (poleg njiju `visibility` pri
+   oznaki uporabnika in znaku, da nevidna ne ujame klika); glava se ob nastopu
+   ne premakne (platno je absolutno postavljeno, ne zavzame mesta v mreži).
 5. **Barve so samo hišne** (črnilo, modra polna, zelena, bela) — lik je barvit,
    a paleta ostane ista. Brez senc, gradientov, emojijev in vijolične. Črtni
    deli lika so okrogli (risba, ne vmesnik), zato zanje ne velja radij 0.

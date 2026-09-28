@@ -33,8 +33,10 @@ export function besediloNapisa(predloga: string, cena: number): string {
   return predloga.replace('{cena}', zapisCene(cena))
 }
 
-/* Velikost pisave napisa v enotah lika (izriše se z merilom lika; glej
-   MERILO_LIKA). Skupna s CSS `.maskota__napis`. */
+/* Velikost pisave napisa v enotah lika na NAMIZJU (izriše se z merilom lika;
+   glej MERA_LIKA v umestitevMaskote.ts). Skupna s CSS `.maskota__napis`.
+   Širine so izmerjene pri tej velikosti; na telefonu je pisava večja, ker je
+   lik manjši, in se širina preračuna sorazmerno. */
 export const PISAVA_NAPISA = 13
 
 /* Širina besedila v enotah lika. Tabla se prilagodi napisu, zato jo je treba
@@ -42,8 +44,22 @@ export const PISAVA_NAPISA = 13
 
    Pisavo za ta napis izrecno naložimo: fontsource jo deli po podmnožicah in
    šumniki (š, č, ž) so v `latin-ext`, ki se naloži šele ob prvi rabi. Brez tega
-   bi merili z rezervno pisavo, tabla pa bi bila za pravi napis napačno široka. */
-export async function izmeriNapis(besedilo: string): Promise<number> {
+   bi merili z rezervno pisavo, tabla pa bi bila za pravi napis napačno široka.
+
+   Izmera je zapomnjena po besedilu: urnik meri vseh pet napisov ob vsakem
+   poskusu, pisave pa se ne spreminjajo. */
+const izmerjeno = new Map<string, Promise<number>>()
+
+export function izmeriNapis(besedilo: string): Promise<number> {
+  let izmera = izmerjeno.get(besedilo)
+  if (!izmera) {
+    izmera = izmeriNovo(besedilo)
+    izmerjeno.set(besedilo, izmera)
+  }
+  return izmera
+}
+
+async function izmeriNovo(besedilo: string): Promise<number> {
   const pisava = getComputedStyle(document.documentElement).getPropertyValue('--pisava-display')
   const oznaka = `800 ${PISAVA_NAPISA}px ${pisava}`
   try {

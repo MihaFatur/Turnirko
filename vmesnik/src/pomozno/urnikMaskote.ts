@@ -35,7 +35,8 @@ export function zabeleziNastop() {
   nastopovOdNalaganja += 1
 }
 
-/* Ali je zdaj primeren trenutek za nastop (ne glede na širino platna). */
+/* Ali je zdaj primeren trenutek za nastop (ne glede na to, ali se prizor v
+   glavo prilega: to preveri umestitevMaskote.ts). */
 export function jePrimernTrenutek(): boolean {
   if (document.hidden) return false
 
@@ -47,19 +48,15 @@ export function jePrimernTrenutek(): boolean {
      maskota v ozadju bi gledalca motila pri vnosu. */
   if (document.getElementById('koren')?.hasAttribute('inert')) return false
 
-  return true
-}
+  /* Odprt uporabniški meni: prizor na telefonu skrije oznako, iz katere se
+     meni odpre, na namizju pa bi lik stal čez meni. */
+  if (document.querySelector('.uporabnik-meni')) return false
 
-/* Ali se maskota s `sirina` px med navigacijo in oznako uporabnika prilega.
-   Odvisno je od števila postavk navigacije in od napisa, zato se meri ob
-   vsakem nastopu. */
-export function jeProstor(sirina: number): boolean {
-  const navigacija = document.querySelector('.glava__navigacija')
-  const uporabnik = document.querySelector('.glava__uporabnik')
-  if (!navigacija || !uporabnik) return false
-  const vrzel = uporabnik.getBoundingClientRect().left - navigacija.getBoundingClientRect().right
-  /* 16 px zraka do oznake uporabnika (enak je `margin-right` maskote). */
-  return vrzel >= sirina + 16
+  /* Oznaka ima fokus (tipkovnica): prizor jo za nekaj sekund skrije in fokus
+     bi zdrknil na telo strani. */
+  if (document.querySelector('.glava__uporabnik:focus-within')) return false
+
+  return true
 }
 
 /* `?maskota` v naslovu takoj pokaže nastop; `?maskota=<prizor>` izbere prizor,
@@ -75,7 +72,9 @@ export function predogledIzNaslova(): { prizor: string | null; napis: number | n
   }
 }
 
-/* Naključen element, a nikoli isti kot prejšnji (če je izbira sploh možna). */
+/* Naključen element, a nikoli isti kot prejšnji (če je izbira sploh možna).
+   Samo za predogled (`?maskota`): nastope po urniku izbira vreča
+   (vrecaMaskote.ts), ki je enakomerna tudi na kratek rok. */
 export function izberiNakljucno<T>(elementi: readonly T[], zadnji: T | null): T {
   const izbira = elementi.length > 1 ? elementi.filter((e) => e !== zadnji) : elementi
   return izbira[Math.floor(Math.random() * izbira.length)]

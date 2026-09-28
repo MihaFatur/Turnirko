@@ -9,14 +9,20 @@
    - napis mora biti na tabli vidno vsaj ~2 s, sicer se dolg napis ne prebere;
    - vsak prizor ostane pod 5 s (WCAG 2.2.2).
 
-   Dve družini: prizori z likom ob oznaki uporabnika (`tabla`, `kukaj`,
-   `zogica`) in prizori čez celo glavo (`letalo`, `lestev`), ki se vežejo na
-   izmerjene elemente glave (glej umestitevMaskote.ts).
+   Prizori igrajo v glavi, na namizju in na telefonu (glej Umestitev v
+   animatorMaskote.ts): isti prizor ima na telefonu ista števila, ker so mere
+   v enotah lika, merilo pa določi umestitev. `lestev` je samo za namizje
+   (sega pod črto glave). Dve razliki:
+   - na TELEFONU oznaka uporabnika (»Gost · prijava«) med prizorom izgine
+     (`zOznako`), ker lik stoji v njenem prostoru;
+   - »zogica« ima dve različici z istim `id`: na telefonu žogico pošlje iz
+     platna in razgrne tablo, na namizju jo pošlje v oznako uporabnika, ki se ob
+     zadetku spremeni v znak.
 
    Nov prizor = nov zapis v PRIZORI; če rabi rekvizit ali drug izris, ga doda
    MaskotaPrizori.tsx. Prizor v tabeli paketov (registracija) je drugod:
    pomozno/prizorTabela.ts. */
-import type { Cikel, Kljuc, Kontekst, PrizorPodatki, Sledi } from './animatorMaskote'
+import type { Cikel, Kljuc, Kontekst, Naprava, PrizorPodatki, Sledi } from './animatorMaskote'
 import {
   LESTEV,
   LESTEV_STOPALA,
@@ -72,6 +78,24 @@ function zakljucekTable(od: number): Kljuc[] {
   return [{ t: cas(od), r: 0 }, { t: cas(od + 0.04) }, { t: cas(od + 0.09), v: 0 }]
 }
 
+/* Oznaka uporabnika med prizorom ni vidna: hitro zbledi, ob koncu se vrne. */
+function skritaOznaka(): Kljuc[] {
+  return [{ t: 0, vidna: 1 }, { t: 0.03, vidna: 0 }, { t: 0.965 }, { t: 1, vidna: 1 }]
+}
+
+/* Na telefonu prizor doda še skrivanje oznake uporabnika; na namizju ga pusti
+   pri miru (razen prizora, ki ima svojo sled `oznaka`). */
+function zOznako(prizor: PrizorPodatki): PrizorPodatki {
+  return {
+    ...prizor,
+    sledi: (k: Kontekst) => {
+      const sledi = prizor.sledi(k)
+      if (k.umestitev.glava.naprava !== 'telefon' || sledi.oznaka) return sledi
+      return { ...sledi, oznaka: skritaOznaka() }
+    },
+  }
+}
+
 /* Odbijanje žogice na loparju. Žogica leti po paraboli (vzpon in padec sta
    enako dolga in počasna na vrhu), ob stiku se stisne, ob odboju raztegne;
    roka z loparjem stik vzame (spusti se) in žogico potisne (dvigne), telo se
@@ -85,6 +109,8 @@ const ODBITKI = [
   { h: 12, gor: 0.042, dol: 0.042 },
 ]
 
+/* Različica za TELEFON: lik odbija žogico, jo z udarcem pošlje iz platna in ob
+   tem razgrne tablo. Lopar po udarcu izgine (roka rabi za tablo). */
 function prizorZogica({ nagib }: Kontekst): Sledi {
   const IZSTREL = 0.1
   const zoga: Kljuc[] = [{ t: 0, x: 0, y: 0, vidna: 1, sy: 1 }, { t: cas(IZSTREL - 0.004) }]
@@ -214,12 +240,274 @@ function prizorZogica({ nagib }: Kontekst): Sledi {
   }
 }
 
-/* Letalo vleče zastavico z napisom: izza logotipa do povezave »Domov«. Hitro
-   se pokaže, počasi preleti okno (napis se mora dati prebrati, zato je zastavica
-   vsaj ~2,5 s cela vidna) in hitro izgine za povezavo. Zastavica plapola (cikli
-   po pasovih zastavice), propeler se vrti. */
+/* Različica za NAMIZJE: lik dvigne žogico enkrat navzgor, jo ujame na lopar in
+   jo nato pošlje v oznako uporabnika (»Gost · prijava«). V trenutku zadetka se
+   oznaka spremeni v znak z napisom, lik se razveseli, po dveh sekundah se znak
+   spet skrči v oznako in lik se potopi.
+
+   Pot žogice je parabola med loparjem in središčem oznake: leti po nizkem loku,
+   zato jo je treba vzorčiti (linearni odseki), ne animirati z enim pojemanjem. */
+function prizorZogicaOznaka({ umestitev }: Kontekst): Sledi {
+  const g = umestitev.glava
+  const m = umestitev.merilo
+  /* Žogica miruje na loparju (glej `Lik`: 33,75 desno in 22,4 nad tlemi lika). */
+  const zacetekX = umestitev.x + 33.75 * m
+  const zacetekY = g.tla - 22.4 * m
+  const dx = ((g.oznakaLevo + g.oznakaDesno) / 2 - zacetekX) / m
+  const dy = (g.oznakaY - zacetekY) / m
+  const VISINA_LOKA = 16
+
+  const NAVZGOR = 0.1
+  const VRH = 0.155
+  const STIK = 0.21
+  const ZAMAH = 0.26
+  const UDAREC = 0.285
+  const ZADETEK = 0.41
+  const ZNAK_KONEC = 0.87
+  const OZNAKA_NAZAJ = 0.905
+
+  const zoga: Kljuc[] = [
+    { t: 0, x: 0, y: 0, vidna: 1, sy: 1 },
+    { t: cas(NAVZGOR - 0.004) },
+    { t: NAVZGOR, y: 0, sy: 1.12, e: VZPON },
+    { t: VRH, y: -22, sy: 1, e: PADEC },
+    { t: STIK, y: 0.6, sy: 0.82, e: 'ease-out' },
+    { t: cas(STIK + 0.008), y: 0, sy: 1 },
+    { t: cas(UDAREC - 0.004) },
+    { t: UDAREC, y: 0, sy: 1.15, e: 'linear' },
+  ]
+  const KORAKOV = 8
+  for (let i = 1; i <= KORAKOV; i++) {
+    const p = i / KORAKOV
+    zoga.push({
+      t: cas(UDAREC + (ZADETEK - UDAREC) * p),
+      x: dx * p,
+      y: dy * p - VISINA_LOKA * 4 * p * (1 - p),
+      sy: 1.08,
+      e: 'linear',
+    })
+  }
+  /* Ob zadetku se žogica splošči in izgine v znaku. */
+  zoga.push({ t: cas(ZADETEK + 0.006), sy: 0.6 }, { t: cas(ZADETEK + 0.014), vidna: 0 })
+
+  /* Roka z loparjem (mirovanje: r + p = 90): ob odboju se spusti in dvigne,
+     ob stiku vzame žogico, nato zamah — in dvignjena v veselju. */
+  const rokaD: Kljuc[] = [
+    { t: 0, r: 40, p: 50 },
+    { t: cas(NAVZGOR - 0.012) },
+    { t: cas(NAVZGOR - 0.002), r: 33, p: 57 },
+    { t: cas(NAVZGOR + 0.01), r: 46, p: 44 },
+    { t: cas(NAVZGOR + 0.03), r: 40, p: 50 },
+    { t: cas(STIK - 0.03) },
+    { t: STIK, r: 32, p: 58 },
+    { t: cas(STIK + 0.012), r: 46, p: 44 },
+    { t: cas(STIK + 0.035), r: 40, p: 50 },
+    { t: ZAMAH, r: 28, p: 62 },
+    { t: UDAREC, r: 55, p: 35 },
+    { t: 0.34, r: 70, p: 40 },
+    { t: 0.44, ...VRZENE },
+    { t: 0.84 },
+    { t: 0.9, ...SPUSCENE },
+  ]
+  const rokaL: Kljuc[] = [
+    { t: 0, r: 35, p: -55 },
+    { t: 0.38 },
+    { t: 0.43, ...VRZENE },
+    { t: 0.84 },
+    { t: 0.9, ...SPUSCENE },
+  ]
+
+  const telo: Kljuc[] = [
+    { t: 0, y: 48, e: IZTEK },
+    { t: 0.085, y: 0 },
+    { t: cas(NAVZGOR - 0.005), y: 0.8 },
+    { t: cas(NAVZGOR + 0.01), y: -0.4 },
+    { t: cas(NAVZGOR + 0.03), y: 0 },
+    { t: cas(STIK - 0.03) },
+    { t: STIK, y: 1.3 },
+    { t: cas(STIK + 0.02), y: -0.5 },
+    { t: cas(STIK + 0.045), y: 0 },
+    { t: ZAMAH },
+    { t: UDAREC, y: 3 },
+    { t: cas(UDAREC + 0.03), y: -3 },
+    { t: cas(UDAREC + 0.07), y: 0 },
+    /* Veselje ob zadetku: dva poskoka. */
+    { t: ZADETEK },
+    { t: cas(ZADETEK + 0.03), y: -4 },
+    { t: cas(ZADETEK + 0.07), y: 0 },
+    { t: cas(ZADETEK + 0.1), y: -2 },
+    { t: cas(ZADETEK + 0.13), y: 0 },
+    { t: 0.88, y: 0, e: 'ease-in' },
+    { t: 0.96, y: 48 },
+  ]
+
+  return {
+    figura: telo,
+    rokaD,
+    rokaL,
+    zoga,
+    glava: [
+      { t: 0, r: 0 },
+      { t: NAVZGOR },
+      { t: VRH, r: 5 },
+      { t: STIK, r: 0 },
+      { t: UDAREC, r: -3 },
+      { t: 0.35, r: 0 },
+      { t: cas(ZADETEK + 0.02), r: 6 },
+      { t: 0.84 },
+      { t: 0.87, r: 0 },
+    ],
+    pentlja: [
+      { t: 0, r: 0 },
+      { t: NAVZGOR },
+      { t: UDAREC, r: -8 },
+      { t: 0.335, r: 12 },
+      { t: 0.37, r: 0 },
+    ],
+    /* Oči gledajo proti žogici in nato proti znaku (oboje desno). */
+    oko: [
+      { t: 0, l: 1, d: 1, pogled: 0 },
+      { t: 0.09 },
+      { t: 0.12, pogled: 1.3 },
+      { t: 0.6 },
+      { t: 0.61, l: 0.1, d: 0.1 },
+      { t: 0.63, l: 1, d: 1 },
+      { t: 0.84 },
+      { t: 0.88, pogled: 0 },
+    ],
+    /* Znak nastane na mestu oznake, ob zadetku, v velikosti oznake, in se
+       razširi v celotno tablo; ob koncu se skrči nazaj. */
+    znak: [
+      { t: 0, o: 0, sx: 0.5, sy: 1 },
+      { t: cas(ZADETEK - 0.001) },
+      { t: ZADETEK, o: 1 },
+      { t: cas(ZADETEK + 0.025), sx: 1.08, sy: 1.15, e: IZTEK },
+      { t: cas(ZADETEK + 0.05), sx: 1, sy: 1 },
+      { t: ZNAK_KONEC },
+      { t: OZNAKA_NAZAJ, o: 0, sx: 0.5 },
+    ],
+    oznaka: [
+      { t: 0, vidna: 1 },
+      { t: cas(ZADETEK - 0.001) },
+      { t: ZADETEK, vidna: 0 },
+      { t: cas(OZNAKA_NAZAJ - 0.01) },
+      { t: OZNAKA_NAZAJ, vidna: 1 },
+    ],
+  }
+}
+
+/* Lik pokuka izza črte s tablo nad glavo, se ozre levo in desno, nato tablo
+   spusti pred sabo na črto in se potopi; tabla ostane stati na črti, dokler
+   je izza črte ne povlečeta dve roki navzdol.
+
+   Tablo lik nosi v skupini `figura`, zato je njen položaj vezan na lik. Da
+   ostane na mestu, ko se lik potaplja, se njen odmik izniči z odmikom telesa
+   (y table = 44,5 − y telesa, kar postavi njen spodnji rob na tla). Zato so
+   ključi table in telesa v intervalu spusta in potopa NUJNO isti (isti časi in
+   pojemanje): dodatni ključi na eni od sledi bi pojemanje razrezali in tabla bi
+   zdrsnila. */
+function prizorKukaj({ nagib }: Kontekst): Sledi {
+  const DVIG = 0.14
+  const OZIRANJE_OD = 0.17
+  const SPUST_OD = 0.42
+  const SPUST_DO = 0.5
+  const POTOP_DO = 0.58
+  const ROKE_OD = 0.78
+  const ROKE_DO = 0.84
+  const STRG = 0.87
+  const STRG_NAZAJ = 0.895
+  const VLEK_DO = 0.96
+  /* Telo: viden do prsi (22), pripognjen za tablo (26), skrit pod črto (48).
+     Tabla: odmik, pri katerem njen spodnji rob stoji na tleh (64). */
+  const TELO_VIDNO = 22
+  const TELO_PRIPETO = 26
+  const TELO_SKRITO = 48
+  const yTable = (telo: number) => 44.5 - telo
+  const VLEK = 26
+
+  return {
+    figura: [
+      { t: 0, y: TELO_SKRITO, e: 'cubic-bezier(0.3, 0.6, 0.3, 1)' },
+      { t: DVIG, y: TELO_VIDNO },
+      { t: SPUST_OD },
+      { t: SPUST_DO, y: TELO_PRIPETO, e: 'ease-in' },
+      { t: POTOP_DO, y: TELO_SKRITO },
+    ],
+    /* Roke držijo tablo od spodaj; ko se spusti, gredo z njo navzdol in za
+       tablo, ki je pred njimi (`tablaNaprej`), izginejo. */
+    ...roke([{ t: 0, ...ODPRTE }, { t: SPUST_OD }, { t: SPUST_DO, r: 60, p: 40 }]),
+    tabla: [
+      { t: 0, v: 1, r: 0, y: 0 },
+      { t: cas(OZIRANJE_OD + 0.03) },
+      { t: cas(OZIRANJE_OD + 0.04), r: -nagib * 0.5 },
+      { t: cas(OZIRANJE_OD + 0.12), r: nagib * 0.5 },
+      { t: cas(OZIRANJE_OD + 0.2), r: 0 },
+      { t: SPUST_OD },
+      { t: SPUST_DO, y: yTable(TELO_PRIPETO), e: 'ease-in' },
+      { t: POTOP_DO, y: yTable(TELO_SKRITO) },
+      /* Ko lika ni več, se tabla po prihodu na črto še malo zamaje. */
+      { t: 0.6, r: -2 },
+      { t: 0.63, r: 1 },
+      { t: 0.66, r: 0 },
+      { t: ROKE_DO },
+      /* Roki zagrabita: rahlo popustita, nato potegneta. */
+      { t: STRG, y: yTable(TELO_SKRITO) + 3 },
+      { t: STRG_NAZAJ, y: yTable(TELO_SKRITO) - 0.5, e: 'ease-in' },
+      { t: VLEK_DO, y: yTable(TELO_SKRITO) + VLEK },
+    ],
+    vlekL: potegRoke(ROKE_OD, ROKE_DO, STRG, STRG_NAZAJ, VLEK_DO, VLEK),
+    vlekD: potegRoke(ROKE_OD, ROKE_DO, STRG, STRG_NAZAJ, VLEK_DO, VLEK),
+    glava: [
+      { t: 0, r: 0 },
+      { t: OZIRANJE_OD },
+      { t: cas(OZIRANJE_OD + 0.04), r: -5 },
+      { t: cas(OZIRANJE_OD + 0.12), r: 5 },
+      { t: cas(OZIRANJE_OD + 0.2), r: 0 },
+    ],
+    pentlja: [{ t: 0, r: 0 }, { t: POTOP_DO }],
+    oko: [
+      { t: 0, l: 1, d: 1, pogled: 0 },
+      { t: OZIRANJE_OD },
+      { t: cas(OZIRANJE_OD + 0.03), pogled: -1.6 },
+      { t: cas(OZIRANJE_OD + 0.07) },
+      { t: cas(OZIRANJE_OD + 0.11), pogled: 1.6 },
+      { t: cas(OZIRANJE_OD + 0.16) },
+      { t: cas(OZIRANJE_OD + 0.2), pogled: 0 },
+      { t: 0.44 },
+      { t: 0.45, l: 0.1, d: 0.1 },
+      { t: 0.47, l: 1, d: 1 },
+    ],
+  }
+}
+
+/* Roka izza črte (prizor »kukaj«): čaka pod črto, dvigne se do table, ob
+   potegu gre z njo navzdol. `pot` je razdalja, ki jo skupaj prehodita roka in
+   tabla: isti časi in pojemanje na obeh sledeh, da se ne razmakneta. */
+function potegRoke(
+  od: number,
+  doo: number,
+  strg: number,
+  strgNazaj: number,
+  konec: number,
+  pot: number,
+): Kljuc[] {
+  return [
+    { t: 0, y: 32, o: 0 },
+    { t: od },
+    { t: cas(od + 0.005), o: 1, e: IZTEK },
+    { t: doo, y: 0 },
+    { t: strg, y: 3 },
+    { t: strgNazaj, y: -0.5, e: 'ease-in' },
+    { t: konec, y: pot },
+  ]
+}
+
+/* Letalo vleče zastavico z napisom: izza logotipa do povezave »Domov« (na
+   telefonu do roba zaslona). Hitro se pokaže, počasi preleti okno (napis se
+   mora dati prebrati, zato je zastavica vsaj ~2,5 s cela vidna) in hitro
+   izgine. Zastavica plapola (cikli po pasovih zastavice), propeler se vrti. */
 function prizorLetalo({ umestitev, sirinaTable }: Kontekst): Sledi {
-  const p = potLetala(umestitev.glava!, sirinaTable)!
+  const p = potLetala(umestitev.glava, sirinaTable)!
 
   /* Rahlo zibanje po višini in nagibu: dvig in spust vsakih 0,07. */
   const plovba: Kljuc[] = [{ t: 0, y: p.y, r: 0 }]
@@ -299,7 +587,7 @@ function cikliLetala({ sirinaTable }: Kontekst): Cikel[] {
    povezavo; lik nato pleza po lestvi (za tablo) do njene sredine in pokaže
    palec gor. Na koncu lestev z likom potegnejo nazaj, tabla odleti navzgor. */
 function prizorLestev({ umestitev, sirinaTable }: Kontekst): Sledi {
-  const pot = potLestve(umestitev.glava!, sirinaTable)!
+  const pot = potLestve(umestitev.glava, sirinaTable)!
   const skrita = LESTEV.visina + LESTEV.rezerva
   /* Stopala lika so na začetku tik nad robom strani; y je odmik od mirovne lege
      na sredini lestve, v enotah lika (merilo 0,92). */
@@ -421,13 +709,17 @@ function cikliLestve(): Cikel[] {
   ]
 }
 
+const OBE: readonly Naprava[] = ['namizje', 'telefon']
+
+/* Vsi prizori, po eden na `id` in napravo. Vrstni red ni pomemben: izbira je
+   naključna (vrecaMaskote.ts). */
 export const PRIZORI: readonly PrizorPodatki[] = [
   /* Dvig izza črte, počep in skok, tabla se razgrne, poskakovanje, namig,
      potop. */
-  {
+  zOznako({
     id: 'tabla',
     trajanjeMs: 4600,
-    postavitev: 'uporabnik',
+    naprave: OBE,
     slika: 'lik',
     sledi: ({ nagib }) => {
       const b = poskoki(0.22, 0.78, 8, nagib)
@@ -480,101 +772,59 @@ export const PRIZORI: readonly PrizorPodatki[] = [
         ],
       }
     },
-  },
+  }),
 
-  /* Tabla in glava zlezeta izza črte, lik se ozira levo in desno, nato skoči
-     ven in poskakuje. Tabla je vidna že med ozirom, zato se napis bere dlje. */
-  {
+  zOznako({
     id: 'kukaj',
     trajanjeMs: 4800,
-    postavitev: 'uporabnik',
+    naprave: OBE,
     slika: 'lik',
-    sledi: ({ nagib }) => {
-      const b = poskoki(0.56, 0.77, 3, nagib)
-      return {
-        figura: [
-          { t: 0, y: 48, e: 'cubic-bezier(0.3, 0.6, 0.3, 1)' },
-          { t: 0.22, y: 22 },
-          { t: 0.46, y: 22, e: IZTEK },
-          { t: 0.52, y: -3 },
-          { t: 0.56, y: 0 },
-          ...b.figura,
-          { t: 0.82, y: 0 },
-          { t: 0.86, y: 3, e: 'ease-in' },
-          { t: 0.94, y: 30 },
-          { t: 1, y: 48 },
-        ],
-        ...roke([{ t: 0, ...ODPRTE }]),
-        tabla: [
-          { t: 0, v: 1, r: 0 },
-          { t: 0.26 },
-          { t: 0.3, r: -nagib * 0.5 },
-          { t: 0.38, r: nagib * 0.5 },
-          { t: 0.46, r: 0 },
-          { t: 0.52, r: -3 },
-          ...b.tabla,
-          { t: 0.82, r: 0 },
-        ],
-        glava: [
-          { t: 0, r: 0 },
-          { t: 0.26 },
-          { t: 0.3, r: -5 },
-          { t: 0.38, r: 5 },
-          { t: 0.46, r: 0 },
-          { t: 0.56 },
-          ...b.glava,
-          { t: 0.82, r: 0 },
-          { t: 0.85, r: 8 },
-          { t: 0.9 },
-          { t: 0.93, r: 0 },
-        ],
-        pentlja: [{ t: 0, r: 0 }, { t: 0.56 }, ...b.pentlja, { t: 0.82, r: 0 }],
-        oko: [
-          { t: 0, l: 1, d: 1, pogled: 0 },
-          { t: 0.24 },
-          { t: 0.29, pogled: -1.6 },
-          { t: 0.33 },
-          { t: 0.37, pogled: 1.6 },
-          { t: 0.42 },
-          { t: 0.46, pogled: 0 },
-          { t: 0.62 },
-          { t: 0.64, l: 0.1, d: 0.1 },
-          { t: 0.66, l: 1, d: 1 },
-          { t: 0.83 },
-          { t: 0.85, d: 0.1 },
-          { t: 0.89 },
-          { t: 0.91, d: 1 },
-        ],
-      }
-    },
-  },
+    vlek: true,
+    tablaNaprej: true,
+    sledi: prizorKukaj,
+  }),
 
-  /* Odbija žogico z loparjem, nato jo z udarcem pošlje iz platna in ob tem
-     razgrne tablo. Lopar po udarcu izgine (roka rabi za tablo). */
-  {
+  zOznako({
     id: 'zogica',
     trajanjeMs: 4800,
-    postavitev: 'uporabnik',
+    naprave: ['telefon'],
     slika: 'lik',
     lopar: true,
     sledi: prizorZogica,
-  },
+  }),
 
   {
+    id: 'zogica',
+    trajanjeMs: 4900,
+    naprave: ['namizje'],
+    slika: 'lik',
+    lopar: true,
+    znakNaOznaki: true,
+    sledi: prizorZogicaOznaka,
+  },
+
+  zOznako({
     id: 'letalo',
     trajanjeMs: 4600,
-    postavitev: 'glava',
+    naprave: OBE,
     slika: 'letalo',
     sledi: prizorLetalo,
     cikli: cikliLetala,
-  },
+  }),
 
+  /* Samo namizje: lestev sega 176 px pod vrh strani, torej pod črto glave, kjer
+     telefon nima prostora. */
   {
     id: 'lestev',
     trajanjeMs: 4800,
-    postavitev: 'glava',
+    naprave: ['namizje'],
     slika: 'lestev',
     sledi: prizorLestev,
     cikli: cikliLestve,
   },
 ]
+
+/* Prizori, ki se igrajo na dani napravi; `id` je v njih enolično. */
+export function prizoriZaNapravo(naprava: Naprava): PrizorPodatki[] {
+  return PRIZORI.filter((p) => p.naprave.includes(naprava))
+}

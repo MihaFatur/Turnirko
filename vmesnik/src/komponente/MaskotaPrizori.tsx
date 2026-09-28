@@ -1,4 +1,4 @@
-/* Lik maskote, tabla, letalo z zastavico in lestev (izris; gibanje:
+/* Lik maskote, tabla, letalo z zastavico, lestev (izris; gibanje:
    pomozno/animatorMaskote.ts, podatki prizorov: pomozno/prizoriMaskote.ts,
    umestitev: pomozno/umestitevMaskote.ts, gostitelj: Maskota.tsx).
 
@@ -8,100 +8,27 @@
    riše, ampak premika po delih (`data-del`); letalo in lestev ga samo
    postavita na svoje mesto (v kabino, na lestev).
 
+   Platno je vedno čez celo glavo (namizno ali telefonsko; pri lestvi sega še
+   pod črto); lik je v njem postavljen na izmerjeno mesto (`Umestitev.x`, tla
+   na črti pod vrstico) in pomanjšan za merilo naprave.
+
    Sklepi so vrtišča: vsak gibljivi del stoji v dveh skupinah. Zunanja
    (`transform` kot atribut) postavi izhodišče v sklep, notranja (`data-del`) se
    vrti okoli svojega (0, 0) — torej okoli sklepa. Le tako je `rotate` brez
    `transform-origin` v pikslih pravilen v vseh brskalnikih. */
 import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react'
 
-import { predvajaj, type PrizorPodatki, type Umestitev } from '../pomozno/animatorMaskote'
+import { predvajaj } from '../pomozno/animatorMaskote'
 import {
-  DODATEK_TABLE,
   LESTEV,
   LESTEV_STOPALA,
   LETALO,
   MERILO_LIKA,
-  izmeriGlavo,
   potLestve,
   potLetala,
   steviloPasov,
+  type Nastop,
 } from '../pomozno/umestitevMaskote'
-import { jeProstor } from '../pomozno/urnikMaskote'
-
-/* Platno ob uporabniku sega 4 enote nad tla lika: tam je še glava strani, ki
-   je prazna. */
-const NAD_LIKOM = 4
-export const VISINA_MASKOTE = 68
-const SIRINA_NAJMANJ = 140
-
-/* Prostor pod zgornjim robom platna, ki ga tabla sme zasesti pri skoku, nagibu
-   in prenagljenem razgrinjanju (enote zaslona). Iz njega se izračuna največji
-   nagib table. */
-const REZERVA_ZGORAJ = 4.5
-
-export interface Nastop {
-  prizor: PrizorPodatki
-  napis: string
-  /* Širina table v enotah lika. */
-  sirinaTable: number
-  nagib: number
-  umestitev: Umestitev
-}
-
-/* Iz izmerjenega napisa sestavi nastop ali vrne null, če se prizor v trenutno
-   glavo ne prilega (preozko okno, predolg napis, manjka povezava). Širša tabla
-   ima pri istem nagibu višji vogal, zato se nagib zmanjša: vogal se ne sme
-   dvigniti čez rezervo. */
-export function sestaviNastop(
-  prizor: PrizorPodatki,
-  napis: string,
-  sirinaBesedila: number,
-): Nastop | null {
-  const sirinaTable = Math.ceil(sirinaBesedila) + DODATEK_TABLE
-  const polSirine = (sirinaTable * MERILO_LIKA) / 2
-  const nagib = Math.min(
-    4.5,
-    Math.max(1, (Math.asin(Math.min(1, REZERVA_ZGORAJ / polSirine)) * 180) / Math.PI),
-  )
-
-  if (prizor.postavitev === 'uporabnik') {
-    const sirina = Math.max(SIRINA_NAJMANJ, Math.ceil(sirinaTable * MERILO_LIKA) + 24)
-    if (!jeProstor(sirina)) return null
-    return {
-      prizor,
-      napis,
-      sirinaTable,
-      nagib,
-      umestitev: { vrsta: 'uporabnik', sirina, visina: VISINA_MASKOTE },
-    }
-  }
-
-  const glava = izmeriGlavo()
-  if (!glava) return null
-  if (prizor.slika === 'letalo') {
-    if (!potLetala(glava, sirinaTable)) return null
-    return {
-      prizor,
-      napis,
-      sirinaTable,
-      nagib,
-      umestitev: { vrsta: 'glava', sirina: glava.sirina, visina: LETALO.visina, glava },
-    }
-  }
-  if (!potLestve(glava, sirinaTable)) return null
-  return {
-    prizor,
-    napis,
-    sirinaTable,
-    nagib,
-    umestitev: {
-      vrsta: 'glava',
-      sirina: glava.sirina,
-      visina: LESTEV.visina + LESTEV.rezerva,
-      glava,
-    },
-  }
-}
 
 /* Roka: rama in komolec. `L`/`D` sta imeni sledov v prizorih; predznak
    vrtenja loči strani (glej SLEDI v animatorju). */
@@ -152,15 +79,18 @@ function Roka({
 /* Lik stoji na tleh (y = 64, 1 px črta pod glavo je tik pod njimi). Noge so
    vezane na telo (glej `izpeljiNoge` v animatorju), zato stopala ostanejo na
    tleh pri počepu in skoku. `rekvizit` (tabla) se izriše za rokami, a pred
-   njimi, da ga dlani držijo od spodaj. */
+   njimi, da ga dlani držijo od spodaj; s `tablaNaprej` pa za njimi: dlani
+   tedaj izginejo za tablo (prizor »kukaj«, ko tablo spusti na črto). */
 export function Lik({
   lopar = false,
   palec = false,
   rekvizit = null,
+  tablaNaprej = false,
 }: {
   lopar?: boolean
   palec?: boolean
   rekvizit?: ReactNode
+  tablaNaprej?: boolean
 }) {
   return (
     <g transform="translate(88 45)">
@@ -207,10 +137,12 @@ export function Lik({
             </g>
           </g>
 
-          {rekvizit}
+          {!tablaNaprej && rekvizit}
 
           <Roka stran="L" x={83.5} lopar={lopar} palec={palec} />
           <Roka stran="D" x={92.5} lopar={lopar} palec={palec} />
+
+          {tablaNaprej && rekvizit}
 
           {/* Žogica stoji nad loparjem, ko je desna roka vodoravna (glej prizor
               »zogica«), in se s telesom dviga in spušča. Vrtišče je njeno
@@ -230,30 +162,42 @@ export function Lik({
 
 /* Tabla s krajšim napisom je ožja: širina sledi besedilu, da ne ostane prazen
    rob in da se dolg napis ne izteče čez rob. Vrtišče je spodnji sredinski rob,
-   ker ga držita dlani (`x`, `y` ga postavita; privzeto nad glavo lika). */
+   ker ga držita dlani (`x`, `y` ga postavita; privzeto nad glavo lika). Višina
+   in velikost pisave sta odvisni od naprave (MERA_LIKA): besedilo je vedno
+   ~12 px na zaslonu. */
 function Tabla({
   napis,
   sirina,
+  visina = 19,
+  pisava = 13,
   x = 88,
   y = 19.5,
 }: {
   napis: string
   sirina: number
+  visina?: number
+  pisava?: number
   x?: number
   y?: number
 }) {
   return (
     <g transform={`translate(${x} ${y})`}>
       <g data-del="tabla" className="maskota__tabla">
-        <rect className="maskota__plosca" x={-sirina / 2} y="-19" width={sirina} height="19" />
+        <rect className="maskota__plosca" x={-sirina / 2} y={-visina} width={sirina} height={visina} />
         <rect
           className="maskota__poudarek"
           x={-sirina / 2 + 1.5}
-          y="-17.5"
+          y={-visina + 1.5}
           width="6"
-          height="16"
+          height={visina - 3}
         />
-        <text className="maskota__napis" x="3.25" y="-5.6" textAnchor="middle">
+        <text
+          className="maskota__napis"
+          style={{ fontSize: pisava }}
+          x="3.25"
+          y={-visina / 2 + 0.3 * pisava}
+          textAnchor="middle"
+        >
           {napis}
         </text>
       </g>
@@ -261,16 +205,73 @@ function Tabla({
   )
 }
 
-function SlikaLik({ nastop }: { nastop: Nastop }) {
+/* Roki izza črte, ki tablo povlečeta pod črto (prizor »kukaj«): stojita na
+   robovih table, kjer ni besedila (levo med naglasnim trakom in besedilom,
+   desno za besedilom), in sta do prizora skriti. Sta pred tablo, zato se vidi,
+   da jo držita. */
+function Roki({ sirina }: { sirina: number }) {
+  const roki = [
+    { ime: 'vlekL', x: 88 - sirina / 2 + 12.5 },
+    { ime: 'vlekD', x: 88 + sirina / 2 - 5.5 },
+  ]
   return (
-    <g
-      transform={`translate(${nastop.umestitev.sirina / 2} 64) scale(${MERILO_LIKA}) translate(-88 -64)`}
-    >
-      <Lik
-        lopar={nastop.prizor.lopar === true}
-        rekvizit={<Tabla napis={nastop.napis} sirina={nastop.sirinaTable} />}
-      />
-    </g>
+    <>
+      {roki.map(({ ime, x }) => (
+        <g key={ime} transform={`translate(${x} 54.5)`}>
+          <g data-del={ime} className="maskota__roka" opacity="0">
+            <path d="M0 0 V42" />
+            <circle className="maskota__dlan" r="2.8" />
+          </g>
+        </g>
+      ))}
+    </>
+  )
+}
+
+function SlikaLik({ nastop }: { nastop: Nastop }) {
+  const u = nastop.umestitev
+  const p = nastop.prizor
+  const tabla = (
+    <Tabla
+      napis={nastop.napis}
+      sirina={nastop.sirinaTable}
+      visina={u.visinaTable}
+      pisava={u.pisava}
+    />
+  )
+
+  return (
+    <>
+      <g transform={`translate(${u.x} ${u.glava.tla}) scale(${u.merilo}) translate(-88 -64)`}>
+        <Lik
+          lopar={p.lopar === true}
+          rekvizit={p.znakNaOznaki ? null : tabla}
+          tablaNaprej={p.tablaNaprej === true}
+        />
+        {p.vlek === true && <Roki sirina={nastop.sirinaTable} />}
+      </g>
+
+      {/* Znak stoji v svojem koordinatnem sistemu: desni rob in navpična sredina
+          sta oznaka uporabnika, ki jo prekrije. Do zadetka je skrit tudi za
+          klike (`visibility`), sicer bi ujel klik namesto oznake. */}
+      {p.znakNaOznaki === true && (
+        <g
+          transform={`translate(${u.glava.oznakaDesno} ${u.glava.oznakaY}) scale(${u.merilo})`}
+          className="maskota__klik"
+        >
+          <g data-del="znak" opacity="0" visibility="hidden">
+            <Tabla
+              napis={nastop.napis}
+              sirina={nastop.sirinaTable}
+              visina={u.visinaTable}
+              pisava={u.pisava}
+              x={-nastop.sirinaTable / 2}
+              y={u.visinaTable / 2}
+            />
+          </g>
+        </g>
+      )}
+    </>
   )
 }
 
@@ -278,11 +279,10 @@ function SlikaLik({ nastop }: { nastop: Nastop }) {
    za sabo. Zastavica je razrezana na pasove, ki se vsak zase pomikajo gor in
    dol (cikli): iz istega napisa, vsak pas ga obreže na svoj stolpec, zato se
    napis ob majhnih zamikih ne pretrga, tkanina pa dobi gube. Okno (`clipPath`)
-   je fiksno med logotipom in »Domov«: letalo ne izleti iz zaslona, ampak izza
-   logotipa nastane in za povezavo izgine. */
+   je fiksno med logotipom in »Domov« (na telefonu do roba zaslona): letalo ne
+   izleti iz glave, ampak izza logotipa nastane in za povezavo izgine. */
 function SlikaLetalo({ nastop }: { nastop: Nastop }) {
-  const glava = nastop.umestitev.glava!
-  const pot = potLetala(glava, nastop.sirinaTable)!
+  const pot = potLetala(nastop.umestitev.glava, nastop.sirinaTable)!
   const S = nastop.sirinaTable
   const n = steviloPasov(S)
   const pasovi = Array.from({ length: n }, (_, i) => i)
@@ -358,7 +358,7 @@ function SlikaLetalo({ nastop }: { nastop: Nastop }) {
    Vrstni red: lestev, lik, tabla — lik med plezanjem pod tablo za njo izgine in
    izpod nje spet pride. */
 function SlikaLestev({ nastop }: { nastop: Nastop }) {
-  const glava = nastop.umestitev.glava!
+  const glava = nastop.umestitev.glava
   const pot = potLestve(glava, nastop.sirinaTable)!
   const p = LESTEV.polSirine
   const stPrecek = Math.floor((LESTEV.visina - LESTEV.razmik / 2) / LESTEV.razmik) + 1
@@ -416,7 +416,7 @@ export function PlatnoMaskote({ nastop, obKoncu }: { nastop: Nastop; obKoncu: ()
     <svg
       ref={koren}
       className="maskota__platno"
-      viewBox={u.vrsta === 'uporabnik' ? `0 ${-NAD_LIKOM} ${u.sirina} ${u.visina}` : `0 0 ${u.sirina} ${u.visina}`}
+      viewBox={`0 0 ${u.sirina} ${u.visina}`}
       width={u.sirina}
       height={u.visina}
       aria-hidden="true"

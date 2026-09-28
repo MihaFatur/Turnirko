@@ -285,10 +285,10 @@ textarea:focus-visible,
      skozi logotip in navigacijo; senca je prepovedana, loči jo že debela črta
      pod njo. z-index je nad vsem, kar v vsebini lebdi (predlogi izbirnika 20,
      podnavigacija 5), in pod modalnim oknom (50).
-     Lepljiv element je hkrati osnova za absolutno postavljene otroke: maskota
-     (razdelek »Maskota«) sedi v mrežnem območju uporabnika in se ne poteguje
-     za svojo celico - ker je del glave, jo glava ob drsenju odnese s seboj in
-     nastop se predvaja enako kot na vrhu strani. */
+     Lepljiv element je hkrati osnova za absolutno postavljene otroke: platno
+     maskote (razdelek »Maskota«) je čez celo glavo - ker je del glave, jo
+     glava ob drsenju odnese s seboj in nastop se predvaja enako kot na vrhu
+     strani. */
   position: sticky;
   top: 0;
   z-index: 30;
@@ -13267,25 +13267,25 @@ a.domov__lestvica-vrstica--jaz {
    Maskota »Igralec Premium« (izjema od DESIGN.md, razdelek 5b)
    ============================================================ */
 
-/* Lik stoji na 1 px črti pod glavo: spodnji rob platna je zgornji rob črte
-   (8 px pod vrstico glave = margin-top na .glava__crta). Sedi v mrežnem
-   območju uporabnika, zato je `right: 100%` levi rob njegove oznake. Ne zavzame
-   mesta v mreži (absolutna), torej se glava ob nastopu ne premakne. */
+/* Platno nastopa je čez celo glavo (namizni masthead ali vrstica telefona):
+   zgornji levi kot je zgornji levi kot glave, spodnji rob platna je zgornji rob
+   tanke črte pod vrstico, na kateri lik stoji. Glava je `position: sticky`,
+   zato je osnova za absolutne otroke. Platno ne zavzame mesta v mreži, torej se
+   glava ob nastopu ne premakne. Pri prizoru »lestev« (samo namizje) je platno
+   višje od glave in sega pod črto v prazen zgornji rob vsebine. */
 .maskota {
-  grid-area: uporabnik;
   position: absolute;
-  right: 100%;
-  bottom: calc(var(--r1) * -1);
-  margin: 0 var(--r2) 0 0;
+  top: 0;
+  left: 0;
+  margin: 0;
   padding: 0;
   border: 0;
   background: none;
   display: block;
   z-index: 5;
   /* Klik zaznajo samo pobarvani deli lika, ne prazno platno okoli njega:
-     drugače bi nevidna ploskev (~200 x 68 px) ob navigaciji hkrati požrla
-     klike na kar je pod njo. Širino platna nastavi gostitelj (odvisna je od
-     napisa). */
+     drugače bi nevidna ploskev čez celo glavo požrla klike na navigacijo pod
+     njo. Širino in višino platna nastavi gostitelj (mere glave). */
   pointer-events: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -13411,18 +13411,6 @@ a.domov__lestvica-vrstica--jaz {
   fill: var(--barva-bela);
   stroke: var(--barva-crnilo);
   stroke-width: 1.4px;
-}
-
-/* Prizora čez celo glavo (letalo, lestev): platno stoji v zgornjem levem kotu
-   glave in je široko kot glava, mere pa so v pikslih strani. Lestev sega pod
-   črto glave v prazen zgornji rob vsebine. */
-.maskota--glava {
-  grid-area: auto;
-  top: 0;
-  left: 0;
-  right: auto;
-  bottom: auto;
-  margin: 0;
 }
 
 .maskota__klik {

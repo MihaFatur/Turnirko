@@ -1264,45 +1264,74 @@
   postavk skrivala pred očmi. »Več« je predal z urejevalskimi stranmi
   (Igralci, Dostopi, Šifranti) in se izriše samo adminu/organizatorju.
 - **Maskota »Igralec Premium« je namerna izjema od DESIGN.md** (razdelek 5b,
-  odločitev lastnika 23. 9. 2026): risan lik se ob naključnih trenutkih pojavi
-  v glavi. Vsak nastop = naključen PRIZOR (pet) × naključen NAPIS (pet). Prizori
-  ob oznaki uporabnika: `tabla`, `kukaj`, `zogica` (lik stoji na črti, drži
-  tablo). Prizora ČEZ GLAVO: `letalo` (izza logotipa do »Domov«, vleče
-  zastavico, ki plapola) in `lestev` (vrvna lestev z vrha strani nad
-  »Lestvica«, tabla jo prekrije, lik pleza do sredine in pokaže palec). Ostali
-  trije prizori (`padec`, `ples`, `prevrat`) so bili na željo lastnika
-  odstranjeni — ne vračaj jih. Datoteke: `komponente/Maskota.tsx` (gostitelj),
-  `MaskotaPrizori.tsx` (lik, tabla, letalo, lestev), `pomozno/prizoriMaskote.ts`
-  (prizori), `animatorMaskote.ts` (predvajalnik), `umestitevMaskote.ts`
-  (merjenje glave, poti), `napisiMaskote.ts`, `urnikMaskote.ts`, razdelek
+  odločitev lastnika 23. 9. 2026, razširitev na telefon 26. 9.): risan lik se ob
+  naključnih trenutkih pojavi v glavi, na namizju IN na telefonu. Vsak nastop =
+  PRIZOR (pet na namizju, štirje na telefonu) × NAPIS (pet). Prizori: `tabla` (lik z znakom nad glavo,
+  poskakuje), `kukaj` (pokuka izza črte, se ozre, znak spusti na črto in se
+  potopi; znak stoji, dokler ga ne povlečeta dve roki izza črte navzdol),
+  `zogica` (DVE RAZLIČICI z istim `id`: na telefonu žogico odbija, pošlje iz
+  platna in razgrne tablo; na namizju jo enkrat odbije, pošlje v oznako
+  uporabnika »Gost · prijava«, ki se v trenutku zadetka spremeni v znak),
+  `letalo` (izza logotipa vleče zastavico, ki plapola) in `lestev` (SAMO
+  NAMIZJE: vrvna lestev z vrha strani nad »Lestvica«, tabla jo prekrije, lik
+  pleza do sredine in pokaže palec; lastnik jo je 26. 9. na telefonu izločil,
+  ker sega 176 px pod črto glave, na namizju pa ostane). Na željo lastnika
+  ODSTRANJENI, ne vračaj jih: `padec`, `ples`, `prevrat`. Datoteke: `komponente/Maskota.tsx`
+  (gostitelj, urnik), `MaskotaPrizori.tsx` (lik, tabla, letalo, izris),
+  `pomozno/prizoriMaskote.ts` (prizori), `animatorMaskote.ts` (predvajalnik),
+  `umestitevMaskote.ts` (merjenje glave, mere po napravi, poti, prileganje),
+  `vrecaMaskote.ts` (izbira), `napisiMaskote.ts`, `urnikMaskote.ts`, razdelek
   »Maskota« na koncu `slog.css` (samo statični slogi). Pravila, ki jih ne
   razbij:
-  - **Prizora čez glavo se vežeta na DEJANSKO glavo**, ne na fiksne
-    koordinate: `izmeriGlavo()` prebere desni rob logotipa, levi rob `a[href="/"]`
-    (»Domov«) in sredino `a[href="/lestvica"]`; iz njih `potLetala` in
-    `potLestve` izračunata pot ali vrneta `null` (preozko okno, predolg napis).
-    `sestaviNastop` zato lahko vrne `null` in gostitelj izbere le med prizori, ki
-    se prilegajo. Letalo se pri ~1100 px ne pokaže več (koridor je prekratek za
-    zastavico).
-  - **Nastop se predvaja enako ob vsakem drsenju**: namizna glava je lepljiva,
-    maskota pa je njen otrok, zato ostane na zaslonu, `izmeriGlavo()` pa meri
-    razlike med elementi glave (ne položaja na strani) in drsenja ne pozna.
-    Lestev sega 176 px od vrha zaslona, torej po drsenju čez vsebino pod glavo
-    (dekorativno, 3 s). Preverjeno z brezglavim Chromom: pasovi glave pri
-    `?maskota=lestev` in `?maskota=letalo` so na vrhu in po drsenju bajt za
-    bajtom enaki.
-  - **Letalo izza logotipa in za »Domov« ne zakriva nič v DOM-u**: platno je
-    nad glavo, letalo pa je odrezano z `clipPath` med desnim robom logotipa in
-    levim robom »Domov« — izven okna ga ni, zato se zdi, da se pokaže izza
-    logotipa in izgine za povezavo. Zastavica mora biti vsaj ~2,5 s cela v
-    oknu (počasen prelet po polni vidnosti), sicer se napis ne prebere.
+  - **Platno je VEDNO čez celo glavo** (namizni masthead ali 56 px visoka
+    vrstica telefona; `.maskota` je absolutna, `top: 0; left: 0`; pri lestvi
+    je višje in sega 192 px od vrha strani, torej čez vsebino pod glavo —
+    dekorativno, ~3 s, samo namizje), lik pa stoji
+    na tanki črti pod vrstico (`Glava.tla`; vse pod njo platno odreže, zato se
+    lik »potopi« za črto). Nič ni vezano na fiksne koordinate: `izmeriGlavo()`
+    prebere logotip (na telefonu tudi puščico nazaj), navigacijo, »Domov«,
+    oznako uporabnika in črto; `sestaviNastop` vrne `null`, če se prizor ne
+    prilega (preozko okno, predolg napis, druga naprava), in gostitelj izbere le
+    med tistimi, ki se. Na telefonu `izmeriGlavo` vrne `null` tudi, ko glava ne
+    kaže oznake uporabnika (podstran s puščico nazaj) ali ko stran vanjo vloži
+    dejanja (`.glava-telefon__dejanja` ni prazen): tam je prostor zaseden.
+  - **Mere lika po napravi** (`MERA_LIKA`): namizje merilo 0,92, napis 13 enot,
+    tabla 19; telefon merilo 0,75, napis 16 enot, tabla 22 (glava je 56 px
+    proti 68, besedilo pa je v obeh ~12 px — najmanjša velikost po DESIGN.md).
+    Širina besedila se meri enkrat pri 13 enotah, na telefonu se preračuna.
+    Zastavica letala je na obeh napravah 0,92 / 13.
+  - **Na telefonu oznaka uporabnika med nastopom izgine**: sled `oznaka`
+    (`opacity` + `visibility`, da skrita ne ujame klika) animira element IZVEN
+    platna (`ZUNANJI` v animatorju: `.uporabnik-gumb`); `zOznako()` jo doda
+    vsakemu prizoru na telefonu. Na namizju jo skrije le prizor `zogica`, in
+    to v trenutku zadetka. Element se ob koncu (ali odmontiranju platna)
+    sam vrne: `ustavi` prekliče vse animacije.
+  - **Letalo**: okno je med desnim robom logotipa in levim robom »Domov«
+    (telefon: do roba zaslona), odrezano s `clipPath` — zdi se, da se pokaže
+    izza logotipa in izgine za povezavo. Če je okno široko za letalo IN
+    zastavico, je letalo ves čas v celoti vidno; če le za zastavico (telefon, ozko
+    namizno okno, pod ~1150 px), letalo, ko je zastavica cela vidna, že zapušča
+    okno. Zastavica mora biti vsaj ~2,5 s cela vidna, sicer se napis ne prebere.
   - **Zastavica plapola s pasovi** (`val0…`, cikli): isti napis je izrezan na
     ozke pasove (~12 enot), vsak niha po višini z zamikom faze. Širši pasovi so
     ob valu videti kot stopnice v napisu.
-  - **Lestev**: lik je otrok lestve (jo potegne s sabo pri dvigu), tabla je
-    zunaj nje in pred njo, zato lik med plezanjem za njo izgine in izpod nje
-    spet pride. Palec je PRAVOKOTEN na podlaket in roka iztegnjena vstran:
-    nadaljevanje podlakti bi ob dvignjeni roki zašlo za tablo.
+  - **`lestev` (samo namizje)**: lik je otrok lestve (jo potegne s sabo pri
+    dvigu), tabla je zunaj nje in pred njo, zato lik med plezanjem za njo
+    izgine in izpod nje spet pride. `potLestve` vrne `null` na telefonu in
+    ko tabla ne gre v glavo. Palec je PRAVOKOTEN na podlaket in roka
+    iztegnjena vstran: nadaljevanje podlakti bi ob dvignjeni roki zašlo za
+    tablo. Lestev je edini prizor, ki sega pod črto glave.
+  - **`kukaj`: tabla ostane, ko se lik potopi.** Tabla je otrok telesa
+    (`figura`), zato se njen odmik izniči z odmikom telesa (y table = 44,5 − y
+    telesa). Ključi table in telesa v intervalu spusta in potopa morajo biti
+    ISTI (isti časi in `e`): dodatni ključi na eni sledi bi pojemanje razrezali
+    in tabla bi zdrsnila. Roki, ki jo povlečeta (`vlekL/D`), in tabla gresta
+    navzdol z istimi ključi. `tablaNaprej`: tabla je izrisana za rokami, zato
+    roke za njo izginejo, ko jo lik spusti.
+  - **`zogica` na namizju**: pot žogice do sredine oznake je parabola,
+    vzorčena v linearnih odsekih (ne eno pojemanje); znak (`znak`, desni rob in
+    sredina = oznaka) ima do zadetka `visibility: hidden`, sicer bi ujel klik
+    namesto oznake; lik stoji `LIK_LEVO_OD_ZNAKA` levo od znaka.
   - **Cikli** (`Cikel`): neskončna kratka gibanja (propeler, zastavica) so
     ločena od ključev, ker bi bili sto ključev na sekundo. Pojemanje je na
     ključih cikla, ne na možnosti `animate` (ta bi zgladila celoten cikel).
@@ -1310,29 +1339,41 @@
     CSS.** Prizor je PODATEK: ključi po delih lika (`figura`, `rokaL`, `tabla`,
     `oko` …), čas 0–1; del, ki polje izpusti, obdrži prejšnjo vrednost. Ključi
     so po delih in ne skupne poze, sicer bi mežikanje vsiljevalo vmesne
-    stopnje poskakovanju. Animira se samo `transform` in `opacity`. Sklepi lika
-    so vrtišča: zunanja skupina (`transform` kot atribut) postavi izhodišče v
-    sklep, notranja (`data-del`) se vrti okoli svojega (0, 0).
+    stopnje poskakovanju. Animira se samo `transform` in `opacity` (poleg tega
+    `visibility` pri oznaki in znaku). Sklepi lika so vrtišča: zunanja skupina
+    (`transform` kot atribut) postavi izhodišče v sklep, notranja (`data-del`)
+    se vrti okoli svojega (0, 0).
   - **Noge ne dobijo lastnega sleda**: `izpeljiNoge(y)` jih naredi iz ključev
     telesa z istimi časi in pojemanjem, da stopala ostanejo na tleh (ključ
     telesa jih sme prepisati z `noge`). Nikoli ne preračunavaj nog na roke.
   - **Tabla se prilagodi napisu.** Širino izmeri `izmeriNapis` (canvas, po
-    izrecnem `document.fonts.load` — šumniki so v podmnožici `latin-ext`), lik
-    je pomanjšan (`MERILO_LIKA` 0,92), nagib table pa omejen glede na širino
-    (`sestaviNastop`): širša tabla ima pri istem kotu višji vogal in ta ne sme
-    uiti čez rob platna. Isto velja, če prizor telo (ne le tablo) nagiba okoli trupa: nagib telesa in
-    table se seštejeta.
+    izrecnem `document.fonts.load` — šumniki so v podmnožici `latin-ext`;
+    izmera je zapomnjena), nagib table pa omejen glede na širino in prostor
+    nad likom (`sestaviNastop`): širša tabla ima pri istem kotu višji vogal in
+    ta ne sme uiti čez rob platna.
   - **Napis se bere najmanj ~2 s** (dolg napis ~28 znakov), vsak prizor ostane
     pod 5 s. Ob novem prizoru to preveri po sličicah.
   - **Cena v napisu je `{cena}`**, izračunana iz `CENA_PREMIUM_MESECNO` po
     gledalcu (`cenaPremium`): mlajši od 21 let 3,99 €, sicer 4,99 €, gost višja.
     Nikoli vtipkana številka.
-  - **Samo namizje, samo gost in igralec brez Premium, največ 3 nastopi na
-    nalaganje strani** (prvi po 10–25 s, nato po 60–80 s; osvežitev zaporedje
-    začne znova, števec je spremenljivka v modulu in ne `sessionStorage`), ne ob `prefers-reduced-motion`, skritem zavihku, odprtem oknu
-    (`#koren[inert]`) ali kadar med navigacijo in uporabnikom ni prostora
-    (`jePrimernTrenutek`, `jeProstor`). Ne dodajaj je na telefon ali na strani
-    urejevalcev, dokler lastnik ne odloči drugače.
+  - **Izbira je VREČA, ne kocka** (`vrecaMaskote.ts`): prizori in napisi so v
+    dveh premešanih vrečah in se vlečejo brez vračanja, zato se vsak pokaže
+    enkrat na krog. Čista naključnost je statistično enakomerna, na oko pa ne
+    (gledalec vidi 1–3 nastope: pri 12 zaporednih ogledih je razlika med
+    najpogostejšim in najredkejšim prizorom v povprečju 3,6, pri vreči 0).
+    Vreča se hrani PO NAPRAVI v `localStorage['turnirko-maskota-vreca-namizje'
+    | '-telefon']` (nabora prizorov nista enaka: lestev je samo na namizju),
+    zato krog teče prek nalaganj (osvežitev ne začne z novim naključnim
+    prizorom); brez shrambe živi v pomnilniku. Kar se v ozko okno ne prilega, ostane v vreči za
+    naslednjič in se ne izgubi (`izberiPar` išče prvi par, ki se prilega).
+    Predogled (`?maskota`) vreče ne uporablja.
+  - **Gost in igralec brez Premium, na namizju in telefonu, največ 3 nastopi
+    na nalaganje strani** (prvi po 10–25 s, nato po 60–80 s; osvežitev
+    zaporedje začne znova, števec je spremenljivka v modulu in ne
+    `sessionStorage`), ne ob `prefers-reduced-motion`, skritem zavihku, odprtem
+    oknu (`#koren[inert]`), odprtem uporabniškem meniju ali kadar se prizor
+    ne prilega glavi (`jePrimernTrenutek`, `sestaviNastop`). Ne dodajaj je na
+    strani urejevalcev, dokler lastnik ne odloči drugače.
   - **Dekorativna**: `aria-hidden` in `tabIndex={-1}`; dostopna pot je meni
     »Naročnina«. **Klik gosta odpre registracijo NARAVNOST NA KORAKU »PAKET«**
     z izbranim Igralcem Premium za eno leto (`PrijavaOkno zacetniNacin=
@@ -1352,11 +1393,14 @@
     Ob spremembi vrstic tabele preveri po sličicah (stopala na črti vrstice,
     okvir na celici, potop do konca izven spodnjega roba).
   - **Predogled brez čakanja: `/?maskota`**, `?maskota=<prizor>` in
-    `&napis=<1..5>`. V skritem zavihku urnik pravilno počaka (`document.hidden`),
+    `&napis=<1..5>` (prizori: `tabla`, `kukaj`, `zogica`, `letalo`, `lestev`;
+    neznan ali na napravi ne obstaja = katerikoli). V skritem zavihku urnik pravilno počaka (`document.hidden`),
     animacijska ura tam ne teče — za pregled po sličicah ustavi animacije
-    (`getAnimations()`, `pause()`, `currentTime`).
-  - Nov prizor = zapis v `PRIZORI` (ključi po delih, `trajanjeMs`); če rabi
-    rekvizit, ga doda izris v `Lik`. Nov napis = zapis v `NAPISI`.
+    (`getAnimations()`, `pause()`, `currentTime`); za pikslovne sličice glave
+    (telefon 375 px, dpr 3) je najboljši brezglavi Chrome prek CDP.
+  - Nov prizor = zapis v `PRIZORI` (ključi po delih, `trajanjeMs`, `naprave`);
+    če rabi rekvizit, ga doda izris v `Lik`. Nov napis = zapis v `NAPISI`.
+    Vreča se ob spremembi nabora sama začne znova.
 - **V lepljivo glavo telefona vlagajo strani svoje skozi `GlavaTelefona`**
   (`useNazaj` za puščico nazaj, portali `GlavaDejanja` / `GlavaNaslov` /
   `GlavaZavihki`). Portal in ne podvojen izris: dejanje je v drevesu natanko
