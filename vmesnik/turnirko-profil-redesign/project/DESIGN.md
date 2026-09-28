@@ -361,9 +361,13 @@ samo, če veljajo **vsi** pogoji hkrati:
    od konca prejšnjega, največ 3 na nalaganje strani (osvežitev zaporedje
    začne znova). Prizor in napis vleče **vreča** (vsak enkrat na krog, krog teče
    prek nalaganj strani), ne kocka: kdor vidi le nekaj nastopov, ne sme dobiti
-   občutka, da je en prizor pogostejši od drugih. Nikoli ob
-   `prefers-reduced-motion`, ob skritem zavihku, odprtem oknu ali meniju ali
-   kadar se prizor glavi ne prilega.
+   občutka, da je en prizor pogostejši od drugih. Nikoli ob skritem zavihku,
+   odprtem oknu ali meniju ali kadar se prizor glavi ne prilega. **Tudi ob
+   `prefers-reduced-motion`** (odločitev lastnika, 28. 9. 2026): Windows jo
+   sporoči, kadar so v sistemu izklopljeni »Učinki animacije«, kar je pogosto
+   privzetek šibkejšega prenosnika, šolskega računalnika ali oddaljenega
+   namizja in ne gledalčeva izbira — maskote tam ni bilo nikoli. Pogoj 5 s
+   (WCAG 2.2.2) zato velja brez izjeme.
 4. **Animirata se samo `transform` in `opacity`** (poleg njiju `visibility` pri
    oznaki uporabnika in znaku, da nevidna ne ujame klika); glava se ob nastopu
    ne premakne (platno je absolutno postavljeno, ne zavzame mesta v mreži).
@@ -385,7 +389,7 @@ samo, če veljajo **vsi** pogoji hkrati:
    mesto pojavljanja (razen tabele iz pogoja 8) je nova odločitev.
 8. **Lik v tabeli paketov**: samo igralec na koraku »Paket« in samo namizje
    (nad 640 px); en nastop na odprto okno, prvič ko se korak pokaže (ne po
-   urniku iz pogoja 3), pod 5 s; nikoli ob `prefers-reduced-motion`. Prizor se
+   urniku iz pogoja 3), pod 5 s; tudi ob `prefers-reduced-motion` (pogoj 3). Prizor se
    izmeri iz tabele in se ne pokaže, če se ne prilega (prelomljena vrstica,
    preozko okno). Platno je čez tabelo, a ne ujame nobenega klika in ne
    spremeni postavitve; animira se samo `transform` in `opacity`. Edina dodatna

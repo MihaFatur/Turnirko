@@ -36,13 +36,16 @@ export function zabeleziNastop() {
 }
 
 /* Ali je zdaj primeren trenutek za nastop (ne glede na to, ali se prizor v
-   glavo prilega: to preveri umestitevMaskote.ts). */
+   glavo prilega: to preveri umestitevMaskote.ts).
+
+   `prefers-reduced-motion` NAMENOMA ne ustavi nastopa (odločitev lastnika,
+   28. 9. 2026). Windows jo sporoči brskalniku, kadar so v sistemu izklopljeni
+   »Učinki animacije« — to pa pogosto ni izbira gledalca, ampak privzetek
+   šibkejšega prenosnika, šolskega računalnika ali oddaljenega namizja, in
+   maskote na takih računalnikih ni bilo nikoli. Nastop je pod 5 s (WCAG
+   2.2.2 ne terja gumba za ustavitev) in ga gledalec ne sproži sam. */
 export function jePrimernTrenutek(): boolean {
   if (document.hidden) return false
-
-  /* Gibanja brez potrebe se izogne, kdor si je to izrecno zaželel. Oglas brez
-     gibanja je le oglas, zato se tedaj sploh ne pokaže. */
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false
 
   /* Odprto okno ali predal zaklene ozadje z `inert` (ModalnoOkno, PredalVec):
      maskota v ozadju bi gledalca motila pri vnosu. */

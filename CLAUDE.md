@@ -1370,10 +1370,16 @@
   - **Gost in igralec brez Premium, na namizju in telefonu, največ 3 nastopi
     na nalaganje strani** (prvi po 10–25 s, nato po 60–80 s; osvežitev
     zaporedje začne znova, števec je spremenljivka v modulu in ne
-    `sessionStorage`), ne ob `prefers-reduced-motion`, skritem zavihku, odprtem
+    `sessionStorage`), ne ob skritem zavihku, odprtem
     oknu (`#koren[inert]`), odprtem uporabniškem meniju ali kadar se prizor
     ne prilega glavi (`jePrimernTrenutek`, `sestaviNastop`). Ne dodajaj je na
     strani urejevalcev, dokler lastnik ne odloči drugače.
+  - **`prefers-reduced-motion` nastopa NE ustavi** (odločitev lastnika,
+    28. 9. 2026; velja za glavo in za lik v tabeli paketov). Windows jo
+    brskalniku sporoči, kadar so izklopljeni »Učinki animacije« — privzetek
+    šibkejših prenosnikov, šolskih računalnikov, RDP in virtualk —, zato
+    maskote na mnogih računalnikih ni bilo nikoli, niti s `?maskota`. Pogoja
+    ne vračaj; zato mora vsak prizor ostati pod 5 s (WCAG 2.2.2).
   - **Dekorativna**: `aria-hidden` in `tabIndex={-1}`; dostopna pot je meni
     »Naročnina«. **Klik gosta odpre registracijo NARAVNOST NA KORAKU »PAKET«**
     z izbranim Igralcem Premium za eno leto (`PrijavaOkno zacetniNacin=

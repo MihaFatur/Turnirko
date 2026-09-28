@@ -6,8 +6,8 @@
 
    To je NAMERNA IZJEMA od DESIGN.md (razdelek 5b): odločitev lastnika, sep
    2026. Meje izjeme so tam in tu: gost in igralec brez Premium, vsak nastop
-   najdlje 5 s, redko in samo ob primernem trenutku (urnikMaskote.ts), brez
-   gibanja pri `prefers-reduced-motion`. Igra na namizju in na telefonu: platno
+   najdlje 5 s, redko in samo ob primernem trenutku (urnikMaskote.ts), tudi
+   ob `prefers-reduced-motion` (zakaj, pove urnik). Igra na namizju in na telefonu: platno
    je čez celo glavo (namizni masthead ali 56 px visoka vrstica telefona; glej
    pomozno/umestitevMaskote.ts), na telefonu pa oznaka uporabnika (»Gost ·
    prijava«) med nastopom izgine, ker lik stoji v njenem prostoru.

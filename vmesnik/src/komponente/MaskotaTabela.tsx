@@ -5,8 +5,9 @@
    (MaskotaPrizori.tsx, animatorMaskote.ts); prizor je v pomozno/prizorTabela.ts.
 
    To je del IZJEME od DESIGN.md, razdelek 5b: samo namizje, en nastop na odprto
-   okno, pod 5 s, nikoli ob `prefers-reduced-motion`, dekorativno (`aria-hidden`,
-   brez fokusa in klikov — platno ne ujame nobenega klika). Če se prizor ne
+   okno, pod 5 s, tudi ob `prefers-reduced-motion` (isto kot v glavi, glej
+   urnikMaskote.ts), dekorativno (`aria-hidden`, brez fokusa in klikov — platno
+   ne ujame nobenega klika). Če se prizor ne
    prilega tabeli (preozko okno), ga ni: `obKoncu` pride takoj. */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
@@ -34,10 +35,6 @@ export function MaskotaTabela({ obKoncu }: { obKoncu: () => void }) {
   /* Izmera: šele po zamiku in ko so pisave naložene (širina besedila vrstic je
      odvisna od njih); ob skritem zavihku počaka, da se vrne. */
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      obKoncuRef.current()
-      return
-    }
     let preklicano = false
 
     function izmeri() {

@@ -13503,14 +13503,3 @@ a.domov__lestvica-vrstica--jaz {
   stroke: var(--barva-glavna-polna);
   stroke-width: 2px;
 }
-
-/* Gibanje ne živi v CSS-u: prizore predvaja pomozno/animatorMaskote.ts (Web
-   Animations API), ker so podatki in ne slog. Tu je samo druga ključavnica za
-   primer, da bi se lik ob `prefers-reduced-motion` vseeno znašel v drevesu
-   (gostitelj ga takrat sploh ne sproži). */
-@media (prefers-reduced-motion: reduce) {
-  .maskota,
-  .maskota-tabela {
-    display: none;
-  }
-}
