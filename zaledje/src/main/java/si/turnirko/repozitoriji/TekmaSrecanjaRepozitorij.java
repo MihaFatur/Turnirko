@@ -328,4 +328,14 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
             """)
     List<TekmaSrecanja> najdiOdigraneZaTurnir(@Param("idTurnir") Long idTurnir);
 
+    /* Koliko posamicnih tekem je v izbranih ligah ze odigranih: [idLiga,
+       stevilo]. Neodigrane (predcasen konec srecanja) ne stejejo. */
+    @Query("""
+            SELECT t.srecanje.liga.id, COUNT(t) FROM TekmaSrecanja t
+            WHERE t.srecanje.liga.id IN :idjiLig
+              AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
+            GROUP BY t.srecanje.liga.id
+            """)
+    List<Object[]> odigranePoLigah(@Param("idjiLig") List<Long> idjiLig);
+
 }

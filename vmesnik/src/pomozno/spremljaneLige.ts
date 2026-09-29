@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { domovApi } from '../api/zahteve'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
 import { ogledaneLige } from './ogledaneLige'
 import { vVrsto } from './vrstaZahtev'
 
@@ -28,16 +29,24 @@ export interface SpremljanjeLig {
   nalaganje: boolean
   spremljam: (idLiga: number) => boolean
   /* Preklopi spremljanje. Gostu vrne false in ne stori nič — klicatelj naj
-     takrat ponudi prijavo. */
+     takrat ponudi prijavo. Igralcu brez Premium DODAJANJE ne uspe (false) in
+     se pokaže oglas Igralec Premium; odjava od že spremljane lige ostane mogoča
+     (strežnik jo dovoli vsakemu prijavljenemu). */
   preklopi: (idLiga: number) => boolean
+  /* Igralec brez Premium: spremljanje lig je zanj zaklenjena funkcija in klik
+     nanjo pokaže oglas. Organizator in admin te omejitve na strani ne dobita
+     (organizatorju Premium igralca ni ponujen; strežnik odloča sam). */
+  ponudiPremium: boolean
   /* Napaka zadnjega preklopa (izbor se je medtem že povrnil na stanje
      strežnika), da jo stran lahko pokaže. */
   napaka: unknown
 }
 
 export function useSpremljanjeLig(): SpremljanjeLig {
-  const { uporabnik } = useAvtentikacija()
+  const { uporabnik, jePremium } = useAvtentikacija()
+  const { odpri } = usePremiumOglas()
   const odjemalec = useQueryClient()
+  const ponudiPremium = uporabnik?.vloga === 'IGRALEC' && !jePremium
 
   const mojeLige = useQuery({
     queryKey: ['moje-lige'],
@@ -86,12 +95,17 @@ export function useSpremljanjeLig(): SpremljanjeLig {
     (idLiga: number) => {
       if (!uporabnik) return false
       const prejsnje = odjemalec.getQueryData<number[]>(['moje-lige']) ?? []
-      preklop.mutate({ id: idLiga, spremljam: prejsnje.includes(idLiga) })
+      const spremljam = prejsnje.includes(idLiga)
+      if (!spremljam && ponudiPremium) {
+        odpri('lige')
+        return false
+      }
+      preklop.mutate({ id: idLiga, spremljam })
       return true
     },
     /* Namenoma beremo predpomnilnik in ne "spremljane": med hitrimi zaporednimi
        kliki je predpomnilnik že posodobljen, zaprta vrednost iz izrisa pa še ne. */
-    [uporabnik, odjemalec, preklop],
+    [uporabnik, odjemalec, preklop, ponudiPremium, odpri],
   )
 
   return {
@@ -100,6 +114,7 @@ export function useSpremljanjeLig(): SpremljanjeLig {
     nalaganje: uporabnik !== null && mojeLige.isPending,
     spremljam: (idLiga) => spremljane.includes(idLiga),
     preklopi,
+    ponudiPremium,
     napaka: preklop.error,
   }
 }

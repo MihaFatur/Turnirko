@@ -428,3 +428,109 @@ export function PlatnoMaskote({ nastop, obKoncu }: { nastop: Nastop; obKoncu: ()
     </svg>
   )
 }
+
+/* Lik ob palici paketa (organizatorski pregled; izjema od DESIGN.md 5b, glej
+   tam). Ni prizor animatorja in nima `data-del`: pozo določa samo `poza`.
+   - `tabla`: stoji na palici in z iztegnjenima rokama drži tablo (»3 prosta
+     mesta«);
+   - `sedi`: sedi na koncu polne palice, noge visijo čez rob, glava in tabla sta
+     nagnjeni (»Polno — nadgradi«).
+   Risba je ista kot v maketi (Maskota.dc.html): koordinate okvira (viewBox)
+   sledijo širini table, da napis nikoli ne sega čez rob. `merilo` pretvori
+   enote lika v piksle (namizje 1,4, telefon 1,05).
+
+   Negativni spodnji rob (`pod`) je mera stopal: lik stoji na zgornjem robu
+   palice, ki jo ovojni element (`bottom: 6px`) podpre natanko tam, sedeči lik
+   pa mora z nogami segati pod ta rob. Debelina črt je v enotah lika in se
+   skupaj z njim veča - za razliko od nog prizorov, ki jih drži na pikslih
+   (`vector-effect`), ker tu lik ne "stiska" nog po višini. */
+export function LikNaPalici({
+  napis,
+  poza,
+  merilo,
+}: {
+  napis: string
+  poza: 'tabla' | 'sedi'
+  merilo: number
+}) {
+  const sedi = poza === 'sedi'
+  const sirinaTable = Math.round(napis.length * 8.4 + 24)
+  const polovica = Math.max(sirinaTable / 2 + 4, 22)
+  const dy = sedi ? 12 : 0
+  const vrh = dy - 6
+  const dno = sedi ? 77 : 66
+  const sirinaOkvira = polovica * 2
+  const visinaOkvira = dno - vrh
+
+  return (
+    <div className="org-lik" style={{ marginBottom: -(dno - 64) * merilo }}>
+      <svg
+        className="org-lik__slika"
+        viewBox={`${88 - polovica} ${vrh} ${sirinaOkvira} ${visinaOkvira}`}
+        width={sirinaOkvira * merilo}
+        height={visinaOkvira * merilo}
+        aria-hidden="true"
+        focusable="false"
+      >
+        <g transform={`translate(0 ${dy})`}>
+          <g transform="translate(88 52)" className="org-lik__noge">
+            <g transform="translate(-2.5 0)">
+              <path d={sedi ? 'M0 0 L-1.5 2 L-3 11 H-6.5' : 'M0 0 L-2 10.5 M-2 10.5 H-6'} />
+            </g>
+            <g transform="translate(2.5 0)">
+              <path d={sedi ? 'M0 0 L1.5 2 L3 11 H6.5' : 'M0 0 L2 10.5 M2 10.5 H6'} />
+            </g>
+          </g>
+
+          <rect className="maskota__majica" x="83" y="38.5" width="10" height="11" />
+          <rect className="maskota__hlacke" x="83" y="49.5" width="10" height="4.5" />
+
+          <g transform={sedi ? 'translate(88 37.5) rotate(-8)' : 'translate(88 37.5)'}>
+            <circle className="maskota__obraz" cy="-8" r="7" />
+            <path className="maskota__celni-trak" d="M-6 -11.2 Q0 -9.2 6 -11.2" />
+            <g transform="translate(6 -11.2)">
+              <path className="maskota__pentlja" d="M0 0 L5.5 -2.2 M0 0 L5 2.4" />
+            </g>
+            <circle className="maskota__oko" cx="-2.7" cy="-7.2" r="1.15" />
+            <circle className="maskota__oko" cx="2.7" cy="-7.2" r="1.15" />
+            <path className="maskota__usta" d="M-2.7 -4.4 Q0 -2 2.7 -4.4" />
+          </g>
+
+          <g transform={sedi ? 'translate(88 14.5) rotate(-4)' : 'translate(88 14.5)'}>
+            <rect
+              className="maskota__plosca"
+              x={-sirinaTable / 2}
+              y="-19"
+              width={sirinaTable}
+              height="19"
+            />
+            <rect
+              className="maskota__poudarek"
+              x={-sirinaTable / 2 + 1.5}
+              y="-17.5"
+              width="6"
+              height="16"
+            />
+            <text className="maskota__napis" x="3.25" y="-5.6" textAnchor="middle">
+              {napis}
+            </text>
+          </g>
+
+          {[
+            { x: 83.5, kot: 170 },
+            { x: 92.5, kot: -170 },
+          ].map(({ x, kot }) => (
+            <g key={x} transform={`translate(${x} 38.5) rotate(${kot})`} className="maskota__roka">
+              <path d="M0 0 V10.5" />
+              <g transform="translate(0 10.5)">
+                <path d="M0 0 V11.5" />
+                <path className="maskota__zapestnica" d="M0 8 V11" />
+                <circle className="maskota__dlan" cy="12" r="2.3" />
+              </g>
+            </g>
+          ))}
+        </g>
+      </svg>
+    </div>
+  )
+}

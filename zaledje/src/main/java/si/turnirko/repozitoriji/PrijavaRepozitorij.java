@@ -185,4 +185,22 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             WHERE p.igralec.id = :idIgralec OR p.igralec2.id = :idIgralec
             """)
     List<java.time.LocalDate> datumiNastopov(Long idIgralec);
+
+    /* Igralci prijav na izbrane turnirje kot [idTurnir, idIgralec] - nosilec
+       prijave in (pri dvojicah) soigralec, brez odjavljenih. Ekipne prijave
+       igralca nimajo (glej KaderEkipeRepozitorij.igralciEkipnihTurnirjev).
+       Pot ".id" bere tuji kljuc brez stika, zato pogoj IS NOT NULL. */
+    @Query("""
+            SELECT DISTINCT p.dogodek.turnir.id, p.igralec.id FROM Prijava p
+            WHERE p.dogodek.turnir.id IN :idjiTurnirjev
+              AND p.status <> :odjavljen AND p.igralec IS NOT NULL
+            """)
+    List<Object[]> igralciTurnirjev(List<Long> idjiTurnirjev, Prijava.StatusPrijave odjavljen);
+
+    @Query("""
+            SELECT DISTINCT p.dogodek.turnir.id, p.igralec2.id FROM Prijava p
+            WHERE p.dogodek.turnir.id IN :idjiTurnirjev
+              AND p.status <> :odjavljen AND p.igralec2 IS NOT NULL
+            """)
+    List<Object[]> soigralciTurnirjev(List<Long> idjiTurnirjev, Prijava.StatusPrijave odjavljen);
 }

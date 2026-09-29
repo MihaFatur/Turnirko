@@ -25,6 +25,7 @@ import { RacuniStran } from './strani/RacuniStran'
 import { RatingStran } from './strani/RatingStran'
 import { UvozStran } from './strani/UvozStran'
 import { NarocninaStran } from './strani/NarocninaStran'
+import { OrganizatorskiPregledStran } from './strani/OrganizatorskiPregledStran'
 import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStran'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
@@ -46,13 +47,32 @@ function SamoUrejevalec({ children }: { children: ReactElement }) {
   return children
 }
 
-/* Bližnjica "Moj profil": prijavljenega igralca preusmeri na njegov profil.
-   Račun, ki čaka na potrditev, še nima povezanega igralca, zato mu razložimo,
-   zakaj profila (še) ni. */
+/* Bližnjica "Moj profil": prijavljenega igralca preusmeri na njegov profil,
+   organizatorju pokaže organizatorski pregled. Račun, ki čaka na potrditev,
+   še nima povezanega igralca (oz. potrjene vloge), zato mu razložimo, zakaj
+   strani (še) ni. */
 function MojProfil() {
-  const { nalaganje, mojIdIgralec, uporabnik } = useAvtentikacija()
+  const { nalaganje, mojIdIgralec, uporabnik, jeOrganizator } = useAvtentikacija()
   if (nalaganje) return <p className="obvestilo">Preverjanje prijave …</p>
   if (mojIdIgralec !== null) return <Navigate to={`/igralci/${mojIdIgralec}/profil`} replace />
+  if (uporabnik?.vloga === 'ORGANIZATOR') {
+    if (jeOrganizator) return <OrganizatorskiPregledStran />
+    if (!uporabnik.emailPotrjen) {
+      return (
+        <p className="obvestilo">
+          Tvoja e-pošta še ni potrjena. Vpiši kodo, ki si jo dobil po pošti (v meniju v desnem
+          kotu: »Vpiši kodo«).
+        </p>
+      )
+    }
+    return (
+      <p className="obvestilo">
+        {uporabnik.status === 'ZAVRNJEN'
+          ? 'Tvoj račun je bil zavrnjen.'
+          : 'Tvoj račun čaka na potrditev administratorja. Ko ga potrdi, se tu odpre pregled tvojih tekmovanj.'}
+      </p>
+    )
+  }
   if (uporabnik?.vloga === 'IGRALEC') {
     if (uporabnik.status === 'ZAVRNJEN') {
       return <p className="obvestilo">Tvoj račun je bil zavrnjen.</p>

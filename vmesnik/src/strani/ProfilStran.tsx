@@ -37,6 +37,7 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { GrafRatinga } from '../komponente/GrafRatinga'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { NapovedTekme } from '../komponente/NapovedTekme'
+import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import {
   oznakaMeseca,
@@ -51,6 +52,7 @@ export function ProfilStran() {
   const { id } = useParams()
   const idIgralec = Number(id)
   const { jeAdmin, mojIdIgralec, jePremium } = useAvtentikacija()
+  const { odpri: odpriPremiumOglas } = usePremiumOglas()
 
   const profil = useQuery({
     queryKey: ['profil', idIgralec],
@@ -242,7 +244,14 @@ export function ProfilStran() {
       {lastnikBrezPremium && (
         <div className="obvestilo">
           Forma, nasprotniki, napoved tekme, nizi in točke ter razrezi so Premium funkcija.{' '}
-          <Link to="/narocnina">Nadgradi na Premium</Link>, da jih vidiš.
+          <button
+            type="button"
+            className="povezava-gumb povezava-gumb--vrstica"
+            onClick={() => odpriPremiumOglas('statistika')}
+          >
+            Nadgradi na Premium
+          </button>
+          , da jih vidiš.
         </div>
       )}
 

@@ -126,4 +126,9 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
             WHERE sk.id = :idSerija
             """)
     Optional<Liga> najdiZLastnistvomPoSeriji(Long idSerija);
+
+    /* Vse lige, ki jih je racun USTVARIL - vir organizatorskega pregleda
+       (glej TurnirRepozitorij.najdiZaUstvarjalca). */
+    @Query("SELECT l FROM Liga l WHERE l.ustvaril.id = :idUstvaril")
+    List<Liga> najdiZaUstvarjalca(Long idUstvaril);
 }

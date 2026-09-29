@@ -98,4 +98,19 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
             WHERE k.ekipa.liga.id = :idLiga AND k.igralec.id = :idIgralec
             """)
     long steviloVLigi(Long idLiga, Long idIgralec);
+
+    /* Igralci kadrov ekip izbranih lig kot [idLiga, idIgralec]. */
+    @Query("""
+            SELECT DISTINCT l.id, k.igralec.id FROM KaderEkipe k JOIN k.ekipa e JOIN e.liga l
+            WHERE l.id IN :idjiLig
+            """)
+    List<Object[]> igralciLig(List<Long> idjiLig);
+
+    /* Isto za ekipne dogodke izbranih turnirjev: [idTurnir, idIgralec]. */
+    @Query("""
+            SELECT DISTINCT t.id, k.igralec.id FROM KaderEkipe k
+            JOIN k.ekipa e JOIN e.dogodek d JOIN d.turnir t
+            WHERE t.id IN :idjiTurnirjev
+            """)
+    List<Object[]> igralciEkipnihTurnirjev(List<Long> idjiTurnirjev);
 }

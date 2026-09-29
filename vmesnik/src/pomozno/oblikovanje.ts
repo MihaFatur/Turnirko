@@ -277,6 +277,19 @@ export function sklonNizov(n: number): string {
   return sklon(n, 'niz', 'niza', 'nize', 'nizov')
 }
 
+/* Samo prva crka besedila velika, ostalo nespremenjeno ("savinja liga" ->
+   "Savinja liga", "SNTL" ostane "SNTL"): ime lige je fraza in ne ime osebe,
+   zato je to drugo pravilo kot zVelikoZacetnico spodaj (ta vsaki besedi).
+   Presledek na zacetku ni crka - ob vpisu ostane in velika postane prva prava.
+   Isto pravilo drzi zaledje (LigaStoritev). */
+export function prvaCrkaVelika(besedilo: string): string {
+  const prva = besedilo.match(/\S/)
+  if (!prva || prva.index === undefined) return besedilo
+  const i = prva.index
+  const znak = String.fromCodePoint(besedilo.codePointAt(i)!)
+  return besedilo.slice(0, i) + znak.toLocaleUpperCase('sl') + besedilo.slice(i + znak.length)
+}
+
 /* Ime kola izlocilne mreze. Kolo z enim parom je finale, z dvema
    polfinale itd.; zgodnja kola se imenujejo po delezu ("1/16 finala"), da se
    naslov stolpca ujema z oznako na gumbu krmarja. */

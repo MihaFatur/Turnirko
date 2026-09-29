@@ -125,7 +125,11 @@ interface Stanje {
   placanoZnesek: number | null
 }
 
-function zacetnoStanje(obnovljeno: ShranjenoStanjePlacila | null, naPaketu: boolean): Stanje {
+function zacetnoStanje(
+  obnovljeno: ShranjenoStanjePlacila | null,
+  naPaketu: boolean,
+  zacetniCiklus: CiklusPlacila | undefined,
+): Stanje {
   if (obnovljeno) {
     return {
       vloga: obnovljeno.vloga,
@@ -159,7 +163,7 @@ function zacetnoStanje(obnovljeno: ShranjenoStanjePlacila | null, naPaketu: bool
        paketu z Igralcem Premium za eno leto. */
     korak: naPaketu ? koraki('igralec', false).indexOf('paket') : 0,
     paket: naPaketu ? 'PREMIUM' : 'BREZPLACNO',
-    ciklus: naPaketu ? 'LETNO' : 'MESECNO',
+    ciklus: naPaketu ? (zacetniCiklus ?? 'LETNO') : 'MESECNO',
     ime: '',
     priimek: '',
     datumRojstva: '',
@@ -187,6 +191,7 @@ export function RegistracijaTok({
   onNazajNaPrijavo,
   obnovljenoStanje = null,
   naPaketu = false,
+  zacetniCiklus,
 }: {
   onZapri: () => void
   onNazajNaPrijavo: () => void
@@ -196,10 +201,15 @@ export function RegistracijaTok({
   /* Okno se odpre na koraku "paket" z izbranim Igralcem Premium za eno leto
      (klik na maskoto, glej Maskota.tsx). */
   naPaketu?: boolean
+  /* Izbrano plačevanje ob začetku na koraku »paket« (oglas Igralec Premium);
+     brez njega letno. */
+  zacetniCiklus?: CiklusPlacila
 }) {
   const telefon = useTelefon()
   const { prijava } = useAvtentikacija()
-  const [s, nastavi] = useState<Stanje>(() => zacetnoStanje(obnovljenoStanje, naPaketu))
+  const [s, nastavi] = useState<Stanje>(() =>
+    zacetnoStanje(obnovljenoStanje, naPaketu, zacetniCiklus),
+  )
   /* Lik v tabeli paketov nastopi enkrat na odprto okno: ob vrnitvi na korak
      (Nazaj/Naprej) ga ne bi bilo treba spet gledati. */
   const [tabelaKoncana, nastaviTabelaKoncana] = useState(false)

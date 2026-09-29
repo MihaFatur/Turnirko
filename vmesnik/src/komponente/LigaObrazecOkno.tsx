@@ -6,7 +6,7 @@
    Mesta lige v piramidi (višja/nižja liga, napredovanje, izpad) tu namenoma
    ni: to ni pravilo tekmovanja, ampak opis sezone, in se sme popravljati tudi
    potem, ko so pravila zaklenjena — ureja ga PrehodiOkno. */
-import { useState, type FormEvent } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
@@ -17,9 +17,10 @@ import {
   OZNAKE_PREDLOGA_LIGE,
   OZNAKE_RAVEN,
   RAZPORED_FORMATA,
-  TEZA_RAVNI,
 } from '../api/tipi'
+import { prvaCrkaVelika } from '../pomozno/oblikovanje'
 import { ModalnoOkno } from './ModalnoOkno'
+import { OpisRavniTekmovanja } from './OpisRavniTekmovanja'
 import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -150,10 +151,21 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
     },
   })
 
+  /* Prva crka postane velika ze med vpisom. Vrednost se popravi na polju in
+     kazalec vrne na svoje mesto: sicer bi popravek prve crke sredi besedila
+     kazalec odnesel na konec (dolzina ostane ista, zato izbor natancno obstane). */
+  function obSpremembiImena(dogodek: ChangeEvent<HTMLInputElement>) {
+    const polje = dogodek.target
+    const { selectionStart: zacetek, selectionEnd: konec } = polje
+    polje.value = prvaCrkaVelika(polje.value)
+    polje.setSelectionRange(zacetek, konec)
+    nastaviIme(polje.value)
+  }
+
   function obOddaji(dogodek: FormEvent) {
     dogodek.preventDefault()
     shranjevanje.mutate({
-      ime: ime.trim(),
+      ime: prvaCrkaVelika(ime.trim()),
       sezona: sezona.trim() || null,
       spolKategorija: spol,
       formatSrecanja: format,
@@ -192,7 +204,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
 
         <label className="obrazec__polje">
           <span>Ime lige *</span>
-          <input value={ime} onChange={(d) => nastaviIme(d.target.value)}
+          <input value={ime} onChange={obSpremembiImena}
             placeholder="npr. 1. SNTL – moški 2025/26" required />
         </label>
 
@@ -223,11 +235,13 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             </select>
           </label>
           <label className="obrazec__polje">
-            <span>Nizi (najboljši od)</span>
+            <span>Nizi (prvi do)</span>
+            {/* Prikazano je, do koliko dobljenih nizov se igra; zaledje in
+                tekme hranijo najvecje mogoce stevilo nizov (3, 5, 7). */}
             <select value={steviloNizov} onChange={(d) => nastaviSteviloNizov(Number(d.target.value))}>
-              <option value={3}>3</option>
-              <option value={5}>5</option>
-              <option value={7}>7</option>
+              <option value={3}>2</option>
+              <option value={5}>3</option>
+              <option value={7}>4</option>
             </select>
           </label>
         </div>
@@ -254,7 +268,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         </div>
         <p className="namig">
           {konec === 'VSE'
-            ? 'Vseh ' + tekme.length + ' tekem se odigra do konca, tudi ko je zmagovalec srečanja že znan — rezultat šteje v razliko tekem in v rating.'
+            ? 'Vseh ' + tekme.length + ' tekem se odigra do konca, tudi ko je zmagovalec srečanja že znan.'
             : `Ko ena ekipa doseže ${prag} dobljenih tekem, se srečanje konča; preostale tekme ostanejo neodigrane.`}
         </p>
 
@@ -284,12 +298,12 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           </div>
           <p className="namig">
             {datumPrvega
-              ? `Vsako kolo se odigra ${razmik === 7 ? 'teden' : `${razmik} dni`} za prejšnjim; datumi se zapišejo ob generiranju razporeda, ko je znano, koliko kol liga ima. Posamezno kolo je pozneje mogoče prestaviti — na strani lige pod »Termini«.`
+              ? `Vsako kolo se odigra ${razmik === 7 ? 'teden' : `${razmik} dni`} za prejšnjim; datumi se zapišejo ob generiranju razporeda, ko je znano, koliko kol ima liga. Posamezno kolo je pozneje mogoče prestaviti, na strani lige pod »Termini«.`
               : 'Brez datuma prvega kola razpored pri neodigranih kolih ne pokaže dneva, ampak samo oznako »razpored«. Datume je mogoče vpisati tudi pozneje — na strani lige pod »Termini«.'}
           </p>
 
           <label className="obrazec__polje">
-            <span>Srečanj vsake ekipe v kolu</span>
+            <span>Število srečanj posamezne lige na kolo</span>
             <select value={ure?.length ?? 1}
               onChange={(d) => zamenjajSrecanjVKolu(Number(d.target.value))}>
               <option value={1}>1 srečanje</option>
@@ -343,7 +357,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           <p className="namig">
             {koncnicaEkip > 0
               ? `Po rednem delu končnico ustvariš na strani lige: pari sledijo končni lestvici (1. proti ${koncnicaEkip}. …), serija traja do ${koncnicaZmag} ${koncnicaZmag === 1 ? 'zmage' : 'zmag'}. Prvo tekmo igra doma slabše uvrščena ekipa, drugo in odločilno bolje uvrščena. Tekme končnice ne štejejo v lestvico rednega dela.`
-              : 'Prvak je prvi po rednem delu.'}
+              : 'Prvak je kdor je prvi po rednem delu.'}
             {koncnicaEkip > 0 && konec === 'VSE' && tekme.length % 2 === 0 &&
               ' Srečanje brez praga zmag se lahko konča neodločeno in serije ne odloči — za končnico nastavi prag zmag.'}
           </p>
@@ -377,22 +391,17 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         </label>
         <label className="obrazec__polje obrazec__polje--stikalo">
           <input type="checkbox" checked={prepoved} onChange={(d) => nastaviPrepoved(d.target.checked)} />
-          <span>Prepovej dvojno registracijo (igralec le v eni ekipi lige)</span>
+          <span>Prepovej dvojno registracijo (posamezen igralec je lahko prijavljen le v eni ekipi te lige)</span>
         </label>
         <label className="obrazec__polje">
-          <span>Raven tekmovanja (teža v Turnirko ratingu)</span>
+          <span>Raven tekmovanja</span>
           <select value={raven} onChange={(d) => nastaviRaven(d.target.value as RavenTekmovanja)}>
             {(Object.keys(OZNAKE_RAVEN) as RavenTekmovanja[]).map((r) => (
-              <option key={r} value={r}>{OZNAKE_RAVEN[r]} — {TEZA_RAVNI[r]}</option>
+              <option key={r} value={r}>{OZNAKE_RAVEN[r]}</option>
             ))}
           </select>
         </label>
-        <p className="namig">
-          Teža pove, koliko rating premakne ena tekma te lige: uradna tekmovanja
-          NTZS štejejo v celoti, klubska tri četrtine, rekreativna polovico.
-          Zmaga v rekreativni ligi pač ni enako vredna kot zmaga v SNTL.
-          Dvojice ne štejejo nikoli.
-        </p>
+        <OpisRavniTekmovanja />
         <label className="obrazec__polje obrazec__polje--stikalo">
           <input type="checkbox" checked={enakomerna}
             onChange={(d) => nastaviEnakomerno(d.target.checked)} />

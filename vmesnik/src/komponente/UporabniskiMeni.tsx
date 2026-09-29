@@ -41,6 +41,8 @@ export function UporabniskiMeni() {
   /* Povezavo do profila vidi vsak prijavljen igralec (tudi tak, ki se caka na
      potrditev); tam mu stran pojasni, zakaj profila se ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
+  /* Organizator ima svoj »Moj profil« (organizatorski pregled). */
+  const imaMojProfil = jePrijavljenIgralec || uporabnik?.vloga === 'ORGANIZATOR'
 
   /* Račun brez potrjenega naslova ali skrbnikove kode: kar manjka, je koda. */
   const cakaKodo =
@@ -53,7 +55,7 @@ export function UporabniskiMeni() {
      menija, kjer je zanju prostor. Račun brez povezanega igralca (admin,
      organizator) se predstavi s prijavnim imenom. */
   const oznaka = uporabnik
-    ? (uporabnik.imeIgralca ?? uporabnik.uporabniskoIme)
+    ? (uporabnik.imeIgralca ?? uporabnik.polnoIme ?? uporabnik.uporabniskoIme)
     : 'Gost · prijava'
 
   function odpriPrijavo(nacin: PrijavaNacin) {
@@ -83,7 +85,7 @@ export function UporabniskiMeni() {
         <div className="uporabnik-meni" role="menu">
           <div className="uporabnik-meni__glava">
             <span className="uporabnik-meni__ime">
-              {uporabnik.imeIgralca ?? uporabnik.uporabniskoIme}
+              {uporabnik.imeIgralca ?? uporabnik.polnoIme ?? uporabnik.uporabniskoIme}
             </span>
             <span className="uporabnik-meni__vloga">
               {[
@@ -111,7 +113,7 @@ export function UporabniskiMeni() {
             </button>
           )}
 
-          {jePrijavljenIgralec && (
+          {imaMojProfil && (
             <NavLink
               to="/moj-profil"
               role="menuitem"

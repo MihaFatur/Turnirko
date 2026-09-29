@@ -922,7 +922,7 @@ public class LigaStoritev {
         }
         preveriKoncnico(v);
         preveriUreSrecanj(v.ureSrecanj());
-        liga.setIme(v.ime().trim());
+        liga.setIme(zVelikoZacetnico(v.ime().trim()));
         liga.setSezona(v.sezona() != null && !v.sezona().isBlank() ? v.sezona().trim() : null);
         liga.setSpolKategorija(v.spolKategorija());
         liga.setFormatSrecanja(v.formatSrecanja());
@@ -953,6 +953,17 @@ public class LigaStoritev {
         liga.setKoncnicaEkip(v.koncnicaEkip());
         liga.setKoncnicaZmag(v.koncnicaEkip() == null ? null
                 : (v.koncnicaZmag() != null ? v.koncnicaZmag() : PRIVZETE_ZMAGE_V_SERIJI));
+    }
+
+    /* Ime lige se vedno zacne z veliko crko (obrazec jo popravi sproti, tu je
+       zadnja obramba: vnos mimo obrazca ne sme pustiti "savinja liga"). Stevka
+       ("1. SNTL") ostane, kar je - velike crke nima. Uvoz iz Stupe in stare
+       strani pise mimo te poti in imen zveze ne spreminja. */
+    static String zVelikoZacetnico(String ime) {
+        if (ime.isEmpty()) return ime;
+        int prva = ime.codePointAt(0);
+        return new String(Character.toChars(Character.toUpperCase(prva)))
+                + ime.substring(Character.charCount(prva));
     }
 
     /* Privzeta serija koncnice: na dve zmagi (tako igra 1. SNTL). */

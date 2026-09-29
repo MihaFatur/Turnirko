@@ -138,6 +138,9 @@ public class VarnostneNastavitve {
                         // preklop cikla): osebno kot izbor lig - prijava, ne vloga.
                         // Pravilo mora stati pred splosnim "GET je javen".
                         .requestMatchers("/api/v1/narocnina", "/api/v1/narocnina/**").authenticated()
+                        // organizatorski pregled: porabo paketa in lastna tekmovanja vidi
+                        // samo organizator. Pravilo mora stati pred splosnim "GET je javen"
+                        .requestMatchers("/api/v1/organizator/**").hasRole("ORGANIZATOR")
                         // zasebni del profila (analize in napoved tekme) vidi samo
                         // igralec sam ali administrator; lastnistvo preveri
                         // DostopDoProfila - veriga pozna samo vlogo, ne lastnistva

@@ -24,6 +24,10 @@ public record UporabnikDto(
         StatusRacuna status,
         Long idIgralec,
         String imeIgralca,
+        // Ime osebe za oznako v glavi: ime povezanega igralca, sicer ime in
+        // priimek, kot ju je oseba navedla ob registraciji (organizator); null
+        // pri adminu. Prej je organizator v glavi videl svojo e-posto.
+        String polnoIme,
         // klub organizatorja - po njem vmesnik pokaze urejanje klubskih tekmovanj
         Long idKlub,
         String klub,
@@ -52,6 +56,7 @@ public record UporabnikDto(
                 uporabnik.getStatus(),
                 uporabnik.getIgralec() != null ? uporabnik.getIgralec().getId() : null,
                 uporabnik.getIgralec() != null ? uporabnik.getIgralec().polnoIme() : null,
+                polnoIme(uporabnik),
                 uporabnik.getKlub() != null ? uporabnik.getKlub().getId() : null,
                 uporabnik.getKlub() != null ? uporabnik.getKlub().getIme() : null,
                 uporabnik.jeEmailPotrjen(),
@@ -60,5 +65,16 @@ public record UporabnikDto(
                 narocnina != null && narocnina.jeVeljavna(LocalDateTime.now()),
                 narocnina != null ? narocnina.getCiklus() : null,
                 starejsiOd21);
+    }
+
+    private static String polnoIme(Uporabnik uporabnik) {
+        if (uporabnik.getIgralec() != null) {
+            return uporabnik.getIgralec().polnoIme();
+        }
+        String ime = uporabnik.getPrijavljenoIme() == null ? "" : uporabnik.getPrijavljenoIme().trim();
+        String priimek = uporabnik.getPrijavljeniPriimek() == null
+                ? "" : uporabnik.getPrijavljeniPriimek().trim();
+        String polno = (ime + " " + priimek).trim();
+        return polno.isEmpty() ? null : polno;
     }
 }

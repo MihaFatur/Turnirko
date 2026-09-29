@@ -35,6 +35,7 @@ import type {
   NarocninaCiklusVnos,
   NarocninaDto,
   NeaktivnostPorociloDto,
+  OrganizatorPregledDto,
   ParRazporedaDto,
   PreracunPorociloDto,
   PostavaVnos,
@@ -53,6 +54,7 @@ import type {
   PlacilnaSejaDto,
   PotrditevKodeVnos,
   PotrditevOdgovorDto,
+  PremiumDokazDto,
   RacunIgralcaDto,
   RegistracijaOdgovorDto,
   RegistracijaVnos,
@@ -236,6 +238,18 @@ export const narocninaApi = {
   preklopi: (ciklus: CiklusPlacila) =>
     api.posodobi<NarocninaDto>('/narocnina/preklop', { ciklus } satisfies NarocninaCiklusVnos),
   razveljaviPreklop: () => api.izbrisi<NarocninaDto>('/narocnina/preklop'),
+}
+
+/* Javni podatki za oglas Igralec Premium. Račun (klub) strežnik prebere iz glave
+   Authorization, zato je odgovor odvisen od prijave in je prijava v ključu poizvedbe. */
+export const premiumApi = {
+  dokaz: () => api.vrni<PremiumDokazDto>('/premium/dokaz'),
+}
+
+/* Organizatorski pregled (stran »Moj profil« organizatorja): samo za vlogo
+   ORGANIZATOR, gost in igralec dobita 401/403. */
+export const organizatorApi = {
+  pregled: () => api.vrni<OrganizatorPregledDto>('/organizator/pregled'),
 }
 
 export const profiliApi = {

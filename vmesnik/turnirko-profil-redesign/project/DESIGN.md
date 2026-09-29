@@ -304,7 +304,9 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
    Ikone so iz zbirke Lucide, 22 px, poteza 1.75,
    `currentColor`. Nikjer drugje — v glavi, gumbih, menijih, predalu »Več« —
    ikon ni.
-   *Druga izjema (ilustracija, ne ikona): maskota »Igralec Premium«, razdelek 5b.*
+   *Druga izjema (ilustracija, ne ikona): maskota »Igralec Premium«, razdelek 5b
+   (tudi lik ob palici paketa v organizatorskem pregledu);
+   tretja: risbe v oglasu »Igralec Premium«, razdelek 5c.*
 10. **`color: inherit` na obarvani podlagi** — barvo besedila zapiši izrecno.
 11. **Novi razredi za obstoječ vzorec.** Najprej poglej razdelek 4.
 12. **Animacije stanja »zaradi lepšega«.** Dovoljen je samo `transition` barve
@@ -314,7 +316,8 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
     `cubic-bezier(.2,.8,.2,1)`, z njo ploskev in barva postavke (160 ms `ease`)
     in dvig aktivne ikone za 2 px. Daljši čas je tu premik podčrtaja, ki ga
     točka že dovoljuje; viden je samo zato, ker je pot dolga cel stolpec.
-    *Druga izjema: maskota »Igralec Premium«, razdelek 5b.*
+    *Druga izjema: maskota »Igralec Premium«, razdelek 5b. Tretja: celozaslonski
+    oglas »Igralec Premium«, razdelek 5c.*
 
 ### 5b. Izjema: maskota »Igralec Premium«
 
@@ -394,6 +397,68 @@ samo, če veljajo **vsi** pogoji hkrati:
    preozko okno). Platno je čez tabelo, a ne ujame nobenega klika in ne
    spremeni postavitve; animira se samo `transform` in `opacity`. Edina dodatna
    oblika je okvir okoli celice Premium: pravokotna obroba 2 px v modri polni.
+
+**Nova izjema v 5b: lik ob palici paketa (organizatorski pregled).** Odločitev
+lastnika, 29. 9. 2026 (predaja `design_handoff_organizatorski_pregled`). Na
+strani »Moj profil« organizatorja stoji lik ob palici porabe paketa
+(`komponente/MaskotaPrizori.tsx`, `LikNaPalici`; gostitelj in gibanje
+`LikKvote` v `strani/OrganizatorskiPregledStran.tsx`). Za razliko od lika v
+glavi ni prizor animatorja, ampak stalna poza z enim namenom: povedati, koliko
+prostora v paketu je še ostalo.
+- **Poza `tabla`** (kvota ni polna): lik stoji na sredini praznega dela
+  palice in z iztegnjenima rokama drži tablo »3 prosta mesta«.
+- **Poza `sedi`** (kvota polna): lik sedi na desnem koncu palice, noge visijo
+  čez rob, glava in tabla sta nagnjeni; tabla pove »Polno — nadgradi« (pri
+  najvišjem paketu »Polno do 1. 7.«) in vodi na `/narocnina`.
+- **Ena palica naenkrat**: prva polna, sicer palica lig. Lik ne nosi podatka
+  sam - isto pove opomba pod palico (»Še 3 lige v tej sezoni«) in oznaka
+  »Polno«, zato ga ob `prefers-reduced-motion` ni treba skrivati.
+- **Gibanje** (ni v posnetkih): vstop 0,5 s, zadržanje ~4 s, izhod 0,5 s; skupaj
+  5 s, enkrat na obisk strani. Tabla izstopi navzdol »za palico« (ovoj odreže vse
+  pod robom palice), sedeči lik vstran; ob koncu je element `visibility:
+  hidden`. Ob `prefers-reduced-motion` je lik nepremičen in stalen.
+- **Merilo** 1,4 na namizju in 1,05 na telefonu; črte lika so v enotah lika (se
+  večajo z njim), ne v pikslih kot pri nogah prizorov v glavi.
+- Ostane pravilo 5b, da je lik risba iz hišnih barv (črnilo, modra, zelena,
+  bela); nikoli ne nosi tretjega tona in ne ujame klika, razen table pri
+  sedečem liku.
+
+### 5c. Izjema: celozaslonski oglas »Igralec Premium«
+
+Odločitev lastnika, 29. 9. 2026 (predaja `design_handoff_premium_popup`). Ko
+igralec brez Premium klikne zaklenjeno funkcijo, se čez celo stran pokaže oglas
+(`komponente/PremiumOglas.tsx`, ponudnik `PremiumOglasKontekst.tsx`, risbe
+`PremiumOglasPrizori.tsx`, gibanje `pomozno/animacijaOglasa.ts`, besedila in
+cene `pomozno/premiumOglas.ts`, slogi v razdelku »Oglas Igralec Premium« v
+`slog.css`). Tri različice iste ponudbe — 1a Zavesa, 1b Ključavnica, 1c Končni
+izid —, vsaka za namizje in telefon (pod 768 px); ob vsakem odprtju se z
+`Math.random()` izbere ena, vsaka z verjetnostjo 1/3. Ton je glasnejši kot
+drugje (»Zavesa gor.«, »KLIK!«, žig »Premium zmaga«), lik nastopi tudi na
+telefonu, nalepka in žig sta zasukana, zavesa in ključavnica se gibljeta do
+4,7 s. Izjema velja samo za ta oglas in samo, če veljajo **vsi** pogoji hkrati:
+
+1. **Sproži ga samo klik na zaklenjeno funkcijo** (spremljanje in urejanje lig,
+   zasebna statistika); nikoli sam od sebe, po urniku ali ob nalaganju strani.
+   Vidita ga samo gost in igralec brez Premium; organizator in admin ne.
+2. **Zapre ga gledalec**: »Ne zdaj ×« se pojavi po 2 s, prej ne deluje ne gumb
+   ne Escape. Oglas je pravi modal: `role="dialog"`, `aria-modal`, fokus ob
+   odprtju na glavnem gumbu, ozadje `inert`.
+3. **Barve, pisave in oblike so hišne**: samo spremenljivke iz razdelka 2, tri
+   pisne družine, radij 0, brez senc. Gradient je samo vzorec prog zavese;
+   `filter: blur` je samo na izmišljenih vrednostih predogleda, ki so zato
+   `aria-hidden`. Ikon ni; lik, ključavnica in konfeti so risba (črtni deli lika
+   so okrogli kot pri maskoti).
+4. **Cene niso vtipkane**: gredo iz `CENA_PREMIUM_MESECNO` in
+   `CENA_PREMIUM_LETNO`. Cenovni pas (»Mlajši od 21?«) izbere stikalo samo pri
+   gostu; prijavljenemu ga določa račun (Stripe računa po njem), zato stikala
+   nima. **Socialni dokaz je pravo število** (`GET /premium/dokaz`); brez
+   števila ali pod mejo vrstice ni, imen igralcev s Premium pa oglas nikoli ne
+   pokaže (kvadratki so brez črk — predaja jih ima z začetnicami samo kot primer).
+5. **Pri `prefers-reduced-motion: reduce` je takoj končno stanje.** To je
+   namerno drugače kot pri maskoti v glavi (5b, pogoj 3): tam je lik kratka
+   dekoracija, tu je oglas čez cel zaslon.
+6. **Drugih oglasov ni.** Nova različica, nov sprožilec ali kaj podobnega na
+   drugem mestu je nova odločitev.
 
 ---
 

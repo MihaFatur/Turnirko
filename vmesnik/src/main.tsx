@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react
 import { App } from './App'
 import { NapakaStreznika } from './api/odjemalec'
 import { AvtentikacijaPonudnik } from './avtentikacija/AvtentikacijaKontekst'
+import { PremiumOglasPonudnik } from './komponente/PremiumOglasKontekst'
 /* Lokalno vgrajene pisave sistema (brez zunanjih klicev - deluje tudi brez
    interneta v dvorani; DESIGN.md nalaga druzine, ne nacina dostave).
    Bricolage Grotesque = display, Karla = telo, IBM Plex Mono = oznake.
@@ -49,7 +50,9 @@ createRoot(document.getElementById('koren')!).render(
     <QueryClientProvider client={odjemalecPoizvedb}>
       <BrowserRouter>
         <AvtentikacijaPonudnik>
-          <App />
+          <PremiumOglasPonudnik>
+            <App />
+          </PremiumOglasPonudnik>
         </AvtentikacijaPonudnik>
       </BrowserRouter>
     </QueryClientProvider>

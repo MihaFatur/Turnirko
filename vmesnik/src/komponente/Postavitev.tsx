@@ -53,6 +53,8 @@ interface Povezava {
   /* Vidi administrator ali organizator (npr. sifrant igralcev - organizator
      sme dodati novega igralca). */
   samoUrejevalec?: boolean
+  /* Igralec ali organizator: »Moj profil« vodi igralca na njegov profil,
+     organizatorja na organizatorski pregled. */
   samoIgralec?: boolean
 }
 
@@ -138,11 +140,15 @@ export function Postavitev() {
      čaka na potrditev; tam mu stran pojasni, zakaj profila še ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
   const jeUrejevalec = jeAdmin || jeOrganizator
+  /* Povezava »Moj profil« velja tudi za organizatorja (njegov pregled); račun
+     organizatorja, ki še čaka na potrditev, jo vidi tudi - stran mu razloži,
+     kaj čaka. */
+  const imaMojProfil = jePrijavljenIgralec || uporabnik?.vloga === 'ORGANIZATOR'
   const vidne = povezave.filter(
     (p) =>
       (!p.samoAdmin || jeAdmin) &&
       (!p.samoUrejevalec || jeAdmin || jeOrganizator) &&
-      (!p.samoIgralec || jePrijavljenIgralec),
+      (!p.samoIgralec || imaMojProfil),
   )
 
   /* Predal se zapre ob odhodu s telefonske sirine - sicer bi na namizju obvisel

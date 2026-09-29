@@ -12,7 +12,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { opisNapake } from '../api/odjemalec'
 import { authApi } from '../api/zahteve'
-import type { NamenKode, PotrditevOdgovorDto } from '../api/tipi'
+import type { CiklusPlacila, NamenKode, PotrditevOdgovorDto } from '../api/tipi'
 import type { ShranjenoStanjePlacila } from '../pomozno/registracijaSeja'
 import { KodaVnos } from './KodaVnos'
 import { ModalnoOkno } from './ModalnoOkno'
@@ -49,6 +49,7 @@ export function PrijavaOkno({
   kodaSkrbnika = false,
   obnovljenoStanjePlacila = null,
   naPaketu = false,
+  zacetniCiklus,
 }: {
   onZapri: () => void
   /* Korak, na katerem se okno odpre (npr. "registracija" z domače strani ali
@@ -64,6 +65,9 @@ export function PrijavaOkno({
   /* Samo z načinom "registracija": čarovnik se odpre na koraku "paket" z
      izbranim Igralcem Premium za eno leto (klik na maskoto). */
   naPaketu?: boolean
+  /* Samo z `naPaketu`: izbrano plačevanje (mesečno/letno), npr. iz oglasa Igralec
+     Premium; brez njega letno. */
+  zacetniCiklus?: CiklusPlacila
 }) {
   const [nacin, nastaviNacin] = useState<Nacin>(zacetniNacin)
   const [koda, nastaviKodo] = useState<StanjeKode | null>(
@@ -93,6 +97,7 @@ export function PrijavaOkno({
           onNazajNaPrijavo={() => naPrijavo()}
           obnovljenoStanje={obnovljenoStanjePlacila}
           naPaketu={naPaketu}
+          zacetniCiklus={zacetniCiklus}
         />
       </ModalnoOkno>
     )

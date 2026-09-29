@@ -33,4 +33,15 @@ public interface DogodekRepozitorij extends JpaRepository<Dogodek, Long> {
             GROUP BY d.turnir.id
             """)
     List<Object[]> stejPoTurnirjih();
+
+    /* Roki prijave dogodkov, ki se prijave zbirajo (PRIPRAVA): [idTurnir, rok].
+       Skalarna projekcija in ne MIN(): najzgodnejsi rok izbere klicatelj, ker
+       aggregat nad datumom v SQLite vrne besedilo, ne LocalDate. */
+    @Query("""
+            SELECT d.turnir.id, d.rokPrijave FROM Dogodek d
+            WHERE d.status = si.turnirko.modeli.StatusTekmovanja.PRIPRAVA
+              AND d.rokPrijave IS NOT NULL
+              AND d.turnir.id IN :idjiTurnirjev
+            """)
+    List<Object[]> rokiPrijavePoTurnirjih(List<Long> idjiTurnirjev);
 }

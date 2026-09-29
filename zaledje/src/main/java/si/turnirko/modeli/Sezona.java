@@ -24,4 +24,17 @@ public final class Sezona {
     public static LocalDate zacetek(LocalDate danes) {
         return LocalDate.of(zacetnoLeto(danes), PRVI_MESEC_SEZONE, 1);
     }
+
+    /* Datum, ko se zacne NASLEDNJA sezona - dan, ko se organizatorjeve meje
+       ponastavijo. */
+    public static LocalDate naslednjaOd(LocalDate danes) {
+        return LocalDate.of(zacetnoLeto(danes) + 1, PRVI_MESEC_SEZONE, 1);
+    }
+
+    /* Oznaka sezone, ki ji pripada dan: "2026/27". Isti zapis kot polje
+       liga.sezona in sezonaIzDatuma v vmesniku. */
+    public static String oznaka(LocalDate dan) {
+        int leto = zacetnoLeto(dan);
+        return leto + "/" + String.format("%02d", (leto + 1) % 100);
+    }
 }

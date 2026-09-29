@@ -13,7 +13,8 @@
    spremljanje lig je edino dejanje in zahteva prijavo — gostu zato krmil
    računa (kvadratki, filtri lestvice) sploh ne pokažemo, namesto da bi jih
    pokazali in ob kliku zahtevali prijavo. Izjema je »Uredi izbor« ob ligah:
-   ena mono povezava, ki gostu odpre okno za nov račun. */
+   ena mono povezava, ki gostu in igralcu brez Premium pokaže oglas Igralec
+   Premium (PremiumOglas), ostalim pa okno za urejanje izbora. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -25,7 +26,7 @@ import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { KoledarSklop } from '../komponente/KoledarSklop'
 import { DomaceLigeOkno, IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
-import { PrijavaOkno } from '../komponente/PrijavaOkno'
+import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { oblikujDanKratekMesec, oblikujDatum, sklonIgralcev } from '../pomozno/oblikovanje'
@@ -43,7 +44,7 @@ export function DomacaStran() {
   const [filter, nastaviFilter] = useState<FilterLestvice>('vsi')
   const [izborOdprt, nastaviIzborOdprt] = useState(false)
   const [domaceOdprt, nastaviDomaceOdprt] = useState(false)
-  const [registracijaOdprta, nastaviRegistracijaOdprta] = useState(false)
+  const { odpri: odpriPremiumOglas } = usePremiumOglas()
 
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
   const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
@@ -51,7 +52,7 @@ export function DomacaStran() {
 
   /* Izbor lig je last računa; gost ga nima, zato mu sklop pokaže lige, ki si
      jih je nazadnje ogledal (zapomni si jih njegov brskalnik). */
-  const { jePrijavljen, spremljane, preklopi } = useSpremljanjeLig()
+  const { jePrijavljen, spremljane, preklopi, ponudiPremium } = useSpremljanjeLig()
 
   /* Sklop ima več virov in strežnik med njimi razsodi sam (glej
      DomovStoritev.povzetkiLig), zato mu povemo, katere vrste je seznam, ki ga
@@ -141,7 +142,9 @@ export function DomacaStran() {
                 type="button"
                 className="sekcija__meta"
                 onClick={() =>
-                  jePrijavljen ? nastaviIzborOdprt(true) : nastaviRegistracijaOdprta(true)
+                  jePrijavljen && !ponudiPremium
+                    ? nastaviIzborOdprt(true)
+                    : odpriPremiumOglas('lige')
                 }
               >
                 Uredi izbor →
@@ -220,12 +223,6 @@ export function DomacaStran() {
       </div>
 
       {izborOdprt && <IzborLigOkno onZapri={() => nastaviIzborOdprt(false)} />}
-      {registracijaOdprta && (
-        <PrijavaOkno
-          zacetniNacin="registracija"
-          onZapri={() => nastaviRegistracijaOdprta(false)}
-        />
-      )}
       {domaceOdprt && <DomaceLigeOkno onZapri={() => nastaviDomaceOdprt(false)} />}
     </section>
   )

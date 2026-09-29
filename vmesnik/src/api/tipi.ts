@@ -19,13 +19,6 @@ export const OZNAKE_RAVEN: Record<RavenTekmovanja, string> = {
   NE_STEJE: 'Ne šteje v rating',
 }
 
-/* Teza je v zaledju (RavenTekmovanja), tu je le za izpis ob izbiri. */
-export const TEZA_RAVNI: Record<RavenTekmovanja, string> = {
-  URADNO: '100 %',
-  KLUBSKO: '75 %',
-  REKREATIVNO: '50 %',
-  NE_STEJE: '–',
-}
 export type StatusTekme = 'CAKA' | 'PRIPRAVLJENA' | 'V_IGRI' | 'KONCANA'
 export type IzidTekme = 'IGRANO' | 'PROSTO' | 'BREZ_BOJA' | 'PREDAJA' | 'DISKVALIFIKACIJA'
 export type FazaTekme = 'SKUPINA' | 'GLAVNI' | 'TOLAZILNI'
@@ -360,6 +353,9 @@ export interface UporabnikDto {
   /* Zapis igralca, s katerim je račun povezan (šele po potrditvi). */
   idIgralec: number | null
   imeIgralca: string | null
+  /* Ime osebe za oznako v glavi: ime povezanega igralca, sicer ime in priimek
+     iz registracije (organizator); null pri adminu. */
+  polnoIme: string | null
   /* Klub organizatorja (po njem soupravlja klubska tekmovanja); sicer null. */
   idKlub: number | null
   klub: string | null
@@ -496,6 +492,14 @@ export interface PlacilnaSejaDto {
   url: string
 }
 
+/* Socialni dokaz v oglasu Igralec Premium (PremiumDokazDto na zaledju):
+   koliko igralcev že plačuje Premium. `stevilo` 0 = vrstice ni. `izKluba` pove,
+   ali je to število iz kluba prijavljenega igralca ali vseh igralcev. */
+export interface PremiumDokazDto {
+  stevilo: number
+  izKluba: boolean
+}
+
 /* Naročnina prijavljenega uporabnika za stran »Naročnina« (NarocninaDto na
    zaledju). Kdor naročnine nima, dobi `aktivna: false` in prazna polja - ne
    404. Datumi so koledarski dnevi (ISO), berejo jih oblikujDatum in izračuni
@@ -523,6 +527,119 @@ export interface NarocninaDto {
 }
 
 export type StatusNarocnine = 'CAKA_PLACILO' | 'AKTIVNA' | 'PREKLICANA' | 'ZAPADLA'
+
+/* ---------- Organizatorski pregled (OrganizatorPregledDto na zaledju) ----------
+   Stran »Moj profil« organizatorja. Zaledje pošlje števila, datume in imena;
+   besedilo (sklanjanje, »2 zapisnika čakata«) sestavi vmesnik. Datumi so
+   koledarski dnevi (ISO). */
+
+export type VrstaTekmovanjaPregleda = 'LIGA' | 'TURNIR'
+
+/* Kaj vrstica pove v stolpcu »čaka«: prvi trije pomenijo, da organizator nekaj
+   mora, ostali so informacija. */
+export type VrstaCakanja =
+  | 'ZAPISNIKI'
+  | 'REZULTATI'
+  | 'ZREB'
+  | 'NASLEDNJE_SRECANJE'
+  | 'ROK_PRIJAVE'
+  | 'ZACETEK'
+  | 'RATING_OBRACUNAN'
+  | 'NE_STEJE_V_RATING'
+
+export type VrstaNapredka = 'KOLO' | 'TEKME' | 'PRIJAVE' | 'EKIPE' | 'KONCANO'
+
+/* Poraba paketa v tekoči sezoni: uporabljeno / meja. */
+export interface KvotaDto {
+  uporabljeno: number
+  meja: number
+}
+
+export interface TekmovanjePregledaDto {
+  vrsta: VrstaTekmovanjaPregleda
+  id: number
+  ime: string
+  status: StatusTekmovanja
+  /* »2026/27«; tekmovanja, ki sodijo na seznam tekoče sezone, nosijo tekočo. */
+  sezona: string
+  /* Turnir: dvorana ali kraj; liga: prazno. */
+  kraj: string | null
+  datumZacetka: string | null
+  datumKonca: string | null
+  /* Turnir: prijavljenih; liga: ekip. */
+  udelezencev: number
+  /* Liga: dvokrožno (true) / enokrožno; turnir: null. */
+  dvokrozno: boolean | null
+  napredekVrsta: VrstaNapredka
+  napredekTrenutno: number
+  napredekVseh: number
+  /* 0-100, za palico. */
+  napredekDelez: number
+  cakaVrsta: VrstaCakanja | null
+  cakaStevilo: number | null
+  cakaDatum: string | null
+}
+
+export interface CakaPregledaDto {
+  vrsta: VrstaCakanja
+  stevilo: number
+  vrstaTekmovanja: VrstaTekmovanjaPregleda
+  idTekmovanja: number
+  imeTekmovanja: string
+  /* Zapisniki: kolo in dan najzgodnejšega srečanja; žreb: začetek turnirja. */
+  kolo: number | null
+  datum: string | null
+  /* Rezultati: dogodki s čakajočimi tekmami; zapisniki: »Savinja : Maribor II«. */
+  podrobnosti: string[]
+  /* Rezultati: kje se turnir igra (»četrtfinale«). */
+  faza: string | null
+  /* Kam vodi gumb: rezultati → dogodek z največ čakajočimi tekmami,
+     zapisniki → najzgodnejše čakajoče srečanje; sicer null. */
+  idDogodka: number | null
+  idSrecanja: number | null
+}
+
+export interface TerminPregledaDto {
+  vrsta: VrstaTekmovanjaPregleda
+  idTekmovanja: number
+  imeTekmovanja: string
+  datum: string
+  /* Turnir: dvorana ali kraj. */
+  kraj: string | null
+  /* Kolo lige: zaporedno kolo, srečanj tistega dne in ura prvega (»18:00«;
+     null = ura ni določena). */
+  kolo: number | null
+  steviloSrecanj: number | null
+  ura: string | null
+}
+
+export interface ArhivSezoneDto {
+  sezona: string
+  lig: number
+  turnirjev: number
+  udelezencev: number
+  tekem: number
+}
+
+export interface OrganizatorPregledDto {
+  ime: string | null
+  klub: string | null
+  sezona: string
+  organiziraOdSezone: string | null
+  skupajTekmovanj: number
+  /* null = račun nima veljavnega organizatorskega paketa. */
+  paket: Paket | null
+  lige: KvotaDto | null
+  turnirji: KvotaDto | null
+  naslednjaSezonaOd: string
+  udelezencev: number
+  odigranihTekem: number
+  tekmovanja: TekmovanjePregledaDto[]
+  caka: CakaPregledaDto[]
+  prihaja: TerminPregledaDto[]
+  naslednje: TerminPregledaDto | null
+  arhiv: ArhivSezoneDto[]
+}
 
 /* Izbran cikel pri preklopu in obnovi preklicane naročnine. */
 export interface NarocninaCiklusVnos {

@@ -152,4 +152,34 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
             GROUP BY s.kolo
             """)
     List<Object[]> stanjeKol(Long idLiga);
+
+    /* Srecanja izbranih lig, ki se niso koncana in imajo termin PRED danim
+       trenutkom - zapisnik jih caka. Zajame tudi koncnico (serija). Klicatelj
+       meji po DNEVU (glej najdiVObdobju: zapisi brez ure so krajsi od
+       "2026-10-04T00:00" in bi bil dan meje po nepotrebnem zajet). */
+    @Query("""
+            SELECT s FROM Srecanje s
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
+            WHERE s.liga.id IN :idjiLig
+              AND s.status <> si.turnirko.modeli.StatusSrecanja.KONCANO
+              AND s.predvidenZacetek IS NOT NULL
+              AND s.predvidenZacetek < :pred
+            ORDER BY s.liga.id, s.kolo, s.predvidenZacetek, s.id
+            """)
+    List<Srecanje> cakajoNaZapisnik(List<Long> idjiLig, LocalDateTime pred);
+
+    /* Prihodnja srecanja rednega dela izbranih lig, ki se niso koncana:
+       [idLiga, kolo, predvidenZacetek]. Skalarna projekcija, ker pregled
+       kolo sestavi sam (kolo = en dan srecanj). Meja `od` je za dan siroka,
+       klicatelj jo natancno omeji (glej zgoraj). */
+    @Query("""
+            SELECT s.liga.id, s.kolo, s.predvidenZacetek FROM Srecanje s
+            WHERE s.liga.id IN :idjiLig AND s.serija IS NULL
+              AND s.status <> si.turnirko.modeli.StatusSrecanja.KONCANO
+              AND s.predvidenZacetek IS NOT NULL
+              AND s.predvidenZacetek >= :od
+            ORDER BY s.predvidenZacetek, s.id
+            """)
+    List<Object[]> prihajajocaKola(List<Long> idjiLig, LocalDateTime od);
 }

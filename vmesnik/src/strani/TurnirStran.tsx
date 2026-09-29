@@ -753,11 +753,13 @@ function NovDogodekOkno({
 
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">
-            <span>Igra se na … nizov *</span>
+            <span>Nizi (prvi do) *</span>
+            {/* Prikazano je, do koliko dobljenih nizov se igra; dogodek in
+                tekme hranijo najvecje mogoce stevilo nizov (3, 5, 7). */}
             <select value={steviloNizov} onChange={(d) => nastaviSteviloNizov(d.target.value)}>
-              <option value="3">3 (na 2 dobljena niza)</option>
-              <option value="5">5 (na 3 dobljene nize)</option>
-              <option value="7">7 (na 4 dobljene nize)</option>
+              <option value="3">2</option>
+              <option value="5">3</option>
+              <option value="7">4</option>
             </select>
           </label>
           <label className="obrazec__polje">

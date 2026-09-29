@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
 import type { EkipaDto, LestvicaEkipeDto, LigaDto, SrecanjeDto } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_RAVEN, TEZA_RAVNI } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_RAVEN, nizovZaZmago } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   GlavaDejanja,
@@ -1695,7 +1695,7 @@ function PravilaOkno({
 }) {
   const podatki: [string, string][] = [
     ['Format', OZNAKE_FORMAT[liga.formatSrecanja]],
-    ['Nizi', `najboljši od ${liga.steviloNizov}`],
+    ['Nizi', `prvi do ${nizovZaZmago(liga.steviloNizov)}`],
     ['Konec srečanja', liga.zmagZaSrecanje ? `prvi do ${liga.zmagZaSrecanje} zmag` : 'vse tekme'],
     ['Sistem', liga.dvokrozno ? 'dvokrožno' : 'enokrožno'],
     ['Kolo', opisKola(liga.ureSrecanj)],
@@ -1711,7 +1711,7 @@ function PravilaOkno({
       : []),
     ['Neodločeno', liga.dovoljenoNeodloceno ? 'mogoče' : 'ni mogoče'],
     ['Dvojna registracija', liga.prepovedDvojneRegistracije ? 'prepovedana' : 'dovoljena'],
-    ['Raven tekmovanja', OZNAKE_RAVEN[liga.raven] + ' · teža ' + TEZA_RAVNI[liga.raven]],
+    ['Raven tekmovanja', OZNAKE_RAVEN[liga.raven]],
   ]
   podatki.push(['Višja liga', liga.visjaLigaIme ?? '—'])
   podatki.push(['Nižje lige', nizje.length > 0 ? nizje.map((k) => k.ime).join(' · ') : '—'])
@@ -1934,7 +1934,7 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
   return (
     <div>
       <div className="naslovna-vrstica">
-        <h2>{enakomerna ? 'Ekipe po moči' : 'Ekipe'}</h2>
+        <h2>Ekipe</h2>
         <span className="sekcija__meta">{steviloEkip} od najmanj 2</span>
       </div>
 
@@ -2090,7 +2090,7 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
           disabled={(ekipe.data?.length ?? 0) < 2}
           onClick={() => nastaviZrebOdprt(true)}
         >
-          Vpiši žreb ročno
+          Vpiši razpored ročno
         </button>
         <button className="gumb gumb--majhen" onClick={onUrediPravila}>
           Uredi pravila

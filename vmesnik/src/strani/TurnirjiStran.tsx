@@ -25,7 +25,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { krajiApi, turnirjiApi } from '../api/zahteve'
 import type { RavenTekmovanja, TurnirDto, TurnirVnos } from '../api/tipi'
-import { OZNAKE_RAVEN, OZNAKE_STATUS_TEKMOVANJA, TEZA_RAVNI } from '../api/tipi'
+import { OZNAKE_RAVEN, OZNAKE_STATUS_TEKMOVANJA } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   KrmilaSeznama,
@@ -41,6 +41,7 @@ import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
+import { OpisRavniTekmovanja } from '../komponente/OpisRavniTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
@@ -440,7 +441,7 @@ function stanjeDogodkov(turnir: TurnirDto): string {
   return deli.length > 0 ? ` · ${deli.join(', ')}` : ''
 }
 
-function NovTurnirOkno({
+export function NovTurnirOkno({
   onZapri,
   onShranjeno,
 }: {
@@ -536,20 +537,17 @@ function NovTurnirOkno({
         </label>
 
         <label className="obrazec__polje">
-          <span>Raven tekmovanja (teža v Turnirko ratingu)</span>
+          <span>Raven tekmovanja</span>
           <select
             value={raven}
             onChange={(dogodek) => nastaviRaven(dogodek.target.value as RavenTekmovanja)}
           >
             {(Object.keys(OZNAKE_RAVEN) as RavenTekmovanja[]).map((r) => (
-              <option key={r} value={r}>{OZNAKE_RAVEN[r]} — {TEZA_RAVNI[r]}</option>
+              <option key={r} value={r}>{OZNAKE_RAVEN[r]}</option>
             ))}
           </select>
         </label>
-        <p className="namig">
-          Teža pove, koliko rating premakne ena tekma turnirja: uradna tekmovanja
-          NTZS štejejo v celoti, klubska tri četrtine, rekreativna polovico.
-        </p>
+        <OpisRavniTekmovanja />
 
         {kraji.data?.length === 0 && (
           <p className="namig">Namig: kraje lahko dodaš na strani Šifranti.</p>

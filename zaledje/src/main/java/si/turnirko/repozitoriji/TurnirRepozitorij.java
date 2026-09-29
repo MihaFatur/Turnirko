@@ -128,4 +128,14 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             WHERE k.id = :idKader
             """)
     Optional<Turnir> najdiZLastnistvomPoKadru(Long idKader);
+
+    /* Vsi turnirji, ki jih je racun USTVARIL (ne tudi klubski), s krajem - vir
+       organizatorskega pregleda. Isto merilo kot meja paketa (ustvaril), ne
+       kot pravica urejanja (ustvaril ALI klub). Vrstni red ni zagotovljen. */
+    @Query("""
+            SELECT t FROM Turnir t
+            LEFT JOIN FETCH t.kraj
+            WHERE t.ustvaril.id = :idUstvaril
+            """)
+    List<Turnir> najdiZaUstvarjalca(Long idUstvaril);
 }

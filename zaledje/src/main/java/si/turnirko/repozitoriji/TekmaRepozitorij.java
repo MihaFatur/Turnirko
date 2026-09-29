@@ -377,4 +377,18 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
     List<Object[]> ratinskeTekme(@Param("disciplina") Disciplina disciplina,
                                  @Param("izidi") Collection<IzidTekme> izidi);
 
+    /* Tekme, ki so na vrsti in cakajo na vnos rezultata (oba znana, se ne
+       koncane), po dogodkih izbranih turnirjev: [idTurnir, idDogodek,
+       imeDogodka, stevilo]. Vir »Caka te« v organizatorskem pregledu. */
+    @Query("""
+            SELECT t.dogodek.turnir.id, t.dogodek.id, t.dogodek.ime, COUNT(t)
+            FROM Tekma t
+            WHERE t.dogodek.turnir.id IN :idjiTurnirjev
+              AND t.status IN (si.turnirko.modeli.StatusTekme.PRIPRAVLJENA,
+                               si.turnirko.modeli.StatusTekme.V_IGRI)
+            GROUP BY t.dogodek.turnir.id, t.dogodek.id, t.dogodek.ime
+            ORDER BY t.dogodek.id
+            """)
+    List<Object[]> cakajoceNaRezultat(@Param("idjiTurnirjev") List<Long> idjiTurnirjev);
+
 }

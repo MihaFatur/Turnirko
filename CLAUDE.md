@@ -1206,6 +1206,33 @@
   - `GET /api/v1/narocnina` je GET, zato mora pravilo v `VarnostneNastavitve`
     stati pred splošnim »GET je javen« (varuje ga `NarocninaDostopTest`).
 
+- **Organizatorski pregled** (`OrganizatorPregledStoritev`, `GET
+  /api/v1/organizator/pregled`, samo `ORGANIZATOR`; pot mora v
+  `VarnostneNastavitve` stati pred »GET je javen«, varuje ga
+  `OrganizatorPregledDostopTest`). Merila, ki jih ne razbij:
+  - **»Moja« tekmovanja so tista, ki jih je račun USTVARIL** (`ustvaril`), ne
+    tudi klubska: isto merilo kot meja paketa. Klubska tekmovanja drugih
+    organizatorjev so urejevalcu dostopna, a v pregledu jih ni.
+  - **Poraba paketa je številka iz `NarocninaStoritev`** (`omejitev`,
+    `steviloLigVSezoni`, `steviloTurnirjevVSezoni`), ne štetje vrstic seznama:
+    strežnik ob ustvarjanju preverja natanko to (ustvarjeno od 1. julija,
+    `Sezona`). Vrstic je lahko več (tekmovanje, ustvarjeno pred 1. julijem, ki se
+    igra v tej sezoni, na seznamu je, v meji ni). Meja se ponastavi 1. julija
+    (`naslednjaSezonaOd`), ne 1. septembra, kot piše maketa.
+  - **Tekmovanje je v »tekoči« sezoni, ce se v njej igra ALI je bilo v njej
+    ustvarjeno ALI teče**; sicer je v arhivu po sezoni igranja (turnir: datum
+    začetka, liga: polje `sezona`). Tako nobeno plačano ali tekoče tekmovanje
+    ne izpade s seznama.
+  - **Prijave vpisuje organizator, potrjevanja ni**, zato blok »Čaka te« nima
+    »prijav za potrditev«: ob rezultatih in zapisnikih kaže turnirje, ki čakajo
+    ŽREB (`cakaZreb`: v pripravi, ≥ 2 prijavi, rok prijave potekel ali začetek v
+    7 dneh). Turnir nima omejitve mest ne datuma odprtja prijav, zato v vrstici
+    ni »41 / 48«: palica meri, koliko okna za prijave je minilo.
+  - **Zapisnik čaka za srečanje s terminom pred DANAŠNJIM dnem** (danes je še
+    prihodnost); zapisi brez ure so krajši od meje, zato datum preveri Java.
+  - Zaledje pošlje števila, datume in imena; **sklanjanje in poved sestavi
+    vmesnik** (`pomozno/organizatorPregled.ts`).
+
 ## Vmesnik (vmesnik/)
 
 - **Oblikovni sistem je zavezujoč:** `vmesnik/turnirko-profil-redesign/project/DESIGN.md`
@@ -1407,6 +1434,49 @@
   - Nov prizor = zapis v `PRIZORI` (ključi po delih, `trajanjeMs`, `naprave`);
     če rabi rekvizit, ga doda izris v `Lik`. Nov napis = zapis v `NAPISI`.
     Vreča se ob spremembi nabora sama začne znova.
+- **Oglas »Igralec Premium« je celozaslonski oglas ob kliku na zaklenjeno funkcijo**
+  (izjema od DESIGN.md, razdelek 5c, predaja `design_handoff_premium_popup`, 29. 9.
+  2026): `komponente/PremiumOglas.tsx` (šest postavitev: 1a Zavesa, 1b Ključavnica,
+  1c Končni izid × namizje/telefon pod 768 px), `PremiumOglasKontekst.tsx`
+  (ponudnik v `main.tsx`: `usePremiumOglas().odpri('lige' | 'statistika')`, izbira
+  različice z `Math.random()`, okno registracije/prijave za gosta živi tam),
+  `PremiumOglasPrizori.tsx` (lik in prizor ključavnice), `pomozno/premiumOglas.ts`
+  (besedila, cene), `pomozno/animacijaOglasa.ts` (gibanje), slogi v razdelku »Oglas
+  Igralec Premium« na koncu `slog.css`. Pravila, ki jih ne razbij:
+  - **Sproži ga samo klik**, nikoli urnik. Sprožilci: `useSpremljanjeLig.preklopi`
+    (DODAJANJE lige igralcu brez Premium; odjava od že spremljane ostane mogoča, ker
+    jo strežnik dovoli vsakemu prijavljenemu), »Uredi izbor →« na domači strani (gost
+    in igralec brez Premium; ostali dobijo okno izbora) in obvestilo na lastnem profilu
+    (`lastnikBrezPremium`, kontekst »statistika«). `ponudiPremium` velja samo za vlogo
+    IGRALEC: organizator Premium igralca ne kupuje, zanj ostane stari odziv strežnika.
+  - **Gost**: »Ustvari račun · Premium …« odpre registracijo na koraku »Paket« z
+    izbranim ciklom (`PrijavaOkno zacetniCiklus` → `RegistracijaTok`); povezava odpre
+    prijavo. **Igralec**: »Nadgradi na Premium · …« gre v Stripe Checkout
+    (`placilaApi.nadgradnja`, isto kot stran Naročnina), povezava na `/narocnina`.
+  - **Stikalo »Mlajši od 21?« je samo pri gostu** (in pri računu brez znane starosti,
+    `starejsiOd21 === null`): prijavljenemu igralcu pas določa račun in po njem Stripe
+    računa, zato bi stikalo pokazalo ceno, ki je ne bo plačal.
+  - **Socialni dokaz je pravo število** (`PremiumDokazStoritev`, `GET /premium/dokaz`,
+    javna pot): veljavne Premium naročnine igralcev; klub prijavljenega ima prednost,
+    sicer skupno število; pod `NAJMANJ` (3) ali brez števila vrstice sploh ni. Ime
+    igralca s Premium ne gre navzven — kvadratki so brez črk (predaja jih ima z
+    izmišljenimi začetnicami), glagol se ujema s števnikom (`besediloDokaza`).
+  - **Merilo ujemanja je prototip v istem brezglavem Chromu, ne PNG iz predaje**: DOM
+    škatle in besedila se ujemajo do 0,05 px (razlika v 1–2 pikslih besedila je
+    anti-aliasing). Pasti, ki so jih odkrili prvi zagoni: prototip je `content-box`
+    (višina glave 72 + 1 px črta = 73, kvadratek 20 + 2×2 = 24), razmik črk naslovov
+    (`h2`) je v pikslih (`em` od privzete velikosti `h2`), `.premium-oglas button`
+    ne sme postaviti `font-family` (bi povozil `font` razreda), `h1–h3` imata globalno
+    `text-wrap: balance` (na telefonu ga prototip nima), drsno območje 1c na telefonu
+    ne sme stiskati tabele (`flex: none`).
+  - **Števec izida v 1c sešteva razmike** (400 ms, nato 4×210 in 3×170); prototip ima
+    izraz `i * (i < 5 ? 210 : 170)`, ki šesto točko postavi 10 ms za peto.
+  - **Pri `prefers-reduced-motion: reduce` je takoj končno stanje** (drugače kot
+    maskota v glavi). `predvajajOglas` prekliče samo svoje elemente (`data-anim`), ker
+    maskota in ključavnica zaženeta svoje učinke v otroku pred njim.
+  - **Predogled**: `/?oglas=1a|1b|1c&kontekst=lige|statistika`; `&dokaz=412` nadomesti
+    število samo v `npm run dev`.
+
 - **V lepljivo glavo telefona vlagajo strani svoje skozi `GlavaTelefona`**
   (`useNazaj` za puščico nazaj, portali `GlavaDejanja` / `GlavaNaslov` /
   `GlavaZavihki`). Portal in ne podvojen izris: dejanje je v drevesu natanko
@@ -1822,6 +1892,38 @@
   - Zabeležen preklop se da umakniti tudi po osvežitvi strani: obvestilo
     »Od 12. 10. 2026 plačuješ letno …« z gumbom »Razveljavi« se izpelje iz
     `naslednjiCiklus`, ne živi samo od potrditve.
+- **Organizatorski pregled** (`strani/OrganizatorskiPregledStran.tsx`, razdelek
+  »Organizatorski pregled« na koncu `slog.css`, `.org-pregled__…`) je stran
+  `/moj-profil` za organizatorja (`MojProfil` v `App.tsx`), poustvarjena po
+  `design_handoff_organizatorski_pregled` (smer 1a). Pasti:
+  - **Drevesi sta dve** (`pomozno/sirinaOkna.ts`, 1024 px): namizje ima pas
+    sezone, gumba za ustvarjanje in dva stolpca, telefon krajše vrstice in en
+    seznam. Pod 640 px stoji poleg tega telefonska glava in spodnja vrstica
+    (`Postavitev`), neodvisno od te točke.
+  - **Merilo ujemanja je prototip `*.dc.html` v istem brezglavem Chromu**, ne
+    PNG; primerjaj besedilne liste (tesna škatla + slog) po besedilu. Izmerjeno:
+    namizje 0,5 %, telefon 0,14–0,19 % različnih pikslov, vse ostalo je
+    podatkovno besedilo. Okvir prototipa leži na necelem pikslu (292,5625) - pred
+    diffom ga poravnaj, sicer se vsako besedilo drugače zaokroži.
+  - **Razmik črk naslova je −1,12 px**, ne `-0.035em` na spanih: maketa ga
+    postavi na h1 s privzetimi 32 px (isti razlog kot pri strani naročnine).
+    Koren strani zato postavi `font: 400 16px / normal`; sicer bi vsaka vrstica
+    podedovala 17 px in 1,5 iz `body`.
+  - **Gumb vsebino navpično centrira**: aktivni filter brez roba (maketa je
+    span) bi zdrsnil za piksel, zato ima spodnji odmik 10 px namesto raztegnitve.
+  - **Lik ob palici** (`LikNaPalici`, izjema od DESIGN.md 5b): palica ima
+    `overflow: hidden`, zato lik stoji v ovoju ob njej. Tabla izstopi navzdol
+    (`clip-path` ovoja), sedeči lik vstran; ob `prefers-reduced-motion` je
+    nepremičen. Črte se večajo z likom (brez `vector-effect`).
+  - **Sklanjanje ima lasten `sklon`** (ostanek pri 100: »64 igralcev«). Skupni
+    `sklon` v `oblikovanje.ts` deli po ostanku pri 10 in napačno sklanja 21–24
+    in 31–34 (»64 igralci«) - nedotaknjen, ker ga uporablja ves vmesnik.
+  - Gumba »+ Nova liga« / »+ Nov turnir« ob polni kvoti odpreta obvestilo o
+    nadgradnji (`ObvestiloONadgradnji`), ne blokirata tiho; obrazec za turnir je
+    `NovTurnirOkno` iz `TurnirjiStran.tsx`.
+  - `?sezona=2025/26` prikaže pretekle sezone iz arhiva na isti strani; brez
+    veljavne sezone velja tekoča. Cena 0 (prehodna doba, V34) se izpiše
+    »Brezplačno«.
 - Preverba pred zaključkom dela: `cd vmesnik && npm run build` (tsc + vite).
 
 ## Objava na splet

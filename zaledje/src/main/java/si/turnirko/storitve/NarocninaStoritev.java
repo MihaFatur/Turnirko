@@ -30,8 +30,11 @@ import si.turnirko.repozitoriji.TurnirRepozitorij;
 public class NarocninaStoritev {
 
     /* Omejitve na sezono: [tekoce lige, ustvarjeni turnirji]. Sezona se
-       ponastavi 1. julija (Sezona.zacetek) - isti rez kot starostni pas. */
-    private record Omejitev(int lig, int turnirjev) {}
+       ponastavi 1. julija (Sezona.zacetek) - isti rez kot starostni pas.
+       Javna, ker jo bere tudi organizatorski pregled: stran mora pokazati
+       natanko tisto mejo in tisto stevilo, ki ju strezniku ob ustvarjanju
+       preveri ta razred - ce bi ju stela sama, bi se sceasoma razsla. */
+    public record Omejitev(int lig, int turnirjev) {}
 
     private static final Omejitev BASIC = new Omejitev(1, 2);
     private static final Omejitev PLUS = new Omejitev(3, 5);
@@ -79,9 +82,7 @@ public class NarocninaStoritev {
        Omejitev); admin ni organizator in sem sploh ne pride. */
     public void preveriOmejitevTurnirja(Uporabnik organizator) {
         Omejitev omejitev = omejitevAliZavrni(organizator);
-        LocalDateTime odSezone = Sezona.zacetek(LocalDate.now()).atStartOfDay();
-        long steviloVSezoni = turnirRepozitorij
-                .countByUstvarilIdAndUstvarjenObGreaterThanEqual(organizator.getId(), odSezone);
+        long steviloVSezoni = steviloTurnirjevVSezoni(organizator.getId(), LocalDate.now());
         if (steviloVSezoni >= omejitev.turnirjev()) {
             throw new DomenskaIzjema("Dosegel si mejo " + omejitev.turnirjev()
                     + " ustvarjenih turnirjev na sezono za svoj paket. Nadgradi paket za vec.");
@@ -92,23 +93,39 @@ public class NarocninaStoritev {
        turnirju, samo stevec je locen (Omejitev.lig). */
     public void preveriOmejitevLige(Uporabnik organizator) {
         Omejitev omejitev = omejitevAliZavrni(organizator);
-        LocalDateTime odSezone = Sezona.zacetek(LocalDate.now()).atStartOfDay();
-        long steviloVSezoni = ligaRepozitorij
-                .countByUstvarilIdAndUstvarjenObGreaterThanEqual(organizator.getId(), odSezone);
+        long steviloVSezoni = steviloLigVSezoni(organizator.getId(), LocalDate.now());
         if (steviloVSezoni >= omejitev.lig()) {
             throw new DomenskaIzjema("Dosegel si mejo " + omejitev.lig()
                     + " ustvarjenih lig na sezono za svoj paket. Nadgradi paket za vec.");
         }
     }
 
+    /* Koliko turnirjev oz. lig je racun ustvaril v sezoni, ki tece na dani dan.
+       Ena metoda za preverbo ob ustvarjanju in za pregled organizatorja. */
+    public long steviloTurnirjevVSezoni(Long idUporabnik, LocalDate danes) {
+        return turnirRepozitorij.countByUstvarilIdAndUstvarjenObGreaterThanEqual(
+                idUporabnik, Sezona.zacetek(danes).atStartOfDay());
+    }
+
+    public long steviloLigVSezoni(Long idUporabnik, LocalDate danes) {
+        return ligaRepozitorij.countByUstvarilIdAndUstvarjenObGreaterThanEqual(
+                idUporabnik, Sezona.zacetek(danes).atStartOfDay());
+    }
+
+    /* Meje organizatorskega paketa; prazno za vsak drug paket. */
+    public Optional<Omejitev> omejitev(Paket paket) {
+        return switch (paket) {
+            case ORGANIZATOR_BASIC -> Optional.of(BASIC);
+            case ORGANIZATOR_PLUS -> Optional.of(PLUS);
+            case ORGANIZATOR_PRO -> Optional.of(PRO);
+            default -> Optional.empty();
+        };
+    }
+
     private Omejitev omejitevAliZavrni(Uporabnik organizator) {
         Paket paket = paketOrganizatorja(organizator).orElseThrow(() -> new PrepovedanoIzjema(
                 "Racun nima aktivnega organizatorskega paketa."));
-        return switch (paket) {
-            case ORGANIZATOR_BASIC -> BASIC;
-            case ORGANIZATOR_PLUS -> PLUS;
-            case ORGANIZATOR_PRO -> PRO;
-            default -> throw new PrepovedanoIzjema("Racun nima aktivnega organizatorskega paketa.");
-        };
+        return omejitev(paket).orElseThrow(() -> new PrepovedanoIzjema(
+                "Racun nima aktivnega organizatorskega paketa."));
     }
 }
