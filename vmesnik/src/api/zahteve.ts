@@ -246,7 +246,7 @@ export const premiumApi = {
   dokaz: () => api.vrni<PremiumDokazDto>('/premium/dokaz'),
 }
 
-/* Organizatorski pregled (stran »Moj profil« organizatorja): samo za vlogo
+/* Organizatorski pregled (»Nadzorna plošča« organizatorja): samo za vlogo
    ORGANIZATOR, gost in igralec dobita 401/403. */
 export const organizatorApi = {
   pregled: () => api.vrni<OrganizatorPregledDto>('/organizator/pregled'),

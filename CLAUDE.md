@@ -1895,7 +1895,13 @@
 - **Organizatorski pregled** (`strani/OrganizatorskiPregledStran.tsx`, razdelek
   »Organizatorski pregled« na koncu `slog.css`, `.org-pregled__…`) je stran
   `/moj-profil` za organizatorja (`MojProfil` v `App.tsx`), poustvarjena po
-  `design_handoff_organizatorski_pregled` (smer 1a). Pasti:
+  `design_handoff_organizatorski_pregled` (smer 1a). V vmesniku se imenuje
+  **»Nadzorna plošča«** in je PRVA postavka namizne navigacije (pred »Domov«;
+  `nadzornaPlosca` v `Postavitev`, ločena od `povezave`, ker spodnja vrstica na
+  telefonu jemlje njihove prve štiri) in v uporabniškem meniju; igralcu ostane
+  »Moj profil« (pot je ista). Namizna glava organizatorja je s to oznako široka
+  ~770 px — pod tem se ob dolgem imenu v kotu prekrijeta navigacija in ime.
+  Pasti:
   - **Drevesi sta dve** (`pomozno/sirinaOkna.ts`, 1024 px): namizje ima pas
     sezone, gumba za ustvarjanje in dva stolpca, telefon krajše vrstice in en
     seznam. Pod 640 px stoji poleg tega telefonska glava in spodnja vrstica

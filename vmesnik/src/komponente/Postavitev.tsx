@@ -53,10 +53,16 @@ interface Povezava {
   /* Vidi administrator ali organizator (npr. sifrant igralcev - organizator
      sme dodati novega igralca). */
   samoUrejevalec?: boolean
-  /* Igralec ali organizator: »Moj profil« vodi igralca na njegov profil,
-     organizatorja na organizatorski pregled. */
+  /* Samo prijavljen igralec: »Moj profil« vodi na njegov profil. */
   samoIgralec?: boolean
 }
+
+/* Organizatorjev vstop je »Nadzorna plošča« (organizatorski pregled na isti
+   poti kot igralčev »Moj profil«) in stoji PRED vsemi ostalimi postavkami -
+   prva stvar, ki jo organizator odpre. Zunaj `povezave`, ker spodnja vrstica
+   na telefonu jemlje prve štiri postavke tega seznama (`slice(0, 4)`) in bi
+   ji vstavek spredaj premaknil vse. */
+const nadzornaPlosca: Povezava = { pot: '/moj-profil', oznaka: 'Nadzorna plošča' }
 
 const povezave: Povezava[] = [
   { pot: '/', oznaka: 'Domov' },
@@ -140,16 +146,18 @@ export function Postavitev() {
      čaka na potrditev; tam mu stran pojasni, zakaj profila še ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
   const jeUrejevalec = jeAdmin || jeOrganizator
-  /* Povezava »Moj profil« velja tudi za organizatorja (njegov pregled); račun
-     organizatorja, ki še čaka na potrditev, jo vidi tudi - stran mu razloži,
-     kaj čaka. */
-  const imaMojProfil = jePrijavljenIgralec || uporabnik?.vloga === 'ORGANIZATOR'
-  const vidne = povezave.filter(
-    (p) =>
-      (!p.samoAdmin || jeAdmin) &&
-      (!p.samoUrejevalec || jeAdmin || jeOrganizator) &&
-      (!p.samoIgralec || imaMojProfil),
-  )
+  /* »Nadzorno ploščo« vidi tudi račun organizatorja, ki še čaka na
+     potrditev - stran mu razloži, kaj čaka. */
+  const imaNadzornoPlosco = uporabnik?.vloga === 'ORGANIZATOR'
+  const vidne = [
+    ...(imaNadzornoPlosco ? [nadzornaPlosca] : []),
+    ...povezave.filter(
+      (p) =>
+        (!p.samoAdmin || jeAdmin) &&
+        (!p.samoUrejevalec || jeAdmin || jeOrganizator) &&
+        (!p.samoIgralec || jePrijavljenIgralec),
+    ),
+  ]
 
   /* Predal se zapre ob odhodu s telefonske sirine - sicer bi na namizju obvisel
      zastor brez vrstice, ki ga je odprla. */
@@ -460,7 +468,9 @@ function PredalVec({ jeAdmin, onZapri }: { jeAdmin: boolean; onZapri: () => void
           )}
         </div>
 
-        <p className="predal__opomba">Moj profil in odjava sta v meniju zgoraj desno</p>
+        <p className="predal__opomba">
+          {jeAdmin ? 'Odjava je' : 'Nadzorna plošča in odjava sta'} v meniju zgoraj desno
+        </p>
       </div>
     </>,
     document.body,

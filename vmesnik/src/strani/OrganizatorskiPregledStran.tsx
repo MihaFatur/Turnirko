@@ -1,4 +1,4 @@
-/* Organizatorski pregled: stran »Moj profil« organizatorja (smer 1a, zapisniška;
+/* Organizatorski pregled: »Nadzorna plošča« organizatorja (smer 1a, zapisniška;
    design_handoff_organizatorski_pregled). Organizator na enem mestu vidi, kaj
    čaka njegovo dejanje, svoja tekmovanja tekoče sezone, prihajajoče termine,
    arhiv sezon in porabo paketa.

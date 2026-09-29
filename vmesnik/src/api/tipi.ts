@@ -529,7 +529,7 @@ export interface NarocninaDto {
 export type StatusNarocnine = 'CAKA_PLACILO' | 'AKTIVNA' | 'PREKLICANA' | 'ZAPADLA'
 
 /* ---------- Organizatorski pregled (OrganizatorPregledDto na zaledju) ----------
-   Stran »Moj profil« organizatorja. Zaledje pošlje števila, datume in imena;
+   »Nadzorna plošča« organizatorja. Zaledje pošlje števila, datume in imena;
    besedilo (sklanjanje, »2 zapisnika čakata«) sestavi vmesnik. Datumi so
    koledarski dnevi (ISO). */
 

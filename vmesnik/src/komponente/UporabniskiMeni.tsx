@@ -41,8 +41,10 @@ export function UporabniskiMeni() {
   /* Povezavo do profila vidi vsak prijavljen igralec (tudi tak, ki se caka na
      potrditev); tam mu stran pojasni, zakaj profila se ni. */
   const jePrijavljenIgralec = uporabnik?.vloga === 'IGRALEC'
-  /* Organizator ima svoj »Moj profil« (organizatorski pregled). */
-  const imaMojProfil = jePrijavljenIgralec || uporabnik?.vloga === 'ORGANIZATOR'
+  /* Organizator ima namesto profila »Nadzorno ploščo« (organizatorski
+     pregled na isti poti). */
+  const jeOrganizatorskiRacun = uporabnik?.vloga === 'ORGANIZATOR'
+  const imaMojProfil = jePrijavljenIgralec || jeOrganizatorskiRacun
 
   /* Račun brez potrjenega naslova ali skrbnikove kode: kar manjka, je koda. */
   const cakaKodo =
@@ -120,7 +122,7 @@ export function UporabniskiMeni() {
               className="uporabnik-meni__postavka"
               onClick={() => nastaviOdprt(false)}
             >
-              Moj profil
+              {jeOrganizatorskiRacun ? 'Nadzorna plošča' : 'Moj profil'}
             </NavLink>
           )}
 
