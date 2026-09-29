@@ -1,53 +1,17 @@
-/* Pregled in nadgradnja placilnega paketa (Premium za igralca, Basic/Plus/
-   Pro za organizatorja). Nadgradnja gre prek Stripe Checkouta - stran samo
-   zacne placilo in preusmeri brskalnik tja; racun in nova narocnina
-   nastaneta sele prek webhooka (glej PlacilaStoritev). Upravljanje/preklic
-   obstojece narocnine gre prek Stripe Billing Portala.
+/* Pregled in upravljanje plačilnega paketa (Premium za igralca, Basic/Plus/Pro
+   za organizatorja). Nadgradnja Free → plačljiv paket gre prek Stripe
+   Checkouta - stran samo začne plačilo in preusmeri brskalnik tja; račun in
+   nova naročnina nastaneta šele prek webhooka (glej PlacilaStoritev).
 
-   Igralec ima svojo stran (NarocninaIgralec: obdobje, preklop, preklic,
-   obnova); tu ostane samo organizatorjev del. */
-import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-
-import { placilaApi } from '../api/zahteve'
-import { opisNapake } from '../api/odjemalec'
-import {
-  CENA_ORGANIZATOR_LETNO,
-  OMEJITVE_ORGANIZATORJA,
-  OZNAKE_PAKET,
-  type CiklusPlacila,
-  type Paket,
-} from '../api/tipi'
+   Igralec in organizator imata vsak svojo stran (NarocninaIgralec,
+   NarocninaOrganizator): obdobje, preklic, obnova, preklop plačevanja oz.
+   zamenjava paketa. Tu je samo izbira po vlogi. */
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { NarocninaIgralec } from '../komponente/NarocninaIgralec'
-import { oblikujCeno } from '../pomozno/oblikovanje'
-
-const ORGANIZATORSKI_PAKETI: Extract<Paket, `ORGANIZATOR_${string}`>[] = [
-  'ORGANIZATOR_BASIC',
-  'ORGANIZATOR_PLUS',
-  'ORGANIZATOR_PRO',
-]
+import { NarocninaOrganizator } from '../komponente/NarocninaOrganizator'
 
 export function NarocninaStran() {
   const { uporabnik, nalaganje } = useAvtentikacija()
-  const [napaka, nastaviNapako] = useState<string | null>(null)
-
-  const zacniPlacilo = useMutation({
-    mutationFn: (vnos: { paket: Paket; ciklus: CiklusPlacila | null }) =>
-      placilaApi.nadgradnja(vnos),
-    onSuccess: (seja) => {
-      window.location.href = seja.url
-    },
-    onError: (e) => nastaviNapako(opisNapake(e)),
-  })
-
-  const odpriPortal = useMutation({
-    mutationFn: () => placilaApi.portal(),
-    onSuccess: (seja) => {
-      window.location.href = seja.url
-    },
-    onError: (e) => nastaviNapako(opisNapake(e)),
-  })
 
   if (nalaganje) return <p className="obvestilo">Preverjanje prijave …</p>
   if (!uporabnik) {
@@ -60,69 +24,5 @@ export function NarocninaStran() {
     return <NarocninaIgralec />
   }
 
-  return (
-    <section>
-      <div className="stran-glava stran-glava--ozka">
-        <div>
-          <h1 className="naslov-strani">
-            <span className="naslov-strani__nad">Račun</span>
-            <span className="naslov-strani__glavni">Naročnina</span>
-          </h1>
-          <p className="uvod">
-            Trenutni paket: <strong>{OZNAKE_PAKET[uporabnik.paket ?? 'BREZPLACNO']}</strong>
-            {uporabnik.paket && !uporabnik.paketAktiven && ' (potekla)'}
-          </p>
-        </div>
-      </div>
-
-      {napaka && <div className="napaka">{napaka}</div>}
-
-      <div className="plosca">
-        <div className="naslovna-vrstica">
-          <h2>Organizatorski paket</h2>
-        </div>
-        <p className="namig">
-          Obseg (koliko lig in turnirjev smeš ustvariti na sezono) je edina razlika med
-          paketi - vsi so letni.
-        </p>
-
-        <ul className="seznam-preprost">
-          {ORGANIZATORSKI_PAKETI.map((paket) => {
-            const omejitev = OMEJITVE_ORGANIZATORJA[paket]
-            const trenutni = uporabnik.paket === paket && uporabnik.paketAktiven
-            return (
-              <li key={paket}>
-                <strong>{OZNAKE_PAKET[paket]}</strong> — {oblikujCeno(CENA_ORGANIZATOR_LETNO[paket])}
-                /leto ({omejitev.lig} {omejitev.lig === 1 ? 'tekoča liga' : 'tekoče lige'},{' '}
-                {omejitev.turnirjev} turnirjev na sezono){' '}
-                {trenutni ? (
-                  '— trenutni paket'
-                ) : (
-                  <button
-                    type="button"
-                    className="gumb"
-                    disabled={zacniPlacilo.isPending}
-                    onClick={() => zacniPlacilo.mutate({ paket, ciklus: 'LETNO' })}
-                  >
-                    Izberi
-                  </button>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-
-        {uporabnik.paket?.startsWith('ORGANIZATOR_') && uporabnik.paketAktiven && (
-          <button
-            type="button"
-            className="gumb"
-            disabled={odpriPortal.isPending}
-            onClick={() => odpriPortal.mutate()}
-          >
-            {odpriPortal.isPending ? 'Odpiram …' : 'Upravljaj naročnino'}
-          </button>
-        )}
-      </div>
-    </section>
-  )
+  return <NarocninaOrganizator />
 }

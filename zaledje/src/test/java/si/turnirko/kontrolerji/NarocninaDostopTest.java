@@ -7,6 +7,7 @@
    sme klicati omrezja. */
 package si.turnirko.kontrolerji;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -64,6 +65,41 @@ class NarocninaDostopTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"ciklus\":\"LETNO\"}"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(delete("/api/v1/narocnina/preklop")).andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/api/v1/narocnina/paket")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"paket\":\"ORGANIZATOR_PRO\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/v1/narocnina/paket")).andExpect(status().isUnauthorized());
+    }
+
+    /* Odgovor na zamenjavo paketa nosi narocnino in doplacilo; znizanje ob
+       obnovi nosi naslednjiPaket, doplacila ni. */
+    @Test
+    void organizatorZnizaPaketObObnoviInOdgovorNosiNamero() throws Exception {
+        Uporabnik u = new Uporabnik(PRIJAVA, kodirnik.encode(GESLO), Vloga.ORGANIZATOR);
+        u.setStatus(StatusRacuna.POTRJEN);
+        uporabnikRepozitorij.save(u);
+        Narocnina n = new Narocnina(u, Paket.ORGANIZATOR_PLUS);
+        n.setCiklus(CiklusPlacila.LETNO);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        n.setCenaObSklenitvi(169.99);
+        n.setStripeNarocninaId("sub_org");
+        n.setTrenutnoObdobjeDo(LocalDateTime.of(2026, 10, 14, 12, 0));
+        narocninaRepozitorij.save(n);
+        when(stripe.zabeleziPrehod("sub_org", Paket.ORGANIZATOR_BASIC, 89.99)).thenReturn(
+                new StripeNarocnine.Stanje(LocalDateTime.of(2025, 10, 14, 12, 0),
+                        LocalDateTime.of(2026, 10, 14, 12, 0), CiklusPlacila.LETNO, 169.99, false, "sub_sched"));
+
+        mockMvc.perform(put("/api/v1/narocnina/paket").header("Authorization", basic())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paket\":\"ORGANIZATOR_BASIC\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.narocnina.paket").value("ORGANIZATOR_PLUS"))
+                .andExpect(jsonPath("$.narocnina.naslednjiPaket").value("ORGANIZATOR_BASIC"))
+                .andExpect(jsonPath("$.narocnina.upravljiva").value(true))
+                .andExpect(jsonPath("$.doplacilo").doesNotExist());
+
+        mockMvc.perform(put("/api/v1/narocnina/paket").header("Authorization", basic())
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

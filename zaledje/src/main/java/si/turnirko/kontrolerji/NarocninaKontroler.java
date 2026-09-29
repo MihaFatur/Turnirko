@@ -12,8 +12,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import si.turnirko.dto.NarocninaCiklusVnos;
 import si.turnirko.dto.NarocninaDto;
+import si.turnirko.dto.NarocninaObnovaVnos;
+import si.turnirko.dto.NarocninaPaketVnos;
+import si.turnirko.dto.SpremembaPaketaDto;
 import si.turnirko.storitve.UpravljanjeNarocnineStoritev;
 
 @RestController
@@ -36,10 +41,10 @@ public class NarocninaKontroler {
         return narocnina.prekliciOKoncuObdobja();
     }
 
-    /* Telo je neobvezno: obnova brez izbranega cikla ohrani tekoci cikel. */
+    /* Telo je neobvezno: obnova brez izbranega cikla in paketa ohrani tekoca. */
     @PostMapping("/obnova")
-    public NarocninaDto obnova(@RequestBody(required = false) NarocninaCiklusVnos vnos) {
-        return narocnina.obnovi(vnos == null ? null : vnos.ciklus());
+    public NarocninaDto obnova(@RequestBody(required = false) NarocninaObnovaVnos vnos) {
+        return vnos == null ? narocnina.obnovi(null, null) : narocnina.obnovi(vnos.ciklus(), vnos.paket());
     }
 
     @PutMapping("/preklop")
@@ -50,5 +55,18 @@ public class NarocninaKontroler {
     @DeleteMapping("/preklop")
     public NarocninaDto umikPreklopa() {
         return narocnina.razveljaviPreklop();
+    }
+
+    /* Zamenjava organizatorskega paketa: visji velja takoj (Stripe zaracuna
+       sorazmerno doplacilo), nizji ob obnovi. */
+    @PutMapping("/paket")
+    public SpremembaPaketaDto zamenjavaPaketa(@Valid @RequestBody NarocninaPaketVnos vnos) {
+        return narocnina.zamenjajPaket(vnos.paket());
+    }
+
+    /* Umik zabelezenega znizanja paketa. */
+    @DeleteMapping("/paket")
+    public NarocninaDto umikPrehoda() {
+        return narocnina.razveljaviPrehod();
     }
 }

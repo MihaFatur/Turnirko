@@ -76,6 +76,9 @@
   --barva-glavna-polna-mocna: #005a88;
   --barva-glavna-tekst: #0071ab;
   --barva-glavna-mehko: #eaf3f9;
+  /* Notranje crte v modrem okviru razlike med paketi (mehka modra podlaga, na
+     njej bi siva crta --barva-crta bila rjava). */
+  --barva-glavna-crta: #c9dcea;
   --barva-na-glavni: #ffffff;
   /* Drugotno besedilo na polni modri (vrh ratinga): izpeljano iz zelene
      poudarka, ne iz sive - siva na barvni ploskvi zveni umazano. */
@@ -4305,6 +4308,207 @@ td.nizi-okno__niz--dobljen {
 /* Brez Premium vrstica ni povezava, ampak oznaka: kaj bi odprla, ne obstaja. */
 .narocnina__prednost-povezava--oznaka {
   color: var(--barva-crnilo-4);
+}
+
+/* --- Naročnina organizatorja (design_handoff_narocnina_organizatorja) ---
+
+   Stran ponovi zgradbo Naročnine igralca (razdelek zgoraj): plošča je
+   `.registracija`, levi stolpec, kolofon, znesek, obvestilo, preklic in
+   prednosti pa so že narisani. Tu je samo, česar ni: naslov strani z razmikom
+   črk na posameznem spanu, seznam obsega paketa v levem stolpcu, primerjalna
+   tabela s tremi stolpci in okvir razlike med paketoma.
+
+   Razmik črk naslova (-3,08 px / -1,44 px) je zapisan na spanih, ne na h1:
+   prototip ga podaja v em od VELIKOSTI SPANA (88 in 48 px), medtem ko pri
+   igralcu stoji na h1 in ga span podeduje kot dolžino. */
+
+.narocnina__naslov-nad {
+  display: block;
+  padding-bottom: 6px;
+  font-weight: 200;
+  font-size: clamp(28px, 5vw, 48px);
+  letter-spacing: -0.03em;
+  color: var(--barva-crnilo);
+}
+
+.narocnina__naslov-ime {
+  display: block;
+  font-weight: 800;
+  font-size: clamp(44px, 8vw, 88px);
+  letter-spacing: -0.035em;
+  color: var(--barva-crnilo);
+}
+
+/* Levi stolpec: prva dva zapisa sta obseg paketa (modra črta ob robu, težji
+   tisk), sledijo funkcije. Brez paketa so številke 01-08 in funkcije svetlejše. */
+.narocnina__korak--paket .registracija__korak-ime {
+  line-height: 1.35;
+}
+
+.narocnina__korak--obseg {
+  border-left-color: var(--barva-glavna);
+}
+
+/* Pojasnilo pod primerjalno tabelo se lomi po vrsti, brez izravnave zadnje
+   vrstice (globalni odstavek ima text-wrap: pretty, prototip ga tu nima). */
+.narocnina__pojasnilo--paket {
+  text-wrap: wrap;
+}
+
+/* Obdobje in »še N dni« se na telefonu prelomita v dve vrstici; presledek med
+   njima je 4 px (16 px je samo vodoravni razmik). */
+.narocnina__napredek-vrstica--paket {
+  row-gap: 4px;
+}
+
+.narocnina__korak--obseg .registracija__korak-ime {
+  font-weight: 700;
+  color: var(--barva-papir);
+}
+
+.narocnina__korak--brez .registracija__korak-ime {
+  color: var(--barva-na-crnilu-2);
+}
+
+.narocnina__korak--obseg.narocnina__korak--brez .registracija__korak-ime {
+  color: var(--barva-papir);
+}
+
+/* Primerjalna tabela: opis funkcije in trije stolpci paketov. Podlaga stolpca
+   (trenutni, izbrani) teče skozi vse celice, zato je barva na celici in gumbu. */
+.narocnina__tabela {
+  display: flex;
+  flex-direction: column;
+}
+
+.narocnina__tabela-vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, min(24%, 132px));
+  gap: 0 8px;
+  align-items: stretch;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.narocnina__tabela-vrstica--glava {
+  border-bottom-color: var(--barva-crnilo);
+}
+
+/* Cena v stolpcu raste z zaslonom (prototip: cqw na koreni širini strani, ta pa
+   je do 1280 px enaka širini okna - končni meri sta isti, 17 in 30 px). */
+.narocnina__stolp .registracija__stolp-cena {
+  font-size: clamp(17px, 2.6vw, 30px);
+}
+
+.narocnina__stolp {
+  font-family: var(--pisava-telo);
+}
+
+.narocnina__stolp:disabled {
+  cursor: default;
+}
+
+.narocnina__stolp--trenutni {
+  border-top-color: var(--barva-crnilo);
+  background: var(--barva-vrstica-hover);
+}
+
+.narocnina__stolp--izbran {
+  border-top-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.narocnina__stolp-oznaka--trenutni {
+  color: var(--barva-crnilo);
+}
+
+.narocnina__stolp-oznaka--izbran {
+  color: var(--barva-glavna-tekst);
+}
+
+.narocnina__celica {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font: 600 18px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.narocnina__celica--da {
+  font-size: var(--tip-mono);
+  color: var(--barva-poudarek-tekst);
+}
+
+.narocnina__celica--trenutni {
+  background: var(--barva-vrstica-hover);
+}
+
+.narocnina__celica--izbran {
+  background: var(--barva-glavna-mehko);
+}
+
+/* Okvir razlike med paketoma: črta ob robu in podlaga pomenita smer (modra =
+   pridobiš / dobiš, siva = znižanje). Črte v kolofonu so isti ton kot podlaga. */
+.narocnina__razlika {
+  --narocnina-razlika-crta: var(--barva-crta);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--r2);
+  border-left: 4px solid var(--barva-crnilo-4);
+  background: var(--barva-polnilo);
+}
+
+.narocnina__razlika--nadgradnja {
+  --narocnina-razlika-crta: var(--barva-glavna-crta);
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.narocnina__razlika-naslov {
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  font-size: var(--tip-h3);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--barva-crnilo);
+}
+
+.narocnina__razlika-opis {
+  max-width: 60ch;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-2);
+  text-wrap: pretty;
+}
+
+.narocnina__razlika .narocnina__razlika-kolofon {
+  border-top: 1px solid var(--narocnina-razlika-crta);
+}
+
+.narocnina__razlika .registracija__kolofon-vrstica {
+  border-bottom-color: var(--narocnina-razlika-crta);
+}
+
+.narocnina__razlika-opozorilo {
+  font-size: var(--tip-drobno);
+  line-height: 1.5;
+  color: var(--barva-negativna-tekst);
+}
+
+/* Znesek predogleda menjave paketa: 56 px na namizju, 36 px na telefonu, brez
+   preloma (znesek nikoli ne pade čez dve vrstici). */
+.narocnina__znesek--paket .registracija__znesek-st {
+  font-size: clamp(36px, 5vw, 56px);
+  white-space: nowrap;
+}
+
+/* Gumb obnove je pri organizatorju širši (»Obnovi Pro · 249,99 € / leto«). */
+.narocnina__dejanje--obnova-paket {
+  flex-basis: 340px;
 }
 
 /* ============================================================

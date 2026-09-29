@@ -1205,6 +1205,44 @@
     na strežniku v UTC še prejšnji dan (`datumiGredoNavzvenPoSlovenskemCasu`).
   - `GET /api/v1/narocnina` je GET, zato mora pravilo v `VarnostneNastavitve`
     stati pred splošnim »GET je javen« (varuje ga `NarocninaDostopTest`).
+  - **Zamenjava organizatorskega paketa** (V37 `naslednji_paket`, `PUT
+    /narocnina/paket` in `DELETE /narocnina/paket`): **nadgradnja velja takoj,
+    znižanje ob obnovi** — strežnik loči po vrstnem redu paketov
+    (`Paket.jeVisji`), vmesnik smeri ne pošilja.
+    - **Nadgradnja** = posodobitev postavke narocnine (`price_data`, isti interval
+      in obračunsko sidro) s `proration_behavior = always_invoice`: Stripe zaračuna
+      sorazmerno razliko takoj (`SpremembaPaketaDto.doplacilo` je `total` tega
+      računa), `payment_behavior = error_if_incomplete` pa pusti narocnino
+      nespremenjeno, če kartica zavrne. Zabeleženo znižanje nadgradnja preglasi
+      (urnik se sprosti).
+    - **Znižanje** = isti urnik z dvema fazama kot preklop cikla, samo da druga
+      faza nosi ceno in izdelek novega paketa. `paket` v vrstici ostane, dokler
+      obdobje ne poteče; namera je `naslednji_paket`. Isti paket kot tekoči pomeni
+      umik zabeleženega znižanja.
+    - **Izdelek paketa v Stripu** (`StripeNarocnine.produkt`): eden na paket,
+      najden po metapodatku `turnirko_paket` (Stripova iskalna poizvedba je
+      »sčasoma dosledna«, izjemoma nastane dvojnik z istim imenom). Checkout za
+      vsak nakup ustvari svojega (`product_data`), zato se ta ne najde.
+    - **Webhook uveljavi znižanje, ko se začne NOVO obdobje** (`obdobjeOd` ≥
+      prejšnji `trenutnoObdobjeDo` − 5 min, `PlacilaStoritev.jeZnizanjeIzvedeno`):
+      paketa iz Stripa ne beremo, ker postavka nosi samo ceno, ta pa ni enolična, če
+      se cenik kdaj spremeni. Po izvedbi se urnik sprosti (kot pri preklopu cikla).
+    - **Obnova preklicane naročnine sprejme paket** (`NarocninaObnovaVnos`): drug
+      paket je vedno prehod ob obnovi, tudi višji — obdobje je že plačano.
+    - `NarocninaDto.upravljiva` pove, ali narocnino vodi Stripe: brezplačno leto Pro
+      obstoječih organizatorjev (V34) ga nima in vmesnik dejanj ne ponudi.
+    - **Preverjeno na Stripovem sandboxu (29. 9. 2026, testna ura, isti parametri kot
+      Java koda):** nadgradnja 15 dni pred koncem obdobja zaračuna 3,28 € (formula
+      3,29 €; Stripe računa po sekundah) in obdobje ostane isto; z zavrnjeno kartico
+      Stripe nadgradnjo zavrne in nič ne ostane (ne postavka ne odprt račun) — to
+      ujame `poStripu` (`CardException` → posebno sporočilo); znižanje: do obnove
+      ostane visji paket, ob obnovi je en račun z eno postavko po novi ceni, urnik
+      ostane priključen in ga je treba sprostiti. **Java klici niso tekli proti
+      Stripu** (ni ključa v razvoju): preverjen je obseg zahtev, ne SDK.
+    - **Kvota šteje USTVARJENO v sezoni, ne hkrati odprto** (`NarocninaStoritev`),
+      zato po znižanju »novo ligo odpreš, ko ena konča« ne drži: vmesnik pove »novih
+      do nove sezone ne ustvariš« (predaja je to trdila drugače; odločitev lastnika
+      pri nadzorni plošči velja tudi tu).
 
 - **Organizatorski pregled** (`OrganizatorPregledStoritev`, `GET
   /api/v1/organizator/pregled`, samo `ORGANIZATOR`; pot mora v
@@ -1888,10 +1926,41 @@
     32 px, zato ga razred `.narocnina__znesek` postavi sam.
   - Vrnitev s Checkouta (`?stanje=uspeh`) potrdi plačilo šele, ko webhook zapiše
     naročnino, zato stran nekajkrat povpraša znova (`POSKUSI_PO_VRNITVI`) in
-    parameter takoj pobriše iz naslova.
+    parameter takoj pobriše iz naslova; to je skupen kavelj
+    `komponente/useVrnitevSPlacila` (igralec in organizator).
   - Zabeležen preklop se da umakniti tudi po osvežitvi strani: obvestilo
     »Od 12. 10. 2026 plačuješ letno …« z gumbom »Razveljavi« se izpelje iz
     `naslednjiCiklus`, ne živi samo od potrditve.
+- **Stran `/narocnina` za organizatorja** (`komponente/NarocninaOrganizator`, razdelek
+  »Naročnina organizatorja« v `slog.css`; predaja
+  `design_handoff_narocnina_organizatorja`, 29. 9. 2026) ponovi zgradbo strani
+  igralca (`.registracija__*`, `.narocnina__*`), nova sta le primerjalna tabela s
+  tremi stolpci (`.narocnina__tabela`) in okvir razlike (`.narocnina__razlika`).
+  Vsi organizatorski paketi so letni: izbirnika Mesečno/Letno ni. Stanja: aktivna,
+  preklicana, brez paketa (privzeto Plus); poraba paketa pride iz `GET
+  /organizator/pregled` (isti vir kot palica na nadzorni plošči), zato `poDejanju`
+  razveljavi tudi poizvedbo `organizator-pregled` (meje se s paketom spremenijo).
+  - **Merilo ujemanja je prototip `*.dc.html` v istem brezglavem Chromu**: 7 stanj ×
+    namizje/telefon, besedilni bloki (škatla + slog) in škatle s podlago/obrobo se
+    ujemajo do 0,6 px. Razlike so le namerne: višina strani na telefonu (spodnja
+    vrstica aplikacije rezervira 92 px namesto 32 px) in besedila opozoril ob
+    znižanju (glej spodaj).
+  - **Pasti prototipa:** razmik črk naslova je v em od VELIKOSTI SPANA (−3,08 px pri
+    88 px, −1,44 px pri 48 px), ne podedovan z `h1` kot pri igralcu — zato ima stran
+    svoja razreda `.narocnina__naslov-nad` in `__naslov-ime`, ne `.naslov-strani__*`;
+    kolofon obdobja se lomi po vrednosti (brez `white-space: nowrap` igralca); vrstica
+    obdobja ima razmik med vrsticama 4 px; `button` ne podeduje pisave
+    (`.narocnina__stolp` jo postavi); pojasnilo pod tabelo se lomi brez
+    `text-wrap: pretty`; levi stolpec ima `line-height: 1.35`.
+  - **Besedila opozoril ob znižanju odstopajo od predaje na dveh mestih, obe
+    zavestno:** »imaš 4 turnirje« (tožilnik, kot v PNG in README; prototipni izraz
+    daje »4 turnirji«) in pri ligah »V tej sezoni imaš 2 ligi … novih do nove sezone
+    ne ustvariš« namesto »Odprti imaš 2 tekoči ligi … novo odpreš, ko ena konča«
+    (kvota šteje ustvarjeno v sezoni, ne hkrati odprto — glej zaledje).
+  - **Brezplačno leto Pro** (`upravljiva = false`): stran pokaže paket in datum, brez
+    izbire paketa, preklica in Stripe portala.
+  - Popravljeno je tudi sklanjanje v predlogu: »preostalih 15 dni« / »preostala 2
+    dneva« (`preostalihDni`), `sklonTurnirjevTozilnik`, `sklonLigTozilnik`.
 - **Organizatorski pregled** (`strani/OrganizatorskiPregledStran.tsx`, razdelek
   »Organizatorski pregled« na koncu `slog.css`, `.org-pregled__…`) je stran
   `/moj-profil` za organizatorja (`MojProfil` v `App.tsx`), poustvarjena po

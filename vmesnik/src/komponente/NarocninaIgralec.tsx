@@ -13,8 +13,8 @@
    cenika). Cena DRUGEGA cikla za predogled preklopa pride iz cenika v
    api/tipi.ts po cenovnem pasu ob sklenitvi - zaledje je pri preklopu zadnja
    beseda in ceno izračuna znova. */
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { opisNapake } from '../api/odjemalec'
@@ -31,16 +31,11 @@ import { danesIso, dniMed, oblikujCeno, oblikujDatum, sklonDni } from '../pomozn
 import { useTelefon } from '../pomozno/telefon'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { ZnakTurnirko } from './Postavitev'
+import { useVrnitevSPlacila, type Obvestilo } from './useVrnitevSPlacila'
 
 /* Koliko segmentov ima trak obdobja (dvanajst = mesec v šestinah tedna in leto
    v mesecih, oboje se bere kot »koliko je že mimo«). */
 const SEGMENTOV = 12
-
-/* Stripe potrdi plačilo prek webhooka, ki lahko pride nekaj sekund za
-   vrnitvijo brskalnika: stran po vrnitvi nekajkrat povpraša, ne pa v
-   neskončnost. */
-const POSKUSI_PO_VRNITVI = 8
-const ODMIK_POSKUSA_MS = 1500
 
 const FUNKCIJE = [
   'Forma in nasprotniki',
@@ -96,64 +91,17 @@ const imeCiklusa = (c: CiklusPlacila) => (c === 'LETNO' ? 'Letno' : 'Mesečno')
 const enota = (c: CiklusPlacila) => (c === 'LETNO' ? ' / leto' : ' / mesec')
 const stevilka = (i: number) => String(i + 1).padStart(2, '0')
 
-interface Obvestilo {
-  besedilo: string
-  /* Zelen trak (uspeh) ali nevtralen (npr. preklicano plačilo). */
-  uspeh: boolean
-  /* Zabeležen preklop se da umakniti, preklic ali obnova ne. */
-  razveljavi?: boolean
-}
+const uspehPoVrnitvi = (n: NarocninaDto) =>
+  `Stripe je potrdil plačilo ${oblikujCeno(n.cena ?? 0)}. Premium je vklopljen.`
 
-/* Nalaga naročnino in obravnava vrnitev s Stripe Checkouta; sam pogled je
-   ločen, da ima vedno podatke (brez preverjanj na vsakem koraku). */
+/* Nalaga naročnino in obravnava vrnitev s Stripe Checkouta (useVrnitevSPlacila);
+   sam pogled je ločen, da ima vedno podatke (brez preverjanj na vsakem koraku). */
 export function NarocninaIgralec() {
-  const { osvezi } = useAvtentikacija()
-  const odjemalec = useQueryClient()
-  const [iskalniNiz, nastaviIskalniNiz] = useSearchParams()
-  const vrnitev = iskalniNiz.get('stanje')
-
   const poizvedba = useQuery({ queryKey: ['narocnina'], queryFn: narocninaApi.pregled })
-  const [vrnitevObvestilo, nastaviVrnitevObvestilo] = useState<Obvestilo | null>(null)
-
-  /* Vrnitev s Checkouta: parameter se takoj pobriše, da osvežitev strani
-     sporočila ne ponovi. Ob uspehu naročnina včasih še ni zapisana (webhook je
-     počasnejši od preusmeritve), zato se nekajkrat povpraša znova. */
-  useEffect(() => {
-    if (vrnitev !== 'uspeh' && vrnitev !== 'preklic') return
-    nastaviIskalniNiz({}, { replace: true })
-
-    if (vrnitev === 'preklic') {
-      nastaviVrnitevObvestilo({ besedilo: 'Plačilo je bilo preklicano. Nič ti nismo zaračunali.', uspeh: false })
-      return
-    }
-
-    nastaviVrnitevObvestilo({ besedilo: 'Plačilo je prejeto. Premium se vklaplja …', uspeh: true })
-    let opusceno = false
-    let poskus = 0
-    const povprasaj = async () => {
-      if (opusceno) return
-      try {
-        const n = await narocninaApi.pregled()
-        odjemalec.setQueryData(['narocnina'], n)
-        if (n.aktivna) {
-          void osvezi()
-          nastaviVrnitevObvestilo({
-            besedilo: `Stripe je potrdil plačilo ${oblikujCeno(n.cena ?? 0)}. Premium je vklopljen.`,
-            uspeh: true,
-          })
-          return
-        }
-      } catch {
-        /* povezava je pobegnila - poskusimo znova, dokler jih je */
-      }
-      poskus += 1
-      if (poskus < POSKUSI_PO_VRNITVI) setTimeout(povprasaj, ODMIK_POSKUSA_MS)
-    }
-    void povprasaj()
-    return () => {
-      opusceno = true
-    }
-  }, [vrnitev, nastaviIskalniNiz, odjemalec, osvezi])
+  const vrnitevObvestilo = useVrnitevSPlacila({
+    caka: 'Plačilo je prejeto. Premium se vklaplja …',
+    uspeh: uspehPoVrnitvi,
+  })
 
   if (poizvedba.error) return <NapakaPoizvedbe poizvedba={poizvedba} kaj="naročnine" />
   if (!poizvedba.data) return <p className="obvestilo">Nalagam naročnino …</p>
@@ -254,7 +202,7 @@ function PogledNarocnine({
   })
 
   const obnovi = useMutation({
-    mutationFn: (c: CiklusPlacila) => narocninaApi.obnovi(c),
+    mutationFn: (c: CiklusPlacila) => narocninaApi.obnovi({ ciklus: c }),
     onSuccess: (podatki) => {
       nastaviIzbran(null)
       poDejanju(podatki, { besedilo: `Naročnina je obnovljena. Naslednja obnova ${konec}.`, uspeh: true })

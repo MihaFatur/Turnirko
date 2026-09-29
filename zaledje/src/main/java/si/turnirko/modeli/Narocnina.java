@@ -90,6 +90,13 @@ public class Narocnina {
     @Column(name = "naslednji_ciklus")
     private CiklusPlacila naslednjiCiklus;
 
+    /* Organizatorski paket, ki zacne veljati ob NASLEDNJI obnovi (zabelezeno
+       znizanje). NULL = znizanja ni. Paket ostane tak, kot velja zdaj, dokler
+       obdobje ne potece; nadgradnja velja takoj in tu ne pusti sledi. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "naslednji_paket")
+    private Paket naslednjiPaket;
+
     @Convert(converter = CasKotBesedilo.class)
     @Column(name = "ustvarjena_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenaOb;
@@ -154,6 +161,9 @@ public class Narocnina {
 
     public CiklusPlacila getNaslednjiCiklus() { return naslednjiCiklus; }
     public void setNaslednjiCiklus(CiklusPlacila naslednjiCiklus) { this.naslednjiCiklus = naslednjiCiklus; }
+
+    public Paket getNaslednjiPaket() { return naslednjiPaket; }
+    public void setNaslednjiPaket(Paket naslednjiPaket) { this.naslednjiPaket = naslednjiPaket; }
 
     /* Zacetek tekocega obdobja za prikaz. Vrstice izpred V35 ga nimajo
        zapisanega: izpelje se kot konec obdobja minus en cikel (Stripe obdobje

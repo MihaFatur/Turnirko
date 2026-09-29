@@ -308,8 +308,9 @@ public class PlacilaStoritev {
         n.setStripeNarocninaId(session.getSubscription());
         n.setStatus(StatusNarocnine.AKTIVNA);
         n.setZacetekOb(LocalDateTime.now());
-        // nova narocnina nima dogovorjenega preklopa (stara, potekla, ga je imela lahko)
+        // nova narocnina nima dogovorjenega preklopa ne znizanja (stara, potekla, ju je imela lahko)
         n.setNaslednjiCiklus(null);
+        n.setNaslednjiPaket(null);
         zapisiObdobje(n, session.getSubscription());
         narocninaRepozitorij.save(n);
     }
@@ -343,6 +344,7 @@ public class PlacilaStoritev {
         narocninaRepozitorij.findByStripeNarocninaId(sub.getId()).ifPresent(n -> {
             boolean preklicOKoncu = Boolean.TRUE.equals(sub.getCancelAtPeriodEnd());
             n.setStatus(preklicOKoncu ? StatusNarocnine.PREKLICANA : StatusNarocnine.AKTIVNA);
+            LocalDateTime staroObdobjeDo = n.getTrenutnoObdobjeDo();
             StripeNarocnine.Stanje stanje = StripeNarocnine.stanje(sub);
             StripeNarocnine.uskladi(n, stanje);
             boolean preklopIzveden = stanje.urnikId() != null && n.getNaslednjiCiklus() != null
@@ -350,11 +352,31 @@ public class PlacilaStoritev {
             if (stanje.urnikId() == null || preklopIzveden) {
                 n.setNaslednjiCiklus(null);
             }
+            boolean prehodIzveden = jeZnizanjeIzvedeno(n, staroObdobjeDo, stanje);
+            if (prehodIzveden) {
+                n.setPaket(n.getNaslednjiPaket());
+                n.setNaslednjiPaket(null);
+            } else if (stanje.urnikId() == null) {
+                n.setNaslednjiPaket(null);
+            }
             narocninaRepozitorij.save(n);
-            if (preklopIzveden) {
+            if (preklopIzveden || prehodIzveden) {
                 sprostiUrnikPoPreklopu(n);
             }
         });
+    }
+
+    /* Zabelezeno znizanje paketa je izvedeno, ko se je zacelo NOVO obdobje: urnik
+       ob obnovi zamenja postavko, zato Stripe isti dogodek poslje z novim
+       obdobjem (zacetek = konec starega). Paketa iz Stripa ne beremo - postavka
+       nosi samo ceno, ta pa ni enolicen kljuc, ce se cenik kdaj spremeni -,
+       zato ga izda prehod meje obdobja. Navadna obnova brez zabelezenega
+       znizanja paketa ne spremeni. Toleranca nekaj minut: zapis v bazi hrani
+       cas na minuto. */
+    private static boolean jeZnizanjeIzvedeno(Narocnina n, LocalDateTime staroObdobjeDo,
+                                              StripeNarocnine.Stanje stanje) {
+        return n.getNaslednjiPaket() != null && staroObdobjeDo != null && stanje.obdobjeOd() != null
+                && !stanje.obdobjeOd().isBefore(staroObdobjeDo.minusMinutes(5));
     }
 
     /* Urnik po izvedenem preklopu ostane prikljucen se cel novi cikel (Stripe:
@@ -413,23 +435,13 @@ public class PlacilaStoritev {
                         .setCurrency("eur")
                         .setUnitAmount(centi)
                         .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                .setName(imePaketa(paket))
+                                .setName(paket.imeIzdelka())
                                 .build())
                         .setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
                                 .setInterval(interval)
                                 .build())
                         .build())
                 .build();
-    }
-
-    private static String imePaketa(Paket paket) {
-        return switch (paket) {
-            case PREMIUM -> "Turnirko Premium";
-            case ORGANIZATOR_BASIC -> "Turnirko Organizator Basic";
-            case ORGANIZATOR_PLUS -> "Turnirko Organizator Plus";
-            case ORGANIZATOR_PRO -> "Turnirko Organizator Pro";
-            case BREZPLACNO -> throw new IllegalStateException("Brezplacen paket ne gre skozi placilo.");
-        };
     }
 
     private String ustvariSejo(SessionCreateParams params) {

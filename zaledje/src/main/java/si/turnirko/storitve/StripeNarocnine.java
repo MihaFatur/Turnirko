@@ -21,10 +21,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.stripe.exception.CardException;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Invoice;
+import com.stripe.model.Product;
+import com.stripe.model.ProductSearchResult;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.model.SubscriptionSchedule;
+import com.stripe.param.ProductCreateParams;
+import com.stripe.param.ProductSearchParams;
 import com.stripe.param.SubscriptionScheduleCreateParams;
 import com.stripe.param.SubscriptionScheduleUpdateParams;
 import com.stripe.param.SubscriptionUpdateParams;
@@ -32,11 +38,15 @@ import com.stripe.param.SubscriptionUpdateParams;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.modeli.CiklusPlacila;
 import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 
 @Component
 public class StripeNarocnine {
 
     private static final Logger dnevnik = LoggerFactory.getLogger(StripeNarocnine.class);
+
+    /* Metapodatek izdelka, po katerem se najde izdelek paketa (produkt). */
+    private static final String METAPODATEK_PAKET = "turnirko_paket";
 
     /* Kar Stripe pove o narocnini. cena in ciklus sta polji TEKOCE cene (tiste,
        ki se zaracunava zdaj); urnikId je prazen, dokler ni dogovorjenega
@@ -49,6 +59,10 @@ public class StripeNarocnine {
             Double cena,
             boolean preklicOKoncu,
             String urnikId) {}
+
+    /* Odgovor na takojsnjo nadgradnjo paketa: stanje po njej in znesek, ki ga je
+       Stripe pri tem zaracunal (sorazmerno doplacilo; racun postavke obdobja). */
+    public record Nadgradnja(Stanje stanje, double doplacilo) {}
 
     public Stanje preberi(String narocninaId) {
         return poStripu("branje narocnine", () -> stanje(Subscription.retrieve(narocninaId)));
@@ -89,59 +103,140 @@ public class StripeNarocnine {
        prva faza je lahko ze pretekla, preteklih faz pa Stripe ne pusti
        spreminjati. */
     public Stanje zabeleziPreklop(String narocninaId, CiklusPlacila novCiklus, double novaCena) {
-        return poStripu("preklop cikla", () -> {
+        return poStripu("preklop cikla", () -> zabeleziSpremembo(narocninaId, null, novCiklus, novaCena));
+    }
+
+    /* Znizanje organizatorskega paketa ob NASLEDNJI obnovi: isti urnik z dvema
+       fazama kot pri preklopu cikla, samo da nova faza nosi ceno IN izdelek
+       drugega paketa (interval ostane leto). Danes se ne zaracuna in ne vrne
+       nic: obdobje je placano po visji ceni, pravice pa ostanejo do konca. */
+    public Stanje zabeleziPrehod(String narocninaId, Paket novPaket, double novaCena) {
+        return poStripu("znizanje paketa", () ->
+                zabeleziSpremembo(narocninaId, produkt(novPaket), CiklusPlacila.LETNO, novaCena));
+    }
+
+    /* Nadgradnja organizatorja v visji paket velja TAKOJ: postavka narocnine
+       dobi novo ceno (isti interval, ISTO obracunsko sidro) in Stripe
+       obracuna razliko sorazmerno s preostankom obdobja - kredit za
+       neporabljen del starega paketa in polni zneski novega za ostanek.
+       always_invoice zaracuna razliko zdaj in ne sele ob naslednjem racunu;
+       error_if_incomplete pa poskrbi, da se ob zavrnjeni kartici nic ne
+       spremeni (Stripe vrne 402, narocnina ostane na starem paketu).
+
+       Obstojec urnik (zabelezeno znizanje) narocnino vodi in Stripe zavrne
+       neposredno posodobitev postavke, zato se najprej sprosti - nadgradnja
+       znizanje tako ali tako preglasi. */
+    public Nadgradnja nadgradiPaket(String narocninaId, Paket novPaket, double novaCena) {
+        return poStripu("nadgradnja paketa", () -> {
             Subscription sub = Subscription.retrieve(narocninaId);
             SubscriptionItem postavka = prvaPostavka(sub);
-            if (postavka == null || postavka.getPrice() == null) {
-                throw new DomenskaIzjema("Narocnine ni mogoce preklopiti: Stripe ne vrne postavke.");
+            if (postavka == null) {
+                throw new DomenskaIzjema("Narocnine ni mogoce nadgraditi: Stripe ne vrne postavke.");
             }
-
             if (sub.getSchedule() != null) {
                 SubscriptionSchedule.retrieve(sub.getSchedule()).release();
+                sub = Subscription.retrieve(narocninaId);
             }
-            SubscriptionSchedule urnik = SubscriptionSchedule.create(
-                    SubscriptionScheduleCreateParams.builder().setFromSubscription(narocninaId).build());
-            try {
-                SubscriptionSchedule.Phase tekoca = urnik.getPhases().get(0);
-                urnik.update(SubscriptionScheduleUpdateParams.builder()
-                        .setEndBehavior(SubscriptionScheduleUpdateParams.EndBehavior.RELEASE)
-                        .addPhase(SubscriptionScheduleUpdateParams.Phase.builder()
-                                .setStartDate(tekoca.getStartDate())
-                                .setEndDate(tekoca.getEndDate())
-                                .setProrationBehavior(
-                                        SubscriptionScheduleUpdateParams.Phase.ProrationBehavior.NONE)
-                                .addItem(SubscriptionScheduleUpdateParams.Phase.Item.builder()
-                                        .setPrice(postavka.getPrice().getId())
-                                        .setQuantity(1L)
-                                        .build())
-                                .build())
-                        .addPhase(SubscriptionScheduleUpdateParams.Phase.builder()
-                                .setIterations(1L)
-                                .setProrationBehavior(
-                                        SubscriptionScheduleUpdateParams.Phase.ProrationBehavior.NONE)
-                                .addItem(SubscriptionScheduleUpdateParams.Phase.Item.builder()
-                                        .setQuantity(1L)
-                                        .setPriceData(SubscriptionScheduleUpdateParams.Phase.Item.PriceData
-                                                .builder()
-                                                .setCurrency("eur")
-                                                .setProduct(postavka.getPrice().getProduct())
-                                                .setUnitAmount(Math.round(novaCena * 100))
-                                                .setRecurring(SubscriptionScheduleUpdateParams.Phase.Item
-                                                        .PriceData.Recurring.builder()
-                                                        .setInterval(interval(novCiklus))
-                                                        .build())
-                                                .build())
-                                        .build())
-                                .build())
-                        .build());
-            } catch (StripeException | RuntimeException e) {
-                // urnik z eno fazo bi visel na narocnini brez pomena; sprostitev je
-                // brez posledic (narocnina tece naprej, kot je tekla)
-                sprostiTiho(urnik);
-                throw e;
-            }
-            return stanje(Subscription.retrieve(narocninaId));
+            Subscription posodobljena = sub.update(SubscriptionUpdateParams.builder()
+                    .addItem(SubscriptionUpdateParams.Item.builder()
+                            .setId(postavka.getId())
+                            .setPriceData(SubscriptionUpdateParams.Item.PriceData.builder()
+                                    .setCurrency("eur")
+                                    .setProduct(produkt(novPaket))
+                                    .setUnitAmount(Math.round(novaCena * 100))
+                                    .setRecurring(SubscriptionUpdateParams.Item.PriceData.Recurring.builder()
+                                            .setInterval(SubscriptionUpdateParams.Item.PriceData.Recurring
+                                                    .Interval.YEAR)
+                                            .build())
+                                    .build())
+                            .build())
+                    .setProrationBehavior(SubscriptionUpdateParams.ProrationBehavior.ALWAYS_INVOICE)
+                    .setPaymentBehavior(SubscriptionUpdateParams.PaymentBehavior.ERROR_IF_INCOMPLETE)
+                    .addExpand("latest_invoice")
+                    .build());
+            Invoice racun = posodobljena.getLatestInvoiceObject();
+            double doplacilo = racun == null || racun.getTotal() == null ? 0.0 : racun.getTotal() / 100.0;
+            return new Nadgradnja(stanje(posodobljena), doplacilo);
         });
+    }
+
+    /* Urnik z dvema fazama: tekoca nespremenjena do konca obdobja, nato en cikel
+       po novi ceni. produktId je izdelek nove faze; null pomeni izdelek tekoce
+       postavke (preklop cikla znotraj istega paketa). */
+    private Stanje zabeleziSpremembo(String narocninaId, String produktId, CiklusPlacila novCiklus,
+                                     double novaCena) throws StripeException {
+        Subscription sub = Subscription.retrieve(narocninaId);
+        SubscriptionItem postavka = prvaPostavka(sub);
+        if (postavka == null || postavka.getPrice() == null) {
+            throw new DomenskaIzjema("Narocnine ni mogoce preklopiti: Stripe ne vrne postavke.");
+        }
+
+        if (sub.getSchedule() != null) {
+            SubscriptionSchedule.retrieve(sub.getSchedule()).release();
+        }
+        SubscriptionSchedule urnik = SubscriptionSchedule.create(
+                SubscriptionScheduleCreateParams.builder().setFromSubscription(narocninaId).build());
+        try {
+            SubscriptionSchedule.Phase tekoca = urnik.getPhases().get(0);
+            urnik.update(SubscriptionScheduleUpdateParams.builder()
+                    .setEndBehavior(SubscriptionScheduleUpdateParams.EndBehavior.RELEASE)
+                    .addPhase(SubscriptionScheduleUpdateParams.Phase.builder()
+                            .setStartDate(tekoca.getStartDate())
+                            .setEndDate(tekoca.getEndDate())
+                            .setProrationBehavior(
+                                    SubscriptionScheduleUpdateParams.Phase.ProrationBehavior.NONE)
+                            .addItem(SubscriptionScheduleUpdateParams.Phase.Item.builder()
+                                    .setPrice(postavka.getPrice().getId())
+                                    .setQuantity(1L)
+                                    .build())
+                            .build())
+                    .addPhase(SubscriptionScheduleUpdateParams.Phase.builder()
+                            .setIterations(1L)
+                            .setProrationBehavior(
+                                    SubscriptionScheduleUpdateParams.Phase.ProrationBehavior.NONE)
+                            .addItem(SubscriptionScheduleUpdateParams.Phase.Item.builder()
+                                    .setQuantity(1L)
+                                    .setPriceData(SubscriptionScheduleUpdateParams.Phase.Item.PriceData
+                                            .builder()
+                                            .setCurrency("eur")
+                                            .setProduct(produktId != null
+                                                    ? produktId : postavka.getPrice().getProduct())
+                                            .setUnitAmount(Math.round(novaCena * 100))
+                                            .setRecurring(SubscriptionScheduleUpdateParams.Phase.Item
+                                                    .PriceData.Recurring.builder()
+                                                    .setInterval(interval(novCiklus))
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build())
+                    .build());
+        } catch (StripeException | RuntimeException e) {
+            // urnik z eno fazo bi visel na narocnini brez pomena; sprostitev je
+            // brez posledic (narocnina tece naprej, kot je tekla)
+            sprostiTiho(urnik);
+            throw e;
+        }
+        return stanje(Subscription.retrieve(narocninaId));
+    }
+
+    /* Izdelek paketa v Stripe: eden na paket (ne na nakup), zato se pri
+       nadgradnji in znizanju ne kopici nov izdelek. Checkout za vsak nakup
+       sam ustvari svojega (product_data); ta se najde po metapodatku, ki ga
+       nosi samo izdelek, ki smo ga ustvarili tu. Iskanje je v Stripu
+       "casoma dosledno" (nekaj sekund): izjemoma nastane dvojnik, kar ni
+       skodljivo - obe vrstici imata isto ime. */
+    private String produkt(Paket paket) throws StripeException {
+        ProductSearchResult zadetki = Product.search(ProductSearchParams.builder()
+                .setQuery("active:'true' AND metadata['" + METAPODATEK_PAKET + "']:'" + paket.name() + "'")
+                .setLimit(1L)
+                .build());
+        if (zadetki.getData() != null && !zadetki.getData().isEmpty()) {
+            return zadetki.getData().get(0).getId();
+        }
+        return Product.create(ProductCreateParams.builder()
+                .setName(paket.imeIzdelka())
+                .putMetadata(METAPODATEK_PAKET, paket.name())
+                .build()).getId();
     }
 
     /* Umik zabelezenega preklopa: urnik se SPROSTI (release), narocnina pa
@@ -238,10 +333,17 @@ public class StripeNarocnine {
     }
 
     /* StripeException gre uporabniku kot razumljivo sporocilo, podrobnost pa v
-       dnevnik (isto kot ustvariSejo v PlacilaStoritev). */
+       dnevnik (isto kot ustvariSejo v PlacilaStoritev). Zavrnjena kartica
+       (nadgradnja paketa zaracuna doplacilo takoj) je edina napaka, ki jo
+       uporabnik lahko popravi sam, zato ima svoje sporocilo; narocnina ostane
+       nespremenjena (error_if_incomplete, preverjeno na testnem nacinu). */
     private static <T> T poStripu(String opis, StripeKlic<T> klic) {
         try {
             return klic.izvedi();
+        } catch (CardException e) {
+            dnevnik.warn("Stripe ({}): kartica zavrnjena: {}", opis, e.getMessage());
+            throw new DomenskaIzjema("Kartica je bila zavrnjena, zato nismo spremenili nicesar. "
+                    + "Posodobi kartico prek gumba \"Kartica in racuni v Stripe\" in poskusi znova.");
         } catch (StripeException e) {
             dnevnik.error("Stripe ({}) ni uspel: {}", opis, e.getMessage());
             throw new DomenskaIzjema("Narocnine trenutno ni mogoce spremeniti. Poskusi kasneje.");

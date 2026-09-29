@@ -50,7 +50,13 @@ export const sklonTekmovanj = (n: number) =>
   sklon(n, 'tekmovanje', 'tekmovanji', 'tekmovanja', 'tekmovanj')
 export const sklonTekem = (n: number) => sklon(n, 'tekma', 'tekmi', 'tekme', 'tekem')
 export const sklonLig = (n: number) => sklon(n, 'liga', 'ligi', 'lige', 'lig')
+export const sklonTekocihLig = (n: number) =>
+  sklon(n, 'tekoča liga', 'tekoči ligi', 'tekoče lige', 'tekočih lig')
 export const sklonTurnirjev = (n: number) => sklon(n, 'turnir', 'turnirja', 'turnirji', 'turnirjev')
+/* Tožilnik (»imaš 4 turnirje«, »imaš 1 ligo«): pri moških in ženskih samostalnikih
+   se od imenovalnika loči le v 1, 3 in 4; od 5 naprej je rodilnik množine. */
+export const sklonTurnirjevTozilnik = (n: number) => sklon(n, 'turnir', 'turnirja', 'turnirje', 'turnirjev')
+export const sklonLigTozilnik = (n: number) => sklon(n, 'ligo', 'ligi', 'lige', 'lig')
 export const sklonSrecanj = (n: number) => sklon(n, 'srečanje', 'srečanji', 'srečanja', 'srečanj')
 export const sklonUdelezencev = (n: number) =>
   sklon(n, 'udeleženec', 'udeleženca', 'udeleženci', 'udeležencev')

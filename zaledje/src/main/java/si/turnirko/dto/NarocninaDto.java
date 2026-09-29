@@ -36,12 +36,17 @@ public record NarocninaDto(
         LocalDate obdobjeOd,
         LocalDate obdobjeDo,
         // zabelezen preklop, ki zacne veljati ob obnovi; null = preklopa ni
-        CiklusPlacila naslednjiCiklus
+        CiklusPlacila naslednjiCiklus,
+        // zabelezeno znizanje organizatorskega paketa ob obnovi; null = znizanja ni
+        Paket naslednjiPaket,
+        // ali narocnino vodi Stripe (jo je mogoce preklicati, obnoviti, spremeniti);
+        // brezplacno leto Pro obstojecih organizatorjev je brez Stripa
+        boolean upravljiva
 ) {
 
     /* Racun brez veljavne narocnine (igralec Free ali potekla narocnina). */
     public static NarocninaDto brez() {
         return new NarocninaDto(Paket.BREZPLACNO, false, false, null, null, null, null,
-                null, null, null, null);
+                null, null, null, null, null, false);
     }
 }

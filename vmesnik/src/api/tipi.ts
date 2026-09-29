@@ -524,6 +524,12 @@ export interface NarocninaDto {
   obdobjeDo: string | null
   /* Zabeležen preklop, ki začne veljati ob obnovi; null = preklopa ni. */
   naslednjiCiklus: CiklusPlacila | null
+  /* Zabeleženo znižanje organizatorskega paketa, ki začne veljati ob obnovi;
+     null = znižanja ni. Nadgradnja velja takoj in sledi ne pusti. */
+  naslednjiPaket: Paket | null
+  /* Ali naročnino vodi Stripe (preklic, obnova, zamenjava paketa). Brezplačno
+     leto Pro obstoječih organizatorjev ga nima. */
+  upravljiva: boolean
 }
 
 export type StatusNarocnine = 'CAKA_PLACILO' | 'AKTIVNA' | 'PREKLICANA' | 'ZAPADLA'
@@ -641,9 +647,30 @@ export interface OrganizatorPregledDto {
   arhiv: ArhivSezoneDto[]
 }
 
-/* Izbran cikel pri preklopu in obnovi preklicane naročnine. */
+/* Izbran cikel pri preklopu plačevanja (igralec). */
 export interface NarocninaCiklusVnos {
   ciklus: CiklusPlacila | null
+}
+
+/* Obnova preklicane naročnine: igralec ob obnovi izbira plačevanje (`ciklus`),
+   organizator paket (`paket`). Obe polji sta neobvezni; brez njiju se obnova
+   nadaljuje z že začetim. */
+export interface NarocninaObnovaVnos {
+  ciklus?: CiklusPlacila | null
+  paket?: Paket | null
+}
+
+/* Zamenjava organizatorskega paketa: višji velja takoj, nižji ob obnovi. */
+export interface NarocninaPaketVnos {
+  paket: Paket
+}
+
+/* Odgovor na zamenjavo paketa (SpremembaPaketaDto): posodobljena naročnina in
+   znesek, ki ga je Stripe pri tem zaračunal. `doplacilo` je zapisano samo pri
+   nadgradnji; znižanje danes ne stane nič, zato je takrat null. */
+export interface SpremembaPaketaDto {
+  narocnina: NarocninaDto
+  doplacilo: number | null
 }
 
 export interface PotrditevKodeVnos {

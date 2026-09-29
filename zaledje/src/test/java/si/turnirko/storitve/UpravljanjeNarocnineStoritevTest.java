@@ -1,5 +1,6 @@
 /* Stran "Narocnina" (UpravljanjeNarocnineStoritev): preklic ob koncu obdobja,
-   obnova preklicane in preklop placevanja ob naslednji obnovi.
+   obnova preklicane, preklop placevanja ob naslednji obnovi (igralec) in
+   zamenjava organizatorskega paketa (nadgradnja takoj, znizanje ob obnovi).
 
    Stripe je nadomescen z laznim (StripeNarocnine): test preveri, KAJ storitev
    od njega zahteva in kaj zapise v vrstico, ne pravega omrezja. Isto nacelo kot
@@ -44,6 +45,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.NarocninaDto;
+import si.turnirko.dto.SpremembaPaketaDto;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.CiklusPlacila;
@@ -349,6 +351,215 @@ class UpravljanjeNarocnineStoritevTest {
         verify(stripe).sprostiUrnik(STRIPE_ID);
     }
 
+    // ---------- Organizator: zamenjava paketa ----------
+
+    /* Nadgradnja velja takoj: Stripe zaracuna sorazmerno doplacilo, paket se
+       spremeni v vrstici in odgovor pove, koliko je bilo zaracunano. */
+    @Test
+    void nadgradnjaVVisjiPaketVelaTakojInVrneDoplacilo() {
+        Uporabnik u = organizator("nadgradnja@test");
+        organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        prijava(u);
+        when(stripe.nadgradiPaket(STRIPE_ID, Paket.ORGANIZATOR_PRO, 249.99))
+                .thenReturn(new StripeNarocnine.Nadgradnja(stanjeLetno(249.99, false, null), 3.29));
+
+        SpremembaPaketaDto odgovor = storitev.zamenjajPaket(Paket.ORGANIZATOR_PRO);
+
+        assertEquals(Paket.ORGANIZATOR_PRO, odgovor.narocnina().paket());
+        assertEquals(249.99, odgovor.narocnina().cena());
+        assertEquals(3.29, odgovor.doplacilo());
+        assertNull(odgovor.narocnina().naslednjiPaket());
+        assertEquals(Paket.ORGANIZATOR_PRO,
+                narocninaRepozitorij.findByUporabnikId(u.getId()).orElseThrow().getPaket());
+        verify(stripe, never()).zabeleziPrehod(anyString(), org.mockito.ArgumentMatchers.any(), anyDouble());
+    }
+
+    /* Zabelezeno znizanje nadgradnja preglasi (Stripe urnik sprosti sam). */
+    @Test
+    void nadgradnjaPreglasiZabelezenoZnizanje() {
+        Uporabnik u = organizator("nadgradnja-znizanje@test");
+        Narocnina n = organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        n.setNaslednjiPaket(Paket.ORGANIZATOR_BASIC);
+        narocninaRepozitorij.save(n);
+        prijava(u);
+        when(stripe.nadgradiPaket(STRIPE_ID, Paket.ORGANIZATOR_PRO, 249.99))
+                .thenReturn(new StripeNarocnine.Nadgradnja(stanjeLetno(249.99, false, null), 3.29));
+
+        assertNull(storitev.zamenjajPaket(Paket.ORGANIZATOR_PRO).narocnina().naslednjiPaket());
+    }
+
+    /* Znizanje danes ne stane nic in ne spremeni paketa: obdobje je placano po
+       visji ceni. Zabelezi se samo namera, ki jo Stripe izvede ob obnovi. */
+    @Test
+    void znizanjeVelaSeleObObnoviInDanesNeStaneNic() {
+        Uporabnik u = organizator("znizanje@test");
+        organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        prijava(u);
+        when(stripe.zabeleziPrehod(STRIPE_ID, Paket.ORGANIZATOR_BASIC, 89.99))
+                .thenReturn(stanjeLetno(169.99, false, "sub_sched_1"));
+
+        SpremembaPaketaDto odgovor = storitev.zamenjajPaket(Paket.ORGANIZATOR_BASIC);
+
+        assertEquals(Paket.ORGANIZATOR_PLUS, odgovor.narocnina().paket(), "do obnove ostane visji paket");
+        assertEquals(169.99, odgovor.narocnina().cena());
+        assertEquals(Paket.ORGANIZATOR_BASIC, odgovor.narocnina().naslednjiPaket());
+        assertNull(odgovor.doplacilo(), "znizanje danes ne zaracuna nicesar");
+        verify(stripe, never()).nadgradiPaket(anyString(), org.mockito.ArgumentMatchers.any(), anyDouble());
+    }
+
+    @Test
+    void izbiraTekocegaPaketaUmakneZabelezenoZnizanje() {
+        Uporabnik u = organizator("premislil-paket@test");
+        Narocnina n = organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        n.setNaslednjiPaket(Paket.ORGANIZATOR_BASIC);
+        narocninaRepozitorij.save(n);
+        prijava(u);
+
+        SpremembaPaketaDto odgovor = storitev.zamenjajPaket(Paket.ORGANIZATOR_PLUS);
+
+        assertNull(odgovor.narocnina().naslednjiPaket());
+        verify(stripe).sprostiUrnik(STRIPE_ID);
+        verify(stripe, never()).zabeleziPrehod(anyString(), org.mockito.ArgumentMatchers.any(), anyDouble());
+        verify(stripe, never()).nadgradiPaket(anyString(), org.mockito.ArgumentMatchers.any(), anyDouble());
+    }
+
+    @Test
+    void ponovljenoZnizanjeNeKlicaStripaZnova() {
+        Uporabnik u = organizator("dvakrat-paket@test");
+        Narocnina n = organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        n.setNaslednjiPaket(Paket.ORGANIZATOR_BASIC);
+        narocninaRepozitorij.save(n);
+        prijava(u);
+
+        storitev.zamenjajPaket(Paket.ORGANIZATOR_BASIC);
+
+        verify(stripe, never()).zabeleziPrehod(anyString(), org.mockito.ArgumentMatchers.any(), anyDouble());
+    }
+
+    @Test
+    void umikZnizanjaSprostiUrnikInPocistiNamero() {
+        Uporabnik u = organizator("umik-paket@test");
+        Narocnina n = organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        n.setNaslednjiPaket(Paket.ORGANIZATOR_BASIC);
+        narocninaRepozitorij.save(n);
+        prijava(u);
+
+        assertNull(storitev.razveljaviPrehod().naslednjiPaket());
+        verify(stripe).sprostiUrnik(STRIPE_ID);
+    }
+
+    @Test
+    void preklicanoNarocninoJeTrebaNajprejObnoviti() {
+        Uporabnik u = organizator("paket-preklicana@test");
+        organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.PREKLICANA, 169.99);
+        prijava(u);
+
+        assertThrows(DomenskaIzjema.class, () -> storitev.zamenjajPaket(Paket.ORGANIZATOR_PRO));
+        verifyNoInteractions(stripe);
+    }
+
+    /* Premium igralca ima svoj potek (preklop cikla); paketa ne menja. */
+    @Test
+    void igralecNeSmeZamenjatiPaketa() {
+        Uporabnik u = igralec("igralec-paket@test");
+        premium(u, CiklusPlacila.LETNO, StatusNarocnine.AKTIVNA, true);
+        prijava(u);
+
+        assertThrows(NeveljavenVnosIzjema.class, () -> storitev.zamenjajPaket(Paket.ORGANIZATOR_PRO));
+        verifyNoInteractions(stripe);
+    }
+
+    @Test
+    void zamenjaSeLahkoSamoZOrganizatorskimPaketom() {
+        Uporabnik u = organizator("napacen-paket@test");
+        organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        prijava(u);
+
+        assertThrows(NeveljavenVnosIzjema.class, () -> storitev.zamenjajPaket(Paket.PREMIUM));
+        assertThrows(NeveljavenVnosIzjema.class, () -> storitev.zamenjajPaket(Paket.BREZPLACNO));
+        assertThrows(NeveljavenVnosIzjema.class, () -> storitev.zamenjajPaket(null));
+        verifyNoInteractions(stripe);
+    }
+
+    @Test
+    void brezplacnegaLetaProNiMogoceZamenjati() {
+        Uporabnik u = organizator("pro-brez-stripa@test");
+        Narocnina n = new Narocnina(u, Paket.ORGANIZATOR_PRO);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
+        prijava(u);
+
+        assertThrows(NeveljavenVnosIzjema.class, () -> storitev.zamenjajPaket(Paket.ORGANIZATOR_BASIC));
+        verifyNoInteractions(stripe);
+    }
+
+    @Test
+    void preklicOrganizatorjaPocistiZnizanje() {
+        Uporabnik u = organizator("preklic-paket@test");
+        Narocnina n = organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        n.setNaslednjiPaket(Paket.ORGANIZATOR_BASIC);
+        narocninaRepozitorij.save(n);
+        prijava(u);
+
+        NarocninaDto dto = storitev.prekliciOKoncuObdobja();
+
+        assertTrue(dto.preklicana());
+        assertNull(dto.naslednjiPaket(), "po preklicu ni obnove, ki bi jo znizanje spremenilo");
+        verify(stripe).sprostiUrnik(STRIPE_ID);
+    }
+
+    /* Ob obnovi preklicane narocnine organizator izbira paket. Obdobje je ze
+       placano, zato je tudi visji paket prehod ob obnovi in ne takojsnja
+       nadgradnja. */
+    @Test
+    void obnovaPreklicaneZDrugimPaketomZabeleziPrehodObObnovi() {
+        Uporabnik u = organizator("obnova-paket@test");
+        organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.PREKLICANA, 169.99);
+        prijava(u);
+        when(stripe.nastaviPreklicOKoncu(anyString(), eq(false)))
+                .thenReturn(stanjeLetno(169.99, false, null));
+        when(stripe.zabeleziPrehod(STRIPE_ID, Paket.ORGANIZATOR_PRO, 249.99))
+                .thenReturn(stanjeLetno(169.99, false, "sub_sched_1"));
+
+        NarocninaDto dto = storitev.obnovi(null, Paket.ORGANIZATOR_PRO);
+
+        assertFalse(dto.preklicana());
+        assertEquals(Paket.ORGANIZATOR_PLUS, dto.paket(), "novi paket zacne z naslednjim obdobjem");
+        assertEquals(Paket.ORGANIZATOR_PRO, dto.naslednjiPaket());
+        verify(stripe, never()).nadgradiPaket(anyString(), org.mockito.ArgumentMatchers.any(), anyDouble());
+    }
+
+    @Test
+    void obnovaBrezSpremembePaketaNeKlicePrehoda() {
+        Uporabnik u = organizator("obnova-isti-paket@test");
+        organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.PREKLICANA, 169.99);
+        prijava(u);
+        when(stripe.nastaviPreklicOKoncu(anyString(), eq(false)))
+                .thenReturn(stanjeLetno(169.99, false, null));
+
+        NarocninaDto dto = storitev.obnovi(null, Paket.ORGANIZATOR_PLUS);
+
+        assertNull(dto.naslednjiPaket());
+        verify(stripe, never()).zabeleziPrehod(anyString(), org.mockito.ArgumentMatchers.any(), anyDouble());
+    }
+
+    /* Brezplacno leto Pro obstojecih organizatorjev nima Stripa: vmesnik po tem
+       polju skrije dejanja, ki bi zavrnila. */
+    @Test
+    void pregledPoveAliNarocninoVodiStripe() {
+        Uporabnik s = organizator("s-stripom@test");
+        organizatorska(s, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        prijava(s);
+        assertTrue(storitev.pregled().upravljiva());
+
+        Uporabnik brez = organizator("brez-stripa@test");
+        Narocnina n = new Narocnina(brez, Paket.ORGANIZATOR_PRO);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
+        prijava(brez);
+        assertFalse(storitev.pregled().upravljiva());
+    }
+
     // ---------- Webhook: isto stanje, druga pot ----------
 
     /* Ob izvedenem preklopu Stripe zamenja postavko urnika: cikel in cena se
@@ -443,6 +654,84 @@ class UpravljanjeNarocnineStoritevTest {
         assertNull(narocninaRepozitorij.findByUporabnikId(u.getId()).orElseThrow().getNaslednjiCiklus());
     }
 
+
+    // ---------- Webhook: znizanje paketa ----------
+
+    private static final long OBDOBJE_DO = 1791799200L;
+    private static final long LETO = 365L * 24 * 3600;
+
+    private Narocnina znizanjeVCakanju(String prijavnoIme) {
+        Uporabnik u = organizator(prijavnoIme);
+        Narocnina n = organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        n.setTrenutnoObdobjeDo(LocalDateTime.ofInstant(Instant.ofEpochSecond(OBDOBJE_DO), ZoneId.systemDefault()));
+        n.setNaslednjiPaket(Paket.ORGANIZATOR_BASIC);
+        return narocninaRepozitorij.save(n);
+    }
+
+    /* Urnik ob obnovi zamenja postavko in Stripe isti dogodek poslje z novim
+       obdobjem: znizanje je izvedeno, paket se zamenja in urnik sprosti. */
+    @Test
+    void webhookNaMejiObdobjaUveljaviZnizanjePaketa() {
+        Narocnina n = znizanjeVCakanju("webhook-znizanje@test");
+
+        String telo = dogodekPosodobitve(STRIPE_ID, false, "year", 8999, "sub_sched_1",
+                OBDOBJE_DO, OBDOBJE_DO + LETO);
+        placila.obdelajDogodek(telo, podpisi(telo));
+
+        Narocnina po = narocninaRepozitorij.findByUporabnikId(n.getUporabnik().getId()).orElseThrow();
+        assertEquals(Paket.ORGANIZATOR_BASIC, po.getPaket());
+        assertNull(po.getNaslednjiPaket(), "znizanje je izvedeno, namera odpade");
+        assertEquals(89.99, po.getCenaObSklenitvi());
+        verify(stripe).sprostiUrnik(STRIPE_ID);
+    }
+
+    /* Dokler obdobje traja, dogodek (npr. Stripov urnik, ki je ravnokar nastal)
+       znizanja ne izvede in ne pobere zabelezene namere. */
+    @Test
+    void webhookMedObdobjemZnizanjaNeIzvede() {
+        Narocnina n = znizanjeVCakanju("webhook-znizanje-caka@test");
+
+        String telo = dogodekPosodobitve(STRIPE_ID, false, "year", 16999, "sub_sched_1",
+                OBDOBJE_DO - LETO, OBDOBJE_DO);
+        placila.obdelajDogodek(telo, podpisi(telo));
+
+        Narocnina po = narocninaRepozitorij.findByUporabnikId(n.getUporabnik().getId()).orElseThrow();
+        assertEquals(Paket.ORGANIZATOR_PLUS, po.getPaket());
+        assertEquals(Paket.ORGANIZATOR_BASIC, po.getNaslednjiPaket());
+        verify(stripe, never()).sprostiUrnik(anyString());
+    }
+
+    /* Urnika ni vec (uporabnik je znizanje umaknil): namera odpade tudi, ce je
+       ostala zapisana, ker je klic do nas zamudil. */
+    @Test
+    void webhookBrezUrnikaPocistiZnizanje() {
+        Narocnina n = znizanjeVCakanju("webhook-znizanje-umik@test");
+
+        String telo = dogodekPosodobitve(STRIPE_ID, false, "year", 16999, null,
+                OBDOBJE_DO - LETO, OBDOBJE_DO);
+        placila.obdelajDogodek(telo, podpisi(telo));
+
+        Narocnina po = narocninaRepozitorij.findByUporabnikId(n.getUporabnik().getId()).orElseThrow();
+        assertEquals(Paket.ORGANIZATOR_PLUS, po.getPaket());
+        assertNull(po.getNaslednjiPaket());
+    }
+
+    /* Navadna obnova brez zabelezenega znizanja paketa ne spremeni. */
+    @Test
+    void webhookOObnoviBrezZnizanjaPaketaNeSpremeni() {
+        Uporabnik u = organizator("webhook-obnova@test");
+        Narocnina n = organizatorska(u, Paket.ORGANIZATOR_PLUS, StatusNarocnine.AKTIVNA, 169.99);
+        n.setTrenutnoObdobjeDo(LocalDateTime.ofInstant(Instant.ofEpochSecond(OBDOBJE_DO), ZoneId.systemDefault()));
+        narocninaRepozitorij.save(n);
+
+        String telo = dogodekPosodobitve(STRIPE_ID, false, "year", 16999, null,
+                OBDOBJE_DO, OBDOBJE_DO + LETO);
+        placila.obdelajDogodek(telo, podpisi(telo));
+
+        assertEquals(Paket.ORGANIZATOR_PLUS,
+                narocninaRepozitorij.findByUporabnikId(u.getId()).orElseThrow().getPaket());
+    }
+
     // ---------- Pomozno ----------
 
     private static StripeNarocnine.Stanje stanje(CiklusPlacila ciklus, boolean preklic, String urnik) {
@@ -450,6 +739,23 @@ class UpravljanjeNarocnineStoritevTest {
                 LocalDateTime.of(2026, 9, 12, 10, 0),
                 LocalDateTime.of(2026, 10, 12, 10, 0),
                 ciklus, ciklus == CiklusPlacila.LETNO ? 53.49 : 4.99, preklic, urnik);
+    }
+
+    private static StripeNarocnine.Stanje stanjeLetno(double cena, boolean preklic, String urnik) {
+        return new StripeNarocnine.Stanje(
+                LocalDateTime.now().minusDays(350), LocalDateTime.now().plusDays(15),
+                CiklusPlacila.LETNO, cena, preklic, urnik);
+    }
+
+    private Narocnina organizatorska(Uporabnik u, Paket paket, StatusNarocnine status, double cena) {
+        Narocnina n = new Narocnina(u, paket);
+        n.setCiklus(CiklusPlacila.LETNO);
+        n.setStatus(status);
+        n.setCenaObSklenitvi(cena);
+        n.setStripeNarocninaId(STRIPE_ID);
+        n.setObdobjeOd(LocalDateTime.now().minusDays(350));
+        n.setTrenutnoObdobjeDo(LocalDateTime.now().plusDays(15));
+        return narocninaRepozitorij.save(n);
     }
 
     private Uporabnik igralec(String prijavnoIme) {

@@ -34,8 +34,11 @@ import type {
   NapovedTekmeDto,
   NarocninaCiklusVnos,
   NarocninaDto,
+  NarocninaObnovaVnos,
+  NarocninaPaketVnos,
   NeaktivnostPorociloDto,
   OrganizatorPregledDto,
+  Paket,
   ParRazporedaDto,
   PreracunPorociloDto,
   PostavaVnos,
@@ -60,6 +63,7 @@ import type {
   RegistracijaVnos,
   RocniRazporedVnos,
   SpremembaGeslaVnos,
+  SpremembaPaketaDto,
   SrecanjeDto,
   SrecanjePodrobnoDto,
   StatistikaTekmovanjaDto,
@@ -230,14 +234,19 @@ export const narocninaApi = {
   pregled: () => api.vrni<NarocninaDto>('/narocnina'),
   /* Preklic ob koncu obdobja: Premium velja do konca plačanega časa. */
   preklici: () => api.objavi<NarocninaDto>('/narocnina/preklic'),
-  /* Umik preklica; izbran cikel, drugačen od tekočega, se zabeleži kot
-     preklop ob obnovi. */
-  obnovi: (ciklus: CiklusPlacila | null) =>
-    api.objavi<NarocninaDto>('/narocnina/obnova', { ciklus } satisfies NarocninaCiklusVnos),
+  /* Umik preklica; izbran cikel, drugačen od tekočega (igralec), oz. izbran
+     drug paket (organizator) se zabeleži kot sprememba ob obnovi. */
+  obnovi: (vnos: NarocninaObnovaVnos = {}) => api.objavi<NarocninaDto>('/narocnina/obnova', vnos),
   /* Preklop mesečno ↔ letno; začne veljati ob naslednji obnovi. */
   preklopi: (ciklus: CiklusPlacila) =>
     api.posodobi<NarocninaDto>('/narocnina/preklop', { ciklus } satisfies NarocninaCiklusVnos),
   razveljaviPreklop: () => api.izbrisi<NarocninaDto>('/narocnina/preklop'),
+  /* Zamenjava organizatorskega paketa: višji velja takoj (Stripe zaračuna
+     sorazmerno doplačilo), nižji ob obnovi. */
+  zamenjajPaket: (paket: Paket) =>
+    api.posodobi<SpremembaPaketaDto>('/narocnina/paket', { paket } satisfies NarocninaPaketVnos),
+  /* Umik zabeleženega znižanja paketa. */
+  razveljaviPrehod: () => api.izbrisi<NarocninaDto>('/narocnina/paket'),
 }
 
 /* Javni podatki za oglas Igralec Premium. Račun (klub) strežnik prebere iz glave
