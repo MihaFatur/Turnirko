@@ -172,7 +172,7 @@ export function EkipaLigeOkno({ liga, idEkipa, srecanja, onZapri }: Lastnosti) {
   return (
     <ModalnoOkno
       naslov={ime}
-      nadnaslov={vrstica ? `${vrstica.mesto}. mesto · ${vrstica.tocke} ${tockTekst(vrstica.tocke)}` : undefined}
+      podnaslov={vrstica ? `${vrstica.mesto}. mesto · ${vrstica.tocke} ${tockTekst(vrstica.tocke)}` : undefined}
       siroko
       onZapri={onZapri}
     >
@@ -276,9 +276,12 @@ function KaderEkipe({ idEkipa }: { idEkipa: number }) {
 
   return (
     <section className="ekipa-okno__sklop">
-      <div className="liga__kader-glava">
+      {/* Glava je mreža istih stolpcev kot vrstice, zato oznaka stoji nad
+          svojimi številkami. */}
+      <div className="liga__kader-glava ekipa-okno__kader-glava">
         <h3 className="liga__kader-naslov">Kader</h3>
-        <span className="sekcija__meta">rating · score</span>
+        <span className="sekcija__meta">Rating</span>
+        <span className="sekcija__meta">Score</span>
       </div>
       {kader.isPending && <p className="obvestilo">Nalaganje kadra …</p>}
       <NapakaPoizvedbe poizvedba={kader} kaj="kadra" />

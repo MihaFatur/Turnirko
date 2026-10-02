@@ -9,6 +9,9 @@ interface Lastnosti {
   naslov: string
   /* Mono nadnaslov nad naslovom (npr. "Turnirko" nad "Prijava"). */
   nadnaslov?: string
+  /* Mono vrstica pod naslovom, kadar je naslov ime in vrstica njegovo stanje
+     (ekipa lige: "2. mesto · 30 točk"). */
+  podnaslov?: string
   /* Nepovratno dejanje: crta pod naslovom je rjasta namesto crne. */
   nevarno?: boolean
   /* Sirse okno za obrazce z vec stolpci. */
@@ -26,6 +29,7 @@ interface Lastnosti {
 export function ModalnoOkno({
   naslov,
   nadnaslov,
+  podnaslov,
   nevarno,
   siroko,
   razdeljeno,
@@ -106,6 +110,7 @@ export function ModalnoOkno({
               <h2>
                 {nadnaslov && <span className="modal__nad">{nadnaslov}</span>}
                 {naslov}
+                {podnaslov && <span className="modal__pod">{podnaslov}</span>}
               </h2>
               {/* Ikon v vmesniku ni; pomen kriza nosi aria-label. */}
               <button type="button" className="modal__zapri" onClick={onZapri} aria-label="Zapri">

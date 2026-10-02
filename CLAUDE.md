@@ -1907,7 +1907,8 @@
   `.naslov-mobi__pod`) — izrecna odločitev lastnika in zavestna izjema od
   para nadnaslov/naslov iz DESIGN.md. Glava ne nosi vrstice »10 ekip ·
   dvokrožno« (sistem je v Pravilih, potek v napredku), piramida se imenuje
-  »Piramida lig« in brez kategorije, kader ima oznako »rating · score«. Na
+  »Piramida lig« in brez kategorije, kader (v oknu ekipe) ima stolpca z
+  oznakama »Rating« in »Score«, vsaka desno nad svojimi številkami. Na
   seznamu lig stoji samo ime sistema (`imeSistema`: »SNTL« brez sestave v
   oklepaju); celoten opis ostane v obrazcu in pravilih.
 - **Klik na ekipo na lestvici lige odpre okno ekipe** (`komponente/EkipaLigeOkno`,
@@ -1934,6 +1935,8 @@
     neodigrano s preteklim terminom je zamujen vpis in bi zavajalo.
   - Na telefonu je okno cel zaslon (kot okno z merili), na namizju stolpec z
     mejo v višini zaslona — v obeh primerih drsi samo telo, ime in križec ostaneta.
+    Glava: ime ekipe zgoraj, »2. mesto · 30 točk« pod njim (`ModalnoOkno
+    podnaslov`) — odločitev lastnika.
 - **Končnica lige ima svoj pogled** (`KoncnicaLige`): na namizju preklop
   »Lestvica / Končnica« nad lestvico, na telefonu zavihek; liga samo s
   končnico (kvalifikacije med ligami) kaže serije kar na strani. Razpored

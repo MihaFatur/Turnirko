@@ -2269,6 +2269,17 @@ input[type='radio'] {
   color: var(--barva-crnilo-3);
 }
 
+/* Mono vrstica pod naslovom okna (stanje imenovanega: "2. mesto · 30 tock").
+   Glava poravna kriz po prvi vrstici naslova, zato ostane ob imenu. */
+.modal__pod {
+  display: block;
+  margin-top: 6px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
 /* Nepovratno dejanje: glava dobi rjasto crto namesto crne. */
 .modal--nevarno .modal__glava {
   border-bottom-color: var(--barva-negativna);
@@ -8788,6 +8799,18 @@ a.domov__lestvica-vrstica--jaz {
   gap: var(--r4);
 }
 
+/* Glava kadra je mreza istih stolpcev kot .liga__kader-vrstica: "Rating"
+   stoji desno poravnan nad ratingi, "Score" nad bilancami. */
+.ekipa-okno__kader-glava {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 88px 88px;
+  gap: var(--r2);
+}
+
+.ekipa-okno__kader-glava .liga__kader-naslov {
+  grid-column: 1 / 3;
+}
+
 .ekipa-okno__seznam {
   list-style: none;
   margin: 0;
@@ -8938,6 +8961,11 @@ a.ekipa-okno__srecanje:hover {
 
   .modal:has(.ekipa-okno) .modal__telo {
     padding: var(--r2);
+  }
+
+  .ekipa-okno__kader-glava {
+    grid-template-columns: 28px minmax(0, 1fr) 64px 64px;
+    gap: var(--r1);
   }
 
   /* Vrstica brez stranskih odmikov - pri 375 px gre vsak piksel vrstici s
