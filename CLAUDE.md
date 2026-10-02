@@ -978,12 +978,12 @@
   števila tekem ni. Posamične tekme in dvojice sta **ločena seznama** (izida
   para ni mogoče pripisati posamezniku — isto pravilo kot pri ratingu), dvojica pa
   je **neurejen par**: ista igralca so ista dvojica doma in v gosteh.
-- **Kader pod vrstico lestvice je razvrščen po izkupičku, kader za postavo ne.**
+- **Kader v oknu ekipe (klik na lestvici) je razvrščen po izkupičku, kader za postavo ne.**
   `LigaStoritev.kader` (`GET /lige/ekipe/{id}/kader`) vrne igralce po **zmagah
   za to ekipo v tej ligi** navzdol, ob izenačenju po manj porazih; ostalo
   razreši stabilnost razvrščanja, ki ohrani organizatorjev vrstni red in
   abecedo iz `KaderEkipeRepozitorij.najdiZaEkipo` (v pripravi so bilance 0 : 0,
-  zato je izpis tam nespremenjen). Vprašanje odprte vrstice lestvice je »kdo
+  zato je izpis tam nespremenjen). Vprašanje kadra v oknu ekipe je »kdo
   ekipo nosi«. `SrecanjeStoritev.kader` (kadra v `SrecanjePodrobnoDto`) te
   razvrstitve **ne deli** — tam mesta A/B/C sledijo organizatorjevemu vrstnemu
   redu in bi drugačen vrstni red premešal postavo.
@@ -1910,6 +1910,30 @@
   »Piramida lig« in brez kategorije, kader ima oznako »rating · score«. Na
   seznamu lig stoji samo ime sistema (`imeSistema`: »SNTL« brez sestave v
   oklepaju); celoten opis ostane v obrazcu in pravilih.
+- **Klik na ekipo na lestvici lige odpre okno ekipe** (`komponente/EkipaLigeOkno`,
+  razdelek »Okno ekipe lige« v `slog.css`; oktober 2026 — prej je vrstica kader
+  razprla pod sabo). Okno je za igralca te ekipe: kader in **vsa srečanja ekipe v
+  ligi na enem mestu**. Pravila, ki jih ne razbij:
+  - **Okno je v naslovu** (`/lige/5?ekipa=12`): povezavo si ekipa deli, gumb nazaj
+    (kretnja na telefonu) okno zapre. Odprtje doda zapis v zgodovino (`state
+    ekipaSStrani`), zaprtje se vrne nanj; kdor pride naravnost po povezavi, mu
+    zaprtje parameter le pobriše (korak nazaj bi zapustil stran). Parameter
+    ekipe, ki v ligi ne igra, se prezre.
+  - **Srečanja okno dobi od strani** (redni del in končnica, ista poizvedba, ki se
+    med večerom osvežuje); strežnik vpraša samo po kadru. Zaledje za okno nima
+    nove poti.
+  - **Vrstni red je po DATUMU** (prestavljeno srečanje ne premakne kola), končnica
+    za rednim delom; če kateremu srečanju termin manjka, velja vrstni red kol —
+    mešano merilo ne bi urejalo po nobenem.
+  - **Z vidika ekipe**: »doma / v gosteh«, nasprotnik, izid »naše : njihove« z
+    znakom Z/N/P (`izidZaEkipo`, isto merilo kot forma na lestvici). Srečanje v
+    teku pokaže sprotni izid z oznako »V teku«.
+  - **Prosto kolo je vrstica** (liga z lihim številom ekip): v razporedu je samo
+    odsotnost, igralec pa mora vedeti, da tisti dan ne igra.
+  - **»Naslednje«** je prvo srečanje v `RAZPORED`, ki mu termin ni mimo —
+    neodigrano s preteklim terminom je zamujen vpis in bi zavajalo.
+  - Na telefonu je okno cel zaslon (kot okno z merili), na namizju stolpec z
+    mejo v višini zaslona — v obeh primerih drsi samo telo, ime in križec ostaneta.
 - **Končnica lige ima svoj pogled** (`KoncnicaLige`): na namizju preklop
   »Lestvica / Končnica« nad lestvico, na telefonu zavihek; liga samo s
   končnico (kvalifikacije med ligami) kaže serije kar na strani. Razpored

@@ -3,14 +3,15 @@
    Glava strani nosi stanje lige (značka, naslednje kolo, napredek) in dejanji;
    pravila so se z nje umaknila v modalno okno, ker so referenca in ne to, kar
    gledalec ob prihodu išče. Sledijo piramida sezone (kam liga vodi in od kod
-   nanjo napredujejo), lestvica s formo in razširljivim kadrom ter razpored, po
-   katerem se lista po kolih namesto izpisa vseh kol naenkrat.
+   nanjo napredujejo), lestvica s formo (klik na ekipo odpre okno z njenim
+   kadrom in srečanji) ter razpored, po katerem se lista po kolih namesto
+   izpisa vseh kol naenkrat.
 
    Postavitev mora zdržati lige različnih velikosti (4 do 16+ ekip), povezane in
    samostojne lige ter ligo v pripravi (takrat lestvice in razporeda še ni in se
    sekciji ne izrišeta prazni). */
-import { Fragment, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
@@ -23,6 +24,7 @@ import {
   GlavaZavihki,
   useNazaj,
 } from '../komponente/GlavaTelefona'
+import { EkipaLigeOkno, izidZaEkipo, type IzidEkipe } from '../komponente/EkipaLigeOkno'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { IzbirnikIgralca } from '../komponente/IzbirnikIgralca'
 import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
@@ -81,7 +83,6 @@ export function LigaStran() {
   const [faza, nastaviFazo] = useState<Faza>('REDNI')
   /* null = kola še ni izbral človek; takrat velja privzetek (prvo neodigrano). */
   const [rocnoKolo, nastaviKolo] = useState<number | null>(null)
-  const [odprtaEkipa, nastaviOdprtoEkipo] = useState<number | null>(null)
   const [pravilaOdprta, nastaviPravilaOdprta] = useState(false)
   const [ekipeOdprte, nastaviEkipeOdprte] = useState(false)
   const [obrazecOdprt, nastaviObrazecOdprt] = useState(false)
@@ -107,6 +108,39 @@ export function LigaStran() {
   const { jePrijavljen, spremljam, preklopi } = useSpremljanjeLig()
 
   const odjemalec = useQueryClient()
+
+  /* Okno ekipe živi v naslovu (?ekipa=12): igralec si povezavo do srečanj
+     svoje ekipe deli v skupini ekipe, gumb nazaj (na telefonu kretnja) pa
+     okno zapre in ne odpelje s strani. Zato odprtje doda zapis v zgodovino,
+     zaprtje pa se vrne nanj - razen kadar je gledalec prišel naravnost po
+     povezavi z ?ekipa=; tam bi korak nazaj zapustil stran, zato se parameter
+     samo pobriše. */
+  const [naslov, nastaviNaslov] = useSearchParams()
+  const lokacija = useLocation()
+  const navigiraj = useNavigate()
+  const ekipaIzNaslova = Number(naslov.get('ekipa'))
+  const odprtaEkipa =
+    Number.isInteger(ekipaIzNaslova) && ekipaIzNaslova > 0 ? ekipaIzNaslova : null
+  /* Escape in klik na zastor lahko prideta dvakrat, preden zgodovina dohiti
+     prvi korak nazaj - drugi bi odpeljal s strani. */
+  const zaprtZapis = useRef<string | null>(null)
+
+  const odpriEkipo = (idEkipa: number) => {
+    const nov = new URLSearchParams(naslov)
+    nov.set('ekipa', String(idEkipa))
+    nastaviNaslov(nov, { state: { ekipaSStrani: true } })
+  }
+  const zapriEkipo = () => {
+    if (zaprtZapis.current === lokacija.key) return
+    zaprtZapis.current = lokacija.key
+    if ((lokacija.state as { ekipaSStrani?: boolean } | null)?.ekipaSStrani) {
+      navigiraj(-1)
+      return
+    }
+    const nov = new URLSearchParams(naslov)
+    nov.delete('ekipa')
+    nastaviNaslov(nov, { replace: true })
+  }
 
   /* Razveljavitev razporeda vrne ligo v pripravo — ekipe in kader ostanejo,
      srečanja (in z njimi termini kol) pa gredo. Kavelj mora stati nad zgodnjimi
@@ -183,8 +217,13 @@ export function LigaStran() {
      ena sama vrstica z eno ligo ne pove nič. */
   const kaziPiramido = nivojiPiramide.length > 1 || (nivojiPiramide[0]?.lige.length ?? 0) > 1
 
-  const razsiriKader = (idEkipa: number) =>
-    nastaviOdprtoEkipo(odprtaEkipa === idEkipa ? null : idEkipa)
+  /* Okno se izriše le za ekipo, ki v ligi res igra - parameter v naslovu je
+     lahko star ali vpisan na roke. */
+  const ekipaVLigi =
+    odprtaEkipa != null &&
+    vsa.concat(tekmeKoncnice).some(
+      (s) => s.idEkipaDomaci === odprtaEkipa || s.idEkipaGost === odprtaEkipa,
+    )
 
   /* Okna so ista na obeh širinah - razlikuje se le, od kod se odprejo
      (na telefonu iz zavihka »Pravila« oz. menija »⋯«). */
@@ -220,6 +259,15 @@ export function LigaStran() {
             /* Spremenile so se lahko tudi nižje lige, zato cel seznam. */
             odjemalec.invalidateQueries({ queryKey: ['lige'] })
           }}
+        />
+      )}
+
+      {ekipaVLigi && odprtaEkipa != null && (
+        <EkipaLigeOkno
+          liga={l}
+          idEkipa={odprtaEkipa}
+          srecanja={srecanja.data ?? []}
+          onZapri={zapriEkipo}
         />
       )}
 
@@ -498,7 +546,7 @@ export function LigaStran() {
               srecanja={vsa}
               nivoji={nivojiPiramide}
               odprtaEkipa={odprtaEkipa}
-              onPreklopiKader={razsiriKader}
+              onOdpriEkipo={odpriEkipo}
             />
             {/* Osebni izkupički so drugo branje iste lige - zato zaprta sklopa
                 na dnu zavihka z lestvico in ne svoj zavihek. */}
@@ -787,7 +835,7 @@ export function LigaStran() {
                 srecanja={vsa}
                 nivoji={nivojiPiramide}
                 odprtaEkipa={odprtaEkipa}
-                onPreklopiKader={razsiriKader}
+                onOdpriEkipo={odpriEkipo}
               />
             ) : (
               <KoncnicaLige liga={l} smem={smem} />
@@ -1088,8 +1136,9 @@ interface LestvicaLastnosti {
   liga: LigaDto
   srecanja: SrecanjeDto[]
   nivoji: PiramidaNivo[]
+  /* Ekipa, katere okno je odprto - njena vrstica ostane označena. */
   odprtaEkipa: number | null
-  onPreklopiKader: (idEkipa: number) => void
+  onOdpriEkipo: (idEkipa: number) => void
 }
 
 function Lestvica({
@@ -1098,7 +1147,7 @@ function Lestvica({
   srecanja,
   nivoji,
   odprtaEkipa,
-  onPreklopiKader,
+  onOdpriEkipo,
 }: LestvicaLastnosti) {
   const lestvica = useQuery({
     queryKey: ['lestvica', idLiga],
@@ -1115,7 +1164,8 @@ function Lestvica({
       <div className="tabela-ovoj">
         <table className="tabela liga__lestvica">
           <caption className="samo-za-bralnik">
-            Lestvica lige: ekipe po osvojenih točkah. Klik na vrstico odpre kader ekipe.
+            Lestvica lige: ekipe po osvojenih točkah. Klik na vrstico odpre kader in
+            srečanja ekipe.
           </caption>
           <thead>
             <tr>
@@ -1135,58 +1185,48 @@ function Lestvica({
             {lestvica.data.map((v) => {
               const odprta = odprtaEkipa === v.idEkipa
               return (
-                <Fragment key={v.idEkipa}>
-                  <tr
-                    className={vrsticaRazred(v, odprta)}
-                    onClick={() => onPreklopiKader(v.idEkipa)}
-                  >
-                    <td className="lestvica__mesto">{v.mesto}</td>
-                    <td>
-                      {/* Vrstica je klikljiva zaradi hitrosti, tipkovnica in
-                          bralnik zaslona pa potrebujeta pravi gumb; klik nanj
-                          zato ne sme še enkrat potovati do vrstice. */}
-                      <button
-                        type="button"
-                        className="lestvica__ekipa"
-                        aria-expanded={odprta}
-                        onClick={(dogodek) => {
-                          dogodek.stopPropagation()
-                          onPreklopiKader(v.idEkipa)
-                        }}
-                      >
-                        <span className="lestvica__ime">{v.ekipa}</span>
-                        <span className="lestvica__kader-oznaka">
-                          Kader {odprta ? '▴' : '▾'}
-                        </span>
-                      </button>
-                    </td>
-                    <td className="lestvica__stevilka lestvica__odigrane">{v.odigrane}</td>
-                    <td className="lestvica__stevilka lestvica__izkupicek lestvica__zmage">
-                      {v.zmage}
-                    </td>
-                    <td className="lestvica__stevilka lestvica__izkupicek">{v.neodlocene}</td>
-                    <td className="lestvica__stevilka lestvica__izkupicek lestvica__porazi">
-                      {v.porazi}
-                    </td>
-                    <td className="lestvica__stevilka lestvica__tekme">
-                      {v.dobljeneTekme}:{v.prejeteTekme}
-                    </td>
-                    <td className="lestvica__stevilka lestvica__nizi">
-                      {v.dobljeniNizi}:{v.prejetiNizi}
-                    </td>
-                    <td className="lestvica__forma-celica">
-                      <Forma znaki={forma(v.idEkipa, srecanja)} />
-                    </td>
-                    <td className="lestvica__rating">{v.tocke}</td>
-                  </tr>
-                  {odprta && (
-                    <tr className="lestvica__kader-vrsta">
-                      <td colSpan={10}>
-                        <Kader idEkipa={v.idEkipa} ekipa={v.ekipa} />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                <tr
+                  key={v.idEkipa}
+                  className={vrsticaRazred(v, odprta)}
+                  onClick={() => onOdpriEkipo(v.idEkipa)}
+                >
+                  <td className="lestvica__mesto">{v.mesto}</td>
+                  <td>
+                    {/* Vrstica je klikljiva zaradi hitrosti, tipkovnica in
+                        bralnik zaslona pa potrebujeta pravi gumb; klik nanj
+                        zato ne sme še enkrat potovati do vrstice. */}
+                    <button
+                      type="button"
+                      className="lestvica__ekipa"
+                      aria-haspopup="dialog"
+                      onClick={(dogodek) => {
+                        dogodek.stopPropagation()
+                        onOdpriEkipo(v.idEkipa)
+                      }}
+                    >
+                      <span className="lestvica__ime">{v.ekipa}</span>
+                      <span className="lestvica__kader-oznaka">Kader in tekme</span>
+                    </button>
+                  </td>
+                  <td className="lestvica__stevilka lestvica__odigrane">{v.odigrane}</td>
+                  <td className="lestvica__stevilka lestvica__izkupicek lestvica__zmage">
+                    {v.zmage}
+                  </td>
+                  <td className="lestvica__stevilka lestvica__izkupicek">{v.neodlocene}</td>
+                  <td className="lestvica__stevilka lestvica__izkupicek lestvica__porazi">
+                    {v.porazi}
+                  </td>
+                  <td className="lestvica__stevilka lestvica__tekme">
+                    {v.dobljeneTekme}:{v.prejeteTekme}
+                  </td>
+                  <td className="lestvica__stevilka lestvica__nizi">
+                    {v.dobljeniNizi}:{v.prejetiNizi}
+                  </td>
+                  <td className="lestvica__forma-celica">
+                    <Forma znaki={forma(v.idEkipa, srecanja)} />
+                  </td>
+                  <td className="lestvica__rating">{v.tocke}</td>
+                </tr>
               )
             })}
           </tbody>
@@ -1218,7 +1258,7 @@ function Lestvica({
    vrstico raztegnejo. Tu ostanejo mesto, ime, bilanca s formo in točke;
    podrobnosti so v zapisniku srečanja.
 
-   Ločenega gumba »Kader ▾« ni: vrstica je gumb in kader razpre pod sabo -
+   Ločenega gumba »Kader in tekme« ni: vrstica je gumb in odpre okno ekipe -
    dve zadetkovni površini v 390 px vrstici sta ena preveč. */
 function LestvicaMobi({
   idLiga,
@@ -1226,7 +1266,7 @@ function LestvicaMobi({
   srecanja,
   nivoji,
   odprtaEkipa,
-  onPreklopiKader,
+  onOdpriEkipo,
 }: LestvicaLastnosti) {
   const lestvica = useQuery({
     queryKey: ['lestvica', idLiga],
@@ -1256,38 +1296,36 @@ function LestvicaMobi({
             const odprta = odprtaEkipa === v.idEkipa
             const cona = v.cona ? v.cona.toLowerCase() : null
             return (
-              <Fragment key={v.idEkipa}>
-                <button
-                  type="button"
+              <button
+                key={v.idEkipa}
+                type="button"
+                className={
+                  'lestvica-mobi__vrstica lestvica-mobi__vrstica--ekipa' +
+                  (cona ? ` lestvica-mobi__vrstica--${cona}` : '') +
+                  (odprta ? ' lestvica-mobi__vrstica--odprta' : '')
+                }
+                aria-haspopup="dialog"
+                onClick={() => onOdpriEkipo(v.idEkipa)}
+              >
+                <span
                   className={
-                    'lestvica-mobi__vrstica lestvica-mobi__vrstica--ekipa' +
-                    (cona ? ` lestvica-mobi__vrstica--${cona}` : '') +
-                    (odprta ? ' lestvica-mobi__vrstica--odprta' : '')
+                    'lestvica-mobi__mesto lestvica-mobi__mesto--ekipa' +
+                    (cona ? ` lestvica-mobi__mesto--${cona}` : '')
                   }
-                  aria-expanded={odprta}
-                  onClick={() => onPreklopiKader(v.idEkipa)}
                 >
-                  <span
-                    className={
-                      'lestvica-mobi__mesto lestvica-mobi__mesto--ekipa' +
-                      (cona ? ` lestvica-mobi__mesto--${cona}` : '')
-                    }
-                  >
-                    {v.mesto}
+                  {v.mesto}
+                </span>
+                <span className="lestvica-mobi__ime">{v.ekipa}</span>
+                <span className="lestvica-mobi__izkupicek">
+                  <span className="lestvica-mobi__bilanca">
+                    {liga.dovoljenoNeodloceno
+                      ? `${v.zmage}-${v.neodlocene}-${v.porazi}`
+                      : `${v.zmage}-${v.porazi}`}
                   </span>
-                  <span className="lestvica-mobi__ime">{v.ekipa}</span>
-                  <span className="lestvica-mobi__izkupicek">
-                    <span className="lestvica-mobi__bilanca">
-                      {liga.dovoljenoNeodloceno
-                        ? `${v.zmage}-${v.neodlocene}-${v.porazi}`
-                        : `${v.zmage}-${v.porazi}`}
-                    </span>
-                    <Forma znaki={forma(v.idEkipa, srecanja)} />
-                  </span>
-                  <span className="lestvica-mobi__tocke">{v.tocke}</span>
-                </button>
-                {odprta && <Kader idEkipa={v.idEkipa} ekipa={v.ekipa} />}
-              </Fragment>
+                  <Forma znaki={forma(v.idEkipa, srecanja)} />
+                </span>
+                <span className="lestvica-mobi__tocke">{v.tocke}</span>
+              </button>
             )
           })}
         </div>
@@ -1334,9 +1372,7 @@ function ciljneLige(
   }
 }
 
-type ZnakForme = 'Z' | 'N' | 'P'
-
-const OZNAKE_FORME: Record<ZnakForme, string> = {
+const OZNAKE_FORME: Record<IzidEkipe, string> = {
   Z: 'zmaga',
   N: 'neodločeno',
   P: 'poraz',
@@ -1344,7 +1380,7 @@ const OZNAKE_FORME: Record<ZnakForme, string> = {
 
 /* Forma ekipe: do pet njenih zadnjih končanih srečanj, najstarejše levo. Šteje
    izid srečanja (dobljene tekme), ne posamične tekme. */
-function forma(idEkipa: number, srecanja: SrecanjeDto[]): ZnakForme[] {
+function forma(idEkipa: number, srecanja: SrecanjeDto[]): IzidEkipe[] {
   return srecanja
     .filter(
       (s) =>
@@ -1352,17 +1388,10 @@ function forma(idEkipa: number, srecanja: SrecanjeDto[]): ZnakForme[] {
     )
     .sort((a, b) => a.kolo - b.kolo)
     .slice(-5)
-    .map((s) => {
-      const doma = s.idEkipaDomaci === idEkipa
-      const svoje = doma ? s.dobljeneDomaci : s.dobljeneGost
-      const tuje = doma ? s.dobljeneGost : s.dobljeneDomaci
-      if (svoje > tuje) return 'Z'
-      if (svoje < tuje) return 'P'
-      return 'N'
-    })
+    .map((s) => izidZaEkipo(s, idEkipa))
 }
 
-function Forma({ znaki }: { znaki: ZnakForme[] }) {
+function Forma({ znaki }: { znaki: IzidEkipe[] }) {
   if (znaki.length === 0) return null
   return (
     <span className="lestvica__forma">
@@ -1375,37 +1404,6 @@ function Forma({ znaki }: { znaki: ZnakForme[] }) {
         </span>
       ))}
     </span>
-  )
-}
-
-/* Kader se naloži šele, ko vrstico odpreš (poizvedba se ne sproži prej).
-
-   Vrstni red je strežnikov (LigaStoritev.kader): največ zmag za to ekipo v tej
-   ligi na vrhu, zato je številka pred imenom mesto po izkupičku in ne
-   organizatorjev vrstni red. */
-function Kader({ idEkipa, ekipa }: { idEkipa: number; ekipa: string }) {
-  const kader = useQuery({ queryKey: ['kader', idEkipa], queryFn: () => ligeApi.kader(idEkipa) })
-
-  return (
-    <div className="liga__kader">
-      <div className="liga__kader-glava">
-        <span className="liga__kader-naslov">Kader — {ekipa}</span>
-        <span className="sekcija__meta">rating · score</span>
-      </div>
-      {kader.isPending && <p className="obvestilo">Nalaganje kadra …</p>}
-      <NapakaPoizvedbe poizvedba={kader} kaj="kadra" />
-      {kader.data && kader.data.length === 0 && <p className="obvestilo">Kader je prazen.</p>}
-      {kader.data?.map((k, i) => (
-        <div key={k.id} className="liga__kader-vrstica">
-          <span className="liga__kader-mesto">{i + 1}.</span>
-          <span className="liga__kader-ime">{k.polnoIme}</span>
-          <span className="liga__kader-rating">{k.rating ?? '—'}</span>
-          <span className="liga__kader-bilanca">
-            {k.zmage} : {k.porazi}
-          </span>
-        </div>
-      ))}
-    </div>
   )
 }
 

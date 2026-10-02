@@ -5316,8 +5316,8 @@ td.nizi-okno__niz--dobljen {
   box-shadow: inset 4px 0 0 var(--barva-negativna);
 }
 
-/* Ime ekipe je gumb, ker vrstica razpre kader: videti mora kot besedilo, delati
-   pa kot dejanje (tipkovnica, bralnik zaslona). */
+/* Ime ekipe je gumb, ker vrstica odpre okno ekipe: videti mora kot besedilo,
+   delati pa kot dejanje (tipkovnica, bralnik zaslona). */
 .lestvica__ekipa {
   display: flex;
   align-items: baseline;
@@ -5345,7 +5345,8 @@ td.nizi-okno__niz--dobljen {
   white-space: nowrap;
 }
 
-/* Odprta vrstica: mehka podlaga in krepko ime - kader pod njo spada k njej. */
+/* Vrstica ekipe, katere okno je odprto: mehka podlaga in krepko ime - po
+   zaprtju okna gledalec vidi, od kod je prišel. */
 .lestvica__vrsta--odprta {
   background: var(--barva-glavna-mehko);
 }
@@ -8693,7 +8694,7 @@ a.domov__lestvica-vrstica--jaz {
   font-size: var(--tip-uvod);
 }
 
-/* Cela vrstica je klikljiva (razpre kader), zato tudi kazalec pove, da je. */
+/* Cela vrstica je klikljiva (odpre okno ekipe), zato tudi kazalec pove, da je. */
 .liga__lestvica tbody tr {
   cursor: pointer;
 }
@@ -8702,11 +8703,7 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo);
 }
 
-/* --- Kader pod vrstico lestvice --- */
-
-.lestvica__kader-vrsta td {
-  padding: 0;
-}
+/* --- Kader ekipe (okno ekipe lige, urejanje kadra) --- */
 
 /* Blok kadra je oznacena vrstica podatkov: 4 px modra crta in mehka podlaga. */
 .liga__kader {
@@ -8767,6 +8764,218 @@ a.domov__lestvica-vrstica--jaz {
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--barva-crnilo);
+}
+
+/* --- Okno ekipe lige (EkipaLigeOkno): kader in srecanja ekipe --- */
+
+/* Okno je stolpec z mejo v visini zaslona: ime ekipe in krizec ostaneta na
+   vrhu, drsi samo telo. Sezona z dvajsetimi srecanji je visja od zaslona in
+   brez tega bi zapiranje pomenilo drsenje nazaj na vrh. */
+.modal:has(.ekipa-okno) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--r8) - var(--r5));
+}
+
+.modal:has(.ekipa-okno) .modal__telo {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ekipa-okno {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r4);
+}
+
+.ekipa-okno__seznam {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Srecanje z vidika ekipe: zgoraj mono vrstica s kolom in terminom, pod njo
+   kje se igra in nasprotnik; desno cez obe vrstici izid in znak izida. Ista
+   zgradba na obeh sirinah - samo stolpci se zozijo. */
+.ekipa-okno__srecanje {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 24px;
+  grid-template-areas:
+    'kdaj izid znak'
+    'nasprotnik izid znak';
+  align-items: center;
+  column-gap: var(--r2);
+  row-gap: 4px;
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--barva-crta);
+  color: var(--barva-crnilo);
+}
+
+a.ekipa-okno__srecanje:hover {
+  text-decoration: none;
+  background: var(--barva-glavna-mehko);
+}
+
+/* Naslednje srecanje (ali tisto, ki poteka) je oznacena vrstica: 4 px modra
+   crta in mehka podlaga, isto kot blok kadra. */
+.ekipa-okno__srecanje--naslednje {
+  padding-left: 8px;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.ekipa-okno__kdaj {
+  grid-area: kdaj;
+  min-width: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Del vrstice (kolo, dan, ura) se ne lomi: prelom je samo med deli. */
+.ekipa-okno__del {
+  white-space: nowrap;
+}
+
+.ekipa-okno__oznaka {
+  font-weight: 600;
+  color: var(--barva-glavna-tekst);
+}
+
+.ekipa-okno__nasprotnik {
+  grid-area: nasprotnik;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Doma / v gosteh je stolpec stalne sirine, da imena nasprotnikov stojijo
+   eno pod drugim. */
+.ekipa-okno__stran {
+  flex: none;
+  width: 72px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.ekipa-okno__ime {
+  min-width: 0;
+  font-size: var(--tip-vrstica);
+  overflow-wrap: anywhere;
+}
+
+.ekipa-okno__izid {
+  grid-area: izid;
+  font: 600 var(--tip-vrstica) / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+  background: var(--barva-polnilo);
+  padding: 6px 0;
+}
+
+.ekipa-okno__izid--caka {
+  background: none;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
+}
+
+.ekipa-okno__znak-celica {
+  grid-area: znak;
+  display: flex;
+  justify-content: center;
+}
+
+/* Znak izida z vidika ekipe. Barvi forme na lestvici; crka ostane tudi na
+   telefonu (forma jo tam skrije, ker je pet znakov v vrsti). */
+.ekipa-okno__znak {
+  display: inline-block;
+  width: 24px;
+  padding: 3px 0;
+  text-align: center;
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo-3);
+  font: 600 var(--tip-mono) / 1.2 var(--pisava-mono);
+}
+
+.ekipa-okno__znak--Z {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.ekipa-okno__znak--P {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+}
+
+/* Prosto kolo ni povezava: ekipa tisti dan ne igra. */
+.ekipa-okno__srecanje--prosto .ekipa-okno__nasprotnik {
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
+}
+
+/* Na telefonu je okno cel zaslon in ne skatla sredi njega (isto kot okno z
+   merili): seznam srecanj je dolg, krizec pa mora ostati pod palcem. */
+@media (max-width: 640px) {
+  .modal__zastor:has(.ekipa-okno) {
+    padding: 0;
+  }
+
+  .modal:has(.ekipa-okno) {
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: none;
+  }
+
+  .modal:has(.ekipa-okno) .modal__glava {
+    padding: var(--r2);
+  }
+
+  .modal:has(.ekipa-okno) .modal__telo {
+    padding: var(--r2);
+  }
+
+  /* Vrstica brez stranskih odmikov - pri 375 px gre vsak piksel vrstici s
+     terminom. Označena vrstica seže v rob okna, zato modra črta visi v
+     odmiku telesa, besedilo pa ostane poravnano z ostalimi. */
+  .ekipa-okno__srecanje {
+    grid-template-columns: minmax(0, 1fr) 56px 24px;
+    column-gap: 8px;
+    padding: 12px 0;
+  }
+
+  .ekipa-okno__srecanje--naslednje {
+    margin: 0 -12px;
+    padding: 12px 12px 12px 8px;
+  }
+
+  /* 12 px ostane (najmanjša velikost), oži se samo razmik črk: tako gre
+     »3. kolo · ned, 12. okt · 18.00« pri 390 px še v eno vrsto. */
+  .ekipa-okno__kdaj {
+    letter-spacing: 0.04em;
+  }
+
+  .ekipa-okno__stran {
+    width: 64px;
+    letter-spacing: 0.04em;
+  }
+
+  .ekipa-okno__nasprotnik {
+    gap: 8px;
+  }
+
+  .ekipa-okno__ime {
+    font-size: 16px;
+  }
+
+  .ekipa-okno__izid {
+    font-size: var(--tip-telo);
+  }
 }
 
 /* --- Koncnica lige (serije po krogih) --- */
@@ -12584,17 +12793,6 @@ a.domov__lestvica-vrstica--jaz {
   font: 600 24px / 1 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-/* Kader pod odprto vrstico: pri 390 px se ime ekipe in mono opomba v eni
-   vrsti ne izideta, zato gre opomba pod naslov. */
-.lestvica-mobi .liga__kader-glava {
-  display: block;
-}
-
-.lestvica-mobi .liga__kader-naslov {
-  display: block;
-  font-size: var(--tip-telo);
 }
 
 /* Legenda cone: 11 px in 12 px vrzeli, da gresta obe postavki v eno vrsto. */
