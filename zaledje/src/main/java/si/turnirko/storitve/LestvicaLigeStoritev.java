@@ -175,17 +175,27 @@ public class LestvicaLigeStoritev {
             return SlovenskaAbeceda.primerjaj(x.ekipa, y.ekipa);
         });
 
+        /* Cone od roba navznoter: neposredno napredovanje, pod njim
+           kvalifikacije zanj; neposreden izpad, nad njim kvalifikacije za
+           obstanek. Pri premajhni ligi se cone prekrijejo - takrat obvelja
+           zgornja, ker je zgornji del lestvice tisti, ki ga gledalec bere. */
         int stEkip = vrstice.size();
         int mejaIzpada = stEkip - liga.getStIzpade() + 1; // mesto, od katerega naprej se izpade
+        int mejaKvalGor = liga.getStNapreduje() + liga.getStKvalifikacijeGor();
+        int mejaKvalDol = mejaIzpada - liga.getStKvalifikacijeDol();
         List<LestvicaEkipeDto> rezultat = new ArrayList<>();
         for (int i = 0; i < vrstice.size(); i++) {
             Vrstica v = vrstice.get(i);
             int mesto = i + 1;
             String cona = null;
-            if (liga.getStNapreduje() > 0 && mesto <= liga.getStNapreduje()) {
+            if (mesto <= liga.getStNapreduje()) {
                 cona = "NAPREDUJE";
+            } else if (mesto <= mejaKvalGor) {
+                cona = "KVALIFIKACIJE_GOR";
             } else if (liga.getStIzpade() > 0 && mesto >= mejaIzpada) {
                 cona = "IZPADE";
+            } else if (mesto >= mejaKvalDol) {
+                cona = "KVALIFIKACIJE_DOL";
             }
             rezultat.add(new LestvicaEkipeDto(
                     mesto, v.id, v.ekipa, v.klub,

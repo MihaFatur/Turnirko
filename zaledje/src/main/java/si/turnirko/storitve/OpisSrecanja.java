@@ -32,10 +32,7 @@ public final class OpisSrecanja {
             return s.getTekma().getDogodek().getIme() + " · " + ekipi;
         }
         if (s.jeKoncnica()) {
-            Integer ekip = s.getLiga().getKoncnicaEkip();
-            int krogov = ekip != null ? KoncnicaStoritev.steviloKrogov(ekip) : s.getSerija().getKrog();
-            return KoncnicaStoritev.opisTekme(s.getSerija().getKrog(), krogov, s.getTekmaVSeriji())
-                    + " · " + ekipi;
+            return KoncnicaStoritev.opisTekme(s) + " · " + ekipi;
         }
         return s.getKolo() + ". kolo · " + ekipi;
     }

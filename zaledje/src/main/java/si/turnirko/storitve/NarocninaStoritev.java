@@ -108,7 +108,7 @@ public class NarocninaStoritev {
     }
 
     public long steviloLigVSezoni(Long idUporabnik, LocalDate danes) {
-        return ligaRepozitorij.countByUstvarilIdAndUstvarjenObGreaterThanEqual(
+        return ligaRepozitorij.countByUstvarilIdAndUstvarjenObGreaterThanEqualAndKvalifikacijeVisjaIsNull(
                 idUporabnik, Sezona.zacetek(danes).atStartOfDay());
     }
 

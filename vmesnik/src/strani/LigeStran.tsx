@@ -299,7 +299,9 @@ export function LigeStran() {
                     {[
                       liga.sezona ? `sezona ${liga.sezona}` : null,
                       OZNAKE_SPOL_KATEGORIJA[liga.spolKategorija].toLowerCase(),
-                      liga.dvokrozno ? 'dvokrožno' : 'enokrožno',
+                      liga.idKvalifikacijeVisja != null
+                        ? 'kvalifikacije'
+                        : liga.dvokrozno ? 'dvokrožno' : 'enokrožno',
                     ]
                       .filter(Boolean)
                       .join(' · ')}
@@ -310,8 +312,10 @@ export function LigeStran() {
                 </span>
                 <span className="vrstica__mono">{imeSistema(liga.formatSrecanja)}</span>
                 <span className="vrstica__mono">
-                  {liga.stNapreduje > 0 || liga.stIzpade > 0
-                    ? `${liga.stNapreduje} ↑ · ${liga.stIzpade} ↓`
+                  {/* Kvalifikacijska mesta v oklepaju ob neposrednih: »2 (+1) ↑«. */}
+                  {liga.stNapreduje + liga.stKvalifikacijeGor > 0 || liga.stIzpade + liga.stKvalifikacijeDol > 0
+                    ? `${liga.stNapreduje}${liga.stKvalifikacijeGor > 0 ? ` (+${liga.stKvalifikacijeGor})` : ''} ↑ · `
+                      + `${liga.stIzpade}${liga.stKvalifikacijeDol > 0 ? ` (+${liga.stKvalifikacijeDol})` : ''} ↓`
                     : `na ${liga.steviloNizov} nizov`}
                 </span>
                 <ZnackaStatusa status={liga.status} />

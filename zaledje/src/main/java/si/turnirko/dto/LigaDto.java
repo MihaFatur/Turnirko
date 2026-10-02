@@ -51,6 +51,10 @@ public record LigaDto(
         String visjaLigaIme,
         int stNapreduje,
         int stIzpade,
+        // kvalifikacije (V41): koliko ekip tik pod napredovanjem oz. tik nad
+        // izpadom igra kvalifikacije s sosednjo ligo
+        int stKvalifikacijeGor,
+        int stKvalifikacijeDol,
         StatusTekmovanja status,
         int steviloEkip,
         // Napredek lige: koliko kol ima razpored in koliko jih je odigranih
@@ -74,7 +78,13 @@ public record LigaDto(
         Integer koncnicaZmag,
         // Vir (V27): uvozena liga je samo za branje - vmesnik urejanja ne
         // ponudi in pod naslovom pove, od kod so podatki.
-        VirTekmovanja vir
+        VirTekmovanja vir,
+        // Liga kvalifikacij (V41): med katerima ligama se igra; pri navadni
+        // ligi prazno.
+        Long idKvalifikacijeVisja,
+        String kvalifikacijeVisjaIme,
+        Long idKvalifikacijeNizja,
+        String kvalifikacijeNizjaIme
 ) {
 
     /* Liga brez razporeda (nova, urejena, prehodi) - kol se ni. */
@@ -95,11 +105,16 @@ public record LigaDto(
                         : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getId() : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getIme() : null,
-                l.getStNapreduje(), l.getStIzpade(), l.getStatus(), steviloEkip,
+                l.getStNapreduje(), l.getStIzpade(),
+                l.getStKvalifikacijeGor(), l.getStKvalifikacijeDol(), l.getStatus(), steviloEkip,
                 odigranihKol, steviloKol, l.isNaDomaci(),
                 l.getUstvaril() != null ? l.getUstvaril().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getIme() : null,
-                l.getKoncnicaEkip(), l.getKoncnicaZmag(), l.getVir());
+                l.getKoncnicaEkip(), l.getKoncnicaZmag(), l.getVir(),
+                l.getKvalifikacijeVisja() != null ? l.getKvalifikacijeVisja().getId() : null,
+                l.getKvalifikacijeVisja() != null ? l.getKvalifikacijeVisja().getIme() : null,
+                l.getKvalifikacijeNizja() != null ? l.getKvalifikacijeNizja().getId() : null,
+                l.getKvalifikacijeNizja() != null ? l.getKvalifikacijeNizja().getIme() : null);
     }
 }

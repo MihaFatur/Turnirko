@@ -18,12 +18,23 @@ import si.turnirko.pomozno.SlovenskaAbeceda;
 public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
 
     /* Koliko lig je ta organizator ustvaril od zacetka tekoce sezone - meja
-       placilnega paketa (NarocninaStoritev). */
-    long countByUstvarilIdAndUstvarjenObGreaterThanEqual(Long idUstvaril, LocalDateTime odSezone);
+       placilnega paketa (NarocninaStoritev). Kvalifikacije med ligami ne
+       stejejo: so podaljsek lig, ki jih je ze stela, in ne novo tekmovanje. */
+    long countByUstvarilIdAndUstvarjenObGreaterThanEqualAndKvalifikacijeVisjaIsNull(
+            Long idUstvaril, LocalDateTime odSezone);
+
+    /* Liga kvalifikacij med danima ligama, ce je ze ustvarjena. */
+    @Query("""
+            SELECT l FROM Liga l
+            WHERE l.kvalifikacijeVisja.id = :idVisja AND l.kvalifikacijeNizja.id = :idNizja
+            """)
+    Optional<Liga> najdiKvalifikacije(Long idVisja, Long idNizja);
 
     @Query("""
             SELECT l FROM Liga l
             LEFT JOIN FETCH l.visjaLiga
+            LEFT JOIN FETCH l.kvalifikacijeVisja
+            LEFT JOIN FETCH l.kvalifikacijeNizja
             LEFT JOIN FETCH l.klubLastnik
             LEFT JOIN FETCH l.ustvaril
             ORDER BY l.id DESC
@@ -33,6 +44,8 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
     @Query("""
             SELECT l FROM Liga l
             LEFT JOIN FETCH l.visjaLiga
+            LEFT JOIN FETCH l.kvalifikacijeVisja
+            LEFT JOIN FETCH l.kvalifikacijeNizja
             LEFT JOIN FETCH l.klubLastnik
             LEFT JOIN FETCH l.ustvaril
             WHERE l.id = :id
@@ -44,6 +57,8 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
     @Query("""
             SELECT l FROM Liga l
             LEFT JOIN FETCH l.visjaLiga
+            LEFT JOIN FETCH l.kvalifikacijeVisja
+            LEFT JOIN FETCH l.kvalifikacijeNizja
             LEFT JOIN FETCH l.klubLastnik
             LEFT JOIN FETCH l.ustvaril
             WHERE l.naDomaci = TRUE

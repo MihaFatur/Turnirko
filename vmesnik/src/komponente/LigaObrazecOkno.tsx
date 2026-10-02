@@ -3,11 +3,13 @@
    prednapolnjena, shrani se s PUT). Strežnik urejanje dovoli samo, dokler je
    liga v PRIPRAVI; vmesnik gumb v drugih stanjih samo skrije.
 
-   Mesta lige v piramidi (višja/nižja liga, napredovanje, izpad) tu namenoma
-   ni: to ni pravilo tekmovanja, ampak opis sezone, in se sme popravljati tudi
-   potem, ko so pravila zaklenjena — ureja ga PrehodiOkno. */
+   Mesto lige v piramidi (višja/nižja liga, napredovanje, izpad, kvalifikacije)
+   ni pravilo tekmovanja, ampak opis sezone, in se sme popravljati tudi potem,
+   ko so pravila zaklenjena — ureja ga PrehodiOkno. Pri NOVI ligi pa so ista
+   polja (PrehodiPolja) tudi tu: organizator ve, kam liga sodi, preden ima
+   ekipe, zato mu prehodov ni treba odpirati posebej. */
 import { useState, type ChangeEvent, type FormEvent } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
 import type { FormatSrecanja, LigaDto, LigaVnos, PredlogaLige, RavenTekmovanja, SpolKategorija } from '../api/tipi'
@@ -21,6 +23,13 @@ import {
 import { prvaCrkaVelika } from '../pomozno/oblikovanje'
 import { ModalnoOkno } from './ModalnoOkno'
 import { OpisRavniTekmovanja } from './OpisRavniTekmovanja'
+import {
+  PrehodiPolja,
+  prehodiPrazni,
+  vPrehodiVnos,
+  zacetniPrehodi,
+  type PrehodiStanje,
+} from './PrehodiOkno'
 import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -115,6 +124,10 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
      (in se po žrebu zaklene), njen potek pa vodi stran lige. */
   const [koncnicaEkip, nastaviKoncnicaEkip] = useState(liga?.koncnicaEkip ?? 0)
   const [koncnicaZmag, nastaviKoncnicaZmag] = useState(liga?.koncnicaZmag ?? 2)
+  /* Prehodi samo ob nastanku; urejanje pravil jih ne nosi (PrehodiOkno). */
+  const [prehodi, nastaviPrehode] = useState<PrehodiStanje>(() => zacetniPrehodi(null, []))
+  const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam, enabled: !urejanje })
+  const odjemalec = useQueryClient()
 
   const tekme = RAZPORED_FORMATA[format]
 
@@ -146,6 +159,9 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
     mutationFn: (vnos: LigaVnos) =>
       urejanje ? ligeApi.uredi(liga.id, vnos) : ligeApi.ustvari(vnos),
     onSuccess: (shranjena) => {
+      /* Prehodi nove lige lahko premaknejo tudi nižje lige (povezavo nosijo
+         one), zato cel seznam. */
+      if (!urejanje) odjemalec.invalidateQueries({ queryKey: ['lige'] })
       onShranjeno(shranjena)
       onZapri()
     },
@@ -189,6 +205,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       koncnicaEkip: koncnicaEkip > 0 ? koncnicaEkip : null,
       koncnicaZmag: koncnicaEkip > 0 ? koncnicaZmag : null,
       ureSrecanj: ure ? ure.map((u) => u || '00:00') : null,
+      prehodi: !urejanje && !prehodiPrazni(prehodi) ? vPrehodiVnos(prehodi) : null,
     })
   }
 
@@ -422,10 +439,27 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           </select>
         </label>
 
-        <p className="namig">
-          Mesto lige v piramidi (višja in nižje lige, napredovanje, izpad) se
-          ureja posebej — na strani lige, tudi ko so pravila že zaklenjena.
-        </p>
+        {urejanje ? (
+          <p className="namig">
+            Mesto lige v piramidi (višja in nižje lige, napredovanje, izpad,
+            kvalifikacije) se ureja posebej — na strani lige, tudi ko so pravila
+            že zaklenjena.
+          </p>
+        ) : (
+          <fieldset className="obrazec__skupina">
+            <legend>Piramida in prehodi</legend>
+            <PrehodiPolja
+              stanje={prehodi}
+              nastavi={nastaviPrehode}
+              vse={lige.data ?? []}
+              idLige={null}
+              sezona={sezona.trim() || null}
+            />
+            <p className="namig">
+              Neobvezno — prehode lahko vpišeš ali popraviš tudi pozneje na strani lige.
+            </p>
+          </fieldset>
+        )}
 
         <SporociloNapake napaka={shranjevanje.error} />
         <div className="obrazec__gumbi">

@@ -1,5 +1,6 @@
 /* Ena vrstica lestvice lige. Cona oznaci mesta napredovanja/izpada
-   ("NAPREDUJE" / "IZPADE" / null). Klub je prazen pri prosti ekipi. */
+   ("NAPREDUJE" / "KVALIFIKACIJE_GOR" / "KVALIFIKACIJE_DOL" / "IZPADE" / null;
+   kvalifikacije V41). Klub je prazen pri prosti ekipi. */
 package si.turnirko.dto;
 
 public record LestvicaEkipeDto(

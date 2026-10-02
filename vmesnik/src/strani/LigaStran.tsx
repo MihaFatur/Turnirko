@@ -29,6 +29,7 @@ import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { IzbirnikIgralca } from '../komponente/IzbirnikIgralca'
 import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { KoncnicaLige } from '../komponente/KoncnicaLige'
+import { KvalifikacijeOkno } from '../komponente/KvalifikacijeOkno'
 import { LestviceLige } from '../komponente/LestviceLige'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { MeniDejanj } from '../komponente/MeniDejanj'
@@ -90,6 +91,9 @@ export function LigaStran() {
   const [terminiOdprti, nastaviTerminiOdprte] = useState(false)
   const [razveljavitevOdprta, nastaviRazveljavitev] = useState(false)
   const [mobilniPogled, nastaviMobilniPogled] = useState<MobilniPogled>('LESTVICA')
+  /* Meja, za katero je odprto okno »Ustvari kvalifikacije«. */
+  const [kvalifikacijeZa, nastaviKvalifikacijeZa] = useState<MejaKvalifikacij | null>(null)
+  const [razveljavitevKvalOdprta, nastaviRazveljavitevKval] = useState(false)
 
   /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
      nekaj skupinskih seštevkov čez vse tekme lige in strani z lestvico ne sme
@@ -156,6 +160,18 @@ export function LigaStran() {
     },
   })
 
+  /* Kvalifikacije se razveljavijo v celoti (liga z ekipami gre), zato stran
+     po njej odpelje na višjo ligo, iz katere so nastale. */
+  const razveljaviKval = useMutation({
+    mutationFn: () => ligeApi.razveljaviKvalifikacije(idLiga),
+    onSuccess: () => {
+      odjemalec.invalidateQueries({ queryKey: ['lige'] })
+      odjemalec.removeQueries({ queryKey: ['liga', idLiga] })
+      const visja = liga.data?.idKvalifikacijeVisja
+      navigiraj(visja != null ? `/lige/${visja}` : '/lige', { replace: true })
+    },
+  })
+
   /* Gost izbora spremljanih lig nima (ta je last računa), zato mu sklop "Moje
      lige" na domači strani pokaže lige, ki si jih je nazadnje ogledal. */
   useEffect(() => {
@@ -217,6 +233,27 @@ export function LigaStran() {
      ena sama vrstica z eno ligo ne pove nič. */
   const kaziPiramido = nivojiPiramide.length > 1 || (nivojiPiramide[0]?.lige.length ?? 0) > 1
 
+  /* Kvalifikacije (V41): liga je lahko sama liga kvalifikacij (nosi obe ligi,
+     med katerima se igra) ali navadna liga z mejami do sosednjih lig, prek
+     katerih jih igra. */
+  const jeKval = l.idKvalifikacijeVisja != null
+  const redniDelKoncan = imaRazpored && naslednjeKolo == null
+  const meje = mejeKvalifikacij(l, lige.data ?? [], smemUrejati)
+  const kvalifikacijeVPiramidi = (lige.data ?? []).filter(
+    (k) => k.idKvalifikacijeVisja != null
+      && nivojiPiramide.some((n) => n.lige.some((x) => x.id === k.idKvalifikacijeVisja)),
+  )
+  /* Razveljaviti jih je mogoče, dokler se ni začelo nobeno srečanje — pari in
+     mala liga enako. */
+  const kvalNedotaknjene = jeKval && (srecanja.data ?? []).every((s) => s.status === 'RAZPORED')
+  const lestvicaDodatki = (
+    <UstvariKvalifikacije
+      meje={meje}
+      redniDelKoncan={redniDelKoncan}
+      onUstvari={nastaviKvalifikacijeZa}
+    />
+  )
+
   /* Okno se izriše le za ekipo, ki v ligi res igra - parameter v naslovu je
      lahko star ali vpisan na roke. */
   const ekipaVLigi =
@@ -233,7 +270,7 @@ export function LigaStran() {
         <PravilaOkno
           liga={l}
           lahkoUreja={vPripravi && smem}
-          smemUrejatiPrehode={smemPoLastnistvu}
+          smemUrejatiPrehode={smemPoLastnistvu && !jeKval}
           nizje={nizjeLige(l, lige.data ?? [])}
           onUredi={() => {
             nastaviPravilaOdprta(false)
@@ -315,6 +352,29 @@ export function LigaStran() {
             odjemalec.invalidateQueries({ queryKey: ['liga', idLiga] })
             odjemalec.invalidateQueries({ queryKey: ['lige'] })
           }}
+        />
+      )}
+
+      {kvalifikacijeZa && (
+        <KvalifikacijeOkno
+          visja={kvalifikacijeZa.visja}
+          nizja={kvalifikacijeZa.nizja}
+          onZapri={() => nastaviKvalifikacijeZa(null)}
+        />
+      )}
+
+      {/* Nepovratno: liga kvalifikacij gre z ekipami vred; ponujeno samo,
+          dokler se ni začelo nobeno srečanje. */}
+      {razveljavitevKvalOdprta && (
+        <PotrditvenoOkno
+          naslov="Razveljavi kvalifikacije"
+          sporocilo={
+            'Liga kvalifikacij se zbriše skupaj z ekipami in srečanji. Lestvici obeh lig '
+            + 'ostaneta nedotaknjeni; kvalifikacije lahko nato ustvariš znova.'
+          }
+          besedaPotrditve="Razveljavi kvalifikacije"
+          onPotrdi={() => razveljaviKval.mutate()}
+          onZapri={() => nastaviRazveljavitevKval(false)}
         />
       )}
     </>
@@ -414,6 +474,22 @@ export function LigaStran() {
                       </span>
                     </button>
                   )}
+                  {kvalNedotaknjene && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka uporabnik-meni__postavka--nevaren"
+                      onClick={() => {
+                        zapri()
+                        nastaviRazveljavitevKval(true)
+                      }}
+                    >
+                      Razveljavi kvalifikacije
+                      <span className="uporabnik-meni__pojasnilo">
+                        Liga kvalifikacij se zbriše; ligi ostaneta
+                      </span>
+                    </button>
+                  )}
                 </>
               )}
             </MeniDejanj>
@@ -494,7 +570,8 @@ export function LigaStran() {
                 aria-pressed={mobilniPogled === 'PIRAMIDA'}
                 onClick={() => nastaviMobilniPogled('PIRAMIDA')}
               >
-                Piramida lig
+                {/* Liga kvalifikacij ni nivo piramide, ampak meja med dvema. */}
+                {jeKval ? 'Med ligama' : 'Piramida lig'}
               </button>
               {imaZanimivosti && (
                 <button
@@ -532,6 +609,12 @@ export function LigaStran() {
           </p>
         )}
 
+        {/* Liga kvalifikacij brez razporeda (pari ali mala liga v pripravi)
+            zavihkov nima - med katerima ligama se igra, stoji na vrhu. */}
+        {jeKval && !imaRazpored && (
+          <OpisKvalifikacij liga={l} napaka={razveljaviKval.error} />
+        )}
+
         {/* Kvalifikacije med ligami imajo samo končnico - brez rednega dela
             zavihkov ni in serije stojijo na strani. */}
         {!imaRazpored && imaKoncnico && <KoncnicaLige liga={l} smem={smem} />}
@@ -545,9 +628,11 @@ export function LigaStran() {
               liga={l}
               srecanja={vsa}
               nivoji={nivojiPiramide}
+              meje={meje}
               odprtaEkipa={odprtaEkipa}
               onOdpriEkipo={odpriEkipo}
             />
+            {lestvicaDodatki}
             {/* Osebni izkupički so drugo branje iste lige - zato zaprta sklopa
                 na dnu zavihka z lestvico in ne svoj zavihek. */}
             <LestviceLige idLiga={idLiga} jeTelefon />
@@ -555,8 +640,10 @@ export function LigaStran() {
         )}
 
         {imaRazpored && mobilniPogled === 'PIRAMIDA' && (
-          kaziPiramido ? (
-            <Piramida liga={l} nivoji={nivojiPiramide} />
+          jeKval ? (
+            <OpisKvalifikacij liga={l} napaka={razveljaviKval.error} />
+          ) : kaziPiramido ? (
+            <Piramida liga={l} nivoji={nivojiPiramide} kvalifikacije={kvalifikacijeVPiramidi} />
           ) : (
             <div className="liga__piramida">
               <div className="liga__piramida-glava">
@@ -692,6 +779,15 @@ export function LigaStran() {
                   Razveljavi razpored
                 </button>
               )}
+              {smem && kvalNedotaknjene && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen gumb--nevaren"
+                  onClick={() => nastaviRazveljavitevKval(true)}
+                >
+                  Razveljavi kvalifikacije
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -775,7 +871,12 @@ export function LigaStran() {
       {/* Piramida je kontekst lige in ne njena vsebina, zato jo zavihek
           zanimivosti umakne skupaj z lestvico. */}
       {kaziPiramido && mobilniPogled !== 'ZANIMIVOSTI' && (
-        <Piramida liga={l} nivoji={nivojiPiramide} />
+        <Piramida liga={l} nivoji={nivojiPiramide} kvalifikacije={kvalifikacijeVPiramidi} />
+      )}
+
+      {/* Liga kvalifikacij namesto piramide pove, med katerima ligama se igra. */}
+      {jeKval && mobilniPogled !== 'ZANIMIVOSTI' && (
+        <OpisKvalifikacij liga={l} napaka={razveljaviKval.error} />
       )}
 
       {vPripravi && smem && (
@@ -829,14 +930,18 @@ export function LigaStran() {
             </div>
 
             {faza === 'REDNI' ? (
-              <Lestvica
-                idLiga={idLiga}
-                liga={l}
-                srecanja={vsa}
-                nivoji={nivojiPiramide}
-                odprtaEkipa={odprtaEkipa}
-                onOdpriEkipo={odpriEkipo}
-              />
+              <>
+                <Lestvica
+                  idLiga={idLiga}
+                  liga={l}
+                  srecanja={vsa}
+                  nivoji={nivojiPiramide}
+                  meje={meje}
+                  odprtaEkipa={odprtaEkipa}
+                  onOdpriEkipo={odpriEkipo}
+                />
+                {lestvicaDodatki}
+              </>
             ) : (
               <KoncnicaLige liga={l} smem={smem} />
             )}
@@ -888,6 +993,9 @@ function stanjeLige(
   tekmeKoncnice: SrecanjeDto[],
 ): string {
   if (srecanja.length === 0) {
+    /* Liga samo s pari (kvalifikacije) rednega dela nima - glavo nosijo pari. */
+    if (tekmeKoncnice.length > 0) return stanjeKoncnice(liga, tekmeKoncnice, 'naslednja tekma') ?? ''
+    if (liga.idKvalifikacijeVisja != null) return 'Razpored ni generiran'
     return imaPiramido ? 'Razpored ni generiran' : 'Samostojna — brez piramide'
   }
   if (liga.status === 'ZAKLJUCEN' || naslednjeKolo == null) {
@@ -906,6 +1014,7 @@ function stanjeLige(
    in velja stanje rednega dela. */
 function stanjeKoncnice(liga: LigaDto, tekme: SrecanjeDto[], naslednja: string): string | null {
   const zakljucena = liga.status === 'ZAKLJUCEN'
+  const oznaka = liga.idKvalifikacijeVisja != null ? 'Kvalifikacije' : 'Končnica'
   if (tekme.length === 0) {
     return liga.koncnicaEkip != null && !zakljucena ? 'Redni del odigran · končnica sledi' : null
   }
@@ -917,8 +1026,8 @@ function stanjeKoncnice(liga: LigaDto, tekme: SrecanjeDto[], naslednja: string):
   if (!zakljucena && tekme.some((s) => s.status !== 'KONCANO')) {
     const prihodnji = termini(false)
     return prihodnji.length > 0
-      ? `Končnica · ${naslednja} ${oblikujDanMesec(prihodnji[0])}`
-      : 'Končnica v teku'
+      ? `${oznaka} · ${naslednja} ${oblikujDanMesec(prihodnji[0])}`
+      : `${oznaka} v teku`
   }
   const pretekli = termini(true)
   return pretekli.length > 0 ? `Končano ${oblikujDanMesec(pretekli[pretekli.length - 1])}` : null
@@ -935,7 +1044,10 @@ function stanjeMobi(
   naslednjeKolo: number | null,
   tekmeKoncnice: SrecanjeDto[],
 ): string {
-  if (srecanja.length === 0) return 'Razpored ni generiran'
+  if (srecanja.length === 0) {
+    if (tekmeKoncnice.length > 0) return stanjeKoncnice(liga, tekmeKoncnice, 'naslednja') ?? ''
+    return 'Razpored ni generiran'
+  }
   if (liga.status === 'ZAKLJUCEN' || naslednjeKolo == null) {
     const koncnica = stanjeKoncnice(liga, tekmeKoncnice, 'naslednja')
     if (koncnica) return koncnica
@@ -985,6 +1097,8 @@ interface PiramidaNivo {
   lige: LigaDto[]
   napreduje: number
   izpade: number
+  kvalGor: number
+  kvalDol: number
 }
 
 /* Lige, ki so z izbrano povezane prek »višje lige« — navzgor do vrha in navzdol
@@ -1031,6 +1145,8 @@ function piramidaLig(liga: LigaDto, vse: LigaDto[]): PiramidaNivo[] {
          zamolčano. */
       napreduje: Math.max(...seznam.map((k) => k.stNapreduje)),
       izpade: Math.max(...seznam.map((k) => k.stIzpade)),
+      kvalGor: Math.max(...seznam.map((k) => k.stKvalifikacijeGor)),
+      kvalDol: Math.max(...seznam.map((k) => k.stKvalifikacijeDol)),
     }))
 }
 
@@ -1050,7 +1166,17 @@ function nivoLige(liga: LigaDto, poId: Map<number, LigaDto>): number {
   return globina
 }
 
-function Piramida({ liga, nivoji }: { liga: LigaDto; nivoji: PiramidaNivo[] }) {
+function Piramida({
+  liga,
+  nivoji,
+  kvalifikacije,
+}: {
+  liga: LigaDto
+  nivoji: PiramidaNivo[]
+  /* Lige kvalifikacij, katerih višja liga je v piramidi — stojijo pod
+     nivojem višje lige, ker se igrajo za mesto v njej. */
+  kvalifikacije: LigaDto[]
+}) {
   /* Piramida naj bi bila ena sezona. Če povezave vežejo lige različnih sezon,
      tega ne skrijemo za sezono izbrane lige — v glavi piše, da jih je več,
      posamezne pa nosijo svojo. Kategorije (»Mešano«) glava ne nosi: pove jo
@@ -1067,28 +1193,42 @@ function Piramida({ liga, nivoji }: { liga: LigaDto; nivoji: PiramidaNivo[] }) {
       </div>
       {nivoji.map((n) => {
         const tok = tokNivoja(n)
+        const kvalPod = kvalifikacije.filter((k) =>
+          n.lige.some((x) => x.id === k.idKvalifikacijeVisja),
+        )
         return (
-          <div key={n.nivo} className="liga__piramida-vrstica">
-            <span className="liga__piramida-nivo">{n.nivo}. nivo</span>
-            <span className="liga__piramida-lige">
-              {n.lige.map((k) =>
-                k.id === liga.id ? (
-                  <span
-                    key={k.id}
-                    className="liga__piramida-liga liga__piramida-liga--tukaj"
-                    aria-current="page"
-                  >
-                    {imeVPiramidi(k, razlicneSezone)}
-                  </span>
-                ) : (
-                  <Link key={k.id} to={`/lige/${k.id}`} className="liga__piramida-liga">
-                    {imeVPiramidi(k, razlicneSezone)}
-                  </Link>
-                ),
-              )}
-            </span>
-            <span className={`liga__piramida-tok${tok.razred}`}>{tok.besedilo}</span>
-          </div>
+          <Fragment key={n.nivo}>
+            <div className="liga__piramida-vrstica">
+              <span className="liga__piramida-nivo">{n.nivo}. nivo</span>
+              <span className="liga__piramida-lige">
+                {n.lige.map((k) =>
+                  k.id === liga.id ? (
+                    <span
+                      key={k.id}
+                      className="liga__piramida-liga liga__piramida-liga--tukaj"
+                      aria-current="page"
+                    >
+                      {imeVPiramidi(k, razlicneSezone)}
+                    </span>
+                  ) : (
+                    <Link key={k.id} to={`/lige/${k.id}`} className="liga__piramida-liga">
+                      {imeVPiramidi(k, razlicneSezone)}
+                    </Link>
+                  ),
+                )}
+              </span>
+              <span className={`liga__piramida-tok${tok.razred}`}>{tok.besedilo}</span>
+            </div>
+            {kvalPod.map((k) => (
+              <div key={k.id} className="liga__piramida-vrstica liga__piramida-vrstica--kval">
+                <span className="liga__piramida-nivo">kval.</span>
+                <span className="liga__piramida-lige">
+                  <Link to={`/lige/${k.id}`} className="liga__piramida-liga">{k.ime}</Link>
+                </span>
+                <span className="liga__piramida-tok">{nacinKvalifikacij(k)}</span>
+              </div>
+            ))}
+          </Fragment>
         )
       })}
     </div>
@@ -1109,24 +1249,161 @@ function nizjeLige(liga: LigaDto, vse: LigaDto[]): LigaDto[] {
     .sort((a, b) => a.ime.localeCompare(b.ime, 'sl'))
 }
 
-/* Opis toka nivoja: vrh samo izpade, dno samo napreduje, vmesni oboje. */
+/* Opis toka nivoja: vrh samo izpade, dno samo napreduje, vmesni oboje.
+   Kvalifikacije pridejo k neposrednemu prehodu (»↓ 1 + 1 kval.«); glagol
+   (»izpadeta«) ostane le pri čistem prehodu, sicer bi bila vrstica predolga. */
 function tokNivoja(n: PiramidaNivo): { besedilo: string; razred: string } {
-  if (n.napreduje > 0 && n.izpade > 0) {
-    return { besedilo: `↑ ${n.napreduje} · ↓ ${n.izpade}`, razred: '' }
+  const gor = n.napreduje > 0 || n.kvalGor > 0
+  const dol = n.izpade > 0 || n.kvalDol > 0
+  if (gor && dol) {
+    return { besedilo: `${smerToka('↑', n.napreduje, n.kvalGor)} · ${smerToka('↓', n.izpade, n.kvalDol)}`, razred: '' }
   }
-  if (n.izpade > 0) {
+  if (dol) {
     return {
-      besedilo: `↓ ${n.izpade} ${izpadeTekst(n.izpade)}`,
+      besedilo: n.kvalDol > 0
+        ? smerToka('↓', n.izpade, n.kvalDol)
+        : `↓ ${n.izpade} ${izpadeTekst(n.izpade)}`,
       razred: ' liga__piramida-tok--izpad',
     }
   }
-  if (n.napreduje > 0) {
+  if (gor) {
     return {
-      besedilo: `↑ ${n.napreduje} ${napredujeTekst(n.napreduje)}`,
+      besedilo: n.kvalGor > 0
+        ? smerToka('↑', n.napreduje, n.kvalGor)
+        : `↑ ${n.napreduje} ${napredujeTekst(n.napreduje)}`,
       razred: ' liga__piramida-tok--napredek',
     }
   }
   return { besedilo: '', razred: '' }
+}
+
+function smerToka(puscica: string, neposredno: number, kval: number): string {
+  if (kval === 0) return `${puscica} ${neposredno}`
+  if (neposredno === 0) return `${puscica} ${kval} kval.`
+  return `${puscica} ${neposredno} + ${kval} kval.`
+}
+
+/* ---------- Kvalifikacije med ligami ---------- */
+
+/* Meja lige do sosednje, prek katere se igrajo kvalifikacije: GOR je višja
+   liga (ta liga igra za napredovanje), DOL nižja (ta liga igra za obstanek).
+   Ustvari jih lastnik VIŠJE lige — tudi s strani nižje, če je njen. */
+interface MejaKvalifikacij {
+  smer: 'GOR' | 'DOL'
+  visja: LigaDto
+  nizja: LigaDto
+  obstojece: LigaDto | null
+  smemUstvariti: boolean
+}
+
+function mejeKvalifikacij(
+  liga: LigaDto,
+  vse: LigaDto[],
+  smemUrejati: (idLastnik: number | null, idKlubLastnik: number | null) => boolean,
+): MejaKvalifikacij[] {
+  if (liga.idKvalifikacijeVisja != null) return []
+  const ta = vse.find((k) => k.id === liga.id) ?? liga
+  const meja = (smer: 'GOR' | 'DOL', visja: LigaDto, nizja: LigaDto): MejaKvalifikacij => ({
+    smer,
+    visja,
+    nizja,
+    obstojece: vse.find(
+      (k) => k.idKvalifikacijeVisja === visja.id && k.idKvalifikacijeNizja === nizja.id,
+    ) ?? null,
+    smemUstvariti: visja.vir == null && smemUrejati(visja.idLastnik, visja.idKlubLastnik),
+  })
+  const meje: MejaKvalifikacij[] = []
+  const visja = liga.idVisjaLiga != null ? vse.find((k) => k.id === liga.idVisjaLiga) : undefined
+  if (visja && (ta.stKvalifikacijeGor > 0 || visja.stKvalifikacijeDol > 0)) {
+    meje.push(meja('GOR', visja, ta))
+  }
+  for (const nizja of nizjeLige(liga, vse)) {
+    if (ta.stKvalifikacijeDol > 0 || nizja.stKvalifikacijeGor > 0) {
+      meje.push(meja('DOL', ta, nizja))
+    }
+  }
+  return meje
+}
+
+/* Kako se kvalifikacije igrajo — iz pravil lige kvalifikacij: pari imajo
+   končnico (zmag v seriji), mala liga je navaden redni del. */
+function nacinKvalifikacij(liga: LigaDto): string {
+  if (liga.koncnicaZmag != null) {
+    return liga.koncnicaZmag === 1 ? 'ena tekma' : `serija do ${liga.koncnicaZmag} zmag`
+  }
+  return liga.dvokrozno ? 'vsak z vsakim, doma in v gosteh' : 'vsak z vsakim'
+}
+
+/* Poziv organizatorju pod lestvico: redni del je odigran, kvalifikacij s
+   sosednjo ligo pa še ni. Ali je odigran tudi redni del druge lige, pove šele
+   okno (strežnikove ovire) — tu bi to terjalo njen razpored. */
+function UstvariKvalifikacije({
+  meje,
+  redniDelKoncan,
+  onUstvari,
+}: {
+  meje: MejaKvalifikacij[]
+  redniDelKoncan: boolean
+  onUstvari: (m: MejaKvalifikacij) => void
+}) {
+  const odprte = meje.filter((m) => m.smemUstvariti && m.obstojece == null)
+  if (!redniDelKoncan || odprte.length === 0) return null
+  return (
+    <div className="liga__kvalifikacije-poziv">
+      {odprte.map((m) => {
+        const druga = m.smer === 'GOR' ? m.visja : m.nizja
+        return (
+          <div key={druga.id} className="liga__kvalifikacije-vrsta">
+            <span>Kvalifikacije z ligo {druga.ime} še niso ustvarjene.</span>
+            <button type="button" className="gumb gumb--majhen" onClick={() => onUstvari(m)}>
+              Ustvari kvalifikacije
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* Liga kvalifikacij namesto piramide pove, med katerima ligama se igra in
+   za kaj: zmagovalec (oz. zgornja mesta male lige) igra v višji ligi. */
+function OpisKvalifikacij({ liga, napaka }: { liga: LigaDto; napaka: unknown }) {
+  if (liga.idKvalifikacijeVisja == null || liga.idKvalifikacijeNizja == null) return null
+  const poParih = liga.koncnicaZmag != null
+  return (
+    <div className="liga__piramida liga__kvalifikacije">
+      {/* Pare z načinom (»1 par · ena tekma«) naslovi sklop parov pod tem -
+          tu bi se ponovil. Mala liga ga drugje ne pove. */}
+      <div className="liga__piramida-glava">
+        <span className="podnaslov-sekcije liga__podnaslov--vrstica">Med ligama</span>
+        {!poParih && <span className="sekcija__meta">{nacinKvalifikacij(liga)}</span>}
+      </div>
+      <div className="liga__piramida-vrstica">
+        <span className="liga__piramida-nivo">višja</span>
+        <span className="liga__piramida-lige">
+          <Link to={`/lige/${liga.idKvalifikacijeVisja}`} className="liga__piramida-liga">
+            {liga.kvalifikacijeVisjaIme}
+          </Link>
+        </span>
+        <span className="liga__piramida-tok liga__piramida-tok--izpad">za obstanek</span>
+      </div>
+      <div className="liga__piramida-vrstica">
+        <span className="liga__piramida-nivo">nižja</span>
+        <span className="liga__piramida-lige">
+          <Link to={`/lige/${liga.idKvalifikacijeNizja}`} className="liga__piramida-liga">
+            {liga.kvalifikacijeNizjaIme}
+          </Link>
+        </span>
+        <span className="liga__piramida-tok liga__piramida-tok--napredek">za napredovanje</span>
+      </div>
+      <p className="namig">
+        {poParih
+          ? `Zmagovalec para igra v ligi ${liga.kvalifikacijeVisjaIme}, poraženec v ligi ${liga.kvalifikacijeNizjaIme}.`
+          : `Zgornja mesta igrajo v ligi ${liga.kvalifikacijeVisjaIme}, ostala v ligi ${liga.kvalifikacijeNizjaIme}.`}
+      </p>
+      <SporociloNapake napaka={napaka} />
+    </div>
+  )
 }
 
 /* ---------- Lestvica ---------- */
@@ -1136,6 +1413,9 @@ interface LestvicaLastnosti {
   liga: LigaDto
   srecanja: SrecanjeDto[]
   nivoji: PiramidaNivo[]
+  /* Meje kvalifikacij do sosednjih lig — legenda po njih ve, ali so
+     kvalifikacije že ustvarjene (in je oznaka povezava nanje). */
+  meje: MejaKvalifikacij[]
   /* Ekipa, katere okno je odprto - njena vrstica ostane označena. */
   odprtaEkipa: number | null
   onOdpriEkipo: (idEkipa: number) => void
@@ -1146,6 +1426,7 @@ function Lestvica({
   liga,
   srecanja,
   nivoji,
+  meje,
   odprtaEkipa,
   onOdpriEkipo,
 }: LestvicaLastnosti) {
@@ -1233,22 +1514,7 @@ function Lestvica({
         </table>
       </div>
 
-      {(liga.stNapreduje > 0 || liga.stIzpade > 0) && (
-        <div className="legenda">
-          {liga.stNapreduje > 0 && (
-            <span className="legenda__postavka">
-              <span className="legenda__znak legenda__znak--napreduje" />
-              {cilji.visja ? `Napreduje v ${cilji.visja}` : 'Napreduje'}
-            </span>
-          )}
-          {liga.stIzpade > 0 && (
-            <span className="legenda__postavka">
-              <span className="legenda__znak legenda__znak--izpade" />
-              {cilji.nizja ? `Izpade v ${cilji.nizja}` : 'Izpade'}
-            </span>
-          )}
-        </div>
-      )}
+      <LegendaCon liga={liga} cilji={cilji} meje={meje} />
     </div>
   )
 }
@@ -1265,6 +1531,7 @@ function LestvicaMobi({
   liga,
   srecanja,
   nivoji,
+  meje,
   odprtaEkipa,
   onOdpriEkipo,
 }: LestvicaLastnosti) {
@@ -1331,22 +1598,76 @@ function LestvicaMobi({
         </div>
       )}
 
-      {vrstice.length > 0 && (liga.stNapreduje > 0 || liga.stIzpade > 0) && (
-        <div className="legenda legenda--mobi">
-          {liga.stNapreduje > 0 && (
-            <span className="legenda__postavka">
-              <span className="legenda__znak legenda__znak--napreduje" />
-              {cilji.visja ? `Napreduje v ${cilji.visja}` : 'Napreduje'}
-            </span>
-          )}
-          {liga.stIzpade > 0 && (
-            <span className="legenda__postavka">
-              <span className="legenda__znak legenda__znak--izpade" />
-              {cilji.nizja ? `Izpade v ${cilji.nizja}` : 'Izpade'}
-            </span>
-          )}
-        </div>
-      )}
+      {vrstice.length > 0 && <LegendaCon liga={liga} cilji={cilji} meje={meje} mobi />}
+    </div>
+  )
+}
+
+/* Legenda con lestvice, od vrha navzdol v istem vrstnem redu kot pasovi:
+   napreduje, kvalifikacije za napredovanje, kvalifikacije za obstanek,
+   izpade. Ustvarjene kvalifikacije so povezava nanje — gledalec iz lestvice
+   pride naravnost do para, ki odloča o mestu.
+
+   Liga kvalifikacij sama nosi zgornja mesta kot »napreduje« in spodnja kot
+   »izpade« (male lige) — tam legenda pove, v kateri ligi ekipe igrajo. */
+function LegendaCon({
+  liga,
+  cilji,
+  meje,
+  mobi = false,
+}: {
+  liga: LigaDto
+  cilji: { visja: string | null; nizja: string | null }
+  meje: MejaKvalifikacij[]
+  mobi?: boolean
+}) {
+  const jeKval = liga.idKvalifikacijeVisja != null
+  const postavke: { razred: string; besedilo: string; povezava: LigaDto | null }[] = []
+  if (liga.stNapreduje > 0) {
+    postavke.push({
+      razred: 'napreduje',
+      besedilo: jeKval
+        ? `Igra v ${liga.kvalifikacijeVisjaIme}`
+        : cilji.visja ? `Napreduje v ${cilji.visja}` : 'Napreduje',
+      povezava: null,
+    })
+  }
+  if (liga.stKvalifikacijeGor > 0) {
+    postavke.push({
+      razred: 'kvalifikacije_gor',
+      besedilo: cilji.visja ? `Kvalifikacije za ${cilji.visja}` : 'Kvalifikacije za napredovanje',
+      povezava: meje.find((m) => m.smer === 'GOR')?.obstojece ?? null,
+    })
+  }
+  if (liga.stKvalifikacijeDol > 0) {
+    const dol = meje.filter((m) => m.smer === 'DOL')
+    postavke.push({
+      razred: 'kvalifikacije_dol',
+      besedilo: 'Kvalifikacije za obstanek',
+      /* Z več nižjimi ligami je kvalifikacij več - takrat povezave ni, vodi
+         jih piramida (vrstice »kval.«). */
+      povezava: dol.length === 1 ? dol[0].obstojece : null,
+    })
+  }
+  if (liga.stIzpade > 0) {
+    postavke.push({
+      razred: 'izpade',
+      besedilo: jeKval
+        ? `Igra v ${liga.kvalifikacijeNizjaIme}`
+        : cilji.nizja ? `Izpade v ${cilji.nizja}` : 'Izpade',
+      povezava: null,
+    })
+  }
+  if (postavke.length === 0) return null
+
+  return (
+    <div className={'legenda' + (mobi ? ' legenda--mobi' : '')}>
+      {postavke.map((p) => (
+        <span key={p.razred} className="legenda__postavka">
+          <span className={`legenda__znak legenda__znak--${p.razred}`} />
+          {p.povezava ? <Link to={`/lige/${p.povezava.id}`}>{p.besedilo}</Link> : p.besedilo}
+        </span>
+      ))}
     </div>
   )
 }
@@ -1714,10 +2035,22 @@ function PravilaOkno({
     ['Dvojna registracija', liga.prepovedDvojneRegistracije ? 'prepovedana' : 'dovoljena'],
     ['Raven tekmovanja', OZNAKE_RAVEN[liga.raven]],
   ]
-  podatki.push(['Višja liga', liga.visjaLigaIme ?? '—'])
-  podatki.push(['Nižje lige', nizje.length > 0 ? nizje.map((k) => k.ime).join(' · ') : '—'])
-  podatki.push(['Napreduje', String(liga.stNapreduje)])
-  podatki.push(['Izpade', String(liga.stIzpade)])
+  if (liga.idKvalifikacijeVisja != null) {
+    /* Liga kvalifikacij ni v piramidi - pove, med katerima ligama se igra. */
+    podatki.push(['Kvalifikacije', `${liga.kvalifikacijeVisjaIme} / ${liga.kvalifikacijeNizjaIme}`])
+    podatki.push(['Način', nacinKvalifikacij(liga)])
+  } else {
+    podatki.push(['Višja liga', liga.visjaLigaIme ?? '—'])
+    podatki.push(['Nižje lige', nizje.length > 0 ? nizje.map((k) => k.ime).join(' · ') : '—'])
+    podatki.push(['Napreduje', String(liga.stNapreduje)])
+    if (liga.stKvalifikacijeGor > 0) {
+      podatki.push(['Kvalifikacije za napredovanje', String(liga.stKvalifikacijeGor)])
+    }
+    podatki.push(['Izpade', String(liga.stIzpade)])
+    if (liga.stKvalifikacijeDol > 0) {
+      podatki.push(['Kvalifikacije za obstanek', String(liga.stKvalifikacijeDol)])
+    }
+  }
 
   return (
     <ModalnoOkno naslov="Pravila lige" onZapri={onZapri}>

@@ -5,7 +5,12 @@
    odigrati, strežnik ob odločitvi serije izbriše, zato jih stran ne kaže.
    Organizator (lastnik lige, ne pri uvoženi ligi) končnico ustvari po koncu
    rednega dela in jo razveljavi, dokler se nobena tekma ni začela; posamezni
-   tekmi pred začetkom nastavi termin in zamenja domačina. */
+   tekmi pred začetkom nastavi termin in zamenja domačina.
+
+   Ista komponenta kaže pare KVALIFIKACIJ med ligama (V41): en krog
+   neodvisnih parov, pri vsaki ekipi liga, iz katere je prišla, in mesto na
+   njeni lestvici. Kvalifikacije nastanejo in se razveljavijo kot cela liga
+   (stran lige), zato tu ni gumbov za ustvarjanje ali razveljavitev. */
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -48,15 +53,17 @@ export function KoncnicaLige({ liga, smem }: Lastnosti) {
   const serije = k.serije
   const krogi = [...new Set(serije.map((s) => s.krog))].sort((a, b) => a - b)
   const vseTekme = serije.flatMap((s) => s.tekme)
-  const nobenaZaceta = serije.length > 0 && vseTekme.every((t) => t.status === 'RAZPORED')
+  const kval = liga.idKvalifikacijeVisja != null
+  const nobenaZaceta = !kval && serije.length > 0 && vseTekme.every((t) => t.status === 'RAZPORED')
 
   return (
     <div className="koncnica">
       <div className="naslovna-vrstica">
-        <h2>Končnica</h2>
+        <h2>{kval ? 'Kvalifikacije' : 'Končnica'}</h2>
         <span className="sekcija__meta">
-          {k.ekip} {k.ekip === 2 ? 'ekipi' : 'ekipe'} · serija do {k.zmagZaSerijo}{' '}
-          {k.zmagZaSerijo === 1 ? 'zmage' : 'zmag'}
+          {kval
+            ? `${serije.length} ${parTekst(serije.length)} · ${k.zmagZaSerijo === 1 ? 'ena tekma' : `serija do ${k.zmagZaSerijo} zmag`}`
+            : `${k.ekip} ${k.ekip === 2 ? 'ekipi' : 'ekipe'} · serija do ${k.zmagZaSerijo} ${k.zmagZaSerijo === 1 ? 'zmage' : 'zmag'}`}
         </span>
       </div>
 
@@ -83,13 +90,16 @@ export function KoncnicaLige({ liga, smem }: Lastnosti) {
 
       {krogi.map((krog) => (
         <div key={krog} className="koncnica__krog">
-          <h3 className="liga__kolo-naslov">
-            {serije.find((s) => s.krog === krog)?.imeKroga ?? `${krog}. krog`}
-            <span className="liga__kolo-datum">
-              {serije.filter((s) => s.krog === krog).length}{' '}
-              {serije.filter((s) => s.krog === krog).length === 1 ? 'serija' : 'serije'}
-            </span>
-          </h3>
+          {/* Kvalifikacije so en sam krog - naslov kroga bi ponovil naslov. */}
+          {!kval && (
+            <h3 className="liga__kolo-naslov">
+              {serije.find((s) => s.krog === krog)?.imeKroga ?? `${krog}. krog`}
+              <span className="liga__kolo-datum">
+                {serije.filter((s) => s.krog === krog).length}{' '}
+                {serije.filter((s) => s.krog === krog).length === 1 ? 'serija' : 'serije'}
+              </span>
+            </h3>
+          )}
           {serije
             .filter((s) => s.krog === krog)
             .sort((a, b) => a.par - b.par)
@@ -98,6 +108,7 @@ export function KoncnicaLige({ liga, smem }: Lastnosti) {
                 key={s.id}
                 serija={s}
                 smem={smem}
+                enaTekma={k.zmagZaSerijo === 1}
                 onTermin={nastaviTerminZa}
                 onZamenjaj={(id) => zamenjaj.mutate(id)}
               />
@@ -129,14 +140,24 @@ export function KoncnicaLige({ liga, smem }: Lastnosti) {
   )
 }
 
+function parTekst(n: number): string {
+  if (n === 1) return 'par'
+  if (n === 2) return 'para'
+  if (n === 3 || n === 4) return 'pari'
+  return 'parov'
+}
+
 function Serija({
   serija,
   smem,
+  enaTekma,
   onTermin,
   onZamenjaj,
 }: {
   serija: KoncnicaSerija
   smem: boolean
+  /* Serija na eno zmago: »1. tekma« bi namigovala na drugo, ki je ni. */
+  enaTekma: boolean
   onTermin: (t: SrecanjeDto) => void
   onZamenjaj: (id: number) => void
 }) {
@@ -156,7 +177,7 @@ function Serija({
               return (
                 <li key={t.id}>
                   <span className="koncnica__tekma-meta">
-                    {t.tekmaVSeriji}. tekma{termin ? ` · ${termin}` : ''}
+                    {enaTekma ? 'Tekma' : `${t.tekmaVSeriji}. tekma`}{termin ? ` · ${termin}` : ''}
                     {smem && t.status === 'RAZPORED' && (
                       <span className="koncnica__dejanja">
                         <button type="button" className="gumb gumb--majhen" onClick={() => onTermin(t)}>
@@ -224,7 +245,11 @@ function StranSerije({
   return (
     <div className={'koncnica__stran' + (zmaga ? ' koncnica__stran--zmaga' : '') + (poraz ? ' koncnica__stran--poraz' : '')}>
       <span className="koncnica__mesto">{stran.mesto != null ? `${stran.mesto}.` : ''}</span>
-      <span className="koncnica__ekipa">{stran.ekipa}</span>
+      <span className="koncnica__ekipa">
+        {stran.ekipa}
+        {/* Pri kvalifikacijah je mesto na lestvici te lige, ne skupne. */}
+        {stran.liga && <span className="koncnica__liga">{stran.liga}</span>}
+      </span>
       <span className="koncnica__zmage">{stran.zmage}</span>
     </div>
   )

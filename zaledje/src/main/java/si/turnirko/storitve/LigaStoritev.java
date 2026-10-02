@@ -174,6 +174,12 @@ public class LigaStoritev {
         // zabelezi lastnika (organizator oz. admin, ki jo ustvarja)
         lastnistvo.oznaciLastnika(liga);
         liga = ligaRepozitorij.save(liga);
+        /* Mesto v piramidi sme organizator vpisati ze ob nastanku (Savinja
+           liga B ve, da je pod A, preden ima ekipe) - v isti transakciji, da
+           liga ne nastane brez prehodov, ce jih povezava zavrne. */
+        if (v.prehodi() != null) {
+            return nastaviPrehode(liga.getId(), v.prehodi());
+        }
         return LigaDto.iz(liga, 0);
     }
 
@@ -245,6 +251,8 @@ public class LigaStoritev {
 
         liga.setStNapreduje(v.stNapreduje() != null ? Math.max(0, v.stNapreduje()) : 0);
         liga.setStIzpade(v.stIzpade() != null ? Math.max(0, v.stIzpade()) : 0);
+        liga.setStKvalifikacijeGor(v.stKvalifikacijeGor() != null ? Math.max(0, v.stKvalifikacijeGor()) : 0);
+        liga.setStKvalifikacijeDol(v.stKvalifikacijeDol() != null ? Math.max(0, v.stKvalifikacijeDol()) : 0);
 
         if (v.idVisjaLiga() != null) {
             if (v.idVisjaLiga().equals(id)) {
@@ -284,6 +292,7 @@ public class LigaStoritev {
 
         for (Liga s : spremenjene) {
             preveriBrezKroga(s);
+            preveriZunajKvalifikacij(s);
         }
         ligaRepozitorij.saveAll(spremenjene);
         /* Prehode je mogoce urejati tudi sredi sezone, zato tu kol ne smemo
@@ -1052,6 +1061,17 @@ public class LigaStoritev {
                 throw new NeveljavenVnosIzjema(
                         "Tako bi se lige povezale v krog - preveri, katera je visja in katera nizja.");
             }
+        }
+    }
+
+    /* Kvalifikacije stojijo MED dvema nivojema piramide in niso nivo zase:
+       njuni ligi nosi liga kvalifikacij sama (id_kvalifikacije_*). Kot visja
+       ali nizja liga bi piramido zamaknila za cel nivo. */
+    private static void preveriZunajKvalifikacij(Liga liga) {
+        Liga visja = liga.getVisjaLiga();
+        if (visja != null && (liga.jeKvalifikacijska() || visja.jeKvalifikacijska())) {
+            throw new NeveljavenVnosIzjema("Kvalifikacije niso del piramide - povezane so z ligama, "
+                    + "med katerima se igrajo.");
         }
     }
 

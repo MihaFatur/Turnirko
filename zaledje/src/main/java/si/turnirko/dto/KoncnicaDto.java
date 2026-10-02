@@ -14,13 +14,15 @@ public record KoncnicaDto(
         List<Serija> serije
 ) {
 
-    public record Stran(Long idEkipa, String ekipa, Integer mesto, int zmage) {}
+    // liga: pri kvalifikacijah (V41) liga, iz katere je ekipa prisla - mesto
+    // je mesto na NJENI lestvici; pri koncnici prazno
+    public record Stran(Long idEkipa, String ekipa, Integer mesto, int zmage, String liga) {}
 
     public record Serija(
             Long id,
             int krog,
             int par,
-            // "finale", "polfinale", "cetrtfinale"
+            // "finale", "polfinale", "cetrtfinale"; pri kvalifikacijah "kvalifikacije"
             String imeKroga,
             Stran stran1,
             Stran stran2,

@@ -7,7 +7,11 @@
    odpirati njen obrazec (in ce ta ni vec v pripravi, sploh ne bi slo).
 
    idNizjeLige = null pomeni "ne dotikaj se nizjih lig", prazen seznam pomeni
-   "nobena liga ni pod to". */
+   "nobena liga ni pod to".
+
+   stKvalifikacijeGor/Dol (V41): koliko ekip tik pod neposrednim
+   napredovanjem oz. tik nad neposrednim izpadom igra kvalifikacije s
+   sosednjo ligo; null = 0. */
 package si.turnirko.dto;
 
 import java.util.List;
@@ -16,5 +20,13 @@ public record PrehodiVnos(
         Long idVisjaLiga,
         List<Long> idNizjeLige,
         Integer stNapreduje,
-        Integer stIzpade
-) {}
+        Integer stIzpade,
+        Integer stKvalifikacijeGor,
+        Integer stKvalifikacijeDol
+) {
+
+    /* Prehodi brez kvalifikacij (kot pred V41). */
+    public PrehodiVnos(Long idVisjaLiga, List<Long> idNizjeLige, Integer stNapreduje, Integer stIzpade) {
+        this(idVisjaLiga, idNizjeLige, stNapreduje, stIzpade, null, null);
+    }
+}

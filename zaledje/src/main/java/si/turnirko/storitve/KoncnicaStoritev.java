@@ -95,6 +95,29 @@ public class KoncnicaStoritev {
                 + (tekmaVSeriji != null ? " · " + tekmaVSeriji + ". tekma" : "");
     }
 
+    /* Opis tekme serije za zapisnik in dnevnik: pri koncnici krog in tekma,
+       pri kvalifikacijah (V41) samo "kvalifikacije" - in zaporedna tekma le,
+       kadar jih serija ima vec. */
+    public static String opisTekme(Srecanje s) {
+        Liga liga = s.getLiga();
+        if (liga.jeKvalifikacijska()) {
+            Integer zmag = liga.getKoncnicaZmag();
+            return KVALIFIKACIJE + (zmag != null && zmag > 1 && s.getTekmaVSeriji() != null
+                    ? " · " + s.getTekmaVSeriji() + ". tekma" : "");
+        }
+        Integer ekip = liga.getKoncnicaEkip();
+        int krogov = ekip != null ? steviloKrogov(ekip) : s.getSerija().getKrog();
+        return opisTekme(s.getSerija().getKrog(), krogov, s.getTekmaVSeriji());
+    }
+
+    /* Kvalifikacije so en sam krog neodvisnih parov: zmagovalec para ne igra
+       naprej, ampak dobi mesto v visji ligi. Koncnica ima krogov do finala. */
+    static int stKrogov(Liga liga) {
+        return liga.jeKvalifikacijska() ? 1 : steviloKrogov(liga.getKoncnicaEkip());
+    }
+
+    static final String KVALIFIKACIJE = "kvalifikacije";
+
     // ---------- Branje ----------
 
     @Transactional(readOnly = true)
@@ -109,21 +132,28 @@ public class KoncnicaStoritev {
             tekmePoSeriji.computeIfAbsent(s.getSerija().getId(), k -> new ArrayList<>())
                     .add(SrecanjeDto.iz(s));
         }
-        int stKrogov = steviloKrogov(liga.getKoncnicaEkip());
+        boolean kval = liga.jeKvalifikacijska();
+        int stKrogov = stKrogov(liga);
+        /* Pri kvalifikacijah je prva stran vedno ekipa visje lige, druga
+           nizje (KvalifikacijeStoritev) - zamenjava domacina zamenja samo
+           strani srecanja, ne serije. Zato izvor ni treba hraniti pri ekipi. */
+        String izvor1 = kval ? liga.getKvalifikacijeVisja().getIme() : null;
+        String izvor2 = kval ? liga.getKvalifikacijeNizja().getIme() : null;
         List<KoncnicaDto.Serija> izpis = serije.stream()
                 .map(sk -> new KoncnicaDto.Serija(
-                        sk.getId(), sk.getKrog(), sk.getPar(), imeKroga(sk.getKrog(), stKrogov),
-                        stran(sk.getEkipa1(), sk.getMesto1(), sk.getZmage1()),
-                        stran(sk.getEkipa2(), sk.getMesto2(), sk.getZmage2()),
+                        sk.getId(), sk.getKrog(), sk.getPar(),
+                        kval ? KVALIFIKACIJE : imeKroga(sk.getKrog(), stKrogov),
+                        stran(sk.getEkipa1(), sk.getMesto1(), sk.getZmage1(), izvor1),
+                        stran(sk.getEkipa2(), sk.getMesto2(), sk.getZmage2(), izvor2),
                         sk.getZmagovalec() != null ? sk.getZmagovalec().getId() : null,
                         tekmePoSeriji.getOrDefault(sk.getId(), List.of())))
                 .toList();
-        boolean pripravljena = serije.isEmpty() && liga.getVir() == null && redniDelKoncan(idLiga);
+        boolean pripravljena = !kval && serije.isEmpty() && liga.getVir() == null && redniDelKoncan(idLiga);
         return new KoncnicaDto(liga.getKoncnicaEkip(), liga.getKoncnicaZmag(), pripravljena, izpis);
     }
 
-    private static KoncnicaDto.Stran stran(Ekipa ekipa, Integer mesto, int zmage) {
-        return ekipa == null ? null : new KoncnicaDto.Stran(ekipa.getId(), ekipa.prikazanoIme(), mesto, zmage);
+    private static KoncnicaDto.Stran stran(Ekipa ekipa, Integer mesto, int zmage, String liga) {
+        return ekipa == null ? null : new KoncnicaDto.Stran(ekipa.getId(), ekipa.prikazanoIme(), mesto, zmage, liga);
     }
 
     // ---------- Nastanek ----------
@@ -134,6 +164,9 @@ public class KoncnicaStoritev {
         Liga liga = najdiLigo(idLiga);
         if (!liga.imaKoncnico()) {
             throw new DomenskaIzjema("Liga po pravilih nima koncnice.");
+        }
+        if (liga.jeKvalifikacijska()) {
+            throw new DomenskaIzjema("Pari kvalifikacij nastanejo skupaj z njimi - iz lestvic obeh lig.");
         }
         if (serijaRepozitorij.existsByLigaId(idLiga)) {
             throw new DomenskaIzjema("Koncnica te lige ze obstaja.");
@@ -185,11 +218,27 @@ public class KoncnicaStoritev {
         return koncnica(idLiga);
     }
 
+    /* Pari kvalifikacij (KvalifikacijeStoritev): en krog, v vsaki seriji na
+       prvi strani ekipa visje lige. Tekme serije nastanejo po istem pravilu
+       domacih pravic kot v koncnici - "bolje uvrscena" je ekipa visje lige,
+       zato pri eni tekmi igra doma ona. */
+    @Transactional
+    public void zapisiPareKvalifikacij(Liga liga, List<SerijaKoncnice> pari) {
+        for (SerijaKoncnice serija : serijaRepozitorij.saveAll(pari)) {
+            ustvariTekmeSerije(liga, serija);
+        }
+    }
+
     /* Razveljavi koncnico, dokler se nobena njena tekma ni zacela - za
        koncnico, ustvarjeno prezgodaj ali po popravku rezultata rednega dela. */
     @Transactional
     public void razveljavi(Long idLiga) {
         lastnistvo.preveriLigaPoId(idLiga);
+        if (najdiLigo(idLiga).jeKvalifikacijska()) {
+            /* Brez parov bi ostala prazna liga, ki je ni mogoce sestaviti
+               znova - kvalifikacije se razveljavijo v celoti. */
+            throw new DomenskaIzjema("Kvalifikacije se razveljavijo v celoti (KvalifikacijeStoritev).");
+        }
         List<Srecanje> tekme = srecanjeRepozitorij.najdiKoncnicoLige(idLiga);
         for (Srecanje s : tekme) {
             if (s.getStatus() != StatusSrecanja.RAZPORED) {
@@ -242,9 +291,8 @@ public class KoncnicaStoritev {
                 .toList();
         srecanjeRepozitorij.deleteAll(odvec);
 
-        int stKrogov = steviloKrogov(liga.getKoncnicaEkip());
-        if (serija.getKrog() >= stKrogov) {
-            return; // finale je odloceno
+        if (serija.getKrog() >= stKrogov(liga)) {
+            return; // finale (oz. par kvalifikacij) je odloceno
         }
         int naslednjiPar = (serija.getPar() + 1) / 2;
         SerijaKoncnice naslednja = serijaRepozitorij

@@ -3,7 +3,12 @@
    Prehodov (visja/nizja liga, napreduje, izpade) tu namenoma NI: pravila so
    zaklenjena, ko liga ni vec v pripravi, mesto lige v piramidi pa se sme
    popraviti kadar koli (na razpored ne vpliva). Zanje je PrehodiVnos in svoja
-   koncna tocka. */
+   koncna tocka.
+
+   Izjema je NASTANEK lige: prehodi (neobvezno) pridejo zraven, da
+   organizator piramido vpise ze v obrazcu nove lige - LigaStoritev.ustvari jih
+   zapise prek iste poti kot PUT /lige/{id}/prehodi. Urejanje pravil jih ne
+   bere. */
 package si.turnirko.dto;
 
 import java.time.LocalDateTime;
@@ -54,8 +59,25 @@ public record LigaVnos(
         // ure srecanj v kolu (V31): kolo je vecer z ure.size() srecanji
         // zapored in ekipa v njem sme igrati veckrat; null = kolo kroznega
         // sistema (vsaka ekipa enkrat, vsa srecanja ob uri iz semena)
-        List<LocalTime> ureSrecanj
+        List<LocalTime> ureSrecanj,
+        // prehodi ob nastanku lige; null = brez (urejanje pravil jih ne bere)
+        PrehodiVnos prehodi
 ) {
+
+    /* Vnos lige brez prehodov (kot pred V41). */
+    public LigaVnos(String ime, String sezona, SpolKategorija spolKategorija,
+                    FormatSrecanja formatSrecanja, Integer steviloNizov, Integer zmagZaSrecanje,
+                    Boolean dvokrozno, Integer tockeZmaga, Integer tockeNeodloceno,
+                    Integer tockePoraz, Boolean dovoljenoNeodloceno,
+                    Boolean prepovedDvojneRegistracije, RavenTekmovanja raven,
+                    Boolean enakomernaRazvrstitev, PredlogaLige predlogaListka,
+                    LocalDateTime zacetekPrvegaKola, Integer razmikDni,
+                    Integer koncnicaEkip, Integer koncnicaZmag, List<LocalTime> ureSrecanj) {
+        this(ime, sezona, spolKategorija, formatSrecanja, steviloNizov, zmagZaSrecanje,
+                dvokrozno, tockeZmaga, tockeNeodloceno, tockePoraz, dovoljenoNeodloceno,
+                prepovedDvojneRegistracije, raven, enakomernaRazvrstitev, predlogaListka,
+                zacetekPrvegaKola, razmikDni, koncnicaEkip, koncnicaZmag, ureSrecanj, null);
+    }
 
     /* Vnos lige brez koncnice (kot pred V28). */
     public LigaVnos(String ime, String sezona, SpolKategorija spolKategorija,

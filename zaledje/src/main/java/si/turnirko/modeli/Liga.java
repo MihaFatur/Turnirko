@@ -156,6 +156,25 @@ public class Liga {
     @Column(name = "st_izpade", nullable = false)
     private int stIzpade = 0;
 
+    /* Kvalifikacije (V41): koliko ekip tik pod neposrednim napredovanjem
+       (gor) oz. tik nad neposrednim izpadom (dol) igra kvalifikacije z
+       ekipami sosednje lige. Kot napreduje/izpade opis prehodov, ne pravilo. */
+    @Column(name = "st_kvalifikacije_gor", nullable = false)
+    private int stKvalifikacijeGor = 0;
+
+    @Column(name = "st_kvalifikacije_dol", nullable = false)
+    private int stKvalifikacijeDol = 0;
+
+    /* Liga KVALIFIKACIJ (V41) nosi obe ligi, med katerima se igra; navadna
+       liga ima oba prazna. Ekipe so kopije ekip obeh lig (KvalifikacijeStoritev). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_kvalifikacije_visja")
+    private Liga kvalifikacijeVisja;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_kvalifikacije_nizja")
+    private Liga kvalifikacijeNizja;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private StatusTekmovanja status = StatusTekmovanja.PRIPRAVA;
@@ -288,6 +307,23 @@ public class Liga {
 
     public int getStIzpade() { return stIzpade; }
     public void setStIzpade(int stIzpade) { this.stIzpade = stIzpade; }
+
+    public int getStKvalifikacijeGor() { return stKvalifikacijeGor; }
+    public void setStKvalifikacijeGor(int v) { this.stKvalifikacijeGor = v; }
+
+    public int getStKvalifikacijeDol() { return stKvalifikacijeDol; }
+    public void setStKvalifikacijeDol(int v) { this.stKvalifikacijeDol = v; }
+
+    public Liga getKvalifikacijeVisja() { return kvalifikacijeVisja; }
+    public Liga getKvalifikacijeNizja() { return kvalifikacijeNizja; }
+
+    public void nastaviKvalifikacije(Liga visja, Liga nizja) {
+        this.kvalifikacijeVisja = visja;
+        this.kvalifikacijeNizja = nizja;
+    }
+
+    /* Ali je liga sama kvalifikacije med dvema ligama (in ne navadna liga). */
+    public boolean jeKvalifikacijska() { return kvalifikacijeVisja != null; }
 
     public StatusTekmovanja getStatus() { return status; }
     public void setStatus(StatusTekmovanja status) { this.status = status; }

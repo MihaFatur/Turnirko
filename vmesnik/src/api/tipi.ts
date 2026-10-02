@@ -1227,6 +1227,10 @@ export interface LigaDto {
   visjaLigaIme: string | null
   stNapreduje: number
   stIzpade: number
+  /* Kvalifikacije (V41): koliko ekip tik pod neposrednim napredovanjem (gor)
+     oz. tik nad neposrednim izpadom (dol) igra kvalifikacije s sosednjo ligo. */
+  stKvalifikacijeGor: number
+  stKvalifikacijeDol: number
   status: StatusTekmovanja
   steviloEkip: number
   /* Napredek lige: koliko kol ima razpored in koliko jih je odigranih (kolo je
@@ -1247,6 +1251,12 @@ export interface LigaDto {
   koncnicaZmag: number | null
   /* Vir lige — uvožena liga je samo za branje. */
   vir: VirTekmovanja | null
+  /* Liga KVALIFIKACIJ (V41): med katerima ligama se igra; pri navadni ligi
+     null. Ekipe so kopije ekip obeh lig s kadri. */
+  idKvalifikacijeVisja: number | null
+  kvalifikacijeVisjaIme: string | null
+  idKvalifikacijeNizja: number | null
+  kvalifikacijeNizjaIme: string | null
 }
 
 export interface LigaVnos {
@@ -1275,6 +1285,9 @@ export interface LigaVnos {
   /* Ure kola (vsaj dve, strogo naraščajoče; 00:00 = ura ni določena); null =
      kolo je en krog. Pravilo tekmovanja — po žrebu se zaklene. */
   ureSrecanj: string[] | null
+  /* Mesto v piramidi ob NASTANKU lige (neobvezno); urejanje pravil ga ne
+     bere — pozneje ga ureja PrehodiOkno. */
+  prehodi?: PrehodiVnos | null
 }
 
 /* Ročni termini kol. Ločeno od LigaVnos iz istega razloga kot PrehodiVnos:
@@ -1317,6 +1330,59 @@ export interface PrehodiVnos {
   idNizjeLige: number[] | null
   stNapreduje: number
   stIzpade: number
+  /* Kvalifikacije: koliko ekip tik pod napredovanjem oz. tik nad izpadom. */
+  stKvalifikacijeGor: number
+  stKvalifikacijeDol: number
+}
+
+/* Kako se igrajo kvalifikacije med ligama — izbere organizator, ko jih
+   ustvari. Po parih (ena tekma, serija) se ekipe zvežejo križno, vsak z
+   vsakim je mala liga, katere zgornja mesta igrajo v višji ligi. */
+export type NacinKvalifikacij =
+  | 'ENA_TEKMA'
+  | 'SERIJA_DO_2'
+  | 'SERIJA_DO_3'
+  | 'VSAK_Z_VSAKIM'
+  | 'VSAK_Z_VSAKIM_DVOKROZNO'
+
+export const OZNAKE_NACINA_KVALIFIKACIJ: Record<NacinKvalifikacij, string> = {
+  ENA_TEKMA: 'Ena tekma',
+  SERIJA_DO_2: 'Serija do 2 zmag',
+  SERIJA_DO_3: 'Serija do 3 zmag',
+  VSAK_Z_VSAKIM: 'Vsak z vsakim',
+  VSAK_Z_VSAKIM_DVOKROZNO: 'Vsak z vsakim, doma in v gosteh',
+}
+
+export interface KvalifikacijeVnos {
+  idNizja: number
+  nacin: NacinKvalifikacij
+  /* Prazno = predlog strežnika (»Kvalifikacije Savinja liga A/B«). */
+  ime: string | null
+}
+
+export interface UdelezenecKvalifikacij {
+  idEkipa: number
+  ekipa: string
+  mesto: number
+}
+
+/* Kvalifikacije, kakršne bi nastale zdaj — iz trenutnih lestvic obeh lig
+   (koncano = false) oz. končnih. ovire povedo, zakaj jih še ni mogoče
+   ustvariti. pari so križni (najboljša višje lige z najslabšo nižje). */
+export interface KvalifikacijePredlogDto {
+  idVisja: number
+  visja: string
+  idNizja: number
+  nizja: string
+  izVisje: number
+  izNizje: number
+  koncano: boolean
+  ekipeVisje: UdelezenecKvalifikacij[]
+  ekipeNizje: UdelezenecKvalifikacij[]
+  pari: { visja: UdelezenecKvalifikacij; nizja: UdelezenecKvalifikacij }[]
+  ovire: string[]
+  idKvalifikacije: number | null
+  predlaganoIme: string
 }
 
 /* Klub je prazen pri »prosti« ekipi — zasedbi, ki v registru klubov nima
@@ -1382,7 +1448,8 @@ export interface LestvicaEkipeDto {
   prejetiNizi: number
   razlikaNizi: number
   tocke: number
-  cona: 'NAPREDUJE' | 'IZPADE' | null
+  /* Kvalifikacije (V41): GOR tik pod napredovanjem, DOL tik nad izpadom. */
+  cona: 'NAPREDUJE' | 'KVALIFIKACIJE_GOR' | 'KVALIFIKACIJE_DOL' | 'IZPADE' | null
 }
 
 /* Vrstica lestvice posameznikov ZNOTRAJ lige. Ratinga ni: ta teče čez vsa
@@ -1542,6 +1609,9 @@ export interface KoncnicaStran {
   ekipa: string
   mesto: number | null
   zmage: number
+  /* Pri kvalifikacijah liga, iz katere je ekipa prišla (mesto je mesto na
+     NJENI lestvici); pri končnici null. */
+  liga: string | null
 }
 
 export interface KoncnicaSerija {

@@ -5327,6 +5327,17 @@ td.nizi-okno__niz--dobljen {
   box-shadow: inset 4px 0 0 var(--barva-negativna);
 }
 
+/* Kvalifikacije (V41): isti pomen kot sosednji pas (zelena = proti
+   napredovanju, rjasta = proti izpadu), a svetlejši ton - mesto se šele
+   odloča. Nova barva bi bila tretji pomen, ki ga DESIGN.md ne dovoli. */
+.lestvica__vrsta--kvalifikacije_gor td:first-child {
+  box-shadow: inset 4px 0 0 var(--barva-poudarek-srednje);
+}
+
+.lestvica__vrsta--kvalifikacije_dol td:first-child {
+  box-shadow: inset 4px 0 0 var(--barva-negativna-srednje);
+}
+
 /* Ime ekipe je gumb, ker vrstica odpre okno ekipe: videti mora kot besedilo,
    delati pa kot dejanje (tipkovnica, bralnik zaslona). */
 .lestvica__ekipa {
@@ -5396,7 +5407,8 @@ td.nizi-okno__niz--dobljen {
 
 .legenda {
   display: flex;
-  gap: var(--r3);
+  flex-wrap: wrap;
+  gap: 12px var(--r3);
   margin-top: 12px;
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.08em;
@@ -5423,6 +5435,39 @@ td.nizi-okno__niz--dobljen {
 
 .legenda__znak--izpade {
   background: var(--barva-negativna);
+}
+
+.legenda__znak--kvalifikacije_gor {
+  background: var(--barva-poudarek-srednje);
+}
+
+.legenda__znak--kvalifikacije_dol {
+  background: var(--barva-negativna-srednje);
+}
+
+/* Ustvarjene kvalifikacije: oznaka v legendi je povezava nanje. */
+.legenda__postavka a {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Poziv organizatorju pod lestvico: redni del je odigran, kvalifikacij s
+   sosednjo ligo se ni. Vrsta kot pri obvestilu, gumb ob besedilu. */
+.liga__kvalifikacije-poziv {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--r2);
+  border-top: 1px solid var(--barva-crta);
+}
+
+.liga__kvalifikacije-vrsta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r1) var(--r2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: 15px;
 }
 
 /* --- Skupine kot zlozljive vrstice ---
@@ -8609,7 +8654,9 @@ a.domov__lestvica-vrstica--jaz {
 
 .liga__piramida-vrstica {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 200px;
+  /* Tok raste do svoje širine: s kvalifikacijami (»↑ 2 + 1 kval. · ↓ 2 + 1
+     kval.«) 200 px ne zadošča in vrstica bi se prelomila. */
+  grid-template-columns: 96px minmax(0, 1fr) minmax(200px, max-content);
   align-items: center;
   gap: var(--r3);
   padding: 12px 0;
@@ -8658,6 +8705,22 @@ a.domov__lestvica-vrstica--jaz {
 
 .liga__piramida-tok--izpad {
   color: var(--barva-negativna-tekst);
+}
+
+/* Kvalifikacije med nivojema: podrejena vrstica pod nivojem višje lige -
+   brez črte nad njo, manjša, da ne bere kot še en nivo. */
+.liga__piramida-vrstica--kval {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.liga__piramida-vrstica--kval .liga__piramida-liga {
+  font-size: 14px;
+}
+
+/* Liga kvalifikacij: opis pod parom lig. */
+.liga__kvalifikacije .namig {
+  margin-top: 12px;
 }
 
 /* --- Lestvica lige --- */
@@ -9049,6 +9112,63 @@ a.ekipa-okno__srecanje:hover {
   min-width: 0;
   font-size: var(--tip-uvod);
   color: var(--barva-crnilo);
+}
+
+/* Kvalifikacije: liga, iz katere je ekipa prisla (mesto je na njeni lestvici). */
+.koncnica__liga {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Okno »Ustvari kvalifikacije«: pari oz. udelezenci male lige. */
+.kvalifikacije__pari {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kvalifikacije__pari li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--r1) 12px;
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: 15px;
+}
+
+.kvalifikacije__ekipa {
+  display: flex;
+  flex-direction: column;
+}
+
+.kvalifikacije__liga,
+.kvalifikacije__proti {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.kvalifikacije__ovire p,
+.kvalifikacije__ovire ul {
+  margin: 0;
+}
+
+.kvalifikacije__ovire ul {
+  padding-left: 18px;
+}
+
+/* Sklop v sklopu (npr. nizje lige v »Piramidi in prehodih« obrazca nove
+   lige): brez druge zelene ploskve, le tanka crta - dvojna ploskev bi brala
+   kot napaka. */
+.obrazec__skupina .obrazec__skupina {
+  background: transparent;
+  border-left: 1px solid var(--barva-crta);
+  padding: 0 0 0 var(--r2);
 }
 
 .koncnica__zmage {
@@ -12779,6 +12899,14 @@ a.ekipa-okno__srecanje:hover {
 
 .lestvica-mobi__vrstica--izpade {
   border-left-color: var(--barva-negativna);
+}
+
+.lestvica-mobi__vrstica--kvalifikacije_gor {
+  border-left-color: var(--barva-poudarek-srednje);
+}
+
+.lestvica-mobi__vrstica--kvalifikacije_dol {
+  border-left-color: var(--barva-negativna-srednje);
 }
 
 .lestvica-mobi__vrstica--odprta {

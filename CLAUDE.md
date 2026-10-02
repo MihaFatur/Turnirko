@@ -128,6 +128,33 @@
   krogi pa se zavrnejo (`preveriBrezKroga`). Piramida na strani lige sledi
   izključno vpisanim povezavam — **sezona ne filtrira** (prej je in tiho
   razdrla piramide z drugače zapisano sezono); lige druge sezone so označene.
+  Ob **nastanku** lige pridejo prehodi neobvezno zraven (`LigaVnos.prehodi`,
+  obrazec nove lige deli polja s `PrehodiOkno` — `PrehodiPolja`); urejanje
+  pravil jih ne bere.
+- **Kvalifikacije med ligami** (V41, `KvalifikacijeStoritev`). Liga pove,
+  koliko ekip tik pod napredovanjem (`st_kvalifikacije_gor`) oz. tik nad
+  izpadom (`st_kvalifikacije_dol`) igra kvalifikacije s sosednjo ligo — kot
+  napreduje/izpade del prehodov. Lestvica jih označi s conama
+  `KVALIFIKACIJE_GOR/DOL` (svetlejši ton zelene/rjaste, ne nova barva).
+  - **Kvalifikacije so SVOJA liga** (kot uvožene »I./II. SNTL«): nosi obe ligi
+    (`id_kvalifikacije_visja/nizja`), pravila srečanja prevzame od višje,
+    ekipe so **kopije s kadri** — zapisniki, termini, rating in lestvica
+    tečejo po nespremenjeni kodi, lestvici obeh lig ostaneta nedotaknjeni.
+    Ni nivo piramide (prehodi jo kot višjo/nižjo zavrnejo); piramida jo kaže
+    kot vrstico »kval.« pod nivojem višje lige.
+  - Nastane iz **končnih** lestvic obeh lig (oba redna dela odigrana), ustvari
+    jo lastnik **višje** lige, pripada lastniku višje lige in **ne šteje** v
+    mejo lig paketa. Način izbere organizator (`NacinKvalifikacij`): ena tekma
+    ali serija (pari) oz. vsak z vsakim (mala liga, eno- ali dvokrožno).
+  - **Pari so križni** (odločitev lastnika, okt 2026): najboljša ekipa višje
+    lige z najslabšo nižje (8. A – 4. B, 9. A – 3. B), samo ob enakem številu
+    ekip z obeh strani. Tečejo po kodi končnice z **enim krogom**
+    (`KoncnicaStoritev.stKrogov`); prva stran serije je vedno ekipa višje lige
+    (zato pri eni tekmi igra doma ona, končnica pa po strani ve izvorno ligo).
+    Mala liga ostane v pripravi (žreb, termini kot pri navadni ligi); zgornja
+    mesta (`st_napreduje`) igrajo v višji ligi.
+  - Razveljavi se **v celoti** (`DELETE /lige/kvalifikacije/{id}`), dokler se
+    ni začelo nobeno srečanje; razveljavitev same končnice je zanjo zaprta.
 - **Ekipa ni nujno klub** (V11): `ekipa.id_klub` je neobvezen. *Prosta ekipa*
   (brez kluba) je zasedba, ki v šifrantu klubov nima zapisa in nastopa **samo
   v tej ligi** — rekreacijske in medpodjetniške lige; s tem šifranta ne zasuje

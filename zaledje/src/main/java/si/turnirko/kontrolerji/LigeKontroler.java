@@ -23,6 +23,8 @@ import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.KoncnicaDto;
+import si.turnirko.dto.KvalifikacijePredlogDto;
+import si.turnirko.dto.KvalifikacijeVnos;
 import si.turnirko.dto.LestvicaDvojiceDto;
 import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.LestvicaIgralcaLigeDto;
@@ -36,6 +38,7 @@ import si.turnirko.dto.StatistikaTekmovanjaDto;
 import si.turnirko.dto.TerminiVnos;
 import si.turnirko.dto.VrstniRedEkipVnos;
 import si.turnirko.storitve.KoncnicaStoritev;
+import si.turnirko.storitve.KvalifikacijeStoritev;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.SrecanjeStoritev;
 import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
@@ -48,14 +51,17 @@ public class LigeKontroler {
     private final SrecanjeStoritev srecanjeStoritev;
     private final StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
     private final KoncnicaStoritev koncnicaStoritev;
+    private final KvalifikacijeStoritev kvalifikacijeStoritev;
 
     public LigeKontroler(LigaStoritev ligaStoritev, SrecanjeStoritev srecanjeStoritev,
                          StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev,
-                         KoncnicaStoritev koncnicaStoritev) {
+                         KoncnicaStoritev koncnicaStoritev,
+                         KvalifikacijeStoritev kvalifikacijeStoritev) {
         this.ligaStoritev = ligaStoritev;
         this.srecanjeStoritev = srecanjeStoritev;
         this.statistikaTekmovanjaStoritev = statistikaTekmovanjaStoritev;
         this.koncnicaStoritev = koncnicaStoritev;
+        this.kvalifikacijeStoritev = kvalifikacijeStoritev;
     }
 
     // ---------- Liga ----------
@@ -246,5 +252,29 @@ public class LigeKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void razveljaviKoncnico(@PathVariable Long id) {
         koncnicaStoritev.razveljavi(id);
+    }
+
+    // ---------- Kvalifikacije med ligami ----------
+
+    /* Kdo bi igral kvalifikacije med visjo ligo {id} in nizjo {idNizja}, krizni
+       pari in kaj nastanku se stoji na poti. Javno - izpeljano iz lestvic. */
+    @GetMapping("/{id}/kvalifikacije/{idNizja}")
+    public KvalifikacijePredlogDto predlogKvalifikacij(@PathVariable Long id, @PathVariable Long idNizja) {
+        return kvalifikacijeStoritev.predlog(id, idNizja);
+    }
+
+    /* Ustvari ligo kvalifikacij med visjo ligo {id} in nizjo iz vnosa. */
+    @PostMapping("/{id}/kvalifikacije")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LigaDto ustvariKvalifikacije(@PathVariable Long id, @Valid @RequestBody KvalifikacijeVnos vnos) {
+        return kvalifikacijeStoritev.ustvari(id, vnos);
+    }
+
+    /* Razveljavi kvalifikacije (liga {id} je liga kvalifikacij) v celoti,
+       dokler se nobeno srecanje ni zacelo. */
+    @DeleteMapping("/kvalifikacije/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void razveljaviKvalifikacije(@PathVariable Long id) {
+        kvalifikacijeStoritev.razveljavi(id);
     }
 }

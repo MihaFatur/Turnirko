@@ -696,17 +696,9 @@ public class SrecanjeStoritev {
             return new SrecanjePodrobnoDto.Kontekst(dogodek.getTurnir().getIme(), null,
                     dogodek.getIme(), opisEkipneTekme(tekma), dogodek.getTurnir().getVir());
         }
-        String opis = s.jeKoncnica()
-                ? KoncnicaStoritev.opisTekme(s.getSerija().getKrog(),
-                        stKrogovKoncnice(s), s.getTekmaVSeriji())
-                : s.getKolo() + ". kolo";
+        String opis = s.jeKoncnica() ? KoncnicaStoritev.opisTekme(s) : s.getKolo() + ". kolo";
         return new SrecanjePodrobnoDto.Kontekst(s.getLiga().getIme(), s.getLiga().getSezona(),
                 null, opis, s.getLiga().getVir());
-    }
-
-    private int stKrogovKoncnice(Srecanje s) {
-        Integer ekip = s.getLiga().getKoncnicaEkip();
-        return ekip == null ? s.getSerija().getKrog() : Integer.numberOfTrailingZeros(ekip);
     }
 
     /* Mesto ekipne tekme v turnirju: skupina z imenom oz. faza mreze. */

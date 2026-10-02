@@ -20,6 +20,8 @@ import type {
   KlubVnos,
   KoledarVnosDto,
   KoncnicaDto,
+  KvalifikacijePredlogDto,
+  KvalifikacijeVnos,
   KrajDto,
   KrajVnos,
   LestvicaDvojiceDto,
@@ -368,6 +370,16 @@ export const ligeApi = {
   koncnica: (id: number) => api.vrni<KoncnicaDto>(`/lige/${id}/koncnica`),
   ustvariKoncnico: (id: number) => api.objavi<KoncnicaDto>(`/lige/${id}/koncnica`),
   razveljaviKoncnico: (id: number) => api.izbrisi(`/lige/${id}/koncnica`),
+
+  /* Kvalifikacije med višjo ligo {id} in nižjo: predlog (kdo jih igra, križni
+     pari, ovire) je javen; ustvari jih lastnik višje lige iz končnih lestvic.
+     Razveljavitev vzame ID lige KVALIFIKACIJ in jo zbriše v celoti. */
+  predlogKvalifikacij: (idVisja: number, idNizja: number) =>
+    api.vrni<KvalifikacijePredlogDto>(`/lige/${idVisja}/kvalifikacije/${idNizja}`),
+  ustvariKvalifikacije: (idVisja: number, vnos: KvalifikacijeVnos) =>
+    api.objavi<LigaDto>(`/lige/${idVisja}/kvalifikacije`, vnos),
+  razveljaviKvalifikacije: (idKvalifikacije: number) =>
+    api.izbrisi(`/lige/kvalifikacije/${idKvalifikacije}`),
 }
 
 export const srecanjaApi = {
