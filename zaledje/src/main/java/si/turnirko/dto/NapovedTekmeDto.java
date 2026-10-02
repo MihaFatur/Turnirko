@@ -1,21 +1,15 @@
 /* Napoved: koliko Turnirko ratinga bi igralec dobil ali izgubil, ce bi ZDAJ
    odigral tekmo proti izbranemu nasprotniku.
 
-   Ni ena stevilka, ampak mreza - in to namenoma. Sprememba je zmnozek
-   K x margina x teza x (izid - pricakovano), od cesar sta dve sestavini
-   odvisni od tekme, ki je se ni bilo:
+   Sprememba je zmnozek K x teza x (izid - pricakovano). Izid v nizih ne
+   vstopa (zmaga je zmaga), zato ima tekma samo dva mozna izida, zmago in
+   poraz. Od tekme, ki je se ni bilo, pa je odvisna TEZA (raven tekmovanja):
+   ista zmaga na uradnem turnirju NTZS premakne rating za tretjino vec kot na
+   klubskem. Ker je vsak zmnozek se zaokrozen (Math.rint), ravni ni mogoce
+   dobiti z mnozenjem v vmesniku - vsaka ima svoje izracunane stevilke.
 
-     - MARGINA (izid v nizih): gladka zmaga proti mocnejsemu je presenetljiva
-       in prinese vec od tesne. Zato je vrstica za vsak mozni izid (3:0, 3:1,
-       3:2 in zrcalno), ne ena sama povprecna stevilka, ki je ne bi dala
-       nobena prava tekma.
-     - TEZA (raven tekmovanja): ista zmaga na uradnem turnirju NTZS premakne
-       rating za tretjino vec kot na klubskem. Ker je vsak zmnozek se
-       zaokrozen (Math.rint), ravni ni mogoce dobiti z mnozenjem v vmesniku -
-       vsaka ima svoje izracunane stevilke.
-
-   K in pricakovani izid sta last IGRALCA in sta zato v "Stran"; margina in
-   teza sta last TEKME. Isto delitev pozna dnevnik ratinga (rating_zgodovina).
+   K in pricakovani izid sta last IGRALCA in sta zato v "Stran"; teza je last
+   TEKME. Isto delitev pozna dnevnik ratinga (rating_zgodovina).
 
    Napoved nicesar ne zapise - je pogled na formulo, ne obracun. */
 package si.turnirko.dto;
@@ -27,8 +21,6 @@ import si.turnirko.modeli.RavenTekmovanja;
 public record NapovedTekmeDto(
         Stran jaz,
         Stran nasprotnik,
-        /* Na koliko dobljenih nizov se tekma igra (3, 5 ali 7 nizov). */
-        int steviloNizov,
         /* Pricakovana verjetnost zmage lastnika profila, v odstotkih. To je
            "pricakovano" iz obrazca - razlog, zakaj zmaga proti mocnejsemu
            prinese vec od zmage proti sibkejsemu. */
@@ -51,18 +43,11 @@ public record NapovedTekmeDto(
             List<Opozorilo> opozorila
     ) {}
 
-    /* Vse sestavine napovedi za eno raven tekmovanja. */
-    public record Raven(RavenTekmovanja raven, double teza, List<Izid> izidi) {}
+    /* Oba mozna izida tekme na eni ravni tekmovanja. */
+    public record Raven(RavenTekmovanja raven, double teza, Izid zmaga, Izid poraz) {}
 
-    /* Ena mozna tekma: izid v nizih z vidika lastnika profila in kaj bi
-       naredil obema ratingoma. Urejeni so od najbolj prepricljive zmage do
-       najhujsega poraza - tako se berejo kot ena lestvica in ne kot dva
-       seznama. */
+    /* Kaj bi izid (zmaga ali poraz lastnika profila) naredil obema ratingoma. */
     public record Izid(
-            int mojiNizi,
-            int nizovNasprotnika,
-            boolean zmaga,
-            double margina,
             int sprememba,
             int rating,
             int spremembaNasprotnika,

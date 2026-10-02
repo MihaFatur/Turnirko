@@ -81,7 +81,9 @@ export function SrecanjeStran() {
   /* Listki so smiselni le, ko je postava določena in kaka tekma še čaka. */
   const imaZaTiskanje = p.tekme.some((t) => t.status === 'CAKA')
 
-  const odigrano = p.tekme.length > 0
+  /* Koncano srecanje brez posamicnih tekem ima izid: poraz brez borbe (5 : 0)
+     in prenesen izid finalne skupine ekipnega DP (tekme so v predtekmovanju). */
+  const odigrano = p.tekme.length > 0 || s.status === 'KONCANO'
   const domVodi = odigrano && s.dobljeneDomaci > s.dobljeneGost
   const gostVodi = odigrano && s.dobljeneGost > s.dobljeneDomaci
   const { datum, ura } = razbijCas(s.predvidenZacetek)
@@ -160,9 +162,13 @@ export function SrecanjeStran() {
 
       {p.tekme.length === 0 ? (
         <p className="obvestilo">
-          {s.status === 'KONCANO'
-            ? 'Srečanje je zapisano brez posamičnih tekem (brez boja).'
-            : `Postava še ni določena. ${smem ? 'Določi jo spodaj.' : 'Čaka na organizatorja.'}`}
+          {s.status !== 'KONCANO'
+            ? `Postava še ni določena. ${smem ? 'Določi jo spodaj.' : 'Čaka na organizatorja.'}`
+            : s.prenesen
+              ? 'Izid je prenesen iz predtekmovanja: ekipi sta ta dvoboj odigrali v predtekmovalni skupini, kjer so zapisane tudi posamične tekme. Tu šteje samo v lestvico finalne skupine.'
+              : s.brezBoja
+                ? 'Srečanje je zapisano brez posamičnih tekem (brez boja).'
+                : 'Srečanje je zapisano brez posamičnih tekem.'}
         </p>
       ) : (
         <Zapisnik podrobno={p} jeAdmin={smem} />

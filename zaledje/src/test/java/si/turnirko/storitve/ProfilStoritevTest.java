@@ -58,6 +58,9 @@ import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 class ProfilStoritevTest extends IntegracijskiTest {
 
+    @Autowired private si.turnirko.repozitoriji.SrecanjeRepozitorij srecanjeRepozitorij;
+    @Autowired private PreracunRatingaStoritev preracunRatinga;
+
     @Autowired private ProfilStoritev profilStoritev;
     @Autowired private LigaStoritev ligaStoritev;
     @Autowired private SrecanjeStoritev srecanjeStoritev;
@@ -211,6 +214,89 @@ class ProfilStoritevTest extends IntegracijskiTest {
         assertEquals(termin.toLocalDate(), tocka.datum());
         assertNotEquals(termin.toLocalDate(), tocka.kdaj().toLocalDate(),
                 "obracun je nastal danes, kolo pa je bilo pred dvema letoma");
+    }
+
+    /* Seznam tekem na profilu tece po CASU TEKME, ne po casu obracuna. Vsa
+       uvozena zgodovina je obracunana v enem dnevu, zato bi vrstni red po
+       obracunu postavil tekmo starejsega turnirja, vpisano pozneje, nad
+       novejso - tako so se lige 2024/25 na profilih znasle nad turnirji 2026. */
+    @Test
+    void seznamTekemTecePoCasuTekmeInNePoObracunu() {
+        Tekma novejsa = odigrajEnoTekmo(3, 1);
+        Igralec igralec = novejsa.getPrijava1().getIgralec();
+        Igralec nasprotnik = novejsa.getPrijava2().getIgralec();
+        LocalDate predLeti = LocalDate.now().minusYears(2);
+
+        // starejsi turnir z istima igralcema, vpisan PO novejsem
+        Turnir star = new Turnir();
+        star.setIme("Starejsi turnir");
+        star.setDatumZacetka(predLeti);
+        star.setRaven(RavenTekmovanja.URADNO);
+        turnirRepozitorij.save(star);
+        Dogodek dogodek = new Dogodek();
+        dogodek.setTurnir(star);
+        dogodek.setIme("Clani");
+        dogodek.setSpolKategorija(SpolKategorija.MOSKI);
+        dogodek.setPrivzetoSteviloNizov(5);
+        dogodek.setSistemTekmovanja(si.turnirko.modeli.SistemTekmovanja.IZLOCILNI);
+        dogodekRepozitorij.save(dogodek);
+        prijavaRepozitorij.save(new si.turnirko.modeli.Prijava(dogodek, igralec));
+        prijavaRepozitorij.save(new si.turnirko.modeli.Prijava(dogodek, nasprotnik));
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma starejsa = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                .findFirst().orElseThrow();
+        tekmaStoritev.vnesiRezultat(starejsa.getId(), new VnosRezultata(null, 3, 0, null, null));
+
+        List<ProfilDto.TekmaProfila> tekme = profilStoritev.profil(igralec.getId()).tekme();
+        assertEquals(2, tekme.size());
+        assertEquals(novejsa.getId(), tekme.get(0).idTekme(),
+                "novejsa tekma je prva, ceprav je bila obracunana prej");
+        assertEquals(predLeti, tekme.get(1).datum());
+    }
+
+    /* Ligaska tekma brez termina in brez casa vpisa (uvozena liga, ki ji vir
+       ni dal casa) nima datuma. Dan obracuna ni dan tekme: prej je taka tekma
+       nosila dan uvoza in se je brala, kot da je bila odigrana ta teden. V
+       aplikaciji take tekme ni (prvi izid zapise cas vpisa), zato jo test
+       sestavi tako kot uvoz: cas vpisa pobrise in rating preracuna. */
+    @Test
+    void tekmaBrezTerminaNimaDatumaObracuna() {
+        Long idLiga = ligaStoritev.ustvari(new LigaVnos(
+                "Liga brez terminov", "2024/25", SpolKategorija.MOSKI, FormatSrecanja.SNTL, 5,
+                null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null, null, null)).id();
+        dodajEkipoSKadrom(idLiga, "Brez A", 3);
+        dodajEkipoSKadrom(idLiga, "Brez B", 3);
+        ligaStoritev.generirajRazpored(idLiga);
+
+        Long idSrecanje = srecanjeStoritev.zaLigo(idLiga).get(0).id();
+        SrecanjePodrobnoDto s = srecanjeStoritev.podrobno(idSrecanje);
+        List<PostavaVnos.MestoVnos> mesta = new ArrayList<>();
+        for (int i = 0; i < s.pozicijeDomaci().size(); i++) {
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.DOMACI, s.pozicijeDomaci().get(i),
+                    s.kaderDomaci().get(i).idIgralec(), i < 2));
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.GOST, s.pozicijeGost().get(i),
+                    s.kaderGost().get(i).idIgralec(), i < 2));
+        }
+        srecanjeStoritev.nastaviPostavo(idSrecanje, new PostavaVnos(mesta));
+        srecanjeStoritev.vnesiRezultat(srecanjeStoritev.podrobno(idSrecanje).tekme().get(1).id(),
+                new VnosRezultataSrecanja(null, 3, 1, null, null));
+
+        si.turnirko.modeli.Srecanje srecanje = srecanjeRepozitorij.findById(idSrecanje).orElseThrow();
+        srecanje.setOdigranOb(null);
+        srecanjeRepozitorij.save(srecanje);
+        preracunRatinga.preracunajOd(null);
+
+        ProfilDto profil = profilStoritev.profil(s.kaderDomaci().get(0).idIgralec());
+        assertEquals(1, profil.tekme().size());
+        assertEquals(null, profil.tekme().get(0).datum(), "brez termina ni datuma");
+        assertEquals(1, profil.graf().size(), "tekma je v ratingu, le brez casa");
+        // vmesnik datuma ne sme nadomestiti s casom obracuna (to je danasnji dan)
+        assertEquals(null, profil.graf().get(0).datum(), "tocka grafa tekme brez termina nima datuma");
+        // preracun je dnevnik zapisal danes; "zadnjih 30 dni" in vrh tecejo po casu tekme
+        ProfilZasebnoDto.Forma forma = profilStoritev.zasebno(s.kaderDomaci().get(0).idIgralec(), adminIme()).forma();
+        assertEquals(0, forma.spremembaElo30dni(), "tekma brez casa ni v zadnjih 30 dneh");
+        assertEquals(null, forma.najvisjiRatingDatum(), "vrh, dosezen na tekmi brez casa, nima datuma");
     }
 
     @Test

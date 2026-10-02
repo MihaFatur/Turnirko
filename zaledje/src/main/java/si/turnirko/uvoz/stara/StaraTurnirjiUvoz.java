@@ -5,8 +5,18 @@
 
    * DISCIPLINA (pri viru "cat", npr. "kadeti posamezno") je Turnirkov DOGODEK.
      En turnir jih ima vec, tako kot ima Turnirkov turnir vec dogodkov.
-     Dvojice in ekipne discipline pretvorba ze izpusti - Turnirkova prijava
-     veze natanko enega igralca.
+     Ekipne discipline pretvorba izpusti (pri viru nimajo rezultatov).
+
+   * DVOJICE so disciplina DVOJICE in PAR je ENA prijava (igralec + igralec2),
+     tako kot v aplikaciji. Vir para ne prijavi posebej, zato par nastane iz
+     tekem; v rating dvojice ne gredo (isto pravilo kot povsod).
+
+   * STAROSTNA KATEGORIJA je kategorija DISCIPLINE ("mladinci posamezno"), ne
+     turnirja: Masters ima pod kategorijo turnirja "clani" tudi discipline
+     mladih.
+
+   * POPRAVEK NA MESTU: ponovni uvoz vzame obstojeci turnir (id ostane); vse
+     njegove dogodke je klicatelj pred tem pobrisal (CiscenjeStare).
 
    * SISTEM TEKMOVANJA se ne prenese, ampak se PREBERE IZ STOPENJ. Vir pozna
      stopnje "Kvalifikacije" (skupine), "Top sistem" (krozno) in "Finalni del"
@@ -99,9 +109,15 @@ public class StaraTurnirjiUvoz {
     }
 
     public void uvozi(JsonNode vir) {
+        uvozi(vir, null);
+    }
+
+    /* obstojeci: turnir iz prejsnjega uvoza, ki se zapise znova na mestu (id
+       ostane); dogodke je klicatelj ze pobrisal. null = nov turnir. */
+    public Turnir uvozi(JsonNode vir, Turnir obstojeci) {
         LocalDate zacetek = UvozOblike.datum(vir.path("datumOd").asText(null));
 
-        Turnir turnir = new Turnir();
+        Turnir turnir = obstojeci != null ? obstojeci : new Turnir();
         turnir.setIme(UvozOblike.prirezi(vir.path("ime").asText(), 80));
         turnir.setDatumZacetka(zacetek);
         turnir.setDatumKonca(UvozOblike.datum(vir.path("datumDo").asText(null)));
@@ -117,13 +133,50 @@ public class StaraTurnirjiUvoz {
         // arhiv zveze je samo za branje (V27)
         turnir.setVir(VirTekmovanja.STARA_NTZS);
         turnir = turnirRepozitorij.save(turnir);
-        povezave.save(new ZunanjaPovezava(VirTekmovanja.STARA_NTZS, ZunanjaPovezava.Vrsta.TURNIR,
-                UvozOblike.prirezi(vir.path("id").asText(), 80), turnir.getId()));
+        if (obstojeci == null) {
+            povezave.save(new ZunanjaPovezava(VirTekmovanja.STARA_NTZS, ZunanjaPovezava.Vrsta.TURNIR,
+                    UvozOblike.prirezi(vir.path("id").asText(), 80), turnir.getId()));
+        }
         porocilo.prestej("turnirjev");
 
         for (JsonNode disciplina : vir.path("discipline")) {
-            uvoziDisciplino(turnir, disciplina, vir.path("kategorija").asText(null), zacetek);
+            uvoziDisciplino(turnir, disciplina,
+                    kategorijaDiscipline(disciplina.path("oznaka").asText(""), vir.path("kategorija").asText(null)),
+                    zacetek);
         }
+        return turnir;
+    }
+
+    /* Starostna kategorija iz oznake discipline ("mlajše kadetinje posamezno",
+       "člani do 21 let dvojice"), sicer kategorija turnirja. Vrstni red
+       preverjanja ni poljuben: "mlajši kadeti" vsebuje "kadeti", "člani do 21"
+       vsebuje "člani". */
+    static String kategorijaDiscipline(String oznaka, String kategorijaTurnirja) {
+        String o = oznaka == null ? "" : oznaka.toLowerCase();
+        if (o.matches(".*mlajš[ie] kadet.*")) return "mlajši kadeti";
+        if (o.matches(".*kadet.*")) return "kadeti";
+        if (o.matches(".*mladin.*")) return "mladinci";
+        if (o.matches(".*član.*do 21.*")) return "člani do 21 let";
+        if (o.matches(".*član.*")) return "člani";
+        return kategorijaTurnirja;
+    }
+
+    private static boolean dvojice(JsonNode disciplina) {
+        return disciplina.path("dvojice").asBoolean(false);
+    }
+
+    /* Kljuc udelezenca tekme: pri posamicni disciplini id igralca vira, pri
+       dvojicah par ("a+b", urejen, da je par isti ne glede na vrstni red). */
+    private static String udelezenec(JsonNode tekma, int stran, boolean dvojice) {
+        if (!dvojice) {
+            return tekma.path(stran == 1 ? "igralec1" : "igralec2").asText(null);
+        }
+        JsonNode par = tekma.path(stran == 1 ? "par1" : "par2");
+        if (!par.isArray() || par.size() != 2) {
+            return null;
+        }
+        String a = par.get(0).asText(), b = par.get(1).asText();
+        return a.compareTo(b) <= 0 ? a + "+" + b : b + "+" + a;
     }
 
     private void uvoziDisciplino(Turnir turnir, JsonNode vir, String starostnaKategorija,
@@ -134,9 +187,10 @@ public class StaraTurnirjiUvoz {
         }
 
         Dogodek dogodek = ustvariDogodek(turnir, vir, tekme, starostnaKategorija);
-        Map<String, Prijava> prijave = ustvariPrijave(dogodek, vir, tekme);
+        boolean dvojice = dvojice(vir);
+        Map<String, Prijava> prijave = dvojice ? ustvariPare(dogodek, tekme) : ustvariPrijave(dogodek, vir, tekme);
         Map<Integer, Skupina> skupine = ustvariSkupine(dogodek, tekme);
-        List<Tekma> zapisane = ustvariTekme(dogodek, tekme, prijave, skupine, datum);
+        List<Tekma> zapisane = ustvariTekme(dogodek, tekme, prijave, skupine, datum, dvojice);
 
         // clanstvo v skupini (prejsnji uvoz ga ni pisal) in mesta - po istih
         // pravilih kot pri dogodku, ki se je odigral v Turnirku
@@ -178,9 +232,10 @@ public class StaraTurnirjiUvoz {
         Dogodek dogodek = new Dogodek();
         dogodek.setTurnir(turnir);
         dogodek.setIme(UvozOblike.prirezi(vir.path("oznaka").asText("disciplina"), 60));
-        dogodek.setDisciplina(Disciplina.POSAMICNO);
-        dogodek.setSpolKategorija("ZENSKI".equals(vir.path("spol").asText())
-                ? SpolKategorija.ZENSKE : SpolKategorija.MOSKI);
+        dogodek.setDisciplina(dvojice(vir) ? Disciplina.DVOJICE : Disciplina.POSAMICNO);
+        String spol = vir.path("spol").asText();
+        dogodek.setSpolKategorija("MESANO".equals(spol) && dvojice(vir) ? SpolKategorija.MESANO
+                : "ZENSKI".equals(spol) ? SpolKategorija.ZENSKE : SpolKategorija.MOSKI);
         dogodek.setStarostnaKategorija(UvozOblike.prirezi(starostnaKategorija, 40));
         dogodek.setSistemTekmovanja(sistem);
         dogodek.setPrivzetoSteviloNizov(privzetoSteviloNizov(tekme));
@@ -241,6 +296,46 @@ public class StaraTurnirjiUvoz {
         return prijave;
     }
 
+    /* Pari dvojic iz tekem: par je ena prijava z dvema igralcema (kot v
+       aplikaciji). Igralec sme biti v disciplini v enem samem paru - shema ima
+       UNIQUE (dogodek, igralec), drugi igralec pa ne sme stati drugje. */
+    private Map<String, Prijava> ustvariPare(Dogodek dogodek, List<JsonNode> tekme) {
+        Map<String, Prijava> pari = new LinkedHashMap<>();
+        Set<Long> zasedeni = new HashSet<>();
+        for (JsonNode t : tekme) {
+            for (int stran = 1; stran <= 2; stran++) {
+                String kljuc = udelezenec(t, stran, true);
+                if (kljuc == null || pari.containsKey(kljuc)) {
+                    continue;
+                }
+                String[] ida = kljuc.split("\\+");
+                String k1 = ZbirnikSifrantov.kljuc(ZbirnikSifrantov.VIR_STARA, ida[0]);
+                String k2 = ZbirnikSifrantov.kljuc(ZbirnikSifrantov.VIR_STARA, ida[1]);
+                Igralec a = sifranti.igralci().get(k1);
+                Igralec b = sifranti.igralci().get(k2);
+                if (a == null || b == null) {
+                    porocilo.opozori("par dvojic brez igralca v sifrantu", dogodek.getIme() + ": " + kljuc);
+                    continue;
+                }
+                if (a.getId().equals(b.getId()) || zasedeni.contains(a.getId()) || zasedeni.contains(b.getId())) {
+                    porocilo.opozori("igralec v dveh parih iste discipline (par izpuscen)",
+                            dogodek.getIme() + ": " + a.polnoIme() + " / " + b.polnoIme());
+                    continue;
+                }
+                Prijava par = new Prijava(dogodek, a);
+                par.setStatus(Prijava.StatusPrijave.PRIJAVLJEN);
+                par.setKlubObPrijavi(sifranti.klubIgralca(k1));
+                par.nastaviSoigralca(b);
+                par.setKlubObPrijavi2(sifranti.klubIgralca(k2));
+                zasedeni.add(a.getId());
+                zasedeni.add(b.getId());
+                pari.put(kljuc, prijavaRepozitorij.save(par));
+                porocilo.prestej("parov dvojic");
+            }
+        }
+        return pari;
+    }
+
     private Prijava ustvariPrijavo(Dogodek dogodek, String idVira, Map<String, Prijava> ze) {
         if (idVira == null || ze.containsKey(idVira)) {
             return null;
@@ -286,7 +381,7 @@ public class StaraTurnirjiUvoz {
     }
 
     private List<Tekma> ustvariTekme(Dogodek dogodek, List<JsonNode> tekme, Map<String, Prijava> prijave,
-                                     Map<Integer, Skupina> skupine, LocalDate datum) {
+                                     Map<Integer, Skupina> skupine, LocalDate datum, boolean dvojice) {
         List<Tekma> zapisane = new ArrayList<>();
         // Shema ima UNIQUE (dogodek, faza, kolo, pozicija). V skupinskem delu
         // vse skupine oStevilcijo tekme od 1 naprej, zato se mesta prekrivajo -
@@ -312,8 +407,10 @@ public class StaraTurnirjiUvoz {
                 pozicija++;
             }
 
-            Prijava prva = prijave.get(t.path("igralec1").asText(null));
-            Prijava druga = prijave.get(t.path("igralec2").asText(null));
+            String kljuc1 = udelezenec(t, 1, dvojice);
+            String kljuc2 = udelezenec(t, 2, dvojice);
+            Prijava prva = kljuc1 == null ? null : prijave.get(kljuc1);
+            Prijava druga = kljuc2 == null ? null : prijave.get(kljuc2);
             if (prva == null || druga == null) {
                 porocilo.opozori("tekma brez obeh prijav (izpuscena)",
                         dogodek.getIme() + " #" + t.path("st").asInt());
@@ -350,7 +447,7 @@ public class StaraTurnirjiUvoz {
 
             Tekma shranjena = tekmaRepozitorij.save(tekma);
             zapisane.add(shranjena);
-            porocilo.prestej("tekem (turnirskih)");
+            porocilo.prestej(dvojice ? "tekem dvojic (turnirskih)" : "tekem (turnirskih)");
 
             shraniNize(shranjena, t);
             if (!skupinska) {

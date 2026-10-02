@@ -23,12 +23,14 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -106,10 +108,10 @@ public final class PosnetekDogodka {
         Map<String, JsonNode> vsebina = new HashMap<>();
         MessageDigest zgostitev = sha256();
         for (String ime : DATOTEKE) {
-            byte[] bajti = beriBajte(mapa.resolve(ime));
+            JsonNode drevo = razcleni(beriBajte(mapa.resolve(ime)), mapa.resolve(ime));
             zgostitev.update(ime.getBytes(StandardCharsets.UTF_8));
-            zgostitev.update(bajti);
-            vsebina.put(ime, razcleni(bajti, mapa.resolve(ime)));
+            zgostitev.update(kanonicno(drevo).getBytes(StandardCharsets.UTF_8));
+            vsebina.put(ime, drevo);
         }
         JsonNode v = vrstica != null ? vrstica : razcleni(beriBajte(mapa.resolve("dogodek.json")), mapa);
         String sezona = imeSezone;
@@ -117,8 +119,70 @@ public final class PosnetekDogodka {
             sezona = UvozOblike.ocisti(razcleni(beriBajte(mapa.resolve("sezona.json")), mapa)
                     .path("season_name").asText(null));
         }
+        // popravki datumov so del tega, kar se zapise: sprememba popravka je
+        // sprememba uvoza, tudi ce vir ostane isti
+        List<Long> idjiTekem = new ArrayList<>();
+        seznam(vsebina.get("tekme.json").path("matches")).forEach(t -> idjiTekem.add(t.path("id").asLong()));
+        zgostitev.update(PopravkiStupe.privzeti().opisZa(v.path("id").asLong(), idjiTekem)
+                .getBytes(StandardCharsets.UTF_8));
         return new PosnetekDogodka(v, sezona, datumPosnetka,
                 HexFormat.of().formatHex(zgostitev.digest()), vsebina);
+    }
+
+    /* Polja, ki jih vir spreminja brez spremembe vsebine. */
+    private static final java.util.Set<String> SPREMENLJIVA_POLJA = java.util.Set.of("updated_at");
+
+    /* Zgostitev se racuna nad VSEBINO, ne nad bajti odgovora. Stupa je po
+       13. 9. 2026 spremenila obliko odgovorov (vrstni red kljucev, novo polje
+       point_restriction_mode: null) in bajtna zgostitev je vseh 97 dogodkov
+       razglasila za spremenjene, ceprav se je vsebina spremenila le pri stirih
+       - prava sprememba se v tem ni vec locila od sprememb zapisa. Kanonicna
+       oblika: kljuci po abecedi, brez praznih (null) polj in brez polj, ki se
+       spreminjajo sama; vrstni red seznamov ostane. */
+    static String kanonicno(JsonNode n) {
+        StringBuilder sb = new StringBuilder();
+        kanonicno(n, sb);
+        return sb.toString();
+    }
+
+    private static void kanonicno(JsonNode n, StringBuilder sb) {
+        if (n == null || n.isMissingNode() || n.isNull()) {
+            sb.append("null");
+        } else if (n.isObject()) {
+            List<String> kljuci = new ArrayList<>();
+            n.fieldNames().forEachRemaining(kljuci::add);
+            kljuci.sort(Comparator.naturalOrder());
+            sb.append('{');
+            boolean prvi = true;
+            for (String k : kljuci) {
+                JsonNode v = n.get(k);
+                if (v.isNull() || SPREMENLJIVA_POLJA.contains(k)) {
+                    continue;
+                }
+                if (!prvi) {
+                    sb.append(',');
+                }
+                prvi = false;
+                sb.append('"').append(com.fasterxml.jackson.core.io.JsonStringEncoder.getInstance().quoteAsString(k))
+                        .append("\":");
+                kanonicno(v, sb);
+            }
+            sb.append('}');
+        } else if (n.isArray()) {
+            sb.append('[');
+            for (int i = 0; i < n.size(); i++) {
+                if (i > 0) {
+                    sb.append(',');
+                }
+                kanonicno(n.get(i), sb);
+            }
+            sb.append(']');
+        } else if (n.isNumber()) {
+            // 3 in 3.0 sta isto stevilo
+            sb.append(n.decimalValue().stripTrailingZeros().toPlainString());
+        } else {
+            sb.append(n.toString());
+        }
     }
 
     // ---------- Dogodek ----------
@@ -126,8 +190,44 @@ public final class PosnetekDogodka {
     public long id() { return vrstica.path("id").asLong(); }
     public String ime() { return UvozOblike.ocisti(vrstica.path("name").asText(null)); }
     public boolean jeLiga() { return "L".equals(vrstica.path("event_type").asText()); }
-    public LocalDate zacetek() { return UvozOblike.datum(vrstica.path("event_start_date").asText(null)); }
-    public LocalDate konec() { return UvozOblike.datum(vrstica.path("event_end_date").asText(null)); }
+    /* Zacetek in konec tekmovanja: iz zapisa popravkov, kadar ima Stupa datum
+       narobe (glej PopravkiStupe), sicer iz vira. */
+    public LocalDate zacetek() {
+        return PopravkiStupe.privzeti().dogodek(id()).map(PopravkiStupe.Dogodek::zacetek)
+                .orElseGet(() -> UvozOblike.datum(vrstica.path("event_start_date").asText(null)));
+    }
+    public LocalDate konec() {
+        return PopravkiStupe.privzeti().dogodek(id()).map(PopravkiStupe.Dogodek::konec)
+                .orElseGet(() -> UvozOblike.datum(vrstica.path("event_end_date").asText(null)));
+    }
+    /* Ali je datum tekmovanja popravljen (vir v PopravkiStupe). */
+    public Optional<PopravkiStupe.Dogodek> popravekDatuma() {
+        return PopravkiStupe.privzeti().dogodek(id());
+    }
+
+    /* Cas tekme: iz zapisa popravkov, sicer start_time vira. Pri dogodku s
+       popravljenim ZACETKOM vir casa tekem ne pove - start_time je tam ostanek
+       naknadnega vnosa (Stupa 138: urni okenci 10:00-15:00 na dan vnosa) - zato
+       tekma takrat casa nima in velja dan tekmovanja. Popravek samo konca
+       (enodnevni zapis dvodnevnega prvenstva) casov tekem ne zavrze. */
+    public LocalDateTime casTekme(JsonNode tekma) {
+        Optional<PopravkiStupe.Tekma> popravek = PopravkiStupe.privzeti().tekma(tekma.path("id").asLong())
+                .filter(p -> p.cas() != null);
+        if (popravek.isPresent()) {
+            return popravek.get().cas();
+        }
+        LocalDate zacetekVira = UvozOblike.datum(vrstica.path("event_start_date").asText(null));
+        if (popravekDatuma().filter(d -> !d.zacetek().equals(zacetekVira)).isPresent()) {
+            return null;
+        }
+        return UvozOblike.casovniZig(tekma.path("start_time").asText(null));
+    }
+    /* Kolo srecanja lige: uradni krog iz zapisa popravkov, sicer krog vira. */
+    public int koloTekme(JsonNode tekma, int krogVira) {
+        return PopravkiStupe.privzeti().tekma(tekma.path("id").asLong())
+                .map(PopravkiStupe.Tekma::kolo)
+                .orElse(krogVira);
+    }
     public String imeSezone() { return imeSezone; }
     public String zgostitev() { return zgostitev; }
     public LocalDate datumPosnetka() { return datumPosnetka; }

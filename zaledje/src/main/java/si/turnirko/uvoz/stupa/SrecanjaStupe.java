@@ -308,9 +308,9 @@ final class SrecanjaStupe {
                     continue;
                 }
                 /* Zmagovalec brez nizov (0 : 0): podtekma je bila odigrana, zapisan
-                   pa je samo zmagovalec. Zapise se kot odigrana z 0 : 0, kar rating
-                   bere kot "samo zmagovalec" (IzidTekme.samoZmagovalec). Izenacenje
-                   z nizi (npr. 1 : 1) pa je protislovje vira. */
+                   pa je samo zmagovalec. Zapise se kot odigrana z 0 : 0; rating
+                   steje samo zmagovalca, zato jo obracuna kot vsako drugo.
+                   Izenacenje z nizi (npr. 1 : 1) pa je protislovje vira. */
                 if (!brezBoja && d == 0 && g == 0) {
                     porocilo.opozori("podtekma z zapisanim zmagovalcem brez nizov (odigrana, izid po nizih ni znan)",
                             opis + ", podtekma " + pod.path("id").asLong());

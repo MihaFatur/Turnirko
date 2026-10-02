@@ -40,6 +40,9 @@ import type {
   OrganizatorPregledDto,
   Paket,
   ParRazporedaDto,
+  PodobenIgralecDto,
+  PodobenIgralecPodrobenDto,
+  PodobniVnos,
   PreracunPorociloDto,
   PostavaVnos,
   PredogledUvozaDto,
@@ -145,6 +148,15 @@ export const igralciApi = {
      tega ne kliči, dokler ne veš, da je prijavljeni admin (sicer 401). */
   seznamPodrobno: () => api.vrni<IgralecPodrobenDto[]>('/igralci/podrobno'),
   ustvari: (vnos: IgralecVnos) => api.objavi<IgralecDto>('/igralci', vnos),
+  /* Ali podoben igralec že obstaja (obrazec »Nov igralec« vpraša ob
+     shranjevanju). Poizvedba, a POST: datum rojstva ne sme v naslov. Dve
+     poti, ker organizator datumov rojstva ne sme videti: organizatorjeva
+     (admin in organizator) jih ne vrne, administratorjeva (samo admin, sicer
+     403) jih. */
+  podobni: (vnos: PodobniVnos) =>
+    api.objavi<PodobenIgralecDto[]>('/igralci/podobni', vnos),
+  podobniPodrobno: (vnos: PodobniVnos) =>
+    api.objavi<PodobenIgralecPodrobenDto[]>('/igralci/podobni/podrobno', vnos),
   posodobi: (id: number, vnos: IgralecVnos) =>
     api.posodobi<IgralecDto>(`/igralci/${id}`, vnos),
   /* Brisanje je v resnici arhiviranje - zgodovina tekem ostane. */

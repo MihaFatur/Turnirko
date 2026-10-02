@@ -23,6 +23,31 @@
   šifrant je skupen vsem klubom). Ne združuj poti in ne dodajaj osebnih polj
   v javni DTO — pravilo varuje `IgralciZasebnostTest`, ki preverja surovo
   telo odgovora.
+- **Dvojnik igralca se pri vpisu opozori, ne prepreči** (`PodobnostImen`,
+  `IgralciStoritev.najdiPodobne`). Obrazec »Nov igralec« ob shranjevanju vpraša
+  `POST /igralci/podobni` in, če so zadetki, pokaže seznam in
+  »Vseeno dodaj igralca«; urejanje se ne preverja. Isto ime imata lahko dve
+  osebi, dvojnik pa razbije zgodovino in rating na dva zapisa — zato odloči
+  človek. Razmerje pravil in zasebnosti je namerno:
+  - **Zadetek odločajo SAMO imena** (brez šumnikov, velikih črk in ločil):
+    isto, zamenjano (ime ↔ priimek) ali podobno — **največ ena beseda** se
+    razlikuje, in to samo pri dovolj dolgi (od 5 črk ena napaka, od 9 dve:
+    »Tina« / »Nina« sta dve osebi), ali je krajša oblika imena (»Miha« /
+    »Mihael«, še 1–3 črke več). Če je znan spol obeh in se razlikuje, ime
+    zožimo na enako (»Matej« / »Mateja«). Zadetkov je največ 10, tudi
+    arhivirani (imajo zgodovino).
+  - **Datum rojstva zadetka ne vpliva** — sicer bi organizator s poskušanjem
+    datumov iz tega, ali se zadetek pojavi, izvedel datum rojstva znanega
+    igralca. Datum zato ne sodi v javni izpis: `/podobni` (admin + organizator)
+    vrne `PodobenIgralecJavniDto` (javni zapis, klub, pas), samo ADMIN dobi
+    `/podobni/podrobno` s polnim zapisom in primerjavo datuma (`ENAK`,
+    `PODOBEN`, `DRUG`). Poti sta ločeni po istem načelu kot `/podrobno`;
+    `PodobniIgralciTest` preverja vloge in surovo telo odgovora.
+  - POST in ne GET, ker datum rojstva ne sme v naslov zahteve.
+  - Vmesnik **ne zadrži vpisa**, če poizvedba odpove (opozorilo je pomoč, ne
+    pogoj). Admin vidi pri vsakem zadetku tudi, ali je datum enak, podoben
+    ali drug; ob popravku vnosa opozorilo izgine in se ob shranjevanju preveri
+    znova.
 - **Ime pred priimkom, povsod.** Slovensko se oseba imenuje »Ana Novak« in tak
   je *vsak* izpis igralca — v zaledju ga sestavi `Igralec.polnoIme()`, v
   vmesniku pa vsako mesto, ki ime in priimek izpiše ločeno (izbirniki,
@@ -270,36 +295,34 @@
     poženi zamenjave čez že uveljavljene migracije**: Flyway preverja kontrolno
     vsoto celotne datoteke, zato podre zagon že popravljen komentar.
 - **Turnirko rating (`TurnirkoRatingStoritev`)** ima lastnosti, ki jih ne razbij:
-  - **K po negotovosti** (`kFaktor`): osnova **40**, nanjo se **seštevajo**
-    pribitki po +8 za vse, česar o igralcu še ne vemo — manj kot 30 tekem,
-    manj kot 10 tekem in prvih 15 tekem po vrnitvi. Novinec ima torej 56,
-    vrnjeni novinec 64, ustaljen igralec 40; K je za oba igralca lahko različen.
-    **Vrednosti niso ugibane**: umerjene so na 91.741 pravih tekmah po metodi
-    »napovej, nato posodobi« (prequential log-loss). Prejšnje 48/32/20 z močjo
-    margine 0,5 so dajale 0,4403, te 0,4184, optimum podatkov (K 56, moč 1,5)
-    pa 0,4131 — izbrana je vmesna različica zaradi mirnejših skokov. Kdor
-    parametre spreminja, naj jih izmeri, ne ugane.
+  - **K po negotovosti** (`kFaktor`): osnova **48**, nanjo se **seštevajo**
+    pribitki po +10 za vse, česar o igralcu še ne vemo — manj kot 30 tekem,
+    manj kot 10 tekem in prvih 15 tekem po vrnitvi. Novinec ima torej 68,
+    vrnjeni novinec 78, ustaljen igralec 48; K je za oba igralca lahko različen.
+    **Vrednosti niso ugibane**: umerjene so na pravih tekmah zgodovine NTZS po
+    metodi »napovej, nato posodobi« (prequential log-loss). Do oktobra 2026 je
+    bila osnova 40 (+8) s set-margino; brez margine je K 40 napovedoval slabše
+    (log-loss od 2024: K ×1,0 0,3951, ×1,2 0,3930, ×1,4 0,3922, ×1,6 0,3922),
+    lastnik je izbral ×1,2, ker so skoki blizu prejšnjih (povprečno 13 namesto
+    11,8 točke, največ 57 namesto 74). Meri `UmeritevKPoskus` (test, ki teče
+    samo nad podano kopijo baze). Kdor parametre spreminja, naj jih izmeri, ne
+    ugane.
   - **ničvsotno zaokroževanje** z `Math.rint` (pol na sodo), ne `Math.round`:
     pri **enakem** K je vsota sprememb natanko 0 tudi ob izenačeni napovedi
     (`Math.round` bi pri lihem K ob vsakem izenačenju vbrizgal +1). Pri
     različnem K (novinec proti ustaljenemu) vsota namenoma ni 0.
-  - **set-margina po presenečenju** (`marginaMnozitelj`): K se množi glede na
-    to, koliko je razlika v nizih presenetljiva (dejansko dobljeni nizi
-    poraženca proti pričakovanim iz razlike ratingov), NE po surovi razliki.
-    Favoritova gladka zmaga je pričakovana (majhen bonus), avtsajderjeva velik.
-    Moč je **1,25** z mejama **0,35–1,65**. Meji nista okras: brez njiju bi pri
-    veliki razliki v ratingu množitelj podivjal in bi ena sama presenetljivo
-    gladka zmaga vrgla igralca čez pol lestvice.
-  - **nizi poraženca se vzamejo po ZMAGOVALCU**, ne kot manjše od obeh števil.
-    Pri končani tekmi je to isto, pri **predaji** pa ne: kdor preda pri vodstvu
-    2 : 0, je »zmagovalcu« pustil nič dobljenih nizov in prejšnja koda je to
-    brala kot gladko razbitje 3 : 0 — nasprotnik je za tekmo, ki jo je na mizi
-    izgubljal, dobil najvišji možni bonus.
-  - **pri predaji margine ni** (`izracunaj(..., predaja = true)` postavi
-    množitelj na 1): predana tekma ni bila odigrana do konca, zato njen delni
-    izid ne pove tega, kar model po nizih predpostavlja. Šteje samo, kdo je
-    zmagal. Klicalca (`TekmaStoritev`, `SrecanjeStoritev`) zastavico izpeljeta
-    iz `izid_tip`.
+  - **Zmaga je zmaga** (odločitev lastnika, 30. 9. 2026): izid v nizih na
+    spremembo **ne vpliva** — 3 : 0 in 3 : 2 prineseta isto, 0 : 3 in 2 : 3
+    vzameta isto. Sprememba je `K × teža × (izid − pričakovano)`;
+    `izracunaj` nizov sploh ne sprejme, zmagovalec je podan izrecno (predaja
+    pri izenačenih nizih, uvožena tekma z zapisanim samo zmagovalcem 0 : 0).
+    Prej je K množila »set-margina po presenečenju« (moč 1,25, meji
+    0,35–1,65) in je potrebovala izjeme za predajo in tekme brez nizov; z
+    njenim odhodom so vse odigrane tekme obračunane po istem pravilu. Stolpec
+    `rating_zgodovina.margina` je odstranila V38. Pravilo drži
+    `RazclenitevSpremembeTest.zmagaJeZmagaNeGledeNaNize` (3 : 0, 3 : 2,
+    predaja in 0 : 0 dajo isto). Kdor bi margino vračal, naj izmeri, koliko
+    napoved res izboljša.
 - **Novinec ne začne pri 1000, ampak pri STAROSTNEM SIDRU**
   (`starostno_sidro`, `SidroStoritev`, V21): mediana ratinga umerjenih in
   aktivnih igralcev istega spola in starosti. Brez tega se dva novinca v U11,
@@ -308,13 +331,21 @@
   - **Starost je po 11. členu PST** (`StarostniPas.letaVSezoni`) in merjena na
     dan TEKME, ne danes — sicer ponovni preračun ne bi dal istih številk.
   - **Beri ga v dveh delih.** **Oblika** (razlike med starostmi in spoloma) je
-    izmerjena — ta reši U11/U19. **Raven** (skupni pribitek **+270** vsem
-    vrsticam) je merilo skale in ne meritev moči: Elo nima absolutne skale,
-    raven lestvice določajo izključno vstopne vrednosti novincev. Pri goli
-    mediani lestvica pade (izmerjeno na 91.741 tekmah: povprečje 965 → 703, dno
-    se zabije v mejo 100); s pribitkom ostane (965 → 968, najnižji 145).
-    **Ob vsaki spremembi formule ali osvežitvi sidra je treba raven izmeriti
-    znova** — ni ugibanje in ni okras.
+    izmerjena — ta reši U11/U19. **Raven** (pribitek vsem vrsticam spola:
+    +270 v V21, nato v V40 še **moški +64, ženske +93**) je merilo skale in ne
+    meritev moči: Elo nima absolutne skale, raven lestvice določajo izključno
+    vstopne vrednosti novincev. Pri goli mediani lestvica pade (izmerjeno na
+    91.741 tekmah: povprečje 965 → 703, dno se zabije v mejo 100); s pribitkom
+    ostane (965 → 968, najnižji 145). **Ob vsaki spremembi formule ali
+    osvežitvi sidra je treba raven izmeriti znova** — ni ugibanje in ni okras.
+    Tako je nastal V40 (oktober 2026): odhod set-margine in K 48 sta skalo
+    spustila za 11 točk, odprava tekem z datumom 1. 1. 1900 (lige 2024/25,
+    obračunane pred vso zgodovino, ko so bili vsi njihovi igralci novinci) pa
+    še za ~50 (moški) oz. ~70 (ženske) — tudi +270 je bil izmerjen na bazi s
+    temi tekmami. V40 vrne povprečje vsake lestvice tja, kjer je bilo v
+    produkciji (moški 974,3 → 974,4, ženske 886,6 → 886,8). Lestvici sta
+    ločeni, zato ima vsaka svoj pribitek. Merilo: povprečje vseh igralcev z
+    ratingom brez odbitkov za neaktivnost po popolnem preračunu.
   - **Tabela je POSNETEK in se NE sme izpeljevati iz lastnega izhoda.** Sidro,
     izračunano iz lestvice, ki so jo oblikovali novinci, zasidrani po prejšnjem
     sidru, je povratna zanka. Osvežitev je zavestna odločitev, ne opravilo v
@@ -325,7 +356,7 @@
   - **Rekreativni vstop** (V36, `igralec.rekreativni_vstop`, kljukica
     »Rekreativec — začetni rating 800« v obrazcu igralca): kdor je ob vpisu
     označen, začne pri `SidroStoritev.REKREATIVNI_ZACETEK` (800) namesto pri
-    sidru. Sidro je mediana registriranih igralcev NTZS (odrasel 1533) in je
+    sidru. Sidro je mediana registriranih igralcev NTZS (odrasel moški 1597) in je
     za igralca iz rekreacije 700–900 točk previsoko: v Savinja ligi so
     novinci, ki so prvi večer igrali samo novince, obstali pri 1500–1700 (47.
     mesto od 459 aktivnih moških). 800 je **odločitev lastnika**, ne meritev.
@@ -368,7 +399,7 @@
     Iz spremembe točk se to ne da zanesljivo prebrati (sprememba je lahko 0),
     uvrstitev pa izide potrebuje.
 - **Vrnitev po odsotnosti (`SledilnikVrnitve`, V19).** Kdor po več kot
-  **12 mesecih** spet igra, ima **prvih 15 tekem** K večji za 8 — v letu dni se
+  **12 mesecih** spet igra, ima **prvih 15 tekem** K večji za 10 — v letu dni se
   človek preveč spremeni (mladinec zraste, po poškodbi forma pade), da bi stara
   številka še veljala. Stanje nosita `rating_stanje.zadnja_tekma_ob` in
   `preostanek_vrnitve`.
@@ -383,15 +414,15 @@
     stotih letih«. Iz istega razloga gre zadnji termin samo naprej — rezultat
     se lahko vnese tudi za nazaj.
 - **Vrstica dnevnika razloži svojo številko** (`rating_zgodovina.k`,
-  `margina`, `teza`, `pricakovano`, V24): **+27 = K 64 × 1,37 (nizi) × 0,75
-  (teža) × (1 − 0,58)**. Sestavine gredo v `TockaGrafa.razclenitev`, a jih
+  `teza`, `pricakovano`, V24; `margina` je odšla z V38): **+25 = K 78 ×
+  0,75 (teža) × (1 − 0,58)**. Sestavine gredo v `TockaGrafa.razclenitev`, a jih
   vmesnik pod grafom **ne izpiše** (odločitev lastnika, september 2026 —
   gledalcu je bil obrazec šum); poved dobijo samo načini brez obrazca.
   - **Sestavine se ZAPIŠEJO in se ne računajo nazaj.** K je odvisen od števila
     tekem IN od tega, ali se je igralec takrat vračal; težo tekmovanja lahko
     kdo vmes spremeni. Poznejši izračun bi torej dal današnje številke za staro
     tekmo in bi lahko protislovil zapisani spremembi.
-  - **K in `pricakovano` sta last IGRALCA, `margina` in `teza` pa TEKME.**
+  - **K in `pricakovano` sta last IGRALCA, `teza` pa TEKME.**
     Vsak igralec ima svoj K; pričakovani izid drugega je 1 minus prvega.
   - **Prazne so, kadar sprememba ne nastane po tem obrazcu**: postavitev in
     odbitek (tekme ni) ter **uvrstitev novinca**, kjer se rating izračuna znova
@@ -1117,9 +1148,9 @@
   - **Zapisan samo zmagovalec je odigrana tekma z izidom 0 : 0.** Stupa pri
     nekaterih srečanjih vpiše zmagovalce podtekem brez nizov (in izida
     srečanja ne sešteje — `SrecanjaStupe.izidEkipneTekme` ga prešteje iz
-    podtekem). Rating tako tekmo bere po `IzidTekme.samoZmagovalec` — brez
-    margine, kot predajo — sicer bi 0 : 0 štel kot gladko zmago. V aplikaciji
-    take tekme ni mogoče vnesti.
+    podtekem). Rating šteje samo zmagovalca (zmaga je zmaga), zato je taka
+    tekma obračunana kot vsaka druga. V aplikaciji take tekme ni mogoče
+    vnesti.
   - **Točkovanje lige se prebere iz uradne lestvice** (`PreslikavaLigeStupe.
     tockovanje`): pravila SNTL se med sezonami razlikujejo (2024/25 točka za
     poraz, 2025/26 ne). Išče se zmaga/neodločeno/poraz in odbitek za poraz
@@ -1738,9 +1769,13 @@
   tekem (`ProfilStoritev` ga vzame iz istega `Nastopa`). Izpisani datum in
   izbrano obdobje tečeta po `datum`, ker je pri uvoženi zgodovini vseh
   200 000 obračunov nastalo ob uvozu — po `kdaj` bi desetletje tekem padlo v
-  en sam dan in nobeno obdobje ne bi odrezalo ničesar. Prazen je `datum` samo
-  pri postavitvenem ratingu (tekme ni), zato tam obvelja `kdaj`. Regresija je
-  `tockaGrafaNosiDatumTekmeInNeDnevaObracuna`.
+  en sam dan in nobeno obdobje ne bi odrezalo ničesar. Postavitev in odbitek
+  dobita dan, ko je zapis začel veljati. Prazen je `datum` samo pri tekmi, ki
+  ji vir datuma ne pove (`BREZ_DATUMA`, uvožene lige 2024/25 brez terminov):
+  vmesnik izpiše »datum ni znan« in točko pokaže samo v obdobju »Vse«.
+  **`kdaj` je NE sme nadomestiti** — pri preračunu je to današnji dan in tekma
+  iz leta 2024 bi na grafu (in v privzetem obdobju treh mesecev) stala kot
+  odigrana danes. Regresija je `tockaGrafaNosiDatumTekmeInNeDnevaObracuna`.
 - **Igralec, klub, kraj in liga se izberejo z vpisom imena — nikjer s
   spustnim seznamom ali seznamom s kljukicami, po katerem bi bilo treba
   drseti.** Po uvozu zgodovine je igralcev več tisoč, klubov sedemdeset, lig
@@ -1782,12 +1817,11 @@
   Igralec izbere kateregakoli nasprotnika in vidi, koliko ratinga bi mu
   prinesla zmaga oz. vzel poraz, če bi tekmo odigrala **zdaj**. Pravila, ki
   jih ne razbij:
-  - **Ena številka bi bila laž.** Sprememba je `K × margina × teža ×
-    (izid − pričakovano)`; margina je odvisna od **izida v nizih**, teža pa od
-    **ravni tekmovanja** — obojega pred tekmo ni. Zato je vrstica za vsak
-    možni izid (3:0 … 0:3, urejeni od najboljše zmage do najhujšega poraza) in
-    preklopnik ravni; povprečje čez to bi dalo številko, kakršne ne bi
-    prinesla nobena prava tekma.
+  - **Izida sta dva, ravni tri.** Sprememba je `K × teža × (izid −
+    pričakovano)`; izid v nizih ne šteje (zmaga je zmaga), teža pa je odvisna
+    od **ravni tekmovanja**, ki je pred tekmo ni. Zato `NapovedTekmeDto.Raven`
+    nosi `zmaga` in `poraz`, vmesnik pa preklopnik ravni; povprečje čez
+    ravni bi dalo številko, kakršne ne bi prinesla nobena prava tekma.
   - **Ravni izračuna strežnik, vmesnik ne množi s težo.** Vsak zmnožek je
     zaokrožen posebej (`Math.rint`), zato `0,75 × prikazana številka` ni to,
     kar bi tekma res prinesla.
@@ -2062,3 +2096,55 @@
   - **Rating se na koncu preračuna v celoti** (`PreracunRatingaStoritev`),
     vrstni red tekem (datum in ura, faza) pa je v `VrstaRatinskeTekme` — isto
     pravilo kot pri vsakem preračunu.
+  - **Datumi, ki jih ima Stupa narobe, se popravijo v KODI, ne v bazi**
+    (`PopravkiStupe`, zapis `src/main/resources/uvoz/stupa-popravki.json`).
+    Uvoženo tekmovanje je samo za branje in vsak ponovni uvoz vsebino zapiše
+    znova iz vira — ročni popravek v bazi bi prvi uvoz povozil, napačen datum
+    pa v ratingu ni kozmetika (tekma je obračunana proti napačnim številkam).
+    Dve vrsti: začetek/konec **dogodka** (Stupa je ob naknadnem vnosu zapisala
+    dan vnosa ali teden prej) in čas **tekme** (lige 2024/25 so bile v Stupo
+    vnesene novembra 2025 brez terminov; njihovi »krogi« niso kola in ne
+    tečejo po času, zato se čas ne da izpeljati iz kroga — niti iz vrstnega
+    reda vnosa ne: pri 4. SNTL je ta izpeljava dala napačne pare). Za lige
+    2024/25 je vir **uradni koledar NTZS** (»KONČNI KOLEDAR SNTL 2024-2025«,
+    vsaka tekma s krogom in uro); natančnejši vir (zapisnik, poročilo o
+    prestavitvi) ima prednost. Popravek tekme nosi tudi **kolo = uradni krog**
+    (`PosnetekDogodka.koloTekme`): krog vira pri teh ligah ni kolo in stran
+    lige bi v »kolu« združevala tekme z različnih datumov; prestavljena tekma
+    ostane v svojem krogu z dejanskim časom. Tekma s pravim časom pri viru
+    (1. SNTL moški 2024/25) dobi samo kolo. Bere ju
+    `PosnetekDogodka` (`zacetek`, `konec`, `casTekme`), zato veljata pri
+    zgodovinskem in sprotnem uvozu. **Vsak popravek ima obvezen `vir`**
+    (koledar ali novica ntzs.si, zapisnik) — brez njega se zapis ne naloži in
+    zagon pade; popravek brez vira je ugibanje. Drži `PopravkiStupeTest`.
+  - **Licenca ne loči dvojčkov — ime jih.** Stupa je dvojčkoma Adam (isti
+    datum rojstva, spol in klub) v treh dogodkih zamenjala licenci in uvoz ju
+    je povezal navzkriž. Kadar licenca pokaže na igralca z DRUGIM imenom, ime
+    z istim datumom rojstva pa natanko na drugega, `IdentitetaStupe` obvelja
+    ime (strogi način da odločitev adminu); neujemanje imena pri ujemanju
+    licence in datuma gre v poročilo.
+  - **Stara stran: vse podlige in vse discipline.** Pretvorba
+    (`pretvori.mjs`) prinese tudi pokal (PTRS), končnice (`_po`) in
+    kvalifikacije (`_q`) SNTL, točke nizov ligaških tekem, srečanja brez
+    borbe (`brezBoja`, izid brez tekem), tekme srečanja brez boja (rating jih
+    ne šteje) in **dvojice turnirjev** — par je ena prijava (`igralec` +
+    `igralec2`), kot v aplikaciji, in v rating ne gre. Starostna kategorija
+    dogodka je kategorija **discipline** (`kategorijaDiscipline`: Masters ima
+    pod »člani« tudi discipline mladih).
+  - **Prenesen izid ekipnega DP je srečanje BREZ posamičnih tekem**
+    (`srecanje.prenesen`, V39). Finalna skupina prevzame dvoboj iz
+    predtekmovanja; vir ga pokaže z istim zapisnikom in uvoz ga je zapisal
+    dvakrat s tekmami vred — 1.168 tekem je bilo obračunanih dvakrat. Zdaj
+    šteje v lestvico skupine, tekme pa ostanejo samo tam, kjer so bile
+    odigrane. Razpored lige ga označi »prenesen«.
+  - **Popravek že uvožene zgodovine teče NA MESTU** (`PopravekZgodovineUkaz`,
+    profil `popravek`; nad kopijo baze). Baza nosi račune, naročnine,
+    spremljane lige in lastna tekmovanja, ki jih noben vir ne prinese znova,
+    zato igralci, klubi, turnirji in lige obdržijo id-je, vsebina pod njimi
+    pa se zapiše znova (`CiscenjeStare` za staro stran, `CiscenjeUvoza` za
+    Stupo; šifrant stare strani se naloži iz povezav —
+    `SifrantiUvoz.naloziObstojece`). Koraki so ponovljivi: združitve
+    podvojenih igralcev (potrdi jih lastnik), povezave dvojčkov, stara stran,
+    izbrani dogodki Stupe iz svežega posnetka (strogi način, potrdi se samo
+    uvoz, ki ga uskladitev dovoli) in na koncu en preračun ratinga. Testi
+    uvoza stare strani so v `StaraUvozTest`.

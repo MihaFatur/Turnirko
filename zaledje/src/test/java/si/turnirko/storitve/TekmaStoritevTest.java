@@ -81,10 +81,10 @@ class TekmaStoritevTest extends IntegracijskiTest {
         RatingStanje stanje = ratingStanjeRepozitorij
                 .findByIgralecIdAndSistem(idIgralca1, RatingStanje.SISTEM_TURNIRKO)
                 .orElseThrow();
-        // dva novinca (K=56), gladka zmaga 3:0 z margino po presenecenju (~1,47);
+        // dva novinca (K=68) z enakim izhodiscem: zmaga prinese polovico K;
         // izhodisce ni 1000, ampak starostno sidro igralca (V21)
-        assertEquals(sidroZa(tekma.getPrijava1().getIgralec()) + 41, stanje.getVrednost(),
-                "sidro + 41 za gladko zmago 3:0 med novincema");
+        assertEquals(sidroZa(tekma.getPrijava1().getIgralec()) + 34, stanje.getVrednost(),
+                "sidro + 34 za zmago med novincema");
         assertTrue(ratingZgodovinaRepozitorij.existsByTekmaId(tekma.getId()));
     }
 
@@ -192,9 +192,9 @@ class TekmaStoritevTest extends IntegracijskiTest {
         RatingStanje stanje = ratingStanjeRepozitorij
                 .findByIgralecIdAndSistem(idZmagovalca, RatingStanje.SISTEM_TURNIRKO)
                 .orElseThrow();
-        // na uradnem turnirju je ista tekma vredna +41 (glej test zgoraj)
-        assertEquals(sidroZa(tekma.getPrijava1().getIgralec()) + 31, stanje.getVrednost(),
-                "tri cetrtine od +41 je +31");
+        // na uradnem turnirju je ista tekma vredna +34 (glej test zgoraj)
+        assertEquals(sidroZa(tekma.getPrijava1().getIgralec()) + 26, stanje.getVrednost(),
+                "tri cetrtine od +34 je +25,5, zaokrozeno na sodo +26");
     }
 
     @Test

@@ -19,6 +19,9 @@ import jakarta.validation.Valid;
 import si.turnirko.dto.IgralecDto;
 import si.turnirko.dto.IgralecJavniDto;
 import si.turnirko.dto.IgralecVnos;
+import si.turnirko.dto.PodobenIgralecDto;
+import si.turnirko.dto.PodobenIgralecJavniDto;
+import si.turnirko.dto.PodobniIgralciVnos;
 import si.turnirko.dto.ZacetniRatingVnos;
 import si.turnirko.dto.ZunanjaUvrstitevVnos;
 import si.turnirko.storitve.IgralciStoritev;
@@ -62,6 +65,20 @@ public class IgralciKontroler {
     @ResponseStatus(HttpStatus.CREATED)
     public IgralecJavniDto ustvari(@Valid @RequestBody IgralecVnos vnos) {
         return igralciStoritev.ustvari(vnos);
+    }
+
+    /* Ali v bazi ze obstaja igralec, podoben vpisu (obrazec »Nov igralec« vpraša
+       ob shranjevanju). Poizvedba, a POST: datum rojstva ne sme v naslov.
+       Javni izpis, brez datumov rojstva - smeta ga organizator in admin. */
+    @PostMapping("/podobni")
+    public List<PodobenIgralecJavniDto> podobni(@Valid @RequestBody PodobniIgralciVnos vnos) {
+        return igralciStoritev.najdiPodobne(vnos);
+    }
+
+    /* Isto s polnim zapisom in primerjavo datuma rojstva; samo ADMIN (veriga). */
+    @PostMapping("/podobni/podrobno")
+    public List<PodobenIgralecDto> podobniPodrobno(@Valid @RequestBody PodobniIgralciVnos vnos) {
+        return igralciStoritev.najdiPodobnePodrobno(vnos);
     }
 
     @PutMapping("/{id}")

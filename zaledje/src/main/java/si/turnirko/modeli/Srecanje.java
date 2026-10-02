@@ -78,6 +78,12 @@ public class Srecanje {
     @Column(name = "brez_boja", nullable = false)
     private boolean brezBoja = false;
 
+    /* Izid je prenesen iz druge lige (finalna skupina ekipnega DP prevzame
+       dvoboj iz predtekmovanja, V39): steje v lestvico, posamicnih tekem pa
+       nima - te so v ligi, kjer so bile odigrane, in v rating gredo enkrat. */
+    @Column(name = "prenesen", nullable = false)
+    private boolean prenesen = false;
+
     /* Termin kola z uro; gonilnik bi jo brez pretvornika odrezal (glej
        CasKotBesedilo). */
     @Convert(converter = CasKotBesedilo.class)
@@ -166,6 +172,8 @@ public class Srecanje {
 
     public boolean isBrezBoja() { return brezBoja; }
     public void setBrezBoja(boolean brezBoja) { this.brezBoja = brezBoja; }
+    public boolean isPrenesen() { return prenesen; }
+    public void setPrenesen(boolean prenesen) { this.prenesen = prenesen; }
 
     public StatusSrecanja getStatus() { return status; }
     public void setStatus(StatusSrecanja status) { this.status = status; }

@@ -1,0 +1,33 @@
+-- ============================================================================
+-- Turnirko rating: raven starostnega sidra po popravku zgodovine (oktober 2026)
+--
+-- V21 pravi: raven sidra (skupni pribitek vsem vrsticam) je MERILO SKALE in
+-- ne meritev moci - Elo nima absolutne skale, raven lestvice dolocajo vstopne
+-- vrednosti novincev. Ob vsaki spremembi formule jo je treba izmeriti znova.
+-- Oktobra 2026 sta se spremenili formula IN zgodovina:
+--
+--   * formula: odsla je set-margina, K je 48 namesto 40. Na nespremenjeni
+--     bazi (produkcija 30. 9. 2026) je to povprecje spustilo za 11 tock;
+--
+--   * zgodovina: 4.668 obracunov lig 2024/25 je imelo datum 1. 1. 1900 (Stupa
+--     jih je dobila brez terminov), zato so se obracunali PRED vso zgodovino
+--     od 2012 naprej - ko so bili vsi igralci teh lig se novinci. Ta navidezni
+--     "prvi dan" je v lestvico vbrizgal tocke, ki jih je nato nosila vsa
+--     zgodovina; tudi raven +270 iz V21 je bila izmerjena na bazi s temi
+--     tekmami. Z resnicnimi datumi (uradni koledar NTZS) jih ni vec.
+--
+-- Pribitek ohrani SKALO, ki jo igralci poznajo: povprecje vsake lestvice (vsi
+-- igralci z ratingom, brez odbitkov za neaktivnost) ostane, kot je bilo v
+-- produkciji pred popravkom. Lestvici sta loceni (med spoloma ni tekem), zato
+-- ima vsaka svoj pribitek. Oblika (razlike med starostmi) ostane.
+--
+-- Meritev (popoln preracun popravljene baze, 95.158 tekem):
+--                 produkcija 30. 9.   brez V40   z V40
+--     moski             974,3           923,6    974,4
+--     zenske            886,6           812,7    886,8
+--
+-- Tabela ostane POSNETEK: ne izpeljuj je iz lastnega izhoda (glej V21).
+-- ============================================================================
+
+UPDATE starostno_sidro SET vrednost = vrednost + 64 WHERE spol = 'MOSKI';
+UPDATE starostno_sidro SET vrednost = vrednost + 93 WHERE spol = 'ZENSKI';

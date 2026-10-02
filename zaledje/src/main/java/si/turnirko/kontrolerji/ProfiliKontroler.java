@@ -47,8 +47,7 @@ public class ProfiliKontroler {
     @GetMapping("/{id}/profil/napoved")
     public NapovedTekmeDto napoved(@PathVariable Long id,
                                    @RequestParam Long nasprotnik,
-                                   @RequestParam(required = false) Integer nizov,
                                    Principal prijavljeni) {
-        return napovedStoritev.napoved(id, nasprotnik, nizov, prijavljeni.getName());
+        return napovedStoritev.napoved(id, nasprotnik, prijavljeni.getName());
     }
 }

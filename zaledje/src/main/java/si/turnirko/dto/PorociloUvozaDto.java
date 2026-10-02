@@ -49,5 +49,16 @@ public record PorociloUvozaDto(
        pri viru, uradno mesto v skupini pa se lahko razlikuje po pravilu
        razvrscanja (Turnirko izenacene loci po razliki, glej RazvrstitevStoritev)
        - to admin vidi, uvoza pa ne ustavi. */
-    public record Preverba(String podrocje, String opis, boolean ujemanje, boolean obvezna, String podrobnosti) {}
+    public record Preverba(String podrocje, String opis, boolean ujemanje, boolean obvezna, String podrobnosti) {
+
+        /* Vrstica za dnevnik zagonov (uvoz_zagon.povzetek). Pri neujemanju
+           gredo zraven podrobnosti - brez njih iz baze ni mogoce razbrati,
+           katere tekme ali ekipe se razlikujejo, ko je stran /uvoz zaprta. */
+        public String vDnevnik() {
+            if (ujemanje) {
+                return "OK " + opis;
+            }
+            return (obvezna ? "NAPAKA " : "RAZLIKA ") + opis + (podrobnosti == null ? "" : " -> " + podrobnosti);
+        }
+    }
 }

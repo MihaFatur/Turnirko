@@ -1,6 +1,6 @@
 /* Register igralcev: pregled s trenutnim ratingom, dodajanje, urejanje
    in arhiviranje (namesto brisanja - zgodovina tekem mora ostati). */
-import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, krajiApi } from '../api/zahteve'
@@ -9,9 +9,13 @@ import type {
   IgralecPodrobenDto,
   IgralecVnos,
   IgralnaRoka,
+  PodobenIgralecDto,
+  PodobenIgralecPodrobenDto,
+  PodobniVnos,
   Spol,
+  UjemanjeImena,
 } from '../api/tipi'
-import { OZNAKE_IGRALNA_ROKA, OZNAKE_SPOL } from '../api/tipi'
+import { OZNAKE_IGRALNA_ROKA, OZNAKE_PASU_KRATKO, OZNAKE_SPOL } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
@@ -19,7 +23,7 @@ import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { letnica, zVelikoZacetnico } from '../pomozno/oblikovanje'
+import { letnica, oblikujDatum, sklonTekem, zVelikoZacetnico } from '../pomozno/oblikovanje'
 
 /* Do toliko odigranih tekem je rating še provizoričen (ujema se s strežniškim
    pragom dinamičnega K, TurnirkoRatingStoritev.PRAG_PROVIZORICNI). */
@@ -480,6 +484,27 @@ function IgralecOkno({
     },
   })
 
+  /* Opozorilo »podoben igralec že obstaja« ob dodajanju. Admin dobi zapis z
+     datumom rojstva (strežnik ga drugim ne da), organizator brez njega. */
+  const { jeAdmin } = useAvtentikacija()
+  const preverjanje = useMutation<PodobenZapis[], Error, PodobniVnos>({
+    mutationFn: (vnos) =>
+      jeAdmin ? igralciApi.podobniPodrobno(vnos) : igralciApi.podobni(vnos),
+  })
+  /* Opozorilo velja za natanko tisti vpis, ki ga je sprožil: ko vpisovalec
+     kaj popravi, izgine in ob naslednjem shranjevanju se preveri znova.
+     Podpis je izpeljan, ne hranjen — brez učinka, ki bi opozorilo brisal. */
+  const [opozorilo, nastaviOpozorilo] = useState<{
+    podpis: string
+    zadetki: PodobenZapis[]
+  } | null>(null)
+  const podpis = [ime.trim(), priimek.trim(), spol, datumRojstva].join('|')
+  const podobni = opozorilo?.podpis === podpis ? opozorilo.zadetki : []
+  const okvirOpozorila = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (podobni.length > 0) okvirOpozorila.current?.scrollIntoView({ block: 'nearest' })
+  }, [podobni.length])
+
   /* Začetnica se popravi med tipkanjem. Vrednost polja zapišemo že tu, ne šele
      z novim izrisom: ko React polju zamenja vrednost, kazalec skoči na konec,
      popravek sredi besedila pa bi ga vsakič odnesel. Ker se spremeni le velikost
@@ -496,7 +521,7 @@ function IgralecOkno({
 
   function obOddaji(dogodek: FormEvent) {
     dogodek.preventDefault()
-    shranjevanje.mutate({
+    const vnos: IgralecVnos = {
       ime: ime.trim(),
       priimek: priimek.trim(),
       spol,
@@ -510,6 +535,29 @@ function IgralecOkno({
       postnaSt: postnaSt ? Number(postnaSt) : null,
       idKlub: idKlub ? Number(idKlub) : null,
       rekreativniVstop,
+    }
+    // urejanje ne ustvari novega zapisa, vpis, na katerega je bil bralec
+    // že opozorjen, pa je s ponovnim klikom potrjen
+    if (igralec || podobni.length > 0) {
+      shranjevanje.mutate(vnos)
+      return
+    }
+    // poizvedba dobi samo to, po čemer išče: e-pošta, telefon in naslov
+    // novega igralca ji ne pripadajo
+    const iskano: PodobniVnos = {
+      ime: vnos.ime,
+      priimek: vnos.priimek,
+      spol: vnos.spol,
+      datumRojstva: vnos.datumRojstva,
+    }
+    preverjanje.mutate(iskano, {
+      onSuccess: (zadetki) => {
+        if (zadetki.length > 0) nastaviOpozorilo({ podpis, zadetki })
+        else shranjevanje.mutate(vnos)
+      },
+      // opozorilo je pomoč pri vpisu in ne pogoj zanj: če ga strežnik ne
+      // zna dati, igralca ne sme zadržati
+      onError: () => shranjevanje.mutate(vnos),
     })
   }
 
@@ -630,16 +678,118 @@ function IgralecOkno({
           />
         </div>
 
+        {podobni.length > 0 && (
+          <div ref={okvirOpozorila}>
+            <PodobniIgralci zadetki={podobni} vpisanDatum={datumRojstva} />
+          </div>
+        )}
         <SporociloNapake napaka={shranjevanje.error} />
         <div className="obrazec__gumbi">
           <button type="button" className="gumb" onClick={onZapri}>
             Prekliči
           </button>
-          <button type="submit" className="gumb gumb--glavni" disabled={shranjevanje.isPending}>
-            {igralec ? 'Shrani spremembe' : 'Dodaj igralca'}
+          {podobni.length > 0 && (
+            <button type="button" className="gumb" onClick={() => nastaviOpozorilo(null)}>
+              Popravi vnos
+            </button>
+          )}
+          <button
+            type="submit"
+            className="gumb gumb--glavni"
+            disabled={shranjevanje.isPending || preverjanje.isPending}
+          >
+            {igralec
+              ? 'Shrani spremembe'
+              : preverjanje.isPending
+                ? 'Preverjam …'
+                : podobni.length > 0
+                  ? 'Vseeno dodaj igralca'
+                  : 'Dodaj igralca'}
           </button>
         </div>
       </form>
     </ModalnoOkno>
+  )
+}
+
+type PodobenZapis = PodobenIgralecDto | PodobenIgralecPodrobenDto
+
+const OZNAKE_UJEMANJA: Record<UjemanjeImena, string> = {
+  ISTO: 'Isto ime in priimek',
+  OBRNJENO: 'Ime in priimek zamenjana',
+  PODOBNO: 'Podobno ime',
+}
+
+/* Datum rojstva obstoječega igralca proti vpisanemu — samo za admina, ki ga
+   strežnik pošlje; organizator te vrstice ne dobi. */
+function opisDatuma(zapis: PodobenIgralecPodrobenDto, vpisanDatum: string): string {
+  const obstojec = oblikujDatum(zapis.igralec.datumRojstva)
+  switch (zapis.datum) {
+    case 'ENAK':
+      return `Enak datum rojstva: ${obstojec}`
+    case 'PODOBEN':
+      return `Podoben datum rojstva: ${obstojec} (vpisan ${oblikujDatum(vpisanDatum)})`
+    case 'DRUG':
+      return `Drug datum rojstva: ${obstojec} (vpisan ${oblikujDatum(vpisanDatum)})`
+  }
+}
+
+/* Opozorilo ob dodajanju: v bazi že obstaja igralec s podobnim imenom. Isto
+   ime imata lahko dve osebi, zato je to vprašanje in ne zavrnitev — odloči
+   vpisovalec. Klub, pas in rating zadostujejo, da ugotovi, ali gre za isto
+   osebo; admin dobi povrh še datum rojstva. */
+function PodobniIgralci({
+  zadetki,
+  vpisanDatum,
+}: {
+  zadetki: PodobenZapis[]
+  vpisanDatum: string
+}) {
+  return (
+    <div className="obvestilo obvestilo--opozorilo podobni" role="status">
+      <strong>
+        {zadetki.length === 1
+          ? 'V bazi že obstaja podoben igralec.'
+          : 'V bazi že obstajajo podobni igralci.'}
+      </strong>
+      <ul className="podobni__seznam">
+        {zadetki.map((zapis) => {
+          const { igralec } = zapis
+          const meta = [
+            igralec.klub?.ime ?? 'brez kluba',
+            igralec.starostniPas ? OZNAKE_PASU_KRATKO[igralec.starostniPas] : null,
+            igralec.rating != null ? `rating ${igralec.rating}` : 'brez ratinga',
+            `${igralec.steviloTekem} ${sklonTekem(igralec.steviloTekem)}`,
+            zapis.arhiviran ? 'arhiviran' : null,
+          ].filter(Boolean)
+          return (
+            <li key={igralec.id} className="podobni__igralec">
+              <span className="podobni__ime">
+                {igralec.ime} {igralec.priimek}
+              </span>{' '}
+              <span className="podobni__ujemanje">{OZNAKE_UJEMANJA[zapis.ujemanje]}</span>
+              <span className="podobni__meta">{meta.join(' · ')}</span>
+              {'datum' in zapis && (
+                <span
+                  className={
+                    zapis.datum === 'ENAK'
+                      ? 'podobni__meta podobni__meta--enak'
+                      : 'podobni__meta'
+                  }
+                >
+                  {opisDatuma(zapis, vpisanDatum)}
+                  {zapis.datum === 'ENAK' && ' — skoraj gotovo isti igralec'}
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      <p className="podobni__vprasanje">
+        {zadetki.length === 1
+          ? 'Preveri, ali vpisani igralec ni isti kot ta.'
+          : 'Preveri, ali vpisani igralec ni isti kot kdo od teh.'}
+      </p>
+    </div>
   )
 }

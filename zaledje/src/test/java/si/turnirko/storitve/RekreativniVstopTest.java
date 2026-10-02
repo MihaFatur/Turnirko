@@ -1,7 +1,7 @@
 /* Rekreativni vstop (V36): igralec, ki ga clovek ob vpisu oznaci kot
    rekreativca, zacne pri 800 namesto pri starostnem sidru.
 
-   Zakaj: sidro je mediana registriranih igralcev NTZS (odrasel moski 1533).
+   Zakaj: sidro je mediana registriranih igralcev NTZS (odrasel moski 1597).
    V Savinja ligi so novinci, ki so prvi vecer igrali samo proti novincem,
    obstali pri 1500-1700 - pred vecino ligasev NTZS. Test cuva tri stvari:
    800 je VSTOPNA vrednost, 800 je tudi izhodisce, proti kateremu vlece

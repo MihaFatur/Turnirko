@@ -17,6 +17,15 @@
      zadnje tekme ne igrajo) in zaporedje oznak primerjamo z razporedi, ki jih
      pozna FormatSrecanja.
 
+   * PRENESEN IZID (finalna skupina ekipnega DP prevzame dvoboj iz
+     predtekmovanja) je srecanje z izidom ekip in BREZ posamicnih tekem
+     (srecanje.prenesen, V39): steje v lestvico skupine, tekme pa so v ligi,
+     kjer so bile odigrane, in gredo v rating enkrat.
+
+   * POPRAVEK NA MESTU: ponovni uvoz vzame obstojeco ligo (id ostane, z njim
+     povezave na strani in spremljane lige) - vsebino pred tem pocisti
+     klicatelj (CiscenjeStare).
+
    * TERMIN je last srecanja, ne kola: 2. SNTL odigra dve koli v istem dnevu
      na enem prizoriscu (dopoldne in popoldne), zato ima vsako srecanje svojo
      uro iz zapisnika. Ta ura je hkrati tisto, po cemer se tekme uvrstijo v
@@ -35,6 +44,8 @@ import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import si.turnirko.dto.NizVnos;
+import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.Ekipa;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
@@ -42,6 +53,7 @@ import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.KaderEkipe;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.NizSrecanja;
 import si.turnirko.modeli.PostavaSrecanja;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
@@ -55,9 +67,11 @@ import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
+import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
+import si.turnirko.storitve.NiziPravila;
 import si.turnirko.modeli.VirTekmovanja;
 import si.turnirko.modeli.ZunanjaPovezava;
 import si.turnirko.repozitoriji.ZunanjaPovezavaRepozitorij;
@@ -74,6 +88,7 @@ public class StaraLigeUvoz {
     private final SrecanjeRepozitorij srecanjeRepozitorij;
     private final PostavaSrecanjaRepozitorij postavaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
+    private final NizSrecanjaRepozitorij nizSrecanjaRepozitorij;
     private final ZunanjaPovezavaRepozitorij povezave;
     private final SifrantiUvoz sifranti;
     private final UvozPorocilo porocilo;
@@ -82,6 +97,7 @@ public class StaraLigeUvoz {
                          KaderEkipeRepozitorij kaderRepozitorij, SrecanjeRepozitorij srecanjeRepozitorij,
                          PostavaSrecanjaRepozitorij postavaRepozitorij,
                          TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij,
+                         NizSrecanjaRepozitorij nizSrecanjaRepozitorij,
                          ZunanjaPovezavaRepozitorij povezave, SifrantiUvoz sifranti, UvozPorocilo porocilo) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.ekipaRepozitorij = ekipaRepozitorij;
@@ -89,20 +105,27 @@ public class StaraLigeUvoz {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
+        this.nizSrecanjaRepozitorij = nizSrecanjaRepozitorij;
         this.povezave = povezave;
         this.sifranti = sifranti;
         this.porocilo = porocilo;
     }
 
     public void uvozi(JsonNode vir) {
+        uvozi(vir, null);
+    }
+
+    /* obstojeca: liga iz prejsnjega uvoza, ki se zapise znova na mestu (id
+       ostane); njeno vsebino je klicatelj ze pocistil. null = nova liga. */
+    public Liga uvozi(JsonNode vir, Liga obstojeca) {
         List<JsonNode> kola = StaraArhiv.kola(vir);
         if (kola.isEmpty()) {
-            return;
+            return null;
         }
 
         FormatSrecanja format = dolociFormat(vir);
 
-        Liga liga = new Liga();
+        Liga liga = obstojeca != null ? obstojeca : new Liga();
         liga.setIme(UvozOblike.prirezi(vir.path("ime").asText(), 80));
         liga.setSezona(UvozOblike.prirezi(vir.path("sezona").asText(null), 20));
         liga.setSpolKategorija("ZENSKE".equals(vir.path("spol").asText())
@@ -119,8 +142,10 @@ public class StaraLigeUvoz {
         // arhiv zveze je samo za branje (V27)
         liga.setVir(VirTekmovanja.STARA_NTZS);
         liga = ligaRepozitorij.save(liga);
-        povezave.save(new ZunanjaPovezava(VirTekmovanja.STARA_NTZS, ZunanjaPovezava.Vrsta.LIGA,
-                UvozOblike.prirezi(vir.path("id").asText(), 80), liga.getId()));
+        if (obstojeca == null) {
+            povezave.save(new ZunanjaPovezava(VirTekmovanja.STARA_NTZS, ZunanjaPovezava.Vrsta.LIGA,
+                    UvozOblike.prirezi(vir.path("id").asText(), 80), liga.getId()));
+        }
         porocilo.prestej("lig");
 
         Map<String, Ekipa> ekipe = ustvariEkipe(liga, vir);
@@ -135,6 +160,7 @@ public class StaraLigeUvoz {
             }
         }
         shraniKader(ekipe, kader);
+        return liga;
     }
 
     /* Format lige iz dejanskega razporeda: vzamemo srecanje z najvec tekmami
@@ -300,8 +326,20 @@ public class StaraLigeUvoz {
         srecanje.setDobljeneDomaci(Math.max(0, vir.path("izidD").asInt(0)));
         srecanje.setDobljeneGost(Math.max(0, vir.path("izidG").asInt(0)));
         srecanje.setStatus(StatusSrecanja.KONCANO);
+        boolean prenesen = vir.hasNonNull("prenesenoIz");
+        srecanje.setPrenesen(prenesen);
+        // ekipa ni nastopila: izid 5:0 brez posamicnih tekem (lestvica ga steje,
+        // rating ne - tekem ni bilo)
+        srecanje.setBrezBoja(vir.path("brezBoja").asBoolean(false));
         Srecanje shranjeno = srecanjeRepozitorij.save(srecanje);
         porocilo.prestej("srecanj");
+        if (prenesen) {
+            porocilo.prestej("prenesenih srecanj (izid brez posamicnih tekem)");
+            return;
+        }
+        if (srecanje.isBrezBoja()) {
+            porocilo.prestej("srecanj brez borbe");
+        }
 
         Map<String, Igralec> postava = new LinkedHashMap<>();
         Set<Long> vDvojicah = new HashSet<>();
@@ -317,6 +355,10 @@ public class StaraLigeUvoz {
         boolean dvojice = "DVOJICE".equals(vir.path("tip").asText());
         List<Igralec> domaciIgralci = igralci(vir.path("igralciD"));
         List<Igralec> gostIgralci = igralci(vir.path("igralciG"));
+        if (vir.path("brezBoja").asBoolean(false)) {
+            uvoziTekmoBrezBoja(srecanje, vir, dvojice, domaciIgralci, gostIgralci);
+            return;
+        }
         if (domaciIgralci.isEmpty() || gostIgralci.isEmpty()) {
             porocilo.opozori("tekma srecanja brez igralcev (izpuscena)", srecanje.getId() + " / "
                     + vir.path("st").asInt());
@@ -358,8 +400,63 @@ public class StaraLigeUvoz {
         tekma.setZmagovalecStran(niziD > niziG ? StranEkipe.DOMACI : StranEkipe.GOST);
         tekma.setIzidTip(IzidTekme.IGRANO);
 
-        tekmaSrecanjaRepozitorij.save(tekma);
+        TekmaSrecanja shranjena = tekmaSrecanjaRepozitorij.save(tekma);
         porocilo.prestej("tekem (ligaskih)");
+        shraniNize(shranjena, vir);
+    }
+
+    /* Tocke po nizih ("tocke": [[11, 9], [8, 11] ...]) - prej se niso pisale
+       in 38.801 tekem stare strani je imelo samo izid v nizih. Zapisejo se
+       samo, ce prestanejo ISTA pravila kot vnos v aplikaciji (NiziPravila):
+       zapisniki 2012/13 imajo neodigrane nize zapisane kot "9:0" in nizi, ki
+       se z izidom ne ujemajo, bi na strani tekme trdili nekaj drugega kot
+       izid. Izid tekme ostane v vsakem primeru. */
+    private void shraniNize(TekmaSrecanja tekma, JsonNode vir) {
+        List<NizVnos> nizi = new ArrayList<>();
+        for (JsonNode niz : vir.path("tocke")) {
+            if (niz.size() >= 2) {
+                nizi.add(new NizVnos(niz.path(0).asInt(), niz.path(1).asInt()));
+            }
+        }
+        if (nizi.isEmpty()) {
+            return;
+        }
+        int d = tekma.getDobljeniNiziDomaci(), g = tekma.getDobljeniNiziGost();
+        try {
+            NiziPravila.preveri(nizi, d, g, Math.max(d, g));
+        } catch (NeveljavenVnosIzjema e) {
+            porocilo.opozori("tocke nizov se ne ujemajo z izidom (liga, tocke izpuscene)",
+                    "tekma srecanja " + tekma.getId() + ": " + e.getMessage());
+            return;
+        }
+        int zaporedna = 0;
+        for (NizVnos niz : nizi) {
+            nizSrecanjaRepozitorij.save(new NizSrecanja(tekma, ++zaporedna, niz.tocke1(), niz.tocke2()));
+            porocilo.prestej("nizov (ligaskih)");
+        }
+    }
+
+    /* Tekma, ki je ni bilo: vir jo zapise brez nizov in z oznako zmagovalca
+       ("win"), ker nasprotnik ni nastopil. Steje v izid srecanja, v rating pa
+       ne (BREZ_BOJA). Igralca na strani, ki ni nastopila, vir pogosto nima. */
+    private void uvoziTekmoBrezBoja(Srecanje srecanje, JsonNode vir, boolean dvojice,
+                                     List<Igralec> domaciIgralci, List<Igralec> gostIgralci) {
+        TekmaSrecanja tekma = new TekmaSrecanja(srecanje, Math.max(1, vir.path("st").asInt(1)),
+                dvojice ? TipTekmeSrecanja.DVOJICE : TipTekmeSrecanja.POSAMICNA,
+                oznakaTekme(vir), 5);
+        tekma.setIgralecDomaci(domaciIgralci.isEmpty() ? null : domaciIgralci.get(0));
+        tekma.setIgralecGost(gostIgralci.isEmpty() ? null : gostIgralci.get(0));
+        if (dvojice) {
+            tekma.setIgralecDomaci2(domaciIgralci.size() > 1 ? domaciIgralci.get(1) : null);
+            tekma.setIgralecGost2(gostIgralci.size() > 1 ? gostIgralci.get(1) : null);
+        }
+        tekma.setDobljeniNiziDomaci(vir.path("nizi1").asInt());
+        tekma.setDobljeniNiziGost(vir.path("nizi2").asInt());
+        tekma.setStatus(StatusTekmeSrecanja.KONCANA);
+        tekma.setZmagovalecStran("G".equals(vir.path("zmagovalec").asText()) ? StranEkipe.GOST : StranEkipe.DOMACI);
+        tekma.setIzidTip(IzidTekme.BREZ_BOJA);
+        tekmaSrecanjaRepozitorij.save(tekma);
+        porocilo.prestej("tekem srecanj brez boja");
     }
 
     /* Postavo zapisemo sele, ko so znane vse tekme srecanja: sele takrat vemo,

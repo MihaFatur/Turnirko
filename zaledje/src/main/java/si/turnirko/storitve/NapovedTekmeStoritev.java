@@ -42,10 +42,6 @@ import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
 @Service
 public class NapovedTekmeStoritev {
 
-    /* Privzeta dolzina tekme: na tri dobljene nize. Tako se igra vecina
-       turnirjev in lig (Liga.steviloNizov ima isto privzeto vrednost). */
-    public static final int PRIVZETO_NIZOV = 5;
-
     /* Ravni, ki se sploh obracunajo. NE_STEJE je izpuscen: tekma, ki ratinga
        ne premakne, v napovedi ni vrstica nicel, ampak je ni. */
     private static final List<RavenTekmovanja> RAVNI = List.of(
@@ -79,17 +75,11 @@ public class NapovedTekmeStoritev {
        Dostop ima samo igralec sam ali administrator - isto pravilo kot pri
        zasebnih analizah profila. */
     @Transactional(readOnly = true)
-    public NapovedTekmeDto napoved(Long idIgralec, Long idNasprotnika, Integer steviloNizov,
-                                   String prijavnoIme) {
+    public NapovedTekmeDto napoved(Long idIgralec, Long idNasprotnika, String prijavnoIme) {
         dostop.preveriLastnistvo(idIgralec, prijavnoIme);
         if (idNasprotnika == null || idNasprotnika.equals(idIgralec)) {
             throw new NeveljavenVnosIzjema("Za napoved izberi drugega igralca.");
         }
-        int nizov = steviloNizov == null ? PRIVZETO_NIZOV : steviloNizov;
-        if (nizov != 3 && nizov != 5 && nizov != 7) {
-            throw new NeveljavenVnosIzjema("Tekma se igra na 3, 5 ali 7 nizov.");
-        }
-
         LocalDateTime zdaj = LocalDateTime.now();
         Stran jaz = stran(najdiIgralca(idIgralec), zdaj);
         Stran on = stran(najdiIgralca(idNasprotnika), zdaj);
@@ -97,41 +87,26 @@ public class NapovedTekmeStoritev {
         List<NapovedTekmeDto.Raven> ravni = new ArrayList<>(RAVNI.size());
         for (RavenTekmovanja raven : RAVNI) {
             ravni.add(new NapovedTekmeDto.Raven(raven, raven.getTeza(),
-                    izidi(jaz, on, nizov, raven.getTeza())));
+                    izid(jaz, on, true, raven.getTeza()),
+                    izid(jaz, on, false, raven.getTeza())));
         }
 
-        /* Pricakovani izid je odvisen samo od ratingov, zato ga vzamemo iz
-           poljubnega izracuna - tu iz najbolj gladke zmage. */
-        double pricakovano = turnirkoRating.izracunaj(jaz.stanje(), on.stanje(),
-                true, zaZmago(nizov), 0, nizov, false, 1.0).pricakovanaVerjetnost1();
+        /* Pricakovani izid je odvisen samo od ratingov. */
+        double pricakovano = turnirkoRating.pricakovanaVerjetnost(
+                jaz.stanje().rating(), on.stanje().rating());
 
         return new NapovedTekmeDto(
-                vDto(jaz), vDto(on), nizov,
+                vDto(jaz), vDto(on),
                 (int) Math.round(pricakovano * 100),
                 ravni);
     }
 
-    /* Vse mozne izide ene tekme, urejene od najbolj prepricljive zmage do
-       najhujsega poraza: 3:0, 3:1, 3:2, 2:3, 1:3, 0:3. Ena bralna os namesto
-       dveh seznamov - gledalec vidi, kako se stevilka spreminja z izidom. */
-    private List<NapovedTekmeDto.Izid> izidi(Stran jaz, Stran on, int nizov, double teza) {
-        int zaZmago = zaZmago(nizov);
-        List<NapovedTekmeDto.Izid> izidi = new ArrayList<>(2 * zaZmago);
-        for (int njegovi = 0; njegovi < zaZmago; njegovi++) {
-            izidi.add(izid(jaz, on, zaZmago, njegovi, true, nizov, teza));
-        }
-        for (int moji = zaZmago - 1; moji >= 0; moji--) {
-            izidi.add(izid(jaz, on, moji, zaZmago, false, nizov, teza));
-        }
-        return izidi;
-    }
-
-    private NapovedTekmeDto.Izid izid(Stran jaz, Stran on, int mojiNizi, int njegoviNizi,
-                                      boolean zmaga, int nizov, double teza) {
+    /* Kaj bi zmaga oziroma poraz lastnika profila naredil obema ratingoma.
+       Izid v nizih ne vstopa - zmaga je zmaga. */
+    private NapovedTekmeDto.Izid izid(Stran jaz, Stran on, boolean zmaga, double teza) {
         TurnirkoRatingStoritev.Izracun i = turnirkoRating.izracunaj(
-                jaz.stanje(), on.stanje(), zmaga, mojiNizi, njegoviNizi, nizov, false, teza);
+                jaz.stanje(), on.stanje(), zmaga, teza);
         return new NapovedTekmeDto.Izid(
-                mojiNizi, njegoviNizi, zmaga, i.margina(),
                 i.sprememba1(), i.ratingPo1(),
                 i.sprememba2(), i.ratingPo2());
     }
@@ -185,10 +160,6 @@ public class NapovedTekmeStoritev {
                 turnirkoRating.kFaktor(stran.stanje().stTekem(), stran.stanje().poVrnitvi()),
                 stran.stanje().poVrnitvi(),
                 stran.opozorila());
-    }
-
-    private static int zaZmago(int steviloNizov) {
-        return steviloNizov / 2 + 1;
     }
 
     private Igralec najdiIgralca(Long id) {

@@ -95,6 +95,7 @@ class SinhronizacijaStupeTest extends IntegracijskiTest {
     @Autowired private SerijaKoncniceRepozitorij serijaRepozitorij;
     @Autowired private ZunanjaPovezavaRepozitorij povezave;
     @Autowired private LestvicaLigeStoritev lestvice;
+    @Autowired private si.turnirko.repozitoriji.KaderEkipeRepozitorij kaderRepozitorij;
 
     @TempDir Path zacasna;
 
@@ -366,6 +367,39 @@ class SinhronizacijaStupeTest extends IntegracijskiTest {
         assertTrue(izvedba.porocilo().vDto().noviIgralci().stream().noneMatch(n -> n.idOsebe() == 19204));
     }
 
+    /* Dvojcka z istim datumom rojstva in klubom: Stupa je v treh dogodkih
+       zamenjala licenci dvojckov Adam (oseba "Adam Tilen" je nosila Domnovo
+       licenco). Licenca, datum in spol se ujemajo z Domnom, ime pa natanko s
+       Tilnom - velja ime. Pri strogem nacinu je to odlocitev admina. */
+    @Test
+    void licencaDvojckaZDrugimImenomPoveziPoImenu() {
+        Igralec domen = noviIgralec("Domen", "Adam", LocalDate.of(2011, 1, 1), Spol.MOSKI);
+        domen.setNtzsLicenca("003/23/24");
+        igralecRepozitorij.save(domen);
+        Igralec tilen = noviIgralec("Tilen", "Adam", LocalDate.of(2011, 1, 1), Spol.MOSKI);
+        tilen.setNtzsLicenca("004/23/24");
+        igralecRepozitorij.save(tilen);
+        IdentitetaStupe.Oseba tilenPriViru = new IdentitetaStupe.Oseba(17876, "Adam Tilen",
+                LocalDate.of(2011, 4, 22), Spol.MOSKI, "003/23/24", "SLO", null);
+
+        PorociloUvoza samodejno = new PorociloUvoza();
+        Igralec povezan = new IdentitetaStupe(IdentitetaStupe.Nacin.SAMODEJNO, Map.of(), igralecRepozitorij,
+                klubRepozitorij, prijavaRepozitorij, kaderRepozitorij, povezave, samodejno)
+                .igralec(tilenPriViru, LocalDate.of(2024, 12, 1));
+        assertEquals(tilen.getId(), povezan.getId(), "ime odloci med dvojckoma, ne licenca");
+        assertTrue(samodejno.vDto().opozorila().stream()
+                .anyMatch(u -> u.vrsta().startsWith("licenca kaze na drugo osebo z istim datumom rojstva")));
+
+        povezave.deleteAll();
+        PorociloUvoza strogo = new PorociloUvoza();
+        new IdentitetaStupe(IdentitetaStupe.Nacin.STROGO, Map.of(), igralecRepozitorij,
+                klubRepozitorij, prijavaRepozitorij, kaderRepozitorij, povezave, strogo)
+                .igralec(tilenPriViru, LocalDate.of(2024, 12, 1));
+        PorociloUvozaDto.Odlocitev odlocitev = strogo.vDto().odlocitve().stream()
+                .filter(o -> o.idOsebe() == 17876).findFirst().orElseThrow();
+        assertEquals(tilen.getId(), odlocitev.kandidati().get(0).idIgralec(), "prvi predlog je po imenu");
+    }
+
     /* Licenca pripada igralcu z drugim datumom rojstva: pri strogem nacinu je
        to odlocitev admina in uvoz brez nje ne gre skozi. */
     @Test
@@ -452,8 +486,8 @@ class SinhronizacijaStupeTest extends IntegracijskiTest {
 
     /* 1. SNTL zensk 2025/26: pet srecanj ima zapisane samo zmagovalce podtekem
        (nizi 0 : 0, izid ekipne tekme pri viru ni sestet). Srecanje dobi izid iz
-       zmagovalcev, podtekme so odigrane z 0 : 0 - rating jih bere kot "samo
-       zmagovalec" - in uvoz gre skozi vse obvezne preverbe. */
+       zmagovalcev, podtekme so odigrane z 0 : 0 (rating steje samo zmagovalca)
+       in uvoz gre skozi vse obvezne preverbe. */
     @Test
     void srecanjeZZapisanimiSamoZmagovalci() {
         UvozStupeStoritev.Izvedba izvedba = uvozi(104);
@@ -471,7 +505,8 @@ class SinhronizacijaStupeTest extends IntegracijskiTest {
         for (TekmaSrecanja t : odigrane) {
             assertEquals(IzidTekme.IGRANO, t.getIzidTip());
             assertNotNull(t.getZmagovalecStran());
-            assertTrue(IzidTekme.samoZmagovalec(t.getIzidTip(), t.getDobljeniNiziDomaci(), t.getDobljeniNiziGost()));
+            assertEquals(0, t.getDobljeniNiziDomaci());
+            assertEquals(0, t.getDobljeniNiziGost());
         }
         assertEquals(31, izvedba.porocilo().vDto().opozorila().stream()
                 .filter(u -> u.vrsta().startsWith("podtekma z zapisanim zmagovalcem brez nizov"))

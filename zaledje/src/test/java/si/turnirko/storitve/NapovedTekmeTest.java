@@ -65,13 +65,6 @@ class NapovedTekmeTest extends IntegracijskiTest {
         return n.ravni().stream().filter(r -> r.raven() == raven).findFirst().orElseThrow();
     }
 
-    /* Vrstica danega izida z vidika lastnika profila. */
-    private static NapovedTekmeDto.Izid izid(NapovedTekmeDto.Raven raven, int moji, int njegovi) {
-        return raven.izidi().stream()
-                .filter(i -> i.mojiNizi() == moji && i.nizovNasprotnika() == njegovi)
-                .findFirst().orElseThrow();
-    }
-
     @Test
     void napovedanaSpremembaJeTista_kiJoTekmaZaresPrinese() {
         Tekma tekma = pripraviTekmo(1600, 1400, 1200, 1000);
@@ -79,8 +72,8 @@ class NapovedTekmeTest extends IntegracijskiTest {
         Igralec drugi = tekma.getPrijava2().getIgralec();
 
         NapovedTekmeDto n = napovedStoritev.napoved(
-                prvi.getId(), drugi.getId(), null, adminIme());
-        NapovedTekmeDto.Izid napovedan = izid(raven(n, RavenTekmovanja.URADNO), 3, 1);
+                prvi.getId(), drugi.getId(), adminIme());
+        NapovedTekmeDto.Izid napovedan = raven(n, RavenTekmovanja.URADNO).zmaga();
 
         int prejPrvi = stanje(prvi);
         int prejDrugi = stanje(drugi);
@@ -99,42 +92,40 @@ class NapovedTekmeTest extends IntegracijskiTest {
         Tekma tekma = pripraviTekmo(1500, 1300, 1200, 1000);
         NapovedTekmeDto n = napovedStoritev.napoved(
                 tekma.getPrijava1().getIgralec().getId(),
-                tekma.getPrijava2().getIgralec().getId(), null, adminIme());
+                tekma.getPrijava2().getIgralec().getId(), adminIme());
 
         double pricakovano = n.pricakovanOdstotek() / 100.0;
         for (NapovedTekmeDto.Raven raven : n.ravni()) {
-            for (NapovedTekmeDto.Izid i : raven.izidi()) {
-                double tocke = i.zmaga() ? 1.0 : 0.0;
+            for (boolean zmaga : new boolean[] { true, false }) {
+                NapovedTekmeDto.Izid i = zmaga ? raven.zmaga() : raven.poraz();
+                double tocke = zmaga ? 1.0 : 0.0;
                 int obrazec = (int) Math.rint(
-                        n.jaz().k() * i.margina() * raven.teza() * (tocke - pricakovano));
+                        n.jaz().k() * raven.teza() * (tocke - pricakovano));
                 /* Odstopanje 1 tocke je dopustno: pricakovano je v odgovoru
                    zaokrozeno na cel odstotek, sam izracun pa tece z vso
                    natancnostjo. Vec kot to bi pomenilo drugacen obrazec. */
                 assertTrue(Math.abs(obrazec - i.sprememba()) <= 1,
-                        "izid " + i.mojiNizi() + ":" + i.nizovNasprotnika()
-                                + " pri " + raven.raven() + " ne sledi obrazcu: "
-                                + obrazec + " proti " + i.sprememba());
+                        (zmaga ? "zmaga" : "poraz") + " pri " + raven.raven()
+                                + " ne sledi obrazcu: " + obrazec + " proti " + i.sprememba());
             }
         }
     }
 
     @Test
-    void gladkaZmagaProtiMocnejsemuPrinesVecOdTesne() {
+    void zmagaProtiMocnejsemuPrineseVecOdPorazaVzame() {
         /* Prvi prijavljeni ima najvisji rating, zato je za drugega zmaga
-           presenecenje - in gladka zmaga vecje od tesne. */
+           presenecenje (veliko prinese), poraz pa pricakovan (malo vzame). */
         Tekma tekma = pripraviTekmo(1700, 1300, 1200, 1000);
         NapovedTekmeDto n = napovedStoritev.napoved(
                 tekma.getPrijava2().getIgralec().getId(),
-                tekma.getPrijava1().getIgralec().getId(), null, adminIme());
+                tekma.getPrijava1().getIgralec().getId(), adminIme());
         NapovedTekmeDto.Raven uradno = raven(n, RavenTekmovanja.URADNO);
 
-        assertTrue(izid(uradno, 3, 0).sprememba() > izid(uradno, 3, 2).sprememba(),
-                "3:0 proti mocnejsemu mora prinesti vec od 3:2");
-        /* Poraz avtsajderja je pricakovan, zato je odbitek majhen - in tesen
-           poraz ga stane manj od gladkega. */
-        assertTrue(izid(uradno, 2, 3).sprememba() > izid(uradno, 0, 3).sprememba(),
-                "poraz 2:3 mora stati manj od 0:3");
-        assertTrue(izid(uradno, 3, 1).sprememba() > 0 && izid(uradno, 1, 3).sprememba() < 0);
+        assertTrue(uradno.zmaga().sprememba() > 0 && uradno.poraz().sprememba() < 0);
+        assertTrue(uradno.zmaga().sprememba() > -uradno.poraz().sprememba(),
+                "zmaga avtsajderja prinese vec, kot mu poraz vzame");
+        assertEquals(-uradno.zmaga().sprememba(), uradno.zmaga().spremembaNasprotnika(),
+                "pri enakem K je vsota sprememb 0");
     }
 
     @Test
@@ -145,16 +136,16 @@ class NapovedTekmeTest extends IntegracijskiTest {
            zaokrozevanje pri vseh treh ravneh zlilo v nic. */
         NapovedTekmeDto n = napovedStoritev.napoved(
                 tekma.getPrijava2().getIgralec().getId(),
-                tekma.getPrijava1().getIgralec().getId(), null, adminIme());
+                tekma.getPrijava1().getIgralec().getId(), adminIme());
 
         assertEquals(List.of(RavenTekmovanja.URADNO, RavenTekmovanja.KLUBSKO,
                         RavenTekmovanja.REKREATIVNO),
                 n.ravni().stream().map(NapovedTekmeDto.Raven::raven).toList(),
                 "raven NE_STEJE v napovedi nima vrstice - tekma, ki ratinga ne premakne");
 
-        int uradno = izid(raven(n, RavenTekmovanja.URADNO), 3, 1).sprememba();
-        int klubsko = izid(raven(n, RavenTekmovanja.KLUBSKO), 3, 1).sprememba();
-        int rekreativno = izid(raven(n, RavenTekmovanja.REKREATIVNO), 3, 1).sprememba();
+        int uradno = raven(n, RavenTekmovanja.URADNO).zmaga().sprememba();
+        int klubsko = raven(n, RavenTekmovanja.KLUBSKO).zmaga().sprememba();
+        int rekreativno = raven(n, RavenTekmovanja.REKREATIVNO).zmaga().sprememba();
         assertTrue(uradno > klubsko && klubsko > rekreativno,
                 "teza mnozi spremembo: " + uradno + " > " + klubsko + " > " + rekreativno);
         assertEquals(0.75, raven(n, RavenTekmovanja.KLUBSKO).teza(), 0.0001);
@@ -169,7 +160,7 @@ class NapovedTekmeTest extends IntegracijskiTest {
         Igralec novinec = prijavePoVrsti(dogodek.getId()).get(1).getIgralec();
 
         NapovedTekmeDto n = napovedStoritev.napoved(
-                novinec.getId(), zRatingom.getId(), null, adminIme());
+                novinec.getId(), zRatingom.getId(), adminIme());
 
         assertEquals(List.of(NapovedTekmeDto.Opozorilo.BREZ_RATINGA), n.jaz().opozorila());
         assertEquals(sidroZa(novinec), n.jaz().rating(),
@@ -189,33 +180,31 @@ class NapovedTekmeTest extends IntegracijskiTest {
         String prijavaPrvega = racunZa(prvi, "napoved@test.si");
 
         // svojo napoved sme videti
-        assertEquals(3, napovedStoritev.napoved(prvi.getId(), drugi.getId(), null, prijavaPrvega)
+        assertEquals(3, napovedStoritev.napoved(prvi.getId(), drugi.getId(), prijavaPrvega)
                 .ravni().size());
         // tuje ne
         assertThrows(PrepovedanoIzjema.class,
-                () -> napovedStoritev.napoved(drugi.getId(), prvi.getId(), null, prijavaPrvega));
+                () -> napovedStoritev.napoved(drugi.getId(), prvi.getId(), prijavaPrvega));
         // sam s sabo se nihce ne primerja
         assertThrows(NeveljavenVnosIzjema.class,
-                () -> napovedStoritev.napoved(prvi.getId(), prvi.getId(), null, prijavaPrvega));
-        // tekma se igra na 3, 5 ali 7 nizov
-        assertThrows(NeveljavenVnosIzjema.class,
-                () -> napovedStoritev.napoved(prvi.getId(), drugi.getId(), 4, prijavaPrvega));
+                () -> napovedStoritev.napoved(prvi.getId(), prvi.getId(), prijavaPrvega));
     }
 
+    /* Napovedan poraz je tudi tisti, ki ga tekma zares vzame - ne glede na
+       to, ali je bil gladek ali tesen (zmaga je zmaga). */
     @Test
-    void izidiTecejoOdNajboljseZmageDoNajhujsegaPoraza() {
+    void napovedanPorazJeTisti_kiGaTekmaZaresVzame() {
         Tekma tekma = pripraviTekmo(1500, 1400, 1200, 1000);
-        NapovedTekmeDto n = napovedStoritev.napoved(
-                tekma.getPrijava1().getIgralec().getId(),
-                tekma.getPrijava2().getIgralec().getId(), null, adminIme());
+        Igralec prvi = tekma.getPrijava1().getIgralec();
+        Igralec drugi = tekma.getPrijava2().getIgralec();
+        NapovedTekmeDto n = napovedStoritev.napoved(prvi.getId(), drugi.getId(), adminIme());
+        NapovedTekmeDto.Izid poraz = raven(n, RavenTekmovanja.URADNO).poraz();
 
-        List<NapovedTekmeDto.Izid> izidi = raven(n, RavenTekmovanja.URADNO).izidi();
-        assertEquals(6, izidi.size(), "tri zmage in trije porazi pri tekmi na 5 nizov");
-        for (int i = 1; i < izidi.size(); i++) {
-            assertTrue(izidi.get(i - 1).sprememba() >= izidi.get(i).sprememba(),
-                    "vrstice morajo padati: " + izidi);
-        }
-        assertEquals(5, n.steviloNizov());
+        int prejPrvi = stanje(prvi);
+        tekmaStoritev.vnesiRezultat(tekma.getId(), new VnosRezultata(null, 2, 3, null, null));
+
+        assertEquals(poraz.sprememba(), stanje(prvi) - prejPrvi);
+        assertEquals(poraz.rating(), stanje(prvi));
     }
 
     private int stanje(Igralec igralec) {

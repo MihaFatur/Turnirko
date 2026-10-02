@@ -1,25 +1,21 @@
 /* »Kaj prinese tekma«: koliko Turnirko ratinga bi igralec dobil ali izgubil,
    če bi zdaj odigral tekmo proti izbranemu nasprotniku.
 
-   Zakaj ni ena sama številka. Sprememba je zmnožek
-   K × margina × teža × (izid − pričakovano), od česar sta dve sestavini
-   odvisni od tekme, ki je še ni bilo: izid v nizih (margina) in raven
-   tekmovanja (teža). Ena povprečna številka bi bila taka, kakršne ne bi dala
-   nobena prava tekma. Zato:
+   Sprememba je zmnožek K × teža × (izid − pričakovano). Izid v nizih ne šteje
+   (zmaga je zmaga: 3:0 in 3:2 prineseta isto), zato ima tekma samo dva izida.
+   Od tekme, ki je še ni bilo, je odvisna samo raven tekmovanja (teža). Zato:
 
-     - zgoraj sta dve VELIKI številki za tipičen izid (3:1 oz. 1:3) — to je
-       odgovor na vprašanje, zaradi katerega je gledalec prišel,
-     - pod njima tabela VSEH izidov od 3:0 do 0:3, ki pokaže, kako se številka
-       spreminja z izidom (gladka zmaga proti močnejšemu je presenečenje in
-       prinese največ),
+     - zgoraj sta dve VELIKI številki, zmaga in poraz — to je odgovor na
+       vprašanje, zaradi katerega je gledalec prišel,
      - raven tekmovanja preklaplja izbirnik: uradna, klubska in rekreativna
-       tekma niso enako vredna informacija.
+       tekma niso enako vredna informacija,
+     - pod njim tabela obeh izidov, ki pove še, kaj bi tekma naredila
+       nasprotniku.
 
    Vse številke izračuna strežnik skozi isti izračun kot pravi obračun tekme
    (NapovedTekmeStoritev) — v vmesniku se ne računa nič, tudi množenja s težo
    ne: vsak zmnožek je zaokrožen posebej in 0,75 × prikazana številka ni to,
-   kar bi tekma res prinesla. Edino, kar vmesnik izpelje sam, je lega oznak na
-   okrasni osi v tabeli — ta številk ne nosi, samo razmerje med njimi. */
+   kar bi tekma res prinesla. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -64,15 +60,6 @@ export function NapovedTekme({ idIgralec }: { idIgralec: number }) {
 
   const n = napoved.data
   const izbranaRaven = n?.ravni.find((r) => r.raven === raven)
-  const vrstice = izbranaRaven?.izidi ?? []
-  const zmage = vrstice.filter((v) => v.zmaga)
-  const porazi = vrstice.filter((v) => !v.zmaga)
-  /* Tipičen izid je sredinski: pri tekmi na tri dobljene nize 3:1 in 1:3.
-     Robna izida (3:0 in 3:2) sta skrajnosti razpona, ki ga kaže tabela. */
-  const tipicnaZmaga = zmage[srednji(zmage.length)]
-  const tipicenPoraz = porazi[srednji(porazi.length)]
-  const zaZmago = n ? Math.floor(n.steviloNizov / 2) + 1 : 0
-  const lega = legaNaOsi(vrstice)
 
   return (
     <div>
@@ -111,27 +98,25 @@ export function NapovedTekme({ idIgralec }: { idIgralec: number }) {
       {napoved.error && <NapakaPoizvedbe poizvedba={napoved} kaj="napovedi" />}
       {nasprotnik !== '' && napoved.isLoading && <p className="obvestilo">Računam …</p>}
 
-      {n && tipicnaZmaga && tipicenPoraz && (
+      {n && izbranaRaven && (
         <>
           <Semafor jaz={n.jaz} nasprotnik={n.nasprotnik} odstotek={n.pricakovanOdstotek} />
 
           <div className="profil__kazalniki napoved__vrh">
             <div className="kazalnik kazalnik--prvi">
               <div className="kazalnik__vrednost profil__zmaga">
-                {sPredznakom(tipicnaZmaga.sprememba)}
+                {sPredznakom(izbranaRaven.zmaga.sprememba)}
               </div>
               <div className="kazalnik__oznaka">
-                Če zmagaš {tipicnaZmaga.mojiNizi}:{tipicnaZmaga.nizovNasprotnika} →{' '}
-                <span className="napoved__cilj">{tipicnaZmaga.rating}</span>
+                Če zmagaš → <span className="napoved__cilj">{izbranaRaven.zmaga.rating}</span>
               </div>
             </div>
             <div className="kazalnik">
               <div className="kazalnik__vrednost profil__poraz">
-                {sPredznakom(tipicenPoraz.sprememba)}
+                {sPredznakom(izbranaRaven.poraz.sprememba)}
               </div>
               <div className="kazalnik__oznaka">
-                Če izgubiš {tipicenPoraz.mojiNizi}:{tipicenPoraz.nizovNasprotnika} →{' '}
-                <span className="napoved__cilj">{tipicenPoraz.rating}</span>
+                Če izgubiš → <span className="napoved__cilj">{izbranaRaven.poraz.rating}</span>
               </div>
             </div>
           </div>
@@ -156,49 +141,39 @@ export function NapovedTekme({ idIgralec }: { idIgralec: number }) {
             <span>Izid</span>
             <span className="napoved__desno">Tvoja sprememba</span>
             <span className="napoved__desno">Tvoj rating</span>
-            <span className="napoved__desno">Njegova sprememba</span>
-            <span className="napoved__desno" aria-hidden="true">− 0 +</span>
+            <span className="napoved__desno">Sprememba nasprotnika</span>
+            <span className="napoved__desno">Rating nasprotnika</span>
           </div>
-          {vrstice.map((v) => {
-            const tipicen = v === tipicnaZmaga || v === tipicenPoraz
-            const barva = v.zmaga ? 'profil__zmaga' : 'profil__poraz'
-            return (
-              <div
-                className={'napoved__vrstica' + (tipicen ? ' napoved__vrstica--tipicna' : '')}
-                key={`${v.mojiNizi}-${v.nizovNasprotnika}`}
-              >
-                <span className="napoved__izid-celica">
-                  <span className={'napoved__izid ' + barva}>
-                    {v.mojiNizi}:{v.nizovNasprotnika}
-                  </span>
-                  <span className="napoved__opis">{opisIzida(v, tipicen, zaZmago)}</span>
-                </span>
-                <span className={'napoved__sprememba napoved__desno ' + barva}>
-                  {sPredznakom(v.sprememba)}
-                </span>
-                <span className="napoved__rating napoved__desno">{v.rating}</span>
-                <span className="napoved__nasprotnikova napoved__desno">
-                  {sPredznakom(v.spremembaNasprotnika)}
-                </span>
-                <span className={'napoved__os ' + barva} aria-hidden="true">
-                  <span className="napoved__os-crta" />
-                  <span className="napoved__os-nicla" style={{ left: lega(0) }} />
-                  <span className="napoved__os-oznaka" style={{ left: lega(v.sprememba) }} />
-                </span>
-              </div>
-            )
-          })}
+          <VrsticaIzida oznaka="Zmaga" izid={izbranaRaven.zmaga} barva="profil__zmaga" />
+          <VrsticaIzida oznaka="Poraz" izid={izbranaRaven.poraz} barva="profil__poraz" />
 
           <Razlaga
             jaz={n.jaz}
             nasprotnik={n.nasprotnik}
             odstotek={n.pricakovanOdstotek}
             raven={raven}
-            teza={izbranaRaven?.teza ?? 1}
-            steviloNizov={n.steviloNizov}
+            teza={izbranaRaven.teza}
           />
         </>
       )}
+    </div>
+  )
+}
+
+/* En izid tekme in kaj naredi obema ratingoma. Izid je beseda (zmaga, poraz)
+   in ne barva sama (WCAG 1.4.1). */
+function VrsticaIzida({ oznaka, izid, barva }: { oznaka: string; izid: NapovedIzid; barva: string }) {
+  return (
+    <div className="napoved__vrstica">
+      <span className={'napoved__izid ' + barva}>{oznaka}</span>
+      <span className={'napoved__sprememba napoved__desno ' + barva}>
+        {sPredznakom(izid.sprememba)}
+      </span>
+      <span className="napoved__rating napoved__desno">{izid.rating}</span>
+      <span className="napoved__nasprotnikova napoved__desno">
+        {sPredznakom(izid.spremembaNasprotnika)}
+      </span>
+      <span className="napoved__nasprotnikova napoved__desno">{izid.ratingNasprotnika}</span>
     </div>
   )
 }
@@ -242,50 +217,47 @@ function Semafor({
         </div>
         <div className="napoved__pas-legenda">
           <span>Tvoja zmaga {oblikujOdstotek(odstotek)}</span>
-          <span>Njegova zmaga {oblikujOdstotek(100 - odstotek)}</span>
+          <span>Zmaga nasprotnika {oblikujOdstotek(100 - odstotek)}</span>
         </div>
       </div>
       <p className="napoved__razlika">
         {razlika === 0
           ? 'Enak rating — tekma je po številkah izenačena.'
           : `Razlika je ${Math.abs(razlika)} ${sklonTock(Math.abs(razlika))} `
-            + (razlika > 0 ? 'v tvojo korist.' : 'v njegovo korist.')}
+            + (razlika > 0 ? 'v tvojo korist.' : 'v korist nasprotnika.')}
       </p>
     </div>
   )
 }
 
 /* Zakaj so številke takšne, kot so — in kje napoved ne velja. Sestavine so
-   iste kot pod grafom ratinga (K, margina, teža, pričakovano), da igralec
-   isti obrazec sreča dvakrat in ga drugič že pozna. */
+   iste kot v dnevniku ratinga (K, teža, pričakovano). */
 function Razlaga({
   jaz,
   nasprotnik,
   odstotek,
   raven,
   teza,
-  steviloNizov,
 }: {
   jaz: NapovedStran
   nasprotnik: NapovedStran
   odstotek: number
   raven: RavenTekmovanja
   teza: number
-  steviloNizov: number
 }) {
   return (
     <>
       <p className="profil__primerjava">
-        Sprememba je <strong>K × nizi × teža × (izid − pričakovano)</strong>. Tvoj K je{' '}
+        Sprememba je <strong>K × teža × (izid − pričakovano)</strong>. Tvoj K je{' '}
         {jaz.k}
         {jaz.vrnitev && ' (povišan, ker se vračaš po več kot letu dni)'}
         {jaz.stTekem < 30 && !jaz.vrnitev
           && (jaz.stTekem === 0
             ? ' (povišan, ker še nimaš obračunanih tekem)'
             : ` (povišan, ker je za tabo šele ${jaz.stTekem} ${sklonTekem(jaz.stTekem)})`)}
-        , njegov {nasprotnik.k}; pričakovano zmagaš v {oblikujOdstotek(odstotek)}. Številke veljajo za{' '}
-        {KRATKO_RAVEN[raven].toLowerCase()} tekmovanje (teža {oblikujTezo(teza)}) in tekmo na{' '}
-        {steviloNizov === 3 ? 'dva' : steviloNizov === 5 ? 'tri' : 'štiri'} dobljene nize.
+        , K nasprotnika {nasprotnik.k}; pričakovano zmagaš v {oblikujOdstotek(odstotek)}. Številke veljajo za{' '}
+        {KRATKO_RAVEN[raven].toLowerCase()} tekmovanje (teža {oblikujTezo(teza)}). Izid v nizih ne
+        šteje: 3:0 in 3:2 prineseta isto.
       </p>
       {jaz.opozorila.includes('BREZ_RATINGA') && (
         <p className="namig">
@@ -295,8 +267,8 @@ function Razlaga({
       )}
       {nasprotnik.opozorila.includes('BREZ_RATINGA') && (
         <p className="namig">
-          Nasprotnik ratinga še nima — {nasprotnik.rating} je starostno sidro za njegovo
-          starost in spol, ne izmerjena moč.
+          Nasprotnik ratinga še nima — {nasprotnik.rating} je starostno sidro za starost in spol
+          nasprotnika, ne izmerjena moč.
         </p>
       )}
       {jaz.opozorila.includes('PRVI_DAN') && (
@@ -307,8 +279,8 @@ function Razlaga({
       )}
       {nasprotnik.opozorila.includes('PRVI_DAN') && (
         <p className="namig">
-          Nasprotnik danes igra svoj prvi dan, zato se njegova številka računa drugače —
-          njegova stran tabele je le okvir.
+          Nasprotnik danes igra svoj prvi dan, zato se številka nasprotnika računa drugače —
+          sprememba in rating nasprotnika v tabeli sta le okvir. Tvoje številke veljajo.
         </p>
       )}
     </>
@@ -324,38 +296,10 @@ function oblikujOdstotek(v: number): string {
   return `${v} %`
 }
 
-/* Teža z vejico in dvema decimalkama, kot je zapisana pod grafom ratinga
-   (»× 0,75 (teža)«) — isti obrazec naj se bere enako na obeh mestih. */
+/* Teža z vejico in dvema decimalkama — isti zapis kot v razlagi spremembe na
+   profilu, da se obrazec bere enako na obeh mestih. */
 function oblikujTezo(v: number): string {
   return v.toFixed(2).replace('.', ',')
-}
-
-/* Indeks sredinske vrstice: pri treh izidih 3:0 / 3:1 / 3:2 je to 3:1. */
-function srednji(koliko: number): number {
-  return Math.floor((koliko - 1) / 2)
-}
-
-/* Besedni opis ob rezultatu. Tipična vrstica je v tabeli poudarjena z robom in
-   podlago, a poudarek ne sme stati samo na barvi (WCAG 1.4.1) — zato ga pove
-   še beseda. Robna izida se opišeta po nizih poraženca: brez dobljenega niza
-   je gladka, z enim manj od zmagovalca tesna. */
-function opisIzida(v: NapovedIzid, tipicen: boolean, zaZmago: number): string {
-  if (tipicen) return v.zmaga ? 'tipična zmaga' : 'tipičen poraz'
-  const niziPorazenca = v.zmaga ? v.nizovNasprotnika : v.mojiNizi
-  if (niziPorazenca === 0) return v.zmaga ? 'gladka zmaga' : 'gladek poraz'
-  if (niziPorazenca === zaZmago - 1) return v.zmaga ? 'tesna zmaga' : 'tesen poraz'
-  return v.zmaga ? 'zmaga' : 'poraz'
-}
-
-/* Lega na osi »− 0 +« v odstotkih širine stolpca. Merilo je razpon prikazanih
-   sprememb, zato najhujši poraz stoji levo in najboljša zmaga desno ne glede na
-   raven; 2 % roba na vsaki strani, da oznaka ne zleze čez konec črte. Ničla
-   je vedno znotraj razpona, ker zmaga ratinga ne more vzeti in poraz ne dati. */
-function legaNaOsi(vrstice: NapovedIzid[]): (v: number) => string {
-  const spremembe = vrstice.map((v) => v.sprememba)
-  const najmanj = Math.min(...spremembe)
-  const razpon = Math.max(...spremembe) - najmanj || 1
-  return (v) => `${(((v - najmanj) / razpon) * 96 + 2).toFixed(1)}%`
 }
 
 /* Pravi minus (−) namesto vezaja; ±0 pri ničli, ker »+0« obljublja pridobitev. */
@@ -363,4 +307,3 @@ function sPredznakom(v: number): string {
   if (v === 0) return '±0'
   return v > 0 ? `+${v}` : `−${Math.abs(v)}`
 }
-

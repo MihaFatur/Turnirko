@@ -1,12 +1,12 @@
 /* Testi cistega izracuna Turnirko ratinga - brez baze in brez Springa.
-   Pokrivajo stiri izboljsave: K po negotovosti (vkljucno s pribitkom za
-   vrnitev), nicvsotno zaokrozevanje (Math.rint), set-margino po presenecenju
-   in odsotnost margine pri predaji. */
+   Pokrivajo K po negotovosti (vkljucno s pribitkom za vrnitev), nicvsotno
+   zaokrozevanje (Math.rint), tezo tekmovanja in pravilo "zmaga je zmaga":
+   izid v nizih na spremembo ne vpliva (tega se ne da vec niti podati - obracun
+   iz RatingStoritev pa drzi RazclenitevSpremembeTest). */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
@@ -16,23 +16,23 @@ class TurnirkoRatingStoritevTest {
 
     private final TurnirkoRatingStoritev rating = new TurnirkoRatingStoritev();
 
-    /* K po negotovosti: osnova 40, pribitka 8 + 8, dokler o igralcu vemo malo. */
+    /* K po negotovosti: osnova 48, pribitka 10 + 10, dokler o igralcu vemo malo. */
     @Test
     void kFaktorPadaSStevilomTekem() {
-        assertEquals(56, rating.kFaktor(0));
-        assertEquals(56, rating.kFaktor(9));
-        assertEquals(48, rating.kFaktor(10));
-        assertEquals(48, rating.kFaktor(29));
-        assertEquals(40, rating.kFaktor(30));
-        assertEquals(40, rating.kFaktor(100));
+        assertEquals(68, rating.kFaktor(0));
+        assertEquals(68, rating.kFaktor(9));
+        assertEquals(58, rating.kFaktor(10));
+        assertEquals(58, rating.kFaktor(29));
+        assertEquals(48, rating.kFaktor(30));
+        assertEquals(48, rating.kFaktor(100));
     }
 
     /* Pribitek za vrnitev se PRISTEJE ostalim - vrnjeni novinec ima najvec. */
     @Test
-    void vrnitevPovisaKZaOsemTock() {
-        assertEquals(48, rating.kFaktor(30, true));
-        assertEquals(56, rating.kFaktor(10, true));
-        assertEquals(64, rating.kFaktor(0, true));
+    void vrnitevPovisaKZaDesetTock() {
+        assertEquals(58, rating.kFaktor(30, true));
+        assertEquals(68, rating.kFaktor(10, true));
+        assertEquals(78, rating.kFaktor(0, true));
     }
 
     /* Vrnjeni igralec se ob isti tekmi giblje bolj kot njegov nasprotnik,
@@ -42,108 +42,77 @@ class TurnirkoRatingStoritevTest {
         TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(
                 new TurnirkoRatingStoritev.StanjeIgralca(1000, 40, true),
                 new TurnirkoRatingStoritev.StanjeIgralca(1000, 40, false),
-                true, 3, 0, 5, false);
-        assertEquals(35, iz.sprememba1(), "K 48 (40 + 8 za vrnitev) krat margina 1,469, polovica");
-        assertEquals(-29, iz.sprememba2(), "nasprotnik ostane pri K 40");
+                true, 1.0);
+        assertEquals(29, iz.sprememba1(), "K 58 (48 + 10 za vrnitev), polovica");
+        assertEquals(-24, iz.sprememba2(), "nasprotnik ostane pri K 48");
     }
 
+    /* Med enakima igralcema je pricakovani izid 1/2, zato zmaga prinese
+       natanko polovico K - brez vsakega mnozitelja. */
     @Test
-    void novincaEnakRatingGladkaZmaga() {
-        // dva novinca (0 tekem -> K=56), gladka zmaga 3:0 pri najboljsem od 5
-        TurnirkoRatingStoritev.Izracun izracun = rating.izracunaj(1000, 1000, 0, 0, true, 3, 0, 5);
-        assertEquals(1041, izracun.ratingPo1());
-        assertEquals(959, izracun.ratingPo2());
-        assertEquals(41, izracun.sprememba1());
-        assertEquals(-41, izracun.sprememba2());
-    }
-
-    @Test
-    void tesnaZmagaPrineseManjKotGladka() {
-        TurnirkoRatingStoritev.Izracun tesna = rating.izracunaj(1000, 1000, 0, 0, true, 3, 2, 5);
-        TurnirkoRatingStoritev.Izracun gladka = rating.izracunaj(1000, 1000, 0, 0, true, 3, 0, 5);
-        assertTrue(tesna.sprememba1() < gladka.sprememba1(),
-                "tesna zmaga mora prinesti manj tock kot gladka");
+    void novincaZEnakimRatingom() {
+        TurnirkoRatingStoritev.Izracun izracun = rating.izracunaj(1000, 1000, 0, 0, true);
+        assertEquals(1034, izracun.ratingPo1());
+        assertEquals(966, izracun.ratingPo2());
+        assertEquals(34, izracun.sprememba1());
+        assertEquals(-34, izracun.sprememba2());
+        assertEquals(0.5, izracun.pricakovanaVerjetnost1(), 1e-12);
     }
 
     /* Nicvsotno zaokrozevanje: pri ENAKEM K gubitnik izgubi natanko toliko,
        kot zmagovalec pridobi - tudi pri izenaceni napovedi (rint, ne round). */
     @Test
     void spremembiStaNicvsotniPriEnakemK() {
-        for (int[] izid : new int[][] { {3, 0}, {3, 1}, {3, 2} }) {
-            TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(1000, 1000, 0, 0, true, izid[0], izid[1], 5);
+        for (int razlika : new int[] { 0, 1, 7, 134, 400, 999 }) {
+            TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(1000 + razlika, 1000, 40, 40, true);
             assertEquals(iz.sprememba1(), -iz.sprememba2(),
-                    "pri enakem K je vsota sprememb 0 (izid " + izid[0] + ":" + izid[1] + ")");
+                    "pri enakem K je vsota sprememb 0 (razlika " + razlika + ")");
+            TurnirkoRatingStoritev.Izracun poraz = rating.izracunaj(1000 + razlika, 1000, 40, 40, false);
+            assertEquals(poraz.sprememba1(), -poraz.sprememba2());
         }
-        // tudi pri razlicnih ratingih, dokler je K enak
-        TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(1234, 1100, 40, 40, true, 3, 1, 5);
-        assertEquals(iz.sprememba1(), -iz.sprememba2());
+        // tudi pri tezi, ki da lihi K (0,5 x K 68 = 34 -> pol tega je 17)
+        TurnirkoRatingStoritev.StanjeIgralca novinec = TurnirkoRatingStoritev.StanjeIgralca.ustaljeno(1000, 0);
+        TurnirkoRatingStoritev.Izracun pol = rating.izracunaj(novinec, novinec, true, 0.5);
+        assertEquals(17, pol.sprememba1());
+        assertEquals(-17, pol.sprememba2());
     }
 
     /* Dinamicni K: novinec se ob isti tekmi giblje bolj kot ustaljen nasprotnik. */
     @Test
     void novinecSeGibljeVecKotUstaljen() {
-        TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(1000, 1000, 0, 40, true, 3, 0, 5);
-        assertTrue(Math.abs(iz.sprememba1()) > Math.abs(iz.sprememba2()),
-                "novinec (K=56) se mora gibati bolj kot ustaljen igralec (K=40)");
+        TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(1000, 1000, 0, 40, true);
+        assertEquals(34, iz.sprememba1(), "K 68");
+        assertEquals(-24, iz.sprememba2(), "K 48");
     }
 
     @Test
     void favoritZmagoMaloPridobiPresenecenjeVelikoIzgubi() {
-        TurnirkoRatingStoritev.Izracun izracun = rating.izracunaj(1400, 1000, 0, 0, true, 3, 0, 5);
-        assertTrue(izracun.sprememba1() <= 8, "favorit ob zmagi pridobi malo");
+        // 400 tock razlike: pricakovano 10/11 = 0,909
+        TurnirkoRatingStoritev.Izracun zmaga = rating.izracunaj(1400, 1000, 0, 0, true);
+        assertEquals(6, zmaga.sprememba1(), "68 x (1 - 0,909)");
 
-        TurnirkoRatingStoritev.Izracun presenecenje = rating.izracunaj(1400, 1000, 0, 0, false, 0, 3, 5);
-        assertTrue(presenecenje.sprememba1() <= -40, "favorit ob porazu izgubi veliko");
+        TurnirkoRatingStoritev.Izracun presenecenje = rating.izracunaj(1400, 1000, 0, 0, false);
+        assertEquals(-62, presenecenje.sprememba1(), "68 x (0 - 0,909)");
+        assertEquals(62, presenecenje.sprememba2());
     }
 
-    /* Set-margina po presenecenju: gladka zmaga avtsajderja prinese vec kot
-       gladka zmaga favorita (poleg osnovne razlike verjetnosti nosi tudi
-       presenetljivo prepricljiv izid). */
+    /* Avtsajderjeva zmaga je vredna vec od favoritove - samo zaradi
+       pricakovanega izida, ne zaradi nizov. */
     @Test
-    void presenetljivaGladkaZmagaPrineseVec() {
-        int avtsajder = rating.izracunaj(1000, 1600, 0, 0, true, 3, 0, 5).sprememba1();
-        int favorit = rating.izracunaj(1600, 1000, 0, 0, true, 3, 0, 5).sprememba1();
-        assertTrue(avtsajder > favorit,
-                "presenetljiva gladka zmaga mora prinesti vec kot pricakovana");
+    void zmagaProtiMocnejsemuPrineseVec() {
+        int avtsajder = rating.izracunaj(1000, 1600, 0, 0, true).sprememba1();
+        int favorit = rating.izracunaj(1600, 1000, 0, 0, true).sprememba1();
+        assertEquals(66, avtsajder, "68 x (1 - 0,031)");
+        assertEquals(2, favorit, "68 x 0,031");
+        assertEquals(68, avtsajder + favorit, "vsota obeh je K: E + (1 - E) = 1");
     }
 
     @Test
     void ratingNikoliPodSpodnjoMejo() {
-        TurnirkoRatingStoritev.Izracun izracun = rating.izracunaj(105, 1000, 0, 0, false, 0, 3, 5);
-        assertTrue(izracun.ratingPo1() >= 100, "rating ne sme pod spodnjo mejo 100");
-    }
-
-    @Test
-    void zmagovalecJeLahkoTudiZManjNizi() {
-        // predaja pri izenacenju: zmagovalca doloci parameter, ne nizi
-        TurnirkoRatingStoritev.Izracun izracun = rating.izracunaj(1000, 1000, 0, 0, true, 1, 1, 5);
-        assertTrue(izracun.sprememba1() > 0);
-    }
-
-    @Test
-    void neveljavniVnosiSprozijoIzjemo() {
-        assertThrows(IllegalArgumentException.class, () -> rating.izracunaj(1000, 1000, 0, 0, true, -1, 0, 5));
-        assertThrows(IllegalArgumentException.class, () -> rating.izracunaj(1000, 1000, 0, 0, true, 3, 0, 4));
-        assertThrows(IllegalArgumentException.class, () -> rating.izracunaj(1000, 1000, 0, 0, true, 3, 0, 0));
-    }
-
-    /* PREDAJA: kdor preda pri vodstvu 2:0, je "zmagovalcu" pustil nic dobljenih
-       nizov. Prejsnja koda je nize porazenca brala kot manjsega od obeh stevil
-       in je tak izid ocenila kot gladko razbitje 3:0 - zmagovalec je za tekmo,
-       ki jo je na mizi izgubljal, dobil najvisji mozni bonus. Pri predaji zato
-       margine ne uporabimo: steje samo, kdo je zmagal. */
-    @Test
-    void predajaPriVodstvuNeDaBonusaZaRazbitje() {
-        // igralec 1 vodi 2:0 in preda -> zmagovalec je igralec 2
-        TurnirkoRatingStoritev.Izracun predaja = rating.izracunaj(1000, 1000, 0, 0, false, 2, 0, 5, true);
-        TurnirkoRatingStoritev.Izracun gladko = rating.izracunaj(1000, 1000, 0, 0, false, 0, 3, 5);
-
-        assertEquals(28, predaja.sprememba2(),
-                "pri predaji je mnozitelj margine 1, zato polovica K (56)");
-        assertTrue(predaja.sprememba2() < gladko.sprememba2(),
-                "predaja ne sme prinesti vec kot dejansko odigrano razbitje 3:0");
-        assertEquals(predaja.sprememba1(), -predaja.sprememba2(),
-                "pri enakem K je vsota sprememb tudi pri predaji 0");
+        // poraz proti 300 bi odnesel 17 tock (68 x 0,25), do meje pa jih je 5
+        TurnirkoRatingStoritev.Izracun izracun = rating.izracunaj(105, 300, 0, 0, false);
+        assertEquals(100, izracun.ratingPo1(), "rating ne sme pod spodnjo mejo 100");
+        assertEquals(-5, izracun.sprememba1(), "sprememba je razlika do meje, ne izracunana");
     }
 
     /* TEZA TEKMOVANJA: ista tekma na klubskem turnirju premakne rating za tri
@@ -153,16 +122,17 @@ class TurnirkoRatingStoritevTest {
     void tezaTekmovanjaSorazmernoZmanjsaSpremembo() {
         TurnirkoRatingStoritev.StanjeIgralca novinec = TurnirkoRatingStoritev.StanjeIgralca.ustaljeno(1000, 0);
 
-        int uradno = rating.izracunaj(novinec, novinec, true, 3, 0, 5, false, 1.00).sprememba1();
-        int klubsko = rating.izracunaj(novinec, novinec, true, 3, 0, 5, false, 0.75).sprememba1();
-        int rekreativno = rating.izracunaj(novinec, novinec, true, 3, 0, 5, false, 0.50).sprememba1();
+        int uradno = rating.izracunaj(novinec, novinec, true, 1.00).sprememba1();
+        int klubsko = rating.izracunaj(novinec, novinec, true, 0.75).sprememba1();
+        int rekreativno = rating.izracunaj(novinec, novinec, true, 0.50).sprememba1();
 
-        assertEquals(41, uradno, "K 56 krat margina 1,469, polovica");
-        assertEquals(31, klubsko, "tri cetrtine istega");
-        assertEquals(21, rekreativno, "polovica istega");
+        assertEquals(34, uradno, "K 68, polovica");
+        assertEquals(26, klubsko, "tri cetrtine istega (25,5 -> 26, pol na sodo)");
+        assertEquals(17, rekreativno, "polovica istega");
 
-        TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(novinec, novinec, true, 3, 0, 5, false, 0.50);
+        TurnirkoRatingStoritev.Izracun iz = rating.izracunaj(novinec, novinec, true, 0.50);
         assertEquals(iz.sprememba1(), -iz.sprememba2(), "teza je enaka za oba, vsota ostane 0");
+        assertEquals(0.50, iz.teza());
     }
 
     /* Raven tekmovanja in njena teza sta en podatek - da se ne razideta. */
@@ -176,16 +146,12 @@ class TurnirkoRatingStoritevTest {
         assertFalse(RavenTekmovanja.NE_STEJE.steje(), "tekmovanje brez teze se ne obracuna");
     }
 
-    /* Nize porazenca vzamemo po ZMAGOVALCU in ne kot manjsega od obeh stevil.
-       Pri koncani tekmi je to isto - ta test to zaklene, da popravek predaje ne
-       spremeni obracuna odigranih tekem. */
+    /* Vrstni red igralcev v klicu ne sme spremeniti izracuna. */
     @Test
-    void koncaneTekmeSeObracunajoEnako() {
-        for (int[] izid : new int[][] { {3, 0}, {3, 1}, {3, 2} }) {
-            TurnirkoRatingStoritev.Izracun prvi = rating.izracunaj(1200, 1000, 5, 40, true, izid[0], izid[1], 5);
-            TurnirkoRatingStoritev.Izracun drugi = rating.izracunaj(1000, 1200, 40, 5, false, izid[1], izid[0], 5);
-            assertEquals(prvi.sprememba1(), drugi.sprememba2(),
-                    "vrstni red igralcev v klicu ne sme spremeniti izracuna");
-        }
+    void vrstniRedIgralcevNeSpremeniIzracuna() {
+        TurnirkoRatingStoritev.Izracun prvi = rating.izracunaj(1200, 1000, 5, 40, true);
+        TurnirkoRatingStoritev.Izracun drugi = rating.izracunaj(1000, 1200, 40, 5, false);
+        assertEquals(prvi.sprememba1(), drugi.sprememba2());
+        assertEquals(prvi.sprememba2(), drugi.sprememba1());
     }
 }

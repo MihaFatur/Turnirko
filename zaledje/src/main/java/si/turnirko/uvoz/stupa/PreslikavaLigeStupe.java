@@ -158,7 +158,8 @@ final class PreslikavaLigeStupe {
         Set<Long> ohranjenaSrecanja = new HashSet<>();
         List<Srecanje> vsaSrecanja = new ArrayList<>();
         for (JsonNode t : redneTekme) {
-            Srecanje s = srecanje(p, liga, t, format, ekipe, kadri, Math.max(1, t.path("round").path("order").asInt(1)), null, null);
+            Srecanje s = srecanje(p, liga, t, format, ekipe, kadri,
+                    p.koloTekme(t, Math.max(1, t.path("round").path("order").asInt(1))), null, null);
             if (s != null) {
                 ohranjenaSrecanja.add(s.getId());
                 vsaSrecanja.add(s);
@@ -322,7 +323,15 @@ final class PreslikavaLigeStupe {
             s.nastaviEkipi(domaci, gost);
         }
         s.nastaviSerijo(serija, tekmaVSeriji);
-        s.setPredvidenZacetek(UvozOblike.casovniZig(t.path("start_time").asText(null)));
+        s.setPredvidenZacetek(p.casTekme(t));
+        PopravkiStupe.privzeti().tekma(t.path("id").asLong()).ifPresent(pop -> {
+            if (pop.cas() != null) {
+                porocilo.prestej("srecanj s terminom iz zapisa popravkov (vir ga nima)");
+            }
+            if (pop.kolo() != null) {
+                porocilo.prestej("srecanj s kolom iz uradnega koledarja");
+            }
+        });
         s.setOdigranOb(null);
         s.setStatus(odigrano ? StatusSrecanja.KONCANO
                 : "IN_PROGRESS".equals(status) ? StatusSrecanja.POTEKA : StatusSrecanja.RAZPORED);
@@ -587,7 +596,7 @@ final class PreslikavaLigeStupe {
     private static LocalDateTime zacetek(PosnetekDogodka p, List<JsonNode> tekme) {
         LocalDateTime najzgodnejsi = null;
         for (JsonNode t : tekme) {
-            LocalDateTime c = UvozOblike.casovniZig(t.path("start_time").asText(null));
+            LocalDateTime c = p.casTekme(t);
             if (c != null && (najzgodnejsi == null || c.isBefore(najzgodnejsi))) {
                 najzgodnejsi = c;
             }

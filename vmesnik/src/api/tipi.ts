@@ -108,6 +108,34 @@ export interface IgralecPodrobenDto extends IgralecDto {
   rekreativniVstop: boolean
 }
 
+/* Kako se vpisano ime ujema z imenom obstoječega igralca (zrcali UjemanjeImena):
+   isto = enako brez šumnikov in velikih črk; obrnjeno = ime in priimek
+   zamenjana; podobno = ena beseda za črko ali dve drugače, ali krajša oblika
+   imena (Miha / Mihael). */
+export type UjemanjeImena = 'ISTO' | 'OBRNJENO' | 'PODOBNO'
+
+/* Vpisani datum rojstva proti datumu obstoječega igralca. Pozna ga samo
+   administratorjev izpis (zrcali PrimerjavaDatuma). */
+export type PrimerjavaDatuma = 'ENAK' | 'PODOBEN' | 'DRUG'
+
+/* Obstoječ igralec, podoben vpisu (POST /igralci/podobni) - organizatorjev
+   izpis, brez datumov rojstva. */
+export interface PodobenIgralecDto {
+  igralec: IgralecDto
+  ujemanje: UjemanjeImena
+  /* Arhiviran igralec ni na seznamih za prijavo, a ima zgodovino tekem. */
+  arhiviran: boolean
+}
+
+/* Isto s polnim zapisom in primerjavo datuma (POST /igralci/podobni/podrobno,
+   samo admin). */
+export interface PodobenIgralecPodrobenDto {
+  igralec: IgralecPodrobenDto
+  ujemanje: UjemanjeImena
+  datum: PrimerjavaDatuma
+  arhiviran: boolean
+}
+
 export interface TurnirDto {
   id: number
   ime: string
@@ -927,6 +955,9 @@ export interface IgralecVnos {
   rekreativniVstop: boolean
 }
 
+/* Podatki vpisa, po katerih strežnik išče podobne igralce. */
+export type PodobniVnos = Pick<IgralecVnos, 'ime' | 'priimek' | 'spol' | 'datumRojstva'>
+
 export interface KlubVnos {
   ime: string
   kratica: string | null
@@ -1413,6 +1444,9 @@ export interface SrecanjeDto {
   tekmaVSeriji: number | null
   /* Srečanje ni bilo odigrano, izid je registriran (brez borbe). */
   brezBoja: boolean
+  /* Izid je prenesen iz predtekmovanja (finalna skupina ekipnega DP): posamičnih
+     tekem srečanje nima - odigrane so bile v predtekmovalni skupini. */
+  prenesen: boolean
 }
 
 export interface TekmaSrecanjaDto {
@@ -1597,7 +1631,8 @@ export interface TockaGrafa {
   kdaj: string
   /* Dan, na katerega sprememba VELJA: pri tekmi dan tekme (isti kot v
      vrstici seznama), pri odbitku za neaktivnost in pri postavitvi pa dan,
-     ko je zapis začel veljati. */
+     ko je zapis začel veljati. null = tekma, ki ji vir datuma ne pove
+     (datum ni znan; ne nadomeščaj ga s "kdaj", ta je čas preračuna). */
   datum: string | null
   vrednost: number
   sprememba: number
@@ -1630,12 +1665,12 @@ export type NacinSpremembe =
   | 'ZUNANJA_UVRSTITEV'
 
 /* Sestavine ene spremembe po obrazcu koraka:
-     sprememba = k × margina × teža × (točke − pričakovano)
+     sprememba = k × teža × (točke − pričakovano)
+   Izid v nizih ne vstopa — zmaga je zmaga.
    To so natanko tiste številke, ki so spremembo naredile, in ne poznejši
    izračun — parametri sistema se lahko spremenijo, zapisana sprememba pa ne. */
 export interface Razclenitev {
   k: number
-  margina: number
   teza: number
   pricakovano: number
   /* Izid tekme: 1 zmaga, 0 poraz. */
@@ -1801,31 +1836,27 @@ export interface NapovedStran {
   opozorila: OpozoriloNapovedi[]
 }
 
-/* En možen izid tekme z vidika lastnika profila. Vrstice so urejene od
-   najbolj prepričljive zmage do najhujšega poraza. */
+/* Kaj bi izid (zmaga ali poraz lastnika profila) naredil obema ratingoma.
+   Izid v nizih ne šteje, zato sta možna izida samo dva. */
 export interface NapovedIzid {
-  mojiNizi: number
-  nizovNasprotnika: number
-  zmaga: boolean
-  margina: number
   sprememba: number
   rating: number
   spremembaNasprotnika: number
   ratingNasprotnika: number
 }
 
-/* Vse vrstice za eno raven tekmovanja. Ravni ni mogoče dobiti z množenjem v
+/* Oba izida za eno raven tekmovanja. Ravni ni mogoče dobiti z množenjem v
    vmesniku: vsak zmnožek je zaokrožen posebej (Math.rint v zaledju). */
 export interface NapovedRaven {
   raven: RavenTekmovanja
   teza: number
-  izidi: NapovedIzid[]
+  zmaga: NapovedIzid
+  poraz: NapovedIzid
 }
 
 export interface NapovedTekmeDto {
   jaz: NapovedStran
   nasprotnik: NapovedStran
-  steviloNizov: number
   /* Pričakovana verjetnost zmage lastnika profila v odstotkih — »pričakovano«
      iz obrazca in razlog, zakaj zmaga proti močnejšemu prinese več. */
   pricakovanOdstotek: number

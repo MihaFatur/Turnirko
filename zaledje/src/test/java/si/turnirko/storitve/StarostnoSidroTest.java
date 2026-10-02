@@ -127,7 +127,7 @@ class StarostnoSidroTest extends IntegracijskiTest {
         Igralec zmagovalec = polfinale.getPrijava1().getIgralec();
         int sidro = sidroZa(zmagovalec);
         tekmaStoritev.vnesiRezultat(polfinale.getId(), new VnosRezultata(null, 3, 0, null, null));
-        assertEquals(sidro + 41, rating(zmagovalec), "prva tekma: obicajni korak");
+        assertEquals(sidro + 34, rating(zmagovalec), "prva tekma: obicajni korak (K 68, polovica)");
 
         // drugi polfinale, da se sestavi finale
         Tekma drugiPolfinale = prvaPripravljena(dogodek.getId());
@@ -141,12 +141,12 @@ class StarostnoSidroTest extends IntegracijskiTest {
                 ? new VnosRezultata(null, 3, 0, null, null)
                 : new VnosRezultata(null, 0, 3, null, null));
 
-        /* Dve zmagi proti sidru in sidru+41, ob dveh navideznih izenacenih
-           tekmah proti sidru. Pri sidru 1263 je to 1465 - precej vec, kot bi
-           dala dva koraka (1263 + 41 + 38). */
+        /* Dve zmagi proti sidru in sidru+34, ob dveh navideznih izenacenih
+           tekmah proti sidru - precej vec, kot bi dala dva koraka
+           (sidro + 34 + 34). */
         int pricakovano = UvrstitevNovinca.izracunaj(
                 List.of(new UvrstitevNovinca.Izid(sidro, true),
-                        new UvrstitevNovinca.Izid(sidro + 41, true)),
+                        new UvrstitevNovinca.Izid(sidro + 34, true)),
                 sidro);
         assertEquals(pricakovano, rating(zmagovalec));
         assertTrue(rating(zmagovalec) > sidro + 100,

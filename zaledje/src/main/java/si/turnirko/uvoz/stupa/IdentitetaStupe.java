@@ -239,6 +239,28 @@ public class IdentitetaStupe {
             if (poLicenci.isPresent()) {
                 Igralec i = poLicenci.get();
                 if (istaOseba(i, o)) {
+                    /* Dvojcka Adam (Stupa 17876/17877, r. 2011-04-22, isti klub)
+                       sta imela pri viru v treh dogodkih zamenjani licenci. Datum
+                       rojstva in spol se pri dvojckih ujemata, zato licenca sama
+                       ne loci - loci ime. Kadar licenca kaze na enega, ime z istim
+                       datumom pa natanko na drugega igralca, velja ime. */
+                    Igralec poImenu = drugaOsebaPoImenu(i, o);
+                    if (poImenu != null) {
+                        if (nacin == Nacin.STROGO) {
+                            odlocitev(o, List.of(poImenu, i), "Licenca " + o.licenca() + " v registru pripada"
+                                    + " igralcu " + i.polnoIme() + ", ime pa igralcu z istim datumom rojstva.");
+                            return ustvari(o, datum, null);
+                        }
+                        porocilo.opozori("licenca kaze na drugo osebo z istim datumom rojstva (povezano po imenu)",
+                                opis(o) + " / licenca v registru: " + i.polnoIme() + ", povezan: " + poImenu.polnoIme());
+                        povezi(o, poImenu);
+                        osvezi(poImenu, o, datum);
+                        return poImenu;
+                    }
+                    if (o.polnoIme() != null && !kljucImena(o.polnoIme()).equals(kljucImena(i.polnoIme()))) {
+                        porocilo.opozori("licenca in datum rojstva se ujemata, ime ne (preveri)",
+                                opis(o) + " / v registru: " + i.polnoIme());
+                    }
                     povezi(o, i);
                     osvezi(i, o, datum);
                     return i;
@@ -271,6 +293,28 @@ public class IdentitetaStupe {
             porocilo.opozori("vec igralcev z enakim imenom in datumom rojstva (nov igralec)", opis(o));
         }
         return ustvari(o, datum, null);
+    }
+
+    /* Igralec z ISTIM imenom, datumom rojstva in spolom, kot jih ima oseba,
+       kadar licenca kaze na nekoga z drugim imenom - natanko eden, sicer null.
+       Ime se primerja brez sumnikov in vrstnega reda besed (Stupa pise
+       "Priimek Ime"). */
+    private Igralec drugaOsebaPoImenu(Igralec poLicenci, Oseba o) {
+        if (o.polnoIme() == null || o.rojstvo() == null) {
+            return null;
+        }
+        String kljuc = kljucImena(o.polnoIme());
+        if (kljuc.equals(kljucImena(poLicenci.polnoIme()))) {
+            return null;
+        }
+        List<Igralec> drugi = igralecRepozitorij.najdiPoDatumihRojstva(
+                        List.of(o.rojstvo(), LocalDate.of(o.rojstvo().getYear(), 1, 1))).stream()
+                .filter(i -> !i.getId().equals(poLicenci.getId()))
+                .filter(i -> o.spol() == null || o.spol() == i.getSpol())
+                .filter(i -> datumSeUjema(i.getDatumRojstva(), o.rojstvo()))
+                .filter(i -> kljucImena(i.getIme() + " " + i.getPriimek()).equals(kljuc))
+                .toList();
+        return drugi.size() == 1 ? drugi.get(0) : null;
     }
 
     /* Licenca poveze osebo le ob enakem spolu in datumu rojstva; 1. januar v

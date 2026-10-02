@@ -89,9 +89,9 @@ public class ProfilStoritev {
     }
 
     /* Ena odigrana posamicna tekma, prevedena v pogled lastnika profila.
-       "kdaj" je najboljsi razpolozljivi cas: trenutek obracuna ratinga, sicer
-       datum tekmovanja - po njem so tekme urejene in iz njega tecejo nizi
-       zmag in forma. */
+       "kdaj" je najboljsi razpolozljivi cas: cas tekme iz dnevnika ratinga
+       (velja_ob), sicer termin srecanja oz. dan turnirja - po njem so tekme
+       urejene in iz njega tecejo nizi zmag in forma. */
     private record Nastop(
             Long idTekme, boolean ligaska, LocalDateTime kdaj, LocalDate datum,
             String tekmovanje, String del,
@@ -184,19 +184,37 @@ public class ProfilStoritev {
                 ratingiPredZa(turnirske.stream().map(Tekma::getId).toList(), false);
         Map<Long, Map<Long, Integer>> ratingPredL =
                 ratingiPredZa(ligaske.stream().map(TekmaSrecanja::getId).toList(), true);
+        /* Cas tekme in njeno mesto v casovni vrsti ratinga. Seznam tece po
+           CASU TEKME (velja_ob), ne po casu obracuna (ustvarjen_ob): uvozena
+           zgodovina je obracunana v enem dnevu in ustvarjen_ob nosi samo datum,
+           zato bi bil vrstni red po njem vrstni red poizvedb (najprej vsi
+           turnirji, nato vse lige) in ne vrstni red tekem. Pri istem casu
+           odloci mesto v dnevniku - to je vrstni red, v katerem jih je
+           preracun odigral. Tekma brez znanega casa (BREZ_DATUMA) casa nima. */
         Map<Long, LocalDateTime> casT = new HashMap<>();
         Map<Long, LocalDateTime> casL = new HashMap<>();
+        Map<String, Integer> red = new HashMap<>();
         Map<Long, Integer> spremembaT = new HashMap<>();
         Map<Long, Integer> spremembaL = new HashMap<>();
+        int mesto = 0;
         for (RatingZgodovina z : zgodovinaRepozitorij.najdiZaIgralca(idIgralec,
                 RatingStanje.SISTEM_TURNIRKO)) {
+            LocalDateTime cas = VrstaRatinskeTekme.BREZ_DATUMA.equals(z.getVeljaOb())
+                    ? null : z.getVeljaOb();
             if (z.getTekma() != null) {
-                casT.put(z.getTekma().getId(), z.getUstvarjenOb());
+                if (cas != null) {
+                    casT.put(z.getTekma().getId(), cas);
+                }
+                red.put(kljuc(z.getTekma().getId(), false), mesto);
                 spremembaT.put(z.getTekma().getId(), z.getSprememba());
             } else if (z.getTekmaSrecanja() != null) {
-                casL.put(z.getTekmaSrecanja().getId(), z.getUstvarjenOb());
+                if (cas != null) {
+                    casL.put(z.getTekmaSrecanja().getId(), cas);
+                }
+                red.put(kljuc(z.getTekmaSrecanja().getId(), true), mesto);
                 spremembaL.put(z.getTekmaSrecanja().getId(), z.getSprememba());
             }
+            mesto++;
         }
 
         List<Nastop> nastopi = new ArrayList<>();
@@ -243,9 +261,12 @@ public class ProfilStoritev {
                     jazDomaci, mojaPozicija(t.getOznaka(), jazDomaci), null, jazDomaci));
         }
 
-        // najnovejse prve; tekme brez znanega casa na konec
+        // najnovejse prve; tekme brez znanega casa na konec; pri istem casu
+        // kasneje obracunana prej (vrstni red preracuna)
         nastopi.sort(Comparator.comparing(Nastop::kdaj,
-                Comparator.nullsLast(Comparator.reverseOrder())));
+                        Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder()))
+                .thenComparing(n -> red.getOrDefault(kljuc(n.idTekme(), n.ligaska()), -1),
+                        Comparator.reverseOrder()));
         return nastopi;
     }
 
@@ -262,8 +283,9 @@ public class ProfilStoritev {
         return OpisSrecanja.cas(s);
     }
 
-    /* Datum tekmovanja, sicer dan obracuna ratinga - da vrstica ni brez datuma,
-       ko srecanje se ni zakljuceno oziroma turnir nima vpisanih datumov. */
+    /* Datum tekmovanja, sicer cas tekme iz dnevnika ratinga. Dan OBRACUNA ni
+       datum tekme: uvozena tekma brez termina bi sicer nosila dan uvoza in bi
+       se brala, kot da je bila odigrana ta teden. Kjer casa ni, datuma ni. */
     private static LocalDate datumIz(LocalDate datumTekmovanja, LocalDateTime kdaj) {
         if (datumTekmovanja != null) {
             return datumTekmovanja;
@@ -427,7 +449,7 @@ public class ProfilStoritev {
         if (z.getK() == null || z.getTocke() == null) {
             return null;
         }
-        return new ProfilDto.Razclenitev(z.getK(), z.getMargina(), z.getTeza(),
+        return new ProfilDto.Razclenitev(z.getK(), z.getTeza(),
                 z.getPricakovano(), z.getTocke());
     }
 
@@ -717,18 +739,23 @@ public class ProfilStoritev {
 
         List<RatingZgodovina> dnevnik = zgodovinaRepozitorij.najdiZaIgralca(idIgralec,
                 RatingStanje.SISTEM_TURNIRKO);
+        /* Po casu TEKME (velja_ob), ne po casu obracuna: preracun zapise ves
+           dnevnik na isti dan, zato bi "zadnjih 30 dni" po ustvarjen_ob po
+           vsakem preracunu zajelo celo kariero (izmerjeno: +696 pri igralki,
+           ki dve leti ni igrala). Tekma brez znanega datuma ni v nobenem oknu. */
         LocalDateTime meja = LocalDateTime.now().minusDays(30);
         Integer sprememba30 = dnevnik.isEmpty() ? null : dnevnik.stream()
-                .filter(z -> z.getUstvarjenOb() != null && z.getUstvarjenOb().isAfter(meja))
+                .filter(z -> z.getVeljaOb() != null && z.getVeljaOb().isAfter(meja))
                 .mapToInt(RatingZgodovina::getSprememba).sum();
         RatingZgodovina najvisji = dnevnik.stream()
                 .max(Comparator.comparingInt(RatingZgodovina::getNovaVrednost)).orElse(null);
+        LocalDateTime casVrha = najvisji == null || VrstaRatinskeTekme.BREZ_DATUMA.equals(najvisji.getVeljaOb())
+                ? null : najvisji.getVeljaOb();
 
         return new ProfilZasebnoDto.Forma(zadnjih10, trenutni, nizZmag,
                 najdaljseZmage, najdaljsiPorazi, sprememba30,
                 najvisji != null ? najvisji.getNovaVrednost() : null,
-                najvisji != null && najvisji.getUstvarjenOb() != null
-                        ? najvisji.getUstvarjenOb().toLocalDate() : null,
+                casVrha != null ? casVrha.toLocalDate() : null,
                 poMesecih(nastopi));
     }
 

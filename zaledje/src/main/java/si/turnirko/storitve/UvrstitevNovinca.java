@@ -1,7 +1,7 @@
 /* Uvrstitev novinca po prvem dnevu igranja - regularizirana fiksna tocka.
 
    Zakaj to in ne obicajno sestevanje po tekmah: novinec, ki na prvem turnirju
-   odigra pet tekem, se z obicajnim korakom (K 56) proti svoji pravi ravni sele
+   odigra pet tekem, se z obicajnim korakom (K 68) proti svoji pravi ravni sele
    priblizuje. Mocan novinec bi po prvem turnirju kotiral prenizko, sibak
    previsoko - in oba bi naslednjih nekaj mesecev kvarila obracun vsem, ki jih
    srecata.

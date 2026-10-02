@@ -3,6 +3,8 @@
 package si.turnirko.storitve;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -12,11 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 import si.turnirko.dto.IgralecDto;
 import si.turnirko.dto.IgralecJavniDto;
 import si.turnirko.dto.IgralecVnos;
+import si.turnirko.dto.PodobenIgralecDto;
+import si.turnirko.dto.PodobenIgralecJavniDto;
+import si.turnirko.dto.PodobniIgralciVnos;
 import si.turnirko.dto.ZunanjaUvrstitevVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Igralec;
+import si.turnirko.modeli.PrimerjavaDatuma;
 import si.turnirko.modeli.RatingStanje;
+import si.turnirko.modeli.UjemanjeImena;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.KrajRepozitorij;
@@ -24,6 +31,11 @@ import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
 
 @Service
 public class IgralciStoritev {
+
+    /* Koliko podobnih igralcev izpis vrne: najmocnejsi zadetki. Vec jih
+       vpisovalec ne prebere, pri pogostem priimku (Novak) pa bi sicer
+       opozorilo zapolnilo zaslon. */
+    static final int NAJVEC_PODOBNIH = 10;
 
     private final IgralecRepozitorij igralecRepozitorij;
     private final KrajRepozitorij krajRepozitorij;
@@ -99,6 +111,93 @@ public class IgralciStoritev {
         Igralec igralec = najdiIgralca(id);
         ratingStoritev.zunanjaUvrstitev(igralec, vnos.vrednost(), vnos.vir(), vnos.pojasnilo());
         return javniDto(igralec, stanje(id));
+    }
+
+    /* Obstojeci igralci, ki so podobni vpisu - za organizatorja. Odlocajo
+       samo imena (glej PodobnostImen): datum rojstva v zahtevi je za ta izpis
+       NAMENOMA nepomemben, sicer bi organizator s poskusanjem datumov iz
+       tega, ali se zadetek pojavi, izvedel datum rojstva znanega igralca.
+       Isto ime lahko imata dve osebi, zato je izpis opozorilo in ne zavrnitev. */
+    @Transactional(readOnly = true)
+    public List<PodobenIgralecJavniDto> najdiPodobne(PodobniIgralciVnos vnos) {
+        List<Zadetek> zadetki = najdiZadetke(vnos).stream()
+                .sorted(Comparator.comparing((Zadetek z) -> z.ujemanje())
+                        .thenComparing(Zadetek::igralec, Igralec.PO_ABECEDI))
+                .limit(NAJVEC_PODOBNIH)
+                .toList();
+        List<RatingStanje> ratingi = ratingiZadetkov(zadetki);
+        return zadetki.stream()
+                .map(z -> new PodobenIgralecJavniDto(
+                        javniDto(z.igralec(), najdiStanje(ratingi, z.igralec().getId())),
+                        z.ujemanje(), z.igralec().isArhiviran()))
+                .toList();
+    }
+
+    /* Isto za administratorja: poln zapis in primerjava datuma rojstva. Moc
+       zadetka je vsota stopnje imena in stopnje datuma (Zadetek.moc), zato
+       »Mihael Fatur« z enakim datumom stoji pred »Miha Fatur« z drugim. */
+    @Transactional(readOnly = true)
+    public List<PodobenIgralecDto> najdiPodobnePodrobno(PodobniIgralciVnos vnos) {
+        List<Zadetek> zadetki = najdiZadetke(vnos).stream()
+                .map(z -> vnos.datumRojstva() == null ? z : z.sDatumom(
+                        PodobnostImen.primerjajDatum(vnos.datumRojstva(), z.igralec().getDatumRojstva())))
+                .sorted(Comparator
+                        .comparingInt((Zadetek z) -> z.moc())
+                        .thenComparing(z -> z.ujemanje())
+                        .thenComparing(Zadetek::igralec, Igralec.PO_ABECEDI))
+                .limit(NAJVEC_PODOBNIH)
+                .toList();
+        List<RatingStanje> ratingi = ratingiZadetkov(zadetki);
+        return zadetki.stream()
+                .map(z -> new PodobenIgralecDto(
+                        dto(z.igralec(), najdiStanje(ratingi, z.igralec().getId())),
+                        z.ujemanje(), z.datum(), z.igralec().isArhiviran()))
+                .toList();
+    }
+
+    /* Vsi, ki se imenu ujemajo - brez omejitve in brez razvrstitve (tisto je
+       stvar izpisa). Preleti ves register v pomnilniku: poizvedba je redka
+       (ob vsakem vpisu enega igralca), register pa tisoc zapisov. */
+    private List<Zadetek> najdiZadetke(PodobniIgralciVnos vnos) {
+        PodobnostImen.Ime vpis = PodobnostImen.Ime.iz(vnos.ime(), vnos.priimek());
+        List<Zadetek> zadetki = new ArrayList<>();
+        for (Igralec obstojec : igralecRepozitorij.najdiVseSKlubom()) {
+            UjemanjeImena ujemanje = PodobnostImen.ujemanje(vpis, vnos.spol(),
+                    PodobnostImen.Ime.iz(obstojec.getIme(), obstojec.getPriimek()), obstojec.getSpol());
+            if (ujemanje != null) {
+                zadetki.add(new Zadetek(obstojec, ujemanje, null));
+            }
+        }
+        return zadetki;
+    }
+
+    private List<RatingStanje> ratingiZadetkov(List<Zadetek> zadetki) {
+        if (zadetki.isEmpty()) {
+            return List.of();
+        }
+        return ratingStanjeRepozitorij.findByIgralecIdInAndSistem(
+                zadetki.stream().map(z -> z.igralec().getId()).toList(),
+                RatingStanje.SISTEM_TURNIRKO);
+    }
+
+    /* Obstojec igralec, ki se ujema z vpisom; datum je izpolnjen samo v
+       administratorjevem izpisu. */
+    private record Zadetek(Igralec igralec, UjemanjeImena ujemanje, PrimerjavaDatuma datum) {
+
+        Zadetek sDatumom(PrimerjavaDatuma datum) {
+            return new Zadetek(igralec, ujemanje, datum);
+        }
+
+        /* Manj = verjetnejsi dvojnik. Drug datum steje vec kot podobno ime:
+           isto ime imata pogosto dve osebi, enak datum rojstva pa le redko. */
+        int moc() {
+            int zaDatum = datum == null ? 0 : switch (datum) {
+                case ENAK -> 0;
+                case PODOBEN -> 1;
+                case DRUG -> 3;
+            };
+            return ujemanje.ordinal() + zaDatum;
+        }
     }
 
     @Transactional

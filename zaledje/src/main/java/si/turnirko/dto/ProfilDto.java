@@ -97,7 +97,7 @@ public record ProfilDto(
     /* Na pet nacinov se rating lahko premakne. Vmesnik jih ne sme ugibati iz
        odsotnosti polj, zato jih strežnik poimenuje. */
     public enum NacinSpremembe {
-        /* Navaden korak: K x margina x teza x (izid - pricakovano). */
+        /* Navaden korak: K x teza x (izid - pricakovano). */
         KORAK,
         /* Uvrstitev novinca: rating se izracuna znova iz vseh izidov prvega
            dne, zato obrazca koraka ni. */
@@ -116,7 +116,6 @@ public record ProfilDto(
        "tocke" je izid tekme (1 zmaga, 0 poraz). */
     public record Razclenitev(
             int k,
-            double margina,
             double teza,
             double pricakovano,
             int tocke

@@ -100,8 +100,11 @@ class PopravekRezultataTest extends IntegracijskiTest {
                 .orElseThrow().getVrednost();
     }
 
+    /* Popravek izida v nizih ob istem zmagovalcu rating pusti, kjer je:
+       zmaga je zmaga (3 : 0 in 3 : 2 prineseta isto). Preracun pa vseeno
+       tece - in ne sme podvojiti dnevnika. */
     @Test
-    void popravekTurnirskeTekmeSpremeniIzidInPremakneRating() {
+    void popravekTurnirskeTekmeSpremeniIzidRatingPaOstane() {
         Tekma tekma = pripraviEnoTekmo();
         Igralec zmagovalec = tekma.getPrijava1().getIgralec();
         Igralec porazenec = tekma.getPrijava2().getIgralec();
@@ -110,14 +113,14 @@ class PopravekRezultataTest extends IntegracijskiTest {
         int poGladkiZmagi = rating(zmagovalec);
         assertTrue(poGladkiZmagi > 1500, "zmaga mora rating dvigniti");
 
-        // isti zmagovalec, tesnejsi izid: margina je manjsa, zato manj tock
+        // isti zmagovalec, tesnejsi izid
         tekmaStoritev.popraviRezultat(tekma.getId(), new VnosRezultata(null, 3, 2, null, null));
 
         Tekma popravljena = tekmaRepozitorij.findById(tekma.getId()).orElseThrow();
         assertEquals(3, popravljena.getDobljeniNizi1());
         assertEquals(2, popravljena.getDobljeniNizi2());
-        assertTrue(rating(zmagovalec) < poGladkiZmagi,
-                "tesnejsa zmaga mora prinesti manj tock kot 3:0");
+        assertEquals(poGladkiZmagi, rating(zmagovalec),
+                "tesnejsa zmaga prinese isto kot 3:0 - zmaga je zmaga");
         assertEquals(1500 - (rating(zmagovalec) - 1500), rating(porazenec),
                 "pri enakem K je vsota sprememb nic");
 

@@ -118,6 +118,10 @@ final class PreslikavaTurnirjaStupe {
         turnir.setIme(imeTekmovanja(p.ime(), p.id()));
         turnir.setDatumZacetka(p.zacetek());
         turnir.setDatumKonca(p.konec());
+        p.popravekDatuma().ifPresent(pop -> porocilo.opozori(
+                "datum tekmovanja iz zapisa popravkov (Stupa ima drugega)",
+                p.ime() + ": " + p.zacetek() + (p.konec().equals(p.zacetek()) ? "" : " - " + p.konec())
+                        + " (" + pop.vir() + ")"));
         turnir.setDvorana(UvozOblike.prirezi(p.prizorisce(), 120));
         // koledar NTZS je uradno tekmovanje (privzetek entitete je klubsko)
         turnir.setRaven(RavenTekmovanja.URADNO);
@@ -863,7 +867,8 @@ final class PreslikavaTurnirjaStupe {
                     return;
                 }
                 /* Zapisan samo zmagovalec (0 : 0): odigrana tekma brez znanega izida
-                   po nizih - rating jo bere kot IzidTekme.samoZmagovalec. */
+                   po nizih. Rating steje samo zmagovalca, zato se obracuna kot
+                   vsaka druga odigrana tekma. */
                 if (!brezBoja && n1 == 0 && n2 == 0) {
                     porocilo.opozori("tekma z zapisanim zmagovalcem brez nizov (odigrana, izid po nizih ni znan)", opis);
                 } else if (!brezBoja && (n1 == n2 || (zmagovalec == p1) != (n1 > n2))) {
@@ -911,8 +916,8 @@ final class PreslikavaTurnirjaStupe {
                     return shranjena;
                 }
                 Srecanje s = new Srecanje(shranjena, domaci, gost);
-                s.setPredvidenZacetek(UvozOblike.casovniZig(t.path("start_time").asText(null)) != null
-                        ? UvozOblike.casovniZig(t.path("start_time").asText(null))
+                s.setPredvidenZacetek(p.casTekme(t) != null
+                        ? p.casTekme(t)
                         : datum == null ? null : datum.atStartOfDay());
                 boolean koncano = shranjena.getStatus() == StatusTekme.KONCANA;
                 s.setStatus(koncano ? StatusSrecanja.KONCANO : StatusSrecanja.POTEKA);

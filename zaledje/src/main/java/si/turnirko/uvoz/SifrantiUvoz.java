@@ -84,6 +84,92 @@ public class SifrantiUvoz {
         uvoziIgralce(zbirnik);
     }
 
+    /* Popravek zgodovine na mestu (PopravekZgodovineUkaz): klubi in igralci
+       stare strani so ze v bazi in ostanejo ISTI zapisi - nanje kazejo racuni,
+       rating in tekme Stupe. Preslikavi se napolnita iz zunanjih povezav;
+       ustvari se samo, cesar prejsnji uvoz ni zapisal (oseba, ki jo zdaj
+       zdruzi licenca z ze povezanim zapisom, dobi tistega igralca). Klub
+       igralca je klub zdruzenega zapisa vira - isto pravilo kot ob prvem
+       uvozu. */
+    public void naloziObstojece(ZbirnikSifrantov zbirnik) {
+        Map<String, Klub> poPoenostavljenem = new HashMap<>();
+        for (Klub k : klubRepozitorij.findAll()) {
+            poPoenostavljenem.putIfAbsent(IdentitetaStupe.poenostavljenoImeKluba(k.getIme()), k);
+        }
+        for (ZbirnikSifrantov.SurovKlub sk : zbirnik.klubi().values()) {
+            Optional<Klub> povezan = povezan(ZunanjaPovezava.Vrsta.KLUB, sk.id())
+                    .flatMap(klubRepozitorij::findById);
+            if (povezan.isPresent()) {
+                klubi.put(sk.id(), povezan.get());
+                continue;
+            }
+            String ime = UvozOblike.prirezi(sk.ime(), 50);
+            if (ime == null || ime.trim().length() < 2) {
+                porocilo.opozori("klub brez uporabnega imena", "id " + sk.id());
+                continue;
+            }
+            Klub klub = poPoenostavljenem.get(IdentitetaStupe.poenostavljenoImeKluba(ime));
+            if (klub == null) {
+                String kratica = UvozOblike.ocisti(sk.kratica());
+                if (kratica != null && (kratica.length() < 2 || kratica.length() > 10)) {
+                    kratica = null;
+                }
+                klub = klubRepozitorij.save(new Klub(ime, kratica));
+                poPoenostavljenem.put(IdentitetaStupe.poenostavljenoImeKluba(ime), klub);
+                porocilo.prestej("klubov (novih ob popravku)");
+            }
+            klubi.put(sk.id(), klub);
+            povezi(ZunanjaPovezava.Vrsta.KLUB, sk.id(), klub.getId());
+        }
+
+        List<ZbirnikSifrantov.SurovIgralec> surovi = List.copyOf(zbirnik.igralci().values());
+        RazdelitevImena razdelitev = new RazdelitevImena(
+                surovi.stream().map(ZbirnikSifrantov.SurovIgralec::polnoIme).toList());
+        for (List<ZbirnikSifrantov.SurovIgralec> zapisi : poOsebah(surovi).values()) {
+            Igralec obstojec = null;
+            for (ZbirnikSifrantov.SurovIgralec si : zapisi) {
+                Optional<Igralec> p = povezan(ZunanjaPovezava.Vrsta.IGRALEC, si.id())
+                        .flatMap(igralecRepozitorij::findById);
+                if (p.isEmpty()) {
+                    continue;
+                }
+                if (obstojec != null && !obstojec.getId().equals(p.get().getId())) {
+                    porocilo.opozori("zapisi ene osebe vira so povezani z dvema igralcema",
+                            si.id() + ": " + obstojec.getId() + " / " + p.get().getId());
+                    continue;
+                }
+                obstojec = p.get();
+            }
+            if (obstojec == null) {
+                ustvariIgralca(zapisi, razdelitev);
+                if (igralci.containsKey(zapisi.get(0).id())) {
+                    porocilo.prestej("igralcev (novih ob popravku)");
+                }
+                continue;
+            }
+            ZbirnikSifrantov.SurovIgralec zdruzen = zapisi.get(0);
+            for (int i = 1; i < zapisi.size(); i++) {
+                zdruzen = ZbirnikSifrantov.zdruzi(zdruzen, zapisi.get(i));
+            }
+            Klub klub = zdruzen.idKluba() == null ? null : klubi.get(zdruzen.idKluba());
+            for (ZbirnikSifrantov.SurovIgralec si : zapisi) {
+                igralci.put(si.id(), obstojec);
+                klubiIgralcev.put(si.id(), klub);
+                povezi(ZunanjaPovezava.Vrsta.IGRALEC, si.id(), obstojec.getId());
+            }
+        }
+    }
+
+    private Optional<Long> povezan(ZunanjaPovezava.Vrsta vrsta, String kljucVira) {
+        return povezave.findByVirAndVrstaAndZunanjiId(VirTekmovanja.STARA_NTZS, vrsta, brezOznakeVira(kljucVira))
+                .map(ZunanjaPovezava::getIdLokalni);
+    }
+
+    private static String brezOznakeVira(String kljucVira) {
+        return kljucVira.startsWith(ZbirnikSifrantov.VIR_STARA + ":")
+                ? kljucVira.substring(ZbirnikSifrantov.VIR_STARA.length() + 1) : kljucVira;
+    }
+
     /* Klubi se zdruzujejo po POENOSTAVLJENEM imenu (brez vrste drustva,
        sumnikov in locil) - isto pravilo uporabi sinhronizacija s Stupo, zato
        isti klub obeh virov dobi en zapis. */
@@ -214,8 +300,7 @@ public class SifrantiUvoz {
 
     /* Povezava s kljucem vira brez oznake vira ("stara:3300" -> "3300"). */
     private void povezi(ZunanjaPovezava.Vrsta vrsta, String kljucVira, Long lokalni) {
-        String zunanji = kljucVira.startsWith(ZbirnikSifrantov.VIR_STARA + ":")
-                ? kljucVira.substring(ZbirnikSifrantov.VIR_STARA.length() + 1) : kljucVira;
+        String zunanji = brezOznakeVira(kljucVira);
         if (povezave.findByVirAndVrstaAndZunanjiId(VirTekmovanja.STARA_NTZS, vrsta, zunanji).isEmpty()) {
             povezave.save(new ZunanjaPovezava(VirTekmovanja.STARA_NTZS, vrsta, UvozOblike.prirezi(zunanji, 80), lokalni));
         }

@@ -41,7 +41,7 @@ public class SidroStoritev {
     /* Izhodisce igralca, ki ga je clovek ob vpisu oznacil kot rekreativca
        (V36). Sidro je mediana registriranih igralcev NTZS in je za igralca iz
        rekreacije 700-900 tock previsoko (v Savinja ligi B imajo ze ocenjeni
-       igralci 550-1350, odrasel novinec pa je zacel pri 1533). Vrednost je odlocitev
+       igralci 550-1350, odrasel novinec pa je zacel pri 1533 - sidro pred V40). Vrednost je odlocitev
        lastnika (september 2026), ne meritev - uvrstitev prvega dne jo nato
        popravi po izidih. */
     public static final int REKREATIVNI_ZACETEK = 800;

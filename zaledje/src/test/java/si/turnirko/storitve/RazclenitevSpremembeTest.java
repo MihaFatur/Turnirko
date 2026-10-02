@@ -2,8 +2,8 @@
    stevilko, in sicer s TISTIMI parametri, ki so jo naredili - ne s poznejsimi.
 
    Zakaj je to svoj test: razclenitev je edini del sistema, ki obljublja
-   igralcu, da se izpisani obrazec sesteje. Ce se K, margina, teza in
-   pricakovano ne ujemajo z zapisano spremembo, obljuba pade. */
+   igralcu, da se izpisani obrazec sesteje. Ce se K, teza in pricakovano ne
+   ujemajo z zapisano spremembo, obljuba pade. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -64,10 +64,10 @@ class RazclenitevSpremembeTest extends IntegracijskiTest {
 
         RatingZgodovina zapis = zapisi(zmagovalec).get(0);
         assertNotNull(zapis.getK(), "korak mora imeti sestavine");
-        int izracunano = (int) Math.rint(zapis.getK() * zapis.getMargina() * zapis.getTeza()
+        int izracunano = (int) Math.rint(zapis.getK() * zapis.getTeza()
                 * (zapis.getTocke() - zapis.getPricakovano()));
         assertEquals(zapis.getSprememba(), izracunano,
-                "obrazec K x margina x teza x (tocke - pricakovano) se mora sesteti");
+                "obrazec K x teza x (tocke - pricakovano) se mora sesteti");
     }
 
     /* Teza tekmovanja je del razclenitve in ne skrita: na klubskem turnirju
@@ -82,13 +82,13 @@ class RazclenitevSpremembeTest extends IntegracijskiTest {
 
         RatingZgodovina zapis = zapisi(zmagovalec).get(0);
         assertEquals(0.75, zapis.getTeza());
-        assertEquals(56, zapis.getK(), "novinec ima K 56");
+        assertEquals(68, zapis.getK(), "novinec ima K 68");
         assertEquals(1, zapis.getTocke(), "zmaga je ena tocka");
         assertEquals(0.5, zapis.getPricakovano(), 0.0001, "med enakima je pricakovanje pol");
     }
 
     /* Nasprotnikova vrstica ima SVOJ K in SVOJE pricakovanje (1 minus prvega),
-       margina in teza pa sta skupni. */
+       teza pa je skupna. */
     @Test
     void vsakaStranImaSvojKInSvojePricakovanje() {
         Dogodek dogodek = zZrebom(4, RavenTekmovanja.URADNO);
@@ -104,7 +104,6 @@ class RazclenitevSpremembeTest extends IntegracijskiTest {
         RatingZgodovina poraz = zapisi(porazenec).stream()
                 .filter(z -> z.getTekma() != null).findFirst().orElseThrow();
 
-        assertEquals(zmaga.getMargina(), poraz.getMargina(), "margina je last tekme");
         assertEquals(zmaga.getTeza(), poraz.getTeza(), "teza je last tekme");
         assertEquals(1.0, zmaga.getPricakovano() + poraz.getPricakovano(), 0.0001,
                 "pricakovanji se sestejeta v 1");
@@ -112,18 +111,26 @@ class RazclenitevSpremembeTest extends IntegracijskiTest {
         assertEquals(0, poraz.getTocke());
     }
 
-    /* Odigrana tekma z izidom 0 : 0 je tekma, pri kateri vir (uvoz Stupe) pozna
-       samo zmagovalca. Rating je ne sme brati kot gladko zmago: margina je 1,
-       enako kot pri predaji. Primerjava je ista tekma, zapisana 3 : 0, kjer
-       margina 1 ni (med enakima igralcema je gladka zmaga presenecenje). */
+    /* ZMAGA JE ZMAGA (odlocitev lastnika, 30. 9. 2026): med enakima igralcema
+       prinese gladka zmaga 3 : 0 natanko toliko kot tesna 3 : 2, zmaga s
+       predajo in odigrana tekma, pri kateri vir (uvoz Stupe) pozna samo
+       zmagovalca (0 : 0). Enako velja za poraz. */
     @Test
-    void tekmaSamoZZmagovalcemNimaMargine() {
-        Dogodek dogodek = zZrebom(4, RavenTekmovanja.URADNO);
+    void zmagaJeZmagaNeGledeNaNize() {
+        Dogodek dogodek = zZrebom(8, RavenTekmovanja.URADNO);
+        nastaviRatinge(dogodek, 1600, 1600, 1600, 1600, 1600, 1600, 1600, 1600);
         List<Tekma> pripravljene = tekmeDogodka(dogodek.getId()).stream()
                 .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA).toList();
-        Tekma brezNizov = pripravljene.get(0);
-        Tekma gladka = pripravljene.get(1);
+        Tekma gladka = pripravljene.get(0);
+        Tekma tesna = pripravljene.get(1);
+        Tekma predana = pripravljene.get(2);
+        Tekma brezNizov = pripravljene.get(3);
 
+        tekmaStoritev.vnesiRezultat(gladka.getId(), new VnosRezultata(null, 3, 0, null, null));
+        tekmaStoritev.vnesiRezultat(tesna.getId(), new VnosRezultata(null, 3, 2, null, null));
+        // nasprotnik preda pri vodstvu 2 : 1
+        tekmaStoritev.vnesiRezultat(predana.getId(),
+                new VnosRezultata(si.turnirko.modeli.IzidTekme.PREDAJA, 1, 2, 1, null));
         // tako tekmo zapise uvoz - vnos v aplikaciji je ne dovoli
         brezNizov.setDobljeniNizi1(0);
         brezNizov.setDobljeniNizi2(0);
@@ -132,13 +139,15 @@ class RazclenitevSpremembeTest extends IntegracijskiTest {
         brezNizov.setStatus(StatusTekme.KONCANA);
         tekmaRepozitorij.save(brezNizov);
         ratingStoritev.obracunajZaTurnirsko(brezNizov);
-        tekmaStoritev.vnesiRezultat(gladka.getId(), new VnosRezultata(null, 3, 0, null, null));
 
-        RatingZgodovina zapisBrezNizov = zapisi(brezNizov.getPrijava1().getIgralec()).get(0);
-        RatingZgodovina zapisGladke = zapisi(gladka.getPrijava1().getIgralec()).get(0);
-        assertEquals(1.0, zapisBrezNizov.getMargina(), 0.0001, "brez nizov ni margine");
-        assertTrue(zapisGladke.getMargina() != 1.0, "gladka zmaga margino ima");
-        assertTrue(zapisBrezNizov.getSprememba() > 0, "zmaga vseeno steje");
+        for (Tekma t : List.of(gladka, tesna, predana, brezNizov)) {
+            RatingZgodovina zmaga = zapisi(t.getPrijava1().getIgralec()).stream()
+                    .filter(z -> z.getTekma() != null).findFirst().orElseThrow();
+            RatingZgodovina poraz = zapisi(t.getPrijava2().getIgralec()).stream()
+                    .filter(z -> z.getTekma() != null).findFirst().orElseThrow();
+            assertEquals(34, zmaga.getSprememba(), "K 68, polovica - ne glede na nize");
+            assertEquals(-34, poraz.getSprememba(), "poraz vzame isto ne glede na nize");
+        }
     }
 
     /* Uvrstitev novinca ne nastane po obrazcu koraka, zato sestavin NIMA -

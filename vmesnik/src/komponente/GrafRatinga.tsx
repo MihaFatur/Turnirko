@@ -267,16 +267,25 @@ function filtrirajPoObdobju(tocke: TockaGrafa[], obdobje: Obdobje): TockaGrafa[]
   const meja = new Date()
   if (o.dni !== null) meja.setDate(meja.getDate() - o.dni)
   else meja.setMonth(meja.getMonth() - (o.meseci as number))
-  return tocke.filter((t) => new Date(casTocke(t)) >= meja)
+  // tekma brez znanega datuma ne sodi v nobeno omejeno obdobje: ne vemo, ali
+  // je bila odigrana v njem
+  return tocke.filter((t) => {
+    const cas = casTocke(t)
+    return cas !== null && new Date(cas) >= meja
+  })
 }
 
-/* Dan, na katerega sprememba velja; `kdaj` je zasilni izhod za stare zapise. */
-function casTocke(t: TockaGrafa): string {
-  return t.datum ?? t.kdaj
+/* Dan, na katerega sprememba velja. Brez njega je samo tekma, ki ji vir
+   datuma ne pove (uvožene lige 2024/25 brez terminov): takrat datum NI
+   znan. Trenutek obračuna (`kdaj`) tu ne sme nastopiti namesto njega -
+   pri preračunu je to današnji dan in tekma iz leta 2024 bi na grafu
+   stala kot odigrana danes. */
+function casTocke(t: TockaGrafa): string | null {
+  return t.datum
 }
 
 /* Poved pod točko za spremembe, ki niso navaden korak po tekmi. Obrazca
-   koraka (K × nizi × teža × izid) pod grafom ni: gledalcu je bil šum,
+   koraka (K × teža × izid) pod grafom ni: gledalcu je bil šum,
    sestavine pa ostanejo zapisane v dnevniku. */
 function razlaga(t: TockaGrafa): string {
   if (t.nacin === 'POSTAVITEV') {
@@ -313,7 +322,8 @@ function opisTocke(t: TockaGrafa): string {
   return deli.join(' · ')
 }
 
-function datum(iso: string): string {
+function datum(iso: string | null): string {
+  if (iso === null) return 'datum ni znan'
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('sl-SI')
 }

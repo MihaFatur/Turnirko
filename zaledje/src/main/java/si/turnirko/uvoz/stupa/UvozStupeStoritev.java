@@ -70,8 +70,11 @@ public class UvozStupeStoritev {
     private static final Logger dnevnik = LoggerFactory.getLogger(UvozStupeStoritev.class);
     private static final DateTimeFormatter OBLIKA_POSNETKA = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final Pattern OZNAKA_POSNETKA = Pattern.compile("^(\\d{1,9})-(\\d{8})-(\\d{6})$");
-    /* Testni dogodki zveze ("Samo - TEST ...", "S15 Test") v zgodovino ne sodijo. */
-    private static final Pattern TESTNI = Pattern.compile("(?i)^\\s*samo\\b.*|.*\\btest\\b.*");
+    /* Testni dogodki zveze ("Samo - TEST ...", "S15 Test") in vaje za zapisnikarje
+       ("Scoring Practise Event", 185 izmisljenih tekem 9.-11. 9. 2026) v zgodovino
+       ne sodijo - vaja bi z objavo sicer prisla v rating. */
+    private static final Pattern TESTNI = Pattern.compile(
+            "(?i)^\\s*samo\\b.*|.*\\btest\\b.*|.*\\bpracti[cs]e\\b.*");
 
     /* Kar preslikava in uskladitev vrneta iz ene transakcije. */
     public record Izvedba(PorociloUvoza porocilo, SledUvoza sled, LocalDate preracunOd) {}
@@ -137,8 +140,10 @@ public class UvozStupeStoritev {
                     liga ? ZunanjaPovezava.Vrsta.LIGA : ZunanjaPovezava.Vrsta.TURNIR, id).orElse(null);
             UvozZagon z = zadnji.get(String.valueOf(id));
             r.add(new UvozDogodekDto(id, UvozOblike.ocisti(d.path("name").asText(null)), liga ? "LIGA" : "TURNIR",
-                    UvozOblike.datum(d.path("event_start_date").asText(null)),
-                    UvozOblike.datum(d.path("event_end_date").asText(null)),
+                    PopravkiStupe.privzeti().dogodek(id).map(PopravkiStupe.Dogodek::zacetek)
+                            .orElseGet(() -> UvozOblike.datum(d.path("event_start_date").asText(null))),
+                    PopravkiStupe.privzeti().dogodek(id).map(PopravkiStupe.Dogodek::konec)
+                            .orElseGet(() -> UvozOblike.datum(d.path("event_end_date").asText(null))),
                     imenaSezon.get(sezona), liga ? null : lokalni, liga ? lokalni : null,
                     z == null ? null : UvozZagonDto.iz(z)));
         }
@@ -325,6 +330,14 @@ public class UvozStupeStoritev {
         return new Izvedba(r, sled, od);
     }
 
+    /* Svez posnetek dogodka za ponovni uvoz mimo strani /uvoz (popravek
+       zgodovine, PopravekZgodovineUkaz). Posnetek se shrani med ostale, zato
+       je zgostitev v dnevniku zagonov primerljiva s sprotnimi uvozi. */
+    public PosnetekDogodka posnemiSvez(long idDogodka) {
+        String oznaka = idDogodka + "-" + LocalDateTime.now().format(OBLIKA_POSNETKA);
+        return PosnetekDogodka.beri(posnemi(idDogodka, oznaka), null, null, datumPosnetka(oznaka));
+    }
+
     // ---------------------------------------------------------------------
     // Pomozno
     // ---------------------------------------------------------------------
@@ -378,7 +391,7 @@ public class UvozStupeStoritev {
             povzetek.put("odlocitve", porocilo.odlocitve().size());
             povzetek.put("noviIgralci", porocilo.noviIgralci().size());
             povzetek.put("preverbe", porocilo.preverbe().stream()
-                    .map(x -> (x.ujemanje() ? "OK " : x.obvezna() ? "NAPAKA " : "RAZLIKA ") + x.opis()).toList());
+                    .map(PorociloUvozaDto.Preverba::vDnevnik).toList());
         }
         if (napaka != null) {
             povzetek.put("napaka", napaka);

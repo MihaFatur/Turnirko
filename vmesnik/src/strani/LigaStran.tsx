@@ -1511,6 +1511,8 @@ function Razpored({
                     : (zUrami && oblikujUro(s.predvidenZacetek)) || 'vs'}
                   {/* Registriran izid ni odigran - brez oznake bi se 5 : 0 bralo kot tekma. */}
                   {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
+                  {/* Prenesen izid je bil odigran v predtekmovanju, tu tekem nima. */}
+                  {konec && s.prenesen && <span className="liga__brez-borbe" title="izid prenesen iz predtekmovanja">prenesen</span>}
                 </span>
                 <span
                   className={
@@ -1632,6 +1634,7 @@ function RazporedMobi({
                     ? `${s.dobljeneDomaci} : ${s.dobljeneGost}`
                     : (zUrami && oblikujUro(s.predvidenZacetek)) || 'vs'}
                   {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
+                  {konec && s.prenesen && <span className="liga__brez-borbe" title="izid prenesen iz predtekmovanja">prenesen</span>}
                 </span>
                 <span
                   className={

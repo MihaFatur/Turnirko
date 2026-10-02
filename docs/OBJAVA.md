@@ -223,6 +223,62 @@ Baza je izven vsebnika (mapa `podatki/`), zato posodobitev ne izgubi
 podatkov. Migracije Flyway se izvedejo ob zagonu same. Pred vecjo
 posodobitvijo vseeno pozeni varnostno kopijo rocno.
 
+### Enkratni popravek zgodovine (oktober 2026)
+
+Ta posodobitev prinese tudi popravek ze uvozene zgodovine NTZS
+(`PopravekZgodovineUkaz`, glej `../uvoz-stara-ntzs/README.md`). Popravek
+tece na TVOJEM racunalniku nad kopijo baze (potrebuje pretvorbo stare strani,
+ki je na strezniku ni, in dostop do Stupe), zato je postopek tak:
+
+0. Spremembe morajo biti v repozitoriju (commit in push), da jih streznik v
+   4. koraku dobi z `git pull`. Popravek pozeni z ISTO kodo, kot jo objavis:
+   migracije V38-V40 se izvedejo ze nad kopijo.
+
+1. Na strezniku ustavi aplikacijo, da se baza vmes ne spremeni, in naredi kopijo:
+
+   ```bash
+   cd /srv/turnirko && sudo docker compose stop app
+   ./skripte/varnostna-kopija.sh
+   ls -t kopije | head -1
+   ```
+
+2. Na svojem racunalniku kopijo prenesi in razsiri (skripta jo stisne v
+   `.db.gz`; ime datoteke iz prejsnjega koraka):
+
+   ```bash
+   scp <uporabnik>@<streznik>:/srv/turnirko/kopije/turnirko-<cas>.db.gz .
+   gunzip -c turnirko-<cas>.db.gz > produkcija.db
+   ```
+
+3. V mapi `zaledje` pozeni popravek nad to kopijo (traja ~30 minut, na koncu
+   se ustavi sam in izpise povzetek; podrobno porocilo je v
+   `../../popravek-porocilo.csv`, torej v mapi nad repozitorijem):
+
+   ```bash
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=popravek "-Dspring-boot.run.arguments=--spring.datasource.url=jdbc:sqlite:<pot>/produkcija.db --server.port=0"
+   ```
+
+   Preden bazo nalozis nazaj, preveri: povzetek nima vrstic z `NAPAKA` ali
+   `ZAVRNJENIH`, ob `produkcija.db` pa ni datoteke `produkcija.db-wal` (ce je,
+   se zagon ni koncal pravilno - ne nalagaj, pozeni znova nad svezo kopijo).
+
+4. Popravljeno bazo nalozi nazaj, staro shrani, nato posodobi in zazeni:
+
+   ```bash
+   scp produkcija.db <uporabnik>@<streznik>:/tmp/turnirko-popravljena.db
+   # na strezniku:
+   cd /srv/turnirko
+   sudo mv podatki/turnirko.db podatki/turnirko.db.pred-popravkom
+   sudo rm -f podatki/turnirko.db-wal podatki/turnirko.db-shm
+   sudo mv /tmp/turnirko-popravljena.db podatki/turnirko.db
+   sudo chown 10001:10001 podatki/turnirko.db
+   git pull && sudo docker compose up -d --build
+   ```
+
+Ce gre kaj narobe, vrni `podatki/turnirko.db.pred-popravkom` na mesto in
+zazeni prejsnjo razlicico. Aplikacija je med postopkom nedosegljiva (~45
+minut), zato ga naredi takrat, ko se ne igra.
+
 ## Lokalni prevod brez Dockerja
 
 ```bash

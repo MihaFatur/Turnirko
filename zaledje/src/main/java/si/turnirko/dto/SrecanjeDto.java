@@ -42,7 +42,9 @@ public record SrecanjeDto(
         Integer tekmaVSeriji,
         // srecanje ni bilo odigrano, izid je registriran (V29) - razpored
         // izid oznaci, da ga gledalec ne bere kot odigranega
-        boolean brezBoja
+        boolean brezBoja,
+        // izid je prenesen iz predtekmovanja (V39) - posamicnih tekem nima
+        boolean prenesen
 ) {
 
     public static SrecanjeDto iz(Srecanje s) {
@@ -66,6 +68,7 @@ public record SrecanjeDto(
                 s.jeKoncnica() ? s.getSerija().getId() : null,
                 s.jeKoncnica() ? s.getSerija().getKrog() : null,
                 s.getTekmaVSeriji(),
-                s.isBrezBoja());
+                s.isBrezBoja(),
+                s.isPrenesen());
     }
 }

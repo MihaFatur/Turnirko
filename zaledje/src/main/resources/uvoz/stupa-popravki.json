@@ -1,0 +1,3217 @@
+{
+  "opis": "Popravki datumov, ki jih ima Stupa narobe ali jih nima. Bere jih PopravkiStupe ob vsakem uvozu. Vsak popravek MORA imeti vir. Lige 2024/25 so bile v Stupo vnesene brez terminov: casi tekem so iz uradnega koledarja NTZS (KONCNI KOLEDAR SNTL 2024-2025), kjer obstaja natancnejsi vir (zapisnik, porocilo o prestavitvi), velja ta.",
+  "dogodki": [
+    {
+      "id": 160,
+      "zacetek": "2025-11-23",
+      "konec": "2025-11-23",
+      "vir": "koledar ntzs.si (EventON 39669): \"VEC KRAJEV KVAL. EKIPNO DP - U17\", 23. 11. 2025; Stupa ima 22.-23. 11."
+    },
+    {
+      "id": 161,
+      "zacetek": "2025-11-23",
+      "konec": "2025-11-23",
+      "vir": "koledar ntzs.si (EventON 39669): \"VEC KRAJEV KVAL. EKIPNO DP - U17\", 23. 11. 2025; Stupa ima 22.-23. 11."
+    },
+    {
+      "id": 162,
+      "zacetek": "2025-11-23",
+      "konec": "2025-11-23",
+      "vir": "koledar ntzs.si (EventON 39669): \"VEC KRAJEV KVAL. EKIPNO DP - U17\", 23. 11. 2025; Stupa ima 22.-23. 11."
+    },
+    {
+      "id": 163,
+      "zacetek": "2025-11-23",
+      "konec": "2025-11-23",
+      "vir": "koledar ntzs.si (EventON 39669): \"VEC KRAJEV KVAL. EKIPNO DP - U17\", 23. 11. 2025; Stupa ima 22.-23. 11."
+    },
+    {
+      "id": 61,
+      "zacetek": "2025-05-31",
+      "konec": "2025-05-31",
+      "vir": "koledar ntzs.si (EventON 36436): \"Fuzinar: 1. TOP 8 (Ml. Kad.)\", 31. 5. 2025; Stupa ima 31. 8. 2025 (dan naknadnega vnosa)"
+    },
+    {
+      "id": 138,
+      "zacetek": "2024-12-21",
+      "konec": "2024-12-22",
+      "vir": "novica ntzs.si 22. 12. 2024: ekipno DP kadetinj in kadetov v Izoli \"vceraj in danes\"; Stupa ima 15.-22. 12. 2024"
+    },
+    {
+      "id": 175,
+      "zacetek": "2024-12-21",
+      "konec": "2024-12-22",
+      "vir": "novica ntzs.si 22. 12. 2024: ekipno DP kadetinj in kadetov v Izoli \"vceraj in danes\"; Stupa ima 15.-22. 12. 2024"
+    },
+    {
+      "id": 177,
+      "zacetek": "2025-01-18",
+      "konec": "2025-01-19",
+      "vir": "koledar ntzs.si (EventON 37424): \"Izola (ARR): Finale EP (Mlad.)\", 18.-19. 1. 2025, in novica 20. 1. 2025; Stupa ima 12. 1. 2025"
+    },
+    {
+      "id": 70,
+      "zacetek": "2025-03-29",
+      "konec": "2025-03-30",
+      "vir": "koledar ntzs.si (EventON 36598): \"34. DP za mladinke in mladince\", 29.-30. 3. 2025; Stupa ima samo 29. 3."
+    },
+    {
+      "id": 69,
+      "zacetek": "2025-04-12",
+      "konec": "2025-04-13",
+      "vir": "koledar ntzs.si (EventON 36416): \"Cirkovce: DP (Kad.)\", 12.-13. 4. 2025; Stupa ima samo 12. 4."
+    },
+    {
+      "id": 217,
+      "zacetek": "2026-04-18",
+      "konec": "2026-04-19",
+      "vir": "koledar ntzs.si (EventON 39978): \"RAKEK: DP - U11\", 18.-19. 4. 2026 (enako kot DP U17, Stupa 218); Stupa ima samo 18. 4."
+    }
+  ],
+  "tekme": [
+    {
+      "id": 42749,
+      "cas": "2024-10-05T17:00",
+      "kolo": 1,
+      "natancnost": "tocno",
+      "vir": "1. krog 1. SNTL zenske (KAJ-MUR 6:2); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 1 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42751,
+      "cas": "2024-10-05T17:00",
+      "kolo": 1,
+      "natancnost": "tocno",
+      "vir": "1. krog 1. SNTL zenske (LOG-ARR 0:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 1 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42750,
+      "cas": "2024-10-12T17:00",
+      "kolo": 1,
+      "natancnost": "sklepano",
+      "vir": "postavljeno s 5. 10. 2024; porocilo ntzs.si 19. 10. 2024: odigrano \"pred tednom dni\"",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 1 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42753,
+      "cas": "2024-10-19T17:00",
+      "kolo": 2,
+      "natancnost": "tocno",
+      "vir": "2. krog 1. SNTL zenske (MUR-ARR 6:3); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 2 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42756,
+      "cas": "2024-10-19T17:00",
+      "kolo": 2,
+      "natancnost": "tocno",
+      "vir": "2. krog 1. SNTL zenske (FUZ-LOG 6:0); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 3 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42761,
+      "cas": "2024-10-19T17:00",
+      "kolo": 2,
+      "natancnost": "tocno",
+      "vir": "2. krog 1. SNTL zenske (KAJ-VRT 6:0); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 5 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42763,
+      "cas": "2024-10-26T17:00",
+      "kolo": 3,
+      "natancnost": "tocno",
+      "vir": "3. krog 1. SNTL zenske (ARR-FUZ 5:5); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 5 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42772,
+      "cas": "2024-10-26T17:00",
+      "kolo": 3,
+      "natancnost": "tocno",
+      "vir": "3. krog 1. SNTL zenske (VRT-MUR 4:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 8 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42773,
+      "cas": "2024-10-26T17:00",
+      "kolo": 3,
+      "natancnost": "tocno",
+      "vir": "3. krog 1. SNTL zenske (LOG-KAJ 0:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 9 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42754,
+      "cas": "2024-11-09T17:00",
+      "kolo": 4,
+      "natancnost": "tocno",
+      "vir": "krog 4 po koledarju LO10 (9. 11. 2024); porocilo ntzs.si 16. 11. 2024 omenja \"prejsnji krog\"",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 2 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42755,
+      "cas": "2024-11-08T17:00",
+      "kolo": 4,
+      "natancnost": "tocno",
+      "vir": "zapisnik ekipnega dvoboja NTD Kajuh-Slovan : NTK Arrigoni 6:1 (Ljubljana, datum 8. 11. 2024, ura 17, krog 4; arhiv \"Rezultati-z-rezervami-SNTL-2024-25.zip\", stara.slo-namiznitenis.si); uradni koledar ima krog 4 v soboto 9. 11. 2024",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 3 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42775,
+      "cas": "2024-11-09T17:00",
+      "kolo": 4,
+      "natancnost": "tocno",
+      "vir": "4. krog 1. SNTL zenske (MUR-FUZ 5:5); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 9 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42759,
+      "cas": "2024-11-16T17:00",
+      "kolo": 5,
+      "natancnost": "tocno",
+      "vir": "5. krog 1. SNTL zenske (ARR-VRT 6:1); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 4 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42762,
+      "cas": "2024-11-16T17:00",
+      "kolo": 5,
+      "natancnost": "tocno",
+      "vir": "5. krog 1. SNTL zenske (LOG-MUR 1:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 5 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42767,
+      "cas": "2024-11-16T17:00",
+      "kolo": 5,
+      "natancnost": "tocno",
+      "vir": "5. krog 1. SNTL zenske (FUZ-KAJ 3:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 7 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42764,
+      "cas": "2024-11-30T17:00",
+      "kolo": 6,
+      "natancnost": "tocno",
+      "vir": "6. krog 1. SNTL zenske (MUR-KAJ 2:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 6 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42765,
+      "cas": "2024-11-30T17:00",
+      "kolo": 6,
+      "natancnost": "tocno",
+      "vir": "6. krog 1. SNTL zenske (FUZ-VRT 6:4); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 6 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42766,
+      "cas": "2024-11-30T17:00",
+      "kolo": 6,
+      "natancnost": "tocno",
+      "vir": "6. krog 1. SNTL zenske (ARR-LOG 6:0); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 6 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42768,
+      "cas": "2024-12-14T17:00",
+      "kolo": 7,
+      "natancnost": "tocno",
+      "vir": "7. krog 1. SNTL zenske (ARR-MUR 5:5); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 7 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42771,
+      "cas": "2024-12-14T17:00",
+      "kolo": 7,
+      "natancnost": "tocno",
+      "vir": "7. krog 1. SNTL zenske (LOG-FUZ 0:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 8 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42776,
+      "cas": "2025-01-11T17:00",
+      "kolo": 7,
+      "natancnost": "sklepano",
+      "vir": "prestavljeno s 14. 12. 2024 na 11. 1. 2025 (porocilo ntzs.si 15. 12. 2024, lestvici 16. 2. in 2. 3. 2025)",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 10 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42757,
+      "cas": "2025-02-15T17:00",
+      "kolo": 8,
+      "natancnost": "tocno",
+      "vir": "8. krog 1. SNTL zenske (MUR-VRT 6:3); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 3 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42758,
+      "cas": "2025-02-15T17:00",
+      "kolo": 8,
+      "natancnost": "tocno",
+      "vir": "8. krog 1. SNTL zenske (KAJ-LOG 6:0); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 4 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42778,
+      "cas": "2025-02-15T17:00",
+      "kolo": 8,
+      "natancnost": "tocno",
+      "vir": "8. krog 1. SNTL zenske (FUZ-ARR 5:5); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 10 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42760,
+      "cas": "2025-03-01T17:00",
+      "kolo": 9,
+      "natancnost": "tocno",
+      "vir": "9. krog 1. SNTL zenske (FUZ-MUR 2:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 4 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42769,
+      "cas": "2025-03-01T17:00",
+      "kolo": 9,
+      "natancnost": "tocno",
+      "vir": "9. krog 1. SNTL zenske (LOG-VRT 1:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 7 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42770,
+      "cas": "2025-03-01T17:00",
+      "kolo": 9,
+      "natancnost": "tocno",
+      "vir": "9. krog 1. SNTL zenske (ARR-KAJ 1:6); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 8 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42752,
+      "cas": "2025-03-08T17:00",
+      "kolo": 10,
+      "natancnost": "tocno",
+      "vir": "10. krog 1. SNTL zenske (KAJ-FUZ 6:1); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 2 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42774,
+      "cas": "2025-03-08T17:00",
+      "kolo": 10,
+      "natancnost": "tocno",
+      "vir": "10. krog 1. SNTL zenske (VRT-ARR 5:5); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 9 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 42777,
+      "cas": "2025-03-08T17:00",
+      "kolo": 10,
+      "natancnost": "tocno",
+      "vir": "10. krog 1. SNTL zenske (MUR-LOG 6:2); zapisnik 10. sestanka Liga odbora NTZS (avgust 2024): koledar 1. SNTL zenske 2024/25; porocila ntzs.si",
+      "opomba": "Stupa 169 (1. SNTL - ZENSKE 2024-2025), Round 10 pri viru; ura 17:00 po Pravilih igranja v SNTL 2024/25, cl. 12"
+    },
+    {
+      "id": 40555,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - PPK RAKEK"
+    },
+    {
+      "id": 40556,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK ARRIGONI"
+    },
+    {
+      "id": 40557,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK PTUJ"
+    },
+    {
+      "id": 40558,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK MUREXIN II"
+    },
+    {
+      "id": 40559,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40560,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40561,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK XIOM MUTA"
+    },
+    {
+      "id": 40562,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40563,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK VESNA"
+    },
+    {
+      "id": 40564,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); ura potrjuje start_time pri Stupi",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK TEMPO"
+    },
+    {
+      "id": 40565,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - PPK RAKEK"
+    },
+    {
+      "id": 40566,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40567,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK ARRIGONI"
+    },
+    {
+      "id": 40568,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK PTUJ"
+    },
+    {
+      "id": 40569,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK MUREXIN II"
+    },
+    {
+      "id": 40570,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK MUREXIN II"
+    },
+    {
+      "id": 40571,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40572,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK XIOM MUTA"
+    },
+    {
+      "id": 40573,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40574,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK VESNA"
+    },
+    {
+      "id": 40575,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - PPK RAKEK"
+    },
+    {
+      "id": 40576,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK TEMPO"
+    },
+    {
+      "id": 40577,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40578,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK ARRIGONI"
+    },
+    {
+      "id": 40579,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK PTUJ"
+    },
+    {
+      "id": 40580,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK PTUJ"
+    },
+    {
+      "id": 40581,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK MUREXIN II"
+    },
+    {
+      "id": 40582,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40583,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK XIOM MUTA"
+    },
+    {
+      "id": 40584,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40585,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 10.00; ura potrjuje start_time pri Stupi",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - PPK RAKEK"
+    },
+    {
+      "id": 40586,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK VESNA"
+    },
+    {
+      "id": 40587,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK TEMPO"
+    },
+    {
+      "id": 40588,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40589,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK ARRIGONI"
+    },
+    {
+      "id": 40590,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK ARRIGONI"
+    },
+    {
+      "id": 40591,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK PTUJ"
+    },
+    {
+      "id": 40592,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK MUREXIN II"
+    },
+    {
+      "id": 40593,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40594,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK XIOM MUTA"
+    },
+    {
+      "id": 40595,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - PPK RAKEK"
+    },
+    {
+      "id": 40596,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40597,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK VESNA"
+    },
+    {
+      "id": 40598,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK TEMPO"
+    },
+    {
+      "id": 40599,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40600,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40601,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK TEMPO"
+    },
+    {
+      "id": 40602,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK VESNA"
+    },
+    {
+      "id": 40603,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40604,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK XIOM MUTA"
+    },
+    {
+      "id": 40605,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - PPK RAKEK"
+    },
+    {
+      "id": 40606,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 10.00; ura potrjuje start_time pri Stupi",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK MUREXIN II"
+    },
+    {
+      "id": 40607,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK PTUJ"
+    },
+    {
+      "id": 40608,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 10.00; ura potrjuje start_time pri Stupi",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK ARRIGONI"
+    },
+    {
+      "id": 40609,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40610,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK TEMPO"
+    },
+    {
+      "id": 40611,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK VESNA"
+    },
+    {
+      "id": 40612,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40613,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK XIOM MUTA"
+    },
+    {
+      "id": 40614,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40615,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - PPK RAKEK"
+    },
+    {
+      "id": 40616,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 1. krog, ob 10.00; ura potrjuje start_time pri Stupi",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK PTUJ"
+    },
+    {
+      "id": 40617,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK ARRIGONI"
+    },
+    {
+      "id": 40618,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40619,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK TEMPO"
+    },
+    {
+      "id": 40620,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK VESNA"
+    },
+    {
+      "id": 40621,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40622,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK XIOM MUTA"
+    },
+    {
+      "id": 40623,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40624,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK MUREXIN II"
+    },
+    {
+      "id": 40625,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - PPK RAKEK"
+    },
+    {
+      "id": 40626,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK ARRIGONI"
+    },
+    {
+      "id": 40627,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40628,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK TEMPO"
+    },
+    {
+      "id": 40629,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK VESNA"
+    },
+    {
+      "id": 40630,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40631,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK XIOM MUTA"
+    },
+    {
+      "id": 40632,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40633,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK MUREXIN II"
+    },
+    {
+      "id": 40634,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - NTK PTUJ"
+    },
+    {
+      "id": 40635,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK ARRIGONI - PPK RAKEK"
+    },
+    {
+      "id": 40636,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK PTUJ - NTK SAVINJA ZIT"
+    },
+    {
+      "id": 40637,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK MUREXIN II - NTK TEMPO"
+    },
+    {
+      "id": 40638,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT II - NTK VESNA"
+    },
+    {
+      "id": 40639,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK XIOM MUTA - NTK CIRKOVCE I"
+    },
+    {
+      "id": 40640,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): PPK RAKEK - NTK XIOM MUTA"
+    },
+    {
+      "id": 40641,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK CIRKOVCE I - NTK FUŽINAR INTER DISKONT II"
+    },
+    {
+      "id": 40642,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK VESNA - NTK MUREXIN II"
+    },
+    {
+      "id": 40643,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK TEMPO - NTK PTUJ"
+    },
+    {
+      "id": 40644,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL moski, 10. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (ZIT, 2. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 157 (2. SNTL moski 2024/25): NTK SAVINJA ZIT - NTK ARRIGONI"
+    },
+    {
+      "id": 41538,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41539,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41540,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41541,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK SOBOTA"
+    },
+    {
+      "id": 41542,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK VRTOJBA"
+    },
+    {
+      "id": 41543,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41544,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41545,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK SOBOTA"
+    },
+    {
+      "id": 41546,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK VRTOJBA"
+    },
+    {
+      "id": 41547,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK LOGATEC"
+    },
+    {
+      "id": 41548,
+      "cas": "2024-11-30T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41549,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK SOBOTA"
+    },
+    {
+      "id": 41550,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK VRTOJBA"
+    },
+    {
+      "id": 41551,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK LOGATEC"
+    },
+    {
+      "id": 41552,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK B2 II"
+    },
+    {
+      "id": 41553,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK SOBOTA"
+    },
+    {
+      "id": 41554,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK VRTOJBA"
+    },
+    {
+      "id": 41555,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK LOGATEC"
+    },
+    {
+      "id": 41556,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK B2 II"
+    },
+    {
+      "id": 41557,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK B2 BENDL I"
+    },
+    {
+      "id": 41558,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK VRTOJBA"
+    },
+    {
+      "id": 41559,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK LOGATEC"
+    },
+    {
+      "id": 41560,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK B2 II"
+    },
+    {
+      "id": 41561,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK B2 BENDL I"
+    },
+    {
+      "id": 41562,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK METLIKA"
+    },
+    {
+      "id": 41563,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK LOGATEC"
+    },
+    {
+      "id": 41564,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK B2 II"
+    },
+    {
+      "id": 41565,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK B2 BENDL I"
+    },
+    {
+      "id": 41566,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK METLIKA"
+    },
+    {
+      "id": 41567,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41568,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK B2 II"
+    },
+    {
+      "id": 41569,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK B2 BENDL I"
+    },
+    {
+      "id": 41570,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK METLIKA"
+    },
+    {
+      "id": 41571,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41572,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41573,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK B2 BENDL I"
+    },
+    {
+      "id": 41574,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK METLIKA"
+    },
+    {
+      "id": 41575,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41576,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41577,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41578,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ILIRIJA - NTK METLIKA"
+    },
+    {
+      "id": 41579,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41580,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41581,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41582,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK SOBOTA"
+    },
+    {
+      "id": 41583,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK ILIRIJA"
+    },
+    {
+      "id": 41584,
+      "cas": "2024-12-14T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK METLIKA"
+    },
+    {
+      "id": 41585,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK B2 BENDL I"
+    },
+    {
+      "id": 41586,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK B2 II"
+    },
+    {
+      "id": 41587,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK LOGATEC"
+    },
+    {
+      "id": 41588,
+      "cas": "2024-12-14T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK ILIRIJA"
+    },
+    {
+      "id": 41589,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41590,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK METLIKA"
+    },
+    {
+      "id": 41591,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK B2 BENDL I"
+    },
+    {
+      "id": 41592,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK B2 II"
+    },
+    {
+      "id": 41593,
+      "cas": "2025-04-05T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK ILIRIJA"
+    },
+    {
+      "id": 41594,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41595,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41596,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK METLIKA"
+    },
+    {
+      "id": 41597,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK B2 BENDL I"
+    },
+    {
+      "id": 41598,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK ILIRIJA"
+    },
+    {
+      "id": 41599,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41600,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41601,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41602,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK METLIKA"
+    },
+    {
+      "id": 41603,
+      "cas": "2024-11-09T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK VRTOJBA - NTK ILIRIJA"
+    },
+    {
+      "id": 41604,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK SOBOTA"
+    },
+    {
+      "id": 41605,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41606,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41607,
+      "cas": "2025-04-19T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - ŠD VRHNIKA I"
+    },
+    {
+      "id": 41608,
+      "cas": "2024-11-09T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK LOGATEC - NTK ILIRIJA"
+    },
+    {
+      "id": 41609,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK VRTOJBA"
+    },
+    {
+      "id": 41610,
+      "cas": "2025-04-19T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK SOBOTA"
+    },
+    {
+      "id": 41611,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41612,
+      "cas": "2025-04-05T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK ŠKOFJA LOKA I"
+    },
+    {
+      "id": 41613,
+      "cas": "2025-02-15T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 II - NTK ILIRIJA"
+    },
+    {
+      "id": 41614,
+      "cas": "2024-11-30T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK LOGATEC"
+    },
+    {
+      "id": 41615,
+      "cas": "2025-03-01T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK VRTOJBA"
+    },
+    {
+      "id": 41616,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK SOBOTA"
+    },
+    {
+      "id": 41617,
+      "cas": "2025-03-01T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 8. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK SAVINJA ŽALEC I"
+    },
+    {
+      "id": 41618,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK B2 BENDL I - NTK ILIRIJA"
+    },
+    {
+      "id": 41619,
+      "cas": "2024-10-26T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK B2 II"
+    },
+    {
+      "id": 41620,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK LOGATEC"
+    },
+    {
+      "id": 41621,
+      "cas": "2024-10-26T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK VRTOJBA"
+    },
+    {
+      "id": 41622,
+      "cas": "2025-02-15T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 7. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK SOBOTA"
+    },
+    {
+      "id": 41623,
+      "cas": "2025-01-11T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 10.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK METLIKA - NTK ILIRIJA"
+    },
+    {
+      "id": 41624,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): ŠD VRHNIKA I - NTK B2 BENDL I"
+    },
+    {
+      "id": 41625,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK ŠKOFJA LOKA I - NTK B2 II"
+    },
+    {
+      "id": 41626,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec I, 3. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SAVINJA ŽALEC I - NTK LOGATEC"
+    },
+    {
+      "id": 41627,
+      "cas": "2025-01-11T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 3. SNTL moski, 6. krog, ob 16.00",
+      "opomba": "Stupa 168 (3. SNTL moski 2024/25): NTK SOBOTA - NTK VRTOJBA"
+    },
+    {
+      "id": 41302,
+      "cas": "2025-01-11T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41303,
+      "cas": "2025-03-01T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41304,
+      "cas": "2024-10-19T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41305,
+      "cas": "2024-12-14T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 10.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - NTK MUREXIN III"
+    },
+    {
+      "id": 41306,
+      "cas": "2024-10-19T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - NTK B2 III"
+    },
+    {
+      "id": 41307,
+      "cas": "2024-11-16T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41308,
+      "cas": "2025-04-05T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41309,
+      "cas": "2025-03-01T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - NTK MUREXIN III"
+    },
+    {
+      "id": 41310,
+      "cas": "2025-02-15T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - NTK B2 III"
+    },
+    {
+      "id": 41311,
+      "cas": "2025-03-01T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41312,
+      "cas": "2024-12-14T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 10.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41313,
+      "cas": "2024-10-19T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - NTK MUREXIN III"
+    },
+    {
+      "id": 41314,
+      "cas": "2024-10-19T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - NTK B2 III"
+    },
+    {
+      "id": 41315,
+      "cas": "2024-11-16T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41316,
+      "cas": "2025-04-05T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - NTK LJUBLJANA"
+    },
+    {
+      "id": 41317,
+      "cas": "2024-11-16T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - NTK MUREXIN III"
+    },
+    {
+      "id": 41318,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - NTK B2 III"
+    },
+    {
+      "id": 41319,
+      "cas": "2024-10-26T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41320,
+      "cas": "2024-11-09T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - NTK LJUBLJANA"
+    },
+    {
+      "id": 41321,
+      "cas": "2025-01-11T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - NTK GORICA"
+    },
+    {
+      "id": 41322,
+      "cas": "2024-11-09T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - NTK B2 III"
+    },
+    {
+      "id": 41323,
+      "cas": "2024-10-26T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41324,
+      "cas": "2025-01-11T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - NTK LJUBLJANA"
+    },
+    {
+      "id": 41325,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - NTK GORICA"
+    },
+    {
+      "id": 41326,
+      "cas": "2025-04-05T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41327,
+      "cas": "2025-01-11T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41328,
+      "cas": "2024-10-26T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - NTK LJUBLJANA"
+    },
+    {
+      "id": 41329,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - NTK GORICA"
+    },
+    {
+      "id": 41330,
+      "cas": "2024-10-26T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41331,
+      "cas": "2024-10-26T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41332,
+      "cas": "2024-10-26T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - NTK LJUBLJANA"
+    },
+    {
+      "id": 41333,
+      "cas": "2024-11-09T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - NTK GORICA"
+    },
+    {
+      "id": 41334,
+      "cas": "2024-12-14T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 10.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41335,
+      "cas": "2024-10-26T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41336,
+      "cas": "2025-03-01T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41337,
+      "cas": "2024-10-26T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - NTK GORICA"
+    },
+    {
+      "id": 41338,
+      "cas": "2024-10-19T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41339,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41340,
+      "cas": "2024-11-16T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41341,
+      "cas": "2024-11-09T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41342,
+      "cas": "2024-12-14T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 16.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK ŠKOFJA LOKA II - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41343,
+      "cas": "2025-03-01T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41344,
+      "cas": "2024-12-14T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 16.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41345,
+      "cas": "2025-04-05T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41346,
+      "cas": "2024-11-16T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - NTK MUREXIN III"
+    },
+    {
+      "id": 41347,
+      "cas": "2024-10-19T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41348,
+      "cas": "2024-11-09T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41349,
+      "cas": "2025-01-11T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - NTK GORICA"
+    },
+    {
+      "id": 41350,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - NTK LJUBLJANA"
+    },
+    {
+      "id": 41351,
+      "cas": "2025-01-11T16:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41352,
+      "cas": "2025-04-05T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41353,
+      "cas": "2024-11-16T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41354,
+      "cas": "2024-11-09T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41355,
+      "cas": "2024-10-26T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 3. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - NTK GORICA"
+    },
+    {
+      "id": 41356,
+      "cas": "2024-11-09T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - NTK LJUBLJANA"
+    },
+    {
+      "id": 41357,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41358,
+      "cas": "2025-01-11T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41359,
+      "cas": "2025-01-11T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41360,
+      "cas": "2025-04-05T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41361,
+      "cas": "2024-11-16T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - NTK GORICA"
+    },
+    {
+      "id": 41362,
+      "cas": "2025-04-05T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41363,
+      "cas": "2024-12-14T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 16.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41364,
+      "cas": "2025-02-15T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41365,
+      "cas": "2025-03-01T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41366,
+      "cas": "2024-10-19T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - ŠD ŠENTJOŠT"
+    },
+    {
+      "id": 41367,
+      "cas": "2025-03-01T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK B2 III - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41368,
+      "cas": "2025-02-15T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - NTK MUREXIN III"
+    },
+    {
+      "id": 41369,
+      "cas": "2024-10-19T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41370,
+      "cas": "2024-12-14T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 10.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41371,
+      "cas": "2024-11-16T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - NTK SAVINJA ŽALEC II"
+    },
+    {
+      "id": 41372,
+      "cas": "2024-10-19T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 2. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK CIRKOVCE II - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41373,
+      "cas": "2025-02-15T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - NTK B2 III"
+    },
+    {
+      "id": 41374,
+      "cas": "2024-12-14T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 16.00; v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - NTK MUREXIN III"
+    },
+    {
+      "id": 41375,
+      "cas": "2025-02-15T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41376,
+      "cas": "2025-02-15T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - ŽNTK MARIBOR II"
+    },
+    {
+      "id": 41377,
+      "cas": "2025-02-15T10:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK LJUBLJANA - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41378,
+      "cas": "2025-03-01T16:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41379,
+      "cas": "2024-10-05T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - NTK B2 III"
+    },
+    {
+      "id": 41380,
+      "cas": "2025-02-15T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 16.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); koledar NTK Savinja navaja popoldanski termin ob 14.00 (velja ura uradnega koledarja)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - NTK MUREXIN III"
+    },
+    {
+      "id": 41381,
+      "cas": "2024-11-09T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - ŠD VRHNIKA II"
+    },
+    {
+      "id": 41382,
+      "cas": "2025-02-15T16:00",
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 8. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK GORICA - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41383,
+      "cas": "2025-01-11T10:00",
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 7. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - NTK LJUBLJANA"
+    },
+    {
+      "id": 41384,
+      "cas": "2024-12-14T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 6. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL); v glavi lista pise 14.12.2025 (tipkarska napaka), koledar NTK Savinja ima 6. krog 14. 12. 2024",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41385,
+      "cas": "2025-04-05T16:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - NTK B2 III"
+    },
+    {
+      "id": 41386,
+      "cas": "2025-03-01T10:00",
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 9. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - NTK MUREXIN III"
+    },
+    {
+      "id": 41387,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD ŠENTJOŠT - NTK ŠKOFJA LOKA II"
+    },
+    {
+      "id": 41388,
+      "cas": "2024-11-09T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 4. krog, ob 10.00; dan potrjuje koledar NTK Savinja 2024/25 (Zalec II, 4. SNTL)",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK SAVINJA ŽALEC II - NTK GORICA"
+    },
+    {
+      "id": 41389,
+      "cas": "2024-10-05T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 1. krog, ob 16.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŽNTK MARIBOR II - NTK LJUBLJANA"
+    },
+    {
+      "id": 41390,
+      "cas": "2024-11-16T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 5. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): ŠD VRHNIKA II - NTK CIRKOVCE II"
+    },
+    {
+      "id": 41391,
+      "cas": "2025-04-05T10:00",
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 4. SNTL moski, 10. krog, ob 10.00",
+      "opomba": "Stupa 167 (4. SNTL moski 2024/25): NTK MUREXIN III - NTK B2 III"
+    },
+    {
+      "id": 44243,
+      "cas": "2025-02-15T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 6. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK LJUBLJANA - NTK JESENICE"
+    },
+    {
+      "id": 44244,
+      "cas": "2025-02-15T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 6. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): ŠD SU - NTK B2"
+    },
+    {
+      "id": 44245,
+      "cas": "2025-02-15T10:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 6. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): PPK RAKEK - NTK VESNA"
+    },
+    {
+      "id": 44246,
+      "cas": "2025-02-15T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 6. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK LJUBLJANA - NTK B2"
+    },
+    {
+      "id": 44247,
+      "cas": "2025-01-11T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 4. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK JESENICE - NTK VESNA"
+    },
+    {
+      "id": 44248,
+      "cas": "2024-11-16T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 2. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): ŠD SU - PPK RAKEK"
+    },
+    {
+      "id": 44249,
+      "cas": "2024-11-16T16:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 2. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK LJUBLJANA - NTK VESNA"
+    },
+    {
+      "id": 44250,
+      "cas": "2025-01-11T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 4. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK B2 - PPK RAKEK"
+    },
+    {
+      "id": 44251,
+      "cas": "2024-12-14T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 3. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK JESENICE - ŠD SU"
+    },
+    {
+      "id": 44252,
+      "cas": "2024-11-16T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 2. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK LJUBLJANA - PPK RAKEK"
+    },
+    {
+      "id": 44253,
+      "cas": "2025-02-01T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 5. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK VESNA - ŠD SU"
+    },
+    {
+      "id": 44254,
+      "cas": "2024-11-16T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 2. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK B2 - NTK JESENICE"
+    },
+    {
+      "id": 44255,
+      "cas": "2024-10-19T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 1. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK LJUBLJANA - ŠD SU"
+    },
+    {
+      "id": 44256,
+      "cas": "2024-10-19T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 1. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): PPK RAKEK - NTK JESENICE"
+    },
+    {
+      "id": 44257,
+      "cas": "2024-10-19T16:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 1. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK VESNA - NTK B2"
+    },
+    {
+      "id": 44258,
+      "cas": "2024-12-14T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 3. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK JESENICE - NTK LJUBLJANA"
+    },
+    {
+      "id": 44259,
+      "cas": "2024-12-14T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 3. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK B2 - ŠD SU"
+    },
+    {
+      "id": 44260,
+      "cas": "2024-12-14T10:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 3. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK VESNA - PPK RAKEK"
+    },
+    {
+      "id": 44261,
+      "cas": "2024-12-14T16:00",
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 3. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK B2 - NTK LJUBLJANA"
+    },
+    {
+      "id": 44262,
+      "cas": "2024-10-19T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 1. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK VESNA - NTK JESENICE"
+    },
+    {
+      "id": 44263,
+      "cas": "2025-02-01T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 5. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): PPK RAKEK - ŠD SU"
+    },
+    {
+      "id": 44264,
+      "cas": "2025-02-01T16:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 5. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK VESNA - NTK LJUBLJANA"
+    },
+    {
+      "id": 44265,
+      "cas": "2024-10-19T10:00",
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 1. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): PPK RAKEK - NTK B2"
+    },
+    {
+      "id": 44266,
+      "cas": "2025-02-15T16:00",
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 6. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): ŠD SU - NTK JESENICE"
+    },
+    {
+      "id": 44267,
+      "cas": "2025-02-01T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 5. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): PPK RAKEK - NTK LJUBLJANA"
+    },
+    {
+      "id": 44268,
+      "cas": "2024-11-16T10:00",
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 2. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): ŠD SU - NTK VESNA"
+    },
+    {
+      "id": 44269,
+      "cas": "2025-02-01T10:00",
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 5. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK JESENICE - NTK B2"
+    },
+    {
+      "id": 44270,
+      "cas": "2025-01-11T10:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 4. krog, ob 10.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): ŠD SU - NTK LJUBLJANA"
+    },
+    {
+      "id": 44271,
+      "cas": "2025-01-11T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 4. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK JESENICE - PPK RAKEK"
+    },
+    {
+      "id": 44272,
+      "cas": "2025-01-11T16:00",
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 2. SNTL zenske, 4. krog, ob 16.00",
+      "opomba": "Stupa 174 (2. SNTL zenske 2024/25): NTK B2 - NTK VESNA"
+    },
+    {
+      "id": 31898,
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 2. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31867,
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 1. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - ŠD SU"
+    },
+    {
+      "id": 31868,
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 1. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - NTK MUREXIN I"
+    },
+    {
+      "id": 31869,
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 1. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31866,
+      "kolo": 1,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 1. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31885,
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 2. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31883,
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 2. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - NTS MENGEŠ"
+    },
+    {
+      "id": 31884,
+      "kolo": 2,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 2. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - NTK KRKA"
+    },
+    {
+      "id": 31930,
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 3. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31901,
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 3. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - NTK MUREXIN I"
+    },
+    {
+      "id": 31900,
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 3. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - ŠD SU"
+    },
+    {
+      "id": 31899,
+      "kolo": 3,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 3. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31876,
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 6. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - NTS MENGEŠ"
+    },
+    {
+      "id": 31880,
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 4. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - NTS MENGEŠ"
+    },
+    {
+      "id": 31881,
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 4. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31890,
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 4. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - NTK KRKA"
+    },
+    {
+      "id": 31879,
+      "kolo": 4,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 4. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31896,
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 5. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31895,
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 5. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31897,
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 5. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - ŠD SU"
+    },
+    {
+      "id": 31875,
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 6. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - NTK MUREXIN I"
+    },
+    {
+      "id": 31877,
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 6. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - NTK KRKA"
+    },
+    {
+      "id": 31882,
+      "kolo": 6,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 6. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31922,
+      "kolo": 5,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 5. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31893,
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 7. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31892,
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 7. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31891,
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 7. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31907,
+      "kolo": 17,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 17. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31872,
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 8. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31889,
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 9. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31874,
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 8. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - ŠD SU"
+    },
+    {
+      "id": 31871,
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 8. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - NTK MUREXIN I"
+    },
+    {
+      "id": 31873,
+      "kolo": 8,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 8. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - NTS MENGEŠ"
+    },
+    {
+      "id": 31887,
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 9. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - NTK KRKA"
+    },
+    {
+      "id": 31888,
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 9. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31906,
+      "kolo": 9,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 9. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31903,
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 10. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31904,
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 10. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - NTK KRKA"
+    },
+    {
+      "id": 31902,
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 10. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31905,
+      "kolo": 10,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 10. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - NTS MENGEŠ"
+    },
+    {
+      "id": 31920,
+      "kolo": 11,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 11. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - ŠD SU"
+    },
+    {
+      "id": 31919,
+      "kolo": 11,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 11. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - NTK MUREXIN I"
+    },
+    {
+      "id": 31921,
+      "kolo": 11,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 11. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31936,
+      "kolo": 12,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 12. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - NTS MENGEŠ"
+    },
+    {
+      "id": 31937,
+      "kolo": 12,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 12. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31934,
+      "kolo": 11,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 11. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31935,
+      "kolo": 12,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 12. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - NTK KRKA"
+    },
+    {
+      "id": 31894,
+      "kolo": 12,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 12. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31916,
+      "kolo": 13,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 13. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31926,
+      "kolo": 13,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 13. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31915,
+      "kolo": 13,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 13. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - ŠD SU"
+    },
+    {
+      "id": 31917,
+      "kolo": 13,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 13. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31933,
+      "kolo": 14,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 14. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - NTK MUREXIN I"
+    },
+    {
+      "id": 31932,
+      "kolo": 14,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 14. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31886,
+      "kolo": 14,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 14. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - NTS MENGEŠ"
+    },
+    {
+      "id": 31931,
+      "kolo": 14,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 14. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - NTK KRKA"
+    },
+    {
+      "id": 31918,
+      "kolo": 15,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 15. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31913,
+      "kolo": 15,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 15. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31912,
+      "kolo": 15,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 15. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - NTK SAVINJA KPM"
+    },
+    {
+      "id": 31878,
+      "kolo": 16,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 16. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - NTK MUREXIN I"
+    },
+    {
+      "id": 31911,
+      "kolo": 15,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 15. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31928,
+      "kolo": 16,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 16. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31929,
+      "kolo": 16,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 16. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŽNTK MARIBOR I - ŠD SU"
+    },
+    {
+      "id": 31927,
+      "kolo": 16,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 16. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - NTS MENGEŠ"
+    },
+    {
+      "id": 31910,
+      "kolo": 17,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 17. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): ŠD SU - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31914,
+      "kolo": 7,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 7. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK MUREXIN I - NTK SAVINJA PLASARD"
+    },
+    {
+      "id": 31909,
+      "kolo": 17,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 17. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTS MENGEŠ - NTK KRKA"
+    },
+    {
+      "id": 31925,
+      "kolo": 18,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 18. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA KPM - ŠD SU"
+    },
+    {
+      "id": 31908,
+      "kolo": 17,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 17. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK FUŽINAR INTER DISKONT I - NTD KAJUH SLOVAN"
+    },
+    {
+      "id": 31923,
+      "kolo": 18,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 18. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK KRKA - NTK FUŽINAR INTER DISKONT I"
+    },
+    {
+      "id": 31870,
+      "kolo": 18,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 18. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTK SAVINJA PLASARD - ŽNTK MARIBOR I"
+    },
+    {
+      "id": 31924,
+      "kolo": 18,
+      "natancnost": "koledar",
+      "vir": "uradni koledar NTZS \"KONCNI KOLEDAR SNTL 2024-2025\" (stara.slo-namiznitenis.si, objavljen 24. 9. 2024), 1. SNTL moski, 18. krog (cas tekme ima vir)",
+      "opomba": "Stupa 100 (1. SNTL moski 2024/25): NTD KAJUH SLOVAN - NTK MUREXIN I"
+    }
+  ]
+}

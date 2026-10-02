@@ -62,6 +62,7 @@ import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.NizRepozitorij;
+import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.SkupinaRepozitorij;
@@ -107,6 +108,7 @@ public class UvozUkaz implements ApplicationRunner {
     private final SrecanjeRepozitorij srecanjeRepozitorij;
     private final PostavaSrecanjaRepozitorij postavaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
+    private final NizSrecanjaRepozitorij nizSrecanjaRepozitorij;
     private final ZunanjaPovezavaRepozitorij povezave;
     private final UvozZagonRepozitorij zagoni;
     private final RazvrstitevStoritev razvrstitev;
@@ -136,7 +138,8 @@ public class UvozUkaz implements ApplicationRunner {
                     LigaRepozitorij ligaRepozitorij, EkipaRepozitorij ekipaRepozitorij,
                     KaderEkipeRepozitorij kaderRepozitorij, SrecanjeRepozitorij srecanjeRepozitorij,
                     PostavaSrecanjaRepozitorij postavaRepozitorij,
-                    TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij, ZunanjaPovezavaRepozitorij povezave,
+                    TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij, NizSrecanjaRepozitorij nizSrecanjaRepozitorij,
+                    ZunanjaPovezavaRepozitorij povezave,
                     UvozZagonRepozitorij zagoni, RazvrstitevStoritev razvrstitev, UvozStupeStoritev uvozStupe,
                     PreracunRatingaStoritev preracun, PlatformTransactionManager upravitelj) {
         this.klubRepozitorij = klubRepozitorij;
@@ -153,6 +156,7 @@ public class UvozUkaz implements ApplicationRunner {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
+        this.nizSrecanjaRepozitorij = nizSrecanjaRepozitorij;
         this.povezave = povezave;
         this.zagoni = zagoni;
         this.razvrstitev = razvrstitev;
@@ -201,7 +205,8 @@ public class UvozUkaz implements ApplicationRunner {
                 skupinaRepozitorij, prijavaRepozitorij, tekmaRepozitorij, nizRepozitorij, povezave, razvrstitev,
                 sifranti, porocilo);
         StaraLigeUvoz ligeStare = new StaraLigeUvoz(ligaRepozitorij, ekipaRepozitorij, kaderRepozitorij,
-                srecanjeRepozitorij, postavaRepozitorij, tekmaSrecanjaRepozitorij, povezave, sifranti, porocilo);
+                srecanjeRepozitorij, postavaRepozitorij, tekmaSrecanjaRepozitorij, nizSrecanjaRepozitorij, povezave,
+                sifranti, porocilo);
 
         List<Tekmovanje> koledar = new ArrayList<>();
         if (stara != null) {
@@ -272,7 +277,7 @@ public class UvozUkaz implements ApplicationRunner {
         povzetek.put("stevci", dto.stevci());
         povzetek.put("napake", dto.napake().stream().map(u -> u.vrsta() + " (" + u.stevilo() + ")").toList());
         povzetek.put("preverbe", dto.preverbe().stream()
-                .map(x -> (x.ujemanje() ? "OK " : x.obvezna() ? "NAPAKA " : "RAZLIKA ") + x.opis()).toList());
+                .map(PorociloUvozaDto.Preverba::vDnevnik).toList());
         String besedilo;
         try {
             besedilo = json.writeValueAsString(povzetek);

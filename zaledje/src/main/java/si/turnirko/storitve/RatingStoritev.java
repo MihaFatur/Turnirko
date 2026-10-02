@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.Igralec;
-import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RatingZgodovina;
 import si.turnirko.modeli.RavenTekmovanja;
@@ -37,7 +36,7 @@ public class RatingStoritev {
     /* Kaj je obracun tekme naredil obema stranema. Poleg izracuna nosi se,
        ali je bila stran UVRSCENA (novinec v obdobju uvrstitve): taki strani se
        rating ni sestel po korakih, ampak izracunal znova iz vseh izidov prvega
-       dne, zato sestavine spremembe (K, margina, teza, pricakovano) zanjo ne
+       dne, zato sestavine spremembe (K, teza, pricakovano) zanjo ne
        veljajo in gredo v dnevnik prazne. */
     private record Obracun(TurnirkoRatingStoritev.Izracun izracun,
                            boolean uvrscen1, boolean uvrscen2) {}
@@ -89,10 +88,7 @@ public class RatingStoritev {
         boolean zmagalPrvi = tekma.getZmagovalec().getId().equals(tekma.getPrijava1().getId());
         LocalDateTime veljaOb = casTurnirskeTekme(tekma);
 
-        Obracun obracun = posodobiStanja(igralec1, igralec2, zmagalPrvi,
-                tekma.getDobljeniNizi1(), tekma.getDobljeniNizi2(), tekma.getSteviloNizov(),
-                IzidTekme.samoZmagovalec(tekma.getIzidTip(), tekma.getDobljeniNizi1(), tekma.getDobljeniNizi2()),
-                veljaOb, raven.getTeza());
+        Obracun obracun = posodobiStanja(igralec1, igralec2, zmagalPrvi, veljaOb, raven.getTeza());
         TurnirkoRatingStoritev.Izracun izracun = obracun.izracun();
 
         zgodovinaRepozitorij.save(razcleni(new RatingZgodovina(
@@ -130,10 +126,7 @@ public class RatingStoritev {
         boolean zmagalDomaci = tekma.getZmagovalecStran() == StranEkipe.DOMACI;
         LocalDateTime veljaOb = casLigaskeTekme(tekma);
 
-        Obracun obracun = posodobiStanja(domaci, gost, zmagalDomaci,
-                tekma.getDobljeniNiziDomaci(), tekma.getDobljeniNiziGost(), tekma.getSteviloNizov(),
-                IzidTekme.samoZmagovalec(tekma.getIzidTip(), tekma.getDobljeniNiziDomaci(), tekma.getDobljeniNiziGost()),
-                veljaOb, raven.getTeza());
+        Obracun obracun = posodobiStanja(domaci, gost, zmagalDomaci, veljaOb, raven.getTeza());
         TurnirkoRatingStoritev.Izracun izracun = obracun.izracun();
 
         zgodovinaRepozitorij.save(razcleni(new RatingZgodovina(
@@ -147,7 +140,7 @@ public class RatingStoritev {
     }
 
     /* Zapisu doda sestavine spremembe - razen ce je bila stran uvrscena, kjer
-       sprememba ni nastala po obrazcu K x margina x teza in bi zapisane
+       sprememba ni nastala po obrazcu K x teza in bi zapisane
        sestavine lagale. */
     private static RatingZgodovina razcleni(RatingZgodovina zapis,
                                             TurnirkoRatingStoritev.Izracun izracun,
@@ -157,7 +150,6 @@ public class RatingStoritev {
         }
         return zapis.zRazclenitvijo(
                 prvaStran ? izracun.k1() : izracun.k2(),
-                izracun.margina(),
                 izracun.teza(),
                 prvaStran ? izracun.pricakovanaVerjetnost1()
                         : 1.0 - izracun.pricakovanaVerjetnost1());
@@ -273,14 +265,13 @@ public class RatingStoritev {
 
     /* Izracuna in shrani novi stanji obeh igralcev; vrne izracun za dnevnik.
        veljaOb je cas tekme - iz njega se prepozna vrnitev po odsotnosti, ki
-       igralcu za nekaj tekem povisa K. teza je teza tekmovanja.
+       igralcu za nekaj tekem povisa K. teza je teza tekmovanja. Izid v nizih
+       ne vstopa: zmaga je zmaga (TurnirkoRatingStoritev).
 
        Teza NE vpliva na stevec tekem: rekreativna tekma je ena odigrana tekma,
        le rating premakne za polovico (glej RavenTekmovanja). */
     private Obracun posodobiStanja(Igralec prvi, Igralec drugi, boolean zmagalPrvi,
-                                   int nizi1, int nizi2, int steviloNizov,
-                                   boolean predaja, LocalDateTime veljaOb,
-                                   double teza) {
+                                   LocalDateTime veljaOb, double teza) {
         RatingStanje stanje1 = najdiAliUstvari(prvi, veljaOb);
         RatingStanje stanje2 = najdiAliUstvari(drugi, veljaOb);
 
@@ -300,7 +291,7 @@ public class RatingStoritev {
         TurnirkoRatingStoritev.Izracun izracun = turnirkoRating.izracunaj(
                 new TurnirkoRatingStoritev.StanjeIgralca(ratingPrej1, stanje1.getStTekem(), vrnitev1),
                 new TurnirkoRatingStoritev.StanjeIgralca(ratingPrej2, stanje2.getStTekem(), vrnitev2),
-                zmagalPrvi, nizi1, nizi2, steviloNizov, predaja, teza);
+                zmagalPrvi, teza);
 
         /* Kdor je se v obdobju uvrstitve, ne sesteva korakov: njegova stevilka
            se izracuna znova iz vseh izidov prvega dne. Nasprotnikova sprememba
@@ -324,7 +315,7 @@ public class RatingStoritev {
                 novi1 - ratingPrej1, novi2 - ratingPrej2,
                 izracun.pricakovanaVerjetnost1(),
                 izracun.k1(), izracun.k2(),
-                izracun.margina(), izracun.teza()),
+                izracun.teza()),
                 uvrscen1, uvrscen2);
     }
 

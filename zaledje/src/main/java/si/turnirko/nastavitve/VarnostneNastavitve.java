@@ -181,8 +181,13 @@ public class VarnostneNastavitve {
                                 "/api/v1/tekme/**", "/api/v1/lige/**", "/api/v1/srecanja/**")
                                 .hasAnyRole("ADMIN", "ORGANIZATOR")
                         // organizator sme dodati NOVEGA igralca v skupni sifrant
-                        // (samo POST na koren); urejanje/brisanje/rating ostane adminu
-                        .requestMatchers(HttpMethod.POST, "/api/v1/igralci").hasAnyRole("ADMIN", "ORGANIZATOR")
+                        // (samo POST na koren); urejanje/brisanje/rating ostane adminu.
+                        // Isti vpis vprasa, ali podoben igralec ze obstaja (/podobni):
+                        // javni izpis brez datumov rojstva. Razlicica z datumi
+                        // (/podobni/podrobno) tu ni omenjena in pade v splosno pravilo
+                        // "/api/**" za ADMIN - kot GET /igralci/podrobno.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/igralci", "/api/v1/igralci/podobni")
+                                .hasAnyRole("ADMIN", "ORGANIZATOR")
                         // vse ostale mutacije (igralci PUT/DELETE, klubi, kraji, racuni)
                         // sme samo administrator
                         .requestMatchers("/api/**").hasRole("ADMIN")

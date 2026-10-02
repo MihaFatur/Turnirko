@@ -67,16 +67,13 @@ public class RatingZgodovina {
     private Integer tocke;
 
     /* Sestavine, iz katerih je sprememba nastala:
-       sprememba = k x margina x teza x (tocke - pricakovano).
+       sprememba = k x teza x (tocke - pricakovano).
        Prazne, kadar sprememba ne nastane po tem obrazcu - pri postavitvi in
        odbitku za neaktivnost (tekme ni) in pri UVRSTITVI NOVINCA, kjer se
        rating izracuna znova iz vseh izidov prvega dne. Vrstica, ki ima tekmo
        in nima k, je torej natanko uvrstitev. */
     @Column(name = "k")
     private Integer k;
-
-    @Column(name = "margina")
-    private Double margina;
 
     @Column(name = "teza")
     private Double teza;
@@ -193,7 +190,6 @@ public class RatingZgodovina {
     public LocalDateTime getVeljaOb() { return veljaOb; }
     public Integer getTocke() { return tocke; }
     public Integer getK() { return k; }
-    public Double getMargina() { return margina; }
     public Double getTeza() { return teza; }
     public Double getPricakovano() { return pricakovano; }
     public String getVir() { return vir; }
@@ -201,10 +197,8 @@ public class RatingZgodovina {
 
     /* Zapise sestavine spremembe. Locena metoda in ne se dva konstruktorja:
        konstruktorjev je ze pet, sestavin pa ni vedno (glej polja). */
-    public RatingZgodovina zRazclenitvijo(Integer k, Double margina, Double teza,
-                                          Double pricakovano) {
+    public RatingZgodovina zRazclenitvijo(Integer k, Double teza, Double pricakovano) {
         this.k = k;
-        this.margina = margina;
         this.teza = teza;
         this.pricakovano = pricakovano;
         return this;

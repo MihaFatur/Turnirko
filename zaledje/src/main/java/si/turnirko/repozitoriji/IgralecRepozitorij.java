@@ -54,6 +54,13 @@ public interface IgralecRepozitorij extends JpaRepository<Igralec, Long> {
     @Query("SELECT i FROM Igralec i LEFT JOIN FETCH i.klub WHERE i.datumRojstva IN :datumi")
     List<Igralec> najdiPoDatumihRojstva(Collection<LocalDate> datumi);
 
+    /* Vsi igralci, tudi arhivirani, s klubom: iskanje podobnih imen pred
+       vpisom (IgralciStoritev.najdiPodobne). Arhiviran igralec ima zgodovino,
+       zato je dvojnik njega prav tako dvojnik. Ujemanje po imenu tece v Javi
+       (normalizacija sumnikov je v SQLite ni), poizvedba ne filtrira. */
+    @Query("SELECT i FROM Igralec i LEFT JOIN FETCH i.klub")
+    List<Igralec> najdiVseSKlubom();
+
     /* Razdeljena imena registra - slovar za razdelitev novih imen. */
     @Query("SELECT i.ime, i.priimek FROM Igralec i")
     List<Object[]> imenaInPriimki();
