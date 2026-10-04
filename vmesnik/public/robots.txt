@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /moj-profil
+Disallow: /racuni
+Disallow: /sifranti
+Disallow: /uvoz
+Disallow: /rating
+Disallow: /narocnina
+Disallow: /registracija
+
+Sitemap: https://turnirko-nt.si/sitemap.xml

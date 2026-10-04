@@ -6,7 +6,36 @@
     <!-- Vedno svetla tema, že preden se naloži slog (glej slog.css, :root). -->
     <meta name="color-scheme" content="only light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Turnirko</title>
+    <title>Turnirko – namizni tenis: turnirji, lige in lestvica</title>
+    <meta
+      name="description"
+      content="Turnirko je slovenska stran za namizni tenis: rezultati turnirjev v živo, lige, koledar tekmovanj, lestvica igralcev in profili s statistiko."
+    />
+    <link rel="canonical" href="https://turnirko-nt.si/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Turnirko" />
+    <meta property="og:locale" content="sl_SI" />
+    <meta property="og:title" content="Turnirko – namizni tenis: turnirji, lige in lestvica" />
+    <meta
+      property="og:description"
+      content="Rezultati turnirjev v živo, lige, koledar tekmovanj, lestvica igralcev in profili s statistiko."
+    />
+    <meta property="og:url" content="https://turnirko-nt.si/" />
+    <!-- Lastnik izključi svoje oglede statistike tudi na telefonu, kjer konzole
+         ni: /?statistika=izklop (nazaj /?statistika=vklop). Velja za ta
+         brskalnik; teče pred skriptom spodaj, zato se že ta ogled ne šteje. -->
+    <script>
+      try {
+        const statistika = new URLSearchParams(location.search).get('statistika')
+        if (statistika === 'izklop') {
+          localStorage.setItem('umami.disabled', '1')
+          alert('Statistika: ogledi iz tega brskalnika se ne štejejo več.')
+        } else if (statistika === 'vklop') {
+          localStorage.removeItem('umami.disabled')
+          alert('Statistika: ogledi iz tega brskalnika se spet štejejo.')
+        }
+      } catch (e) {}
+    </script>
     <!-- Statistika obiska (Umami, glej docs/OBJAVA.md, razdelek 8). Šteje samo
          na pravi domeni (data-domains), zato razvoj in namizna različica ne
          pošiljata ničesar; defer pomeni, da stran brez interneta ne čaka nanj. -->
@@ -19,6 +48,10 @@
   </head>
   <body>
     <div id="koren"></div>
+    <noscript>
+      <h1>Turnirko</h1>
+      <p>Turnirji, lige, koledar tekmovanj in lestvica igralcev v namiznem tenisu. Za ogled vklopite JavaScript.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

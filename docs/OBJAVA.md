@@ -259,11 +259,13 @@ pasica ni potrebna, podatki pa ne zapustijo streznika.
    na `localhost` in namizna razlicica v dvorani ne posljeta nicesar. Nato
    commit, push in [posodobitev](#posodobitev).
 
-**Svojih ogledov ne stej.** Na `turnirko-nt.si` odpri konzolo brskalnika
-(F12 -> Console) in vpisi `localStorage.setItem('umami.disabled', '1')`.
-Velja za ta brskalnik na tej napravi - ponovi na telefonu in povsod, kjer
-pogosto preverjas stran. Pri majhnem obisku tvoji ogledi sicer opazno
-napihnejo stevilke.
+**Svojih ogledov ne stej.** Odpri `https://turnirko-nt.si/?statistika=izklop`
+- stran potrdi z oknom. Velja za ta brskalnik na tej napravi, zato ponovi na
+telefonu in povsod, kjer pogosto preverjas stran (nazaj:
+`?statistika=vklop`). Pri majhnem obisku tvoji ogledi sicer opazno napihnejo
+stevilke. Na racunalniku gre tudi brez posodobitve: konzola (F12 -> Console)
+in `localStorage.setItem('umami.disabled', '1')` - izpis `undefined` je
+pravilen.
 
 **Posodobitev Umamija** ni samodejna (v `compose.yaml` je tocna razlicica).
 Ko hoces novejso, preberi opombe ob izdaji, zamenjaj oznako slike in pozeni
