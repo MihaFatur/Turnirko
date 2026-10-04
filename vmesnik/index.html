@@ -7,6 +7,15 @@
     <meta name="color-scheme" content="only light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Turnirko</title>
+    <!-- Statistika obiska (Umami, glej docs/OBJAVA.md, razdelek 8). Šteje samo
+         na pravi domeni (data-domains), zato razvoj in namizna različica ne
+         pošiljata ničesar; defer pomeni, da stran brez interneta ne čaka nanj. -->
+    <script
+      defer
+      src="https://statistika.turnirko-nt.si/obisk.js"
+      data-website-id="6bf90444-b1dd-4a71-8ca6-cf935b218c10"
+      data-domains="turnirko-nt.si,www.turnirko-nt.si"
+    ></script>
   </head>
   <body>
     <div id="koren"></div>
