@@ -2094,6 +2094,13 @@
 - Navodilo po korakih je `docs/OBJAVA.md`; datoteke postavitve so v korenu
   (`Dockerfile`, `compose.yaml`, `Caddyfile`, `.env.primer`) in
   `skripte/varnostna-kopija.sh`.
+- **Statistika obiska je Umami na istem strežniku** (storitvi `umami` in
+  `umami-baza` v `compose.yaml`, poddomena `statistika.turnirko-nt.si` v
+  `Caddyfile`, namestitev `skripte/vklopi-statistiko.sh`, OBJAVA.md razdelek 8).
+  Brez piškotkov, zato brez pasice za soglasje — orodja, ki potrebuje
+  soglasje (Google Analytics), ne dodajaj. Skript `obisk.js` v `index.html` ima
+  `data-domains`, zato razvoj in namizna različica ne štejeta; naložen je z
+  `defer`, da vmesnik brez interneta v dvorani ne čaka nanj.
 - **Mavnov profil `splet`** (`mvnw -Psplet package`) zgradi vmesnik in ga
   vloži v isti `.jar`; `SpletniVmesnik` ga postreže in vsako pot, ki ni
   datoteka in ne začne z `api/`, vrne kot `index.html` (sicer osvežitev na

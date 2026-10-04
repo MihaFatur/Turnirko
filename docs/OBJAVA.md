@@ -213,6 +213,65 @@ racunalniku. Kopija, ki je nisi nikoli odprl, ni kopija. In uredi
 odnasanje kopij s streznika (glej komentar na koncu skripte) - kopije na
 istem strezniku propadejo skupaj z njim.
 
+### 8. Statistika obiska (Umami)
+
+Umami steje oglede: koliko ljudi pride, katere strani odprejo, koliko casa
+ostanejo, s telefona ali racunalnika, od kod pridejo (Facebook, Google,
+ntzs.si ...) in koliko jih je na strani prav zdaj. Tece na tem strezniku
+kot dva vsebnika (Umami in njegova baza PostgreSQL, glej `compose.yaml`),
+pregled je na `https://statistika.turnirko-nt.si`.
+
+Zakaj ne Google Analytics: ta uporablja piskotke, zato bi po zakonu rabil
+pasico za soglasje - gost na telefonu bi jo pogosto zavrnil in stevilke bi
+bile luknjaste. Umami piskotkov ne uporablja in naslovov IP ne hrani, zato
+pasica ni potrebna, podatki pa ne zapustijo streznika.
+
+1. **Zapis DNS.** Pri gostitelju domene dodaj zapis **A** z imenom
+   `statistika`, ki kaze na isti IP kot `turnirko-nt.si`. Ko ga doma
+   `nslookup statistika.turnirko-nt.si` vrne, nadaljuj.
+
+2. **Zagon na strezniku:**
+
+   ```bash
+   cd /srv/turnirko && git pull && sudo sh ./skripte/vklopi-statistiko.sh
+   ```
+
+   Skripta preveri DNS in prosti pomnilnik, v `.env` sama doda tri nakljucne
+   skrivnosti, zazene Umami in Caddy ustvari znova (stran je nekaj sekund
+   nedosegljiva). Aplikacije se ne dotakne.
+
+3. **Takoj zamenjaj geslo.** Odpri `https://statistika.turnirko-nt.si`,
+   prijavi se z `admin` / `umami` in v profilu nastavi novo geslo. Dokler je
+   privzeto, se lahko prijavi kdorkoli.
+
+4. **Dodaj stran** (Settings -> Websites -> Add website): ime `Turnirko`,
+   domena `turnirko-nt.si`. Umami pokaze **Website ID**.
+
+5. **Vkljuci skript v vmesnik.** V `vmesnik/index.html`, v `<head>`:
+
+   ```html
+   <script defer src="https://statistika.turnirko-nt.si/obisk.js"
+           data-website-id="<Website ID iz 4. koraka>"
+           data-domains="turnirko-nt.si,www.turnirko-nt.si"></script>
+   ```
+
+   `data-domains` poskrbi, da se ogledi stejejo samo na pravi strani - razvoj
+   na `localhost` in namizna razlicica v dvorani ne posljeta nicesar. Nato
+   commit, push in [posodobitev](#posodobitev).
+
+**Svojih ogledov ne stej.** Na `turnirko-nt.si` odpri konzolo brskalnika
+(F12 -> Console) in vpisi `localStorage.setItem('umami.disabled', '1')`.
+Velja za ta brskalnik na tej napravi - ponovi na telefonu in povsod, kjer
+pogosto preverjas stran. Pri majhnem obisku tvoji ogledi sicer opazno
+napihnejo stevilke.
+
+**Posodobitev Umamija** ni samodejna (v `compose.yaml` je tocna razlicica).
+Ko hoces novejso, preberi opombe ob izdaji, zamenjaj oznako slike in pozeni
+`sudo docker compose up -d umami`.
+
+Statistika ni v nocni varnostni kopiji (ta kopira samo `turnirko.db`).
+Ce jo izgubis, izgubis samo zgodovino obiska; turnirjev to ne prizadene.
+
 ## Posodobitev
 
 ```bash

@@ -25,9 +25,10 @@ turnirko-nt.si, www.turnirko-nt.si {
 	# http://. Vklopi ga sele, ko stran deluje - velja eno leto in ga ni
 	# mogoce hitro preklicati.
 	#
-	# NAMENOMA brez "includeSubDomains": poddomene te domene niso na tem
-	# strezniku. webmail. in mail. sta pri gostitelju domene, poddomene za
-	# povezave v posti pa pri ponudniku transakcijske poste. Pravilo, ki bi
+	# NAMENOMA brez "includeSubDomains": poddomene te domene (razen
+	# statistika., spodaj) niso na tem strezniku. webmail. in mail. sta pri
+	# gostitelju domene, poddomene za povezave v posti pa pri ponudniku
+	# transakcijske poste. Pravilo, ki bi
 	# veljalo za vse poddomene, bi brskalniku vsililo HTTPS tudi tam, kjer
 	# ga ne nadziramo - in ce kateri od njih odpove, tega ni mogoce hitro
 	# popraviti, ker si brskalnik pravilo zapomni za eno leto.
@@ -45,5 +46,22 @@ turnirko-nt.si, www.turnirko-nt.si {
 			roll_size 10MiB
 			roll_keep 5
 		}
+	}
+}
+
+# Statistika obiska (Umami, storitev "umami" iz compose.yaml). Na tem naslovu
+# je pregled za lastnika, od tod pa se nalozi tudi skript obisk.js, ki ga
+# turnirko-nt.si vkljuci in ki sem posilja oglede. Certifikat Caddy pridobi
+# sam - a SAMO, ce zapis DNS za "statistika" ze kaze na ta streznik.
+statistika.turnirko-nt.si {
+	encode zstd gzip
+	reverse_proxy umami:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
 	}
 }

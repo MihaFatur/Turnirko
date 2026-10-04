@@ -54,6 +54,49 @@ services:
       retries: 3
       start_period: 60s
 
+  # Statistika obiska (Umami): pregled na https://statistika.turnirko-nt.si.
+  # Ne uporablja piskotkov in ne hrani naslovov IP, zato pasica za soglasje
+  # ni potrebna. Podatki ostanejo na tem strezniku. Prva namestitev:
+  # docs/OBJAVA.md, razdelek "Statistika obiska".
+  umami:
+    # Tocna razlicica, ne "latest": posodobitev naj bo tvoja odlocitev, ne
+    # stranski ucinek ponovnega zagona.
+    image: ghcr.io/umami-software/umami:3.4.0
+    restart: unless-stopped
+    init: true
+    # Tako kot pri aplikaciji: brez "ports:", dosegljiv samo skozi Caddy.
+    expose:
+      - "3000"
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_BAZA_GESLO:?nastavi UMAMI_BAZA_GESLO v .env - glej docs/OBJAVA.md}@umami-baza:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:?nastavi UMAMI_APP_SECRET v .env - glej docs/OBJAVA.md}
+      TWO_FACTOR_ENCRYPTION_KEY: ${UMAMI_2FA_KLJUC:?nastavi UMAMI_2FA_KLJUC v .env - glej docs/OBJAVA.md}
+      # Privzeto ime "script.js" blokatorji oglasov poznajo; drugo ime jih
+      # vecino zaobide, zato so stevilke blizje resnici.
+      TRACKER_SCRIPT_NAME: obisk.js
+      DISABLE_TELEMETRY: 1
+    depends_on:
+      umami-baza:
+        condition: service_healthy
+
+  umami-baza:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      # Velja SAMO ob prvem zagonu (ko je zvezek se prazen). Kasnejsa
+      # sprememba v .env gesla v bazi ne spremeni - Umami se takrat ne
+      # more vec povezati.
+      POSTGRES_PASSWORD: ${UMAMI_BAZA_GESLO:?nastavi UMAMI_BAZA_GESLO v .env - glej docs/OBJAVA.md}
+    volumes:
+      - umami_baza:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -75,3 +118,4 @@ services:
 volumes:
   caddy_podatki:
   caddy_nastavitve:
+  umami_baza:
