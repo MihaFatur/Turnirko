@@ -143,6 +143,18 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             """)
     Optional<Tekma> najdiZVsem(Long id);
 
+    /* Tekme enega zreba sistema SV_REGIJA (brez nalaganja udelezencev). */
+    List<Tekma> findByIdZreb(Long idZreb);
+
+    /* Najvisja pozicija v kolu in fazi dogodka; pozicija je enolicna cez ves
+       dogodek (UNIQUE dogodek+faza+kolo+pozicija), zato jo tekme vecih zrebov
+       in nivojev stejejo naprej. */
+    @Query("""
+            SELECT COALESCE(MAX(t.pozicija), 0) FROM Tekma t
+            WHERE t.dogodek.id = :idDogodek AND t.faza = :faza AND t.kolo = :kolo
+            """)
+    int najvisjaPozicija(Long idDogodek, si.turnirko.modeli.FazaTekme faza, int kolo);
+
     /* Tekme, v katere se napreduje iz dane tekme (eksplicitne povezave). */
     @Query("SELECT t FROM Tekma t WHERE t.idIzvorTekma1 = :idTekme OR t.idIzvorTekma2 = :idTekme")
     List<Tekma> najdiOdvisne(Long idTekme);

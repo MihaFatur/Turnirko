@@ -1095,9 +1095,15 @@
     škodila. Ne dodajaj je »zaradi simetrije«.
   - **Prazna postavka je odsotna postavka.** Uvožena zgodovina brez ratingov,
     liga brez vpisanih točk po nizih in turnir v prvi uri nimajo istih
-    podatkov; ničla bi trdila, da se nekaj ni zgodilo. Pod `PRAG_TEKEM` (10)
-    zavihka sploh ni (`dovoljPodatkov`), vmesnik pa gumba ne ponudi že prej
-    (`odigranihTekem`, oz. pri ligi odigrano vsaj eno kolo).
+    podatkov; ničla bi trdila, da se nekaj ni zgodilo. Pod `PRAG_TEKEM` (9,
+    odločitev lastnika, 6. 10. 2026) zavihka sploh ni (`dovoljPodatkov`),
+    vmesnik pa gumba ne ponudi že prej: isti prag `PRAG_ZANIMIVOSTI`
+    (`pomozno/zanimivosti.ts`) velja za turnir (`odigranihTekem`) in ligo
+    (`odigranihTekemLige`, vsota dobljenih tekem srečanj brez b. b. in
+    prenesenih). **Pri ligi merilo NI odigrano kolo**: ekipe se neuradno menjajo
+    za termine, zato v Savinja ligi A–C še tednov ni bilo celega kola in
+    zavihka ni bilo, čeprav je bilo odigranih preko 45 tekem. Prag mora ostati
+    v zaledju in vmesniku isti (mejni test `zavihekSePokazeZDevetoTekmo`).
   - **Dvojice ne vstopajo v vrstice o posamezniku** (isto pravilo kot pri ratingu).
     Štejejo v »V številkah« in v svojo vrstico. Edina izjema je »Največji
     garač«, kjer se štejejo **nastopi** in ne izkupiček — a v svoj števec.
@@ -1231,6 +1237,69 @@
   `stopnja`, `ime` in `prvo_mesto`; dvoboj iz predtekmovanja se v finalno
   skupino prenese (`tekma.id_prenesena`) in se ne igra ter ne šteje znova.
   Tekma za 3. mesto je `TOLAZILNI` z izvorom `PORAZENEC` iz polfinal.
+- **SV regija** (V42, `SistemTekmovanja.SV_REGIJA`, `SvRegijaStoritev`; odločitev
+  lastnika 5. 10. 2026): igralci so po jakosti razdeljeni v **nivoje** (težavnostne
+  skupine), v vsakem nivoju igrajo skupine vsak z vsakim, prvo- in drugouvrščeni
+  gredo v **glavni žreb** nivoja, tretje- in četrtouvrščeni v **tolažilni žreb** (5.–6.
+  v tretjega ...), žreb pa se igra za **vsa mesta**. **En dogodek z nivoji**: ena
+  prijavna lista, ena končna razvrstitev (nivo 1 = mesta 1–16, nivo 2 = 17–32 ...),
+  brez prehajanja med nivoji. Samo posamično (strežnik zavrne dvojice in ekipe).
+  - **Razrez je čista logika** (`SvRegijaStoritev.razrez`, `velikostiSkupin`,
+    `velikostiZrebov`), da ga predogled in žreb ne razsodita različno. Poln nivo je
+    `stevilo_skupin × velikost_skupine` (privzeto 4 × 4 = 16, v obstoječih stolpcih
+    dogodka), **zadnji nivo dobi ostanek**; ostanek, manjši od ene skupine (< 4), se
+    pridruži prejšnjemu nivoju (16 + 2 ni nivo, ampak 18). Z izbranim `stevilo_nivojev`
+    so nivoji polni, dokler prijav zadošča, sicer enakomerni; `velikosti_nivojev`
+    (CSV »16,16,12«) imajo prednost in se morajo ujemati s številom prijav. Nepopolna
+    skupina je dovoljena (vsaj 3 igralci; nivo, ki ga ni mogoče razdeliti tako, je ena
+    skupina in nima žrebov — mesta določi skupina). **Rangov v žrebu** (`rangov_v_zreb`,
+    CSV po nivojih »2,2,1«, vrednosti 1 ali 2, privzeto 2): pri 1 ima vsak rang iz
+    skupine svoj žreb (8 skupin = žrebi po 8: prvouvrščeni za 1.–8. mesto, drugouvrščeni za
+    9.–16. ...), kot ga je v praksi igral 5. OT SV regije (nivo z 8 skupinami).
+  - **Žreb za vsa mesta je drevo** (`razdeli`): mreža za mesta p..p+n−1 igra n/2 tekem,
+    zmagovalci gredo v mrežo n/2 za p..p+n/2−1, **poraženci v mrežo n/2 za naslednja
+    mesta** — poraženca sosednjih parov se srečata med seboj. Mreža z 8 igralci ima 12
+    tekem. Tekma nosi `id_zreb`, `razpon_od/do` (katera mesta odloča) in, če je zadnja
+    na svoji poti, `mesto_zmagovalca/porazenca` (**absolutno** mesto na dogodku).
+    **Končna mesta se berejo iz tekem** (`dodeliKoncnaMesta`), ne računajo; `zreb.
+    prvo_mesto` je absolutno, zato žreb drugega nivoja stoji za zadnjim mestom prvega.
+  - **Prosti prehod tekme NE ustvari** (druga pot kot izločilna mreža, ki ima tekme
+    `PROSTO`): igralec gre naprej brez zapisa, **prazno ostane tudi mesto poraženca**,
+    zato se slabši par v drevesu sreča samo, če sta oba poraženca resnična. Prazna mesta
+    tako pristanejo na dnu razpona in končna mesta ostanejo strnjena (1..N). Udeležencev
+    žreba ni nujno 8: `NosilciStoritev.vMrezoIzSkupin` prenese skupine brez 2. ali 4.
+    mesta (drugouvrščeni `null`) in ob manjkajočih drugouvrščenih popusti pravilo
+    nasprotne polovice. Žreb z enim igralcem tekem nima (`koncno_mesto` dobi takoj).
+  - **Nivoji tečejo neodvisno**: žreb nivoja nastane, ko so odigrane skupine TEGA
+    nivoja (`obKoncaniSkupinski`), ne celotnega dogodka. Tabela `zreb` (indeks 0 glavni,
+    1 tolažilni ...) nastane ob zrebu skupin — takrat je znano, koliko igralcev pride
+    vanjo — tekme pa šele po skupinah (`zgrajen`). **Dogodek se zaključi, ko so
+    zgrajeni vsi žrebi** in odigrane vse tekme (`TekmaStoritev.zakljuciDogodekCeKoncan`).
+    Faza tekme: glavni žreb `GLAVNI`, vsi drugi `TOLAZILNI`; `pozicija` šteje naprej
+    čez žrebe in nivoje (UNIQUE dogodek+faza+kolo+pozicija), kolo je globina drevesa.
+  - **Ročno je enakovredno žrebu in konča v isti točki**: `PUT /dogodki/{id}/sv/skupine`
+    (`ZrebStoritev.izvediRocniZrebSv` → `SvRegijaStoritev.zapisiSkupine`, ki ga kliče tudi
+    naključni žreb) velja tudi kot **popravek po žrebu, dokler nobena tekma ni začeta**
+    (najprej razveljavi); `POST .../sv/razveljavi` vrne dogodek v pripravo. Razporeditev
+    mest v mreži: `PUT /dogodki/sv/zrebi/{id}/mesta` (id prijav po mestih od vrha, `null` =
+    prosto), `POST .../znova` (naključno), `POST .../predlog` (brez zapisa; predloga sta
+    POST, ker vsak klic žreba znova) — vse samo, dokler se žreb ni začel. Razporeditev se
+    hrani v `zreb.razpored` (CSV), ker se iz tekem ne da prebrati (prosti prehodi);
+    `zreb.rocni` je **javna** oznaka (»razpored mest je vpisal organizator«). Nastavitve
+    razreza `PUT .../sv/nastavitve` (samo v pripravi).
+  - **Pasti**: brisanje tekem zreba mora najprej pretrgati povezave (`id_izvor_tekma_*`) in
+    izprati (`flush`) PRED novimi vstavki — Hibernate izvede vstavke pred izbrisi in
+    UNIQUE trči ob stare vrstice. Test, ki preverja `GET /dogodki/{id}` izven transakcije,
+    je `LenoNalaganjeSvRegijaTest`, pravila drevesa in razreza `SvRegijaTest`.
+  - Vmesnik: pogled »Nivoji« (`SvRegija.tsx`: skupine in žrebi nivoja kot zložljive vrstice),
+    **drevo za vsa mesta** (`SvDrevo.tsx`: odsek = tekme z istim `razpon_od`, torej glavna pot
+    1.–8./1.–4./1.–2., pot poražencev 5.–8./5.–6., samostojni tekmi 3.–4. in 7.–8.; črte iz
+    `idIzvorZmagovalca1/2` v `TekmaDto`, mere v CSS spremenljivkah `.sv-drevo`, JS računa le
+    stolpec in višino), plošča razreza v pripravi (`SvPriprava.tsx`), urejevalnika
+    `SvSkupineOkno` in `SvZrebOkno`; imena v `pomozno/svRegija.ts`. Končna razvrstitev je pri
+    SV regiji po nivojih (zložljivo), pri več kot 24 igralcih drugih sistemov se pokaže prvih 16
+    vrstic; stolpca ratinga ni, kadar ga noben igralec nima. `kratekKlub` (`pomozno/oblikovanje.ts`)
+    odstrani splošne predpone (»Namiznoteniški klub«) v lestvici, kartici tekme in razvrstitvi.
 
 - **Upravljanje obstoječe naročnine** (V35, `UpravljanjeNarocnineStoritev`,
   `StripeNarocnine`, `/api/v1/narocnina`): pregled (obdobje, cikel, cena, zabeležen

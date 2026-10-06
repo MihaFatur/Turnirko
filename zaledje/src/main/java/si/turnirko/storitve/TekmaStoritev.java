@@ -57,6 +57,7 @@ public class TekmaStoritev {
     private final EkipneTekmeStoritev ekipneTekme;
     private final LastnistvoStoritev lastnistvo;
     private final PreracunRatingaStoritev preracunRatinga;
+    private final SvRegijaStoritev svRegija;
 
     public TekmaStoritev(TekmaRepozitorij tekmaRepozitorij,
                          NizRepozitorij nizRepozitorij,
@@ -68,7 +69,8 @@ public class TekmaStoritev {
                          RazvrstitevStoritev razvrstitevStoritev,
                          EkipneTekmeStoritev ekipneTekme,
                          LastnistvoStoritev lastnistvo,
-                         PreracunRatingaStoritev preracunRatinga) {
+                         PreracunRatingaStoritev preracunRatinga,
+                         SvRegijaStoritev svRegija) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
@@ -80,6 +82,7 @@ public class TekmaStoritev {
         this.ekipneTekme = ekipneTekme;
         this.lastnistvo = lastnistvo;
         this.preracunRatinga = preracunRatinga;
+        this.svRegija = svRegija;
     }
 
     /* Vnese koncni rezultat tekme in sprozi vse posledice. */
@@ -490,6 +493,10 @@ public class TekmaStoritev {
         if (sistem == SistemTekmovanja.SKUPINE_ZA_MESTA && !skupineStoritev.imaFinalneSkupine(idDogodka)) {
             return;
         }
+        // SV regija: skupine vseh nivojev so odigrane, a zrebi nivojev morajo biti zgrajeni
+        if (sistem == SistemTekmovanja.SV_REGIJA && !svRegija.vsiZrebiZgrajeni(idDogodka)) {
+            return;
+        }
 
         Dogodek dogodek = dogodekRepozitorij.findById(idDogodka).orElseThrow();
         dogodek.setStatus(StatusTekmovanja.ZAKLJUCEN);
@@ -502,6 +509,8 @@ public class TekmaStoritev {
             case SKUPINE -> { }
             case IZLOCILNI, SKUPINE_IZLOCILNI -> dodeliMestaIzFinala(idDogodka);
             case SKUPINE_ZA_MESTA -> skupineStoritev.dodeliMestaIzFinalnihSkupin(idDogodka);
+            // vsaka tekma zreba nosi mesti zmagovalca in porazenca
+            case SV_REGIJA -> svRegija.dodeliKoncnaMesta(idDogodka);
         }
     }
 

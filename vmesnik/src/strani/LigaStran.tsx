@@ -45,6 +45,7 @@ import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import { oblikujDanMesec, oblikujTermin, oblikujUro } from '../pomozno/oblikovanje'
 import { zabeleziOgledLige } from '../pomozno/ogledaneLige'
 import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
+import { odigranihTekemLige, PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 import { useTelefon } from '../pomozno/telefon'
 
@@ -216,9 +217,10 @@ export function LigaStran() {
   const privzetoKolo = naslednjeKolo ?? kola[kola.length - 1] ?? 1
   const kolo = rocnoKolo != null && kola.includes(rocnoKolo) ? rocnoKolo : privzetoKolo
 
-  /* Zavihek se ponudi, ko je odigrano vsaj eno kolo — takrat je tekem že
-     dovolj, da katera od vrstic kaj pove. */
-  const imaZanimivosti = odigranihKol > 0
+  /* Zavihek se ponudi, ko je odigranih dovolj tekem (isti prag kot pri turnirju
+     in v zaledju). Merilo ni celo kolo: v ligi, kjer se ekipe menjajo za
+     termine, je v vsakem kolu še kakšno srečanje neodigrano in zavihka dolgo ni. */
+  const imaZanimivosti = odigranihTekemLige(vsa) >= PRAG_ZANIMIVOSTI
 
   const zanimivostiVsebina = (
     <>

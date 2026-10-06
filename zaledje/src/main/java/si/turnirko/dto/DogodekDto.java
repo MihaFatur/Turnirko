@@ -2,6 +2,7 @@
 package si.turnirko.dto;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import si.turnirko.modeli.Disciplina;
 import si.turnirko.modeli.Dogodek;
@@ -37,7 +38,13 @@ public record DogodekDto(
         Integer zmagZaSrecanje,
         boolean tekmaZaTretjeMesto,
         /* Vir turnirja (V27): uvozen dogodek je samo za branje. */
-        VirTekmovanja vir
+        VirTekmovanja vir,
+        /* Sistem SV_REGIJA: stevilo nivojev in rocna razdelitev po nivojih, kot ju je
+           vpisal organizator (prazno = samodejno); drugod prazno. */
+        Integer steviloNivojev,
+        List<Integer> velikostiNivojev,
+        /* Sistem SV_REGIJA: rangov iz skupine v en zreb po nivojih (prazno = povsod 2). */
+        List<Integer> rangovVZreb
 ) {
 
     /* Brez stevcev - za odgovor ob nastanku dogodka, ko jih se ni. */
@@ -66,7 +73,10 @@ public record DogodekDto(
                 dogodek.getFormatSrecanja(),
                 dogodek.getZmagZaSrecanje(),
                 dogodek.isTekmaZaTretjeMesto(),
-                dogodek.getTurnir().getVir()
+                dogodek.getTurnir().getVir(),
+                dogodek.getSteviloNivojev(),
+                dogodek.velikostiNivojevSeznam(),
+                dogodek.rangovVZrebSeznam()
         );
     }
 }

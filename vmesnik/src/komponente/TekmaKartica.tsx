@@ -9,6 +9,7 @@
 import type { KeyboardEvent, PointerEvent } from 'react'
 
 import type { TekmaDto, Udelezenec } from '../api/tipi'
+import { kratekKlub } from '../pomozno/oblikovanje'
 import { SpremembaRatinga } from './SpremembaRatinga'
 
 /* Kaj pomeni klik na tekmo. Odloci stran, ker samo ona ve, kdo gleda:
@@ -41,7 +42,7 @@ export function klubZaIzpis(udelezenec: Udelezenec): string | null {
   if (klub && udelezenec.polnoIme.toLocaleLowerCase('sl').startsWith(klub.toLocaleLowerCase('sl'))) {
     return null
   }
-  return klub
+  return klub ? kratekKlub(klub) : klub
 }
 
 /* Kratka oznaka posebnega izida ob rezultatu. */

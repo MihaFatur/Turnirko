@@ -109,6 +109,26 @@ public class Tekma {
     @Column(name = "id_prenesena")
     private Long idPrenesena;
 
+    /* SV_REGIJA (V42): zreb, ki mu tekma pripada, in razpon mest, ki ga
+       odloca ("za 5.-8. mesto" = razpon 5-8; finale 1-2). Skupinske tekme in
+       tekme drugih sistemov imajo vse prazno. Tekma, ki je zadnja na svoji
+       poti, nosi se mesto, ki ga zmagovalec oz. porazenec dokoncno dobi -
+       iz njih nastane koncna razvrstitev. */
+    @Column(name = "id_zreb")
+    private Long idZreb;
+
+    @Column(name = "razpon_od")
+    private Integer razponOd;
+
+    @Column(name = "razpon_do")
+    private Integer razponDo;
+
+    @Column(name = "mesto_zmagovalca")
+    private Integer mestoZmagovalca;
+
+    @Column(name = "mesto_porazenca")
+    private Integer mestoPorazenca;
+
     /* Optimisticno zaklepanje - dva socasna vnosa rezultata se ne moreta
        tiho prepisati; drugi dobi napako in mora poskusiti znova. */
     @Version
@@ -188,4 +208,19 @@ public class Tekma {
 
     /* Ali tekma samo nosi izid, prenesen iz predtekmovanja (in se ni igrala). */
     public boolean jePrenesena() { return idPrenesena != null; }
+
+    public Long getIdZreb() { return idZreb; }
+    public void setIdZreb(Long idZreb) { this.idZreb = idZreb; }
+
+    public Integer getRazponOd() { return razponOd; }
+    public void setRazponOd(Integer razponOd) { this.razponOd = razponOd; }
+
+    public Integer getRazponDo() { return razponDo; }
+    public void setRazponDo(Integer razponDo) { this.razponDo = razponDo; }
+
+    public Integer getMestoZmagovalca() { return mestoZmagovalca; }
+    public void setMestoZmagovalca(Integer mestoZmagovalca) { this.mestoZmagovalca = mestoZmagovalca; }
+
+    public Integer getMestoPorazenca() { return mestoPorazenca; }
+    public void setMestoPorazenca(Integer mestoPorazenca) { this.mestoPorazenca = mestoPorazenca; }
 }

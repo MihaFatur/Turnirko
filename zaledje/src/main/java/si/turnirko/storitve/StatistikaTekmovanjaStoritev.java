@@ -86,7 +86,7 @@ public class StatistikaTekmovanjaStoritev {
     /* Pod tem stevilom odigranih tekem zavihka ni. Pri sestih tekmah je
        "najbolj delaven igralec" nakljucje in ne ugotovitev, "klub turnirja" pa
        tisti, ki je pripeljal dva bratranca. */
-    static final int PRAG_TEKEM = 10;
+    static final int PRAG_TEKEM = 9;
 
     /* Najmanj tekem, da igralec sploh pride v vrstico "zid" - brez praga bi jo
        vzel vsak, ki je odigral eno tekmo brez izgubljenega niza. */

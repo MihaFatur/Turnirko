@@ -59,19 +59,22 @@ public class SkupineStoritev {
     private final RazvrstitevStoritev razvrstitevStoritev;
     private final ZrebStoritev zrebStoritev;
     private final NosilciStoritev nosilci;
+    private final SvRegijaStoritev svRegija;
 
     public SkupineStoritev(SkupinaRepozitorij skupinaRepozitorij,
                            PrijavaRepozitorij prijavaRepozitorij,
                            TekmaRepozitorij tekmaRepozitorij,
                            RazvrstitevStoritev razvrstitevStoritev,
                            ZrebStoritev zrebStoritev,
-                           NosilciStoritev nosilci) {
+                           NosilciStoritev nosilci,
+                           SvRegijaStoritev svRegija) {
         this.skupinaRepozitorij = skupinaRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.razvrstitevStoritev = razvrstitevStoritev;
         this.zrebStoritev = zrebStoritev;
         this.nosilci = nosilci;
+        this.svRegija = svRegija;
     }
 
     @Transactional
@@ -119,6 +122,10 @@ public class SkupineStoritev {
             if (predtekmovanjeKoncano && !finalneZeObstajajo) {
                 zgenerirajFinalneSkupine(koncana.getDogodek(), skupine, prijave, tekme);
             }
+        } else if (sistem == SistemTekmovanja.SV_REGIJA) {
+            // nivoji tecejo neodvisno: zreba nivoja nastaneta, ko so odigrane SKUPINE
+            // TEGA nivoja, ne ko je odigran cel dogodek
+            svRegija.obKoncaniSkupinski(koncana.getDogodek(), skupine, prijave, tekme);
         }
     }
 

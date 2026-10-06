@@ -7,11 +7,15 @@
 import { Link } from 'react-router-dom'
 
 import type { VrsticaLestviceDto } from '../api/tipi'
+import { kratekKlub } from '../pomozno/oblikovanje'
 
 interface Lastnosti {
   vrstice: VrsticaLestviceDto[]
   /* Koliko najboljših napreduje (obarva vrstice napredovanja). */
   napreduje?: number
+  /* Do katerega mesta gre drugi pas (SV regija: 3.–4. mesto v tolažilni žreb);
+     vrstice med napreduje in tem mestom dobijo svetlejši ton iste barve. */
+  tolazilni?: number
   /* Strnjena različica za odprto skupino: šest stolpcev je tam preveč,
      ostane le, kar odloča o napredovanju (mesto, ime, Z, P, nizi).
      Odigrane so vsota Z + P, razliko pa bralec izpelje iz nizov. */
@@ -19,7 +23,13 @@ interface Lastnosti {
   ekipno?: boolean
 }
 
-export function Lestvica({ vrstice, napreduje, strnjena = false, ekipno = false }: Lastnosti) {
+export function Lestvica({
+  vrstice,
+  napreduje,
+  tolazilni,
+  strnjena = false,
+  ekipno = false,
+}: Lastnosti) {
   if (vrstice.length === 0) {
     return <p className="obvestilo">Ni še udeležencev.</p>
   }
@@ -65,9 +75,20 @@ export function Lestvica({ vrstice, napreduje, strnjena = false, ekipno = false 
           {vrstice.map((vrstica, indeks) => {
             const mesto = vrstica.mesto ?? indeks + 1
             const napreduje_ = napreduje !== undefined && mesto <= napreduje
+            const tolazilni_ =
+              !napreduje_ && tolazilni !== undefined && napreduje !== undefined && mesto <= tolazilni
             const razlika = vrstica.niziZa - vrstica.niziProti
             return (
-              <tr key={vrstica.idPrijave} className={napreduje_ ? 'lestvica__vrstica--napreduje' : ''}>
+              <tr
+                key={vrstica.idPrijave}
+                className={
+                  napreduje_
+                    ? 'lestvica__vrstica--napreduje'
+                    : tolazilni_
+                      ? 'lestvica__vrstica--tolazilni'
+                      : ''
+                }
+              >
                 <td className="lestvica__mesto">
                   {mesto}
                   {/* Znamenje ima svojo stalno sirino, ko je v tabeli sploh
@@ -91,7 +112,7 @@ export function Lestvica({ vrstice, napreduje, strnjena = false, ekipno = false 
                     <span className="lestvica__ime">{vrstica.polnoIme}</span>
                   )}
                   {vrstica.klub && !imeVsebujeKlub(vrstica) && (
-                    <span className="lestvica__klub"> {vrstica.klub}</span>
+                    <span className="lestvica__klub"> {ekipno ? vrstica.klub : kratekKlub(vrstica.klub)}</span>
                   )}
                 </td>
                 {!strnjena && (

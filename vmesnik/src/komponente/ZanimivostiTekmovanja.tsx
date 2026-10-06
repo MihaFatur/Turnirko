@@ -39,6 +39,7 @@ import {
   sklonTock,
   sklonZmag,
 } from '../pomozno/oblikovanje'
+import { PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
 
 interface Lastnosti {
   podatki: StatistikaTekmovanjaDto
@@ -50,8 +51,9 @@ export function ZanimivostiTekmovanja({ podatki: s, jeLiga }: Lastnosti) {
   if (!s.dovoljPodatkov) {
     return (
       <p className="obvestilo">
-        Zanimivosti se pokažejo, ko je odigranih vsaj deset tekem. Pri manj bi bila
-        vsaka »najboljša« vrstica naključje in ne ugotovitev.
+        Zanimivosti se pokažejo, ko je odigranih vsaj {PRAG_ZANIMIVOSTI}{' '}
+        {sklonTekem(PRAG_ZANIMIVOSTI)}. Pri manj bi bila vsaka »najboljša« vrstica
+        naključje in ne ugotovitev.
       </p>
     )
   }

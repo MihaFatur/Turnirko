@@ -17,6 +17,7 @@ import { dogodkiApi, turnirjiApi } from '../api/zahteve'
 import type { FazaTekme, MrezaDto, TekmaDto } from '../api/tipi'
 import { OZNAKE_SPOL_KATEGORIJA, imeUdelezenca } from '../api/tipi'
 import { imeKola, sklonListkov } from '../pomozno/oblikovanje'
+import { imeTekmeZreba } from '../pomozno/svRegija'
 import { Listek } from '../komponente/Listek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 
@@ -133,6 +134,7 @@ function pripraviListke(podatki: MrezaDto | undefined): { tekma: TekmaDto; oznak
       (a, b) =>
         RANG_FAZE[a.faza] - RANG_FAZE[b.faza] ||
         (a.idSkupina ?? 0) - (b.idSkupina ?? 0) ||
+        (a.idZreb ?? 0) - (b.idZreb ?? 0) ||
         a.kolo - b.kolo ||
         a.pozicija - b.pozicija,
     )
@@ -143,6 +145,17 @@ function oznakaFaze(tekma: TekmaDto, zadnjeKolo: number, podatki: MrezaDto): str
   if (tekma.faza === 'SKUPINA') {
     const skupina = podatki.skupine.find((s) => s.id === tekma.idSkupina)
     return skupina ? `Skupina ${skupina.oznaka} · ${tekma.kolo}. kolo` : `${tekma.kolo}. kolo`
+  }
+  /* SV regija: tekma žreba nosi razpon mest, ki ga odloča (»Nivo 2 · Za 21. mesto«). */
+  if (tekma.idZreb !== null && tekma.razponOd !== null && tekma.razponDo !== null) {
+    for (const nivo of podatki.svRegija?.nivoji ?? []) {
+      const zreb = nivo.zrebi.find((z) => z.id === tekma.idZreb)
+      if (zreb) {
+        return `Nivo ${nivo.nivo} · ${imeTekmeZreba(
+          tekma.razponOd, tekma.razponDo, zreb.prvoMesto, zreb.indeks === 0,
+        )}`
+      }
+    }
   }
   if (tekma.faza === 'TOLAZILNI') return 'Za 3. mesto'
   return imeKola(tekma.kolo, zadnjeKolo)

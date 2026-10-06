@@ -157,9 +157,16 @@ public class NosilciStoritev {
 
     /* Nosilska mesta izlocilnega dela po skupinah. Oba seznama sta po
        skupinah: zmagovalci.get(i) in drugi.get(i) sta iz iste skupine,
-       skupina 0 (A) je najmocnejsa. */
+       skupina 0 (A) je najmocnejsa.
+
+       drugi.get(i) je lahko prazen (null): skupina z manj igralci (npr. tri
+       namesto stirih) drugouvrscenega za ta zreb nima. SV_REGIJA isto metodo
+       uporabi za tolazilni zreb, kjer sta "zmagovalec" in "drugi" tretje- in
+       cetrtouvrsceni. Seznam, ki ga vrne, ima toliko nosilcev, kolikor je
+       udelezencev. */
     public List<Prijava> vMrezoIzSkupin(List<Prijava> zmagovalci, List<Prijava> drugi) {
-        int velikostMreze = najblizjaPotencaDve(zmagovalci.size() + drugi.size());
+        int stDrugih = (int) drugi.stream().filter(java.util.Objects::nonNull).count();
+        int velikostMreze = najblizjaPotencaDve(zmagovalci.size() + stDrugih);
         int[] indeksMesta = indeksiNosilskihMest(velikostMreze);
 
         List<Prijava> najboljsi = null;
@@ -178,7 +185,8 @@ public class NosilciStoritev {
     private List<Prijava> enZrebIzSkupin(List<Prijava> zmagovalci, List<Prijava> drugi,
                                          int velikostMreze, int[] indeksMesta) {
         int stSkupin = zmagovalci.size();
-        Prijava[] nosilci = new Prijava[stSkupin + drugi.size()];
+        int stDrugih = (int) drugi.stream().filter(java.util.Objects::nonNull).count();
+        Prijava[] nosilci = new Prijava[stSkupin + stDrugih];
 
         // zmagovalci skupin na nosilska mesta 1..N, premesani po pasovih
         List<Integer> skupinaNaMestu = premesajPasove(zaporedje(stSkupin));
@@ -203,8 +211,16 @@ public class NosilciStoritev {
            zahteva: nosilski mesti 2k-1 in 2k sta vedno v razlicnih polovicah,
            zato se zmagovalci in drugouvrsceni po polovicah izidejo. */
         for (int skupina : premesano(zaporedje(stSkupin))) {
-            List<Integer> polovica = zmagovalecJeZgoraj[skupina] ? spodaj : zgoraj;
             Prijava drugouvrsceni = drugi.get(skupina);
+            if (drugouvrsceni == null) {
+                continue; // skupina drugouvrscenega nima
+            }
+            List<Integer> polovica = zmagovalecJeZgoraj[skupina] ? spodaj : zgoraj;
+            if (polovica.isEmpty()) {
+                // ob manjkajocih drugouvrscenih polovici nista vec uravnotezeni:
+                // pravilo popusti in igralec gre v drugo polovico
+                polovica = polovica == spodaj ? zgoraj : spodaj;
+            }
             nosilci[vzemiMesto(polovica, drugouvrsceni, nosilci, velikostMreze) - 1] = drugouvrsceni;
         }
         return new ArrayList<>(Arrays.asList(nosilci));

@@ -53,15 +53,11 @@ import {
 } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 import { useTelefon } from '../pomozno/telefon'
+import { PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
 
 /* Zavihka strani turnirja. »Zanimivosti« so čez VSE dogodke skupaj — na ravni
    ene kategorije je tekem pogosto premalo, da bi kaj povedale. */
 type PogledTurnirja = 'DOGODKI' | 'ZANIMIVOSTI'
-
-/* Pod tem številom odigranih tekem zavihka ne ponudimo. Isti prag ima
-   strežnik (StatistikaTekmovanjaStoritev.PRAG_TEKEM); tu je zato, da gumba,
-   ki bi povedal samo »premalo podatkov«, sploh ni. */
-const PRAG_ZANIMIVOSTI = 10
 
 export function TurnirStran() {
   const { id } = useParams()
@@ -704,6 +700,16 @@ function NovDogodekOkno({
             <input type="checkbox" checked={zaTretje} onChange={(d) => nastaviZaTretje(d.target.checked)} />
             <span>Tekma za 3. mesto (poraženca polfinalov)</span>
           </label>
+        )}
+
+        {sistemDogodka === 'SV_REGIJA' && (
+          <p className="namig">
+            Igralci so po jakosti razdeljeni v nivoje (privzeto po 16), v vsakem nivoju igrajo
+            skupine po 4 vsak z vsakim. Prvo- in drugouvrščeni gredo v glavni žreb nivoja,
+            tretje- in četrtouvrščeni v tolažilni žreb; žreb se igra za vsa mesta. Število
+            nivojev, velikosti skupin, ročni vpis skupin in razporeditev v žrebu nastaviš v
+            pripravi dogodka. Igra se posamično.
+          </p>
         )}
 
         {sistemDogodka === 'SKUPINE_ZA_MESTA' && (

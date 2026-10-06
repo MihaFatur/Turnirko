@@ -5323,6 +5323,16 @@ td.nizi-okno__niz--dobljen {
   box-shadow: inset 4px 0 0 var(--barva-poudarek);
 }
 
+/* SV regija: 3.–4. mesto v skupini gre v tolažilni žreb - isti pomen kot zelena
+   (naprej), a svetlejši ton, ker je to drugi žreb in ne zunaj tekmovanja. */
+.lestvica__vrstica--tolazilni td:first-child {
+  box-shadow: inset 4px 0 0 var(--barva-poudarek-srednje);
+}
+
+.legenda__znak--tolazilni {
+  background: var(--barva-poudarek-srednje);
+}
+
 .lestvica__vrsta--izpade td:first-child {
   box-shadow: inset 4px 0 0 var(--barva-negativna);
 }
@@ -16622,5 +16632,414 @@ a.ekipa-okno__srecanje:hover {
   .premium-oglas__izid-free,
   .premium-oglas__izid-premium {
     font-size: 32px;
+  }
+}
+
+/* ============================================================
+   SV regija: nivoji, skupine in žrebi za vsa mesta
+   ============================================================ */
+
+/* Orodja organizatorja nad nivoji (popravek skupin, razveljavitev žreba). */
+.sv-orodja {
+  margin-top: var(--r3);
+  padding-bottom: var(--r2);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+/* Žreb nivoja: naslov z razponom mest, dejanja organizatorja ob njem. Črta pod
+   naslovom je skupna, da dejanja ne visijo pod črto. */
+.sv-zreb__glava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--r1) var(--r3);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.sv-zreb__glava .podnaslov-sekcije {
+  flex: 1 1 auto;
+  margin: 0;
+  border-bottom: none;
+}
+
+.sv-zreb__dejanja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  padding-bottom: var(--r1);
+}
+
+/* Žreb za vsa mesta: stolpec je kolo, v njem razponi mest. Stolpec ima več
+   podblokov (zmagovalci in poraženci), zato se tekme ne razporejajo po
+   višini stolpca kot pri navadni mreži, ampak se zložijo od vrha. */
+/* Razrez v pripravi: vrstica na nivo - oznaka, razpon mest, opis. */
+.sv-priprava {
+  margin-bottom: var(--r5);
+}
+
+.sv-razrez {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--r2);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.sv-razrez__vrstica {
+  display: grid;
+  grid-template-columns: 44px 144px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--r2);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.sv-razrez__oznaka {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+}
+
+.sv-razrez__mesta {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.sv-razrez__opis {
+  font-size: 15px;
+}
+
+.sv-priprava__obrazec {
+  margin-top: var(--r2);
+}
+
+/* Urejevalnik skupin: kartica na skupino, igralci v vrsticah, ob imenu
+   izbirnik skupine, v katero se igralec prestavi. */
+.sv-urejanje__nivo {
+  margin-top: var(--r3);
+}
+
+.sv-urejanje__skupine {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--r2);
+  margin-top: var(--r2);
+}
+
+.sv-urejanje__skupina {
+  background: var(--barva-bela);
+  border: 1px solid var(--barva-crta);
+  border-top: 4px solid var(--barva-glavna);
+  padding: var(--r1) var(--r2) var(--r2);
+}
+
+.sv-urejanje__glava {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.sv-urejanje__glava .gumb {
+  margin-left: auto;
+}
+
+.sv-urejanje__oznaka {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+}
+
+.sv-urejanje__clani {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 24px;
+}
+
+.sv-urejanje__clani li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--r1);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.sv-urejanje__ime {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sv-urejanje__podrobnost {
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
+}
+
+.sv-urejanje__clani select {
+  min-width: 72px;
+}
+
+@media (max-width: 640px) {
+  .sv-razrez__vrstica {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 2px var(--r1);
+  }
+
+  .sv-razrez__opis {
+    grid-column: 1 / -1;
+  }
+
+  .sv-urejanje__skupine {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- SV regija: žrebi kot zložljive vrstice in drevo za vsa mesta ---------- */
+
+/* Vsebina odprte vrstice, ki ne sodi v dva stolpca (drevo žreba, razvrstitev nivoja). */
+.skupina-vsebina__cela {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.sv-zrebi {
+  margin-top: var(--r5);
+}
+
+/* Dejanja organizatorja nad drevesom: opomba levo, gumbi desno. */
+.sv-zreb__glava {
+  margin-bottom: var(--r2);
+}
+
+.sv-zreb__glava .namig {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+/* Razvrstitev nivoja: en stolpec, vrstice ne rastejo čez širino zaslona. */
+.vrstni-red--en {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 760px;
+  margin-top: 0;
+}
+
+.vrstni-red__vse {
+  margin-top: var(--r2);
+}
+
+/* Na namizju je klub v svojem stolpcu (ime in klub v eni vrstici, ne dve vrstici na
+   vsakega igralca): 16 vrstic je tako dvakrat nižjih. Na telefonu ostane klub pod
+   imenom - tam stolpca zanj ni. */
+@media (min-width: 641px) {
+  /* Brez ratinga ni četrtega stolpca. */
+  .vrstni-red--brez-ratinga .vrstni-red__vrstica {
+    grid-template-columns: 56px minmax(0, 1fr) 88px;
+  }
+
+  .vrstni-red--en .vrstni-red__ime {
+    display: contents;
+  }
+
+  .vrstni-red--en.vrstni-red--brez-ratinga .vrstni-red__vrstica {
+    grid-template-columns: 56px minmax(0, 1.2fr) minmax(0, 1fr) 88px;
+  }
+
+  .vrstni-red--en .vrstni-red__vrstica {
+    grid-template-columns: 56px minmax(0, 1.2fr) minmax(0, 1fr) 88px 72px;
+    padding: 10px 0;
+  }
+
+  .vrstni-red--en .vrstni-red__klub {
+    font-size: var(--tip-drobno);
+  }
+}
+
+.sv-razvrstitev {
+  margin-top: var(--r3);
+}
+
+/* Drevo: mere (kartica, razmik, stolpec) so tu, v JS je samo topologija. --s je
+   stolpec, --y višina sredine v enotah vrstice (--korak), --n število stolpcev,
+   --v višina platna v enotah. */
+.sv-drevo {
+  --vis: 64px;
+  --korak: 80px;
+  --sir: 200px;
+  --vrzel: 32px;
+  --kol: calc(var(--sir) + var(--vrzel));
+  --sir-mest: 216px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--r4);
+}
+
+.sv-drevo__naslov {
+  margin: 0 0 var(--r1);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--barva-crta);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.sv-drevo__ovoj {
+  overflow-x: auto;
+  padding-bottom: var(--r1);
+}
+
+.sv-drevo__stolpci {
+  display: flex;
+  width: calc(var(--n) * var(--kol) + var(--sir-mest));
+  padding-bottom: var(--r1);
+}
+
+.sv-drevo__glava {
+  flex: 0 0 var(--kol);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.sv-drevo__glava--mesta {
+  flex: 0 0 var(--sir-mest);
+}
+
+.sv-drevo__platno {
+  position: relative;
+  width: calc(var(--n) * var(--kol) + var(--sir-mest));
+  height: calc(var(--v) * var(--korak));
+}
+
+.sv-drevo__tekma {
+  position: absolute;
+  left: calc(var(--s) * var(--kol));
+  top: calc(var(--y) * var(--korak) - var(--vis) / 2);
+  width: var(--sir);
+  height: var(--vis);
+  display: flex;
+  align-items: center;
+}
+
+.sv-drevo__tekma .tekma {
+  width: 100%;
+}
+
+/* Kartica je v drevesu ožja: ime v eni vrstici (daljše se skrajša, polno ime je v
+   namigu), brez kluba in spremembe ratinga - bereta se na profilu. */
+.sv-drevo .tekma__stran {
+  min-height: calc(var(--vis) / 2);
+  padding: 0 10px;
+  gap: 8px;
+}
+
+.sv-drevo .tekma__ime {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 15px;
+}
+
+.sv-drevo .tekma__ime-vrsta {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sv-drevo .tekma__klub,
+.sv-drevo .sprememba-rating {
+  display: none;
+}
+
+.sv-drevo .tekma__izid {
+  padding: 0 10px 4px;
+}
+
+.sv-drevo__crta {
+  position: absolute;
+  display: block;
+  background: var(--barva-crnilo-4);
+  pointer-events: none;
+}
+
+/* Iz kartice vira ven, do sredine vrzeli. */
+.sv-drevo__crta--iz {
+  left: calc(var(--s) * var(--kol) + var(--sir));
+  top: calc(var(--y) * var(--korak));
+  width: calc(var(--vrzel) / 2);
+  height: 1px;
+}
+
+/* Navpična povezava med viroma in tekmo. */
+.sv-drevo__crta--navpicno {
+  left: calc(var(--s) * var(--kol) + var(--sir) + var(--vrzel) / 2);
+  top: calc(var(--y) * var(--korak));
+  width: 1px;
+  height: calc(var(--dolzina) * var(--korak) + 1px);
+}
+
+/* Od sredine vrzeli v tekmo. */
+.sv-drevo__crta--vstop {
+  left: calc(var(--s) * var(--kol) - var(--vrzel) / 2);
+  top: calc(var(--y) * var(--korak));
+  width: calc(var(--vrzel) / 2);
+  height: 1px;
+}
+
+/* Kdo je dobil par mest: ob koncu odseka, na višini njegove zadnje tekme. */
+.sv-drevo__mesta {
+  position: absolute;
+  left: calc(var(--s) * var(--kol));
+  top: calc(var(--y) * var(--korak));
+  width: calc(var(--sir-mest) - var(--r2));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateY(-50%);
+}
+
+.sv-drevo__mesta li {
+  display: flex;
+  gap: var(--r1);
+  padding: 4px 0;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sv-drevo__mesta li:first-child {
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}
+
+.sv-drevo__mesto {
+  flex: 0 0 32px;
+  font: 600 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+@media (max-width: 640px) {
+  .sv-drevo {
+    --vis: 56px;
+    --korak: 68px;
+    --sir: 164px;
+    --vrzel: 24px;
+    --sir-mest: 176px;
+  }
+
+  .sv-drevo .tekma__stran {
+    padding: 0 8px;
+  }
+
+  .sv-drevo .tekma__ime {
+    font-size: 14px;
   }
 }

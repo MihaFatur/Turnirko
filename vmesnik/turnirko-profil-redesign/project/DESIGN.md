@@ -212,6 +212,7 @@ primitivi sistema.** Preden napišeš nov razred, preveri, ali obstoječi zadoš
 | `.dvostolpicno`, `.dvostolpicno--lestvica`, `.skupine`, `.kartice`, `.kartica` | postavitve |
 | `.izbor`, `.izbor__crta`, `.izbor__vrstica`, `.izbor__mesto`, `.izbor__skupina`, `.izbor__gumbi` | jakostni vrstni red s črto reza |
 | `.mreza`, `.dvoboj`, `.dvoboj__oznaka` | izločilna mreža |
+| `.sv-drevo`, `.sv-drevo__odsek`, `.sv-drevo__tekma`, `.sv-drevo__crta`, `.sv-drevo__mesta` | drevo žreba za vsa mesta (SV regija): odseki po mestih, kartice na izmerjenih višinah, črte 1 px, uvrstitev ob koncu odseka |
 | `.postava`, `.postava__stran`, `.postava__mesto`, `.postava__oznaka`, `.postava__dvojice` | postava ekipnega srečanja |
 | `.srecanje__glava`, `.srecanje__izid`, `.srecanje__tabela`, `.srecanje__zmaga` | ekipno srečanje |
 | `.liga__kolo`, `.liga__srecanja`, `.liga__srecanje`, `.liga__ekipe`, `.opis-mreza` | liga |

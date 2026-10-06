@@ -165,12 +165,42 @@ public class TurnirjiStoritev {
             throw new NeveljavenVnosIzjema("Kategorija MESANO pomeni strogo mesan par in je"
                     + " mogoca samo pri dvojicah. Za odprt dogodek izberi KDORKOLI.");
         }
+        if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SV_REGIJA
+                && (dogodek.jeDvojice() || dogodek.jeEkipno())) {
+            throw new NeveljavenVnosIzjema(
+                    "SV regija se igra posamično: nivoje razvrsti jakost igralca.");
+        }
     }
 
     /* Format TOP potrebuje stevilo skupin in velikost skupine - njun zmnozek
        pove, koliko najboljsih prijavljenih sploh igra. Pri drugih sistemih
        nastavitvi namenoma ostaneta prazni, da ne zavajata. */
     private void nastaviSkupinskeNastavitve(Dogodek dogodek, DogodekVnos vnos) {
+        if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SV_REGIJA) {
+            // vse je neobvezno: brez nastavitev je nivo 4 skupine po 4 igralci, nivojev
+            // pa toliko, kolikor dovoli stevilo prijav (SvRegijaStoritev.razrez)
+            Integer skupin = vnos.steviloSkupin();
+            Integer velikost = vnos.velikostSkupine();
+            Integer nivojev = vnos.steviloNivojev();
+            if (skupin != null && (skupin < 1 || skupin > SvRegijaStoritev.NAJVEC_SKUPIN)) {
+                throw new NeveljavenVnosIzjema("Skupin na nivo mora biti med 1 in "
+                        + SvRegijaStoritev.NAJVEC_SKUPIN + ".");
+            }
+            if (velikost != null && (velikost < 2 || velikost > 24)) {
+                throw new NeveljavenVnosIzjema("Velikost skupine mora biti med 2 in 24.");
+            }
+            if (nivojev != null && (nivojev < 1 || nivojev > SvRegijaStoritev.NAJVEC_NIVOJEV)) {
+                throw new NeveljavenVnosIzjema("Število nivojev mora biti med 1 in "
+                        + SvRegijaStoritev.NAJVEC_NIVOJEV + ".");
+            }
+            dogodek.setSteviloSkupin(skupin);
+            dogodek.setVelikostSkupine(velikost);
+            dogodek.setSteviloNivojev(nivojev);
+            return;
+        }
+        if (vnos.steviloNivojev() != null) {
+            throw new NeveljavenVnosIzjema("Nivoje ima samo sistem SV regija.");
+        }
         if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_ZA_MESTA) {
             // stevilo predtekmovalnih skupin je neobvezno - brez njega ga doloci zreb
             if (vnos.steviloSkupin() != null) {

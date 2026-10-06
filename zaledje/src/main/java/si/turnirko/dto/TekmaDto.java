@@ -8,6 +8,7 @@ import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
+import si.turnirko.modeli.VlogaIzvora;
 
 public record TekmaDto(
         Long id,
@@ -41,7 +42,18 @@ public record TekmaDto(
         /* Prenesen izid iz predtekmovanja (finalna skupina za mesta): tekma,
            katere izid nosi. Vmesnik jo oznaci kot preneseno in ne kot
            odigrano. */
-        Long idPrenesena
+        Long idPrenesena,
+        /* SV_REGIJA: zreb, ki mu tekma pripada, in razpon mest, ki ga odloca
+           ("za 5.-8. mesto" = 5 do 8); prazno pri skupinski tekmi in drugih
+           sistemih. */
+        Long idZreb,
+        Integer razponOd,
+        Integer razponDo,
+        /* Tekma, iz katere ZMAGOVALCA pride stran 1 oz. 2 (napredovanje po drevesu);
+           prazno, kadar je stran vpisan igralec ali pride iz porazenca. Vmesnik iz
+           tega narise povezave drevesa za vsa mesta. */
+        Long idIzvorZmagovalca1,
+        Long idIzvorZmagovalca2
 ) {
 
     /* Udelezenec tekme (stran 1 ali 2) - igralec, PAR ali EKIPA.
@@ -103,7 +115,12 @@ public record TekmaDto(
                 ratingPred1,
                 ratingPred2,
                 idSrecanje,
-                tekma.getIdPrenesena()
+                tekma.getIdPrenesena(),
+                tekma.getIdZreb(),
+                tekma.getRazponOd(),
+                tekma.getRazponDo(),
+                tekma.getVlogaIzvora1() == VlogaIzvora.ZMAGOVALEC ? tekma.getIdIzvorTekma1() : null,
+                tekma.getVlogaIzvora2() == VlogaIzvora.ZMAGOVALEC ? tekma.getIdIzvorTekma2() : null
         );
     }
 }

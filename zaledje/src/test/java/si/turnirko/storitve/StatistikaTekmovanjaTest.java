@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +83,15 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         Dogodek dogodek = kroznoSestih();
         Long idTurnirja = dogodek.getTurnir().getId();
         List<Igralec> poJakosti = poJakosti(dogodek);
-        odigraj(dogodek, poJakosti);
+        /* Presenecenje meri rating PRED tekmo, ta pa se premika z vsako
+           odigrano. Ce bi izjema padla zgodaj, bi najsibkejsi dobil okoli 40 tock,
+           najmocnejsi jih izgubil, in kaksna kasnejsa tekma (npr. najmocnejsi
+           proti drugemu, ki je zdaj nad njim) bi imela vecji razmik ratingov -
+           pri zrebanem vrstnem redu kol je to ~18 % zrebov. Ko je izjema
+           zadnja, je razmik najvecji: najmocnejsi je ze dobil stiri tekme,
+           najsibkejsi stiri izgubil (izmerjeno: vsaj 261 tock proti najvec
+           114 pri ostalih, ne glede na vrstni red ostalih tekem). */
+        odigraj(dogodek, poJakosti, List.of(new Izjema(0, 5, TOCKE_PRESENECENJA)), true);
         Igralec najmocnejsi = poJakosti.get(0);
         Igralec najsibkejsi = poJakosti.get(5);
 
@@ -250,6 +259,26 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         assertTrue(s.delavci().isEmpty());
     }
 
+    /* Meja je natanko devet odigranih tekem: z osmimi zavihka se ni, z deveto
+       je. Stevilka je odlocitev lastnika, zato je tu izrecna in ne prebrana iz
+       konstante - test, ki bi jo bral iz nje, bi pritrdil vsaki vrednosti. */
+    @Test
+    void zavihekSePokazeZDevetoTekmo() {
+        Dogodek dogodek = kroznoSestih();
+        Long idTurnirja = dogodek.getTurnir().getId();
+        List<Tekma> tekme = tekmeDogodka(dogodek.getId());
+
+        for (int i = 0; i < 8; i++) {
+            tekmaStoritev.vnesiRezultat(tekme.get(i).getId(), new VnosRezultata(null, 3, 0, null, null));
+        }
+        assertFalse(statistikaTekmovanjaStoritev.zaTurnir(idTurnirja).dovoljPodatkov(),
+                "osem tekem je pod pragom");
+
+        tekmaStoritev.vnesiRezultat(tekme.get(8).getId(), new VnosRezultata(null, 3, 0, null, null));
+        assertTrue(statistikaTekmovanjaStoritev.zaTurnir(idTurnirja).dovoljPodatkov(),
+                "deveta tekma doseze prag");
+    }
+
     /* Turnir, ki v rating ne steje, dnevnika nima - vrstici o ratingu zato
        odpadeta, zavihek pa ostane. */
     @Test
@@ -394,18 +423,27 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
     }
 
     private void odigraj(Dogodek dogodek, List<Igralec> poJakosti, List<Izjema> izjeme) {
+        odigraj(dogodek, poJakosti, izjeme, false);
+    }
+
+    /* Z izjemeNazadnje se tekme z izjemo odigrajo za vsemi ostalimi; vrstni red
+       ostalih ostane tak, kot ga je dolocil zreb (sortiranje je stabilno). */
+    private void odigraj(Dogodek dogodek, List<Igralec> poJakosti, List<Izjema> izjeme,
+                         boolean izjemeNazadnje) {
         Map<Long, Integer> mesta = new HashMap<>();
         for (Prijava p : prijavaRepozitorij.najdiZaDogodek(dogodek.getId())) {
             mesta.put(p.getId(), poJakosti.indexOf(p.getIgralec()));
         }
 
-        for (Tekma t : tekmeDogodka(dogodek.getId())) {
+        List<Tekma> tekme = new ArrayList<>(tekmeDogodka(dogodek.getId()));
+        if (izjemeNazadnje) {
+            tekme.sort(Comparator.comparing(t -> izjemaTekme(t, mesta, izjeme) != null));
+        }
+
+        for (Tekma t : tekme) {
             int prvi = mesta.get(t.getPrijava1().getId());
             int drugi = mesta.get(t.getPrijava2().getId());
-            Izjema izjema = izjeme.stream()
-                    .filter(i -> Math.min(prvi, drugi) == i.mocnejsi()
-                            && Math.max(prvi, drugi) == i.sibkejsi())
-                    .findFirst().orElse(null);
+            Izjema izjema = izjemaTekme(t, mesta, izjeme);
             if (izjema == null) {
                 boolean prviMocnejsi = prvi < drugi;
                 tekmaStoritev.vnesiRezultat(t.getId(), new VnosRezultata(
@@ -417,6 +455,16 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
                     null, prviJeSibkejsi ? 3 : 2, prviJeSibkejsi ? 2 : 3, null,
                     tockeZaStran(izjema.tocke(), prviJeSibkejsi)));
         }
+    }
+
+    /* Izjema, ki velja za dvoboj te tekme (v obe smeri), ali null. */
+    private static Izjema izjemaTekme(Tekma t, Map<Long, Integer> mesta, List<Izjema> izjeme) {
+        int prvi = mesta.get(t.getPrijava1().getId());
+        int drugi = mesta.get(t.getPrijava2().getId());
+        return izjeme.stream()
+                .filter(i -> Math.min(prvi, drugi) == i.mocnejsi()
+                        && Math.max(prvi, drugi) == i.sibkejsi())
+                .findFirst().orElse(null);
     }
 
     /* Tocke nizov z vidika prijave 1: ce je tam zmagovalec, gredo naravnost,

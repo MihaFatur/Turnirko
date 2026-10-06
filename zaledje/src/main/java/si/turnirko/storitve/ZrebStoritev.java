@@ -34,7 +34,9 @@ import java.util.Random;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import si.turnirko.dto.SvVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
+import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.FazaTekme;
@@ -78,6 +80,7 @@ public class ZrebStoritev {
     private final EkipneTekmeStoritev ekipneTekme;
     private final KaderEkipeRepozitorij kaderRepozitorij;
     private final LastnistvoStoritev lastnistvo;
+    private final SvRegijaStoritev svRegija;
 
     public ZrebStoritev(DogodekRepozitorij dogodekRepozitorij,
                         PrijavaRepozitorij prijavaRepozitorij,
@@ -88,7 +91,8 @@ public class ZrebStoritev {
                         NosilciStoritev nosilci,
                         EkipneTekmeStoritev ekipneTekme,
                         KaderEkipeRepozitorij kaderRepozitorij,
-                        LastnistvoStoritev lastnistvo) {
+                        LastnistvoStoritev lastnistvo,
+                        SvRegijaStoritev svRegija) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -99,6 +103,7 @@ public class ZrebStoritev {
         this.ekipneTekme = ekipneTekme;
         this.kaderRepozitorij = kaderRepozitorij;
         this.lastnistvo = lastnistvo;
+        this.svRegija = svRegija;
     }
 
     /* Nakljucje zivi v NosilciStoritev, da je ves zreb - razporeditev nosilcev
@@ -148,18 +153,89 @@ public class ZrebStoritev {
             case SKUPINE_IZLOCILNI -> zrebSkupine(dogodek, prijave);
             case SKUPINE -> zrebSkupinePoJakosti(dogodek, prijave);
             case SKUPINE_ZA_MESTA -> zrebSkupine(dogodek, prijave);
+            case SV_REGIJA -> svRegija.izvediZrebSkupin(dogodek, zabeleziJakostnaMesta(prijave));
         };
         // ekipne tekme z obema ekipama dobijo srecanje (postava, posamicne tekme)
         if (dogodek.jeEkipno()) {
             ekipneTekme.zagotoviSrecanja(dogodek.getId());
         }
 
-        // zreb pomeni zacetek tekmovanja
+        zacniDogodek(dogodek);
+        return vseTekme;
+    }
+
+    /* Zreb pomeni zacetek tekmovanja. */
+    private static void zacniDogodek(Dogodek dogodek) {
         dogodek.setStatus(StatusTekmovanja.V_TEKU);
         if (dogodek.getTurnir().getStatus() == StatusTekmovanja.PRIPRAVA) {
             dogodek.getTurnir().setStatus(StatusTekmovanja.V_TEKU);
         }
-        return vseTekme;
+    }
+
+    /* SV_REGIJA: ROCNI vpis skupin namesto nakljucnega zreba. Nivoji po vrsti
+       (prvi je najmocnejsi), vsak s skupinami, vsaka s prijavami po id-ju.
+
+       Konca v isti tocki kot zreb (SvRegijaStoritev.zapisiSkupine), zato vse, kar
+       sledi - zreba nivojev, napredovanje, lestvice, rating - tece po
+       nespremenjeni kodi. Ce zreb ze obstaja in se ni zacel, se najprej
+       razveljavi: tako je isto dejanje tudi "popravi skupine po zrebu". */
+    @Transactional
+    public List<Tekma> izvediRocniZrebSv(Long idDogodka, SvVnos.Skupine vnos) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        if (dogodek.getSistemTekmovanja() != SistemTekmovanja.SV_REGIJA) {
+            throw new DomenskaIzjema("Ročni vpis skupin je mogoč samo pri sistemu SV regija.");
+        }
+        if (dogodek.getStatus() == StatusTekmovanja.V_TEKU) {
+            svRegija.razveljaviZrebSkupin(idDogodka);
+        }
+        if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Skupine je mogoče vpisati samo, dokler je dogodek v pripravi.");
+        }
+
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodekSStatusom(
+                idDogodka, Prijava.StatusPrijave.PRIJAVLJEN);
+        if (prijave.size() < 2) {
+            throw new DomenskaIzjema("Za žreb sta potrebna vsaj 2 prijavljena igralca"
+                    + " (trenutno: " + prijave.size() + ").");
+        }
+        java.util.Map<Long, Prijava> poId = new java.util.HashMap<>();
+        for (Prijava p : prijave) {
+            poId.put(p.getId(), p);
+        }
+        if (vnos == null || vnos.nivoji() == null) {
+            throw new NeveljavenVnosIzjema("Vpisan mora biti vsaj en nivo.");
+        }
+        List<List<List<Prijava>>> nivoji = new ArrayList<>();
+        java.util.Set<Long> videni = new java.util.HashSet<>();
+        for (SvVnos.Skupine.Nivo nivo : vnos.nivoji()) {
+            List<List<Prijava>> skupine = new ArrayList<>();
+            for (List<Long> idji : nivo.skupine()) {
+                List<Prijava> clani = new ArrayList<>();
+                for (Long id : idji) {
+                    Prijava prijava = poId.get(id);
+                    if (prijava == null) {
+                        throw new NeveljavenVnosIzjema(
+                                "Prijava " + id + " ni prijavljena na ta dogodek.");
+                    }
+                    videni.add(id);
+                    clani.add(prijava);
+                }
+                skupine.add(clani);
+            }
+            nivoji.add(skupine);
+        }
+        if (videni.size() != prijave.size()) {
+            throw new NeveljavenVnosIzjema("V skupine morajo biti razporejeni vsi prijavljeni ("
+                    + prijave.size() + "), vpisanih je " + videni.size() + ".");
+        }
+
+        zabeleziRatingObZrebu(prijave);
+        zabeleziJakostnaMesta(prijave);
+        List<Tekma> tekme = svRegija.zapisiSkupine(dogodek, nivoji);
+        zacniDogodek(dogodek);
+        return tekme;
     }
 
     // ---------------------------------------------------------------------
@@ -297,7 +373,7 @@ public class ZrebStoritev {
        Ker vrstni red vstopa nedotaknjen, pri jakostno urejenem seznamu ta
        metoda sama od sebe da zeleni razpored: prvi nosilec v prvem kolu igra
        z najsibkejsim, dvoboj prvih dveh nosilcev pa pade v zadnje kolo. */
-    private List<Tekma> kroznePare(Dogodek dogodek, List<Prijava> igralci, Long idSkupina) {
+    static List<Tekma> kroznePare(Dogodek dogodek, List<Prijava> igralci, Long idSkupina) {
         List<Prijava> krog = new ArrayList<>(igralci);
         boolean liho = krog.size() % 2 != 0;
         if (liho) {
@@ -598,7 +674,7 @@ public class ZrebStoritev {
                 .map(RatingStanje::getVrednost);
     }
 
-    private Tekma novaTekma(Dogodek dogodek, FazaTekme faza, int kolo, int pozicija) {
+    private static Tekma novaTekma(Dogodek dogodek, FazaTekme faza, int kolo, int pozicija) {
         Tekma tekma = new Tekma();
         tekma.setDogodek(dogodek);
         tekma.setFaza(faza);

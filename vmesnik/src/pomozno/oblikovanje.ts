@@ -233,6 +233,10 @@ export function sklonSkupin(n: number): string {
   return sklon(n, 'skupina', 'skupini', 'skupine', 'skupin')
 }
 
+export function sklonNivojev(n: number): string {
+  return sklon(n, 'nivo', 'nivoja', 'nivoji', 'nivojev')
+}
+
 export function sklonDogodkov(n: number): string {
   return sklon(n, 'dogodek', 'dogodka', 'dogodki', 'dogodkov')
 }
@@ -332,4 +336,34 @@ export function zVelikoZacetnico(besedilo: string): string {
   return besedilo.replace(/(^|[\s-])(\p{L})/gu, (_, pred: string, crka: string) =>
     pred + crka.toLocaleUpperCase('sl'),
   )
+}
+
+/* Klub za ozka mesta (lestvica, kartica tekme, končna razvrstitev): brez
+   splošnih predpon, ki jih ima vsak klub in zato ne povejo ničesar -
+   »NAMIZNOTENIŠKI KLUB SOBOTA, MURSKA SOBOTA« postane »Sobota, Murska Sobota«,
+   »TELESNO VZGOJNO DRUŠTVO PARTIZAN LJUTOMER« pa »Partizan Ljutomer«. Imena z
+   VELIKIMI ČRKAMI dobijo navadno pisavo. Kar se ne prepozna (»NTK Žalec«), ostane
+   nespremenjeno; polno ime je vedno na profilu kluba. */
+const SPLOSNE_PREDPONE =
+  /^(telesno vzgojno društvo|športno kulturno društvo|športno društvo|namiznoteniško društvo|namiznoteniški klub)\s+/i
+const MALE_BESEDE = new Set(['na', 'pri', 'v', 'ob', 'za', 'pod', 'nad', 'in', 'ter'])
+
+export function kratekKlub(klub: string): string {
+  const polno = klub.trim()
+  let kratko = polno.replace(SPLOSNE_PREDPONE, '')
+  // »Železničarski Namiznoteniški klub Maribor«: predpona je sredi imena
+  kratko = kratko.replace(/\s+namiznoteniški klub\s+/i, ' ')
+  if (kratko === '' || kratko.length < 3) return polno
+  if (kratko === kratko.toLocaleUpperCase('sl')) {
+    kratko = kratko
+      .toLocaleLowerCase('sl')
+      .split(/(\s+)/)
+      .map((beseda, indeks) =>
+        beseda.trim() === '' || (indeks > 0 && MALE_BESEDE.has(beseda))
+          ? beseda
+          : beseda.charAt(0).toLocaleUpperCase('sl') + beseda.slice(1),
+      )
+      .join('')
+  }
+  return kratko
 }

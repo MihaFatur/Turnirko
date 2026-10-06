@@ -14,7 +14,7 @@
 import { GlavaZavihki } from './GlavaTelefona'
 import { useTelefon } from '../pomozno/telefon'
 
-export type PogledDogodka = 'zakljucek' | 'skupine' | 'tekme' | 'mreza' | 'udelezenci'
+export type PogledDogodka = 'zakljucek' | 'skupine' | 'tekme' | 'mreza' | 'nivoji' | 'udelezenci'
 
 export interface PogledGumb {
   kljuc: PogledDogodka

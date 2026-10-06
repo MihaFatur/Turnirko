@@ -46,6 +46,10 @@ public class Skupina {
     @Column(name = "prvo_mesto")
     private Integer prvoMesto;
 
+    /* Nivo (tezavnostna skupina) sistema SV_REGIJA; drugod vedno 1. */
+    @Column(name = "nivo", nullable = false)
+    private int nivo = 1;
+
     protected Skupina() {}
 
     public Skupina(Dogodek dogodek, String oznaka) {
@@ -68,4 +72,7 @@ public class Skupina {
 
     public Integer getPrvoMesto() { return prvoMesto; }
     public void setPrvoMesto(Integer prvoMesto) { this.prvoMesto = prvoMesto; }
+
+    public int getNivo() { return nivo; }
+    public void setNivo(int nivo) { this.nivo = nivo; }
 }

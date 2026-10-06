@@ -46,7 +46,15 @@ export type StarostniPas =
 export type Disciplina = 'POSAMICNO' | 'DVOJICE' | 'EKIPNO'
 /* SKUPINE_ZA_MESTA: predtekmovalne skupine, nato finalne skupine za mesta
    (1.–4., 5.–8. …) s prenesenim medsebojnim izidom — ekipni DP mladih. */
-export type SistemTekmovanja = 'IZLOCILNI' | 'SKUPINE_IZLOCILNI' | 'KROZNI' | 'SKUPINE' | 'SKUPINE_ZA_MESTA'
+/* SV_REGIJA: nivoji (težavnostne skupine), v vsakem skupine in glavni ter tolažilni
+   žreb; igra se za VSA mesta. */
+export type SistemTekmovanja =
+  | 'IZLOCILNI'
+  | 'SKUPINE_IZLOCILNI'
+  | 'KROZNI'
+  | 'SKUPINE'
+  | 'SKUPINE_ZA_MESTA'
+  | 'SV_REGIJA'
 
 /* Od kod je tekmovanje prišlo. Tekmovanje z virom je uvoženo in SAMO ZA BRANJE:
    vir resnice je zveza, popravek vnese NTZS in uvoz ga prenese. null = nastalo
@@ -195,6 +203,12 @@ export interface DogodekDto {
   tekmaZaTretjeMesto: boolean
   /* Vir turnirja — uvožen dogodek je samo za branje. */
   vir: VirTekmovanja | null
+  /* SV regija: število nivojev in ročna razdelitev po nivojih, kot ju je vpisal
+     organizator (prazno = samodejno). */
+  steviloNivojev: number | null
+  velikostiNivojev: number[]
+  /* Rangov iz skupine v en žreb po nivojih (prazno = povsod 2). */
+  rangovVZreb: number[]
 }
 
 export interface PrijavaDto {
@@ -295,6 +309,15 @@ export interface TekmaDto {
   /* Finalna skupina za mesta: tekma iz predtekmovanja, katere izid tekma nosi.
      Ni odigrana znova — vmesnik jo označi kot preneseno. */
   idPrenesena: number | null
+  /* SV regija: žreb, ki mu tekma pripada, in razpon mest, ki ga odloča («za 5.–8.
+     mesto» = 5 do 8); prazno pri skupinski tekmi in drugih sistemih. */
+  idZreb: number | null
+  razponOd: number | null
+  razponDo: number | null
+  /* SV regija: tekma, iz katere ZMAGOVALCA pride stran 1 oz. 2 (povezava drevesa za vsa
+     mesta); prazno, kadar je stran vpisan igralec ali pride iz poraženca. */
+  idIzvorZmagovalca1: number | null
+  idIzvorZmagovalca2: number | null
 }
 
 /* Ena vrstica lestvice (krožni sistem ali skupina).
@@ -328,6 +351,8 @@ export interface SkupinaDto {
   ime: string | null
   /* Prvo mesto, ki ga skupina odloča (1, 5 …); null, če ne odloča mest. */
   prvoMesto: number | null
+  /* SV regija: nivo skupine (drugod 1). */
+  nivo: number
   lestvica: VrsticaLestviceDto[]
 }
 
@@ -357,6 +382,103 @@ export interface IzborDto {
   steviloSkupin: number | null
 }
 
+/* ---------- SV regija: nivoji, skupine in žrebi za vsa mesta ---------- */
+
+/* En žreb nivoja: glavni (indeks 0), tolažilni (1), tretji (2) …
+   id je prazen, dokler skupine niso izžrebane; uredljiv pomeni, da so tekme
+   zgrajene in nobena še ni začeta, torej se razpored mest sme spremeniti. */
+export interface SvZrebDto {
+  id: number | null
+  indeks: number
+  faza: FazaTekme
+  ime: string
+  /* Prvo in zadnje mesto na DOGODKU, ki ga žreb odloča. */
+  prvoMesto: number
+  zadnjeMesto: number
+  stUdelezencev: number
+  velikostMreze: number
+  zgrajen: boolean
+  /* Razpored mest je vpisal organizator in ni bil naključen. */
+  rocni: boolean
+  uredljiv: boolean
+  /* Prijave po mestih v mreži od vrha navzdol (null = prosto mesto); prazen
+     seznam, dokler žreb ni zgrajen. */
+  razpored: (number | null)[]
+}
+
+export interface SvNivoDto {
+  nivo: number
+  velikost: number
+  odMesta: number
+  doMesta: number
+  /* Po žrebu dejanske, pred njim predlagane velikosti skupin. */
+  velikostiSkupin: number[]
+  /* Koliko rangov iz vsake skupine pride v en žreb: 2 (privzeto) ali 1. */
+  rangovVZreb: number
+  zrebi: SvZrebDto[]
+}
+
+/* Pred žrebom skupin je to predogled razreza po trenutnem številu prijav in
+   nastavitvah, po njem stanje iz baze. */
+export interface SvRegijaDto {
+  nivoji: SvNivoDto[]
+  /* Zakaj žreb (še) ni mogoč; null pomeni, da je vse pripravljeno. */
+  zadrzek: string | null
+  skupineZrebane: boolean
+  /* Žreb skupin je še mogoče razveljaviti ali ročno popraviti. */
+  skupineUredljive: boolean
+  /* Veljavni nastavitvi (s privzetki): skupin na poln nivo in igralcev v skupini. */
+  skupinNaNivo: number
+  velikostSkupine: number
+  steviloNivojev: number | null
+  velikostiNivojev: number[]
+  rangovVZreb: number[]
+}
+
+export interface SvClanDto {
+  idPrijave: number
+  polnoIme: string
+  klub: string | null
+  rating: number | null
+  stNosilca: number | null
+}
+
+export interface SvSkupinaPredlogDto {
+  oznaka: string
+  clani: SvClanDto[]
+}
+
+export interface SvNivoPredlogDto {
+  nivo: number
+  odMesta: number
+  skupine: SvSkupinaPredlogDto[]
+}
+
+/* Predlog skupin brez zapisa v bazo (isti žreb, kot bi ga izvedel dogodek). */
+export interface SvPredlogDto {
+  nivoji: SvNivoPredlogDto[]
+}
+
+/* Predlog razporeditve v mreži enega žreba; mesta so od vrha navzdol,
+   sosednji (2i, 2i+1) igrata v prvem kolu, null je prosto mesto. */
+export interface SvZrebPredlogDto {
+  velikostMreze: number
+  mesta: (SvClanDto | null)[]
+}
+
+export interface SvNastavitveVnos {
+  steviloNivojev: number | null
+  velikostiNivojev: number[]
+  steviloSkupin: number | null
+  velikostSkupine: number | null
+  rangovVZreb: number[]
+}
+
+/* Ročni vpis skupin: nivoji po vrsti, vsak s skupinami, vsaka z id-ji prijav. */
+export interface SvSkupineVnos {
+  nivoji: { skupine: number[][] }[]
+}
+
 /* Celotna slika dogodka - odgovor GET /dogodki/{id}.
    skupine so zapolnjene pri obeh skupinskih sistemih, lestvica pri krožnem,
    izbor pa povsod, kjer žreb pozna nosilce (vse razen krožnega in dvojic).
@@ -368,6 +490,8 @@ export interface MrezaDto {
   skupine: SkupinaDto[]
   lestvica: VrsticaLestviceDto[]
   izbor: IzborDto | null
+  /* SV regija: nivoji, skupine in žrebi; null pri drugih sistemih. */
+  svRegija: SvRegijaDto | null
 }
 
 /* Prijavljeni uporabnik (administrator ali igralec); gost nima zapisa.
@@ -935,6 +1059,8 @@ export interface DogodekVnos {
   zmagZaSrecanje?: number | null
   /* Izločilna mreža s tekmo za 3. mesto (poraženca polfinalov). */
   tekmaZaTretjeMesto?: boolean | null
+  /* SV regija: število nivojev (null = glede na število prijav). */
+  steviloNivojev?: number | null
 }
 
 export interface IgralecVnos {
@@ -1087,6 +1213,7 @@ export const OZNAKE_SISTEM: Record<SistemTekmovanja, string> = {
   SKUPINE_IZLOCILNI: 'Skupine + izločilni',
   SKUPINE: 'Skupine po jakosti (TOP)',
   SKUPINE_ZA_MESTA: 'Skupine + finalne skupine za mesta',
+  SV_REGIJA: 'SV regija (nivoji, skupine, žreb za vsa mesta)',
 }
 
 /* Kratke oznake sistemov za značke. */
@@ -1096,6 +1223,7 @@ export const OZNAKE_SISTEM_KRATKO: Record<SistemTekmovanja, string> = {
   SKUPINE_IZLOCILNI: 'Skupine + izločilni',
   SKUPINE: 'Skupine po jakosti',
   SKUPINE_ZA_MESTA: 'Skupine za mesta',
+  SV_REGIJA: 'SV regija',
 }
 
 /* Še krajše oznake za mono vrstico telefona, kjer sistem deli 350 px s
@@ -1106,6 +1234,7 @@ export const OZNAKE_SISTEM_MOBI: Record<SistemTekmovanja, string> = {
   SKUPINE_IZLOCILNI: 'Skup + izl',
   SKUPINE: 'Skupine',
   SKUPINE_ZA_MESTA: 'Skup za mesta',
+  SV_REGIJA: 'SV regija',
 }
 
 /* Izid tekme v nizih za izpis, npr. "3:1". Odigrana tekma z 0 : 0 je tekma, pri

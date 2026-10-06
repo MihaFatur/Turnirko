@@ -65,6 +65,22 @@ public class Dogodek {
     @Column(name = "velikost_skupine")
     private Integer velikostSkupine;
 
+    /* Sistem SV_REGIJA (V42): koliko nivojev (tezavnostnih skupin) ima dogodek
+       in - neobvezno - rocna razdelitev po nivojih kot "16,16,12". Brez njiju
+       oboje doloci stevilo prijav. Stevilo skupin na nivo in velikost skupine
+       sta v zgornjih poljih (privzeto 4 in 4). */
+    @Column(name = "stevilo_nivojev")
+    private Integer steviloNivojev;
+
+    @Column(name = "velikosti_nivojev")
+    private String velikostiNivojev;
+
+    /* Koliko rangov iz vsake skupine pride v en zreb, po nivojih ("2,2,1").
+       Brez vnosa (ali za nivo brez vnosa) velja 2: prvo- in drugouvrsceni v glavni
+       zreb, tretje- in cetrtouvrsceni v tolazilni. 1 loci zrebe po rangih. */
+    @Column(name = "rangov_v_zreb")
+    private String rangovVZreb;
+
     /* Ekipni dogodek (disciplina EKIPNO, V28): format srecanja in prag zmag,
        pri katerem se srecanje konca (null = odigrajo se vse tekme). Ista
        pravila, kot jih ima liga - srecanje ekipne tekme tece po isti kodi.
@@ -145,6 +161,48 @@ public class Dogodek {
 
     public Integer getVelikostSkupine() { return velikostSkupine; }
     public void setVelikostSkupine(Integer velikostSkupine) { this.velikostSkupine = velikostSkupine; }
+
+    public Integer getSteviloNivojev() { return steviloNivojev; }
+    public void setSteviloNivojev(Integer steviloNivojev) { this.steviloNivojev = steviloNivojev; }
+
+    public String getVelikostiNivojev() { return velikostiNivojev; }
+    public void setVelikostiNivojev(String velikostiNivojev) { this.velikostiNivojev = velikostiNivojev; }
+
+    public String getRangovVZreb() { return rangovVZreb; }
+    public void setRangovVZreb(String rangovVZreb) { this.rangovVZreb = rangovVZreb; }
+
+    /* Rangov v zrebu po nivojih ("2,2,1") kot seznam; prazen, kadar niso vpisani. */
+    public java.util.List<Integer> rangovVZrebSeznam() {
+        java.util.List<Integer> rangi = new java.util.ArrayList<>();
+        if (rangovVZreb == null || rangovVZreb.isBlank()) {
+            return rangi;
+        }
+        for (String del : rangovVZreb.split(",")) {
+            try {
+                rangi.add(Integer.parseInt(del.trim()));
+            } catch (NumberFormatException e) {
+                return new java.util.ArrayList<>();
+            }
+        }
+        return rangi;
+    }
+
+    /* Rocne velikosti nivojev ("16,16,12") kot seznam; prazen, kadar niso vpisane
+       (ali niso veljavne - razrez je takrat samodejen). */
+    public java.util.List<Integer> velikostiNivojevSeznam() {
+        java.util.List<Integer> velikosti = new java.util.ArrayList<>();
+        if (velikostiNivojev == null || velikostiNivojev.isBlank()) {
+            return velikosti;
+        }
+        for (String del : velikostiNivojev.split(",")) {
+            try {
+                velikosti.add(Integer.parseInt(del.trim()));
+            } catch (NumberFormatException e) {
+                return new java.util.ArrayList<>();
+            }
+        }
+        return velikosti;
+    }
 
     /* Koliko najboljsih prijavljenih pride v izbor (sistem SKUPINE).
        0 pomeni, da dogodek ni skupinski oz. nastavitvi se nista dolocena. */

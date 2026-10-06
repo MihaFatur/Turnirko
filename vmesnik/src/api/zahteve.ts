@@ -3,6 +3,10 @@
 
 import { api } from './odjemalec'
 import type {
+  SvNastavitveVnos,
+  SvPredlogDto,
+  SvSkupineVnos,
+  SvZrebPredlogDto,
   CiklusPlacila,
   DogodekDto,
   DogodekVnos,
@@ -132,6 +136,26 @@ export const dogodkiApi = {
   dodajVKader: (idEkipa: number, vnos: KaderVnos) =>
     api.objavi<KaderIgralecDto>(`/dogodki/ekipe/${idEkipa}/kader`, vnos),
   odstraniIzKadra: (idKader: number) => api.izbrisi(`/dogodki/kader/${idKader}`),
+}
+
+/* SV regija: nastavitve razreza, ročni vpis skupin in razporeditev mest v žrebu. */
+export const svApi = {
+  nastavitve: (id: number, vnos: SvNastavitveVnos) =>
+    api.posodobi<DogodekDto>(`/dogodki/${id}/sv/nastavitve`, vnos),
+  /* Predlog skupin brez zapisa (isti žreb, kot bi ga izvedel dogodek). */
+  predlog: (id: number) => api.objavi<SvPredlogDto>(`/dogodki/${id}/sv/predlog`),
+  /* Ročni vpis skupin; velja tudi kot popravek po žrebu, dokler nobena tekma ni
+     začeta. Dogodek se začne. */
+  shraniSkupine: (id: number, vnos: SvSkupineVnos) =>
+    api.posodobi<void>(`/dogodki/${id}/sv/skupine`, vnos),
+  /* Razveljavi žreb skupin: dogodek se vrne v pripravo. */
+  razveljavi: (id: number) => api.objavi<void>(`/dogodki/${id}/sv/razveljavi`),
+  predlogZreba: (idZreba: number) =>
+    api.objavi<SvZrebPredlogDto>(`/dogodki/sv/zrebi/${idZreba}/predlog`),
+  /* Razporeditev mest v mreži: id prijav od vrha navzdol, null je prosto mesto. */
+  shraniMesta: (idZreba: number, mesta: (number | null)[]) =>
+    api.posodobi<void>(`/dogodki/sv/zrebi/${idZreba}/mesta`, { mesta }),
+  znova: (idZreba: number) => api.objavi<void>(`/dogodki/sv/zrebi/${idZreba}/znova`),
 }
 
 export const tekmeApi = {

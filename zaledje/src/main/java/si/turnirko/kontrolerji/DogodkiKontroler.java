@@ -32,6 +32,7 @@ import si.turnirko.dto.ParVnos;
 import si.turnirko.dto.PrijavaDto;
 import si.turnirko.dto.PrijaviIgralceVnos;
 import si.turnirko.dto.SkupinaDto;
+import si.turnirko.dto.SvRegijaDto;
 import si.turnirko.dto.TekmaDto;
 import si.turnirko.dto.VrstniRedVnos;
 import si.turnirko.dto.VrsticaLestviceDto;
@@ -55,6 +56,7 @@ import si.turnirko.storitve.RazvrstitevStoritev;
 import si.turnirko.storitve.SkupineStoritev;
 import si.turnirko.storitve.SpremembeRatingaStoritev;
 import si.turnirko.storitve.SpremembeRatingaStoritev.ObTekmi;
+import si.turnirko.storitve.SvRegijaStoritev;
 import si.turnirko.storitve.TekmaStoritev;
 import si.turnirko.storitve.TurnirjiStoritev;
 import si.turnirko.storitve.ZrebStoritev;
@@ -76,6 +78,7 @@ public class DogodkiKontroler {
     private final IzborStoritev izborStoritev;
     private final TekmaStoritev tekmaStoritev;
     private final EkipeDogodkaStoritev ekipeDogodka;
+    private final SvRegijaStoritev svRegija;
 
     public DogodkiKontroler(DogodekRepozitorij dogodekRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
@@ -89,7 +92,8 @@ public class DogodkiKontroler {
                             SpremembeRatingaStoritev spremembeRatinga,
                             IzborStoritev izborStoritev,
                             TekmaStoritev tekmaStoritev,
-                            EkipeDogodkaStoritev ekipeDogodka) {
+                            EkipeDogodkaStoritev ekipeDogodka,
+                            SvRegijaStoritev svRegija) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -103,6 +107,7 @@ public class DogodkiKontroler {
         this.izborStoritev = izborStoritev;
         this.tekmaStoritev = tekmaStoritev;
         this.ekipeDogodka = ekipeDogodka;
+        this.svRegija = svRegija;
     }
 
     /* Celotna slika dogodka: podatki, prijave, mreza in - glede na sistem -
@@ -184,16 +189,22 @@ public class DogodkiKontroler {
         List<SkupinaDto> skupine = List.of();
         List<VrsticaLestviceDto> lestvica = List.of();
         IzborDto izbor = null;
+        SvRegijaDto svPregled = null;
 
+        List<Skupina> skupineEntitete = List.of();
         if (dogodekEntiteta.getSistemTekmovanja().imaSkupine()) {
             List<Prijava> zaLestvice = prijaveEntitete;
-            skupine = skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(id).stream()
+            skupineEntitete = skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(id);
+            skupine = skupineEntitete.stream()
                     .sorted(java.util.Comparator.comparingInt(Skupina::getStopnja))
                     .map(skupina -> lestvicaSkupine(skupina, zaLestvice, tekmeEntitete))
                     .toList();
         }
+        if (dogodekEntiteta.getSistemTekmovanja() == SistemTekmovanja.SV_REGIJA) {
+            svPregled = svRegija.pregled(dogodekEntiteta, prijaveEntitete, skupineEntitete, tekmeEntitete);
+        }
         if (poJakosti) {
-            izbor = izbor(dogodekEntiteta, prijaveEntitete);
+            izbor = izbor(dogodekEntiteta, prijaveEntitete, svPregled);
         } else if (dogodekEntiteta.getSistemTekmovanja() == SistemTekmovanja.KROZNI) {
             List<Prijava> udelezenci = prijaveEntitete.stream()
                     .filter(p -> p.getStatus() == Prijava.StatusPrijave.PRIJAVLJEN)
@@ -201,16 +212,26 @@ public class DogodkiKontroler {
             lestvica = razvrstitevStoritev.lestvica(udelezenci, tekmeEntitete);
         }
 
-        return new MrezaDto(dogodek, prijave, tekme, skupine, lestvica, izbor);
+        return new MrezaDto(dogodek, prijave, tekme, skupine, lestvica, izbor, svPregled);
     }
 
     /* Jakostni vrstni red pred zrebom; pri formatu TOP se crta reza in
        predogled skupin. Razrez racuna ZrebStoritev, da predogled in dejanski
-       zreb ne moreta razsoditi razlicno. */
-    private IzborDto izbor(Dogodek dogodek, List<Prijava> prijave) {
+       zreb ne moreta razsoditi razlicno. Pri SV regiji so "skupine" predogleda
+       NIVOJI (oznaka N1, N2 ...): jakostni vrstni red jih razrezi po vrsti. */
+    private IzborDto izbor(Dogodek dogodek, List<Prijava> prijave, SvRegijaDto sv) {
         List<Prijava> prijavljeni = prijave.stream()
                 .filter(p -> p.getStatus() == Prijava.StatusPrijave.PRIJAVLJEN)
                 .toList();
+        if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SV_REGIJA && sv != null) {
+            List<IzborDto.SkupinaPredogledDto> nivoji = sv.nivoji().stream()
+                    .map(n -> new IzborDto.SkupinaPredogledDto("N" + n.nivo(), n.velikost(),
+                            n.odMesta(), n.doMesta()))
+                    .toList();
+            int skupin = sv.nivoji().stream().mapToInt(n -> n.velikostiSkupin().size()).sum();
+            return new IzborDto(prijavljeni.size(), prijavljeni.size(), prijavljeni.size(),
+                    sv.skupineZrebane() ? List.of() : nivoji, sv.zadrzek(), false, skupin);
+        }
         if (dogodek.getSistemTekmovanja() != SistemTekmovanja.SKUPINE) {
             /* Igrajo vsi, kdo pride v katero skupino pa se odloci sele ob
                zrebu (pasovi se zrebajo) - zato brez crte reza in predogleda. */
@@ -276,7 +297,7 @@ public class DogodkiKontroler {
                         && skupina.getId().equals(t.getIdSkupina()))
                 .toList();
         return new SkupinaDto(skupina.getId(), skupina.getOznaka(), skupina.getStopnja(),
-                skupina.getIme(), skupina.getPrvoMesto(),
+                skupina.getIme(), skupina.getPrvoMesto(), skupina.getNivo(),
                 razvrstitevStoritev.lestvica(clani, tekmeSkupine));
     }
 

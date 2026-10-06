@@ -24,7 +24,8 @@ public record DogodekVnos(
         Disciplina disciplina,
         // null pomeni privzeto (IZLOCILNI); doloca ga organizator ob dogodku
         SistemTekmovanja sistemTekmovanja,
-        // obvezni pri sistemu SKUPINE, sicer se ne upostevata
+        // obvezni pri sistemu SKUPINE, sicer se ne upostevata; pri SV_REGIJA sta to
+        // skupine na poln nivo in igralci v skupini (neobvezna, privzeto 4 in 4)
         // (razpon preveri TurnirjiStoritev, ker je pravilo domensko)
         Integer steviloSkupin,
         Integer velikostSkupine,
@@ -33,7 +34,9 @@ public record DogodekVnos(
         FormatSrecanja formatSrecanja,
         Integer zmagZaSrecanje,
         // izlocilna mreza s tekmo za 3. mesto; null = brez
-        Boolean tekmaZaTretjeMesto
+        Boolean tekmaZaTretjeMesto,
+        // sistem SV_REGIJA: stevilo nivojev (null = glede na stevilo prijav)
+        Integer steviloNivojev
 ) {
 
     /* Vnos dogodka posameznikov ali dvojic (kot pred V28). */
@@ -42,6 +45,18 @@ public record DogodekVnos(
                        Disciplina disciplina, SistemTekmovanja sistemTekmovanja,
                        Integer steviloSkupin, Integer velikostSkupine) {
         this(ime, spolKategorija, starostnaKategorija, privzetoSteviloNizov, prijavnina, rokPrijave,
-                disciplina, sistemTekmovanja, steviloSkupin, velikostSkupine, null, null, null);
+                disciplina, sistemTekmovanja, steviloSkupin, velikostSkupine, null, null, null, null);
+    }
+
+    /* Vnos z ekipnimi nastavitvami, brez nivojev (kot pred V42). */
+    public DogodekVnos(String ime, SpolKategorija spolKategorija, String starostnaKategorija,
+                       Integer privzetoSteviloNizov, Double prijavnina, LocalDate rokPrijave,
+                       Disciplina disciplina, SistemTekmovanja sistemTekmovanja,
+                       Integer steviloSkupin, Integer velikostSkupine,
+                       FormatSrecanja formatSrecanja, Integer zmagZaSrecanje,
+                       Boolean tekmaZaTretjeMesto) {
+        this(ime, spolKategorija, starostnaKategorija, privzetoSteviloNizov, prijavnina, rokPrijave,
+                disciplina, sistemTekmovanja, steviloSkupin, velikostSkupine, formatSrecanja,
+                zmagZaSrecanje, tekmaZaTretjeMesto, null);
     }
 }

@@ -13,7 +13,13 @@
                        prvo- in drugouvrsceni vseh skupin igrajo za zgornja
                        mesta, tretje- in cetrtouvrsceni za naslednja, v finalno
                        skupino pa se prenese izid medsebojnega dvoboja iz
-                       predtekmovanja (PST 14. clen, ekipna DP mladih). */
+                       predtekmovanja (PST 14. clen, ekipna DP mladih),
+   SV_REGIJA         - igralci so po jakosti razdeljeni v NIVOJE (privzeto po
+                       16), v vsakem nivoju igrajo skupine vsak z vsakim;
+                       prvo- in drugouvrsceni gredo v glavni zreb nivoja,
+                       tretje- in cetrtouvrsceni v tolazilni zreb. Zreb se igra
+                       za VSA mesta: porazenca se srecata med seboj za slabsa
+                       mesta, do zadnjega para (glej SvRegijaStoritev). */
 package si.turnirko.modeli;
 
 public enum SistemTekmovanja {
@@ -21,10 +27,12 @@ public enum SistemTekmovanja {
     SKUPINE_IZLOCILNI,
     KROZNI,
     SKUPINE,
-    SKUPINE_ZA_MESTA;
+    SKUPINE_ZA_MESTA,
+    SV_REGIJA;
 
     /* Ali sistem sploh igra skupinski del (in torej potrebuje skupine). */
     public boolean imaSkupine() {
-        return this == SKUPINE || this == SKUPINE_IZLOCILNI || this == SKUPINE_ZA_MESTA;
+        return this == SKUPINE || this == SKUPINE_IZLOCILNI || this == SKUPINE_ZA_MESTA
+                || this == SV_REGIJA;
     }
 }
