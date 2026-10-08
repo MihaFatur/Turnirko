@@ -697,7 +697,11 @@ function PogledNarocnine({
           </div>
 
           <div className="registracija__noga">
-            <span className="registracija__placilo-pripis">Plačilo prek Stripe</span>
+            {/* Nakup je odločitev: pogoji naročnine (obnova, preklic, odstop)
+                morajo biti en klik stran. */}
+            <span className="registracija__placilo-pripis">
+              Plačilo prek Stripe · <Link to="/pogoji#pogoji">Pogoji</Link>
+            </span>
             {jeFree ? (
               <button
                 type="button"

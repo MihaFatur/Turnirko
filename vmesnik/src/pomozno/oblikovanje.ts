@@ -179,6 +179,14 @@ export function sklonDni(n: number): string {
   return n === 1 ? 'dan' : 'dni'
 }
 
+/* Koliko rednega dela lige je za nami: »odigrano 1 od 6 kol«. Prej je stalo
+   »1. od 6 kol« (pri nič odigranih »0. od 6 kol«) in vrstilni števnik se je
+   bral kot kolo, ki teče. Katero kolo je odigrano, pove strežnik (PotekLige):
+   isto na domači strani, v seznamu lig in na strani lige. */
+export function potekKol(odigranih: number, vseh: number): string {
+  return `odigrano ${odigranih} od ${vseh} ${vseh === 1 ? 'kola' : 'kol'}`
+}
+
 /* Letnica rojstva iz datuma "YYYY-MM-DD". */
 export function letnica(datum: string | null | undefined): string {
   if (!datum) return ''
@@ -186,38 +194,35 @@ export function letnica(datum: string | null | undefined): string {
 }
 
 /* Slovnicno pravilno sklanjanje besede "listek" ob stevilu (1 listek,
-   2 listka, 3/4 listki, 5+ listkov; upostevamo dvomestne izjeme 11-14). */
+   2 listka, 3/4 listki, 5+ listkov; pravilo glej pri sklon). */
 export function sklonListkov(n: number): string {
-  const mod100 = n % 100
-  if (mod100 >= 11 && mod100 <= 14) return 'listkov'
-  const mod10 = n % 10
-  if (mod10 === 1) return 'listek'
-  if (mod10 === 2) return 'listka'
-  if (mod10 === 3 || mod10 === 4) return 'listki'
+  const ostanek = n % 100
+  if (ostanek === 1) return 'listek'
+  if (ostanek === 2) return 'listka'
+  if (ostanek === 3 || ostanek === 4) return 'listki'
   return 'listkov'
 }
 
 /* Slovnicno pravilno sklanjanje besede "tekma" ob stevilu (1 tekma,
-   2 tekmi, 3/4 tekme, 5+ tekem; upostevamo dvomestne izjeme 11-14). */
+   2 tekmi, 3/4 tekme, 5+ tekem; pravilo glej pri sklon). */
 export function sklonTekem(n: number): string {
-  const mod100 = n % 100
-  if (mod100 >= 11 && mod100 <= 14) return 'tekem'
-  const mod10 = n % 10
-  if (mod10 === 1) return 'tekma'
-  if (mod10 === 2) return 'tekmi'
-  if (mod10 === 3 || mod10 === 4) return 'tekme'
+  const ostanek = n % 100
+  if (ostanek === 1) return 'tekma'
+  if (ostanek === 2) return 'tekmi'
+  if (ostanek === 3 || ostanek === 4) return 'tekme'
   return 'tekem'
 }
 
 /* Sklanjanje po stevilu za besede, ki se ravnajo po vzorcu "1 x, 2 xa,
-   3/4 xi, 5+ xov"; dvomestne izjeme 11-14 gredo v zadnjo obliko. */
+   3/4 xi, 5+ xov". Posebno obliko imajo samo stevila, ki se pri 100 koncajo
+   na 1, 2, 3 ali 4 (1, 2, 3, 4, 101, 102 ...); vse ostalo - tudi 21-24, 31-34,
+   64 - je rodilnik mnozine ("64 igralcev", ne "64 igralci"). Prej je pravilo
+   delilo po ostanku pri 10 in je "64" sklonilo kot "4". */
 function sklon(n: number, ena: string, dve: string, tri: string, vec: string): string {
-  const mod100 = n % 100
-  if (mod100 >= 11 && mod100 <= 14) return vec
-  const mod10 = n % 10
-  if (mod10 === 1) return ena
-  if (mod10 === 2) return dve
-  if (mod10 === 3 || mod10 === 4) return tri
+  const ostanek = n % 100
+  if (ostanek === 1) return ena
+  if (ostanek === 2) return dve
+  if (ostanek === 3 || ostanek === 4) return tri
   return vec
 }
 
@@ -272,7 +277,7 @@ export function sklonTock(n: number): string {
 
 /* Mestnik: "v 1 mesecu", "v 9 mesecih". */
 export function sklonMesecih(n: number): string {
-  return n % 100 !== 11 && n % 10 === 1 ? 'mesecu' : 'mesecih'
+  return n % 100 === 1 ? 'mesecu' : 'mesecih'
 }
 
 /* "na 3 nize", "na 5 nizov" - stevilo nizov je vedno 3, 5 ali 7, a sklon
@@ -366,4 +371,17 @@ export function kratekKlub(klub: string): string {
       .join('')
   }
   return kratko
+}
+
+/* Ime lige za »napreduje v …«, »kvalifikacije za …« (tožilnik) oz. »igra v
+   …« (mestnik). Ime je lastno ime in se ne sklanja - sklanja se samo beseda
+   »liga«, ki ga nosi (»Liga Savinja A« → »v Ligo Savinja A«, »Savinja liga« →
+   »za Savinja ligo«); »1. SNTL« ostane, kot je. Prej je pisalo »Napreduje v
+   Liga Savinja A«. */
+export function ligaVTozilniku(ime: string): string {
+  return ime.replace(/(^|[^\p{L}])([Ll])iga(?![\p{L}])/gu, (_, pred: string, l: string) => `${pred}${l}igo`)
+}
+
+export function ligaVMestniku(ime: string): string {
+  return ime.replace(/(^|[^\p{L}])([Ll])iga(?![\p{L}])/gu, (_, pred: string, l: string) => `${pred}${l}igi`)
 }

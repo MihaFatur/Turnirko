@@ -211,9 +211,13 @@
     z razporedom, ki je že narejen in razposlan igralcem. Naključni žreb bi ga
     zavrgel in ljudje bi imeli v rokah dva različna razporeda.
   - **Zastavica je JAVNA in ne tehnična opomba.** `LigaDto.rocniZreb` gre tudi
-    gostu: stran lige nad razporedom izpiše »Žreb ni bil naključen — razpored je
-    vpisal organizator« (`OPOMBA_ROCNEGA_ZREBA`), ker mora igralec, ki je pare
-    dobil po pošti, videti, da je to isti razpored. Piše jo **samo**
+    gostu: ob desnem robu vrstice »Vsa kola« pod razporedom stoji droben napis
+    »Ročni žreb« (`OznakaRocnegaZreba`), ki ob prehodu miške oz. ob dotiku
+    odpre pojasnilo »Žreb ni bil naključen — razpored je vpisal organizator. Za
+    pojasnilo se obrnite na organizatorja.« (`OPOMBA_ROCNEGA_ZREBA`). Igralec,
+    ki je pare dobil po pošti, mora videti, da je to isti razpored — a cela
+    vrstica nad razporedom (do okt 2026) je zvenela kot opozorilo, zato je
+    zdaj oznaka (odločitev lastnika). Piše jo **samo**
     `LigaStoritev` (vpis prižge, žreb in razveljavitev ugasneta), zato se
     vpisan razpored in žreb ne moreta razglasiti drug za drugega.
   - **Strežnik preverja strukturo, ne popolnosti.** Zavrne ekipo z dvema
@@ -288,9 +292,11 @@
     terminom kola). Srečanja lige zato pridejo **po kolu in začetku**
     (`najdiZaLigo`, `najdiRednaZaLigo`): razpored, »naslednje srečanje« in
     koledar sledijo uri, ne vrstnemu redu zapisa.
-  - Vmesnik: v razporedu stoji ura na mestu izida, dokler srečanje ni
-    odigrano, kolo pa nosi samo dan (`ureVKolu` v `LigaStran`) — nova kolona
-    bi na 390 px ne šla. `RocniZrebOkno` srečanja kola razdeli po urah (tako
+  - Vmesnik: kolo z več začetki ima v razporedu nad vsako uro naslov s črto
+    (`skupineKola` → `.liga__ura`), kolo pa nosi samo dan (`ureVKolu` v
+    `LigaStran`). Prej je ura stala na mestu izida in ista ekipa se je v
+    kolu pojavila dvakrat brez pojasnila. Srečanje, prestavljeno na drug dan,
+    dobi naslov z dnevom. `RocniZrebOkno` srečanja kola razdeli po urah (tako
     jih ima papirnati razpored); zamenjava ekip velja samo med srečanji iste
     ure.
 - **Časovni žig s pomembno uro potrebuje `@Convert(CasKotBesedilo.class)`.**
@@ -982,20 +988,85 @@
     izbor ali lige, v katerih igralec nastopa (`DomovLigaDto.izEkipe`, pove
     strežnik po vrstici); sicer »Lige«. Naslov, ki bi adminovima ligama rekel
     »moje«, bi lagal. Filter »Moje lige« pod sklopom meri isto.
-  - **»N. od M kol« na kartici lige se šteje po DATUMU kola** (`DomovStoritev.
-    presteji`): kolo je odigrano, ko je njegov datum (najzgodnejši predvideni
-    začetek srečanj) že mimo; današnje kolo je še »naslednje«. **Nikoli po
-    prvem končanem srečanju**: ekipe se neuradno menjajo za termine in vsako
-    kolo ima že eno končano srečanje, kar bi domačo stran prepričalo, da je
-    odigrano vse (`DomovOdigranaKolaTest`). Kolo brez datuma je odigrano, ko je
-    končano vsako njegovo srečanje; končnica (`serija`) ne šteje. Stran lige
-    (`LigaStran`) in seznam lig (`LigaStoritev.presteji`) štejeta po končanosti
-    vseh srečanj kola — to je drugo merilo, namerno.
+- **Domača stran po meri je samo za Igralca Premium** (potrjen igralec,
+  povezan z zapisom, z veljavnim paketom; oktober 2026). Paket preveri
+  strežnik — vmesnik (`premiumIgralec` v `DomacaStran`) le ne sproži poizvedb
+  zaman. Gost, igralec brez paketa in organizator vidijo stran kot prej.
+  - **Razpredelnica lige je njegova ekipa s sosedama** (`DomovStoritev.okno`,
+    `DomovLigaDto.Vrh.moja`, `ekip`): ena gor in ena dol, na vrhu dve dol, na
+    dnu dve gor; pri prvi oz. zadnji ekipi droben napis »prva« / »zadnja«.
+    Velja za vsako ligo na domači strani, v kateri igra (kader,
+    `KaderEkipeRepozitorij.ekipeIgralcaVLigi`), ne glede na to, zakaj je tam
+    (lasten izbor, kader ali adminova izložba); drugje ostane vrh.
+  - **Turnirji so izbrani zanj, vsak z razlogom** (`GET /domov/turnirji`,
+    `DomaciTurnirjiStoritev` zbere podatke, pravilo je čista funkcija
+    `IzborTurnirjev`; drugim vrne prazno in vmesnik pokaže najnovejše):
+    prihajajoči (prijavljen, sicer najbližji primeren), zadnji, na katerem je
+    nastopil, nato zanimivi do skupaj 4, vsaj 2 (v teku, klubski kolegi,
+    primeren — v oknu 60 dni, bližji prej; nato najnovejši).
+    - **Raven za izbor NI zastavica lestvice rekreativcev**: ta šteje tudi
+      klubska tekmovanja, zato je igralec Savinja lige po treh tekmah
+      »tekmovalec« in bi dobil uradne turnirje NTZS. Merilo je vsaj
+      `RekreativecStoritev.PRAG_TEKEM` tekem na URADNIH tekmovanjih: kdor jih
+      nima, dobi rekreativne in nato klubske turnirje.
+    - **Razpis** (`IzborTurnirjev.razpisDopusca`): spol dogodka in starostna
+      kategorija iz prostega besedila — oznake U (»U-13«, »člani U-21«),
+      besedne meje (»do 60 let«, »nad 60 let«), veterani in imena iz uvozene
+      zgodovine (dečki U11, mlajši kadeti U13, kadeti U15, mladinci U19).
+      Turnir, ki ga razpis ne dopušča, je med zanimivimi samo do najmanjšega
+      števila — raje krajši sklop kot mladinski turnir odraslemu.
+    - **Datum rojstva 1. 1. 1900 pomeni »ni znan«** in ga imajo skoraj samo
+      odrasli rekreativci (v Savinja ligah 86 od 154), zato tak igralec velja
+      za odraslega (40 let): mladinski razpis ga ne dopušča, veteranskega ne
+      zapre.
+  - **Lestvica pokaže njega in igralce okoli njega** (»Okoli mene«, privzeto,
+    namesto »Vsi igralci«; samo na vmesniku iz `/lestvica`): okno osmih na
+    NJEGOVI lestvici (spol × tekmovalci/rekreativci — isto mesto kot na
+    profilu), številke so dejanska mesta, njegov položaj v oknu je naključen
+    ob vsakem prihodu na stran (enkrat prvi, drugič peti …), ob vrhu ali dnu
+    se okno poravna. Trimestna mesta dobijo na telefonu širši stolpec
+    (`.domov__lestvica--siroka`).
+  - Regresije: `IzborTurnirjevTest` (pravila izbora, razpis, okno) in
+    `DomovPremiumTest` (paket, račun, ekipa, prazno za druge).
+- **Potek lige je ENO pravilo za vse poglede** (`PotekLige`, oktober 2026):
+  »odigrano N od M kol« in naslednje kolo izpisujejo domača stran
+  (`DomovStoritev`), seznam lig in glava strani lige (`LigaDto.odigranihKol`,
+  `odigranaKola`, `naslednje` iz `LigaStoritev`) in organizatorski pregled —
+  vsi iz `PotekLige.izracunaj`. Prej sta stran lige in seznam štela kolo šele,
+  ko je bilo končano VSAKO srečanje: ob enem nevpisanem izidu 1. kola je
+  Savinja B do 7. 10. kazala »0. od 6 kol · naslednje 24. 9.«, domača stran
+  pa za isto ligo »1. od 6 kol · naslednje 15. 10.«.
+  - **Kolo je odigrano, ko je njegov datum mimo** (najzgodnejši predvideni
+    začetek srečanj, slovenski dan — `PotekLige.danes()`); današnje kolo je
+    še naslednje. **Nikoli po prvem končanem srečanju**: ekipe se neuradno
+    menjajo za termine in vsako kolo ima že eno končano srečanje
+    (`DomovOdigranaKolaTest`). Kolo brez datuma je odigrano, ko je končano
+    vsako njegovo srečanje; končnica (`serija`) v števcu ne šteje.
+  - **Naslednje** je prvo nekončano srečanje, ki ga termin ni prehitel —
+    srečanje z nevpisanim izidom in starim datumom NI naslednje. Domača stran
+    poda tudi končnico (po rednem delu obljublja tekmo serije), `LigaDto` pa
+    samo redni del: glavo strani po rednem delu nosi končnica sama.
+  - Kadar naslednjega ni, liga pa ni zaključena (vsa kola so po datumu mimo,
+    kak izid ni vpisan), glava piše »Zadnje kolo …« in ne »Končano« —
+    značka ob njej še piše »V teku«.
+  - **Kvalifikacije in končnica še vedno čakajo na VSE izide** (`vseKoncano`
+    v `LigaStran`): nastanejo iz končne lestvice, datum tam ne zadošča.
+  - Vmesnik izpiše potek s `potekKol` (»odigrano 1 od 6 kol«); vrstilni
+    »0. od 6 kol« se je bral kot kolo, ki teče. Na telefonu glava nima več
+    odstotka: dolžino vrstice je pojedel, isto pa pove že števec in palica.
+    Regresiji: `PotekLigeTest` (pravilo) in
+    `domacaStranSeznamInStranLigeRecejoIsto`.
 - **Razpored pri neodigranem kolu izpiše termin, ne besede »razpored«.**
-  Merilo je `metaKola` v `LigaStran`: odigrano kolo dobi datum in oznako
-  »odigrano«, kolo, ki šele pride, pa termin (`oblikujTermin` → »ned, 4. okt ·
-  18.00«, poudarjen z `.liga__kolo-termin`). Beseda »razpored« ostane samo,
-  kadar termina ni — takrat organizator datumov ni vpisal.
+  Merilo je `metaKola` v `LigaStran`: odigrano kolo (po `LigaDto.odigranaKola`,
+  isto pravilo kot glava) dobi datum in oznako »odigrano«, kolo, ki šele pride,
+  pa termin (`oblikujTermin` → »ned, 4. okt · 18.00«, poudarjen z
+  `.liga__kolo-termin`). Beseda »razpored« ostane samo, kadar termina ni —
+  takrat organizator datumov ni vpisal. Razpored se odpre na naslednjem kolu.
+  Srečanje brez izida, katerega dan je mimo (`brezIzida`), nosi na mestu
+  izida »—«, pod vrstico pa napis »Izid ni vpisan« (`.liga__srecanje-opomba`)
+  — samo title na telefonu ni bil berljiv, »18.30« izpred dveh tednov pa se je
+  bralo kot prihodnost. Imena ekip v razporedu na telefonu se ne odrežejo,
+  ampak prelomijo v drugo vrsto (»Zavarovalnica S…« ni bilo prepoznavno).
 - **Liga ima tri lestvice, ne eno** (`LestvicaLigeStoritev`): ekipno (glavna),
   posameznikov (`/lige/{id}/lestvica-igralcev`) in dvojic
   (`/lige/{id}/lestvica-dvojic`). Zadnji dve **štejeta samo tekme te lige** —
@@ -1692,7 +1763,11 @@
     dno zavihka z lestvico; ponujena je **vsaki** ligi — samostojni pove, da
     piramide ni (lastniku ponudi »Uredi prehode«). Štirje zavihki gredo brez
     drsenja do 360 px (`.podnavigacija--enakomerna`: enake širine, a nikoli
-    ožji od oznake); šele s Končnico ali Zanimivostmi pas drsi.
+    ožji od oznake). **Ko jih je več kot štiri, prvi trije ostanejo, ostali
+    gredo v meni »Več ▾«** (`ZavihkiTelefona`, `MeniDejanj` z vidno oznako) —
+    prej je pas drsel in »Pravila« so ostala odrezana za robom. »Več« ob
+    izbranem pogledu iz menija dobi slog izbranega zavihka, imena pa ne
+    prevzame (»Zanimivosti ▾« ob »Piramida lig« pri 375 px ne gre v pas).
 - **Filtriranje in razvrščanje seznamov teče skozi `komponente/Filtri.tsx`**
   (`useFiltri` + `KrmilaSeznama`) — turnirji, lige in lestvica. Nad seznamom
   stoji ena vrstica: gumb »Filtriraj«, ki odpre okno z **vsemi** merili, in ob
@@ -1760,12 +1835,21 @@
     navzkrižni (iskanje, klub, druga izbira). Na telefonu je kategorija naslov
     seznama namesto podvojenega »Lestvica«, števec pa »Moški · 110 od 121« —
     vse v enem števcu se pri 375 px odreže. Razvrstitve po priimku na
-    lestvici ni. **Prikazani seznam se vedno oštevilči od 1 naprej** — številka
-    pove mesto v tem, kar gledalec gleda, ne v celi lestvici. Filter »U19«,
-    ki se je začel pri 35., se je bral kot izsek sredine, koliko mladincev je
-    pred tem igralcem, pa je bilo treba šteti na roke. Globalno mesto po
-    ratingu v vrstici (`Vrstica.mesto`) vseeno ostane: po njem teče
+    lestvici ni. **Prikazani seznam se oštevilči od 1 naprej po izbrani
+    lestvici, filtrih in razvrstitvi** — številka pove mesto v tem, kar
+    gledalec gleda, ne v celi lestvici. Filter »U19«, ki se je začel pri 35.,
+    se je bral kot izsek sredine, koliko mladincev je pred tem igralcem, pa je
+    bilo treba šteti na roke. **Iskanje pa NE oštevilči znova** (oktober 2026,
+    `mestaBrezIskanja`): vrstico le poišče. Prej je bil vsak najdeni igralec
+    »1.« in svojega mesta ni izvedel, čeprav je prav po to prišel. Globalno
+    mesto po ratingu v vrstici (`Vrstica.mesto`) vseeno ostane: po njem teče
     razvrstitev »Rating« in izenačenja pri drugih merilih — a se ne izpiše.
+  - **Iskanje teče po izbrani lestvici, zadetki drugje pa se pokažejo pod
+    njo** (`drugje`, `namigIskanja`): igralka na moški lestvici, rekreativec
+    med člani — z lestvico, mestom na njej in gumbom »Pokaži lestvico«. Kdor
+    ni na nobeni lestvici, se poišče v javnem šifrantu (`igralciApi.seznam`,
+    naloži se šele takrat) z razlogom: še brez ratinga oziroma 18 mesecev brez
+    tekme. Iskanje je brez šumnikov in po besedah (`pomozno/iskanje.ts`).
 - **Blok »Dodaj igralce« (`DodajanjeIgralcev` v `DogodekStran`) je iskalnik s
   filtri, ne seznam vsega.** V šifrantu je po uvozu zgodovine NTZS več tisoč
   igralcev; prej je moral organizator do vsakega prevoziti šifrant cele
@@ -1858,6 +1942,25 @@
   **Obdobje grafa krmili spustni meni** (30 dni, 3 meseci, 6 mesecev, 1 leto,
   vse; privzeto 3 meseci) — pas gumbov je z vsakim novim obdobjem rasel čez
   naslovno vrstico.
+- **Graf ratinga ima osi** (okt 2026): navpično z okroglimi vrednostmi
+  (`okrogleVrednosti`: korak 5, 10, 20, 25, 50, 100 …) in vodoravno z datumi
+  nekaj tekem (`izbraneTekme`, prva, zadnja in enakomerno vmes — os ostane
+  zaporedje tekem). Ploskev ima **mere okvirja** (ResizeObserver), ne
+  raztegnjenega 1120 × 280: na telefonu je bil graf visok 84 px in brez
+  oznak. Mere iz širine okvirja in ne iz `useTelefon` (ta je samo za izbiro
+  drevesa). V seznamu »Odigrane tekme« je sprememba ratinga tudi na telefonu
+  (pod izidom), obarvana po predznaku in ne po izidu.
+- **Profil: mesto pove, na kateri lestvici je** (`ProfilDto.Uvrstitev.spol`,
+  `rekreativec`): »81. od 144 · Lestvica Moški · Člani · boljši od 44 %« —
+  ista imena kot izbira na strani Lestvica. Kolofon ima »Tekme na turnirjih«
+  in »Ligaške tekme« v dveh vrsticah (prej »Turnirji / lige 0 / 4«, kar se je
+  bralo kot štiri lige).
+- **»← …« na profilu pelje tja, od koder je gledalec prišel** (`pomozno/izvor.ts`):
+  `useBelezenjeIzvora` v `Postavitev` si ob vsakem PUSH zapomni prejšnjo pot
+  pod ključem lokacije (sessionStorage, zato preživi osvežitev); povezava
+  naredi korak nazaj v zgodovini (stanje prejšnje strani, npr. odprto okno
+  ekipe, ostane), napis pa je ime lige/turnirja/igralca iz predpomnilnika
+  (`oznakaPoti`). Kdor je prišel od zunaj, dobi »← Lestvica«.
 - **Točka grafa ratinga nosi dva časa in nista isto.** `kdaj` je trenutek
   **obračuna ratinga** (`rating_zgodovina.ustvarjen_ob`) in po njem so točke
   urejene — vodoravna os je zaporedje obračunanih tekem, ne koledar. `datum`
@@ -1992,21 +2095,46 @@
   Skupine z več stopnjami (skupine za mesta) so razdeljene z naslovi
   stopenj; tekma za 3. mesto in tolažilna mreža stojita pod glavno mrežo
   (`TolazilniDel`).
+- **Zapisnik srečanja na telefonu ni tabela** (`ZapisnikMobi` v
+  `SrecanjeStran`, razdelek »Zapisnik na telefonu« v `slog.css`; oktober 2026).
+  Tabela petih stolpcev je bila pri 375 px široka 500 px: stolpec gostov je
+  bil za robom, imena so se lomila v štiri vrstice, nizi so bili odrezani.
+  Tekma je vrstica s črto: oznaka (A-X) in stanje/gumb, nato domači in gost
+  vsak v svoji vrsti (ime čez vso širino, `white-space: nowrap`; par ima
+  vsakega igralca v svoji vrstici), desno sprememba ratinga in dobljeni nizi,
+  pod njima točke po nizih. Klik vrstice z nizi odpre `NiziTekmeOkno`, gumba
+  »Popravi« / »Vnesi« klik ustavita. Pod zapisnikom (obe širini) stoji
+  povezava na `/o-ratingu`, kadar ima kaka tekma spremembo ratinga.
 - **Menjava v zapisniku srečanja** (`MenjavaOkno` v `SrecanjeStran`): na
-  namizju ima tekma, ki čaka, gumba »Menjava« in »Vnesi«; pod 640 px gumb
-  »Menjava« odpade (`.srecanje__gumb-menjave`), ker drugi gumb zapisnik
-  razširi čez rob (354 → 446 px) in »Vnesi« zdrsne z zaslona. Tam menjavo
-  ponudi okno za rezultat (»Menjava igralcev«) — to je tudi trenutek, ko
-  organizator s papirja opazi drugega igralca. Stran, ki igra na tujem mestu,
-  nosi pod imenom mono oznako »menjava« (`.srecanje__menjava`).
+  namizju ima tekma, ki čaka, gumba »Menjava« in »Vnesi«; na telefonu
+  (`ZapisnikMobi`) gumba »Menjava« ni. Tam menjavo ponudi okno za rezultat
+  (»Menjava igralcev«) — to je tudi trenutek, ko organizator s papirja opazi
+  drugega igralca. Stran, ki igra na tujem mestu, nosi pod imenom mono oznako
+  »menjava« (`.srecanje__menjava`).
 - **Glava lige: ime zgoraj, sezona pod njim** (`.naslov-strani__pod`,
   `.naslov-mobi__pod`) — izrecna odločitev lastnika in zavestna izjema od
   para nadnaslov/naslov iz DESIGN.md. Glava ne nosi vrstice »10 ekip ·
   dvokrožno« (sistem je v Pravilih, potek v napredku), piramida se imenuje
   »Piramida lig« in brez kategorije, kader (v oknu ekipe) ima stolpca z
-  oznakama »Rating« in »Score«, vsaka desno nad svojimi številkami. Na
+  oznakama »Rating« in »Izkupiček« (do okt 2026 angleški »Score«), vsaka desno
+  nad svojimi številkami. Na
   seznamu lig stoji samo ime sistema (`imeSistema`: »SNTL« brez sestave v
   oklepaju); celoten opis ostane v obrazcu in pravilih.
+- **Lestvica lige na telefonu (`LestvicaMobi`) nosi razmerji tekem in nizov**
+  (okt 2026): vrstica je ime s formo, pod njim »1-1 · tekme 6:4 · nizi 22:15«,
+  točke ob desnem robu. Brez razmerij igralec ni vedel, zakaj je pri petih
+  ekipah z 1-1 njegova sedma. Pod lestvico, kadar imata vsaj dve ekipi enako
+  točk, stoji vrstni red izenačenih (`IzenaceneEkipe`: medsebojni izid →
+  razlika tekem → razlika nizov — isto kot `LestvicaLigeStoritev`), ker
+  medsebojnega izida v vrstici ni. Pravila, ki jih ne razbij:
+  - **Forma ima črke Z/N/P tudi na telefonu**, zadnja **tri** srečanja
+    (`FORMA_TELEFON`; namizje pet). Podlagi sta srednja tona
+    (`--barva-poudarek-srednje`, `--barva-negativna-srednje`) s črko v
+    črnilu — mehka tona sta bila pri 20 px skoraj papir, zelena oz. rjasta črka
+    na srednjem tonu pa ne doseže 4,5 : 1.
+  - **Ime ekipe je modro**: vrstica je gumb, ki odpre okno ekipe, modro
+    besedilo pa je v aplikaciji povezava (na namizju isto pove »Kader in
+    tekme«). Ime se ne odreže, dolgo se prelomi.
 - **Klik na ekipo na lestvici lige odpre okno ekipe** (`komponente/EkipaLigeOkno`,
   razdelek »Okno ekipe lige« v `slog.css`; oktober 2026 — prej je vrstica kader
   razprla pod sabo). Okno je za igralca te ekipe: kader in **vsa srečanja ekipe v
@@ -2062,6 +2190,34 @@
     mora ostati odprta) in ob koncu razveljavi **ves** predpomnilnik poizvedb
     (`invalidateQueries()` brez ključa) — rating stoji na lestvici, v profilih,
     na karticah tekem in v napovedih.
+- **Javna razlaga ratinga `/o-ratingu`** (`strani/RazlagaRatingaStran.tsx`,
+  razdelek »Javna razlaga ratinga« v `slog.css`; oktober 2026). Za gledalca, ki
+  je po enem porazu izgubil 113 točk ali se ne najde na lestvici: kako rating
+  nastane, odgovori »Zakaj …?« in dva preizkusa. Povezave nanjo: modri blok
+  ratinga na profilu, točka uvrstitve v grafu (`#prvi-dan`), dno zapisnika
+  srečanja, dno lestvice in namig iskanja (`#lestvica`).
+  - **Številke pravil pridejo s strežnika** (`GET /rating/pravila`,
+    `PravilaRatingaDto`: K, pragovi, teže, odbitki, sidra po starosti) — iz
+    istih konstant, ki jih bere obračun. Na roko zapisana številka bi se ob
+    naslednji umeritvi razšla z obračunom.
+  - **Preizkusa računa strežnik po istih razredih kot obračun**
+    (`RazlagaRatingaStoritev`): tekma (`GET /rating/izracun`, vrstice ravni so
+    `NapovedTekmeDto.Raven`) in prvi dan novinca (`GET /rating/prvi-dan`:
+    prva tekma je korak od izhodišča, od druge naprej `UvrstitevNovinca` iz vseh
+    izidov dneva — ista veja kot `RatingStoritev.uvrstiAliObdrzi`). Kdor
+    spremeni uvrstitev novinca v obračunu, mora spremeniti tudi preizkus:
+    `prviDanPreizkusaJeTisti_kiGaObracunZaresDa` isti dan najprej preizkusi in
+    nato zares odigra. Poti so GET (gost sme samo GET), nič ne zapišejo in ne
+    nosijo osebnih podatkov.
+- **Pogoji in zasebnost `/pogoji`** (`strani/PogojiStran.tsx`, zasebnost je
+  `/pogoji#zasebnost`). Podatki o ponudniku (NTK Žalec, naslov, matična in
+  davčna, e-pošta, gostovanje) so v `pomozno/pravno.ts` — kar je `null`, se ne
+  izpiše, a ZEPT zahteva stalno dostopne podatke o ponudniku, zato jih je
+  treba vpisati pred objavo. Besedilo opisuje, kar aplikacija res počne; pred
+  zanašanjem nanj ga naj pregleda nekdo, ki pozna ZVOP-2 in ZVPot-1. Povezave:
+  kljukica v registraciji (nov zavihek — okno bi se sicer zaprlo), dno okna
+  prijave (noge strani ni; okno prijave je z vsake strani en dotik) in pripis
+  »Plačilo prek Stripe« na straneh naročnine.
 - **Stran `/narocnina` za igralca** (`komponente/NarocninaIgralec`, razdelek
   »Naročnina igralca« v `slog.css`; organizatorski del je ostal v
   `strani/NarocninaStran`) je poustvarjena po `design_handoff_narocnina` in
@@ -2147,15 +2303,66 @@
     `overflow: hidden`, zato lik stoji v ovoju ob njej. Tabla izstopi navzdol
     (`clip-path` ovoja), sedeči lik vstran; ob `prefers-reduced-motion` je
     nepremičen. Črte se večajo z likom (brez `vector-effect`).
-  - **Sklanjanje ima lasten `sklon`** (ostanek pri 100: »64 igralcev«). Skupni
-    `sklon` v `oblikovanje.ts` deli po ostanku pri 10 in napačno sklanja 21–24
-    in 31–34 (»64 igralci«) - nedotaknjen, ker ga uporablja ves vmesnik.
+  - **Sklanjanje ima lasten `sklon`** (ostanek pri 100: »64 igralcev«) — od
+    oktobra 2026 po istem pravilu kot skupni `sklon` v `oblikovanje.ts`.
   - Gumba »+ Nova liga« / »+ Nov turnir« ob polni kvoti odpreta obvestilo o
     nadgradnji (`ObvestiloONadgradnji`), ne blokirata tiho; obrazec za turnir je
     `NovTurnirOkno` iz `TurnirjiStran.tsx`.
   - `?sezona=2025/26` prikaže pretekle sezone iz arhiva na isti strani; brez
     veljavne sezone velja tekoča. Cena 0 (prehodna doba, V34) se izpiše
     »Brezplačno«.
+- **Sklanjanje po številu: posebno obliko imajo samo števila, ki se pri 100
+  končajo na 1, 2, 3 ali 4** (`sklon` v `pomozno/oblikovanje.ts`): »21 igralcev«,
+  »64 igralcev«, »102 igralca«. Do oktobra 2026 je pravilo delilo po ostanku pri
+  10 in pisalo »64 IGRALCI«. Nove funkcije `sklon…` gredo skozi `sklon`.
+- **Ime lige za predlogom se sklanja samo v besedi »liga«** (`ligaVTozilniku`
+  »Napreduje v Ligo Savinja A«, `ligaVMestniku` »Igra v Ligi …«); »1. SNTL«
+  ostane. **Imen oseb ne sklanjamo**, zato med imenoma stoji pomišljaj (»Jure
+  Pejovnik – Ivan Zera« v zanimivostih), ob enem imenu pa »nasprotnik Aleš
+  Sešel« (graf ratinga) — »proti Ivan Zera« je bilo narobe (dajalnik).
+- **Končno mesto, ki si ga deli več udeležencev, je razpon** (»3.–4.«, »5.–8.«;
+  `oznakaMesta` v `DogodekStran`, `TekmovanjeProfila.mestoDo` na profilu).
+  Izločilni sistem brez tekme za 3. mesto (uvoz Stupe) da obema polfinalistoma
+  »3.«: oba sta na stopničkah s slogom tretjega (`.razvrstitev__vrh--stiri`);
+  prej je imel en slog stopničk, drugi navadno vrstico.
+- **Seznam turnirjev ima razdelek »Prihajajoči«** (v pripravi ali z datumom od
+  danes, ne v teku in ne zaključeni; turnir v pripravi s preteklim datumom ne,
+  najbližji prvi) nad »Vsi turnirji«, ta pa je pri razvrstitvi po datumu
+  razdeljen po sezonah (`zLocnicamiSezon`, `.seznam-locnica`). Vrstica na
+  telefonu nosi letnico pod mesecem, obdobje v mono vrstici samo pri
+  večdnevnem turnirju (»03 OKT« in »3. 10.« je bil isti podatek dvakrat), ime
+  sme v dve vrstici (`.vrstica-mobi__ime`, tudi lige in kategorije).
+- **Profil: »Odigrane tekme« so po tekmovanjih** (`TekmePoTekmovanjih`,
+  `ProfilDto.tekmovanja`, `TekmaProfila.tekmovanjeKljuc`): kategorija turnirja
+  (ključ `d<idDogodek>`, tudi ekipni dogodek) oz. liga (`l<idLiga>`) je vrstica z
+  izkupičkom, spremembo ratinga in končnim mestom »5. mesto od 32« (uvrščeni v
+  kategoriji, `PrijavaRepozitorij.mestaPoDogodkih`), tekme se razprejo pod njo.
+  Nad seznamom izbira sezone in odličja (prva tri mesta kategorij turnirjev).
+  Skok s točke grafa tekmovanje odpre (in po potrebi pokaže vse sezone) ter
+  vrstico poišče šele po izrisu (`skok` + učinek). Pri ligi mesta ni (mesto je
+  ekipe). Glava profila ima poleg mesta na lestvici spola še **mesto v
+  mladinskem pasu** (»12. od 80 · Lestvica Moški · U19«, `mestoVPasu`, isto
+  merilo kot kategorija na strani Lestvica); značka mesta ni več zelena
+  (zelena je uspeh, mesto je podatek).
+- **Blok »Lestvica« na domači strani kaže ENO lestvico** (`lestvicaSklopa`):
+  prijavljen igralec svojo (spol in skupina), gost naključno moško ali žensko
+  lestvico članov ob vsakem prihodu; napis pod naslovom pove, katera je. Prej je
+  mešal spola in mesta se niso ujemala s stranjo Lestvica.
+- **Lestvica na telefonu**: v mono vrstici je izkupiček in premik pred klubom
+  (klub se pri 375 px odreže, prej je odpadel »449–43 · ↑2«).
+- **Napaka 404 nima gumba »Poskusi znova«** (`NapakaPoizvedbe`): pove, da
+  zapisa ni, in ponudi domačo stran; tehničnega sporočila zaledja (»Igralec z id
+  … ne obstaja«) ne izpiše. Tudi 401/403 gumba nimata.
+- **Izbira ENE možnosti v oknu filtra nima kvadratka** (`.filtri__vrstica--ena`):
+  kvadratek je kljukica (več izbir); izbrano pove modra črta in modro ime.
+  Krogca ni, ker velja radij 0.
+- **Iskanje na telefonu fokusira polje v istem dotiku** (`IskanjeTelefona`:
+  `flushSync` + `focus()`): Safari na iOS sicer tipkovnice ne odpre.
+- **Klubi**: V43 je združila klube, ki sta jih uvoza zapisala dvakrat (stara
+  stran in Stupa, npr. Krka in KRKA NOVO MESTO) — par je določen z
+  identifikatorjema pri virih, povezava Stupe kaže na ohranjeni zapis, zato
+  sinhronizacija drugega ne ustvari znova. »NAMIZNOTENIŠKI KLUB SAVINJA« iz
+  Stupe NI združen (igralce deli s Savinjo Luče in Savinjo Žalec).
 - Preverba pred zaključkom dela: `cd vmesnik && npm run build` (tsc + vite).
 
 ## Objava na splet
@@ -2174,6 +2381,33 @@
   vloži v isti `.jar`; `SpletniVmesnik` ga postreže in vsako pot, ki ni
   datoteka in ne začne z `api/`, vrne kot `index.html` (sicer osvežitev na
   `/turnirji/1` vrne 404). Privzeti prevod ostane brez vmesnika, da je hiter.
+- **Naslov in predogled povezave sestavi strežnik** (okt 2026, paket
+  `splet`): `StraniKontroler` za `/lige/{id}` (z `?ekipa=` je naslov
+  ekipa), `/turnirji/{id}`, `/dogodki/{id}`, `/srecanja/{id}`,
+  `/igralci/{id}/profil` in stalne strani (`/lige`, `/lestvica` …) vrne
+  `index.html`, v katerem `PredogledStrani` zamenja blok med
+  `<!--predogled-->` in `<!--/predogled-->` (title, description, canonical,
+  og:title/description/url). Prej je imela vsaka stran isti naslov in
+  povezava na ligo v WhatsAppu je bila videti kot domača stran — WhatsApp,
+  Facebook in Viber JavaScripta ne izvajajo. Pravila, ki jih ne razbij:
+  - **Oznak v `index.html` ne briši**; brez njih ostane HTML nespremenjen
+    (stran dela, predogled je splošen). Neznan ali neveljaven id da splošen
+    predogled, ne 404/400 — stran nato sama pove, da zapisa ni.
+  - Besedila (`PredogledStoritev`) so samo javni podatki, ki jih stran kaže
+    gostu; imena so ubežana (vpisujejo jih organizatorji).
+  - **Naslov zavihka vzdržuje vmesnik** (`useNaslovStrani`, zapis
+    »<naslov> – Turnirko« = `PredogledStrani.PRIPONA`); stran, ki jo odpre
+    WhatsApp, in zavihek se imenujeta enako.
+  - og:url in kanonični naslov gradi `turnirko.javni-naslov`
+    (`TURNIRKO_JAVNI_NASLOV`, privzeto https://turnirko-nt.si); slika
+    `predogled.png` (1200 × 630) je ena za vse strani.
+- **Ikone za bližnjico na začetnem zaslonu** (`apple-touch-icon.png`,
+  `ikona-192/512.png`, `manifest.json` z `display: minimal-ui`,
+  `theme-color` = papir) in `predogled.png` so izrisani iz
+  `skripte/ikone/*.html` z `bash skripte/ikone/naredi.sh` (brezglavi Chrome).
+  Znak v ikoni zaseda srednjih 60 % (iOS zaobli vogale, Android obreže za
+  maskable). `minimal-ui` in ne `standalone`: na iOS bi bližnjica brez
+  brskalnikove vrstice ostala brez poti nazaj.
 - Profil `splet` (`application-splet.properties`) je za strežnik za Caddyjem:
   prazen CORS (isti izvor), `forward-headers-strategy`, brez sledi sklada v
   odgovoru. Vrata 8080 se na strežniku ne objavijo — do aplikacije se pride

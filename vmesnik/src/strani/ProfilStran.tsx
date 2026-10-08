@@ -15,9 +15,9 @@
    vmesnik ima ze predpomnjeno (isti kljuc kot LestvicaStran), zozene na
    lestvico igralcevega spola. */
 import type { CSSProperties } from 'react'
-import { useCallback, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { profiliApi, statistikaApi } from '../api/zahteve'
 import type {
@@ -29,8 +29,10 @@ import type {
   ProfilZasebnoDto,
   RazsevnaTocka,
   Razmerje,
+  StarostniPas,
   TekmaDvojic,
   TekmaProfila,
+  TekmovanjeProfila,
 } from '../api/tipi'
 import { OZNAKE_IZID, izidNizov } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
@@ -39,11 +41,15 @@ import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { NapovedTekme } from '../komponente/NapovedTekme'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { oznakaPoti, useIzvor } from '../pomozno/izvor'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 import {
   oznakaMeseca,
+  sezonaIzDatuma,
   sklonMesecih,
   sklonPorazov,
   sklonTekem,
+  sklonTekmovanj,
   sklonTock,
   sklonZmag,
 } from '../pomozno/oblikovanje'
@@ -53,6 +59,11 @@ export function ProfilStran() {
   const idIgralec = Number(id)
   const { jeAdmin, mojIdIgralec, jePremium } = useAvtentikacija()
   const { odpri: odpriPremiumOglas } = usePremiumOglas()
+  const odjemalec = useQueryClient()
+  const navigiraj = useNavigate()
+  /* Pot, s katere je gledalec prišel (liga, zapisnik, lestvica ...), ali null,
+     če je prišel od zunaj - takrat povezava nazaj pelje na lestvico. */
+  const izvor = useIzvor()
 
   const profil = useQuery({
     queryKey: ['profil', idIgralec],
@@ -79,10 +90,31 @@ export function ProfilStran() {
      Vrstica dobi fokus — brez tega bralnik zaslona po skoku ne pove, kam smo
      prišli — in ostane označena, dokler gledalec ne izbere druge tekme. */
   const [poudarjenaTekma, nastaviPoudarjeno] = useState<string | null>(null)
-  const skociNaTekmo = useCallback((idTekme: number, ligaska: boolean) => {
-    const kljuc = kljucTekme(idTekme, ligaska)
-    nastaviPoudarjeno(kljuc)
-    const vrstica = document.getElementById('tekma-' + kljuc)
+  /* Tekme so zbrane po tekmovanjih in zaprte, zato skok najprej odpre
+     tekmovanje (in pokaže vse sezone, če je tekma v drugi), vrstico pa
+     poišče šele po izrisu - `skok` je zahteva, ki jo učinek spodaj izvede. */
+  const [odprtaTekmovanja, nastaviOdprtaTekmovanja] = useState<Set<string>>(() => new Set())
+  const [sezona, nastaviSezono] = useState<string>(VSE_SEZONE)
+  const [skok, nastaviSkok] = useState<{ kljuc: string; zaporedna: number } | null>(null)
+  const skociNaTekmo = useCallback(
+    (idTekme: number, ligaska: boolean) => {
+      const kljuc = kljucTekme(idTekme, ligaska)
+      nastaviPoudarjeno(kljuc)
+      const tekma = profil.data?.tekme.find((t) => kljucTekme(t.idTekme, t.ligaska) === kljuc)
+      if (tekma) {
+        nastaviOdprtaTekmovanja((prej) => new Set(prej).add(tekma.tekmovanjeKljuc))
+        const tekmovanje = profil.data?.tekmovanja.find((t) => t.kljuc === tekma.tekmovanjeKljuc)
+        nastaviSezono((prej) =>
+          prej === VSE_SEZONE || sezonaTekmovanja(tekmovanje) === prej ? prej : VSE_SEZONE,
+        )
+      }
+      nastaviSkok((prej) => ({ kljuc, zaporedna: (prej?.zaporedna ?? 0) + 1 }))
+    },
+    [profil.data],
+  )
+  useEffect(() => {
+    if (!skok) return
+    const vrstica = document.getElementById('tekma-' + skok.kljuc)
     if (!vrstica) return
     vrstica.focus({ preventScroll: true })
     /* Pri uvoženi zgodovini je seznam dolg tudi 80 000 px. Mehko drsenje čez
@@ -94,7 +126,9 @@ export function ProfilStran() {
       behavior: mirno || razdalja > window.innerHeight * 4 ? 'auto' : 'smooth',
       block: 'center',
     })
-  }, [])
+  }, [skok])
+
+  useNaslovStrani(profil.data?.glava.polnoIme)
 
   /* Merilo je isLoading (= brez podatkov IN zahteva teče), ne isPending:
      poizvedba brez podatkov, ki ne teče, je ustavljena (npr. brez povezave)
@@ -110,26 +144,60 @@ export function ProfilStran() {
   const jeMoj = mojIdIgralec === idIgralec
   const { priimek, ime } = razbijIme(p.glava.polnoIme)
   const okolica = izracunajOkolico(lestvica.data, idIgralec, p.uvrstitev.mesto)
+  const vPasu = mestoVPasu(lestvica.data, idIgralec)
 
   return (
     <section className="profil">
       <div>
-        <Link to="/lestvica" className="povezava-nazaj">← Lestvica</Link>
+        {/* Nazaj tja, od koder je gledalec prišel - na profil najpogosteje
+            pride iz lige ali zapisnika, stalna »← Lestvica« pa ga je odpeljala
+            drugam. Korak nazaj v zgodovini (in ne nova stran) obdrži stanje
+            prejšnje strani, npr. odprto okno ekipe v ligi. */}
+        <Link
+          to={izvor ?? '/lestvica'}
+          className="povezava-nazaj"
+          onClick={(dogodek) => {
+            /* Odpiranje v novem zavihku (Ctrl/⌘/srednji klik) naj ostane navadna povezava. */
+            if (izvor == null || dogodek.button !== 0) return
+            if (dogodek.metaKey || dogodek.ctrlKey || dogodek.shiftKey || dogodek.altKey) return
+            dogodek.preventDefault()
+            navigiraj(-1)
+          }}
+        >
+          ← {izvor ? oznakaPoti(izvor, odjemalec) : 'Lestvica'}
+        </Link>
 
         <div className="stran-glava">
           <div>
-            <div className="profil__uvrstitev">
-              {p.uvrstitev.mesto !== null && (
+            {/* Mesto pove tudi, na kateri lestvici je - samo »81. / 144« ni
+                povedalo, med kom (spol, člani oz. rekreativci; isti obseg in
+                isti imeni kot na strani Lestvica). */}
+            {p.uvrstitev.mesto !== null && (
+              <div className="profil__uvrstitev">
                 <span className="profil__mesto-znacka">
-                  {p.uvrstitev.mesto}. / {p.uvrstitev.skupajIgralcev}
+                  {p.uvrstitev.mesto}. od {p.uvrstitev.skupajIgralcev}
                 </span>
-              )}
-              {p.uvrstitev.percentil !== null && (
                 <span className="profil__percentil">
-                  Boljši od {p.uvrstitev.percentil} % igralcev z ratingom
+                  {imeLestvice(p.uvrstitev)}
+                  {p.uvrstitev.percentil !== null && (
+                    <> · boljši od {p.uvrstitev.percentil} %</>
+                  )}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
+            {/* Mladinec se primerja s svojim pasom: 104. med člani mu pove
+                malo, 12. v U19 pa to, po kar je prišel. Isto merilo kot
+                izbira kategorije na strani Lestvica (pas zajame mlajše). */}
+            {vPasu && p.uvrstitev.spol !== null && (
+              <div className="profil__uvrstitev">
+                <span className="profil__mesto-znacka">
+                  {vPasu.mesto}. od {vPasu.skupaj}
+                </span>
+                <span className="profil__percentil">
+                  Lestvica {p.uvrstitev.spol === 'ZENSKI' ? 'Ženske' : 'Moški'} · {vPasu.pas}
+                </span>
+              </div>
+            )}
 
             <h1 className="naslov-strani">
               <span className="naslov-strani__nad">{ime}</span>
@@ -173,6 +241,11 @@ export function ProfilStran() {
                   )}
                 </div>
               )}
+              {/* Številka brez razlage se bere kot napaka ali naklonjenost -
+                  posebej po prvem dnevu, ko skoči za stotine točk. */}
+              <Link to="/o-ratingu" className="rating-blok__povezava">
+                Kako se računa →
+              </Link>
             </div>
 
             <div className="kolofon">
@@ -199,11 +272,15 @@ export function ProfilStran() {
                   </span>
                 </div>
               )}
+              {/* Dve vrstici in ne »Turnirji / lige 0 / 4« - to se je bralo
+                  kot štiri lige, v resnici pa so tekme. */}
               <div className="kolofon__vrstica">
-                <span className="kolofon__oznaka">Turnirji / lige</span>
-                <span className="kolofon__vrednost">
-                  {p.pregled.turnirskih} / {p.pregled.ligaskih}
-                </span>
+                <span className="kolofon__oznaka">Tekme na turnirjih</span>
+                <span className="kolofon__vrednost">{p.pregled.turnirskih}</span>
+              </div>
+              <div className="kolofon__vrstica">
+                <span className="kolofon__oznaka">Ligaške tekme</span>
+                <span className="kolofon__vrednost">{p.pregled.ligaskih}</span>
               </div>
               <div className="kolofon__vrstica">
                 <span className="kolofon__oznaka">Zadnja tekma</span>
@@ -255,17 +332,31 @@ export function ProfilStran() {
         </div>
       )}
 
-      <div>
-        <div className="naslovna-vrstica">
-          <h2>Odigrane tekme</h2>
-          <span className="sekcija__meta">{p.tekme.length} skupaj</span>
-        </div>
-        {p.tekme.length === 0 ? (
+      {p.tekme.length === 0 ? (
+        <div>
+          <div className="naslovna-vrstica">
+            <h2>Odigrane tekme</h2>
+          </div>
           <p className="obvestilo">Ta igralec še ni odigral nobene tekme.</p>
-        ) : (
-          <SeznamTekem tekme={p.tekme} poudarjena={poudarjenaTekma} />
-        )}
-      </div>
+        </div>
+      ) : (
+        <TekmePoTekmovanjih
+          tekme={p.tekme}
+          tekmovanja={p.tekmovanja}
+          sezona={sezona}
+          naSezono={nastaviSezono}
+          odprta={odprtaTekmovanja}
+          naPreklop={(kljuc) =>
+            nastaviOdprtaTekmovanja((prej) => {
+              const novo = new Set(prej)
+              if (novo.has(kljuc)) novo.delete(kljuc)
+              else novo.add(kljuc)
+              return novo
+            })
+          }
+          poudarjena={poudarjenaTekma}
+        />
+      )}
 
       {/* Dvojice so SVOJ seznam in ne štejejo ne v pregled ne v rating: izida
           para ni mogoče pripisati posamezniku. Razdelek se pokaže samo
@@ -967,6 +1058,174 @@ function Os({
 
 /* ---------------- 6. Odigrane tekme ---------------- */
 
+const VSE_SEZONE = 'vse'
+
+function sezonaTekmovanja(t: TekmovanjeProfila | undefined): string | null {
+  return t ? sezonaIzDatuma(t.datum) : null
+}
+
+/* »5. mesto od 32«, deljeno »3.–4. mesto od 16«; pri ligi mesta ni. */
+function oznakaMestaTekmovanja(t: TekmovanjeProfila): string | null {
+  if (t.mesto === null) return null
+  const mesto =
+    t.mestoDo !== null && t.mestoDo > t.mesto ? `${t.mesto}.–${t.mestoDo}.` : `${t.mesto}.`
+  return t.udelezencev !== null ? `${mesto} mesto od ${t.udelezencev}` : `${mesto} mesto`
+}
+
+/* Odigrane tekme, zbrane po tekmovanju: vsaka kategorija turnirja oz. liga je
+   ena vrstica »OT Kidričevo · 5–1 · 5. mesto od 32 · +64«, tekme so pod njo
+   (klik razpre). Prej je bilo 419 tekem v enem seznamu in ime turnirja (z
+   datumom v imenu) se je ponovilo v vsaki vrstici - mladinec, ki išče svoje
+   uvrstitve, jih ni našel nikjer. Nad seznamom sta izbira sezone in odličja
+   (prva tri mesta v kategorijah turnirjev; deljeno 3. mesto šteje kot 3.). */
+function TekmePoTekmovanjih({
+  tekme,
+  tekmovanja,
+  sezona,
+  naSezono,
+  odprta,
+  naPreklop,
+  poudarjena,
+}: {
+  tekme: TekmaProfila[]
+  tekmovanja: TekmovanjeProfila[]
+  sezona: string
+  naSezono: (sezona: string) => void
+  odprta: Set<string>
+  naPreklop: (kljuc: string) => void
+  poudarjena: string | null
+}) {
+  const sezone = useMemo(() => {
+    const vse = new Set<string>()
+    for (const t of tekmovanja) {
+      const s = sezonaTekmovanja(t)
+      if (s) vse.add(s)
+    }
+    return [...vse].sort((a, b) => b.localeCompare(a))
+  }, [tekmovanja])
+  const izbrana = useMemo(
+    () => (sezona === VSE_SEZONE ? tekmovanja : tekmovanja.filter((t) => sezonaTekmovanja(t) === sezona)),
+    [tekmovanja, sezona],
+  )
+  const tekmePoTekmovanju = useMemo(() => {
+    const po = new Map<string, TekmaProfila[]>()
+    for (const t of tekme) {
+      const seznam = po.get(t.tekmovanjeKljuc)
+      if (seznam) seznam.push(t)
+      else po.set(t.tekmovanjeKljuc, [t])
+    }
+    return po
+  }, [tekme])
+  const steviloTekem = izbrana.reduce((vsota, t) => vsota + t.zmage + t.porazi, 0)
+  const odlicja = [1, 2, 3].map(
+    (mesto) => izbrana.filter((t) => !t.ligaska && t.mesto === mesto).length,
+  )
+
+  return (
+    <div>
+      <div className="naslovna-vrstica">
+        <h2>Odigrane tekme</h2>
+        <span className="sekcija__meta">
+          {steviloTekem} {sklonTekem(steviloTekem)} · {izbrana.length}{' '}
+          {sklonTekmovanj(izbrana.length)}
+        </span>
+      </div>
+
+      <div className="tekmovanja-profila__krmila">
+        {sezone.length > 1 && (
+          <label className="krmilo-izbor">
+            <span className="samo-za-bralnik">Sezona</span>
+            <span className="krmilo-izbor__oznaka" aria-hidden="true">
+              {sezona === VSE_SEZONE ? 'Vse sezone' : `Sezona ${sezona}`}
+              <span className="krmilo-izbor__puscica">▾</span>
+            </span>
+            <select
+              className="krmilo-izbor__polje"
+              value={sezona}
+              onChange={(dogodek) => naSezono(dogodek.target.value)}
+            >
+              <option value={VSE_SEZONE}>Vse sezone</option>
+              {sezone.map((s) => (
+                <option key={s} value={s}>
+                  Sezona {s}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {odlicja.some((n) => n > 0) && (
+          <span className="tekmovanja-profila__odlicja">
+            {odlicja.map((n, i) =>
+              n > 0 ? (
+                <span key={i} className={`tekmovanja-profila__odlicje tekmovanja-profila__odlicje--${i + 1}`}>
+                  {i + 1}. mesto × {n}
+                </span>
+              ) : null,
+            )}
+          </span>
+        )}
+      </div>
+
+      <div className="tekmovanja-profila">
+        {izbrana.map((t) => {
+          const jeOdprto = odprta.has(t.kljuc)
+          const mesto = oznakaMestaTekmovanja(t)
+          const naStopnickah = !t.ligaska && t.mesto !== null && t.mesto <= 3
+          return (
+            <div
+              key={t.kljuc}
+              className={
+                'tekmovanje-profila'
+                + (naStopnickah ? ` tekmovanje-profila--${t.mesto}` : '')
+                + (jeOdprto ? ' tekmovanje-profila--odprto' : '')
+              }
+            >
+              <button
+                type="button"
+                className="tekmovanje-profila__glava"
+                aria-expanded={jeOdprto}
+                onClick={() => naPreklop(t.kljuc)}
+              >
+                <span className="tekmovanje-profila__ime">{t.ime}</span>
+                <span className="tekmovanje-profila__meta">
+                  {[t.del, t.datum ? datum(t.datum) : null, mesto].filter(Boolean).join(' · ')}
+                </span>
+                <span className="tekmovanje-profila__izid">
+                  {t.zmage}–{t.porazi}
+                </span>
+                <span
+                  className={
+                    'tekmovanje-profila__rating'
+                    + (t.spremembaRatinga === null
+                      ? ''
+                      : t.spremembaRatinga >= 0
+                        ? ' profil__zmaga'
+                        : ' profil__poraz')
+                  }
+                >
+                  {t.spremembaRatinga === null
+                    ? ''
+                    : `${t.spremembaRatinga >= 0 ? '+' : '−'}${Math.abs(t.spremembaRatinga)}`}
+                </span>
+                <span className="tekmovanje-profila__puscica" aria-hidden="true">
+                  {jeOdprto ? '▴' : '▾'}
+                </span>
+              </button>
+              {jeOdprto && (
+                <SeznamTekem
+                  tekme={tekmePoTekmovanju.get(t.kljuc) ?? []}
+                  poudarjena={poudarjena}
+                  vTekmovanju
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* Turnirske in ligaške tekme imajo ločeni zaporedji id-jev, zato je ključ
    vrstice šele par (vir, id) — enak dogovor kot v grafu ratinga. */
 function kljucTekme(idTekme: number, ligaska: boolean): string {
@@ -979,18 +1238,22 @@ function kljucTekme(idTekme: number, ligaska: boolean): string {
 function SeznamTekem({
   tekme,
   poudarjena,
+  vTekmovanju = false,
 }: {
   tekme: TekmaProfila[]
   poudarjena: string | null
+  /* Seznam pod vrstico tekmovanja: ime tekmovanja je že v njej, zato stolpec
+     nosi le del (kolo s parom ekip pri ligi, kategorijo pri turnirju ne). */
+  vTekmovanju?: boolean
 }) {
   return (
-    <div className="tekme-mreza">
+    <div className={'tekme-mreza' + (vTekmovanju ? ' tekme-mreza--v-tekmovanju' : '')}>
       <div className="tekma-vrstica tekma-vrstica--glava">
         <span>Datum</span>
-        <span>Tekmovanje</span>
+        <span>{vTekmovanju ? 'Kolo' : 'Tekmovanje'}</span>
         <span>Nasprotnik</span>
         <span className="tekma-vrstica__desno">Rezultat</span>
-        <span className="tekma-vrstica__desno">rating</span>
+        <span className="tekma-vrstica__desno">± rating</span>
       </div>
       {tekme.map((t) => (
         <div
@@ -1006,12 +1269,22 @@ function SeznamTekem({
         >
           <span className="tekma-vrstica__datum">{t.datum ? datum(t.datum) : '—'}</span>
           <span className="tekma-vrstica__tekmovanje">
-            <span className="tekma-vrstica__ime">{t.tekmovanje}</span>
-            <span className="tekma-vrstica__del">
-              {t.ligaska ? 'liga · ' : ''}
-              {t.del}
-              {t.izidTip && t.izidTip !== 'IGRANO' ? ` · ${OZNAKE_IZID[t.izidTip]}` : ''}
-            </span>
+            {vTekmovanju ? (
+              /* Pri turnirski tekmi je lahko prazno - takrat span ostane prazen
+                 in CSS ne izpiše ločila »·« za datumom. */
+              [t.ligaska ? t.del : null, t.izidTip && t.izidTip !== 'IGRANO' ? OZNAKE_IZID[t.izidTip] : null]
+                .filter(Boolean)
+                .join(' · ') || null
+            ) : (
+              <>
+                <span className="tekma-vrstica__ime">{t.tekmovanje}</span>
+                <span className="tekma-vrstica__del">
+                  {t.ligaska ? 'liga · ' : ''}
+                  {t.del}
+                  {t.izidTip && t.izidTip !== 'IGRANO' ? ` · ${OZNAKE_IZID[t.izidTip]}` : ''}
+                </span>
+              </>
+            )}
           </span>
           <span className="tekma-vrstica__nasprotnik">
             <Link to={`/igralci/${t.idNasprotnika}/profil`} className="profil__nasprotnik">
@@ -1022,10 +1295,18 @@ function SeznamTekem({
           <span className={'tekma-vrstica__izid ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')}>
             {izidNizov(t.niziZa, t.niziProti, t.izidTip)}
           </span>
+          {/* Barva po predznaku spremembe in ne po izidu: na dan uvrstitve
+              novinca zmaga lahko rating tudi zniža. */}
           <span
             className={
-              'tekma-vrstica__rating ' + (t.zmaga ? 'profil__zmaga' : 'profil__poraz')
+              'tekma-vrstica__rating' +
+              (t.spremembaRatinga === null
+                ? ''
+                : t.spremembaRatinga >= 0
+                  ? ' profil__zmaga'
+                  : ' profil__poraz')
             }
+            title="Sprememba Turnirko ratinga zaradi te tekme"
           >
             {t.spremembaRatinga === null
               ? '—'
@@ -1307,4 +1588,36 @@ function razbijIme(polnoIme: string): { priimek: string; ime: string } {
 function datum(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('sl-SI')
+}
+
+/* Mladinski pasovi od najmlajšega navzgor - isti kot na strani Lestvica. */
+const MLADINSKI_PASOVI: StarostniPas[] = ['U11', 'U13', 'U15', 'U17', 'U19', 'U21']
+
+/* Mesto v igralčevem mladinskem pasu: med igralci istega spola, ki niso
+   rekreativci in so v tem ali mlajšem pasu (U19 zajame U11 … U19 - isto kot
+   kategorija na strani Lestvica). Mesto je število boljših plus ena, kot v
+   glavi profila. Člani, veterani, rekreativci in igralci brez letnice pasu
+   nimajo. */
+function mestoVPasu(
+  lestvica: LestvicaIgralcaDto[] | undefined,
+  idIgralec: number,
+): { pas: StarostniPas; mesto: number; skupaj: number } | null {
+  const jaz = lestvica?.find((v) => v.idIgralca === idIgralec)
+  if (!lestvica || !jaz || jaz.spol === null || jaz.rekreativec || jaz.rating === null) return null
+  const meja = jaz.starostniPas ? MLADINSKI_PASOVI.indexOf(jaz.starostniPas) : -1
+  if (meja === -1 || !jaz.starostniPas) return null
+  const vPasu = lestvica.filter((v) => {
+    const indeks = v.starostniPas ? MLADINSKI_PASOVI.indexOf(v.starostniPas) : -1
+    return v.spol === jaz.spol && !v.rekreativec && indeks !== -1 && indeks <= meja
+  })
+  const boljsih = vPasu.filter((v) => v.rating !== null && v.rating > jaz.rating!).length
+  return { pas: jaz.starostniPas, mesto: boljsih + 1, skupaj: vPasu.length }
+}
+
+/* Ime lestvice, na kateri je mesto - z istimi besedami kot izbira na strani
+   Lestvica (spol · Člani oz. Rekreativci), da ju gledalec poveže. */
+function imeLestvice(u: ProfilDto['uvrstitev']): string {
+  const spol = u.spol === 'ZENSKI' ? 'Ženske' : u.spol === 'MOSKI' ? 'Moški' : null
+  const skupina = u.rekreativec ? 'Rekreativci' : 'Člani'
+  return ['Lestvica', [spol, skupina].filter(Boolean).join(' · ')].join(' ')
 }

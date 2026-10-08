@@ -15,7 +15,7 @@
      kontekst; primerjave (vzpon ratinga, zid, klubi) so vrstice s črtami kot
      povsod drugod. Nikoli mreža kartic s številkami.
 
-   Imena so brez glagolov (»A proti B« in ne »A je premagal B«) — zapisnik
+   Imena so brez glagolov (»A – B« in ne »A je premagal B«) — zapisnik
    nikogar ne sklanja po spolu, tekmo pa opiše izid. */
 import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -400,10 +400,11 @@ function metaPreobrata(o: StatObrat): string[] {
   return [`${o.izid} po zaostanku 0 : 2`, o.nizi, o.kontekst]
 }
 
-/* Beseda »proti« nosi vlogo dvopičja v zapisniku: ne sklanja nikogar po
-   spolu in je krajša od glagola, ki bi ga moral. */
+/* Med imenoma stoji pomišljaj (»Jure Pejovnik – Ivan Zera«), kot v zapisniku
+   in razporedu. Beseda »proti« zahteva dajalnik (»proti Ivanu Zeri«), imen pa
+   vmesnik ne sklanja - »proti Ivan Zera« je bilo slovnično narobe. */
 function Proti() {
-  return <span className="zanimivost__proti">proti</span>
+  return <span className="zanimivost__proti">–</span>
 }
 
 function Ime({ oseba }: { oseba: StatOseba }) {

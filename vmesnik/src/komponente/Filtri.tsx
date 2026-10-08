@@ -330,6 +330,9 @@ export function useFiltri<T>(
     steviloIzbranih: zetoni.length,
     moznosti,
     prikazani,
+    /* Ali postavka ustreza izboru - za stran, ki mora isti izbor uporabiti še
+       na drugem seznamu (lestvica šteje mesta brez iskanja). */
+    ustreza,
     razvrstitev,
     nastaviRazvrstitev,
     preklopi,
@@ -724,11 +727,15 @@ export function IzbiraEne({
             type="button"
             role="radio"
             key={m.vrednost}
-            className={'filtri__vrstica' + (jeIzbrana ? ' filtri__vrstica--izbrana' : '')}
+            className={
+              'filtri__vrstica filtri__vrstica--ena' + (jeIzbrana ? ' filtri__vrstica--izbrana' : '')
+            }
             aria-checked={jeIzbrana}
             onClick={() => naIzbiro(m.vrednost)}
           >
-            <span className={'kljukica' + (jeIzbrana ? ' kljukica--polna' : '')} aria-hidden="true" />
+            {/* Brez kvadratka: kvadratek je kljukica (izbereš jih več), tu pa je
+                izbrana vedno natanko ena. Izbrano pove modra črta ob robu in
+                modro ime, kot izbrana vrstica drugod. */}
             <span className="filtri__ime">{m.napis}</span>
             <span className="filtri__stevec">{m.stevec}</span>
           </button>

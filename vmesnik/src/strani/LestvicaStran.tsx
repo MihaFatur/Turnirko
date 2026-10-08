@@ -30,12 +30,15 @@
    Izbrana kategorija stoji ob naslovu, tako kot spol. Filter je klub.
 
    Iskanje po imenu ni skupina filtra, ampak zoži seznam PRED njim — števci ob
-   merilih so tako vedno števci tega, kar gledalec vidi. */
+   merilih so tako vedno števci tega, kar gledalec vidi. Iskanje mest NE
+   oštevilči znova (igralec, ki se poišče, mora videti svoje mesto) in teče
+   samo po izbrani lestvici, zato pod seznamom stoji, kje so zadetki z drugih
+   lestvic in zakaj koga sploh ni na nobeni. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
-import { statistikaApi } from '../api/zahteve'
+import { igralciApi, statistikaApi } from '../api/zahteve'
 import type { LestvicaIgralcaDto, Spol, StarostniPas } from '../api/tipi'
 import {
   IzbiraEne,
@@ -47,6 +50,9 @@ import {
 import { IskalnikSeznama, IskanjeTelefona } from '../komponente/IskanjeSeznama'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
+import { kratekKlub } from '../pomozno/oblikovanje'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 
 /* Vrstica lestvice z mestom. Mesto se pripne PRED filtriranjem — a samo zato,
@@ -60,6 +66,9 @@ interface Vrstica {
 }
 
 const ISKANJE_PO = 'po imenu ali klubu'
+
+/* Koliko zadetkov z drugih lestvic (in brez lestvice) se izpiše pod seznamom. */
+const NAJVEC_DRUGJE = 6
 
 const OZNAKE_SPOLA: Record<Spol, string> = { MOSKI: 'Moški', ZENSKI: 'Ženske' }
 
@@ -104,12 +113,10 @@ function vKategoriji(igralec: LestvicaIgralcaDto, kategorija: Kategorija): boole
   return mesto !== -1 && mesto <= MLADINSKI_PASOVI.indexOf(kategorija)
 }
 
+/* Brez šumnikov in po besedah, kot vsi iskalniki (pomozno/iskanje): »belavic«
+   najde Belavić, »novak ana« Ano Novak. */
 function ustrezaIskanju(igralec: LestvicaIgralcaDto, iskanje: string): boolean {
-  const iskano = iskanje.trim().toLocaleLowerCase('sl')
-  return (
-    !iskano ||
-    `${igralec.polnoIme} ${igralec.klub ?? ''}`.toLocaleLowerCase('sl').includes(iskano)
-  )
+  return ustrezaBesedam(`${igralec.polnoIme} ${igralec.klub ?? ''}`, besedeIskanja(iskanje))
 }
 
 /* Ista presoja kot skupina »klub« v useFiltri - potrebna je zunaj nje, ker
@@ -135,6 +142,7 @@ const RAZVRSTITVE: Razvrstitev<Vrstica>[] = [
 ]
 
 export function LestvicaStran() {
+  useNaslovStrani('Lestvica igralcev')
   const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
   const { mojIdIgralec } = useAvtentikacija()
   const jeTelefon = useTelefon()
@@ -219,16 +227,74 @@ export function LestvicaStran() {
     return stevci
   }, [lestvica.data, kategorija])
 
-  /* Prikazani seznam se VEDNO prešteje od 1 naprej: številka pove mesto v tem,
-     kar gledalec gleda. Filter »U19«, ki se je začel pri 35., je bral kot izsek
-     sredine lestvice — koliko mladincev je pred tem igralcem, pa je bilo treba
-     šteti na roke. Isto velja za razvrstitev po drugem merilu: »4. po
-     uspešnosti« ni »4. po ratingu«. Globalno mesto ostane v vrstici (Vrstica),
-     ker po njem teče razvrščanje. */
+  /* Številka je mesto v tem, kar gledalec gleda: na izbrani lestvici (spol in
+     kategorija), ob izbranem filtru (klub) in po izbrani razvrstitvi. Filter
+     »U19«, ki se je začel pri 35., je bral kot izsek sredine lestvice — koliko
+     mladincev je pred tem igralcem, je bilo treba šteti na roke; »4. po
+     uspešnosti« pa ni »4. po ratingu«.
+
+     ISKANJE pa ne oštevilči znova: vrstico le poišče. Prej je bil vsak najdeni
+     igralec »1.« in svojega mesta ni izvedel, čeprav je prav po to prišel.
+     Zato se mesta štejejo na seznamu brez iskanja. Globalno mesto ostane v
+     vrstici (Vrstica), ker po njem teče razvrščanje. */
+  const ustrezaFiltrom = filtri.ustreza
+  const mestaBrezIskanja = useMemo(() => {
+    const merilo = RAZVRSTITVE.find((r) => r.kljuc === filtri.razvrstitev)
+    const vrsta = lestvicaKategorije.filter((v) => ustrezaFiltrom(v))
+    if (merilo) vrsta.sort(merilo.primerjaj)
+    return new Map(vrsta.map(({ igralec }, indeks) => [igralec.idIgralca, indeks + 1]))
+  }, [lestvicaKategorije, ustrezaFiltrom, filtri.razvrstitev])
   const prikazani = useMemo(
-    () => filtri.prikazani.map(({ igralec }, indeks) => ({ igralec, mesto: indeks + 1 })),
-    [filtri.prikazani],
+    () =>
+      filtri.prikazani.map(({ igralec }) => ({
+        igralec,
+        mesto: mestaBrezIskanja.get(igralec.idIgralca) ?? 0,
+      })),
+    [filtri.prikazani, mestaBrezIskanja],
   )
+
+  /* Iskanje teče po izbrani lestvici. Igralka na moški, rekreativec med člani
+     ali kdo izven izbrane kategorije bi dobil »ni zadetkov« in sklepal, da ga
+     ni — zato pod seznamom stoji, na kateri lestvici je, z mestom na njej in
+     gumbom, ki jo odpre. Mesto je po ratingu (vrstni red strežnika). */
+  const drugje = useMemo(() => {
+    const vse = lestvica.data ?? []
+    if (besedeIskanja(iskanje).length === 0) return []
+    const vIzbrani = new Set(lestvicaKategorije.map(({ igralec }) => igralec.idIgralca))
+    return vse
+      .filter((v) => v.spol !== null && !vIzbrani.has(v.idIgralca) && ustrezaIskanju(v, iskanje))
+      .slice(0, NAJVEC_DRUGJE)
+      .map((igralec) => {
+        const kat: Kategorija = igralec.rekreativec ? 'REKREATIVCI' : 'CLANI'
+        const mesto =
+          vse
+            .filter((v) => v.spol === igralec.spol && vKategoriji(v, kat))
+            .findIndex((v) => v.idIgralca === igralec.idIgralca) + 1
+        return { igralec, spol: igralec.spol as Spol, kategorija: kat, mesto }
+      })
+  }, [lestvica.data, lestvicaKategorije, iskanje])
+
+  /* Koga ni na NOBENI lestvici: še nima ratinga ali pa 18 mesecev ni igral.
+     Šifrant igralcev (javni zapis) se naloži šele, ko iskanje nikjer nič ne
+     najde — sicer ga ta stran ne potrebuje. */
+  const nikjer = najdeni.length === 0 && drugje.length === 0 && besedeIskanja(iskanje).length > 0
+  const sifrant = useQuery({
+    queryKey: ['igralci'],
+    queryFn: igralciApi.seznam,
+    enabled: nikjer && iskanje.trim().length >= 3,
+  })
+  const brezLestvice = useMemo(() => {
+    if (!nikjer || !sifrant.data) return []
+    const besede = besedeIskanja(iskanje)
+    const naLestvici = new Set((lestvica.data ?? []).map((v) => v.idIgralca))
+    return sifrant.data
+      .filter(
+        (i) =>
+          !naLestvici.has(i.id) &&
+          ustrezaBesedam(`${i.ime} ${i.priimek} ${i.klub?.ime ?? ''}`, besede),
+      )
+      .slice(0, NAJVEC_DRUGJE)
+  }, [nikjer, sifrant.data, iskanje, lestvica.data])
 
   /* Obseg izbrane lestvice: spol IN kategorija. Kategorija je izbira kot
      spol (glej uvod), zato "vseh" ni cela lestvica spola - ob U19 bi se
@@ -346,7 +412,15 @@ export function LestvicaStran() {
               )}
             </>
           ) : najdeni.length === 0 ? (
-            'Iskanju ne ustreza noben igralec.'
+            drugje.length > 0 ? (
+              'Na tej lestvici ni zadetkov.'
+            ) : brezLestvice.length > 0 ? (
+              'Na lestvici ni zadetkov.'
+            ) : sifrant.isFetching ? (
+              'Iščem …'
+            ) : (
+              'Iskanju ne ustreza noben igralec.'
+            )
           ) : (
             <>
               Izbranim merilom ne ustreza noben igralec.{' '}
@@ -358,6 +432,69 @@ export function LestvicaStran() {
         </p>
       )}
     </>
+  )
+
+  /* Pod seznamom: zadetki iskanja z drugih lestvic (z mestom na njej in
+     gumbom, ki jo odpre) in igralci, ki jih ni na nobeni lestvici (z
+     razlogom). Isto na obeh širinah. */
+  const namigIskanja = (drugje.length > 0 || brezLestvice.length > 0) && (
+    <div className="lestvica-namig">
+      {drugje.length > 0 && (
+        <>
+          <h3 className="podnaslov-sekcije">
+            {prikazani.length > 0 ? 'Tudi na drugih lestvicah' : 'Najdeno na drugih lestvicah'}
+          </h3>
+          <ul className="lestvica-namig__seznam">
+            {drugje.map(({ igralec, spol: s, kategorija: k, mesto }) => (
+              <li key={igralec.idIgralca} className="lestvica-namig__vrstica">
+                <span className="lestvica-namig__besedilo">
+                  <Link to={`/igralci/${igralec.idIgralca}/profil`} className="lestvica-namig__ime">
+                    {igralec.polnoIme}
+                  </Link>
+                  <span className="lestvica-namig__meta">
+                    {OZNAKE_SPOLA[s]} · {OZNAKE_KATEGORIJ[k]} · {mesto}.{' '}mesto
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => {
+                    nastaviSpol(s)
+                    nastaviKategorijo(k)
+                  }}
+                >
+                  Pokaži lestvico
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {brezLestvice.length > 0 && (
+        <>
+          <h3 className="podnaslov-sekcije">Ni na lestvici</h3>
+          <ul className="lestvica-namig__seznam">
+            {brezLestvice.map((i) => (
+              <li key={i.id} className="lestvica-namig__vrstica">
+                <span className="lestvica-namig__besedilo">
+                  <Link to={`/igralci/${i.id}/profil`} className="lestvica-namig__ime">
+                    {i.ime} {i.priimek}
+                  </Link>
+                  <span className="lestvica-namig__razlog">
+                    {i.rating === null
+                      ? 'Še nima ratinga: nobena odigrana tekma še ni štela vanj.'
+                      : 'Z lestvice se umakne, kdor 18 mesecev ne igra. Rating ostane na profilu.'}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="lestvica-namig__vec">
+            <Link to="/o-ratingu#lestvica">Kdo je na lestvici in zakaj →</Link>
+          </p>
+        </>
+      )}
+    </div>
   )
 
   if (jeTelefon) {
@@ -399,6 +536,13 @@ export function LestvicaStran() {
               ))}
             </div>
           )}
+
+          {namigIskanja}
+        {prikazani.length > 0 && (
+          <p className="lestvica__razlaga">
+            <Link to="/o-ratingu">Kako se računa rating in kdo je na lestvici →</Link>
+          </p>
+        )}
         </div>
       </section>
     )
@@ -509,6 +653,13 @@ export function LestvicaStran() {
             </table>
           </div>
         )}
+
+        {namigIskanja}
+        {prikazani.length > 0 && (
+          <p className="lestvica__razlaga">
+            <Link to="/o-ratingu">Kako se računa rating in kdo je na lestvici →</Link>
+          </p>
+        )}
       </div>
     </section>
   )
@@ -546,11 +697,15 @@ function VrsticaLestviceMobi({
       <Link to={`/igralci/${igralec.idIgralca}/profil`} className="lestvica-mobi__ime">
         {igralec.polnoIme}
       </Link>
+      {/* Izkupiček in premik spredaj, klub zadnji: vrstica se pri 375 px odreže
+          na koncu, in prej je odpadel prav »449–43 · ↑2«, ne dolgo ime kluba. */}
       <span className="lestvica-mobi__meta">
-        {igralec.klub ?? '—'} · {igralec.zmage}–{igralec.porazi} ·{' '}
+        {igralec.zmage}–{igralec.porazi} ·{' '}
         <span className={`lestvica-mobi__gib--${gib.smer}`} aria-label={gib.opis}>
           {gib.zapis}
         </span>
+        {' · '}
+        {igralec.klub ? kratekKlub(igralec.klub) : '—'}
       </span>
       <span className="lestvica-mobi__rating">{igralec.rating ?? '—'}</span>
     </div>

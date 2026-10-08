@@ -6,21 +6,40 @@
     <!-- Vedno svetla tema, že preden se naloži slog (glej slog.css, :root). -->
     <meta name="color-scheme" content="only light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/ikona-192.png" />
+    <!-- Bližnjica na začetnem zaslonu: iOS bere apple-touch-icon, Android
+         manifest. Ikone izriše skripte/ikone/naredi.sh. theme-color je papir,
+         da se vrstica brskalnika zlije z glavo strani. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#FBF9F5" />
+    <meta name="apple-mobile-web-app-title" content="Turnirko" />
+    <!-- Blok med oznakama predogled je naslov in predogled strani. Strežnik ga
+         za strani lig, turnirjev, srečanj in profilov zamenja z njihovim
+         (zaledje: splet/PredogledStrani) - WhatsApp in Facebook JavaScripta
+         ne izvajata. Oznak ne briši. -->
+    <!--predogled-->
     <title>Turnirko – namizni tenis: turnirji, lige in lestvica</title>
     <meta
       name="description"
       content="Turnirko je slovenska stran za namizni tenis: rezultati turnirjev v živo, lige, koledar tekmovanj, lestvica igralcev in profili s statistiko."
     />
     <link rel="canonical" href="https://turnirko-nt.si/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Turnirko" />
-    <meta property="og:locale" content="sl_SI" />
     <meta property="og:title" content="Turnirko – namizni tenis: turnirji, lige in lestvica" />
     <meta
       property="og:description"
       content="Rezultati turnirjev v živo, lige, koledar tekmovanj, lestvica igralcev in profili s statistiko."
     />
     <meta property="og:url" content="https://turnirko-nt.si/" />
+    <!--/predogled-->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Turnirko" />
+    <meta property="og:locale" content="sl_SI" />
+    <meta property="og:image" content="https://turnirko-nt.si/predogled.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Turnirko – namizni tenis: turnirji, lige in lestvica" />
+    <meta name="twitter:card" content="summary_large_image" />
     <!-- Lastnik izključi svoje oglede statistike tudi na telefonu, kjer konzole
          ni: /?statistika=izklop (nazaj /?statistika=vklop). Velja za ta
          brskalnik; teče pred skriptom spodaj, zato se že ta ogled ne šteje. -->

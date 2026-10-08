@@ -126,32 +126,29 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
             """)
     List<Srecanje> najdiVObdobju(LocalDateTime od, LocalDateTime doKdaj);
 
-    /* Stanje kol po ligah: ena vrstica na (liga, kolo) - koliko srecanj ima
-       in koliko jih je koncanih. [idLiga, kolo, srecanj, koncanih].
+    /* Termini rednega dela vseh lig, ena vrstica na srecanje:
+       [idLiga, kolo, status, predvidenZacetek].
 
-       Skupinsko, ker vrstica lige na telefonu nosi "7. od 18 kol" in palico
-       napredka za VSAKO ligo v seznamu - poizvedba na ligo bi bila N+1. Kolo
-       steje za odigrano sele, ko je koncano vsako njegovo srecanje (isto
-       merilo kot stran lige), zato tu ne zadosca najvisje koncano kolo.
-       Koncnica ni kolo rednega dela in ne steje. */
+       Skupinsko, ker vrstica lige v seznamu nosi "odigrano 7 od 18 kol" in
+       palico napredka za VSAKO ligo - poizvedba na ligo bi bila N+1. Koliko
+       kol je odigranih in katero je naslednje, izracuna PotekLige (eno pravilo
+       za domaco stran, seznam in stran lige); zato tu ni sestevka po kolih -
+       pravilo potrebuje datum in stanje vsakega srecanja. Koncnica ni kolo
+       rednega dela in ne steje. */
     @Query("""
-            SELECT s.liga.id, s.kolo, COUNT(s),
-                   SUM(CASE WHEN s.status = si.turnirko.modeli.StatusSrecanja.KONCANO THEN 1 ELSE 0 END)
+            SELECT s.liga.id, s.kolo, s.status, s.predvidenZacetek
             FROM Srecanje s
             WHERE s.liga IS NOT NULL AND s.serija IS NULL
-            GROUP BY s.liga.id, s.kolo
             """)
-    List<Object[]> stanjeKolPoLigah();
+    List<Object[]> terminiRednegaDelaPoLigah();
 
-    /* Isto za eno ligo: [kolo, srecanj, koncanih]. */
+    /* Isto za eno ligo: [kolo, status, predvidenZacetek]. */
     @Query("""
-            SELECT s.kolo, COUNT(s),
-                   SUM(CASE WHEN s.status = si.turnirko.modeli.StatusSrecanja.KONCANO THEN 1 ELSE 0 END)
+            SELECT s.kolo, s.status, s.predvidenZacetek
             FROM Srecanje s
             WHERE s.liga.id = :idLiga AND s.serija IS NULL
-            GROUP BY s.kolo
             """)
-    List<Object[]> stanjeKol(Long idLiga);
+    List<Object[]> terminiRednegaDela(Long idLiga);
 
     /* Srecanja izbranih lig, ki se niso koncana in imajo termin PRED danim
        trenutkom - zapisnik jih caka. Zajame tudi koncnico (serija). Klicatelj

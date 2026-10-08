@@ -113,4 +113,22 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
             WHERE t.id IN :idjiTurnirjev
             """)
     List<Object[]> igralciEkipnihTurnirjev(List<Long> idjiTurnirjev);
+
+    /* Ekipe lige, v katerih kadru je igralec - domaca stran igralcu s Premium
+       namesto vrha lestvice pokaze njegovo ekipo. Liga brez prepovedi dvojne
+       registracije sme istega igralca voditi v dveh kadrih, zato seznam. */
+    @Query("""
+            SELECT e.id FROM KaderEkipe k JOIN k.ekipa e
+            WHERE e.liga.id = :idLiga AND k.igralec.id = :idIgralec
+            ORDER BY e.id
+            """)
+    List<Long> ekipeIgralcaVLigi(Long idLiga, Long idIgralec);
+
+    /* Turnirji, na katerih je igralec nastopil v ekipnem dogodku (kader). */
+    @Query("""
+            SELECT DISTINCT t.id FROM KaderEkipe k
+            JOIN k.ekipa e JOIN e.dogodek d JOIN d.turnir t
+            WHERE k.igralec.id = :idIgralec
+            """)
+    List<Long> ekipniTurnirjiIgralca(Long idIgralec);
 }

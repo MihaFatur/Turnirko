@@ -34,6 +34,7 @@ import { onlineManager, useQuery } from '@tanstack/react-query'
 
 import { igralciApi, racuniApi } from '../api/zahteve'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { useBelezenjeIzvora } from '../pomozno/izvor'
 import { useTelefon } from '../pomozno/telefon'
 import { GlavaTelefonaKontekst, type Nazaj } from './GlavaTelefona'
 import {
@@ -127,6 +128,9 @@ export function Postavitev() {
   const povezan = useJePovezan()
   const jeTelefon = useTelefon()
   const { pathname: naslov } = useLocation()
+  /* Od kod je gledalec prišel na stran (povezava »← …« na profilu). Mora
+     teči nad stranmi, da izvor poznajo že ob prvem izrisu. */
+  useBelezenjeIzvora()
 
   /* Kar stran vloži v lepljivo glavo. Povezava nazaj je navaden podatek,
      dejanja in zavihki pa cela drevesa - ta gredo skozi portal, zato glava

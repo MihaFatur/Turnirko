@@ -44,4 +44,10 @@ public interface DogodekRepozitorij extends JpaRepository<Dogodek, Long> {
               AND d.turnir.id IN :idjiTurnirjev
             """)
     List<Object[]> rokiPrijavePoTurnirjih(List<Long> idjiTurnirjev);
+
+    /* Spol in starostna kategorija vseh dogodkov kot [idTurnir, spolKategorija,
+       starostnaKategorija] - domaca stran po njih presodi, ali turnir igralcu
+       sploh kaj ponuja. */
+    @Query("SELECT d.turnir.id, d.spolKategorija, d.starostnaKategorija FROM Dogodek d")
+    List<Object[]> razpisiDogodkov();
 }

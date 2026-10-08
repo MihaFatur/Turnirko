@@ -4,8 +4,10 @@
    Stran namenoma nima svojega naslova: po maketi sta naslov strani imeni obeh
    igralcev v semaforju, ki ga izriše komponenta EnaNaEna. */
 import { EnaNaEna } from '../komponente/EnaNaEna'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 
 export function DvobojStran() {
+  useNaslovStrani('1 na 1')
   return (
     <section>
       {/* Naslov je viden samo bralniku zaslona: maketa ga nima, dokument brez

@@ -37,7 +37,21 @@ public final class Neaktivnost {
     /* En zapadel odbitek. */
     public record Odbitek(LocalDateTime velja, int tock) {}
 
+    /* Stopnja pravila: po koliko mesecih brez tekme in koliko tock je takrat
+       odbitih skupaj (javna razlaga ratinga jih izpise iz istih tabel). */
+    public record Stopnja(int mesecev, int skupaj) {}
+
     private Neaktivnost() {}
+
+    public static List<Stopnja> stopnje() {
+        List<Stopnja> stopnje = new ArrayList<>();
+        int skupaj = 0;
+        for (int i = 0; i < MESECI.length; i++) {
+            skupaj += ODBITEK[i];
+            stopnje.add(new Stopnja(MESECI[i], skupaj));
+        }
+        return stopnje;
+    }
 
     /* Odbitki, ki zapadejo po zadnji tekmi do vkljucno danega trenutka.
        preskoci pove, koliko stopenj je ze uveljavljenih (da se isti odbitek ne

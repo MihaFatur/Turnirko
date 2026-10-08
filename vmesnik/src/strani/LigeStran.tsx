@@ -49,7 +49,9 @@ import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PalicaMobi } from '../komponente/Napredek'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
+import { potekKol } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja, uraOsvezitve } from '../pomozno/osvezevanje'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 
 const ISKANJE_PO = 'po imenu ali sezoni'
@@ -104,6 +106,7 @@ const RAZVRSTITVE: Razvrstitev<LigaDto>[] = [
 ]
 
 export function LigeStran() {
+  useNaslovStrani('Lige')
   const odjemalec = useQueryClient()
   const { smeUstvarjati } = useAvtentikacija()
   const jeTelefon = useTelefon()
@@ -346,7 +349,7 @@ function VrsticaLigeMobi({
   poudarjena?: boolean
 }) {
   const imaKola = liga.steviloKol > 0
-  const kola = vPasu && imaKola ? `${liga.odigranihKol}. od ${liga.steviloKol} kol` : null
+  const kola = vPasu && imaKola ? potekKol(liga.odigranihKol, liga.steviloKol) : null
   /* Meta nikoli ni prazna vrstica: brez sezone in brez kol ostane črtica, da
      vrstica ohrani višino in poravnavo s sosednjimi. */
   const meta = [liga.sezona, kola].filter(Boolean).join(' · ') || '—'

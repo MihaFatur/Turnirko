@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import si.turnirko.dto.DomovLigaDto;
+import si.turnirko.dto.DomovTurnirDto;
+import si.turnirko.storitve.DomaciTurnirjiStoritev;
 import si.turnirko.storitve.DomovStoritev;
 
 @RestController
@@ -23,9 +25,19 @@ import si.turnirko.storitve.DomovStoritev;
 public class DomovKontroler {
 
     private final DomovStoritev domovStoritev;
+    private final DomaciTurnirjiStoritev domaciTurnirji;
 
-    public DomovKontroler(DomovStoritev domovStoritev) {
+    public DomovKontroler(DomovStoritev domovStoritev, DomaciTurnirjiStoritev domaciTurnirji) {
         this.domovStoritev = domovStoritev;
+        this.domaciTurnirji = domaciTurnirji;
+    }
+
+    /* Turnirji za sklop domace strani igralca s Premium (prihajajoci, zadnji,
+       zanimivi - z razlogom). Drugim prazen seznam; vmesnik takrat pokaze
+       najnovejse. Javen GET, racun iz glave Authorization (kot /lige). */
+    @GetMapping("/turnirji")
+    public List<DomovTurnirDto> turnirji() {
+        return domaciTurnirji.zaPrijavljenega();
     }
 
     /* Povzetki lig za domaco stran. Parametra sta LOCENA, ker nista enako

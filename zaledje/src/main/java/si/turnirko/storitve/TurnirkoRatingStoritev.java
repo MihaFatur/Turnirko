@@ -44,7 +44,7 @@ public class TurnirkoRatingStoritev {
     public static final int NAJVISJI_ZACETNI = 3000;
 
     /* Rating nikoli ne pade pod to mejo. */
-    private static final int SPODNJA_MEJA = 100;
+    public static final int SPODNJA_MEJA = 100;
 
     /* K ustaljenega igralca in pribitki za negotovost (sestevajo se). */
     public static final int K_OSNOVNI = 48;

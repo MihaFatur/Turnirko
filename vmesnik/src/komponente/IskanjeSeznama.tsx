@@ -10,7 +10,8 @@
    Vpisano živi v stanju strani in ne v naslovu - je opravilo enega obiska, ne
    stanje, ki bi ga kdo delil s povezavo. Stran z njim zoži seznam PRED filtri,
    zato so števci ob merilih števci tega, kar gledalec vidi. */
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 import { GlavaNaslov } from './GlavaTelefona'
 
@@ -53,6 +54,17 @@ export function IskalnikSeznama({
    skozi GlavaDejanja. */
 export function IskanjeTelefona({ iskanje, naIskanje, poCem }: LastnostiIskanja) {
   const [odprto, nastaviOdprto] = useState(false)
+  const polje = useRef<HTMLInputElement>(null)
+
+  /* Safari na iOS odpre tipkovnico samo, kadar je focus() klican NEPOSREDNO v
+     obravnavi dotika. autoFocus ob izrisu tega ne zagotavlja (polje se izriše
+     šele za klikom, v portalu glave), zato se je pas odprl brez tipkovnice in
+     je bilo treba tapniti še v polje. Pas se zato izriše sinhrono
+     (flushSync) in polje dobi fokus v istem kliku. */
+  const odpri = () => {
+    flushSync(() => nastaviOdprto(true))
+    polje.current?.focus()
+  }
 
   /* Preklic izbriše iskanje in pas zapre: pas, ki ostane odprt s praznim
      poljem, gledalcu jemlje 68 px zaslona za nič. */
@@ -69,7 +81,7 @@ export function IskanjeTelefona({ iskanje, naIskanje, poCem }: LastnostiIskanja)
         type="button"
         className="glava-telefon__gumb glava-telefon__gumb--preklop"
         aria-pressed={odprto}
-        onClick={() => (odprto ? zapri() : nastaviOdprto(true))}
+        onClick={() => (odprto ? zapri() : odpri())}
       >
         Išči
       </button>
@@ -78,10 +90,8 @@ export function IskanjeTelefona({ iskanje, naIskanje, poCem }: LastnostiIskanja)
         <GlavaNaslov>
           <div className="iskanje-mobi">
             <input
+              ref={polje}
               className="iskalnik"
-              /* Pas se odpre na gledalčevo dejanje, zato tipkovnica sme priti
-                 z njim - drugega opravila v pasu ni. */
-              autoFocus
               aria-label={`Išči ${poCem}`}
               placeholder={`Išči ${poCem} …`}
               value={iskanje}

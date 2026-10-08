@@ -11,6 +11,7 @@ import type {
   DogodekDto,
   DogodekVnos,
   DomovLigaDto,
+  DomovTurnirDto,
   DvobojDto,
   EkipaDto,
   EkipaVnos,
@@ -38,6 +39,10 @@ import type {
   MrezaDto,
   NakljucniParDto,
   NapovedTekmeDto,
+  IzracunTekmeDto,
+  PravilaRatingaDto,
+  PrviDanNovincaDto,
+  RavenTekmovanja,
   NarocninaCiklusVnos,
   NarocninaDto,
   NarocninaObnovaVnos,
@@ -206,6 +211,29 @@ export const ratingApi = {
     api.objavi<PreracunPorociloDto>(`/rating/preracun${od ? `?od=${od}` : ''}`),
   /* Uveljavi vse zapadle odbitke za neaktivnost (isto kot nočno opravilo). */
   neaktivnost: () => api.objavi<NeaktivnostPorociloDto>('/rating/neaktivnost'),
+}
+
+/* Javna razlaga ratinga: pravila in dva preizkusa. Nič ne zapišejo. */
+export const razlagaRatingaApi = {
+  pravila: () => api.vrni<PravilaRatingaDto>('/rating/pravila'),
+  izracun: (v: {
+    rating: number
+    nasprotnik: number
+    tekem: number
+    tekemNasprotnika: number
+    vrnitev: boolean
+    vrnitevNasprotnika: boolean
+  }) =>
+    api.vrni<IzracunTekmeDto>(
+      `/rating/izracun?rating=${v.rating}&nasprotnik=${v.nasprotnik}&tekem=${v.tekem}`
+        + `&tekemNasprotnika=${v.tekemNasprotnika}&vrnitev=${v.vrnitev}`
+        + `&vrnitevNasprotnika=${v.vrnitevNasprotnika}`,
+    ),
+  prviDan: (izhodisce: number, raven: RavenTekmovanja, tekme: { nasprotnik: number; zmaga: boolean }[]) =>
+    api.vrni<PrviDanNovincaDto>(
+      `/rating/prvi-dan?izhodisce=${izhodisce}&raven=${raven}`
+        + tekme.map((t) => `&nasprotnik=${t.nasprotnik}&zmaga=${t.zmaga}`).join(''),
+    ),
 }
 
 export interface ZunanjaUvrstitevVnos {
@@ -451,6 +479,9 @@ export const domovApi = {
       deli.length > 0 ? `/domov/lige?${deli.join('&')}` : '/domov/lige',
     )
   },
+  /* Turnirji za sklop domače strani igralca s Premium (z razlogom); vsem
+     drugim prazen seznam. Odgovor je odvisen od računa (glava Authorization). */
+  turnirji: () => api.vrni<DomovTurnirDto[]>('/domov/turnirji'),
   /* Izbor je last računa - gost dobi 401 in ga hrani brskalnik sam. */
   mojeLige: () => api.vrni<number[]>('/domov/moje-lige'),
   spremljaj: (idLiga: number) => api.posodobi<number[]>(`/domov/moje-lige/${idLiga}`, undefined),

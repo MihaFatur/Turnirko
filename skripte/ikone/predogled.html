@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Slika za predogled povezave (og:image) - 1200 x 630, kot jo pricakujejo
+     WhatsApp, Facebook in Viber. Ista za vse strani: naslov in opis strani
+     sta besedilo predogleda, slika je samo znak, da je povezava s Turnirka.
+     Videz je glava strani (dvojna crta, znak + ime, mono pripis) na papirju.
+     Pisave so iz vmesnik/node_modules (iste kot na strani).
+     Izris: skripte/ikone/naredi.sh. -->
+<html lang="sl">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: 'Bricolage Grotesque';
+        font-weight: 200 800;
+        src: url('../../vmesnik/node_modules/@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'IBM Plex Mono';
+        font-weight: 500;
+        src: url('../../vmesnik/node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
+      }
+      html, body { margin: 0; width: 1200px; height: 630px; background: #FBF9F5; color: #14110F; }
+      body { box-sizing: border-box; padding: 64px 80px; display: flex; flex-direction: column; }
+      .crta { border-top: 6px solid #14110F; padding-top: 6px; }
+      .crta::before { content: ''; display: block; border-top: 2px solid #14110F; }
+      .znak { display: flex; align-items: center; gap: 36px; margin-top: 120px; }
+      .ime { font: 800 148px/1 'Bricolage Grotesque'; letter-spacing: -0.03em; }
+      .pripis { margin-top: 40px; font: 500 30px/1.4 'IBM Plex Mono'; letter-spacing: 0.1em; text-transform: uppercase; color: #5B534D; }
+      .naslov { margin-top: auto; font: 500 26px/1 'IBM Plex Mono'; letter-spacing: 0.08em; color: #0071AB; }
+    </style>
+  </head>
+  <body>
+    <div class="crta"></div>
+    <div class="znak">
+      <svg width="132" height="132" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1.5" y="4" width="3" height="20" fill="#14110F" />
+        <rect x="8.5" y="4" width="3" height="20" fill="#14110F" />
+        <rect x="15.5" y="4" width="3" height="20" fill="#0088CE" />
+        <rect x="22.5" y="4" width="3" height="20" fill="#7BB900" />
+      </svg>
+      <span class="ime">Turnirko</span>
+    </div>
+    <div class="pripis">Namizni tenis · turnirji · lige · lestvica</div>
+    <div class="naslov">turnirko-nt.si</div>
+  </body>
+</html>

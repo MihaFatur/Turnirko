@@ -16,9 +16,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.ToIntFunction;
 
@@ -30,6 +32,8 @@ import si.turnirko.dto.ProfilZasebnoDto;
 import si.turnirko.dto.ProfilZasebnoDto.Delez;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.FazaTekme;
+import si.turnirko.modeli.Dogodek;
+import si.turnirko.modeli.Ekipa;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IgralnaRoka;
 import si.turnirko.modeli.IzidTekme;
@@ -44,6 +48,7 @@ import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.NizRepozitorij;
 import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
+import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.RatingStanjeRepozitorij;
 import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
@@ -67,6 +72,7 @@ public class ProfilStoritev {
     private final NizSrecanjaRepozitorij nizSrecanjaRepozitorij;
     private final DostopDoProfila dostop;
     private final RekreativecStoritev rekreativecStoritev;
+    private final PrijavaRepozitorij prijavaRepozitorij;
 
     public ProfilStoritev(IgralecRepozitorij igralecRepozitorij,
                           TekmaRepozitorij tekmaRepozitorij,
@@ -76,7 +82,8 @@ public class ProfilStoritev {
                           NizRepozitorij nizRepozitorij,
                           NizSrecanjaRepozitorij nizSrecanjaRepozitorij,
                           DostopDoProfila dostop,
-                          RekreativecStoritev rekreativecStoritev) {
+                          RekreativecStoritev rekreativecStoritev,
+                          PrijavaRepozitorij prijavaRepozitorij) {
         this.igralecRepozitorij = igralecRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
@@ -86,6 +93,7 @@ public class ProfilStoritev {
         this.nizSrecanjaRepozitorij = nizSrecanjaRepozitorij;
         this.dostop = dostop;
         this.rekreativecStoritev = rekreativecStoritev;
+        this.prijavaRepozitorij = prijavaRepozitorij;
     }
 
     /* Ena odigrana posamicna tekma, prevedena v pogled lastnika profila.
@@ -98,7 +106,14 @@ public class ProfilStoritev {
             Igralec nasprotnik,
             int niziZa, int niziProti, boolean zmaga, IzidTekme izidTip,
             Integer spremembaRatinga, Integer mojRatingPred, Integer ratingNasprotnikaPred,
-            Boolean doma, String pozicija, FazaTekme faza, boolean jazPrvi) {}
+            Boolean doma, String pozicija, FazaTekme faza, boolean jazPrvi,
+            Tekmovanje tekmovanjeNastopa) {}
+
+    /* Tekmovanje, na katerem je bila tekma: kategorija turnirja (tudi ekipni
+       dogodek) ali liga. "mesto" je igralcevo koncno mesto v kategoriji (pri
+       ekipnem dogodku mesto njegove ekipe), pri ligi ga ni. */
+    private record Tekmovanje(String kljuc, boolean ligaska, Long idTurnir, Long idDogodek, Long idLiga,
+                              String ime, String del, Integer mesto) {}
 
     // ---------- Javni del ----------
 
@@ -125,6 +140,7 @@ public class ProfilStoritev {
                 uvrstitev(igralec, rating),
                 graf(idIgralec, nastopi),
                 nastopi.stream().map(ProfilStoritev::vTekmoProfila).toList(),
+                tekmovanja(nastopi),
                 dvojice(idIgralec));
     }
 
@@ -237,7 +253,8 @@ public class ProfilStoritev {
                     t.getIzidTip(),
                     spremembaT.get(t.getId()),
                     ratingi.get(idIgralec), ratingi.get(nasprotnik.getId()),
-                    null, null, t.getFaza(), jazPrvi));
+                    null, null, t.getFaza(), jazPrvi,
+                    tekmovanjeDogodka(t.getDogodek(), (jazPrvi ? t.getPrijava1() : t.getPrijava2()).getKoncnoMesto())));
         }
         for (TekmaSrecanja t : ligaske) {
             boolean jazDomaci = t.getIgralecDomaci().getId().equals(idIgralec);
@@ -258,7 +275,8 @@ public class ProfilStoritev {
                     t.getIzidTip(),
                     spremembaL.get(t.getId()),
                     ratingi.get(idIgralec), ratingi.get(nasprotnik.getId()),
-                    jazDomaci, mojaPozicija(t.getOznaka(), jazDomaci), null, jazDomaci));
+                    jazDomaci, mojaPozicija(t.getOznaka(), jazDomaci), null, jazDomaci,
+                    tekmovanjeSrecanja(s, jazDomaci)));
         }
 
         // najnovejse prve; tekme brez znanega casa na konec; pri istem casu
@@ -268,6 +286,85 @@ public class ProfilStoritev {
                 .thenComparing(n -> red.getOrDefault(kljuc(n.idTekme(), n.ligaska()), -1),
                         Comparator.reverseOrder()));
         return nastopi;
+    }
+
+    private static Tekmovanje tekmovanjeDogodka(Dogodek d, Integer mesto) {
+        return new Tekmovanje("d" + d.getId(), false, d.getTurnir().getId(), d.getId(), null,
+                d.getTurnir().getIme(), d.getIme(), mesto);
+    }
+
+    /* Ligasko srecanje: tekmovanje je liga, "del" ekipa, za katero je igral.
+       Srecanje ekipnega dogodka turnirja je kategorija turnirja, mesto pa
+       mesto njegove ekipe v njej. */
+    private static Tekmovanje tekmovanjeSrecanja(Srecanje s, boolean jazDomaci) {
+        Ekipa moja = jazDomaci ? s.getEkipaDomaci() : s.getEkipaGost();
+        if (s.jeTurnirsko()) {
+            Tekma t = s.getTekma();
+            Integer mesto = null;
+            for (Prijava p : new Prijava[] {t.getPrijava1(), t.getPrijava2()}) {
+                if (p != null && p.getEkipa() != null && p.getEkipa().getId().equals(moja.getId())) {
+                    mesto = p.getKoncnoMesto();
+                }
+            }
+            return tekmovanjeDogodka(t.getDogodek(), mesto);
+        }
+        String sezona = s.getLiga().getSezona();
+        String ime = sezona == null || sezona.isBlank()
+                ? s.getLiga().getIme()
+                : s.getLiga().getIme() + " · " + sezona;
+        return new Tekmovanje("l" + s.getLiga().getId(), true, null, null, s.getLiga().getId(),
+                ime, moja.prikazanoIme(), null);
+    }
+
+    /* Nastopi, zbrani po tekmovanju, v vrstnem redu zadnje tekme (najnovejse
+       prvo - nastopi so ze tako urejeni). Stevilo udelezencev in deljena mesta
+       preberemo za vse kategorije z eno poizvedbo. */
+    private List<ProfilDto.TekmovanjeProfila> tekmovanja(List<Nastop> nastopi) {
+        Map<String, List<Nastop>> poTekmovanju = new LinkedHashMap<>();
+        for (Nastop n : nastopi) {
+            poTekmovanju.computeIfAbsent(n.tekmovanjeNastopa().kljuc(), k -> new ArrayList<>()).add(n);
+        }
+        Set<Long> dogodki = new HashSet<>();
+        for (List<Nastop> skupina : poTekmovanju.values()) {
+            Tekmovanje t = skupina.get(0).tekmovanjeNastopa();
+            if (t.idDogodek() != null) {
+                dogodki.add(t.idDogodek());
+            }
+        }
+        // [idDogodek -> (mesto -> stevilo)], mesto null = brez mesta
+        Map<Long, Map<Integer, Integer>> mesta = new HashMap<>();
+        if (!dogodki.isEmpty()) {
+            for (Object[] v : prijavaRepozitorij.mestaPoDogodkih(dogodki, Prijava.StatusPrijave.ODJAVLJEN)) {
+                mesta.computeIfAbsent(((Number) v[0]).longValue(), k -> new HashMap<>())
+                        .put(v[1] == null ? null : ((Number) v[1]).intValue(), ((Number) v[2]).intValue());
+            }
+        }
+
+        List<ProfilDto.TekmovanjeProfila> izid = new ArrayList<>();
+        for (List<Nastop> skupina : poTekmovanju.values()) {
+            Tekmovanje t = skupina.get(0).tekmovanjeNastopa();
+            int zmage = (int) skupina.stream().filter(Nastop::zmaga).count();
+            Integer sprememba = skupina.stream().map(Nastop::spremembaRatinga)
+                    .filter(Objects::nonNull).reduce(Integer::sum).orElse(null);
+            LocalDate datum = skupina.stream().map(Nastop::datum)
+                    .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
+            Map<Integer, Integer> mestaDogodka = t.idDogodek() != null ? mesta.getOrDefault(t.idDogodek(), Map.of()) : Map.of();
+            Integer mestoDo = null;
+            Integer udelezencev = null;
+            if (t.mesto() != null) {
+                int deli = mestaDogodka.getOrDefault(t.mesto(), 1);
+                mestoDo = t.mesto() + Math.max(deli, 1) - 1;
+            }
+            int uvrsceni = mestaDogodka.entrySet().stream()
+                    .filter(e -> e.getKey() != null).mapToInt(Map.Entry::getValue).sum();
+            if (uvrsceni > 0) {
+                udelezencev = uvrsceni;
+            }
+            izid.add(new ProfilDto.TekmovanjeProfila(t.kljuc(), t.ligaska(), t.idTurnir(), t.idDogodek(),
+                    t.idLiga(), t.ime(), t.del(), datum, zmage, skupina.size() - zmage, sprememba,
+                    t.mesto(), mestoDo, udelezencev));
+        }
+        return izid;
     }
 
     private static LocalDateTime casIz(LocalDate datum) {
@@ -353,7 +450,8 @@ public class ProfilStoritev {
         boolean naLestvici = lestvica.stream()
                 .anyMatch(v -> ((Number) v[0]).longValue() == igralec.getId().longValue());
         if (rating == null || skupaj == 0 || !naLestvici) {
-            return new ProfilDto.Uvrstitev(null, skupaj, null, klubskoPovprecje(igralec, lestvica));
+            return new ProfilDto.Uvrstitev(null, skupaj, null, klubskoPovprecje(igralec, lestvica),
+                    igralec.getSpol(), rekreativec);
         }
 
         // mesto = koliko igralcev ima strogo visji rating, plus ena
@@ -363,7 +461,7 @@ public class ProfilStoritev {
         int percentil = skupaj <= 1 ? 100 : Math.round((skupaj - mesto) * 100f / (skupaj - 1));
 
         return new ProfilDto.Uvrstitev(mesto, skupaj, percentil,
-                klubskoPovprecje(igralec, lestvica));
+                klubskoPovprecje(igralec, lestvica), igralec.getSpol(), rekreativec);
     }
 
     /* Kdaj smo o igralcu nazadnje kaj izvedeli: poznejsi od zadnje tekme in
@@ -462,7 +560,8 @@ public class ProfilStoritev {
                 n.idTekme(), n.ligaska(), n.datum(), n.tekmovanje(), n.del(),
                 n.nasprotnik().getId(), n.nasprotnik().polnoIme(),
                 n.nasprotnik().getKlub() != null ? n.nasprotnik().getKlub().getIme() : null,
-                n.niziZa(), n.niziProti(), n.zmaga(), n.izidTip(), n.spremembaRatinga());
+                n.niziZa(), n.niziProti(), n.zmaga(), n.izidTip(), n.spremembaRatinga(),
+                n.tekmovanjeNastopa().kljuc());
     }
 
     // ---------- Zasebni izracuni ----------
@@ -589,7 +688,7 @@ public class ProfilStoritev {
                                         ? new ProfilZasebnoDto.Razmerje(e.getKey(), e.getValue()[0], true) : null,
                                 e.getValue()[1] > 0
                                         ? new ProfilZasebnoDto.Razmerje(e.getKey(), e.getValue()[1], false) : null))
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .sorted(Comparator.comparingInt(ProfilZasebnoDto.Razmerje::stevilo).reversed())
                         .toList(),
                 Delez.iz("odločilni niz", odlocilni[0], odlocilni[1]),
@@ -622,7 +721,7 @@ public class ProfilStoritev {
     /* Sestevek tock po nizih cez oba vira. Loceno od tocke() zato, ker se ista
        zanka izvede za turnirske in ligaske tekme. */
     private static final class Sestevek {
-        private final java.util.Set<Long> stekmami = new java.util.HashSet<>();
+        private final java.util.Set<Long> stekmami = new HashSet<>();
         private int za;
         private int proti;
         private int nizov;

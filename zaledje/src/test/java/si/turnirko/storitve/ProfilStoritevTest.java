@@ -43,6 +43,7 @@ import si.turnirko.modeli.IgralnaRoka;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Narocnina;
 import si.turnirko.modeli.Paket;
+import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StranEkipe;
@@ -297,6 +298,48 @@ class ProfilStoritevTest extends IntegracijskiTest {
         ProfilZasebnoDto.Forma forma = profilStoritev.zasebno(s.kaderDomaci().get(0).idIgralec(), adminIme()).forma();
         assertEquals(0, forma.spremembaElo30dni(), "tekma brez casa ni v zadnjih 30 dneh");
         assertEquals(null, forma.najvisjiRatingDatum(), "vrh, dosezen na tekmi brez casa, nima datuma");
+    }
+
+    /* Profil zbere tekme po tekmovanju (kategorija turnirja): izkupicek,
+       koncno mesto in stevilo uvrscenih - pregled "OT Kidricevo: 5-1, 5.
+       mesto od 32" namesto vrstic, v katerih se ime turnirja ponavlja.
+       Polfinalista izlocilnega sistema brez tekme za 3. mesto (uvoz jima
+       zapise obema 3. mesto) si mesto delita: 3., mestoDo 4. */
+    @Test
+    void tekmePoTekmovanjuNosijoIzkupicekInDeljenoMesto() {
+        Dogodek dogodek = pripraviDogodek(4);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        for (int krog = 0; krog < 5; krog++) {
+            tekmeDogodka(dogodek.getId()).stream()
+                    .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                    .forEach(t -> tekmaStoritev.vnesiRezultat(t.getId(), new VnosRezultata(null, 3, 0, null, null)));
+        }
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodek(dogodek.getId());
+        List<Prijava> polfinalista = prijave.stream().filter(p -> p.getKoncnoMesto() == null).toList();
+        assertEquals(2, polfinalista.size(), "brez tekme za 3. mesto aplikacija mesta ne dodeli");
+        polfinalista.forEach(p -> p.setKoncnoMesto(3));
+        Prijava prvi = prijave.stream()
+                .filter(p -> Integer.valueOf(1).equals(p.getKoncnoMesto())).findFirst().orElseThrow();
+
+        ProfilDto profil = profilStoritev.profil(prvi.getIgralec().getId());
+        assertEquals(1, profil.tekmovanja().size());
+        ProfilDto.TekmovanjeProfila t = profil.tekmovanja().get(0);
+        assertEquals("d" + dogodek.getId(), t.kljuc());
+        assertEquals(dogodek.getId(), t.idDogodek());
+        assertEquals(2, t.zmage());
+        assertEquals(0, t.porazi());
+        assertEquals(1, t.mesto());
+        assertEquals(1, t.mestoDo());
+        assertEquals(4, t.udelezencev());
+        assertTrue(t.spremembaRatinga() > 0);
+        assertTrue(profil.tekme().stream().allMatch(x -> x.tekmovanjeKljuc().equals(t.kljuc())));
+
+        ProfilDto.TekmovanjeProfila tretji = profilStoritev.profil(polfinalista.get(0).getIgralec().getId())
+                .tekmovanja().get(0);
+        assertEquals(0, tretji.zmage());
+        assertEquals(1, tretji.porazi());
+        assertEquals(3, tretji.mesto());
+        assertEquals(4, tretji.mestoDo());
     }
 
     @Test

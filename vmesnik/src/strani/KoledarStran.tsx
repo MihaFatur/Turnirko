@@ -39,6 +39,7 @@ import {
   type Mesec,
 } from '../pomozno/koledar'
 import { sklonTekmovanj } from '../pomozno/oblikovanje'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 
 /* Merila nad koledarjem. Kraj ima samo turnir (liga se igra pri domačih
@@ -92,6 +93,7 @@ const VRSTE: { kljuc: string; oznaka: string; vrednosti: string[] }[] = [
 const NA_TELEFONU = 4
 
 export function KoledarStran() {
+  useNaslovStrani('Koledar tekmovanj')
   const jeTelefon = useTelefon()
   const danes = danesIso()
   const [naslov, nastaviNaslov] = useSearchParams()

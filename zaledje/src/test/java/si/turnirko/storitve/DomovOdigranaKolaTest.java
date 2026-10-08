@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import si.turnirko.dto.DomovLigaDto;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderVnos;
+import si.turnirko.dto.LigaDto;
 import si.turnirko.dto.LigaVnos;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
@@ -43,7 +44,7 @@ class DomovOdigranaKolaTest extends IntegracijskiTest {
        kolu je ze koncano eno srecanje (neuradna menjava): odigrano je le 1. */
     @Test
     void neuradneMenjaveNeOdigrajoKol() {
-        Long idLige = pripraviLigo(LocalDate.now().minusDays(RAZMIK));
+        Long idLige = pripraviLigo(PotekLige.danes().minusDays(RAZMIK));
         List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(idLige);
         for (int kolo = 1; kolo <= 3; kolo++) {
             koncajEno(srecanja, kolo);
@@ -59,14 +60,14 @@ class DomovOdigranaKolaTest extends IntegracijskiTest {
        odloca sam, tudi ce nihce ni vpisal izida. */
     @Test
     void danasnjeKoloNiOdigrano() {
-        Long idLige = pripraviLigo(LocalDate.now().minusDays(RAZMIK));
+        Long idLige = pripraviLigo(PotekLige.danes().minusDays(RAZMIK));
 
         assertEquals(1, liga(idLige).odigranihKol());
     }
 
     @Test
     void kolaSePoDatumuPreberejoVsa() {
-        Long idLige = pripraviLigo(LocalDate.now().minusDays(3L * RAZMIK));
+        Long idLige = pripraviLigo(PotekLige.danes().minusDays(3L * RAZMIK));
 
         DomovLigaDto liga = liga(idLige);
 
@@ -76,7 +77,7 @@ class DomovOdigranaKolaTest extends IntegracijskiTest {
 
     @Test
     void kolaPredZacetkomSezoneNisoOdigrana() {
-        Long idLige = pripraviLigo(LocalDate.now().plusDays(1));
+        Long idLige = pripraviLigo(PotekLige.danes().plusDays(1));
 
         assertEquals(0, liga(idLige).odigranihKol());
     }
@@ -92,6 +93,33 @@ class DomovOdigranaKolaTest extends IntegracijskiTest {
         koncajEno(srecanja, 3);
 
         assertEquals(1, liga(idLige).odigranihKol());
+    }
+
+    /* Domaca stran, seznam lig in stran lige odgovorijo ENAKO: koliko kol je
+       za nami in katero je naslednje. Prej sta stran in seznam stela kolo
+       sele, ko je bilo koncano vsako srecanje - ob enem nevpisanem izidu je
+       stran lige tedne kazala "naslednje" z datumom, ki je bil ze mimo. */
+    @Test
+    void domacaStranSeznamInStranLigeRecejoIsto() {
+        Long idLige = pripraviLigo(PotekLige.danes().minusDays(RAZMIK));
+        List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(idLige);
+        koncajEno(srecanja, 1); // drugo srecanje 1. kola ostane brez izida
+
+        DomovLigaDto domov = liga(idLige);
+        LigaDto stran = ligaStoritev.najdi(idLige);
+        LigaDto vSeznamu = ligaStoritev.vse().stream()
+                .filter(l -> l.id().equals(idLige)).findFirst().orElseThrow();
+
+        assertEquals(1, domov.odigranihKol());
+        for (LigaDto l : List.of(stran, vSeznamu)) {
+            assertEquals(domov.odigranihKol(), l.odigranihKol());
+            assertEquals(domov.vsehKol(), l.steviloKol());
+            assertEquals(List.of(1), l.odigranaKola());
+            assertEquals(domov.naslednje().kolo(), l.naslednje().kolo());
+            assertEquals(domov.naslednje().datum(), l.naslednje().datum());
+        }
+        assertEquals(2, stran.naslednje().kolo(), "danasnje kolo je naslednje, ne 1. z nevpisanim izidom");
+        assertEquals(PotekLige.danes(), stran.naslednje().datum());
     }
 
     // ---------- priprava ----------

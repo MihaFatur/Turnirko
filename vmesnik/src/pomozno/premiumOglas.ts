@@ -160,12 +160,10 @@ export interface BesedilaDokaza {
 }
 
 function osebaGlagola(n: number, ena: string, dve: string, tri: string, vec: string): string {
-  const mod100 = n % 100
-  if (mod100 >= 11 && mod100 <= 14) return vec
-  const mod10 = n % 10
-  if (mod10 === 1) return ena
-  if (mod10 === 2) return dve
-  if (mod10 === 3 || mod10 === 4) return tri
+  const ostanek = n % 100
+  if (ostanek === 1) return ena
+  if (ostanek === 2) return dve
+  if (ostanek === 3 || ostanek === 4) return tri
   return vec
 }
 

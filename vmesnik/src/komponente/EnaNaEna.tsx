@@ -170,7 +170,9 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
                 {d.tekme.slice(0, TEKEM_V_POVZETKU).map((t) => (
                   <div className="enanaena__zadnja" key={(t.ligaska ? 'l' : 't') + t.idTekme}>
                     <span>
-                      {t.datum && `${oblikujDanKratekMesec(t.datum)} · `}
+                      {/* Z letnico: medsebojne tekme segajo več sezon nazaj in
+                          »12. okt« brez leta se je bral kot letošnji. */}
+                      {t.datum && `${oblikujDanKratekMesec(t.datum)} ${t.datum.slice(0, 4)} · `}
                       {t.tekmovanje}
                     </span>
                     <span className={t.zmagalPrvi ? 'profil__zmaga' : 'profil__poraz'}>

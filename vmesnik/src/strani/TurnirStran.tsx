@@ -52,6 +52,7 @@ import {
   sklonTekmovanj,
 } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 import { PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
 
@@ -101,6 +102,8 @@ export function TurnirStran() {
       odjemalec.invalidateQueries({ queryKey: ['turnirji'] })
     },
   })
+
+  useNaslovStrani(turnir.data?.ime)
 
   if (turnir.isLoading) return <p className="obvestilo">Nalaganje …</p>
   if (turnir.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>

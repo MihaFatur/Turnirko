@@ -14,9 +14,14 @@ interface Lastnosti {
   naslov: string
   /* Postavke; zapri() zapre meni po izbiri dejanja. */
   children: (zapri: () => void) => ReactNode
+  /* Vidna oznaka prožilnika namesto »⋯« in njegov razred - zavihek »Več« v
+     pasu zavihkov lige je isti meni, le da je videti kot zavihek. Z vidno
+     oznako bralnik zaslona prebere njo, naslov pa ostane v title. */
+  oznaka?: ReactNode
+  razred?: string
 }
 
-export function MeniDejanj({ naslov, children }: Lastnosti) {
+export function MeniDejanj({ naslov, children, oznaka, razred }: Lastnosti) {
   const [odprt, nastaviOdprt] = useState(false)
   const ovoj = useRef<HTMLDivElement>(null)
 
@@ -40,13 +45,14 @@ export function MeniDejanj({ naslov, children }: Lastnosti) {
     <div className="meni-dejanj" ref={ovoj}>
       <button
         type="button"
-        className="meni-dejanj__gumb"
+        className={razred ?? 'meni-dejanj__gumb'}
         aria-haspopup="menu"
         aria-expanded={odprt}
-        aria-label={naslov}
+        aria-label={oznaka == null ? naslov : undefined}
+        title={oznaka == null ? undefined : naslov}
         onClick={() => nastaviOdprt((prej) => !prej)}
       >
-        ⋯
+        {oznaka ?? '⋯'}
       </button>
       {odprt && (
         <div className="uporabnik-meni" role="menu">

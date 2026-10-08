@@ -13,6 +13,7 @@ import java.util.List;
 import si.turnirko.modeli.IgralnaRoka;
 import si.turnirko.modeli.IzidTekme;
 import si.turnirko.modeli.RazlogSpremembe;
+import si.turnirko.modeli.Spol;
 
 public record ProfilDto(
         Glava glava,
@@ -20,6 +21,11 @@ public record ProfilDto(
         Uvrstitev uvrstitev,
         List<TockaGrafa> graf,
         List<TekmaProfila> tekme,
+        /* Tekme, zbrane po tekmovanju (kategorija turnirja oz. liga), najnovejse
+           prve - pregled "OT Kidricevo: 5-1, 5. mesto, +64" namesto 419 vrstic,
+           v katerih se ime turnirja ponavlja. Tekme v "tekme" nosijo kljuc
+           svojega tekmovanja (TekmaProfila.tekmovanjeKljuc). */
+        List<TekmovanjeProfila> tekmovanja,
         /* Tekme dvojic so LOCEN seznam in ne stejejo v "pregled": izida para
            ni mogoce pripisati posamezniku (isto pravilo kot pri ratingu). */
         List<TekmaDvojic> dvojice
@@ -46,12 +52,17 @@ public record ProfilDto(
     ) {}
 
     /* Umestitev med druge igralce. Vrednosti so lahko prazne, ce igralec se
-       nima ratinga (ni odigral nobene tekme, ki bi stela v rating). */
+       nima ratinga (ni odigral nobene tekme, ki bi stela v rating).
+
+       spol in rekreativec povesta, NA KATERI lestvici je mesto (isti spol,
+       tekmovalci oz. rekreativci) - samo "81. / 144" ni povedalo, med kom. */
     public record Uvrstitev(
             Integer mesto,
             int skupajIgralcev,
             Integer percentil,
-            Integer klubskoPovprecje
+            Integer klubskoPovprecje,
+            Spol spol,
+            boolean rekreativec
     ) {}
 
     /* Ena tocka grafa ratinga: stanje po tekmi in kaj ga je povzrocilo.
@@ -135,7 +146,34 @@ public record ProfilDto(
             int niziProti,
             boolean zmaga,
             IzidTekme izidTip,
-            Integer spremembaRatinga
+            Integer spremembaRatinga,
+            /* Kljuc tekmovanja v ProfilDto.tekmovanja ("d12" = kategorija
+               turnirja, "l7" = liga). */
+            String tekmovanjeKljuc
+    ) {}
+
+    /* Nastop igralca na enem tekmovanju: kategorija turnirja (dogodek) oz.
+       liga. Izkupicek in sprememba ratinga sta vsota njegovih tekem; mesto je
+       koncno mesto v kategoriji (pri ligi ga ni - ekipa, ne igralec), "mestoDo"
+       pa zadnje mesto, ki ga deli z drugimi (polfinalista brez tekme za tretje
+       mesto: mesto 3, mestoDo 4). "udelezencev" so uvrsceni v kategoriji.
+       "datum" je dan zadnje tekme - po njem so tekmovanja urejena in iz njega
+       vmesnik izpelje sezono. */
+    public record TekmovanjeProfila(
+            String kljuc,
+            boolean ligaska,
+            Long idTurnir,
+            Long idDogodek,
+            Long idLiga,
+            String ime,
+            String del,
+            LocalDate datum,
+            int zmage,
+            int porazi,
+            Integer spremembaRatinga,
+            Integer mesto,
+            Integer mestoDo,
+            Integer udelezencev
     ) {}
 
     /* Ena odigrana tekma dvojic z vidika lastnika profila: s kom je igral in

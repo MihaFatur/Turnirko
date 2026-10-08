@@ -10,7 +10,7 @@
    Postavitev mora zdržati lige različnih velikosti (4 do 16+ ekip), povezane in
    samostojne lige ter ligo v pripravi (takrat lestvice in razporeda še ni in se
    sekciji ne izrišeta prazni). */
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -42,7 +42,16 @@ import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TerminiOkno } from '../komponente/TerminiOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
-import { oblikujDanMesec, oblikujTermin, oblikujUro } from '../pomozno/oblikovanje'
+import {
+  danesIso,
+  ligaVMestniku,
+  ligaVTozilniku,
+  oblikujDanMesec,
+  oblikujTermin,
+  oblikujUro,
+  potekKol,
+} from '../pomozno/oblikovanje'
+import { imeLigeSSezono, useNaslovStrani } from '../pomozno/naslovStrani'
 import { zabeleziOgledLige } from '../pomozno/ogledaneLige'
 import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 import { odigranihTekemLige, PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
@@ -173,6 +182,22 @@ export function LigaStran() {
     },
   })
 
+  /* Naslov zavihka: ime lige s sezono, z odprtim oknom ekipe pa ekipa - tako
+     kot predogled povezave, ki ga za isti naslov sestavi strežnik. */
+  const imeOdprteEkipe =
+    odprtaEkipa == null
+      ? null
+      : (srecanja.data ?? []).find((s) => s.idEkipaDomaci === odprtaEkipa)?.domaci
+        ?? (srecanja.data ?? []).find((s) => s.idEkipaGost === odprtaEkipa)?.gost
+        ?? null
+  useNaslovStrani(
+    liga.data
+      ? imeOdprteEkipe
+        ? `${imeOdprteEkipe} · ${liga.data.ime}`
+        : imeLigeSSezono(liga.data.ime, liga.data.sezona)
+      : null,
+  )
+
   /* Gost izbora spremljanih lig nima (ta je last računa), zato mu sklop "Moje
      lige" na domači strani pokaže lige, ki si jih je nazadnje ogledal. */
   useEffect(() => {
@@ -199,21 +224,27 @@ export function LigaStran() {
   const imaRazpored = vsa.length > 0
   const imaKoncnico = l.koncnicaEkip != null
 
-  /* Napredek lige: koliko kol je do konca odigranih. Kolo šteje za odigrano,
-     ko je končano vsako njegovo srečanje. */
+  /* Napredek lige pove strežnik (LigaDto, PotekLige): kolo je odigrano, ko je
+     njegov datum mimo, naslednje pa je prvo, ki ga termin še ni prehitel. Isto
+     pravilo velja na domači strani in v seznamu lig. Prej je stran štela kolo
+     šele, ko je bilo končano VSAKO srečanje — ob enem nevpisanem izidu je
+     glava tedne kazala »naslednje 24. 9.«, ko je bil 24. 9. že zdavnaj mimo. */
   const kola = [...new Set(vsa.map((s) => s.kolo))].sort((a, b) => a - b)
-  const koloOdigrano = (k: number) =>
-    vsa.filter((s) => s.kolo === k).every((s) => s.status === 'KONCANO')
-  const odigranihKol = kola.filter(koloOdigrano).length
-  const naslednjeKolo = kola.find((k) => !koloOdigrano(k)) ?? null
+  const odigranaKola = new Set(l.odigranaKola)
+  const koloOdigrano = (k: number) => odigranaKola.has(k)
+  const odigranihKol = l.odigranihKol
+  const naslednjeKolo = l.naslednje?.kolo ?? null
+  /* Kvalifikacije in končnica nastanejo iz KONČNE lestvice, zato tu ne zadošča
+     datum: redni del je končan, ko je vpisan izid vsakega srečanja. */
+  const vseKoncano = vsa.every((s) => s.status === 'KONCANO')
   /* Razpored se sme razveljaviti, dokler se ni začelo nobeno srečanje: prepis
      papirnatega žreba je dolg in tipkarska napaka se odkrije šele, ko jo kdo
      prebere. Postavljeno srečanje (POTEKA) ima že tekme in morda rezultate,
      zato tam vrata zapre tudi strežnik. */
   const nobenoOdigrano = imaRazpored && vsa.every((s) => s.status === 'RAZPORED')
 
-  /* Ob prihodu na stran je izbrano prvo neodigrano kolo (to gledalec išče), sicer
-     zadnje odigrano. Ročno izbiro spustimo, če je razpored medtem prišel drugačen. */
+  /* Ob prihodu na stran je izbrano naslednje kolo (to gledalec išče), sicer
+     zadnje. Ročno izbiro spustimo, če je razpored medtem prišel drugačen. */
   const privzetoKolo = naslednjeKolo ?? kola[kola.length - 1] ?? 1
   const kolo = rocnoKolo != null && kola.includes(rocnoKolo) ? rocnoKolo : privzetoKolo
 
@@ -239,7 +270,7 @@ export function LigaStran() {
      med katerima se igra) ali navadna liga z mejami do sosednjih lig, prek
      katerih jih igra. */
   const jeKval = l.idKvalifikacijeVisja != null
-  const redniDelKoncan = imaRazpored && naslednjeKolo == null
+  const redniDelKoncan = imaRazpored && vseKoncano
   const meje = mejeKvalifikacij(l, lige.data ?? [], smemUrejati)
   const kvalifikacijeVPiramidi = (lige.data ?? []).filter(
     (k) => k.idKvalifikacijeVisja != null
@@ -510,8 +541,9 @@ export function LigaStran() {
             </div>
             {l.sezona && <span className="naslov-mobi__pod">{l.sezona}</span>}
             <div className="liga-mobi__stanje">
-              <span>{stanjeMobi(l, vsa, kola, odigranihKol, naslednjeKolo, tekmeKoncnice)}</span>
-              {imaRazpored && <span className="liga-mobi__delez">{delez} %</span>}
+              {/* Brez odstotka: »odigrano 1 od 6 kol« ga že pove, palica pod
+                  vrstico pa ga nariše - z njim se je vrstica pri 375 px lomila. */}
+              <span>{stanjeMobi(l, vsa, kola, tekmeKoncnice)}</span>
             </div>
             {imaRazpored && (
               <span className="palica palica--tanka">
@@ -523,81 +555,29 @@ export function LigaStran() {
 
         {imaRazpored && (
           <GlavaZavihki>
-            <div className="podnavigacija podnavigacija--telefon podnavigacija--enakomerna">
-              <button
-                type="button"
-                className={
-                  'izbirnik__gumb' +
-                  (mobilniPogled === 'LESTVICA' ? ' izbirnik__gumb--aktiven' : '')
-                }
-                aria-pressed={mobilniPogled === 'LESTVICA'}
-                onClick={() => nastaviMobilniPogled('LESTVICA')}
-              >
-                Lestvica
-              </button>
-              <button
-                type="button"
-                className={
-                  'izbirnik__gumb' +
-                  (mobilniPogled === 'RAZPORED' ? ' izbirnik__gumb--aktiven' : '')
-                }
-                aria-pressed={mobilniPogled === 'RAZPORED'}
-                onClick={() => nastaviMobilniPogled('RAZPORED')}
-              >
-                Razpored
-              </button>
-              {imaKoncnico && (
-                <button
-                  type="button"
-                  className={
-                    'izbirnik__gumb' +
-                    (mobilniPogled === 'KONCNICA' ? ' izbirnik__gumb--aktiven' : '')
-                  }
-                  aria-pressed={mobilniPogled === 'KONCNICA'}
-                  onClick={() => nastaviMobilniPogled('KONCNICA')}
-                >
-                  Končnica
-                </button>
-              )}
-              {/* Piramida je svoj zavihek (odločitev lastnika, sep 2026); prej
-                  je stala na dnu zavihka z lestvico. Ponujena je tudi
-                  samostojni ligi in tam pove, da piramide ni - zavihek, ki se
-                  od lige do lige pojavlja in izginja, bi zmedel. */}
-              <button
-                type="button"
-                className={
-                  'izbirnik__gumb' +
-                  (mobilniPogled === 'PIRAMIDA' ? ' izbirnik__gumb--aktiven' : '')
-                }
-                aria-pressed={mobilniPogled === 'PIRAMIDA'}
-                onClick={() => nastaviMobilniPogled('PIRAMIDA')}
-              >
-                {/* Liga kvalifikacij ni nivo piramide, ampak meja med dvema. */}
-                {jeKval ? 'Med ligama' : 'Piramida lig'}
-              </button>
-              {imaZanimivosti && (
-                <button
-                  type="button"
-                  className={
-                    'izbirnik__gumb' +
-                    (mobilniPogled === 'ZANIMIVOSTI' ? ' izbirnik__gumb--aktiven' : '')
-                  }
-                  aria-pressed={mobilniPogled === 'ZANIMIVOSTI'}
-                  onClick={() => nastaviMobilniPogled('ZANIMIVOSTI')}
-                >
-                  Zanimivosti
-                </button>
-              )}
-              {/* Pravila niso pogled, ampak referenca - zato okno in ne
-                  zavihek z vsebino. */}
-              <button
-                type="button"
-                className="izbirnik__gumb"
-                onClick={() => nastaviPravilaOdprta(true)}
-              >
-                Pravila
-              </button>
-            </div>
+            <ZavihkiTelefona
+              zavihki={[
+                { kljuc: 'LESTVICA', oznaka: 'Lestvica' },
+                { kljuc: 'RAZPORED', oznaka: 'Razpored' },
+                ...(imaKoncnico ? [{ kljuc: 'KONCNICA' as const, oznaka: 'Končnica' }] : []),
+                /* Piramida je svoj zavihek (odločitev lastnika, sep 2026);
+                   prej je stala na dnu zavihka z lestvico. Ponujena je tudi
+                   samostojni ligi in tam pove, da piramide ni - zavihek, ki
+                   se od lige do lige pojavlja in izginja, bi zmedel. Liga
+                   kvalifikacij ni nivo piramide, ampak meja med dvema. */
+                { kljuc: 'PIRAMIDA', oznaka: jeKval ? 'Med ligama' : 'Piramida lig' },
+                ...(imaZanimivosti
+                  ? [{ kljuc: 'ZANIMIVOSTI' as const, oznaka: 'Zanimivosti' }]
+                  : []),
+                /* Pravila niso pogled, ampak referenca - zato okno in ne
+                   zavihek z vsebino. */
+                { kljuc: 'PRAVILA', oznaka: 'Pravila' },
+              ]}
+              aktiven={mobilniPogled}
+              onIzberi={(kljuc) =>
+                kljuc === 'PRAVILA' ? nastaviPravilaOdprta(true) : nastaviMobilniPogled(kljuc)
+              }
+            />
           </GlavaZavihki>
         )}
 
@@ -712,7 +692,7 @@ export function LigaStran() {
             <div className="naslovna-vrstica__desno">
               <ZnackaStatusa status={l.status} />
               <span className="sekcija__meta">
-                {stanjeLige(l, vsa, kola, naslednjeKolo, kaziPiramido, tekmeKoncnice)}
+                {stanjeLige(l, vsa, kola, kaziPiramido, lige.data != null, tekmeKoncnice)}
               </span>
             </div>
 
@@ -981,33 +961,122 @@ export function LigaStran() {
   )
 }
 
+/* ---------- Zavihki na telefonu ---------- */
+
+type KljucZavihka = MobilniPogled | 'PRAVILA'
+
+/* Koliko zavihkov gre v pas brez drsenja: štirje (Lestvica · Razpored ·
+   Piramida lig · Pravila) so hkrati na zaslonu vse do 360 px. Peti (Končnica
+   ali Zanimivosti) je pas prej potisnil v drsenje in »Pravila« so ostala
+   odrezana za desnim robom - gledalec ni vedel, da so tam. */
+const ZAVIHKOV_V_PASU = 4
+
+/* Pas zavihkov lige na telefonu. Kadar jih je več, kot jih gre v pas, prvi
+   trije ostanejo zavihki, ostali gredo pod zadnjega, »Več ▾«. Lestvica in
+   razpored sta zato vedno na očeh. Ko je izbran pogled iz menija, je »Več«
+   obarvan kot izbran zavihek, v meniju pa je pogled označen. Imena pogleda
+   »Več« ne prevzame: »Zanimivosti ▾« ob »Piramida lig« pri 375 px seže
+   20 px čez rob - pas bi spet drsel. */
+function ZavihkiTelefona({
+  zavihki,
+  aktiven,
+  onIzberi,
+}: {
+  zavihki: { kljuc: KljucZavihka; oznaka: string }[]
+  aktiven: MobilniPogled
+  onIzberi: (kljuc: KljucZavihka) => void
+}) {
+  const vPasu =
+    zavihki.length <= ZAVIHKOV_V_PASU ? zavihki : zavihki.slice(0, ZAVIHKOV_V_PASU - 1)
+  const vMeniju = zavihki.slice(vPasu.length)
+  const izbranVMeniju = vMeniju.find((z) => z.kljuc === aktiven)
+  return (
+    <div className="podnavigacija podnavigacija--telefon podnavigacija--enakomerna">
+      {vPasu.map((z) => (
+        <button
+          key={z.kljuc}
+          type="button"
+          className={'izbirnik__gumb' + (z.kljuc === aktiven ? ' izbirnik__gumb--aktiven' : '')}
+          aria-pressed={z.kljuc === 'PRAVILA' ? undefined : z.kljuc === aktiven}
+          onClick={() => onIzberi(z.kljuc)}
+        >
+          {z.oznaka}
+        </button>
+      ))}
+      {vMeniju.length > 0 && (
+        <MeniDejanj
+          naslov={izbranVMeniju ? `Ostali pogledi lige (izbrano: ${izbranVMeniju.oznaka})` : 'Ostali pogledi lige'}
+          oznaka="Več ▾"
+          razred={'izbirnik__gumb' + (izbranVMeniju ? ' izbirnik__gumb--aktiven' : '')}
+        >
+          {(zapri) =>
+            vMeniju.map((z) => (
+              <button
+                key={z.kljuc}
+                type="button"
+                role="menuitem"
+                className={
+                  'uporabnik-meni__postavka' +
+                  (z.kljuc === aktiven ? ' uporabnik-meni__postavka--izbrana' : '')
+                }
+                aria-current={z.kljuc === aktiven ? 'page' : undefined}
+                onClick={() => {
+                  zapri()
+                  onIzberi(z.kljuc)
+                }}
+              >
+                {z.oznaka}
+              </button>
+            ))
+          }
+        </MeniDejanj>
+      )}
+    </div>
+  )
+}
+
 /* ---------- Stanje lige v glavi strani ---------- */
 
 /* Ena mono vrstica ob znački: kdaj je naslednje kolo, kdaj se je liga končala
    oz. da razporeda še ni. Samostojna liga brez piramide to tudi pove - drugače
-   bi gledalec sklepal, da podatek manjka. */
+   bi gledalec sklepal, da podatek manjka. Dokler seznam lig (piramida) ni
+   naložen, tega ne trdimo: med nalaganjem je ligi v piramidi za trenutek
+   pisalo »Samostojna«.
+
+   Naslednje kolo pove strežnik (LigaDto.naslednje) po istem pravilu kot
+   domača stran. */
 function stanjeLige(
   liga: LigaDto,
   srecanja: SrecanjeDto[],
   kola: number[],
-  naslednjeKolo: number | null,
   imaPiramido: boolean,
+  piramidaZnana: boolean,
   tekmeKoncnice: SrecanjeDto[],
 ): string {
   if (srecanja.length === 0) {
     /* Liga samo s pari (kvalifikacije) rednega dela nima - glavo nosijo pari. */
     if (tekmeKoncnice.length > 0) return stanjeKoncnice(liga, tekmeKoncnice, 'naslednja tekma') ?? ''
-    if (liga.idKvalifikacijeVisja != null) return 'Razpored ni generiran'
-    return imaPiramido ? 'Razpored ni generiran' : 'Samostojna — brez piramide'
+    if (liga.idKvalifikacijeVisja != null || imaPiramido || !piramidaZnana) return 'Razpored ni generiran'
+    return 'Samostojna — brez piramide'
   }
-  if (liga.status === 'ZAKLJUCEN' || naslednjeKolo == null) {
-    const koncnica = stanjeKoncnice(liga, tekmeKoncnice, 'naslednja tekma')
-    if (koncnica) return koncnica
-    const datum = datumKola(srecanja, kola[kola.length - 1])
-    return datum ? `Končano ${oblikujDanMesec(datum)}` : 'Vsa kola odigrana'
+  const naslednje = liga.naslednje
+  if (liga.status === 'ZAKLJUCEN' || naslednje == null) {
+    return stanjeKoncnice(liga, tekmeKoncnice, 'naslednja tekma') ?? konecRednegaDela(liga, srecanja, kola)
   }
-  const datum = datumKola(srecanja, naslednjeKolo)
-  return datum ? `Naslednje kolo ${oblikujDanMesec(datum)}` : `Naslednje ${naslednjeKolo}. kolo`
+  return naslednje.datum
+    ? `Naslednje kolo ${oblikujDanMesec(naslednje.datum)}`
+    : `Naslednje ${naslednje.kolo}. kolo`
+}
+
+/* Ko naslednjega kola ni: liga je končana ali pa so vsa kola po datumu mimo in
+   kak izid še ni vpisan. Takrat ni »Končano« - značka ob vrstici še piše
+   »V teku«, zato bi si nasprotovali. */
+function konecRednegaDela(liga: LigaDto, srecanja: SrecanjeDto[], kola: number[]): string {
+  const datum = datumKola(srecanja, kola[kola.length - 1])
+  if (!datum) return 'Vsa kola odigrana'
+  return liga.status === 'ZAKLJUCEN'
+    ? `Končano ${oblikujDanMesec(datum)}`
+    : `Zadnje kolo ${oblikujDanMesec(datum)}`
 }
 
 /* Po rednem delu glavo nosi končnica: dokler kaka njena tekma čaka, kdaj je
@@ -1042,23 +1111,60 @@ function stanjeMobi(
   liga: LigaDto,
   srecanja: SrecanjeDto[],
   kola: number[],
-  odigranihKol: number,
-  naslednjeKolo: number | null,
   tekmeKoncnice: SrecanjeDto[],
 ): string {
   if (srecanja.length === 0) {
     if (tekmeKoncnice.length > 0) return stanjeKoncnice(liga, tekmeKoncnice, 'naslednja') ?? ''
     return 'Razpored ni generiran'
   }
-  if (liga.status === 'ZAKLJUCEN' || naslednjeKolo == null) {
-    const koncnica = stanjeKoncnice(liga, tekmeKoncnice, 'naslednja')
-    if (koncnica) return koncnica
-    const datum = datumKola(srecanja, kola[kola.length - 1])
-    return datum ? `Končano ${oblikujDanMesec(datum)}` : 'Vsa kola odigrana'
+  const naslednje = liga.naslednje
+  if (liga.status === 'ZAKLJUCEN' || naslednje == null) {
+    return stanjeKoncnice(liga, tekmeKoncnice, 'naslednja') ?? konecRednegaDela(liga, srecanja, kola)
   }
-  const potek = `${odigranihKol}. od ${kola.length} kol`
-  const datum = datumKola(srecanja, naslednjeKolo)
-  return datum ? `${potek} · naslednje ${oblikujDanMesec(datum)}` : potek
+  const potek = potekKol(liga.odigranihKol, kola.length)
+  return naslednje.datum ? `${potek} · naslednje ${oblikujDanMesec(naslednje.datum)}` : potek
+}
+
+/* Srečanje, katerega dan je že mimo, izida pa nima (ekipi sta ga morda
+   prestavili ali pa ga organizator še ni vpisal). Prej je na mestu izida
+   stala ura, »18.30« ob srečanju izpred dveh tednov pa se je bralo, kot da se
+   šele bo igralo. Zdaj tam stoji pomišljaj, pod vrstico pa »Izid ni vpisan« -
+   napis in ne samo title, ker ga na telefonu ni kje prebrati. */
+function brezIzida(s: SrecanjeDto): boolean {
+  const dan = s.predvidenZacetek?.slice(0, 10)
+  return s.status !== 'KONCANO' && dan != null && dan < danesIso()
+}
+
+/* Srečanja kola, razdeljena po začetku. Kolo, kjer ima vsaka ekipa več
+   srečanj zapored (18.30 in 19.45), ima nad vsako uro svoj naslov s črto -
+   brez njega se je ista ekipa v seznamu pojavila dvakrat brez pojasnila. Prej
+   je ura stala na mestu izida, kjer je nihče ni bral kot mejo. Srečanje,
+   prestavljeno na drug dan, dobi naslov z dnevom. Kolo z enim samim začetkom
+   je ena skupina brez naslova (termin nosi krmar kola). */
+function skupineKola(vKolu: SrecanjeDto[]): { naslov: string | null; srecanja: SrecanjeDto[] }[] {
+  const zacetki = [...new Set(vKolu.map((s) => s.predvidenZacetek ?? ''))]
+  if (zacetki.length <= 1) return [{ naslov: null, srecanja: vKolu }]
+  const enDan = new Set(zacetki.filter(Boolean).map((z) => z.slice(0, 10))).size <= 1
+  /* Zaledje srečanja vrne po uri, a skupine morajo biti strnjene tudi, če kak
+     termin popravi organizator - zato urejeno po začetku (stabilno), brez
+     termina na konec. */
+  const urejena = [...vKolu].sort((a, b) =>
+    (a.predvidenZacetek ?? '￿').localeCompare(b.predvidenZacetek ?? '￿'),
+  )
+  const skupine: { naslov: string | null; srecanja: SrecanjeDto[] }[] = []
+  let prejsnji: string | null | undefined
+  for (const s of urejena) {
+    const z = s.predvidenZacetek ?? null
+    if (skupine.length === 0 || z !== prejsnji) {
+      const naslov = z == null
+        ? 'Termin ni določen'
+        : (enDan ? oblikujUro(z) : oblikujTermin(z)) || oblikujTermin(z)
+      skupine.push({ naslov, srecanja: [] })
+      prejsnji = z
+    }
+    skupine[skupine.length - 1].srecanja.push(s)
+  }
+  return skupine
 }
 
 /* Termin kola vzamemo iz prvega srečanja, ki ga ima: kolo se odigra en dan,
@@ -1073,8 +1179,8 @@ function datumKola(srecanja: SrecanjeDto[], kolo: number): string | null {
 }
 
 /* Ali se srečanja kola začnejo ob različnih urah — liga z urami (večer z več
-   krogi zapored, npr. ob 18.30 in 19.45). Takrat je ura last srečanja: kolo
-   nosi samo dan, ura pa stoji pri srečanju. */
+   krogi zapored, npr. ob 18.30 in 19.45). Takrat kolo nosi samo dan, ure pa
+   stojijo nad skupinami srečanj (skupineKola). */
 function ureVKolu(srecanja: SrecanjeDto[], kolo: number): boolean {
   const ure = srecanja.filter((s) => s.kolo === kolo).map((s) => oblikujUro(s.predvidenZacetek))
   return new Set(ure.filter(Boolean)).size > 1
@@ -1084,7 +1190,7 @@ function ureVKolu(srecanja: SrecanjeDto[], kolo: number): boolean {
    »kdaj se to igra« je edino, kar gledalec ob neodigranem kolu išče; beseda
    »razpored« ni povedala nič. Ostane samo, kadar termina ni (organizator ga
    ni vpisal). Odigrano kolo obdrži oznako, datum pa mu je kontekst. Kolo z več
-   urami nosi samo dan — ure so pri srečanjih. */
+   urami nosi samo dan — ure so v naslovih skupin srečanj. */
 function metaKola(srecanja: SrecanjeDto[], kolo: number, odigrano: boolean): string {
   const zacetek = ureVKolu(srecanja, kolo) ? datumKola(srecanja, kolo) : terminKola(srecanja, kolo)
   const termin = oblikujTermin(zacetek)
@@ -1460,7 +1566,7 @@ function Lestvica({
               <th scope="col" className="lestvica__stevilka lestvica__izkupicek">P</th>
               <th scope="col" className="lestvica__stevilka lestvica__tekme">Tekme</th>
               <th scope="col" className="lestvica__stevilka lestvica__nizi">Nizi</th>
-              <th scope="col" className="lestvica__forma-glava">Zadnjih 5</th>
+              <th scope="col" className="lestvica__forma-glava">Zadnjih {FORMA_NAMIZJE}</th>
               <th scope="col" className="lestvica__rating">Točke</th>
             </tr>
           </thead>
@@ -1506,7 +1612,7 @@ function Lestvica({
                     {v.dobljeniNizi}:{v.prejetiNizi}
                   </td>
                   <td className="lestvica__forma-celica">
-                    <Forma znaki={forma(v.idEkipa, srecanja)} />
+                    <Forma znaki={forma(v.idEkipa, srecanja, FORMA_NAMIZJE)} />
                   </td>
                   <td className="lestvica__rating">{v.tocke}</td>
                 </tr>
@@ -1517,17 +1623,24 @@ function Lestvica({
       </div>
 
       <LegendaCon liga={liga} cilji={cilji} meje={meje} />
+      <IzenaceneEkipe vrstice={lestvica.data} />
     </div>
   )
 }
 
 /* Ista lestvica na telefonu. Namizna tabela ima deset stolpcev (odigrane,
    Z/N/P, tekme, nizi ...) - pri 390 px se prebere le prvih nekaj, ostali pa
-   vrstico raztegnejo. Tu ostanejo mesto, ime, bilanca s formo in točke;
-   podrobnosti so v zapisniku srečanja.
+   vrstico raztegnejo. Tu ima vrstica dve vrsti: ime s formo zadnjih treh
+   srečanj, pod njim bilanca z razmerjem tekem in nizov; točke so ob desnem
+   robu. Razmerji sta bili le na namizju, dokler ni pet ekip po prvem kolu
+   imelo 1-1 in 2 točki - brez njiju igralec ni vedel, zakaj je njegova ekipa
+   sedma (za točkami in medsebojnim izidom odločita prav razlika tekem in
+   nizov, LestvicaLigeStoritev).
 
    Ločenega gumba »Kader in tekme« ni: vrstica je gumb in odpre okno ekipe -
-   dve zadetkovni površini v 390 px vrstici sta ena preveč. */
+   dve zadetkovni površini v 390 px vrstici sta ena preveč. Da se vrstica
+   odpre, pove modro ime ekipe (modro besedilo je v aplikaciji povezava); na
+   namizju to pove napis »Kader in tekme«. */
 function LestvicaMobi({
   idLiga,
   liga,
@@ -1550,8 +1663,8 @@ function LestvicaMobi({
       <div className="naslovna-mobi naslovna-mobi--brez-crte">
         <h2>Lestvica</h2>
         {vrstice.length > 0 && (
-          <span className="naslovna-mobi__stevec naslovna-mobi__stevec--drobno">
-            {vrstice.length} {ekipTekst(vrstice.length)} · Zadnjih 5
+          <span className="naslovna-mobi__stevec">
+            {vrstice.length} {ekipTekst(vrstice.length)}
           </span>
         )}
       </div>
@@ -1584,14 +1697,16 @@ function LestvicaMobi({
                 >
                   {v.mesto}
                 </span>
-                <span className="lestvica-mobi__ime">{v.ekipa}</span>
+                <span className="lestvica-mobi__ime lestvica-mobi__ime--ekipa">{v.ekipa}</span>
+                <span className="lestvica-mobi__forma">
+                  <Forma znaki={forma(v.idEkipa, srecanja, FORMA_TELEFON)} />
+                </span>
                 <span className="lestvica-mobi__izkupicek">
-                  <span className="lestvica-mobi__bilanca">
-                    {liga.dovoljenoNeodloceno
-                      ? `${v.zmage}-${v.neodlocene}-${v.porazi}`
-                      : `${v.zmage}-${v.porazi}`}
-                  </span>
-                  <Forma znaki={forma(v.idEkipa, srecanja)} />
+                  {liga.dovoljenoNeodloceno
+                    ? `${v.zmage}-${v.neodlocene}-${v.porazi}`
+                    : `${v.zmage}-${v.porazi}`}
+                  {' · '}tekme {v.dobljeneTekme}:{v.prejeteTekme}
+                  {' · '}nizi {v.dobljeniNizi}:{v.prejetiNizi}
                 </span>
                 <span className="lestvica-mobi__tocke">{v.tocke}</span>
               </button>
@@ -1601,6 +1716,7 @@ function LestvicaMobi({
       )}
 
       {vrstice.length > 0 && <LegendaCon liga={liga} cilji={cilji} meje={meje} mobi />}
+      <IzenaceneEkipe vrstice={vrstice} />
     </div>
   )
 }
@@ -1629,15 +1745,15 @@ function LegendaCon({
     postavke.push({
       razred: 'napreduje',
       besedilo: jeKval
-        ? `Igra v ${liga.kvalifikacijeVisjaIme}`
-        : cilji.visja ? `Napreduje v ${cilji.visja}` : 'Napreduje',
+        ? `Igra v ${ligaVMestniku(liga.kvalifikacijeVisjaIme ?? '')}`
+        : cilji.visja ? `Napreduje v ${ligaVTozilniku(cilji.visja)}` : 'Napreduje',
       povezava: null,
     })
   }
   if (liga.stKvalifikacijeGor > 0) {
     postavke.push({
       razred: 'kvalifikacije_gor',
-      besedilo: cilji.visja ? `Kvalifikacije za ${cilji.visja}` : 'Kvalifikacije za napredovanje',
+      besedilo: cilji.visja ? `Kvalifikacije za ${ligaVTozilniku(cilji.visja)}` : 'Kvalifikacije za napredovanje',
       povezava: meje.find((m) => m.smer === 'GOR')?.obstojece ?? null,
     })
   }
@@ -1655,8 +1771,8 @@ function LegendaCon({
     postavke.push({
       razred: 'izpade',
       besedilo: jeKval
-        ? `Igra v ${liga.kvalifikacijeNizjaIme}`
-        : cilji.nizja ? `Izpade v ${cilji.nizja}` : 'Izpade',
+        ? `Igra v ${ligaVMestniku(liga.kvalifikacijeNizjaIme ?? '')}`
+        : cilji.nizja ? `Izpade v ${ligaVTozilniku(cilji.nizja)}` : 'Izpade',
       povezava: null,
     })
   }
@@ -1671,6 +1787,21 @@ function LegendaCon({
         </span>
       ))}
     </div>
+  )
+}
+
+/* Pod lestvico, kadar imata vsaj dve ekipi enako točk: po čem se razvrstita.
+   Številke v vrstici tega ne povedo same - po prvem kolu Savinja B je Tempo 2
+   s tekmami 5:5 stal pod Kamerado s 4:6, ker je odločil medsebojni izid.
+   Vrstni red je isti kot v zaledju (LestvicaLigeStoritev). */
+function IzenaceneEkipe({ vrstice }: { vrstice: LestvicaEkipeDto[] }) {
+  const tocke = vrstice.map((v) => v.tocke)
+  if (new Set(tocke).size === tocke.length) return null
+  return (
+    <p className="namig">
+      Pri enakem številu točk odloči medsebojni izid, nato razlika tekem in nato
+      razlika nizov.
+    </p>
   )
 }
 
@@ -1701,16 +1832,22 @@ const OZNAKE_FORME: Record<IzidEkipe, string> = {
   P: 'poraz',
 }
 
-/* Forma ekipe: do pet njenih zadnjih končanih srečanj, najstarejše levo. Šteje
-   izid srečanja (dobljene tekme), ne posamične tekme. */
-function forma(idEkipa: number, srecanja: SrecanjeDto[]): IzidEkipe[] {
+/* Koliko zadnjih srečanj kaže forma: namizna tabela ima zanjo stolpec, na
+   telefonu pa stoji ob imenu ekipe, kjer bi pet znakov s črko imenu pojedlo
+   tretjino vrstice. */
+const FORMA_NAMIZJE = 5
+const FORMA_TELEFON = 3
+
+/* Forma ekipe: njena zadnja končana srečanja, najstarejše levo. Šteje izid
+   srečanja (dobljene tekme), ne posamične tekme. */
+function forma(idEkipa: number, srecanja: SrecanjeDto[], koliko: number): IzidEkipe[] {
   return srecanja
     .filter(
       (s) =>
         s.status === 'KONCANO' && (s.idEkipaDomaci === idEkipa || s.idEkipaGost === idEkipa),
     )
     .sort((a, b) => a.kolo - b.kolo)
-    .slice(-5)
+    .slice(-koliko)
     .map((s) => izidZaEkipo(s, idEkipa))
 }
 
@@ -1720,8 +1857,9 @@ function Forma({ znaki }: { znaki: IzidEkipe[] }) {
     <span className="lestvica__forma">
       {znaki.map((z, i) => (
         <span key={i} className={`lestvica__forma-znak lestvica__forma-znak--${z}`}>
-          {/* Na telefonu je značka le kvadratek, zato mora črka ostati dosegljiva
-              bralniku zaslona; skrije jo CSS, ne pogojni izris. */}
+          {/* V ozki namizni tabeli (641–720 px) je značka le kvadratek, zato
+              mora črka ostati dosegljiva bralniku zaslona; skrije jo CSS, ne
+              pogojni izris. */}
           <span className="lestvica__forma-crka">{z}</span>
           <span className="samo-za-bralnik">{OZNAKE_FORME[z]}</span>
         </span>
@@ -1732,20 +1870,63 @@ function Forma({ znaki }: { znaki: IzidEkipe[] }) {
 
 /* ---------- Razpored ---------- */
 
-/* Ena vrstica nad razporedom, kadar pare ni izžrebala aplikacija. Zapisana je
-   kot dejstvo in ne kot opozorilo: ročni žreb je enakovreden način, gledalec pa
-   mora vedeti, od kod razpored je — sicer bi igralec, ki je pare dobil po pošti,
-   sklepal, da je aplikacija izžrebala nove. */
-const OPOMBA_ROCNEGA_ZREBA = 'Žreb ni bil naključen — razpored je vpisal organizator.'
+/* Kadar pare ni izžrebala aplikacija, ob robu razporeda (v vrstici »Vsa
+   kola«) stoji droben napis »Ročni žreb«; pojasnilo se odpre ob prehodu miške
+   oz. ob dotiku. Prej je bila to cela vrstica nad razporedom, ki je zvenela
+   kot opozorilo, da je z žrebom nekaj narobe. Gledalec mora še vedno izvedeti,
+   od kod razpored je - sicer bi igralec, ki je pare dobil po pošti, sklepal,
+   da je aplikacija izžrebala nove - zato je pojasnilo na dosegu. */
+const OPOMBA_ROCNEGA_ZREBA =
+  'Žreb ni bil naključen — razpored je vpisal organizator. Za pojasnilo se obrnite na organizatorja.'
+
+function OznakaRocnegaZreba() {
+  const [odprta, nastaviOdprta] = useState(false)
+  const ovoj = useRef<HTMLSpanElement>(null)
+  const idOpombe = useId()
+
+  /* Na dotik se pojasnilo odpre s tapom in zapre s tapom drugam (ali Escape) -
+     prehoda miške telefon nima. */
+  useEffect(() => {
+    if (!odprta) return
+    function obKliku(dogodek: MouseEvent) {
+      if (ovoj.current && !ovoj.current.contains(dogodek.target as Node)) nastaviOdprta(false)
+    }
+    function obTipki(dogodek: KeyboardEvent) {
+      if (dogodek.key === 'Escape') nastaviOdprta(false)
+    }
+    document.addEventListener('mousedown', obKliku)
+    document.addEventListener('keydown', obTipki)
+    return () => {
+      document.removeEventListener('mousedown', obKliku)
+      document.removeEventListener('keydown', obTipki)
+    }
+  }, [odprta])
+
+  return (
+    <span ref={ovoj} className={'zreb-oznaka' + (odprta ? ' zreb-oznaka--odprta' : '')}>
+      <button
+        type="button"
+        className="zreb-oznaka__gumb"
+        aria-expanded={odprta}
+        aria-describedby={idOpombe}
+        onClick={() => nastaviOdprta((prej) => !prej)}
+      >
+        Ročni žreb
+      </button>
+      <span id={idOpombe} role="tooltip" className="zreb-oznaka__oblacek">
+        {OPOMBA_ROCNEGA_ZREBA}
+      </span>
+    </span>
+  )
+}
 
 interface RazporedLastnosti {
   srecanja: SrecanjeDto[]
   kola: number[]
   kolo: number
   odigranihKol: number
-  /* Ali je pare vpisal organizator namesto žreba. Vrstica pod naslovom to pove
-     vsakemu obiskovalcu, tudi gostu — papirnati razpored je že v rokah igralcev
-     in videti mora biti, da je to isti razpored. */
+  /* Ali je pare vpisal organizator namesto žreba (oznaka ob robu razporeda
+     to pove vsakemu obiskovalcu, tudi gostu). */
   rocniZreb: boolean
   koloOdigrano: (kolo: number) => boolean
   onKolo: (kolo: number) => void
@@ -1767,18 +1948,15 @@ function Razpored({
   /* Termin kola, ki šele pride, je poudarjen - to je vprašanje, s katerim
      gledalec pride na razpored. */
   const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
-  const zUrami = ureVKolu(srecanja, kolo)
 
   return (
     <div>
       <div className="naslovna-vrstica">
         <h2>Razpored</h2>
         <span className="sekcija__meta">
-          {kola.length} {kolTekst(kola.length)} · {odigranihKol} odigranih
+          {kola.length} {kolTekst(kola.length)} · odigrano {odigranihKol}
         </span>
       </div>
-
-      {rocniZreb && <p className="liga__zreb-opomba">{OPOMBA_ROCNEGA_ZREBA}</p>}
 
       <div className="liga__krmar">
         <button
@@ -1806,53 +1984,61 @@ function Razpored({
       </div>
 
       <ul className="liga__srecanja">
-        {vKolu.map((s) => {
-          const konec = s.status === 'KONCANO'
-          const domZmaga = konec && s.dobljeneDomaci > s.dobljeneGost
-          const gostZmaga = konec && s.dobljeneGost > s.dobljeneDomaci
-          return (
-            <li key={s.id}>
-              <Link to={`/srecanja/${s.id}`} className="liga__srecanje">
-                <span
-                  className={
-                    'liga__srecanje-ekipa liga__srecanje-ekipa--desno' +
-                    (domZmaga ? ' liga__srecanje-ekipa--zmaga' : '') +
-                    (gostZmaga ? ' liga__srecanje-ekipa--poraz' : '')
-                  }
-                >
-                  {s.domaci}
-                </span>
-                <span
-                  className={'liga__srecanje-izid' + (konec ? '' : ' liga__srecanje-izid--caka')}
-                >
-                  {/* Kjer bo izid, do takrat stoji ura srečanja, kadar jih ima
-                      kolo več - na istem mestu, da vrstica ne dobi stolpca. */}
-                  {konec
-                    ? `${s.dobljeneDomaci} : ${s.dobljeneGost}`
-                    : (zUrami && oblikujUro(s.predvidenZacetek)) || 'vs'}
-                  {/* Registriran izid ni odigran - brez oznake bi se 5 : 0 bralo kot tekma. */}
-                  {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
-                  {/* Prenesen izid je bil odigran v predtekmovanju, tu tekem nima. */}
-                  {konec && s.prenesen && <span className="liga__brez-borbe" title="izid prenesen iz predtekmovanja">prenesen</span>}
-                </span>
-                <span
-                  className={
-                    'liga__srecanje-ekipa' +
-                    (gostZmaga ? ' liga__srecanje-ekipa--zmaga' : '') +
-                    (domZmaga ? ' liga__srecanje-ekipa--poraz' : '')
-                  }
-                >
-                  {s.gost}
-                </span>
-                <span className="liga__srecanje-dejanje">{konec ? 'Zapisnik' : 'Postava'}</span>
-              </Link>
-            </li>
-          )
-        })}
+        {skupineKola(vKolu).map((skupina) => (
+          <Fragment key={skupina.naslov ?? ''}>
+            {skupina.naslov && <li className="liga__ura">{skupina.naslov}</li>}
+            {skupina.srecanja.map((s) => {
+              const konec = s.status === 'KONCANO'
+              const domZmaga = konec && s.dobljeneDomaci > s.dobljeneGost
+              const gostZmaga = konec && s.dobljeneGost > s.dobljeneDomaci
+              const zamuja = brezIzida(s)
+              return (
+                <li key={s.id}>
+                  <Link to={`/srecanja/${s.id}`} className="liga__srecanje">
+                    <span
+                      className={
+                        'liga__srecanje-ekipa liga__srecanje-ekipa--desno' +
+                        (domZmaga ? ' liga__srecanje-ekipa--zmaga' : '') +
+                        (gostZmaga ? ' liga__srecanje-ekipa--poraz' : '')
+                      }
+                    >
+                      {s.domaci}
+                    </span>
+                    <span
+                      className={
+                        'liga__srecanje-izid' + (konec ? '' : ' liga__srecanje-izid--caka')
+                      }
+                    >
+                      {konec ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : zamuja ? '—' : 'vs'}
+                      {/* Registriran izid ni odigran - brez oznake bi se 5 : 0 bralo kot tekma. */}
+                      {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
+                      {/* Prenesen izid je bil odigran v predtekmovanju, tu tekem nima. */}
+                      {konec && s.prenesen && <span className="liga__brez-borbe" title="izid prenesen iz predtekmovanja">prenesen</span>}
+                    </span>
+                    <span
+                      className={
+                        'liga__srecanje-ekipa' +
+                        (gostZmaga ? ' liga__srecanje-ekipa--zmaga' : '') +
+                        (domZmaga ? ' liga__srecanje-ekipa--poraz' : '')
+                      }
+                    >
+                      {s.gost}
+                    </span>
+                    <span className="liga__srecanje-dejanje">{konec ? 'Zapisnik' : 'Postava'}</span>
+                    {zamuja && <span className="liga__srecanje-opomba">Izid ni vpisan</span>}
+                  </Link>
+                </li>
+              )
+            })}
+          </Fragment>
+        ))}
       </ul>
 
       <div className="liga__trak">
-        <span className="podnaslov-sekcije">Vsa kola</span>
+        <div className="podnaslov-sekcije liga__trak-glava">
+          <span>Vsa kola</span>
+          {rocniZreb && <OznakaRocnegaZreba />}
+        </div>
         <div className="liga__trak-kol">
           {kola.map((k) => (
             <button
@@ -1896,12 +2082,10 @@ function RazporedMobi({
   const odigrano = koloOdigrano(kolo)
   const meta = metaKola(srecanja, kolo, odigrano)
   const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
-  const zUrami = ureVKolu(srecanja, kolo)
 
   return (
     <>
       <div>
-        {rocniZreb && <p className="liga__zreb-opomba">{OPOMBA_ROCNEGA_ZREBA}</p>}
         <div className="liga-mobi__krmar">
           <button
             type="button"
@@ -1934,44 +2118,52 @@ function RazporedMobi({
         </div>
 
         <div className="liga-mobi__srecanja">
-          {vKolu.map((s) => {
-            const konec = s.status === 'KONCANO'
-            const domZmaga = konec && s.dobljeneDomaci > s.dobljeneGost
-            const gostZmaga = konec && s.dobljeneGost > s.dobljeneDomaci
-            return (
-              <Link key={s.id} to={`/srecanja/${s.id}`} className="liga-mobi__srecanje">
-                <span
-                  className={
-                    'liga-mobi__ekipa liga-mobi__ekipa--desno' +
-                    (gostZmaga ? ' liga-mobi__ekipa--poraz' : '')
-                  }
-                >
-                  {s.domaci}
-                </span>
-                <span
-                  className={'liga-mobi__izid' + (konec ? '' : ' liga-mobi__izid--caka')}
-                >
-                  {konec
-                    ? `${s.dobljeneDomaci} : ${s.dobljeneGost}`
-                    : (zUrami && oblikujUro(s.predvidenZacetek)) || 'vs'}
-                  {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
-                  {konec && s.prenesen && <span className="liga__brez-borbe" title="izid prenesen iz predtekmovanja">prenesen</span>}
-                </span>
-                <span
-                  className={
-                    'liga-mobi__ekipa' + (domZmaga ? ' liga-mobi__ekipa--poraz' : '')
-                  }
-                >
-                  {s.gost}
-                </span>
-              </Link>
-            )
-          })}
+          {skupineKola(vKolu).map((skupina) => (
+            <Fragment key={skupina.naslov ?? ''}>
+              {skupina.naslov && <div className="liga__ura">{skupina.naslov}</div>}
+              {skupina.srecanja.map((s) => {
+                const konec = s.status === 'KONCANO'
+                const domZmaga = konec && s.dobljeneDomaci > s.dobljeneGost
+                const gostZmaga = konec && s.dobljeneGost > s.dobljeneDomaci
+                const zamuja = brezIzida(s)
+                return (
+                  <Link key={s.id} to={`/srecanja/${s.id}`} className="liga-mobi__srecanje">
+                    <span
+                      className={
+                        'liga-mobi__ekipa liga-mobi__ekipa--desno' +
+                        (gostZmaga ? ' liga-mobi__ekipa--poraz' : '')
+                      }
+                    >
+                      {s.domaci}
+                    </span>
+                    <span
+                      className={'liga-mobi__izid' + (konec ? '' : ' liga-mobi__izid--caka')}
+                    >
+                      {konec ? `${s.dobljeneDomaci} : ${s.dobljeneGost}` : zamuja ? '—' : 'vs'}
+                      {konec && s.brezBoja && <span className="liga__brez-borbe" title="brez borbe">b. b.</span>}
+                      {konec && s.prenesen && <span className="liga__brez-borbe" title="izid prenesen iz predtekmovanja">prenesen</span>}
+                    </span>
+                    <span
+                      className={
+                        'liga-mobi__ekipa' + (domZmaga ? ' liga-mobi__ekipa--poraz' : '')
+                      }
+                    >
+                      {s.gost}
+                    </span>
+                    {zamuja && <span className="liga__srecanje-opomba">Izid ni vpisan</span>}
+                  </Link>
+                )
+              })}
+            </Fragment>
+          ))}
         </div>
       </div>
 
       <div>
-        <span className="liga-mobi__trak-naslov">Vsa kola</span>
+        <div className="liga-mobi__trak-naslov">
+          <span>Vsa kola</span>
+          {rocniZreb && <OznakaRocnegaZreba />}
+        </div>
         <div className="liga-mobi__trak">
           {kola.map((k) => (
             <button

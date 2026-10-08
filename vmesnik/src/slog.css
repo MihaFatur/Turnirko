@@ -2677,6 +2677,21 @@ td.nizi-okno__niz--dobljen {
   border-left: 3px solid var(--barva-glavna);
 }
 
+/* Izbira ENE moznosti (spol, kategorija lestvice) nima kvadratka - ta je
+   kljukica za vec izbir in je izbiro ene risal, kot da gre za kljukice.
+   Vse vrstice imajo isti levi odmik, izbrana pa crto in modro ime. */
+.filtri__vrstica--ena {
+  padding-left: 12px;
+}
+
+.filtri__vrstica--ena.filtri__vrstica--izbrana {
+  padding-left: 9px;
+}
+
+.filtri__vrstica--ena.filtri__vrstica--izbrana .filtri__ime {
+  color: var(--barva-glavna-tekst);
+}
+
 .filtri__ime {
   flex: 1 1 auto;
   min-width: 0;
@@ -4572,6 +4587,39 @@ td.nizi-okno__niz--dobljen {
   flex-direction: column;
 }
 
+/* Locnica sezone v seznamu turnirjev (urejenem po datumu): mono napis s
+   stevilom, debela crta nad njim - meja med sezonama je mocnejsa od crte med
+   vrsticama. */
+.seznam-locnica {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: var(--r3);
+  padding: 8px 0;
+  border-top: 2px solid var(--barva-crnilo);
+  border-bottom: 1px solid var(--barva-crta);
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.seznam-locnica:first-child {
+  margin-top: 0;
+}
+
+.seznam-locnica > :last-child {
+  font-weight: 500;
+  color: var(--barva-crnilo-3);
+}
+
+/* Na telefonu brskalnik vrstic pod robom ne izrise (content-visibility) - locnica
+   je visoka 36 in ne 65 px. */
+.seznam-mobi > .seznam-locnica {
+  contain-intrinsic-size: auto 36px;
+}
+
 /* "Kartica" v novem sistemu ni kartica, ampak vrstica s crtami. */
 .kartica {
   display: grid;
@@ -5387,8 +5435,11 @@ td.nizi-okno__niz--dobljen {
   font-weight: 700;
 }
 
-/* Forma: do pet znakov zadnjih srecanj, najstarejsi levo. Znak je znacka brez
-   radija; N ostane pri privzeti (nevtralni) podlagi. */
+/* Forma: znaki zadnjih srecanj (namizje pet, telefon tri), najstarejsi levo.
+   Znak je znacka brez radija; N ostane pri privzeti (nevtralni) podlagi.
+   Podlagi Z in P sta srednji ton in ne mehki: mehka zelena in rozna sta bili
+   pri 20 px skoraj enaki papirju. Crka je crnilo - zelena oz. rjasta crka na
+   srednjem tonu ne doseze 4,5 : 1 (izmerjeno 3,8 oz. 4,1). */
 .lestvica__forma {
   display: flex;
   gap: 4px;
@@ -5402,17 +5453,17 @@ td.nizi-okno__niz--dobljen {
   text-align: center;
   background: var(--barva-polnilo);
   color: var(--barva-crnilo-3);
-  font: 600 11px / 1.2 var(--pisava-mono);
+  font: 600 12px / 1.2 var(--pisava-mono);
 }
 
 .lestvica__forma-znak--Z {
-  background: var(--barva-poudarek-mehko);
-  color: var(--barva-poudarek-tekst);
+  background: var(--barva-poudarek-srednje);
+  color: var(--barva-crnilo);
 }
 
 .lestvica__forma-znak--P {
-  background: var(--barva-negativna-mehko);
-  color: var(--barva-negativna-tekst);
+  background: var(--barva-negativna-srednje);
+  color: var(--barva-crnilo);
 }
 
 .legenda {
@@ -5648,6 +5699,12 @@ td.nizi-okno__niz--dobljen {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Deljeno 3. mesto (izlocilni sistem brez tekme za 3. mesto): stiri stopnicke,
+   oba poraženca polfinala s slogom tretjega in mestom "3.–4.". */
+.razvrstitev__vrh--stiri {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .razvrstitev__mesto {
   display: block;
   padding: var(--r2) var(--r3);
@@ -5677,9 +5734,6 @@ td.nizi-okno__niz--dobljen {
   color: var(--barva-crnilo);
 }
 
-.razvrstitev__stevilka::after {
-  content: '.';
-}
 
 .razvrstitev__oseba {
   display: block;
@@ -5759,10 +5813,18 @@ td.nizi-okno__niz--dobljen {
 }
 
 .vrstni-red__mesto {
+  white-space: nowrap;
   text-align: right;
   font: 600 var(--tip-telo) / 1.4 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo-3);
+}
+
+/* Deljeno mesto ("17.–32.") gre v isti stolpec kot "5." - z manjso pisavo in
+   tesnejsimi crkami, da stolpcev vrstice ne siri. */
+.vrstni-red__mesto--razpon {
+  font-size: 12px;
+  letter-spacing: -0.03em;
 }
 
 .vrstni-red__ime {
@@ -6131,6 +6193,13 @@ td.nizi-okno__niz--dobljen {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--barva-crnilo-3);
+}
+
+/* Izid z zacetnico zmagovalca ("3:0 F") je en podatek in se ne prelomi;
+   prelomi se ime tekmovanja levo. */
+.enanaena__zadnja > :last-child {
+  flex: none;
+  white-space: nowrap;
 }
 
 /* Edina pot do strani /dvoboj (v navigaciji je ni), zato mora biti vidna
@@ -7101,9 +7170,11 @@ a.domov__lestvica-vrstica--jaz {
   margin-bottom: 12px;
 }
 
+/* Mesto je podatek in ne uspeh, zato znacka ni zelena (zelena v sistemu pomeni
+   napredovanje): "104. od 428" na zeleni podlagi se je bralo kot odlicje. */
 .profil__mesto-znacka {
-  background: var(--barva-poudarek);
-  color: var(--barva-na-poudarku);
+  background: var(--barva-crnilo);
+  color: var(--barva-papir);
   font: 600 var(--tip-mono) / 1.2 var(--pisava-mono);
   letter-spacing: 0.12em;
   padding: 5px 9px;
@@ -7289,7 +7360,9 @@ a.domov__lestvica-vrstica--jaz {
   border-left: 4px solid var(--barva-glavna);
 }
 
+/* Vrednost se ne prelomi: "214–205" se je na telefonu lomilo pri pomisljaju. */
 .kazalnik__vrednost {
+  white-space: nowrap;
   font-family: var(--pisava-display);
   font-size: var(--tip-h1-nad);
   font-weight: 800;
@@ -8207,6 +8280,170 @@ a.domov__lestvica-vrstica--jaz {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- Odigrane tekme po tekmovanjih (profil) ----
+   Vsaka kategorija turnirja oz. liga je ena vrstica (ime, del z datumom in
+   mestom, izkupicek, sprememba ratinga), tekme so pod njo. Prva tri mesta
+   nosijo crto ob levem robu v barvah koncne razvrstitve dogodka (zelena,
+   modra, crnilo) - odlicje je barva crte, ne medalja. */
+.tekmovanja-profila__krmila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px var(--r3);
+  margin-top: 12px;
+}
+
+.tekmovanja-profila__odlicja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px var(--r2);
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.tekmovanja-profila__odlicje {
+  padding-left: 8px;
+  border-left: 4px solid var(--barva-crnilo);
+  white-space: nowrap;
+}
+
+.tekmovanja-profila__odlicje--1 {
+  border-left-color: var(--barva-poudarek);
+}
+
+.tekmovanja-profila__odlicje--2 {
+  border-left-color: var(--barva-glavna);
+}
+
+.tekmovanja-profila {
+  margin-top: var(--r2);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.tekmovanje-profila {
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid transparent;
+}
+
+.tekmovanje-profila--1 {
+  border-left-color: var(--barva-poudarek);
+}
+
+.tekmovanje-profila--2 {
+  border-left-color: var(--barva-glavna);
+}
+
+.tekmovanje-profila--3 {
+  border-left-color: var(--barva-crnilo);
+}
+
+.tekmovanje-profila__glava {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 56px 16px;
+  grid-template-areas:
+    'ime izid rating puscica'
+    'meta izid rating puscica';
+  align-items: center;
+  column-gap: var(--r2);
+  row-gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 8px 12px 12px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  color: var(--barva-crnilo);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tekmovanje-profila__glava:hover {
+  background: var(--barva-glavna-mehko);
+}
+
+.tekmovanje-profila__ime {
+  grid-area: ime;
+  min-width: 0;
+  font-size: var(--tip-telo);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+.tekmovanje-profila__meta {
+  grid-area: meta;
+  min-width: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  color: var(--barva-crnilo-3);
+}
+
+.tekmovanje-profila__izid {
+  grid-area: izid;
+  font: 600 18px / 1.1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tekmovanje-profila__rating {
+  grid-area: rating;
+  font: 600 var(--tip-drobno) / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tekmovanje-profila__puscica {
+  grid-area: puscica;
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* Tekme odprtega tekmovanja: odmik ob levem robu, da se locijo od vrstic
+   tekmovanj; glava stolpcev odpade (vrstica tekmovanja je glava). */
+.tekme-mreza--v-tekmovanju {
+  margin-top: 0;
+  padding: 0 8px 8px 24px;
+}
+
+.tekme-mreza--v-tekmovanju .tekma-vrstica--glava {
+  display: none;
+}
+
+/* V tekmovanju nosi stolpec le kolo ligaske tekme; prazen ne izpise locila. */
+.tekme-mreza--v-tekmovanju .tekma-vrstica__tekmovanje {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  color: var(--barva-crnilo-3);
+}
+
+.tekme-mreza--v-tekmovanju .tekma-vrstica__tekmovanje:empty::before {
+  content: none;
+}
+
+.tekme-mreza--v-tekmovanju .tekma-vrstica:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 640px) {
+  .tekmovanje-profila__glava {
+    grid-template-columns: minmax(0, 1fr) auto 16px;
+    grid-template-areas:
+      'ime izid puscica'
+      'meta rating puscica';
+    column-gap: 12px;
+    padding-left: 10px;
+  }
+
+  .tekme-mreza--v-tekmovanju {
+    padding: 0 0 4px 14px;
+  }
+}
+
+
 /* ---- Napredek ratinga: pricakovan proti dosezenemu izkupicku ---- */
 
 .izkupicek {
@@ -8337,21 +8574,31 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
+/* Lega oznak je v px (GrafRatinga ploskvi da mere okvirja), sirina navpicne
+   pa je sirina levega roba ploskve. */
 .graf__oznaka--y {
   left: 0;
-  width: 4%;
   text-align: right;
   transform: translateY(-50%);
 }
 
-.graf__oznaka--prvi {
-  left: 5%;
-  bottom: 2px;
+.graf__oznaka--x {
+  white-space: nowrap;
+  transform: translateX(-50%);
 }
 
-.graf__oznaka--zadnji {
-  right: 1.4%;
-  bottom: 2px;
+.graf__oznaka--x-prva {
+  transform: none;
+}
+
+.graf__oznaka--x-zadnja {
+  transform: translateX(-100%);
+}
+
+/* Osi in zareze ob oznakah: polna tanka crta, mreza je crtkana. */
+.graf__os {
+  stroke: var(--barva-crnilo-3);
+  stroke-width: 1;
 }
 
 .graf__crta {
@@ -9037,8 +9284,12 @@ a.ekipa-okno__srecanje:hover {
   }
 
   .ekipa-okno__kader-glava {
-    grid-template-columns: 28px minmax(0, 1fr) 64px 64px;
+    grid-template-columns: 28px minmax(0, 1fr) 56px 72px;
     gap: var(--r1);
+  }
+
+  .ekipa-okno__kader-glava .sekcija__meta {
+    letter-spacing: 0.02em;
   }
 
   /* Vrstica brez stranskih odmikov - pri 375 px gre vsak piksel vrstici s
@@ -9557,7 +9808,7 @@ a.ekipa-okno__srecanje:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr) 120px;
   align-items: center;
-  gap: var(--r3);
+  gap: 4px var(--r3);
   padding: var(--r2) 0;
   border: none;
   border-bottom: 1px solid var(--barva-crta);
@@ -9608,6 +9859,43 @@ a.ekipa-okno__srecanje:hover {
 
 .liga__srecanje-izid--caka {
   background: none;
+  color: var(--barva-crnilo-3);
+}
+
+/* Naslov skupine srecanj v kolu z vec zacetki (skupineKola): ura in crta do
+   desnega roba. Crta je crnilo in ne --barva-crta, da se loci od crt med
+   srecanji - to je meja med dvema krogoma vecera in ne se ena vrstica. Brez
+   nje se je ista ekipa v kolu pojavila dvakrat brez pojasnila. */
+.liga__ura {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: var(--r2) 0 4px;
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.liga__ura::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.liga__ura:first-child {
+  padding-top: 12px;
+}
+
+/* "Izid ni vpisan" pod srecanjem, katerega dan je mimo (brezIzida). Cez
+   stolpce domacih, izida in gostov - ti so simetricni, zato stoji napis
+   tocno pod pomisljajem na mestu izida. */
+.liga__srecanje-opomba {
+  grid-column: 1 / 4;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
   color: var(--barva-crnilo-3);
 }
 
@@ -9786,19 +10074,6 @@ a.ekipa-okno__srecanje:hover {
   color: var(--barva-crnilo-3);
 }
 
-/* Na telefonu drugi gumb v vrstici razsiri zapisnik cez rob (354 -> 446 px)
-   in "Vnesi" zdrsne izven zaslona. Tam menjavo ponudi okno za vnos
-   rezultata, zato gumb v vrstici odpade. */
-@media (max-width: 640px) {
-  .srecanje__gumb-menjave {
-    display: none;
-  }
-
-  .tabela__dejanja .srecanje__gumb-menjave + .gumb {
-    margin-left: 0;
-  }
-}
-
 .srecanje__izid-tekme {
   font-family: var(--pisava-display);
   font-size: 32px;
@@ -9818,6 +10093,98 @@ a.ekipa-okno__srecanje:hover {
   letter-spacing: 0;
   color: var(--barva-crnilo-3);
   white-space: nowrap;
+}
+
+/* Zapisnik na telefonu (ZapisnikMobi): tekma je vrstica s črto, domači in
+   gost vsak v svoji vrsti - ime čez vso širino, desno sprememba ratinga in
+   dobljeni nizi, pod njima točke po nizih. Tabela petih stolpcev je bila pri
+   375 px široka 500 px in je stolpec gostov skrila za rob. */
+.zapisnik-mobi {
+  list-style: none;
+  margin: var(--r2) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.zapisnik-mobi__tekma {
+  padding: 12px 0 14px;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.zapisnik-mobi__tekma--neodigrana {
+  opacity: 0.75;
+}
+
+.zapisnik-mobi__tekma--klikljiva {
+  cursor: pointer;
+}
+
+.zapisnik-mobi__tekma--klikljiva:active {
+  background: var(--barva-glavna-mehko);
+}
+
+.zapisnik-mobi__glava {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  margin-bottom: 4px;
+}
+
+.zapisnik-mobi__oznaka {
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.zapisnik-mobi__stran {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 2ch;
+  align-items: baseline;
+  gap: 12px;
+  padding: 3px 0;
+}
+
+.zapisnik-mobi__imena {
+  min-width: 0;
+}
+
+/* Ime se ne lomi: par ima vsakega igralca v svoji vrstici, posameznik pa
+   ima vso širino vrstice. Izjemno dolgo ime se raje odreže kot prelomi. */
+.zapisnik-mobi__ime {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--tip-telo);
+  line-height: 1.35;
+  color: var(--barva-crnilo);
+}
+
+.zapisnik-mobi__stran--zmaga .zapisnik-mobi__ime,
+.zapisnik-mobi__stran--zmaga .zapisnik-mobi__nizi {
+  font-weight: 700;
+}
+
+.zapisnik-mobi__stran--poraz .zapisnik-mobi__ime,
+.zapisnik-mobi__stran--poraz .zapisnik-mobi__nizi {
+  color: var(--barva-crnilo-4);
+}
+
+.zapisnik-mobi__nizi {
+  font: 600 20px / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--barva-crnilo);
+}
+
+.zapisnik-mobi__tocke {
+  margin: 6px 0 0;
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
 }
 
 .postava {
@@ -9870,18 +10237,83 @@ a.ekipa-okno__srecanje:hover {
   white-space: nowrap;
 }
 
-/* ---- Rocni zreb: opomba na strani in obrazec vpisa ---- */
+/* ---- Rocni zreb: oznaka ob razporedu in obrazec vpisa ---- */
 
-/* Od kod je razpored. Mono kot ostali meta podatki strani in NAMENOMA brez
-   barve: rocni zreb ni ne uspeh ne napaka, ampak enakovreden nacin - barva bi
-   mu pripisala oceno. Crta pod njo jo veze na razpored, ki ji sledi. */
-.liga__zreb-opomba {
-  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
-  letter-spacing: 0.04em;
+/* Od kod je razpored: droben mono napis ob desnem robu vrstice "Vsa kola",
+   pojasnilo pa v oblacku nad njim (ob prehodu miske oz. ob dotiku). NAMENOMA
+   brez barve: rocni zreb ni ne uspeh ne napaka, ampak enakovreden nacin -
+   barva bi mu pripisala oceno. Pikcasta podcrta je obicajen znak za "tu je
+   pojasnilo" (kot pri okrajsavi). Prej je bila to cela vrstica nad
+   razporedom, ki je zvenela kot opozorilo. */
+.liga__trak-glava,
+.liga-mobi__trak-naslov {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.zreb-oznaka {
+  position: relative;
+  display: inline-flex;
+}
+
+.zreb-oznaka__gumb {
+  position: relative;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
   color: var(--barva-crnilo-3);
-  margin: var(--r1) 0 0;
-  padding-bottom: var(--r1);
-  border-bottom: 1px solid var(--barva-crta);
+  cursor: help;
+}
+
+/* Prst dobi svojih 44 px prek nevidnega ::after; vrstica ostane nizka. */
+.zreb-oznaka__gumb::after {
+  content: '';
+  position: absolute;
+  inset: -14px -8px;
+}
+
+.zreb-oznaka__gumb:hover,
+.zreb-oznaka--odprta .zreb-oznaka__gumb {
+  color: var(--barva-crnilo);
+}
+
+/* Oblacek se odpre navzgor: oznaka stoji na dnu razporeda, pod njo pa je na
+   telefonu spodnja vrstica navigacije. */
+.zreb-oznaka__oblacek {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 20;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 40px));
+  padding: 12px var(--r2);
+  border: 1px solid var(--barva-crnilo);
+  background: var(--barva-papir);
+  font: 400 var(--tip-drobno) / 1.5 var(--pisava-telo);
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  white-space: normal;
+  color: var(--barva-crnilo);
+}
+
+.zreb-oznaka--odprta .zreb-oznaka__oblacek {
+  display: block;
+}
+
+@media (hover: hover) {
+  .zreb-oznaka:hover .zreb-oznaka__oblacek {
+    display: block;
+  }
 }
 
 .zreb__krmila {
@@ -10447,18 +10879,21 @@ a.ekipa-okno__srecanje:hover {
     width: 40px;
   }
 
-  .lestvica__forma {
+  /* Samo namizna tabela v ozkem oknu (641-720 px). Lestvica na telefonu
+     (.lestvica-mobi) obdrzi crke: kvadratek brez crke je bil bled in ga
+     barvno slepi niso locili. */
+  .liga__lestvica .lestvica__forma {
     gap: 3px;
   }
 
-  .lestvica__forma-znak {
+  .liga__lestvica .lestvica__forma-znak {
     width: 12px;
     height: 12px;
     padding: 0;
   }
 
   /* Crka je skrita ocesu, ne bralniku zaslona (isto kot .samo-za-bralnik). */
-  .lestvica__forma-crka {
+  .liga__lestvica .lestvica__forma-crka {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -10511,8 +10946,10 @@ a.ekipa-okno__srecanje:hover {
     padding: 12px;
   }
 
+  /* Zadnji stolpec je sirsi: oznaka "Izkupiček" (prej angleski "Score") je
+     daljsa od stevilk pod njo. */
   .liga__kader-vrstica {
-    grid-template-columns: 28px minmax(0, 1fr) 64px 64px;
+    grid-template-columns: 28px minmax(0, 1fr) 56px 72px;
     gap: var(--r1);
   }
 
@@ -10543,6 +10980,12 @@ a.ekipa-okno__srecanje:hover {
     gap: var(--r5);
   }
 
+  /* Stolpci po vsebini in ne enaki tretjine: izkupicek ("214–205") se ne
+     prelomi pri pomisljaju, zato potrebuje vec prostora od "419" in "51 %". */
+  .profil__povzetek {
+    grid-template-columns: auto auto auto;
+  }
+
   .profil__povzetek .kazalnik {
     padding-left: var(--r2);
   }
@@ -10552,7 +10995,6 @@ a.ekipa-okno__srecanje:hover {
     padding-right: var(--r2);
   }
 
-  .graf__oznaka,
   .razsevni__os-x,
   .razsevni__os-y {
     display: none;
@@ -10692,13 +11134,20 @@ a.ekipa-okno__srecanje:hover {
 
   .tekma-vrstica__izid {
     grid-column: 3;
-    grid-row: 1 / 3;
+    grid-row: 1;
     align-self: center;
     font-size: 28px;
   }
 
+  /* Sprememba ratinga pod izidom - na telefonu je je bilo konec in igralec
+     ni videl, koliko mu je tekma prinesla oz. vzela. */
+  .tekma-vrstica__rating {
+    grid-column: 3;
+    grid-row: 2;
+    font-size: var(--tip-mono);
+  }
+
   .tekma-vrstica__del,
-  .tekma-vrstica__rating,
   .tekma-vrstica__nasprotnik .profil__klub {
     display: none;
   }
@@ -12412,13 +12861,19 @@ a.ekipa-okno__srecanje:hover {
 }
 
 /* Kategorija: naslov stoji v lepljivi glavi ob znacki, zato ena vrstica. */
+/* Ime kategorije sme v dve vrstici: uvožena imena so dolga
+   (»DEKLICE - U11, POSAMEZNO, ŽENSKI«) in pri eni vrstici je odpadel ravno
+   konec, kjer sta starost in spol. Daljše od dveh vrstic se odreže. */
 .naslov-mobi--kategorija {
+  display: -webkit-box;
   min-width: 0;
   font-size: 26px;
-  line-height: 1;
+  line-height: 1.05;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* Naslov podstrani, ki stoji V lepljivi glavi ob znacki (liga): 32 px kot
@@ -12576,18 +13031,32 @@ a.ekipa-okno__srecanje:hover {
   color: var(--barva-crnilo-3);
 }
 
+/* Letnica pod mesecem: brez nje se "03 OKT" v seznamu desetih sezon ni dalo
+   umestiti. */
+.vrstica-mobi__leto {
+  display: block;
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-4);
+}
+
 .vrstica-mobi__telo {
   min-width: 0;
 }
 
+/* Ime sme v dve vrstici: imena turnirjev NTZS nosijo kategorijo in kraj na
+   koncu ("1. OT ZA U-13, KIDRIČEVO"), pri eni vrstici pa je odpadel prav ta
+   konec. Daljse od dveh vrstic se odreze. */
 .vrstica-mobi__ime {
-  display: block;
+  display: -webkit-box;
   font-size: var(--tip-telo);
   font-weight: 700;
   line-height: 1.2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* Ime kategorije je kratko in se sme preliti v drugo vrstico. */
@@ -12688,15 +13157,37 @@ a.ekipa-okno__srecanje:hover {
    svojo oznako (sicer bi se "Piramida lig" prelomila ali odrezala). Zato sta
    tu razmik crk in odmik tesnejsa kot pri ostalih zavihkih: "PIRAMIDA LIG"
    s 0,08 em in 12 px odmika meri 116 px, dobro tretjino pasu pri 360 px
-   zaslona. Sele ko se
-   pridruzita Koncnica ali Zanimivosti, pas preide v drsenje in zadnji zavihek
-   pokuka izza roba. */
+   zaslona. Ko se pridruzita Koncnica ali Zanimivosti, gredo odvecni zavihki
+   v meni "Vec ▾" (spodaj) - prej je pas presel v drsenje in "Pravila" so
+   ostala odrezana za robom. */
 .podnavigacija--enakomerna .izbirnik__gumb {
   flex: 1 1 0;
   min-width: max-content;
   padding-left: 6px;
   padding-right: 6px;
   letter-spacing: 0.04em;
+}
+
+/* Zavihek "Vec ▾" (ZavihkiTelefona v LigaStran): ko je zavihkov vec kot
+   stiri, gredo zadnji v meni pod njim, zato pas ne drsi vec. Sirino si deli
+   ovoj menija, gumb ga zapolni. Pas mora meni pustiti cez svoj spodnji rob -
+   overflow za drsenje bi ga odrezal. */
+.podnavigacija--enakomerna:has(> .meni-dejanj) {
+  overflow: visible;
+}
+
+.podnavigacija--enakomerna > .meni-dejanj {
+  flex: 1 1 0;
+  min-width: max-content;
+}
+
+.podnavigacija--enakomerna > .meni-dejanj > .izbirnik__gumb {
+  flex: 1 1 auto;
+}
+
+/* Pogled, ki je ta hip izbran iz menija "Vec". */
+.uporabnik-meni__postavka--izbrana {
+  color: var(--barva-glavna-tekst);
 }
 
 /* --- Vrstica lige (/lige) --- */
@@ -12889,7 +13380,7 @@ a.ekipa-okno__srecanje:hover {
    bi jedel prostor imenu. */
 .lestvica-mobi__vrstica--ekipa {
   width: 100%;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
   column-gap: 10px;
   padding: 10px 0 10px 8px;
   border: none;
@@ -12935,26 +13426,38 @@ a.ekipa-okno__srecanje:hover {
   color: var(--barva-negativna-tekst);
 }
 
-/* Bilanca "6-1-0" in forma zadnjih petih v eni vrsti pod imenom. */
-.lestvica-mobi__izkupicek {
-  grid-column: 2;
-  grid-row: 2;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  margin-top: 4px;
+/* Ime ekipe je modro, ker vrstica odpre okno ekipe (kader in srecanja) -
+   modro besedilo je v aplikaciji povezava, na namizju pa to pove napis
+   "Kader in tekme". Ime se ne odreze: dolgo se prelomi v drugo vrsto. */
+.lestvica-mobi__ime--ekipa {
+  color: var(--barva-glavna-tekst);
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
-.lestvica-mobi__bilanca {
-  font: 500 11px / 1.3 var(--pisava-mono);
-  letter-spacing: 0.04em;
+/* Forma zadnjih treh ob imenu, poravnana s prvo vrsto imena. */
+.lestvica-mobi__forma {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+}
+
+/* "1-1 · tekme 6:4 · nizi 22:15" pod imenom in formo. Razmerji odlocata o
+   mestu med ekipami z enakimi tockami, zato sta na telefonu (glej
+   LestvicaMobi). Pri 360 px in dolgi sezoni se sme vrstica prelomiti. */
+.lestvica-mobi__izkupicek {
+  grid-column: 2 / span 2;
+  grid-row: 2;
+  min-width: 0;
+  margin-top: 4px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo-3);
-  white-space: nowrap;
 }
 
 .lestvica-mobi__tocke {
-  grid-column: 3;
+  grid-column: 4;
   grid-row: 1 / span 2;
   font: 600 24px / 1 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
@@ -13068,7 +13571,7 @@ a.ekipa-okno__srecanje:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   padding: 14px 0;
   border-bottom: 1px solid var(--barva-crta);
   color: var(--barva-crnilo);
@@ -13078,13 +13581,16 @@ a.ekipa-okno__srecanje:hover {
   text-decoration: none;
 }
 
+/* Ime ekipe se ne odreze: pri 390 px ima vsaka stran ~130 px, zato je bilo
+   "Zavarovalnica S…" in "Modra krompirč…" - ekipe gledalec ni prepoznal.
+   Daljse ime se prelomi v drugo vrsto (tako kot na namizju), predolga
+   beseda pa sele tam, kjer ne gre drugace. */
 .liga-mobi__ekipa {
   min-width: 0;
   font-size: 15px;
   font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  overflow-wrap: break-word;
 }
 
 .liga-mobi__ekipa--desno {
@@ -13110,7 +13616,6 @@ a.ekipa-okno__srecanje:hover {
 }
 
 .liga-mobi__trak-naslov {
-  display: block;
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -13329,10 +13834,14 @@ a.ekipa-okno__srecanje:hover {
     font-size: 26px;
   }
 
-  /* Pika za stevilko je namizna tipografija ("1."); v ozki mrezi je stolpec
-     34 px in pika je samo se en znak. */
-  .razvrstitev__stevilka::after {
-    content: none;
+  /* Deljeno mesto ("3–4") potrebuje sirsi stolpec in manjso stevilko; stolpec
+     je sirsi v vseh stirih vrsticah stopnick, da imena ostanejo poravnana. */
+  .razvrstitev__vrh--stiri .razvrstitev__mesto {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+  }
+
+  .razvrstitev__vrh--stiri .razvrstitev__stevilka {
+    font-size: 21px;
   }
 
   .razvrstitev__oseba {
@@ -17041,5 +17550,449 @@ a.ekipa-okno__srecanje:hover {
 
   .sv-drevo .tekma__ime {
     font-size: 14px;
+  }
+}
+
+/* ---------- Lestvica: zadetki iskanja izven izbrane lestvice ---------- */
+
+/* Iskanje teče po izbrani lestvici (spol, kategorija). Pod seznamom stoji,
+   kje so zadetki z drugih lestvic (z mestom in gumbom, ki lestvico odpre) in
+   koga ni na nobeni (z razlogom). Vrstice s črto, kot vsak seznam. */
+.lestvica-namig {
+  margin-top: var(--r2);
+}
+
+.lestvica-namig__seznam {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lestvica-namig__vrstica {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.lestvica-namig__besedilo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lestvica-namig__ime {
+  font-size: var(--tip-telo);
+  color: var(--barva-crnilo);
+  text-decoration: none;
+}
+
+.lestvica-namig__ime:hover {
+  color: var(--barva-glavna-tekst);
+}
+
+.lestvica-namig__meta {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+}
+
+.lestvica-namig__razlog {
+  font-size: var(--tip-drobno);
+  line-height: 1.4;
+  color: var(--barva-crnilo-3);
+}
+
+.lestvica-namig__vec {
+  margin: var(--r1) 0 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lestvica-namig__vec a {
+  color: var(--barva-glavna-tekst);
+  text-decoration: none;
+}
+
+.lestvica-namig .gumb {
+  flex-shrink: 0;
+}
+
+/* ---------- Javna razlaga ratinga (/o-ratingu) ---------- */
+
+/* Besedilna stran za gledalca: ozek stolpec za branje, sekcije s črto kot
+   povsod, dva preizkusa iz istih gradnikov kot napoved na profilu
+   (izbirnik, kazalniki). Tabele so vrstice s črtami, ne mreža. */
+.razlaga {
+  max-width: 760px;
+}
+
+/* :where - brez dodatne specifičnosti, da posebni odstavki (račun, obrazec)
+   obdržijo svojo velikost. */
+.razlaga :where(p, li) {
+  font-size: var(--tip-telo);
+  line-height: 1.55;
+}
+
+.razlaga__kazalo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin-top: var(--r3);
+  padding: 12px 0;
+  border-top: 1px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.razlaga__kazalo a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+  text-decoration: none;
+}
+
+.razlaga__sekcija {
+  margin-top: var(--r6);
+}
+
+.razlaga__podnaslov {
+  margin: var(--r4) 0 var(--r1);
+  font-family: var(--pisava-display);
+  font-size: var(--tip-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.razlaga__obrazec {
+  margin: var(--r2) 0;
+  padding: 14px 16px;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  font: 600 16px / 1.4 var(--pisava-mono);
+}
+
+.razlaga__tabela {
+  margin: var(--r2) 0;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: 16px;
+}
+
+.razlaga__vrstica--tri {
+  grid-template-columns: minmax(0, 1fr) 80px 80px;
+}
+
+.razlaga__vrstica--glava {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__desno {
+  text-align: right;
+}
+
+.razlaga__stevilka {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Vprasanja: zaprta, dokler jih gledalec ne odpre. Znak + / − je besedilo,
+   ne ikona. */
+.razlaga__vprasanje {
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.razlaga__vprasanje summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--tip-vrstica);
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+.razlaga__vprasanje summary::-webkit-details-marker {
+  display: none;
+}
+
+.razlaga__vprasanje summary::after {
+  content: '+';
+  flex-shrink: 0;
+  font: 600 22px / 1 var(--pisava-mono);
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__vprasanje[open] summary::after {
+  content: '−';
+}
+
+.razlaga__vprasanje p {
+  margin: 0 0 var(--r2);
+  color: var(--barva-crnilo-2);
+}
+
+.razlaga__vprasanje a,
+.razlaga p a {
+  color: var(--barva-glavna-tekst);
+}
+
+/* Preizkusa */
+.razlaga__preizkus {
+  margin-top: var(--r2);
+}
+
+.razlaga__polja {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--r2);
+  max-width: 420px;
+}
+
+.razlaga__oznaka {
+  display: block;
+  margin-top: var(--r2);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__izbirnik {
+  margin-top: var(--r1);
+}
+
+.razlaga__kljukica {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-top: var(--r1);
+  font-size: 16px;
+}
+
+.razlaga__kljukica input {
+  width: 20px;
+  min-height: 20px;
+  height: 20px;
+  padding: 0;
+}
+
+.razlaga__izid {
+  margin-top: var(--r3);
+  padding-top: var(--r2);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__verjetnost {
+  margin: 0;
+}
+
+.razlaga__racun {
+  margin: var(--r2) 0 0;
+  font: 500 13px / 1.6 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__tekme {
+  list-style: none;
+  margin: var(--r2) 0;
+  padding: 0;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__tekma {
+  display: grid;
+  grid-template-columns: 28px 96px auto minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.razlaga__tekma-st {
+  font: 600 14px / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__tekma-polje input {
+  padding: 10px;
+}
+
+.razlaga__izid-tekme {
+  margin: 0;
+}
+
+.razlaga__tekma-izid {
+  justify-self: end;
+  font: 500 15px / 1.3 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.razlaga__odstrani {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--barva-crta);
+  background: none;
+  font: 500 20px / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+/* Na telefonu gre izid tekme v svojo vrsto pod vnos - pet stolpcev v 335 px
+   ne gre. */
+@media (max-width: 640px) {
+  .razlaga__tekma {
+    grid-template-columns: 24px 84px minmax(0, 1fr) 44px;
+    grid-template-areas:
+      'st polje izid odstrani'
+      '. rezultat rezultat rezultat';
+  }
+
+  .razlaga__tekma-st { grid-area: st; }
+  .razlaga__tekma-polje { grid-area: polje; }
+  .razlaga__izid-tekme { grid-area: izid; }
+  .razlaga__odstrani { grid-area: odstrani; }
+
+  .razlaga__tekma-izid {
+    grid-area: rezultat;
+    justify-self: start;
+  }
+
+  .razlaga__sekcija {
+    margin-top: var(--r5);
+    /* Lepljiva glava telefona (56 px in črta) bi pokrila naslov sekcije, do
+       katere vodi sidro (#prvi-dan, #zasebnost). */
+    scroll-margin-top: 72px;
+  }
+}
+
+/* Pogoji in zasebnost: isti ozek stolpec kot razlaga ratinga. */
+.pogoji__naslov {
+  margin: var(--r3) 0 var(--r1);
+  font-size: var(--tip-vrstica);
+  font-weight: 700;
+}
+
+.pogoji__odstavek {
+  margin: 0;
+  color: var(--barva-crnilo-2);
+}
+
+/* Povezava na pogoje na dnu okna prijave - drobna, ker ni dejanje okna. */
+.prijava__pogoji {
+  align-self: center;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  color: var(--barva-crnilo-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Povezava na javno razlago ratinga v modrem bloku profila. */
+.rating-blok__povezava {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-top: var(--r2);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-na-glavni);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.graf__razlaga a {
+  color: var(--barva-glavna-tekst);
+}
+
+.srecanje__razlaga-ratinga a {
+  color: var(--barva-glavna-tekst);
+}
+
+.lestvica__razlaga {
+  margin: var(--r3) 0 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lestvica__razlaga a {
+  color: var(--barva-glavna-tekst);
+  text-decoration: none;
+}
+
+/* ---------- Domača stran igralca s Premium ---------- */
+
+/* Zakaj turnir stoji v izboru zanj (»Tvoj zadnji turnir«, »Prihaja · primeren
+   zate«) - mono vrstica nad imenom, kot nadnaslov. */
+.domov__turnir-razlog {
+  display: block;
+  margin-bottom: 4px;
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
+/* Igralčeva ekipa v razpredelnici lige: ista mehka podlaga kot njegova
+   vrstica na lestvici, ime krepko. */
+.domov__ekipe-vrstica--moja {
+  background: var(--barva-glavna-mehko);
+  box-shadow: inset 3px 0 0 var(--barva-glavna);
+}
+
+.domov__ekipe-vrstica--moja .domov__ekipe-ime {
+  font-weight: 700;
+}
+
+/* »prva« / »zadnja«: okno na vrhu ali dnu lestvice ne more biti »ena gor, ena
+   dol« - droben napis pove, zakaj sta obe sosedi na isti strani. */
+.domov__ekipe-meja {
+  margin-left: var(--r1);
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
+/* Katera lestvica in kje je igralec na njej (»Moški · Člani · tvoje mesto
+   104. od 428«) nad oknom »Okoli mene«. */
+.domov__lestvica-opis {
+  margin: var(--r1) 0 0;
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  color: var(--barva-crnilo-3);
+}
+
+/* Trimestna mesta na telefonu (okno »Okoli mene«): širša stolpca mesta in
+   premika, sicer se »101.« zlepi s »▲ 20«. */
+@media (max-width: 640px) {
+  .domov__lestvica--siroka .domov__lestvica-vrstica {
+    grid-template-columns: 40px 36px minmax(0, 1fr) 56px;
   }
 }

@@ -8,6 +8,7 @@
    dopolnjevati tudi med sezono (glej dodajVKader). */
 package si.turnirko.storitve;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -114,13 +115,10 @@ public class LigaStoritev {
 
     @Transactional(readOnly = true)
     public List<LigaDto> vse() {
-        Map<Long, Kola> kola = kolaPoLigah();
+        Map<Long, PotekLige.Potek> poteki = potekPoLigah();
         return ligaRepozitorij.najdiVse().stream()
-                .map(l -> {
-                    Kola k = kola.getOrDefault(l.getId(), Kola.PRAZNA);
-                    return LigaDto.iz(l, (int) ekipaRepozitorij.countByLigaId(l.getId()),
-                            k.odigranih(), k.vseh());
-                })
+                .map(l -> vDto(l, (int) ekipaRepozitorij.countByLigaId(l.getId()),
+                        poteki.getOrDefault(l.getId(), PotekLige.Potek.PRAZEN)))
                 .toList();
     }
 
@@ -128,37 +126,41 @@ public class LigaStoritev {
     public LigaDto najdi(Long id) {
         Liga l = ligaRepozitorij.najdiZVisjo(id)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
-        Kola k = presteji(srecanjeRepozitorij.stanjeKol(id), 1);
-        return LigaDto.iz(l, (int) ekipaRepozitorij.countByLigaId(id), k.odigranih(), k.vseh());
+        return vDto(l, (int) ekipaRepozitorij.countByLigaId(id), potek(id));
     }
 
-    /* Koliko kol ima liga in koliko jih je odigranih. */
-    private record Kola(int odigranih, int vseh) {
-        static final Kola PRAZNA = new Kola(0, 0);
+    private static LigaDto vDto(Liga l, int steviloEkip, PotekLige.Potek potek) {
+        PotekLige.Naslednje n = potek.naslednje();
+        return LigaDto.iz(l, steviloEkip, potek.odigranaKola(), potek.vseh(),
+                n == null ? null : new LigaDto.Naslednje(n.kolo(), n.datum()));
     }
 
-    private Map<Long, Kola> kolaPoLigah() {
-        Map<Long, List<Object[]>> poLigah = new HashMap<>();
-        for (Object[] r : srecanjeRepozitorij.stanjeKolPoLigah()) {
-            poLigah.computeIfAbsent(((Number) r[0]).longValue(), k -> new ArrayList<>()).add(r);
+    /* Potek rednega dela lige (odigrana kola, naslednje kolo) po istem pravilu
+       kot domaca stran - glej PotekLige. */
+    private PotekLige.Potek potek(Long idLiga) {
+        List<PotekLige.Termin> termini = new ArrayList<>();
+        for (Object[] r : srecanjeRepozitorij.terminiRednegaDela(idLiga)) {
+            termini.add(termin(r, 0));
         }
-        Map<Long, Kola> rezultat = new HashMap<>();
-        poLigah.forEach((idLiga, vrstice) -> rezultat.put(idLiga, presteji(vrstice, 2)));
+        return PotekLige.izracunaj(termini, PotekLige.danes());
+    }
+
+    private Map<Long, PotekLige.Potek> potekPoLigah() {
+        Map<Long, List<PotekLige.Termin>> poLigah = new HashMap<>();
+        for (Object[] r : srecanjeRepozitorij.terminiRednegaDelaPoLigah()) {
+            poLigah.computeIfAbsent(((Number) r[0]).longValue(), k -> new ArrayList<>()).add(termin(r, 1));
+        }
+        LocalDate danes = PotekLige.danes();
+        Map<Long, PotekLige.Potek> rezultat = new HashMap<>();
+        poLigah.forEach((idLiga, termini) -> rezultat.put(idLiga, PotekLige.izracunaj(termini, danes)));
         return rezultat;
     }
 
-    /* Vrstice so [.., srecanj, koncanih]; "odmik" pove, kje se v vrstici
-       zacneta stevili (skupinska poizvedba cez vse lige ima spredaj se id). */
-    private static Kola presteji(List<Object[]> vrstice, int odmik) {
-        int odigranih = 0;
-        for (Object[] r : vrstice) {
-            long srecanj = ((Number) r[odmik]).longValue();
-            long koncanih = ((Number) r[odmik + 1]).longValue();
-            if (srecanj > 0 && srecanj == koncanih) {
-                odigranih++;
-            }
-        }
-        return new Kola(odigranih, vrstice.size());
+    /* Vrstica [.., kolo, status, predvidenZacetek]; "odmik" pove, kje se v
+       vrstici zacne kolo (skupinska poizvedba cez vse lige ima spredaj se id). */
+    private static PotekLige.Termin termin(Object[] r, int odmik) {
+        return new PotekLige.Termin(((Number) r[odmik]).intValue(), (StatusSrecanja) r[odmik + 1],
+                (LocalDateTime) r[odmik + 2], false);
     }
 
     @Transactional
@@ -226,8 +228,7 @@ public class LigaStoritev {
         liga = ligaRepozitorij.save(liga);
         /* Zastavica se preklaplja sredi sezone, zato kol ne smemo zanemariti -
            odgovor je isti pogled kot pri najdi() (enako kot nastaviPrehode). */
-        Kola k = presteji(srecanjeRepozitorij.stanjeKol(id), 1);
-        return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id), k.odigranih(), k.vseh());
+        return vDto(liga, (int) ekipaRepozitorij.countByLigaId(id), potek(id));
     }
 
     /* Mesto lige v piramidi (visja liga, nizje lige, koliko napreduje/izpade).
@@ -297,8 +298,7 @@ public class LigaStoritev {
         ligaRepozitorij.saveAll(spremenjene);
         /* Prehode je mogoce urejati tudi sredi sezone, zato tu kol ne smemo
            zanemariti - odgovor je isti pogled kot pri najdi(). */
-        Kola k = presteji(srecanjeRepozitorij.stanjeKol(id), 1);
-        return LigaDto.iz(liga, (int) ekipaRepozitorij.countByLigaId(id), k.odigranih(), k.vseh());
+        return vDto(liga, (int) ekipaRepozitorij.countByLigaId(id), potek(id));
     }
 
     /* Rocni termini kol: termin kola dobijo vsa njegova srecanja, liga z urami

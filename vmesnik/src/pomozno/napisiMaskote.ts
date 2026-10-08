@@ -12,8 +12,8 @@ export const NAPISI: readonly string[] = [
   'Igralec Premium · {cena}',
   'Premium, ceneje kot bencin',
   'Premium? Zakaj pa ne!',
-  'Veš, da hočeš - Premium ;)',
-  'Lahko je tudi tvoj - Premium',
+  'Veš, da hočeš – Premium ;)',
+  'Lahko je tudi tvoj – Premium',
 ]
 
 /* Cena po istem pravilu kot na strani naročnine (NarocninaStran): do 21 let

@@ -1007,7 +1007,13 @@ export function RegistracijaTok({
               </div>
               <label className="registracija__pogoji">
                 <input type="checkbox" checked={s.pogoji} onChange={(d) => posodobi({ pogoji: d.target.checked })} />
-                <span>Strinjam se s pogoji uporabe in obdelavo podatkov.</span>
+                {/* Povezavi odpreta nov zavihek: okno registracije bi se ob
+                    prehodu na drugo stran zaprlo in vpisano bi izginilo. */}
+                <span>
+                  Strinjam se s{' '}
+                  <a href="/pogoji#pogoji" target="_blank" rel="noopener">pogoji uporabe</a> in{' '}
+                  <a href="/pogoji#zasebnost" target="_blank" rel="noopener">obdelavo podatkov</a>.
+                </span>
               </label>
               {placljiv && (
                 <p className="registracija__placilo-pripis">

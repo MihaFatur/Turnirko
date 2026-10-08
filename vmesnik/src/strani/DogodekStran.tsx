@@ -99,6 +99,7 @@ import {
   sklonSkupin,
 } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 
 export function DogodekStran() {
@@ -163,6 +164,10 @@ export function DogodekStran() {
   })
 
   useNazaj(idTurnir ? `/turnirji/${idTurnir}` : '/turnirji', turnir.data?.ime ?? 'Turnir')
+  /* Kategorija sama (»Moški U19«) v zavihku ne pove, kateri turnir je. */
+  useNaslovStrani(
+    mreza.data && turnir.data ? `${mreza.data.dogodek.ime} · ${turnir.data.ime}` : null,
+  )
 
   /* isLoading, ne isPending: ustavljena poizvedba (brez povezave) ali napaka
      ne smeta obviseti v večnem "Nalaganje …". */
@@ -214,7 +219,7 @@ export function DogodekStran() {
   const lastnosti = [
     jeDvojice ? 'Dvojice' : ekipno ? 'Ekipno' : null,
     OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija],
-    dogodek.starostnaKategorija,
+    starostVLastnostih(dogodek.ime, dogodek.starostnaKategorija),
     OZNAKE_SISTEM_KRATKO[dogodek.sistemTekmovanja].toLowerCase(),
     ekipno && dogodek.formatSrecanja ? OZNAKE_FORMAT[dogodek.formatSrecanja] : null,
     ekipno && dogodek.zmagZaSrecanje
@@ -1187,6 +1192,17 @@ function JakostniVrstniRed({
 
 /* Podnapis pod imenom prijave: klub igralca, pri ekipi pa klub samo, kadar ga
    ime ne pove že samo (klubska ekipa se imenuje po klubu, prosta kluba nima). */
+/* Starostna kategorija v vrstici lastnosti pod naslovom - samo, kadar pove
+   kaj, česar naslov še ne. Uvoz iz Stupe je v kategorijo zapisal celo ime
+   (»DEKLICE - U11, POSAMEZNO, ŽENSKI«), stara stran pa del imena (»mladinci«
+   v »mladinci posamezno«), zato je vrstica ponavljala naslov in spol:
+   »Moški · U19, POSAMEZNO, MOŠKI«. */
+function starostVLastnostih(ime: string, kategorija: string | null): string | null {
+  if (!kategorija) return null
+  const brez = (b: string) => b.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  return brez(ime).includes(brez(kategorija)) ? null : kategorija
+}
+
 function podnapisPrijave(prijava: PrijavaDto, ekipno: boolean): string | null {
   if (!ekipno) return prijava.klub ? kratekKlub(prijava.klub) : 'brez kluba'
   if (prijava.klub === null) return 'prosta ekipa'
@@ -2091,14 +2107,19 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
 
   if (razvrscene.length === 0) return null
 
-  const vrh = razvrscene.slice(0, 3)
-  const ostali = razvrscene.slice(3)
+  /* Stopničke so vsa mesta do tretjega in ne prve tri vrstice: izločilni
+     sistem tekme za 3. mesto nima, zato si ga poraženca polfinala DELITA
+     (oba »3.–4.«). Prej je Jokič dobil slog stopničk, Janc z istim mestom pa
+     navadno vrstico, kot da je četrti. */
+  const vrh = razvrscene.filter((p) => p.koncnoMesto! <= 3)
+  const ostali = razvrscene.filter((p) => p.koncnoMesto! > 3)
+  const deljena = steviloNaMestu(razvrscene)
   /* V ozki vrstici telefona je "11–0" en podatek, na namizju "11 – 0". */
   const locilo = jeTelefon ? '–' : ' – '
   /* Dogodek, ki ne šteje v rating (ali brez obračuna), nima kaj kazati v stolpcu
      ratinga: sama črtica v vsaki vrstici je šum. */
   const imaRating = ekipno || razvrscene.some((p) => (bilance.get(p.id)?.rating ?? null) !== null)
-  const oblika = { bilance, ekipno, jeTelefon, locilo, imaRating }
+  const oblika = { bilance, ekipno, jeTelefon, locilo, imaRating, deljena }
   /* SV regija: igralci so po nivojih, zato je tudi razvrstitev po nivojih. */
   const nivoji = podatki.svRegija?.skupineZrebane ? podatki.svRegija.nivoji : []
 
@@ -2115,13 +2136,23 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
 
       {/* Mesta so številke, ne medalje - odličje nosi barva črte ob levem robu
           (zelena zmagovalec, modra drugi, črnilo tretji). */}
-      <div className={'razvrstitev__vrh' + (vrh.length === 2 ? ' razvrstitev__vrh--dve' : '')}>
-        {vrh.map((prijava, indeks) => {
+      <div
+        className={
+          'razvrstitev__vrh'
+          + (vrh.length === 2 ? ' razvrstitev__vrh--dve' : vrh.length >= 4 ? ' razvrstitev__vrh--stiri' : '')
+        }
+      >
+        {vrh.map((prijava) => {
           const bilanca = bilance.get(prijava.id)
           const rating = bilanca?.rating ?? null
           return (
-            <div className={`razvrstitev__mesto razvrstitev__mesto--${indeks + 1}`} key={prijava.id}>
-              <span className="razvrstitev__stevilka">{prijava.koncnoMesto}</span>
+            <div
+              className={`razvrstitev__mesto razvrstitev__mesto--${Math.min(prijava.koncnoMesto!, 3)}`}
+              key={prijava.id}
+            >
+              <span className="razvrstitev__stevilka">
+                {oznakaMesta(prijava.koncnoMesto!, deljena, jeTelefon)}
+              </span>
               <span className="razvrstitev__oseba">
                 <span className="razvrstitev__ime">{prijava.polnoIme}</span>
                 <span className="razvrstitev__klub">
@@ -2159,18 +2190,48 @@ interface ObrazecVrstice {
   jeTelefon: boolean
   locilo: string
   imaRating: boolean
+  /* Koliko udeležencev ima posamezno končno mesto (deljena mesta). */
+  deljena: Map<number, number>
+}
+
+/* Koliko udeležencev si deli posamezno končno mesto. Izločilni sistem brez
+   tekme za 3. mesto da obema poražencema polfinala »3.«, poražencem
+   četrtfinala »5.« ... */
+function steviloNaMestu(prijave: PrijavaDto[]): Map<number, number> {
+  const stevilo = new Map<number, number>()
+  for (const p of prijave) {
+    if (p.koncnoMesto !== null) stevilo.set(p.koncnoMesto, (stevilo.get(p.koncnoMesto) ?? 0) + 1)
+  }
+  return stevilo
+}
+
+/* Mesto za izpis. Deljeno mesto se zapiše kot razpon, kot je navada v
+   razpisih in biltenih (»3.–4.«, »5.–8.«), in ne kot dvakrat »3.« - tisto se
+   je bralo, kot da je eden od njiju napaka. `kratko` je zapis brez pik za
+   ozko vrstico telefona (»5–8«). */
+function oznakaMesta(mesto: number, deljena: Map<number, number>, kratko: boolean): string {
+  const k = deljena.get(mesto) ?? 1
+  const pika = kratko ? '' : '.'
+  return k > 1 ? `${mesto}${pika}–${mesto + k - 1}${pika}` : `${mesto}${pika}`
 }
 
 /* ena vrstica vrstnega reda: mesto, ime s klubom pod njim, bilanca, rating */
 function VrsticaVrstnegaReda({ prijava, oblika }: { prijava: PrijavaDto; oblika: ObrazecVrstice }) {
-  const { bilance, ekipno, jeTelefon, locilo, imaRating } = oblika
+  const { bilance, ekipno, jeTelefon, locilo, imaRating, deljena } = oblika
   const bilanca = bilance.get(prijava.id)
   const rating = bilanca?.rating ?? null
   return (
     <div className="vrstni-red__vrstica">
-      <span className="vrstni-red__mesto">
-        {prijava.koncnoMesto}
-        {!jeTelefon && '.'}
+      {/* Deljeno mesto (»5.–8.«) je v istem stolpcu z manjšo pisavo. */}
+      <span
+        className={
+          'vrstni-red__mesto'
+          + (prijava.koncnoMesto !== null && (deljena.get(prijava.koncnoMesto) ?? 1) > 1
+            ? ' vrstni-red__mesto--razpon'
+            : '')
+        }
+      >
+        {prijava.koncnoMesto !== null && oznakaMesta(prijava.koncnoMesto, deljena, jeTelefon)}
       </span>
       <span className="vrstni-red__ime">
         {prijava.polnoIme}
@@ -2190,6 +2251,11 @@ function VrsticaVrstnegaReda({ prijava, oblika }: { prijava: PrijavaDto; oblika:
   )
 }
 
+/* Razred seznama mest: brez stolpca ratinga, kadar ga ni. */
+function razredSeznama(oblika: ObrazecVrstice, dodatek = ''): string {
+  return 'vrstni-red' + dodatek + (oblika.imaRating ? '' : ' vrstni-red--brez-ratinga')
+}
+
 /* Do 24 igralcev od četrtega mesta naprej je razvrstitev v dveh stolpcih cela, kot
    doslej. Pri več gre v en stolpec in se pokaže prvih 16 vrstic, ostale so za gumbom:
    60 vrstic naenkrat nihče ne išče. */
@@ -2200,7 +2266,7 @@ function RazvrstitevSeznam({ prijave, oblika }: { prijave: PrijavaDto[]; oblika:
   const [vse, nastaviVse] = useState(false)
   if (prijave.length <= VRSTIC_V_DVEH_STOLPCIH) {
     return (
-      <div className={'vrstni-red' + (oblika.imaRating ? '' : ' vrstni-red--brez-ratinga')}>
+      <div className={razredSeznama(oblika)}>
         {razdeli(prijave, 2).map((stolpec, indeks) => (
           <div key={indeks}>
             {stolpec.map((prijava) => (
@@ -2214,7 +2280,7 @@ function RazvrstitevSeznam({ prijave, oblika }: { prijave: PrijavaDto[]; oblika:
   const vidne = vse ? prijave : prijave.slice(0, VRSTIC_PRED_GUMBOM)
   return (
     <>
-      <div className={'vrstni-red vrstni-red--en' + (oblika.imaRating ? '' : ' vrstni-red--brez-ratinga')}>
+      <div className={razredSeznama(oblika, ' vrstni-red--en')}>
         {vidne.map((prijava) => (
           <VrsticaVrstnegaReda key={prijava.id} prijava={prijava} oblika={oblika} />
         ))}
@@ -2257,7 +2323,7 @@ function RazvrstitevPoNivojih({
             naPreklop={() => nastaviOdprt((prej) => (prej === nivo.nivo ? null : nivo.nivo))}
           >
             <div className="skupina-vsebina__cela">
-              <div className={'vrstni-red vrstni-red--en' + (oblika.imaRating ? '' : ' vrstni-red--brez-ratinga')}>
+              <div className={razredSeznama(oblika, ' vrstni-red--en')}>
                 {clani.map((prijava) => (
                   <VrsticaVrstnegaReda key={prijava.id} prijava={prijava} oblika={oblika} />
                 ))}

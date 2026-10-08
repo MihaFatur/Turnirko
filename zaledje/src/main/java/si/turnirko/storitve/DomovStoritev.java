@@ -6,13 +6,11 @@
    sam; kadar jih ni, pokazemo lige, ki so v teku. */
 package si.turnirko.storitve;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,12 +20,11 @@ import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Liga;
-import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.SpremljanaLiga;
-import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SpremljanaLigaRepozitorij;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -41,7 +38,8 @@ public class DomovStoritev {
        drugace se domaca stran ob prvi oznaceni ligi skrci. */
     private static final int PRIVZETO_LIG = LigaStoritev.LIG_NA_DOMACI;
 
-    /* Vrh mini razpredelnice: prve tri ekipe. Vec jih vrstica lige ne prenese. */
+    /* Mini razpredelnica: tri ekipe (vrh, igralcu s Premium pa njegova ekipa s
+       sosedama). Vec jih vrstica lige ne prenese. */
     private static final int EKIP_NA_VRHU = 3;
 
     private final LigaRepozitorij ligaRepozitorij;
@@ -50,19 +48,22 @@ public class DomovStoritev {
     private final LestvicaLigeStoritev lestvicaLigeStoritev;
     private final LastnistvoStoritev lastnistvo;
     private final NarocninaStoritev narocnina;
+    private final KaderEkipeRepozitorij kaderRepozitorij;
 
     public DomovStoritev(LigaRepozitorij ligaRepozitorij,
                          SrecanjeRepozitorij srecanjeRepozitorij,
                          SpremljanaLigaRepozitorij spremljanaLigaRepozitorij,
                          LestvicaLigeStoritev lestvicaLigeStoritev,
                          LastnistvoStoritev lastnistvo,
-                         NarocninaStoritev narocnina) {
+                         NarocninaStoritev narocnina,
+                         KaderEkipeRepozitorij kaderRepozitorij) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.spremljanaLigaRepozitorij = spremljanaLigaRepozitorij;
         this.lestvicaLigeStoritev = lestvicaLigeStoritev;
         this.lastnistvo = lastnistvo;
         this.narocnina = narocnina;
+        this.kaderRepozitorij = kaderRepozitorij;
     }
 
     // ---------- Izbor spremljanih lig ----------
@@ -154,7 +155,8 @@ public class DomovStoritev {
     }
 
     private List<DomovLigaDto> povzetki(List<Liga> lige, boolean izEkipe) {
-        return lige.stream().map(l -> povzetek(l, izEkipe)).toList();
+        Long mojIgralec = premiumIgralec();
+        return lige.stream().map(l -> povzetek(l, izEkipe, mojIgralec)).toList();
     }
 
     /* Lige, v katerih igra prijavljeni igralec s Premium. Samo s paketom, ker
@@ -163,12 +165,12 @@ public class DomovStoritev {
        tistimi v pripravi - tam se igra zdaj. Stevila ne omejujemo: to so lige,
        v katerih res nastopa, in ne izlozba. */
     private List<Liga> ligeIgralcevihEkip() {
-        Uporabnik jaz = lastnistvo.trenutni();
-        if (jaz == null || !jaz.jePotrjenIgralec() || !narocnina.imaPremium(jaz)) {
+        Long jaz = premiumIgralec();
+        if (jaz == null) {
             return List.of();
         }
         // razvrscanje je stabilno: znotraj stanja ostane vrstni red vpisa (id)
-        return ligaRepozitorij.najdiNezakljuceneZaIgralca(jaz.getIgralec().getId()).stream()
+        return ligaRepozitorij.najdiNezakljuceneZaIgralca(jaz).stream()
                 .sorted(Comparator.comparing(l -> l.getStatus() != StatusTekmovanja.V_TEKU))
                 .toList();
     }
@@ -182,101 +184,65 @@ public class DomovStoritev {
         return lige;
     }
 
-    private DomovLigaDto povzetek(Liga liga, boolean izEkipe) {
-        List<Srecanje> srecanja = srecanjeRepozitorij.najdiZaLigo(liga.getId());
-        LocalDate danes = LocalDate.now();
+    private DomovLigaDto povzetek(Liga liga, boolean izEkipe, Long mojIgralec) {
+        /* Kolo od kol in naslednje kolo po ISTEM pravilu kot stran lige in
+           seznam lig (PotekLige). Koncnica gre zraven: v stevcu ne steje, po
+           rednem delu pa je njena tekma "naslednje". */
+        List<PotekLige.Termin> termini = srecanjeRepozitorij.najdiZaLigo(liga.getId()).stream()
+                .map(s -> new PotekLige.Termin(s.getKolo(), s.getStatus(), s.getPredvidenZacetek(),
+                        s.getSerija() != null))
+                .toList();
+        PotekLige.Potek potek = PotekLige.izracunaj(termini, PotekLige.danes());
 
-        Srecanje naslednje = null;
-        for (Srecanje s : srecanja) {
-            if (s.getStatus() != StatusSrecanja.KONCANO && jeNaslednje(s, naslednje, danes)) {
-                naslednje = s;
-            }
-        }
-        Kola kola = presteji(srecanja, danes);
-        int odigranihKol = kola.odigranih();
-        int vsehKol = kola.vseh();
-
-        List<DomovLigaDto.Vrh> vrh = new ArrayList<>();
-        for (LestvicaEkipeDto v : lestvicaLigeStoritev.lestvica(liga.getId())) {
-            if (vrh.size() == EKIP_NA_VRHU) {
+        /* Igralcu s Premium, ki v ligi igra, razpredelnica pokaze NJEGOVO ekipo
+           in sosedi namesto vrha - ne glede na to, zakaj je liga na domaci
+           strani (lasten izbor, kader ali adminova izlozba). Vrh lestvice ga
+           v ligi, kjer je deveti, ne zanima; kdo je tik nad in pod njim, pa. */
+        List<LestvicaEkipeDto> lestvica = lestvicaLigeStoritev.lestvica(liga.getId());
+        Set<Long> moje = mojIgralec == null
+                ? Set.of()
+                : new HashSet<>(kaderRepozitorij.ekipeIgralcaVLigi(liga.getId(), mojIgralec));
+        int mojaVrstica = -1;
+        for (int i = 0; i < lestvica.size(); i++) {
+            if (moje.contains(lestvica.get(i).idEkipa())) {
+                mojaVrstica = i;
                 break;
             }
-            vrh.add(new DomovLigaDto.Vrh(v.mesto(), v.ekipa(), v.odigrane(), v.tocke()));
         }
+        List<LestvicaEkipeDto> izbrane = mojaVrstica < 0
+                ? lestvica.subList(0, Math.min(EKIP_NA_VRHU, lestvica.size()))
+                : okno(lestvica, mojaVrstica, EKIP_NA_VRHU);
+        List<DomovLigaDto.Vrh> vrh = izbrane.stream()
+                .map(v -> new DomovLigaDto.Vrh(v.mesto(), v.ekipa(), v.odigrane(), v.tocke(),
+                        moje.contains(v.idEkipa())))
+                .toList();
 
+        PotekLige.Naslednje naslednje = potek.naslednje();
         return new DomovLigaDto(
                 liga.getId(), liga.getIme(), liga.getSezona(), liga.getStatus(),
-                odigranihKol, vsehKol, vrh,
-                naslednje == null ? null
-                        : new DomovLigaDto.Naslednje(naslednje.getKolo(), datum(naslednje)),
+                potek.odigranih(), potek.vseh(), vrh, lestvica.size(),
+                naslednje == null ? null : new DomovLigaDto.Naslednje(naslednje.kolo(), naslednje.datum()),
                 izEkipe);
     }
 
-    /* Kola rednega dela lige: koliko jih je in koliko je odigranih. */
-    record Kola(int odigranih, int vseh) {}
-
-    /* Kolo je ODIGRANO, ko je njegov datum ze mimo (danasnji dan se ne steje:
-       kolo je se "naslednje", glej jeNaslednje). Datum kola je najzgodnejsi
-       predvideni zacetek njegovih srecanj - isti kot v razporedu lige.
-
-       Zakaj ne po koncanih srecanjih: ekipe se neuradno dogovorijo za menjavo
-       terminov in odigrajo srecanje, ki spada v pozno kolo, ze zdaj. Ce bi
-       kolo steli za odigrano ob prvem koncanem srecanju, bi po taki menjavi v
-       vsakem kolu domaca stran trdila, da je odigrano vse - v resnici je le
-       eno. Kolo brez datuma (organizator termina ni vpisal) datuma nima, zato
-       je odigrano, ko je koncano vsako njegovo srecanje (kot v razporedu lige).
-
-       Koncnica ni kolo rednega dela (njena "kola" so krogi serij) in ne steje. */
-    static Kola presteji(List<Srecanje> srecanja, LocalDate danes) {
-        Map<Integer, List<Srecanje>> poKolih = new TreeMap<>();
-        for (Srecanje s : srecanja) {
-            if (s.getSerija() == null) {
-                poKolih.computeIfAbsent(s.getKolo(), k -> new ArrayList<>()).add(s);
-            }
+    /* Okno dane velikosti okoli vrstice i: ena gor in ena dol, pri prvi pa dve
+       dol in pri zadnji dve gor - okno je vedno polno, ce je vrstic dovolj.
+       Vmesnik ob prvi oz. zadnji vrstici sam pove, da je to vrh oz. dno. */
+    static <T> List<T> okno(List<T> vrstice, int i, int velikost) {
+        if (vrstice.size() <= velikost) {
+            return vrstice;
         }
-        int odigranih = 0;
-        for (List<Srecanje> kolo : poKolih.values()) {
-            LocalDate datumKola = kolo.stream()
-                    .map(DomovStoritev::datum)
-                    .filter(Objects::nonNull)
-                    .min(Comparator.naturalOrder())
-                    .orElse(null);
-            boolean odigrano = datumKola != null
-                    ? datumKola.isBefore(danes)
-                    : kolo.stream().allMatch(s -> s.getStatus() == StatusSrecanja.KONCANO);
-            if (odigrano) {
-                odigranih++;
-            }
-        }
-        return new Kola(odigranih, poKolih.size());
+        int zacetek = Math.max(0, Math.min(i - velikost / 2, vrstice.size() - velikost));
+        return vrstice.subList(zacetek, zacetek + velikost);
     }
 
-    /* "Naslednje kolo" je prvo nekoncano srecanje, ki ga termin se ni prehitel.
-       Srecanje, ki je ostalo neodigrano (igralca sta se dogovorila za drug
-       dan, izida ni nihce vpisal), bi sicer s starim datumom ostalo
-       "naslednje" cele tedne, domaca stran pa obljublja, kdaj se igra NASLEDNJIC.
-       Kolo zaradi tega ni odigrano - to se vidi v razporedu lige in v stevcu
-       kol, ne v tej vrstici. Danasnji dan se steje, srecanje brez termina
-       ni ze mimo (ne vemo, da je), zato ostane kandidat.
-
-       Srecanja pridejo urejena po kolu in zacetku, zato prvi kandidat ostane
-       na mestu - razen ce za njim pride srecanje z datumom, ki je prej
-       (prestavljeno srecanje starejsega kola je lahko pozneje od naslednjega). */
-    private static boolean jeNaslednje(Srecanje s, Srecanje trenutno, LocalDate danes) {
-        LocalDate datum = datum(s);
-        if (datum != null && datum.isBefore(danes)) {
-            return false;
+    /* Id igralca prijavljenega racuna, ce je potrjen igralec s Premium; sicer
+       null. Domaca stran mu prilagodi lige (ekipa namesto vrha). */
+    private Long premiumIgralec() {
+        Uporabnik jaz = lastnistvo.trenutni();
+        if (jaz == null || !jaz.jePotrjenIgralec() || !narocnina.imaPremium(jaz)) {
+            return null;
         }
-        if (trenutno == null) {
-            return true;
-        }
-        LocalDate trenutniDatum = datum(trenutno);
-        return datum != null && trenutniDatum != null && datum.isBefore(trenutniDatum);
-    }
-
-    private static LocalDate datum(Srecanje srecanje) {
-        return srecanje.getPredvidenZacetek() == null
-                ? null
-                : srecanje.getPredvidenZacetek().toLocalDate();
+        return jaz.getIgralec().getId();
     }
 }

@@ -14,13 +14,18 @@
    računa (kvadratki, filtri lestvice) sploh ne pokažemo, namesto da bi jih
    pokazali in ob kliku zahtevali prijavo. Izjema je »Uredi izbor« ob ligah:
    ena mono povezava, ki gostu in igralcu brez Premium pokaže oglas Igralec
-   Premium (PremiumOglas), ostalim pa okno za urejanje izbora. */
+   Premium (PremiumOglas), ostalim pa okno za urejanje izbora.
+
+   Igralcu s Premium je stran po meri (oktober 2026): v ligah, kjer igra, kaže
+   razpredelnica njegovo ekipo s sosedama namesto vrha (izračuna strežnik),
+   turnirji so izbrani zanj z razlogom ob vrstici (IzborTurnirjev v zaledju),
+   lestvica pa pokaže njega in igralce okoli njega na njegovi lestvici. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { domovApi, ligeApi, statistikaApi, turnirjiApi } from '../api/zahteve'
-import type { DomovLigaDto, LestvicaIgralcaDto, TurnirDto } from '../api/tipi'
+import type { DomovLigaDto, LestvicaIgralcaDto, RazlogTurnirja, Spol, TurnirDto } from '../api/tipi'
 import { EnaNaEna } from '../komponente/EnaNaEna'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { KoledarSklop } from '../komponente/KoledarSklop'
@@ -29,7 +34,7 @@ import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
-import { oblikujDanKratekMesec, oblikujDatum, sklonIgralcev } from '../pomozno/oblikovanje'
+import { oblikujDanKratekMesec, oblikujDatum, potekKol, sklonIgralcev } from '../pomozno/oblikovanje'
 import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 
 /* Koliko vrstic nosi posamezen sklop. Domača stran je povzetek: kdor hoče
@@ -37,16 +42,27 @@ import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 const TURNIRJEV = 4
 const IGRALCEV = 8
 
-type FilterLestvice = 'vsi' | 'mojeLige' | 'mojKlub'
+type FilterLestvice = 'vsi' | 'okoli' | 'mojeLige' | 'mojKlub'
 
 export function DomacaStran() {
-  const { uporabnik, mojIdIgralec, jeAdmin } = useAvtentikacija()
-  const [filter, nastaviFilter] = useState<FilterLestvice>('vsi')
+  const { uporabnik, mojIdIgralec, jeAdmin, jePremium } = useAvtentikacija()
+  /* Izbrani filter lestvice; null = privzetek (glej filterLestvice spodaj). */
+  const [filter, nastaviFilter] = useState<FilterLestvice | null>(null)
   const [izborOdprt, nastaviIzborOdprt] = useState(false)
   const [domaceOdprt, nastaviDomaceOdprt] = useState(false)
   const { odpri: odpriPremiumOglas } = usePremiumOglas()
 
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
+
+  /* Igralec s Premium, povezan z zapisom med igralci - samo njemu je stran po
+     meri. Paket preveri tudi strežnik (domov/turnirji drugim vrne prazno,
+     domov/lige drugim vrh lestvice); tu le ne sprožimo poizvedbe zaman. */
+  const premiumIgralec = jePremium && uporabnik?.vloga === 'IGRALEC' && mojIdIgralec != null
+  const turnirjiZame = useQuery({
+    queryKey: ['domov-turnirji', uporabnik?.id ?? null],
+    queryFn: domovApi.turnirji,
+    enabled: premiumIgralec,
+  })
   const lige = useQuery({ queryKey: ['lige'], queryFn: ligeApi.seznam })
   const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
 
@@ -75,8 +91,38 @@ export function DomacaStran() {
      na /turnirji, da sklop ostane začetek seznama, v katerega vodi »Vsi →«. */
   const prikazaniTurnirji = useMemo(() => razvrstiTurnirje(turnirji.data), [turnirji.data])
 
+  /* Izbor za igralca s Premium: strežnik pove katere in zakaj, turnirje same
+     pa imamo že naložene. Prazen izbor (ni turnirjev) pusti privzeti seznam. */
+  const turnirjiPoMeri = useMemo(() => {
+    if (!premiumIgralec || !turnirjiZame.data || !turnirji.data) return null
+    const poId = new Map(turnirji.data.map((t) => [t.id, t]))
+    const izbor = turnirjiZame.data.flatMap((z) => {
+      const t = poId.get(z.idTurnir)
+      return t ? [{ turnir: t, razlog: z.razlog }] : []
+    })
+    return izbor.length > 0 ? izbor : null
+  }, [premiumIgralec, turnirjiZame.data, turnirji.data])
+  const nalagamTurnirje = turnirji.isPending || (premiumIgralec && turnirjiZame.isPending)
+
   const mojaVrstica = lestvica.data?.find((v) => v.idIgralca === mojIdIgralec) ?? null
   const mojIdKluba = uporabnik?.idKlub ?? mojaVrstica?.idKluba ?? null
+
+  /* Sklop kaže ENO lestvico: med moškimi in ženskami ni obračunanih tekem in
+     skupnega mesta ni (isto pravilo kot na strani Lestvica). Prej je mešal oba
+     spola - Sara Tokić je bila 6., zato je bil Hribar na domači strani 7., na
+     strani Lestvica pa 6. Prijavljen igralec vidi lestvico svojega spola in
+     skupine (tekmovalci oz. rekreativci); gost in kdor na lestvici ni, dobi ob
+     vsakem prihodu naključno moško ali žensko lestvico članov. */
+  const [nakljucniSpol] = useState<Spol>(() => (Math.random() < 0.5 ? 'MOSKI' : 'ZENSKI'))
+  const lestvicaSklopa = {
+    spol: mojaVrstica?.spol ?? nakljucniSpol,
+    rekreativci: mojaVrstica?.rekreativec ?? false,
+  }
+
+  /* Igralec s Premium, ki je na lestvici, privzeto vidi sebe in igralce okoli
+     sebe; vsi ostali vrh lestvice. */
+  const okoliMene = premiumIgralec && mojaVrstica !== null
+  const filterLestvice: FilterLestvice = filter ?? (okoliMene ? 'okoli' : 'vsi')
 
   /* Merilo je, kaj sklop DEJANSKO kaže, in ne izbor: gost izbora nima, pa mu
      vseeno pokažemo lige v teku — vrstica "ne spremljaš N lig" bi jih sicer
@@ -108,21 +154,26 @@ export function DomacaStran() {
       <div className="domov__vrh">
         <div className="domov__sklop">
           <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
-            <h2>Turnirji</h2>
+            {/* »Zate« samo takrat, ko izbor res je njegov - kot »Moje lige«. */}
+            <h2>{turnirjiPoMeri ? 'Turnirji zate' : 'Turnirji'}</h2>
             <Link to="/turnirji" className="sekcija__meta">
               Vsi →
             </Link>
           </div>
           <NapakaPoizvedbe poizvedba={turnirji} kaj="turnirjev" />
-          {turnirji.isPending && <Skelet vrstic={3} />}
-          {turnirji.data && prikazaniTurnirji.length === 0 && (
+          {nalagamTurnirje && <Skelet vrstic={3} />}
+          {!nalagamTurnirje && turnirji.data && prikazaniTurnirji.length === 0 && (
             <p className="domov__prazno">Ni turnirjev.</p>
           )}
-          <div className="domov__seznam">
-            {prikazaniTurnirji.map((t) => (
-              <VrsticaTurnirja turnir={t} key={t.id} />
-            ))}
-          </div>
+          {!nalagamTurnirje && (
+            <div className="domov__seznam">
+              {turnirjiPoMeri
+                ? turnirjiPoMeri.map(({ turnir, razlog }) => (
+                    <VrsticaTurnirja turnir={turnir} razlog={razlog} key={turnir.id} />
+                  ))
+                : prikazaniTurnirji.map((t) => <VrsticaTurnirja turnir={t} key={t.id} />)}
+            </div>
+          )}
         </div>
 
         <div className="domov__sklop">
@@ -205,8 +256,10 @@ export function DomacaStran() {
       <SklopLestvica
         vrstice={lestvica.data}
         poizvedba={lestvica}
-        filter={filter}
+        filter={filterLestvice}
         naFilter={nastaviFilter}
+        mojaVrstica={okoliMene ? mojaVrstica : null}
+        lestvicaSklopa={lestvicaSklopa}
         mojIdIgralec={mojIdIgralec}
         mojIdKluba={mojIdKluba}
         spremljane={idjiMojihLig}
@@ -243,7 +296,7 @@ function razvrstiTurnirje(turnirji: TurnirDto[] | undefined): TurnirDto[] {
     .slice(0, TURNIRJEV)
 }
 
-function VrsticaTurnirja({ turnir }: { turnir: TurnirDto }) {
+function VrsticaTurnirja({ turnir, razlog }: { turnir: TurnirDto; razlog?: RazlogTurnirja }) {
   const vTeku = turnir.status === 'V_TEKU'
   const spalica = vTeku && turnir.vsehTekem > 0
   const odstotek = turnir.vsehTekem > 0
@@ -255,6 +308,8 @@ function VrsticaTurnirja({ turnir }: { turnir: TurnirDto }) {
 
   return (
     <Link to={`/turnirji/${turnir.id}`} className="domov__turnir">
+      {/* Zakaj je turnir tu - brez tega bi bil izbor po meri videti naključen. */}
+      {razlog && <span className="domov__turnir-razlog">{napisRazloga(razlog, turnir)}</span>}
       <span className="domov__turnir-glava">
         <span className="domov__turnir-ime">{turnir.ime}</span>
         <ZnackaStatusa status={turnir.status} />
@@ -275,6 +330,30 @@ function VrsticaTurnirja({ turnir }: { turnir: TurnirDto }) {
       )}
     </Link>
   )
+}
+
+/* Mono vrstica nad imenom turnirja v izboru za igralca s Premium. */
+function napisRazloga(razlog: RazlogTurnirja, turnir: TurnirDto): string {
+  switch (razlog) {
+    case 'PRIJAVLJEN':
+      return 'Prihaja · tvoja prijava'
+    case 'PRIHAJA_PRIMEREN':
+      return 'Prihaja · primeren zate'
+    case 'ZADNJI':
+      return turnir.status === 'V_TEKU' ? 'Tvoj turnir · v teku' : 'Tvoj zadnji turnir'
+    case 'V_TEKU':
+      return 'Poteka zdaj'
+    case 'KOLEGI':
+      return turnir.status === 'PRIPRAVA'
+        ? 'Prijavljeni klubski kolegi'
+        : turnir.status === 'V_TEKU'
+          ? 'Igrajo klubski kolegi'
+          : 'Igrali so klubski kolegi'
+    case 'PRIMEREN':
+      return 'Primeren zate'
+    case 'OSTALO':
+      return turnir.status === 'PRIPRAVA' ? 'Prihaja' : 'Najnovejši'
+  }
 }
 
 /* Podnaslov vrstice: kraj in nato tisto, kar o turnirju v tem stanju največ
@@ -325,7 +404,7 @@ function KarticaLige({
         </span>
         {liga.vsehKol > 0 && (
           <span className="domov__liga-kolo">
-            {liga.odigranihKol}. od {liga.vsehKol} kol
+            {potekKol(liga.odigranihKol, liga.vsehKol)}
           </span>
         )}
       </div>
@@ -338,10 +417,22 @@ function KarticaLige({
             <span>Sr.</span>
             <span>Toč.</span>
           </div>
+          {/* Igralcu s Premium strežnik pošlje njegovo ekipo s sosedama; ta je
+              poudarjena, na vrhu oz. dnu lestvice pa to pove droben napis -
+              okno tam ne more biti »ena gor, ena dol«. */}
           {liga.vrh.map((v) => (
-            <div className="domov__ekipe-vrstica" key={v.mesto}>
+            <div
+              className={'domov__ekipe-vrstica' + (v.moja ? ' domov__ekipe-vrstica--moja' : '')}
+              key={v.mesto + v.ekipa}
+            >
               <span className="domov__ekipe-mesto">{v.mesto}.</span>
-              <span className="domov__ekipe-ime">{v.ekipa}</span>
+              <span className="domov__ekipe-ime">
+                {v.ekipa}
+                {v.moja && v.mesto === 1 && <span className="domov__ekipe-meja">prva</span>}
+                {v.moja && v.mesto > 1 && v.mesto === liga.ekip && (
+                  <span className="domov__ekipe-meja">zadnja</span>
+                )}
+              </span>
               <span className="domov__ekipe-odigrane">{v.odigrane}</span>
               <span className="domov__ekipe-tocke">{v.tocke}</span>
             </div>
@@ -374,6 +465,8 @@ function SklopLestvica({
   mojIdKluba,
   spremljane,
   jePrijavljen,
+  mojaVrstica,
+  lestvicaSklopa,
 }: {
   vrstice: LestvicaIgralcaDto[] | undefined
   poizvedba: { error: unknown; isFetching: boolean; refetch: () => unknown; isPending: boolean }
@@ -385,18 +478,53 @@ function SklopLestvica({
   /* Oba zožena izbora govorita o računu (»moje« lige, »moj« klub), zato ju
      gost ne dobi: gledal bi filtra, ki mu ne moreta vrniti ničesar. */
   jePrijavljen: boolean
+  /* Igralec s Premium, ki je na lestvici: sklop ponudi »Okoli mene«. */
+  mojaVrstica: LestvicaIgralcaDto | null
+  /* Katero lestvico sklop kaže (spol in skupina). */
+  lestvicaSklopa: { spol: Spol; rekreativci: boolean }
 }) {
-  /* Mesto je vedno mesto na CELI lestvici — filter zoži prikaz, ne
-     razvrstitve. Zato ga pripnemo pred filtriranjem. */
+  /* Na katerem mestu okna stoji igralec (0 = prvi napisan). Naključno ob
+     vsakem prihodu na stran - enkrat je prvi in pod njim sedem, drugič peti -,
+     da domača stran ni vsakič enaka; ob vrhu ali dnu lestvice se okno
+     poravna, da je polno. */
+  const [odmik] = useState(() => Math.floor(Math.random() * IGRALCEV))
+
+  /* Lestvica igralca: njegov spol in skupina (tekmovalci ali rekreativci),
+     ista kot mesto na profilu. Med spoloma in skupinama ni primerljivih
+     številk, zato okno ne teče čez skupni seznam. */
+  const okolica = useMemo(() => {
+    if (!mojaVrstica || !vrstice) return null
+    const lestvica = vrstice.filter(
+      (v) => v.spol === mojaVrstica.spol && v.rekreativec === mojaVrstica.rekreativec,
+    )
+    const i = lestvica.findIndex((v) => v.idIgralca === mojaVrstica.idIgralca)
+    if (i < 0) return null
+    const zacetek = Math.max(0, Math.min(i - odmik, lestvica.length - IGRALCEV))
+    return {
+      vrstice: lestvica
+        .slice(zacetek, zacetek + IGRALCEV)
+        .map((igralec, k) => ({ igralec, mesto: zacetek + k + 1 })),
+      opis:
+        `${mojaVrstica.spol === 'ZENSKI' ? 'Ženske' : 'Moški'} · `
+        + `${mojaVrstica.rekreativec ? 'Rekreativci' : 'Člani'} · `
+        + `tvoje mesto ${i + 1}. od ${lestvica.length}`,
+    }
+  }, [mojaVrstica, vrstice, odmik])
+
+  /* Mesto je vedno mesto na CELI lestvici izbranega spola in skupine — filter
+     zoži prikaz, ne razvrstitve. Zato ga pripnemo pred filtriranjem. */
   const prikazane = useMemo(() => {
-    const vse = (vrstice ?? []).map((igralec, indeks) => ({ igralec, mesto: indeks + 1 }))
+    if (filter === 'okoli' && okolica) return okolica.vrstice
+    const vse = (vrstice ?? [])
+      .filter((v) => v.spol === lestvicaSklopa.spol && v.rekreativec === lestvicaSklopa.rekreativci)
+      .map((igralec, indeks) => ({ igralec, mesto: indeks + 1 }))
     const zozene = vse.filter(({ igralec }) => {
       if (filter === 'mojeLige') return igralec.idjiLig.some((id) => spremljane.includes(id))
       if (filter === 'mojKlub') return mojIdKluba !== null && igralec.idKluba === mojIdKluba
       return true
     })
     return zozene.slice(0, IGRALCEV)
-  }, [vrstice, filter, spremljane, mojIdKluba])
+  }, [vrstice, filter, spremljane, mojIdKluba, okolica, lestvicaSklopa.spol, lestvicaSklopa.rekreativci])
 
   return (
     <div className="domov__sklop">
@@ -405,7 +533,13 @@ function SklopLestvica({
         <div className="naslovna-vrstica__desno">
           {jePrijavljen && (
             <div className="izbirnik">
-              <Filter oznaka="Vsi igralci" vrednost="vsi" izbrani={filter} naFilter={naFilter} />
+              {/* Igralec s Premium ima namesto vrha sebe in okolico; vrh je
+                  en klik stran (»Cela lestvica«). */}
+              {okolica ? (
+                <Filter oznaka="Okoli mene" vrednost="okoli" izbrani={filter} naFilter={naFilter} />
+              ) : (
+                <Filter oznaka="Vsi igralci" vrednost="vsi" izbrani={filter} naFilter={naFilter} />
+              )}
               <Filter oznaka="Moje lige" vrednost="mojeLige" izbrani={filter} naFilter={naFilter} />
               <Filter oznaka="Moj klub" vrednost="mojKlub" izbrani={filter} naFilter={naFilter} />
             </div>
@@ -421,6 +555,14 @@ function SklopLestvica({
         </div>
       </div>
 
+      {/* Katera lestvica je to: brez napisa bi gledalec ne vedel, da ženske
+          niso izpuščene, ampak na drugi lestvici. */}
+      <p className="domov__lestvica-opis">
+        {filter === 'okoli' && okolica
+          ? okolica.opis
+          : `${lestvicaSklopa.spol === 'ZENSKI' ? 'Ženske' : 'Moški'} · ${lestvicaSklopa.rekreativci ? 'Rekreativci' : 'Člani'}`}
+      </p>
+
       <NapakaPoizvedbe poizvedba={poizvedba} kaj="lestvice" />
       {poizvedba.isPending && <Skelet vrstic={5} />}
 
@@ -429,7 +571,13 @@ function SklopLestvica({
       )}
 
       {prikazane.length > 0 && (
-        <div className="domov__lestvica">
+        /* Okno »Okoli mene« ima mesta tudi trimestna (104.), ozek stolpec mest
+           na telefonu pa je meril za vrh lestvice - jih je stisnil ob premik. */
+        <div
+          className={
+            'domov__lestvica' + (prikazane.some((p) => p.mesto >= 100) ? ' domov__lestvica--siroka' : '')
+          }
+        >
           <div className="domov__lestvica-vrstica domov__lestvica-vrstica--glava">
             <span>Mesto</span>
             <span>Premik</span>
@@ -598,22 +746,18 @@ function Skelet({ vrstic }: { vrstic: number }) {
 
 /* Slovnično pravilna oblika besede "liga" glede na število. */
 function sklonLig(n: number): string {
-  const mod100 = n % 100
-  if (mod100 >= 11 && mod100 <= 14) return 'lig'
-  const mod10 = n % 10
-  if (mod10 === 1) return 'lige'
-  if (mod10 === 2) return 'lig'
-  if (mod10 === 3 || mod10 === 4) return 'lig'
+  const ostanek = n % 100
+  if (ostanek === 1) return 'lige'
+  if (ostanek === 2) return 'lig'
+  if (ostanek === 3 || ostanek === 4) return 'lig'
   return 'lig'
 }
 
 /* "za 1 mesto", "za 2 mesti", "za 3 mesta", "za 5 mest". */
 function sklonMest(n: number): string {
-  const mod100 = n % 100
-  if (mod100 >= 11 && mod100 <= 14) return 'mest'
-  const mod10 = n % 10
-  if (mod10 === 1) return 'mesto'
-  if (mod10 === 2) return 'mesti'
-  if (mod10 === 3 || mod10 === 4) return 'mesta'
+  const ostanek = n % 100
+  if (ostanek === 1) return 'mesto'
+  if (ostanek === 2) return 'mesti'
+  if (ostanek === 3 || ostanek === 4) return 'mesta'
   return 'mest'
 }

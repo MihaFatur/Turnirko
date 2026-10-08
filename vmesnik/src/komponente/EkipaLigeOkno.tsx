@@ -281,7 +281,9 @@ function KaderEkipe({ idEkipa }: { idEkipa: number }) {
       <div className="liga__kader-glava ekipa-okno__kader-glava">
         <h3 className="liga__kader-naslov">Kader</h3>
         <span className="sekcija__meta">Rating</span>
-        <span className="sekcija__meta">Score</span>
+        {/* Zmage : porazi za to ekipo v tej ligi. Prej je pisalo angleško
+            »Score«. */}
+        <span className="sekcija__meta">Izkupiček</span>
       </div>
       {kader.isPending && <p className="obvestilo">Nalaganje kadra …</p>}
       <NapakaPoizvedbe poizvedba={kader} kaj="kadra" />

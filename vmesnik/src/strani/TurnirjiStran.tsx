@@ -19,7 +19,7 @@
 
    Iskanje po imenu zozi seznam PRED filtri (glej komponente/IskanjeSeznama).
    Pas "Danes v dvorani" ostane cel - tako kot ga ne zozijo filtri. */
-import { useMemo, useState, type FormEvent } from 'react'
+import { Fragment, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -46,6 +46,7 @@ import { SporociloNapake } from '../komponente/SporociloNapake'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import {
+  danesIso,
   datumskiBlok,
   oblikujObdobje,
   oblikujObdobjeKratko,
@@ -53,6 +54,7 @@ import {
   sklonDogodkov,
 } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja, uraOsvezitve } from '../pomozno/osvezevanje'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 
 /* Merila nad seznamom. Vrednost je vedno niz, ker je kljuc izbora - status je
@@ -115,6 +117,53 @@ function poDatumu(a: TurnirDto, b: TurnirDto, smer: 1 | -1): number {
   return smer * a.datumZacetka.localeCompare(b.datumZacetka)
 }
 
+/* Turnirji, ki šele pridejo: v pripravi ali z datumom od danes naprej, a še
+   ne v teku (ti so v pasu »Danes v dvorani«) in ne zaključeni. Turnir v
+   pripravi s preteklim datumom ni »prihajajoč« - organizator ga je pozabil
+   zagnati in bi na vrhu seznama zavajal. Najbližji prvi, brez datuma na
+   koncu. Prej razdelka ni bilo: prihodnji turnir je bil med 330 preteklimi,
+   urejenimi od najnovejšega, torej na vrhu v obratnem vrstnem redu. */
+function prihajajociTurnirji(turnirji: TurnirDto[]): TurnirDto[] {
+  const danes = danesIso()
+  return turnirji
+    .filter((t) => t.status !== 'V_TEKU' && t.status !== 'ZAKLJUCEN')
+    .filter((t) => t.datumZacetka == null || (t.datumKonca ?? t.datumZacetka) >= danes)
+    .sort((a, b) => poDatumu(a, b, 1) || a.ime.localeCompare(b.ime, 'sl'))
+}
+
+/* Seznam z ločnicami po sezonah, kadar je urejen po datumu: 330 uvoženih
+   turnirjev je prej teklo brez ločnic in brez letnice, zato gledalec ni vedel,
+   ali je »03 OKT« letošnji ali od pred petih let. Pri razvrstitvi po imenu
+   ločnic ni - sezone bi se ponavljale. */
+function zLocnicamiSezon(
+  turnirji: TurnirDto[],
+  poDatumu: boolean,
+  izrisi: (t: TurnirDto) => ReactNode,
+  locnica: (sezona: string, stevilo: number) => ReactNode,
+): ReactNode[] {
+  if (!poDatumu) return turnirji.map(izrisi)
+  const stevilo = new Map<string, number>()
+  for (const t of turnirji) {
+    const sezona = sezonaIzDatuma(t.datumZacetka) ?? 'brez datuma'
+    stevilo.set(sezona, (stevilo.get(sezona) ?? 0) + 1)
+  }
+  const izid: ReactNode[] = []
+  let prejsnja: string | null = null
+  for (const t of turnirji) {
+    const sezona = sezonaIzDatuma(t.datumZacetka) ?? 'brez datuma'
+    if (sezona !== prejsnja) {
+      izid.push(<Fragment key={'sezona-' + sezona}>{locnica(sezona, stevilo.get(sezona) ?? 0)}</Fragment>)
+      prejsnja = sezona
+    }
+    izid.push(izrisi(t))
+  }
+  return izid
+}
+
+function napisSezone(sezona: string): string {
+  return sezona === 'brez datuma' ? 'Brez datuma' : `Sezona ${sezona}`
+}
+
 function sklonTurnirjev(n: number): string {
   const ostanek = n % 100
   if (ostanek === 1) return 'turnir'
@@ -124,6 +173,7 @@ function sklonTurnirjev(n: number): string {
 }
 
 export function TurnirjiStran() {
+  useNaslovStrani('Turnirji')
   const odjemalec = useQueryClient()
   const { smeUstvarjati } = useAvtentikacija()
   const jeTelefon = useTelefon()
@@ -148,6 +198,8 @@ export function TurnirjiStran() {
   const filtri = useFiltri(najdeni, SKUPINE, RAZVRSTITVE)
   const prikazani = filtri.prikazani
   const vTeku = useMemo(() => vsi.filter((t) => t.status === 'V_TEKU'), [vsi])
+  const prihajajoci = useMemo(() => prihajajociTurnirji(vsi), [vsi])
+  const poDatumuUrejeno = filtri.razvrstitev !== 'ime'
   const osvezenoOb = uraOsvezitve(turnirji.dataUpdatedAt)
 
   const krmila = (
@@ -236,6 +288,20 @@ export function TurnirjiStran() {
           </div>
         )}
 
+        {prihajajoci.length > 0 && (
+          <div>
+            <div className="naslovna-mobi">
+              <h2>Prihajajoči</h2>
+              <span className="naslovna-mobi__stevec">{prihajajoci.length}</span>
+            </div>
+            <div className="seznam-mobi">
+              {prihajajoci.map((turnir) => (
+                <VrsticaTurnirjaMobi key={turnir.id} turnir={turnir} />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <div className="naslovna-mobi naslovna-mobi--brez-crte">
             <h2>Vsi turnirji</h2>
@@ -247,9 +313,17 @@ export function TurnirjiStran() {
           </div>
           {stanje}
           <div className="seznam-mobi">
-            {prikazani.map((turnir) => (
-              <VrsticaTurnirjaMobi key={turnir.id} turnir={turnir} />
-            ))}
+            {zLocnicamiSezon(
+              prikazani,
+              poDatumuUrejeno,
+              (turnir) => <VrsticaTurnirjaMobi key={turnir.id} turnir={turnir} />,
+              (sezona, stevilo) => (
+                <div className="seznam-locnica">
+                  <span>{napisSezone(sezona)}</span>
+                  <span>{stevilo}</span>
+                </div>
+              ),
+            )}
           </div>
         </div>
 
@@ -279,6 +353,22 @@ export function TurnirjiStran() {
           <div className="kartice">
             {vTeku.map((turnir) => (
               <VrsticaTurnirja key={turnir.id} turnir={turnir} danes />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {prihajajoci.length > 0 && (
+        <div>
+          <div className="naslovna-vrstica">
+            <h2>Prihajajoči</h2>
+            <span className="sekcija__meta">
+              {prihajajoci.length} {sklonTurnirjev(prihajajoci.length)}
+            </span>
+          </div>
+          <div className="kartice">
+            {prihajajoci.map((turnir) => (
+              <VrsticaTurnirja key={turnir.id} turnir={turnir} />
             ))}
           </div>
         </div>
@@ -328,9 +418,19 @@ export function TurnirjiStran() {
               <span className="seznam-glava__sredinjeno">Status</span>
             </div>
             <div className="kartice">
-              {prikazani.map((turnir) => (
-                <VrsticaTurnirja key={turnir.id} turnir={turnir} />
-              ))}
+              {zLocnicamiSezon(
+                prikazani,
+                poDatumuUrejeno,
+                (turnir) => <VrsticaTurnirja key={turnir.id} turnir={turnir} />,
+                (sezona, stevilo) => (
+                  <div className="seznam-locnica">
+                    <span>{napisSezone(sezona)}</span>
+                    <span>
+                      {stevilo} {sklonTurnirjev(stevilo)}
+                    </span>
+                  </div>
+                ),
+              )}
             </div>
           </>
         )}
@@ -394,9 +494,16 @@ function VrsticaTurnirja({ turnir, danes = false }: { turnir: TurnirDto; danes?:
    prazna oz. polna crta brez sporocila. */
 function VrsticaTurnirjaMobi({ turnir, danes = false }: { turnir: TurnirDto; danes?: boolean }) {
   const { dan, mesec } = datumskiBlok(turnir.datumZacetka)
-  const obdobje = oblikujObdobjeKratko(turnir.datumZacetka, turnir.datumKonca)
+  /* Enodnevni turnir je datum že povedal v bloku levo (»03 OKT«); v mono
+     vrstici je stal še enkrat (»3. 10.«). Tam ostane le razpon večdnevnega. */
+  const vecdnevni = turnir.datumKonca != null && turnir.datumKonca !== turnir.datumZacetka
+  const obdobje = vecdnevni ? oblikujObdobjeKratko(turnir.datumZacetka, turnir.datumKonca) : null
+  /* Kraj iz šifranta, sicer dvorana - uvožena zgodovina ima ime mesta
+     zapisano tam (glej skupini filtra zgoraj). */
+  const kraj = turnir.kraj?.ime ?? turnir.dvorana
   const meta =
-    [obdobje, turnir.kraj?.ime].filter(Boolean).join(' · ') || 'kraj in datum še nista določena'
+    [obdobje, kraj].filter(Boolean).join(' · ')
+    || (turnir.datumZacetka ? 'kraj še ni določen' : 'kraj in datum še nista določena')
   const tece = turnir.status === 'V_TEKU'
 
   return (
@@ -409,6 +516,9 @@ function VrsticaTurnirjaMobi({ turnir, danes = false }: { turnir: TurnirDto; dan
       <span className="vrstica-mobi__datum">
         <span className="vrstica-mobi__dan">{dan}</span>
         <span className="vrstica-mobi__mesec">{mesec}</span>
+        {turnir.datumZacetka && (
+          <span className="vrstica-mobi__leto">{turnir.datumZacetka.slice(0, 4)}</span>
+        )}
       </span>
       <span className="vrstica-mobi__telo">
         <span className="vrstica-mobi__ime">{turnir.ime}</span>

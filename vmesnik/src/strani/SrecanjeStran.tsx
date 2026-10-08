@@ -34,6 +34,8 @@ import {
   type VrsticaNiza,
 } from '../komponente/TockeNizov'
 import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
+import { useNaslovStrani } from '../pomozno/naslovStrani'
+import { useTelefon } from '../pomozno/telefon'
 
 export function SrecanjeStran() {
   const { id } = useParams()
@@ -61,6 +63,16 @@ export function SrecanjeStran() {
     queryFn: () => turnirjiApi.najdi(idTurnir!),
     enabled: idTurnir != null && !uvozeno && jeOrganizator && !jeAdmin,
   })
+
+  /* Končano srečanje nosi izid že v naslovu - tako se tudi deli po večeru. */
+  const zaNaslov = podrobno.data?.srecanje
+  useNaslovStrani(
+    zaNaslov == null
+      ? null
+      : zaNaslov.status === 'KONCANO'
+        ? `${zaNaslov.domaci} ${zaNaslov.dobljeneDomaci} : ${zaNaslov.dobljeneGost} ${zaNaslov.gost}`
+        : `${zaNaslov.domaci} – ${zaNaslov.gost}`,
+  )
 
   if (podrobno.isLoading) return <p className="obvestilo">Nalaganje …</p>
   if (podrobno.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
@@ -203,6 +215,7 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
   const [popravljana, nastaviPopravljano] = useState<TekmaSrecanjaDto | null>(null)
   const [menjava, nastaviMenjavo] = useState<TekmaSrecanjaDto | null>(null)
   const [tekmaZNizi, nastaviTekmoZNizi] = useState<TekmaSrecanjaDto | null>(null)
+  const jeTelefon = useTelefon()
   const s = podrobno.srecanje
   const koncano = s.status === 'KONCANO'
 
@@ -215,118 +228,140 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
         </span>
       </div>
 
-      <div className="tabela-ovoj">
-        <table className="tabela srecanje__tabela">
-          <caption className="samo-za-bralnik">Zapisnik srečanja: posamične tekme po vrstnem redu</caption>
-          <thead>
-            <tr>
-              <th scope="col" className="srecanje__oznaka-glava">Par</th>
-              <th scope="col" className="srecanje__stran-glava">Domači</th>
-              <th scope="col" className="srecanje__izid-glava">Izid</th>
-              <th scope="col">Gost</th>
-              <th scope="col" className="tabela__dejanja">Stanje</th>
-            </tr>
-          </thead>
-          <tbody>
-            {podrobno.tekme.map((t) => {
-              const konec = t.status === 'KONCANA'
-              const domZmaga = t.zmagovalecStran === 'DOMACI'
-              const gostZmaga = t.zmagovalecStran === 'GOST'
-              /* Točke so izpisane že pod izidom; klik jih odpre v istem oknu kot
-                 na turnirju, kjer se berejo po nizih v stolpcih. */
-              const zNizi = konec && t.nizi.length > 0
-              return (
-                <tr
-                  key={t.id}
-                  className={
-                    t.status === 'NEODIGRANA'
-                      ? 'srecanje__vrsta--neodigrana'
-                      : zNizi
-                        ? 'srecanje__vrsta--klikljiva'
-                        : undefined
-                  }
-                  onClick={zNizi ? () => nastaviTekmoZNizi(t) : undefined}
-                  onKeyDown={zNizi ? (d) => obTipki(d, () => nastaviTekmoZNizi(t)) : undefined}
-                  tabIndex={zNizi ? 0 : undefined}
-                  title={zNizi ? 'Pokaži točke po nizih' : undefined}
-                >
-                  <td className="srecanje__oznaka">{t.oznaka}</td>
-                  <td
+      {jeTelefon ? (
+        <ZapisnikMobi
+          tekme={podrobno.tekme}
+          jeAdmin={jeAdmin}
+          koncano={koncano}
+          onNizi={nastaviTekmoZNizi}
+          onPopravi={nastaviPopravljano}
+          onVnesi={nastaviUrejano}
+        />
+      ) : (
+        <div className="tabela-ovoj">
+          <table className="tabela srecanje__tabela">
+            <caption className="samo-za-bralnik">Zapisnik srečanja: posamične tekme po vrstnem redu</caption>
+            <thead>
+              <tr>
+                <th scope="col" className="srecanje__oznaka-glava">Par</th>
+                <th scope="col" className="srecanje__stran-glava">Domači</th>
+                <th scope="col" className="srecanje__izid-glava">Izid</th>
+                <th scope="col">Gost</th>
+                <th scope="col" className="tabela__dejanja">Stanje</th>
+              </tr>
+            </thead>
+            <tbody>
+              {podrobno.tekme.map((t) => {
+                const konec = t.status === 'KONCANA'
+                const domZmaga = t.zmagovalecStran === 'DOMACI'
+                const gostZmaga = t.zmagovalecStran === 'GOST'
+                /* Točke so izpisane že pod izidom; klik jih odpre v istem oknu kot
+                   na turnirju, kjer se berejo po nizih v stolpcih. */
+                const zNizi = konec && t.nizi.length > 0
+                return (
+                  <tr
+                    key={t.id}
                     className={
-                      'srecanje__stran-celica' +
-                      (domZmaga ? ' srecanje__zmaga' : gostZmaga ? ' srecanje__poraz' : '')
+                      t.status === 'NEODIGRANA'
+                        ? 'srecanje__vrsta--neodigrana'
+                        : zNizi
+                          ? 'srecanje__vrsta--klikljiva'
+                          : undefined
                     }
+                    onClick={zNizi ? () => nastaviTekmoZNizi(t) : undefined}
+                    onKeyDown={zNizi ? (d) => obTipki(d, () => nastaviTekmoZNizi(t)) : undefined}
+                    tabIndex={zNizi ? 0 : undefined}
+                    title={zNizi ? 'Pokaži točke po nizih' : undefined}
                   >
-                    {imeStrani(t, 'DOMACI')}
-                    <SpremembaRatinga vrednost={t.spremembaRatingaDomaci} />
-                    {t.menjavaDomaci && <OznakaMenjave />}
-                  </td>
-                  <td className="srecanje__izid-tekme">
-                    {konec ? (
-                      <>
-                        {izidNizov(t.dobljeniNiziDomaci, t.dobljeniNiziGost, t.izidTip)}
-                        {/* Točke po nizih so neobvezne — izpišejo se le, kadar
-                            jih je organizator vpisal. */}
-                        {t.nizi.length > 0 && (
-                          <span className="srecanje__nizi">
-                            {t.nizi.map((n) => `${n.tocke1}:${n.tocke2}`).join(', ')}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td
-                    className={
-                      gostZmaga ? 'srecanje__zmaga' : domZmaga ? 'srecanje__poraz' : undefined
-                    }
-                  >
-                    {imeStrani(t, 'GOST')}
-                    <SpremembaRatinga vrednost={t.spremembaRatingaGost} />
-                    {t.menjavaGost && <OznakaMenjave />}
-                  </td>
-                  <td className="tabela__dejanja">
-                    {konec ? (
-                      jeAdmin ? (
-                        /* Ustavi klik vrstice: ta odpre točke po nizih, gumb pa
-                           popravek — obojega naenkrat ni mogoče hoteti. */
-                        <button
-                          className="gumb gumb--majhen"
-                          aria-label={`Popravi rezultat – ${t.oznaka}`}
-                          onClick={(d) => {
-                            d.stopPropagation()
-                            nastaviPopravljano(t)
-                          }}
-                        >
-                          Popravi
-                        </button>
+                    <td className="srecanje__oznaka">{t.oznaka}</td>
+                    <td
+                      className={
+                        'srecanje__stran-celica' +
+                        (domZmaga ? ' srecanje__zmaga' : gostZmaga ? ' srecanje__poraz' : '')
+                      }
+                    >
+                      {imeStrani(t, 'DOMACI')}
+                      <SpremembaRatinga vrednost={t.spremembaRatingaDomaci} />
+                      {t.menjavaDomaci && <OznakaMenjave />}
+                    </td>
+                    <td className="srecanje__izid-tekme">
+                      {konec ? (
+                        <>
+                          {izidNizov(t.dobljeniNiziDomaci, t.dobljeniNiziGost, t.izidTip)}
+                          {/* Točke po nizih so neobvezne — izpišejo se le, kadar
+                              jih je organizator vpisal. */}
+                          {t.nizi.length > 0 && (
+                            <span className="srecanje__nizi">
+                              {t.nizi.map((n) => `${n.tocke1}:${n.tocke2}`).join(', ')}
+                            </span>
+                          )}
+                        </>
                       ) : (
-                        <span className="srecanje__stanje">Končana</span>
-                      )
-                    ) : jeAdmin && !koncano && t.status === 'CAKA' ? (
-                      <div>
-                        <button
-                          className="gumb gumb--majhen srecanje__gumb-menjave"
-                          aria-label={`Menjava igralcev – ${t.oznaka}`}
-                          onClick={() => nastaviMenjavo(t)}
-                        >
-                          Menjava
-                        </button>
-                        <button className="gumb gumb--majhen" onClick={() => nastaviUrejano(t)}>
-                          Vnesi
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="srecanje__stanje srecanje__stanje--caka">Čaka</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                        '—'
+                      )}
+                    </td>
+                    <td
+                      className={
+                        gostZmaga ? 'srecanje__zmaga' : domZmaga ? 'srecanje__poraz' : undefined
+                      }
+                    >
+                      {imeStrani(t, 'GOST')}
+                      <SpremembaRatinga vrednost={t.spremembaRatingaGost} />
+                      {t.menjavaGost && <OznakaMenjave />}
+                    </td>
+                    <td className="tabela__dejanja">
+                      {konec ? (
+                        jeAdmin ? (
+                          /* Ustavi klik vrstice: ta odpre točke po nizih, gumb pa
+                             popravek — obojega naenkrat ni mogoče hoteti. */
+                          <button
+                            className="gumb gumb--majhen"
+                            aria-label={`Popravi rezultat – ${t.oznaka}`}
+                            onClick={(d) => {
+                              d.stopPropagation()
+                              nastaviPopravljano(t)
+                            }}
+                          >
+                            Popravi
+                          </button>
+                        ) : (
+                          <span className="srecanje__stanje">Končana</span>
+                        )
+                      ) : jeAdmin && !koncano && t.status === 'CAKA' ? (
+                        <div>
+                          <button
+                            className="gumb gumb--majhen srecanje__gumb-menjave"
+                            aria-label={`Menjava igralcev – ${t.oznaka}`}
+                            onClick={() => nastaviMenjavo(t)}
+                          >
+                            Menjava
+                          </button>
+                          <button className="gumb gumb--majhen" onClick={() => nastaviUrejano(t)}>
+                            Vnesi
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="srecanje__stanje srecanje__stanje--caka">Čaka</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Številka ob imenu (»−113«) je brez pojasnila videti kot napaka -
+          posebej prvi dan novinca, ko se rating izračuna znova iz vseh izidov. */}
+      {podrobno.tekme.some(
+        (t) => t.spremembaRatingaDomaci !== null || t.spremembaRatingaGost !== null,
+      ) && (
+        <p className="namig srecanje__razlaga-ratinga">
+          Številka ob imenu je sprememba Turnirko ratinga ob tej tekmi.{' '}
+          <Link to="/o-ratingu">Kako nastane →</Link>
+        </p>
+      )}
 
       {urejana && (
         <RezultatOkno
@@ -380,6 +415,185 @@ function Zapisnik({ podrobno, jeAdmin }: { podrobno: SrecanjePodrobnoDto; jeAdmi
    kot A. */
 function OznakaMenjave() {
   return <span className="srecanje__menjava">menjava</span>
+}
+
+/* Kratka oznaka izida, ki ni navadno odigrana tekma - stoji ob nizih. */
+const OZNAKA_POSEBNEGA_IZIDA: Partial<Record<IzidTekme, string>> = {
+  BREZ_BOJA: 'b. b.',
+  PREDAJA: 'predaja',
+  DISKVALIFIKACIJA: 'diskv.',
+}
+
+/* Zapisnik na telefonu. Tabela petih stolpcev je bila pri 375 px široka
+   500 px: stolpec gostov je ležal izven zaslona, imena so se lomila v štiri
+   vrstice (»Aleš / Friedl / / Miloš / Grum«), nizi so bili odrezani. Tu je
+   tekma vrstica s črto (kot na papirju), v njej pa domači in gost vsak v svoji
+   vrsti: ime čez vso širino, ob njem sprememba ratinga in dobljeni nizi. Par
+   dvojic ima vsakega igralca v svoji vrstici, zato se ime ne prelomi sredi
+   besede. Točke po nizih so pod njima, z vidika domačih (kot na listku). */
+function ZapisnikMobi({
+  tekme,
+  jeAdmin,
+  koncano,
+  onNizi,
+  onPopravi,
+  onVnesi,
+}: {
+  tekme: TekmaSrecanjaDto[]
+  jeAdmin: boolean
+  koncano: boolean
+  onNizi: (t: TekmaSrecanjaDto) => void
+  onPopravi: (t: TekmaSrecanjaDto) => void
+  onVnesi: (t: TekmaSrecanjaDto) => void
+}) {
+  return (
+    <ol className="zapisnik-mobi" aria-label="Zapisnik srečanja: posamične tekme po vrstnem redu">
+      {tekme.map((t) => {
+        const konec = t.status === 'KONCANA'
+        const zNizi = konec && t.nizi.length > 0
+        const posebno = konec && t.izidTip ? OZNAKA_POSEBNEGA_IZIDA[t.izidTip] : undefined
+        /* Samo zmagovalec brez nizov (uvožena tekma) - 0 : 0 bi se bral kot izid. */
+        const brezNizov = konec && t.dobljeniNiziDomaci === 0 && t.dobljeniNiziGost === 0
+        return (
+          <li
+            key={t.id}
+            className={
+              'zapisnik-mobi__tekma' +
+              (t.status === 'NEODIGRANA' ? ' zapisnik-mobi__tekma--neodigrana' : '') +
+              (zNizi ? ' zapisnik-mobi__tekma--klikljiva' : '')
+            }
+            onClick={zNizi ? () => onNizi(t) : undefined}
+            onKeyDown={zNizi ? (d) => obTipki(d, () => onNizi(t)) : undefined}
+            tabIndex={zNizi ? 0 : undefined}
+            role={zNizi ? 'button' : undefined}
+            title={zNizi ? 'Pokaži točke po nizih' : undefined}
+          >
+            <div className="zapisnik-mobi__glava">
+              <span className="zapisnik-mobi__oznaka">{t.oznaka}</span>
+              <StanjeTekmeMobi
+                tekma={t}
+                jeAdmin={jeAdmin}
+                koncano={koncano}
+                onPopravi={onPopravi}
+                onVnesi={onVnesi}
+              />
+            </div>
+            <StranZapisnikaMobi
+              imena={[t.domaci, t.domaci2]}
+              sprememba={t.spremembaRatingaDomaci}
+              menjava={t.menjavaDomaci}
+              nizi={konec && !brezNizov ? t.dobljeniNiziDomaci : null}
+              zmaga={t.zmagovalecStran === 'DOMACI'}
+              poraz={t.zmagovalecStran === 'GOST'}
+            />
+            <StranZapisnikaMobi
+              imena={[t.gost, t.gost2]}
+              sprememba={t.spremembaRatingaGost}
+              menjava={t.menjavaGost}
+              nizi={konec && !brezNizov ? t.dobljeniNiziGost : null}
+              zmaga={t.zmagovalecStran === 'GOST'}
+              poraz={t.zmagovalecStran === 'DOMACI'}
+            />
+            {(t.nizi.length > 0 || posebno || brezNizov) && (
+              <p className="zapisnik-mobi__tocke">
+                {[
+                  t.nizi.map((n) => `${n.tocke1}:${n.tocke2}`).join(' · '),
+                  posebno,
+                  brezNizov && !posebno ? 'zapisan samo zmagovalec' : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            )}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function StranZapisnikaMobi({
+  imena,
+  sprememba,
+  menjava,
+  nizi,
+  zmaga,
+  poraz,
+}: {
+  imena: (string | null)[]
+  sprememba: number | null
+  menjava: boolean
+  nizi: number | null
+  zmaga: boolean
+  poraz: boolean
+}) {
+  const vidna = imena.filter((ime): ime is string => !!ime)
+  return (
+    <div
+      className={
+        'zapisnik-mobi__stran' +
+        (zmaga ? ' zapisnik-mobi__stran--zmaga' : '') +
+        (poraz ? ' zapisnik-mobi__stran--poraz' : '')
+      }
+    >
+      <span className="zapisnik-mobi__imena">
+        {vidna.length === 0 && <span className="zapisnik-mobi__ime">—</span>}
+        {vidna.map((ime) => (
+          <span key={ime} className="zapisnik-mobi__ime">
+            {ime}
+          </span>
+        ))}
+        {menjava && <OznakaMenjave />}
+      </span>
+      <SpremembaRatinga vrednost={sprememba} />
+      <span className="zapisnik-mobi__nizi">{nizi ?? ''}</span>
+    </div>
+  )
+}
+
+/* Desno v vrstici tekme: organizatorju gumb (vnos ali popravek), gledalcu
+   stanje - a samo, kadar kaj pove: pri končani tekmi to povedo nizi. */
+function StanjeTekmeMobi({
+  tekma,
+  jeAdmin,
+  koncano,
+  onPopravi,
+  onVnesi,
+}: {
+  tekma: TekmaSrecanjaDto
+  jeAdmin: boolean
+  koncano: boolean
+  onPopravi: (t: TekmaSrecanjaDto) => void
+  onVnesi: (t: TekmaSrecanjaDto) => void
+}) {
+  if (tekma.status === 'KONCANA') {
+    if (!jeAdmin) return null
+    return (
+      <button
+        className="gumb gumb--majhen"
+        aria-label={`Popravi rezultat – ${tekma.oznaka}`}
+        onClick={(d) => {
+          /* Klik vrstice odpre točke po nizih - obojega naenkrat ni mogoče hoteti. */
+          d.stopPropagation()
+          onPopravi(tekma)
+        }}
+      >
+        Popravi
+      </button>
+    )
+  }
+  if (jeAdmin && !koncano && tekma.status === 'CAKA') {
+    return (
+      <button className="gumb gumb--majhen" onClick={() => onVnesi(tekma)}>
+        Vnesi
+      </button>
+    )
+  }
+  return (
+    <span className="srecanje__stanje srecanje__stanje--caka">
+      {tekma.status === 'NEODIGRANA' ? 'Ni bila igrana' : 'Čaka'}
+    </span>
+  )
 }
 
 /* Menjava velja za to eno tekmo in ne »od tu naprej«: v ligi se igralci med

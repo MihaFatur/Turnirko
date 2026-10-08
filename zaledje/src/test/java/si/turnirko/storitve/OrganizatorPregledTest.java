@@ -193,7 +193,10 @@ class OrganizatorPregledTest extends IntegracijskiTest {
         assertEquals(VrstaTekmovanja.LIGA, vrstica.vrsta());
         assertEquals(VrstaCakanja.ZAPISNIKI, vrstica.cakaVrsta());
         assertEquals(VrstaNapredka.KOLO, vrstica.napredekVrsta());
-        assertEquals(1, vrstica.napredekTrenutno(), "tece prvo kolo");
+        /* Kolo, ki tece, je po istem pravilu kot povsod (PotekLige): prvo je po
+           datumu mimo, zato tece drugo - nevpisani zapisnik prvega cakanje
+           pove posebej (ZAPISNIKI zgoraj) in kolesa ne zadrzi. */
+        assertEquals(2, vrstica.napredekTrenutno(), "prvo kolo je mimo, tece drugo");
         assertEquals(2, vrstica.napredekVseh());
     }
 

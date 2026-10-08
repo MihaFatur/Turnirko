@@ -1,6 +1,8 @@
 /* Liga - izpis konfiguracije in stanja. */
 package si.turnirko.dto;
 
+import java.time.LocalDate;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -57,12 +59,19 @@ public record LigaDto(
         int stKvalifikacijeDol,
         StatusTekmovanja status,
         int steviloEkip,
-        // Napredek lige: koliko kol ima razpored in koliko jih je odigranih
-        // (kolo je odigrano, ko je koncano vsako njegovo srecanje). Vrstica
-        // lige na telefonu iz tega izpise "7. od 18 kol" in palico; brez
-        // razporeda sta oba nic.
+        // Napredek rednega dela: koliko kol ima razpored in koliko jih je za
+        // nami. Kolo je odigrano, ko je njegov datum mimo (kolo brez datuma,
+        // ko je koncano vsako srecanje) - isto pravilo kot na domaci strani
+        // (PotekLige). Brez razporeda sta oba nic.
         int odigranihKol,
         int steviloKol,
+        // Stevilke odigranih kol, narascajoce: razpored po njih oznaci trak
+        // kol, da se z glavo strani ne razideta.
+        List<Integer> odigranaKola,
+        // Prvo kolo, ki se ni odigrano in ga termin ni prehitel (srecanje z
+        // nevpisanim izidom in starim datumom NI naslednje); null, ko takega
+        // ni. Koncnica tu ne steje - glavo po rednem delu nosi ona sama.
+        Naslednje naslednje,
         // Ali liga stoji v sklopu "Lige" na domaci strani (najvec dve, izbere
         // admin). Javno polje, ker po njem vmesnik oznaci ligo v izboru in ve,
         // kaj naj domaca stran pokaze gostu.
@@ -87,12 +96,16 @@ public record LigaDto(
         String kvalifikacijeNizjaIme
 ) {
 
+    /* Naslednje kolo: stevilka in dan (null, ce kolo termina nima). */
+    public record Naslednje(int kolo, LocalDate datum) {}
+
     /* Liga brez razporeda (nova, urejena, prehodi) - kol se ni. */
     public static LigaDto iz(Liga l, int steviloEkip) {
-        return iz(l, steviloEkip, 0, 0);
+        return iz(l, steviloEkip, List.of(), 0, null);
     }
 
-    public static LigaDto iz(Liga l, int steviloEkip, int odigranihKol, int steviloKol) {
+    public static LigaDto iz(Liga l, int steviloEkip, List<Integer> odigranaKola, int steviloKol,
+                             Naslednje naslednje) {
         return new LigaDto(
                 l.getId(), l.getIme(), l.getSezona(), l.getSpolKategorija(),
                 l.getFormatSrecanja(), l.getSteviloNizov(), l.getZmagZaSrecanje(),
@@ -107,7 +120,7 @@ public record LigaDto(
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getIme() : null,
                 l.getStNapreduje(), l.getStIzpade(),
                 l.getStKvalifikacijeGor(), l.getStKvalifikacijeDol(), l.getStatus(), steviloEkip,
-                odigranihKol, steviloKol, l.isNaDomaci(),
+                odigranaKola.size(), steviloKol, odigranaKola, naslednje, l.isNaDomaci(),
                 l.getUstvaril() != null ? l.getUstvaril().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getIme() : null,

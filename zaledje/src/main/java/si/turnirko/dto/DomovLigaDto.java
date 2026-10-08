@@ -22,7 +22,12 @@ public record DomovLigaDto(
         // odigrano, ko je koncano vsako njegovo srecanje. Koncnica ne steje.
         int odigranihKol,
         int vsehKol,
+        // Mini razpredelnica: prve tri ekipe, igralcu s Premium pa njegova
+        // ekipa in soseda (glej DomovStoritev.okno).
         List<Vrh> vrh,
+        // Koliko ekip ima lestvica - vmesnik po tem ve, ali je zadnja vrstica
+        // razpredelnice tudi zadnja na lestvici.
+        int ekip,
         Naslednje naslednje,
         // Liga je na seznamu, ker prijavljeni igralec v njej nastopa (kader
         // ekipe) - ne zaradi njegovega izbora in ne zaradi izloga zveze. Po tem
@@ -30,8 +35,9 @@ public record DomovLigaDto(
         boolean izEkipe
 ) {
 
-    /* Ena vrstica mini razpredelnice (prve tri ekipe). */
-    public record Vrh(int mesto, String ekipa, int odigrane, int tocke) {}
+    /* Ena vrstica mini razpredelnice. moja = v kadru te ekipe je prijavljeni
+       igralec s Premium (vrstica je poudarjena). */
+    public record Vrh(int mesto, String ekipa, int odigrane, int tocke, boolean moja) {}
 
     /* Kolo prvega se neodigranega srecanja lige, ki ga termin se ni prehitel
        (neodigrano srecanje s starim datumom ni "naslednje"; pri ligi, ki ima

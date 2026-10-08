@@ -10,6 +10,7 @@
 package si.turnirko.repozitoriji;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -203,4 +204,34 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
               AND p.status <> :odjavljen AND p.igralec2 IS NOT NULL
             """)
     List<Object[]> soigralciTurnirjev(List<Long> idjiTurnirjev, Prijava.StatusPrijave odjavljen);
+
+    /* Turnirji, na katere je igralec prijavljen posamicno ali v paru, brez
+       odjav - domaca stran po njih najde njegov zadnji in prihajajoci turnir. */
+    @Query("""
+            SELECT DISTINCT p.dogodek.turnir.id FROM Prijava p
+            WHERE (p.igralec.id = :idIgralec OR p.igralec2.id = :idIgralec)
+              AND p.status <> :odjavljen
+            """)
+    List<Long> turnirjiIgralca(Long idIgralec, Prijava.StatusPrijave odjavljen);
+
+    /* Profil igralca: koliko udelezencev ima v vsakem dogodku posamezno koncno
+       mesto (NULL = brez mesta). Iz tega profil pove "5. od 32" in deljeno
+       mesto ("3.-4.") za vse kategorije igralca v eni poizvedbi.
+       Vrstice so [idDogodek, koncnoMesto, stevilo]. */
+    @Query("""
+            SELECT p.dogodek.id, p.koncnoMesto, COUNT(p) FROM Prijava p
+            WHERE p.dogodek.id IN :idjiDogodkov AND p.status <> :odjavljen
+            GROUP BY p.dogodek.id, p.koncnoMesto
+            """)
+    List<Object[]> mestaPoDogodkih(Collection<Long> idjiDogodkov, Prijava.StatusPrijave odjavljen);
+
+    /* Turnirji, na katerih so nastopili igralci danega kluba (razen igralca
+       samega): "igrajo klubski kolegi" na domaci strani. Klub je posnetek ob
+       prijavi - kdor je klub zamenjal, je bil takrat kolega drugih. */
+    @Query("""
+            SELECT DISTINCT p.dogodek.turnir.id FROM Prijava p
+            WHERE p.klubObPrijavi.id = :idKlub AND p.status <> :odjavljen
+              AND p.igralec.id <> :idIgralec
+            """)
+    List<Long> turnirjiKluba(Long idKlub, Long idIgralec, Prijava.StatusPrijave odjavljen);
 }

@@ -208,6 +208,12 @@ function PrijavaObrazec({
       <button type="button" className="povezava-gumb" onClick={onPozabljeno}>
         Pozabljeno geslo?
       </button>
+      {/* Pogoji in podatki o ponudniku morajo biti dosegljivi z vsake strani;
+          noge strani nimamo, okno prijave pa je na vsaki strani en dotik stran
+          (»Gost · prijava«). Nov zavihek, da se okno ne zapre. */}
+      <a href="/pogoji" target="_blank" rel="noopener" className="prijava__pogoji">
+        Pogoji uporabe in zasebnost
+      </a>
     </form>
   )
 }

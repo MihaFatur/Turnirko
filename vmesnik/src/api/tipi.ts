@@ -941,7 +941,11 @@ export interface DomovLigaDto {
   status: StatusTekmovanja
   odigranihKol: number
   vsehKol: number
+  /* Tri vrstice lestvice: vrh, igralcu s Premium pa njegova ekipa s sosedama
+     (ena gor in ena dol; na vrhu dve dol, na dnu dve gor). */
   vrh: VrhLigeDto[]
+  /* Koliko ekip ima lestvica - po tem vmesnik ve, da je zadnja vrstica dno. */
+  ekip: number
   naslednje: NaslednjeKoloDto | null
   /* Liga je na seznamu, ker prijavljeni igralec v njej nastopa (Premium:
      kader ekipe) — ne zaradi izbora ali izloga zveze. Po tem sklop sme reči
@@ -954,6 +958,24 @@ export interface VrhLigeDto {
   ekipa: string
   odigrane: number
   tocke: number
+  /* V kadru te ekipe je prijavljeni igralec s Premium. */
+  moja: boolean
+}
+
+/* Zakaj turnir stoji v sklopu »Turnirji« domače strani igralca s Premium
+   (IzborTurnirjev v zaledju). */
+export type RazlogTurnirja =
+  | 'PRIJAVLJEN'
+  | 'PRIHAJA_PRIMEREN'
+  | 'ZADNJI'
+  | 'V_TEKU'
+  | 'KOLEGI'
+  | 'PRIMEREN'
+  | 'OSTALO'
+
+export interface DomovTurnirDto {
+  idTurnir: number
+  razlog: RazlogTurnirja
 }
 
 export interface NaslednjeKoloDto {
@@ -1362,11 +1384,19 @@ export interface LigaDto {
   stKvalifikacijeDol: number
   status: StatusTekmovanja
   steviloEkip: number
-  /* Napredek lige: koliko kol ima razpored in koliko jih je odigranih (kolo je
-     odigrano, ko je končano vsako njegovo srečanje). Vrstica lige na telefonu
-     iz tega izpiše »7. od 18 kol« in palico; brez razporeda sta oba 0. */
+  /* Napredek rednega dela: koliko kol ima razpored in koliko jih je za nami.
+     Kolo je odigrano, ko je njegov datum mimo (kolo brez datuma, ko je končano
+     vsako srečanje) — isto pravilo kot na domači strani (PotekLige v
+     zaledju). Brez razporeda sta oba 0. */
   odigranihKol: number
   steviloKol: number
+  /* Številke odigranih kol: razpored po njih označi trak kol, da se z glavo
+     strani ne razideta. */
+  odigranaKola: number[]
+  /* Prvo kolo, ki še ni odigrano in ga termin ni prehitel (srečanje z
+     nevpisanim izidom in starim datumom NI naslednje); null, ko ga ni.
+     Končnica tu ne šteje — glavo po rednem delu nosi ona sama. */
+  naslednje: { kolo: number; datum: string | null } | null
   /* Ali liga stoji v sklopu »Lige« na domači strani (največ dve, izbere
      admin). Javno polje: po njem vmesnik ligo označi v izboru. */
   naDomaci: boolean
@@ -1784,6 +1814,9 @@ export interface ProfilDto {
   uvrstitev: ProfilUvrstitev
   graf: TockaGrafa[]
   tekme: TekmaProfila[]
+  /* Tekme, zbrane po tekmovanju (kategorija turnirja oz. liga), najnovejše
+     prve. Tekma v »tekme« nosi ključ svojega tekmovanja. */
+  tekmovanja: TekmovanjeProfila[]
   /* Tekme dvojic so ločen seznam in ne štejejo v »pregled« ne v rating:
      izida para ni mogoče pripisati posamezniku. */
   dvojice: TekmaDvojic[]
@@ -1813,6 +1846,10 @@ export interface ProfilUvrstitev {
   skupajIgralcev: number
   percentil: number | null
   klubskoPovprecje: number | null
+  /* Na kateri lestvici je mesto: isti spol, tekmovalci (»Člani«) oz.
+     rekreativci - isti obseg kot na strani Lestvica. */
+  spol: Spol | null
+  rekreativec: boolean
 }
 
 export type RazlogSpremembe = 'POSTAVITEV' | 'NEAKTIVNOST' | 'ZUNANJA_UVRSTITEV'
@@ -1890,6 +1927,29 @@ export interface TekmaProfila {
   zmaga: boolean
   izidTip: IzidTekme | null
   spremembaRatinga: number | null
+  /* Ključ tekmovanja v ProfilDto.tekmovanja (»d12« kategorija turnirja,
+     »l7« liga). */
+  tekmovanjeKljuc: string
+}
+
+/* Nastop igralca na enem tekmovanju (kategorija turnirja ali liga). »mesto«
+   je končno mesto v kategoriji (pri ligi ga ni), »mestoDo« zadnje mesto, ki
+   ga deli z drugimi (polfinalista brez tekme za 3. mesto: 3 in 4). */
+export interface TekmovanjeProfila {
+  kljuc: string
+  ligaska: boolean
+  idTurnir: number | null
+  idDogodek: number | null
+  idLiga: number | null
+  ime: string
+  del: string
+  datum: string | null
+  zmage: number
+  porazi: number
+  spremembaRatinga: number | null
+  mesto: number | null
+  mestoDo: number | null
+  udelezencev: number | null
 }
 
 /* Ena odigrana tekma dvojic z vidika lastnika profila: s kom je igral
@@ -2060,6 +2120,53 @@ export interface NapovedTekmeDto {
      iz obrazca in razlog, zakaj zmaga proti močnejšemu prinese več. */
   pricakovanOdstotek: number
   ravni: NapovedRaven[]
+}
+
+/* ---------- Javna razlaga ratinga (/o-ratingu) ---------- */
+
+/* Številke pravil iz istih konstant, ki jih bere obračun — stran jih ne
+   zapiše na roko, ker se ob umeritvi spremenijo. */
+export interface PravilaRatingaDto {
+  kOsnovni: number
+  pribitekNeustaljen: number
+  pragUstaljen: number
+  pribitekNovinec: number
+  pragNovinec: number
+  pribitekVrnitev: number
+  mesecevZaVrnitev: number
+  tekemPoVrnitvi: number
+  ravni: { raven: RavenTekmovanja; teza: number }[]
+  /* Po toliko mesecih brez tekme je skupaj odbitih toliko točk. */
+  odbitki: { mesecev: number; skupaj: number }[]
+  mesecevDoSkritja: number
+  rekreativniZacetek: number
+  navideznihTekem: number
+  pragRekreativca: number
+  spodnjaMeja: number
+  napovedi: { razlika: number; odstotek: number }[]
+  sidra: { spol: Spol; starost: number; vrednost: number }[]
+}
+
+/* Preizkus ene tekme dveh izmišljenih igralcev; ravni so iste vrstice kot v
+   zasebni napovedi na profilu. */
+export interface IzracunTekmeDto {
+  pricakovanOdstotek: number
+  k: number
+  kNasprotnika: number
+  ravni: NapovedRaven[]
+}
+
+/* Preizkus prvega dne novinca: rating po vsaki tekmi in razlika do prejšnje. */
+export interface PrviDanNovincaDto {
+  izhodisce: number
+  koraki: {
+    ratingNasprotnika: number
+    zmaga: boolean
+    rating: number
+    sprememba: number
+    /* Rating je izračunan znova iz vseh izidov dneva (od druge tekme naprej). */
+    uvrstitev: boolean
+  }[]
 }
 
 /* ---------- Koledar ---------- */

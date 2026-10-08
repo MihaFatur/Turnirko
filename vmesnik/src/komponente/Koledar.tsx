@@ -405,11 +405,9 @@ export function opisVnosa(vnos: KoledarVnosDto): string {
 
 /* »1 srečanje, 2 srečanji, 3 srečanja, 5 srečanj«. */
 export function sklonSrecanj(n: number): string {
-  const mod100 = n % 100
-  if (mod100 >= 11 && mod100 <= 14) return 'srečanj'
-  const mod10 = n % 10
-  if (mod10 === 1) return 'srečanje'
-  if (mod10 === 2) return 'srečanji'
-  if (mod10 === 3 || mod10 === 4) return 'srečanja'
+  const ostanek = n % 100
+  if (ostanek === 1) return 'srečanje'
+  if (ostanek === 2) return 'srečanji'
+  if (ostanek === 3 || ostanek === 4) return 'srečanja'
   return 'srečanj'
 }

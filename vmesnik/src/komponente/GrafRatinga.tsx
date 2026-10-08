@@ -17,12 +17,18 @@
    Privzeto obdobje so trije meseci: gledalec pride po zadnjo formo, ne po
    celotno zgodovino, ta pa je pri uvoženih igralcih dolga tudi deset let.
 
-   Oznake osi so HTML nad risalno ploskvijo, ne <text> v SVG: SVG jih pri
-   raztegu ploskve na širino okvirja skalira skupaj z grafom (12 px bi na
-   1360 px oknu postalo 14,6 px), poleg tega jih na telefonu ni mogoče
-   preprosto skriti. */
+   Graf ima osi: navpično z vrednostmi ratinga na okroglih številkah (po 10,
+   25, 50, 100 …) in vodoravno z datumi nekaj tekem. Prej sta bili le dve
+   oznaki ob robu in na telefonu nobena (pod 768 px so bile skrite), graf pa
+   je bil tam visok 84 px - črta brez merila.
+
+   Risalna ploskev ima mere okvirja, v katerem stoji (ResizeObserver), in se ne
+   razteza: pri 1120 × 280 raztegnjenih na 335 px telefona je bil graf
+   sploščen, oznake pa nečitljive. Oznake osi so HTML nad ploskvijo (mono
+   pisava strani). */
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import type { TockaGrafa } from '../api/tipi'
 import { OZNAKE_RAZLOG } from '../api/tipi'
@@ -39,11 +45,14 @@ const OBDOBJA: { kljuc: Obdobje; oznaka: string; dni: number | null; meseci: num
   { kljuc: 'vse', oznaka: 'Vse', dni: null, meseci: null },
 ]
 
-/* Risalna ploskev je široka kot vsebinski okvir (1280 px minus 2 x 40 px
-   odmika), da se graf razteza čez celo sekcijo — kot na maketi. */
-const SIRINA = 1120
-const VISINA = 280
-const ROB = { levo: 56, desno: 16, zgoraj: 16, spodaj: 32 }
+/* Širina pred prvo meritvijo okvirja: vsebinski okvir namizja (1280 px minus
+   2 x 40 px odmika). */
+const PRIVZETA_SIRINA = 1120
+/* Ozka ploskev (telefon) je nižja, a ne sploščena - pod to širino 220 px. */
+const OZKA_SIRINA = 600
+const ROB = { levo: 48, desno: 12, zgoraj: 12, spodaj: 28 }
+/* Približna širina datumske oznake na vodoravni osi (»12. 9. 25«) z razmikom. */
+const PROSTOR_OZNAKE_X = 110
 
 /* "otroci" so bloki, ki sodijo v isto sekcijo pod graf (npr. pričakovan proti
    doseženemu izkupičku) — sekcijo namreč izriše ta komponenta, ker izbirnik
@@ -64,8 +73,24 @@ export function GrafRatinga({
 }) {
   const [obdobje, nastaviObdobje] = useState<Obdobje>('3m')
   const [izbrana, nastaviIzbrano] = useState<number | null>(null)
+  const ovoj = useRef<HTMLDivElement>(null)
+  const [sirina, nastaviSirino] = useState(PRIVZETA_SIRINA)
 
   const filtrirane = filtrirajPoObdobju(tocke, obdobje)
+  const prikazan = filtrirane.length > 0
+
+  /* Mere ploskve so mere okvirja (glej opombo na vrhu). Pred izrisom, da
+     prvi prikaz ni v napačnem razmerju. */
+  useLayoutEffect(() => {
+    const okvir = ovoj.current
+    if (!okvir) return
+    const izmeri = () => nastaviSirino(Math.max(240, Math.round(okvir.clientWidth)))
+    izmeri()
+    const opazovalec = new ResizeObserver(izmeri)
+    opazovalec.observe(okvir)
+    return () => opazovalec.disconnect()
+  }, [prikazan])
+  const visina = sirina < OZKA_SIRINA ? 220 : 280
 
   if (tocke.length === 0) {
     return (
@@ -86,8 +111,8 @@ export function GrafRatinga({
   const spodaj = najmanj - razpon * 0.15
   const zgoraj = najvec + razpon * 0.15
 
-  const risalnaSirina = SIRINA - ROB.levo - ROB.desno
-  const risalnaVisina = VISINA - ROB.zgoraj - ROB.spodaj
+  const risalnaSirina = sirina - ROB.levo - ROB.desno
+  const risalnaVisina = visina - ROB.zgoraj - ROB.spodaj
 
   const x = (i: number) =>
     ROB.levo + (filtrirane.length === 1 ? risalnaSirina / 2 : (i / (filtrirane.length - 1)) * risalnaSirina)
@@ -102,7 +127,12 @@ export function GrafRatinga({
         }`
       : ''
 
-  const oznakeY = [zgoraj, (zgoraj + spodaj) / 2, spodaj]
+  const dno = ROB.zgoraj + risalnaVisina
+  const oznakeY = okrogleVrednosti(spodaj, zgoraj, visina < 250 ? 4 : 5)
+  const oznakeX = izbraneTekme(
+    filtrirane,
+    Math.max(2, Math.min(6, Math.floor(risalnaSirina / PROSTOR_OZNAKE_X))),
+  )
   const podrobnost = izbrana !== null ? filtrirane[izbrana] : filtrirane[filtrirane.length - 1]
 
   const skok = (t: TockaGrafa) => (naTekmo && t.idTekme !== null && t.tekmovanje !== null
@@ -142,25 +172,37 @@ export function GrafRatinga({
         <p className="obvestilo">V izbranem obdobju ni obračunanih tekem.</p>
       ) : (
         <>
-          <div className="graf__ovoj">
+          <div className="graf__ovoj" ref={ovoj}>
+            {/* Navpična os: rating. */}
             {oznakeY.map((v) => (
               <span
                 key={v}
                 className="graf__oznaka graf__oznaka--y"
-                style={{ top: `${(y(v) / VISINA) * 100}%` }}
+                style={{ top: y(v), width: ROB.levo - 8 }}
               >
-                {Math.round(v)}
+                {v}
               </span>
             ))}
-            <span className="graf__oznaka graf__oznaka--prvi">{datum(casTocke(filtrirane[0]))}</span>
-            {filtrirane.length > 1 && (
-              <span className="graf__oznaka graf__oznaka--zadnji">
-                {datum(casTocke(filtrirane[filtrirane.length - 1]))}
+            {/* Vodoravna os: tekme po vrsti, pod nekaj izmed njih datum. Skrajni
+                oznaki sta poravnani ob rob, da ne štrlita iz grafa. */}
+            {oznakeX.map((i, k) => (
+              <span
+                key={i}
+                className={
+                  'graf__oznaka graf__oznaka--x' +
+                  (k === 0 && oznakeX.length > 1 ? ' graf__oznaka--x-prva' : '') +
+                  (k === oznakeX.length - 1 && oznakeX.length > 1 ? ' graf__oznaka--x-zadnja' : '')
+                }
+                style={{ left: x(i), top: dno + 8 }}
+              >
+                {datumKratko(casTocke(filtrirane[i]))}
               </span>
-            )}
+            ))}
             <svg
               className="graf__svg"
-              viewBox={`0 0 ${SIRINA} ${VISINA}`}
+              width={sirina}
+              height={visina}
+              viewBox={`0 0 ${sirina} ${visina}`}
               role="img"
               aria-label="Graf napredka Turnirko ratinga"
             >
@@ -169,10 +211,19 @@ export function GrafRatinga({
                   key={v}
                   className="graf__mreza"
                   x1={ROB.levo}
-                  x2={SIRINA - ROB.desno}
+                  x2={sirina - ROB.desno}
                   y1={y(v)}
                   y2={y(v)}
                 />
+              ))}
+              {/* Osi in zarezi ob oznakah. */}
+              <line className="graf__os" x1={ROB.levo} x2={ROB.levo} y1={ROB.zgoraj} y2={dno} />
+              <line className="graf__os" x1={ROB.levo} x2={sirina - ROB.desno} y1={dno} y2={dno} />
+              {oznakeY.map((v) => (
+                <line key={v} className="graf__os" x1={ROB.levo - 4} x2={ROB.levo} y1={y(v)} y2={y(v)} />
+              ))}
+              {oznakeX.map((i) => (
+                <line key={i} className="graf__os" x1={x(i)} x2={x(i)} y1={dno} y2={dno + 4} />
               ))}
 
               {ploskev && <polygon className="graf__ploskev" points={ploskev} />}
@@ -230,7 +281,9 @@ export function GrafRatinga({
               </span>
               <span className="graf__opis">
                 · {datum(casTocke(podrobnost))}
-                {podrobnost.nasprotnik ? ` · proti ${podrobnost.nasprotnik}` : ''}
+                {/* »proti« bi zahteval dajalnik (»proti Alešu Sešlu«), imen pa ne
+                    sklanjamo - zato »nasprotnik« in ime v imenovalniku. */}
+                {podrobnost.nasprotnik ? ` · nasprotnik ${podrobnost.nasprotnik}` : ''}
                 {/* Del (dogodek oz. kolo s parom ekip) je samo v namigu in v
                     vrstici seznama: imena uvoženih turnirjev so dolga cel
                     stavek in bi vrstico na telefonu raztegnila čez pol
@@ -251,7 +304,17 @@ export function GrafRatinga({
               skok brez nasprotnika bral kot napaka. Navadna tekma razlage
               nima. */}
           {podrobnost && razlaga(podrobnost) && (
-            <p className="graf__razlaga">{razlaga(podrobnost)}</p>
+            <p className="graf__razlaga">
+              {razlaga(podrobnost)}
+              {/* Uvrstitev je skok, ki ga gledalec najmanj razume - na javni
+                  razlagi ga lahko preizkusi s svojimi izidi. */}
+              {podrobnost.nacin === 'UVRSTITEV' && (
+                <>
+                  {' '}
+                  <Link to="/o-ratingu#prvi-dan">Preizkusi s svojimi izidi →</Link>
+                </>
+              )}
+            </p>
           )}
         </>
       )}
@@ -314,12 +377,47 @@ function opisTocke(t: TockaGrafa): string {
     datum(casTocke(t)),
     `${t.vrednost} (${t.sprememba >= 0 ? '+' : '−'}${Math.abs(t.sprememba)})`,
   ]
-  if (t.nasprotnik) deli.push(`proti ${t.nasprotnik}`)
+  if (t.nasprotnik) deli.push(`nasprotnik ${t.nasprotnik}`)
   if (t.tekmovanje) deli.push(t.tekmovanje)
   else if (t.ligaska) deli.push('liga')
   else if (t.razlog) deli.push(OZNAKE_RAZLOG[t.razlog])
   if (t.del) deli.push(t.del)
   return deli.join(' · ')
+}
+
+/* Vrednosti navpične osi: okrogle številke (večkratniki 5, 10, 20, 25, 50,
+   100 …) znotraj razpona, največ »najvec« oznak. Izbran je najmanjši korak,
+   ki še gre - čim gostejše merilo, a ne gneča. */
+function okrogleVrednosti(spodaj: number, zgoraj: number, najvec: number): number[] {
+  const koraki = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000]
+  const korak =
+    koraki.find((k) => Math.floor(zgoraj / k) - Math.ceil(spodaj / k) + 1 <= najvec) ?? 1000
+  const vrednosti: number[] = []
+  for (let v = Math.ceil(spodaj / korak) * korak; v <= zgoraj; v += korak) vrednosti.push(v)
+  return vrednosti
+}
+
+/* Katere tekme dobijo datum na vodoravni osi: prva, zadnja in enakomerno
+   razporejene vmes (po vrsti, ker je os zaporedje tekem). Tekma brez
+   znanega datuma oznake ne dobi - »datum ni znan« pod osjo ne pove nič. */
+function izbraneTekme(tocke: TockaGrafa[], najvec: number): number[] {
+  const n = tocke.length
+  if (n === 0) return []
+  const stevilo = Math.min(najvec, n)
+  const indeksi =
+    stevilo === 1
+      ? [0]
+      : Array.from({ length: stevilo }, (_, k) => Math.round((k * (n - 1)) / (stevilo - 1)))
+  return [...new Set(indeksi)].filter((i) => casTocke(tocke[i]) !== null)
+}
+
+/* Kratek datum za oznako osi (»12. 9. 25«) - polni »12. 9. 2025« je za
+   telefon predolg, letnica pa mora ostati: graf sega čez več sezon. */
+function datumKratko(iso: string | null): string {
+  if (iso === null) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getDate()}. ${d.getMonth() + 1}. ${String(d.getFullYear()).slice(2)}`
 }
 
 function datum(iso: string | null): string {
