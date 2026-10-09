@@ -446,6 +446,10 @@ export const srecanjaApi = {
     api.posodobi<TekmaSrecanjaDto>(`/srecanja/tekme/${idTekma}/rezultat`, vnos),
   zamenjajIgralce: (idTekma: number, vnos: MenjavaVnos) =>
     api.posodobi<SrecanjePodrobnoDto>(`/srecanja/tekme/${idTekma}/igralci`, vnos),
+  /* Razveljavitev zapisnika: postava, izidi in obračun ratinga gredo, srečanje
+     spet čaka na vnos. Rating strežnik preračuna sam. */
+  razveljaviZapisnik: (id: number) =>
+    api.izbrisi<SrecanjePodrobnoDto>(`/srecanja/${id}/zapisnik`),
   /* Tekma končnice ima svoj termin (redni del ga ima po kolih). */
   nastaviTermin: (id: number, zacetek: string | null) =>
     api.posodobi<SrecanjeDto>(`/srecanja/${id}/termin`, { zacetek }),

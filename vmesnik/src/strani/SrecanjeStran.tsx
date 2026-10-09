@@ -23,6 +23,7 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { NiziTekmeOkno } from '../komponente/NiziTekmeOkno'
+import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { obTipki } from '../komponente/TekmaKartica'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { SpremembaRatinga } from '../komponente/SpremembaRatinga'
@@ -90,6 +91,14 @@ export function SrecanjeStran() {
   const opis = k.opis ?? `${s.kolo}. kolo`
   const imaRezultate = p.tekme.some((t) => t.status === 'KONCANA')
   const lahkoUrejaPostavo = smem && s.status !== 'KONCANO' && !imaRezultate
+  /* Razveljaviti se da zapisnik ligaškega srečanja, ki ga ima. Končana tekma
+     končnice ne (po njej je serija tekla); srečanje rednega dela po sestavi
+     končnice oz. kvalifikacij zavrne strežnik s pojasnilom. */
+  const lahkoRazveljavi = smem
+    && s.idLiga != null
+    && s.status !== 'RAZPORED'
+    && !s.prenesen
+    && !(s.idSerija != null && s.status === 'KONCANO')
   /* Listki so smiselni le, ko je postava določena in kaka tekma še čaka. */
   const imaZaTiskanje = p.tekme.some((t) => t.status === 'CAKA')
 
@@ -187,7 +196,58 @@ export function SrecanjeStran() {
       )}
 
       {lahkoUrejaPostavo && <PostavaUredi podrobno={p} />}
+
+      {lahkoRazveljavi && <RazveljavitevZapisnika srecanje={s} />}
     </section>
+  )
+}
+
+/* Razveljavitev zapisnika vrne srečanje v razpored, kot da ga nihče ni vpisal.
+   Edina pot, kadar so v postavi napačni igralci: postave po prvem izidu ni
+   mogoče spremeniti, popravek pa zamenja le izid. Strežnik preračuna rating,
+   zato lahko traja nekaj sekund — gumb med tem pove, da dela. */
+function RazveljavitevZapisnika({ srecanje }: { srecanje: SrecanjeDto }) {
+  const odjemalec = useQueryClient()
+  const [potrjujem, nastaviPotrjujem] = useState(false)
+  const razveljavi = useMutation({
+    mutationFn: () => srecanjaApi.razveljaviZapisnik(srecanje.id),
+    onSuccess: (podrobno) => {
+      odjemalec.setQueryData(['srecanje', srecanje.id], podrobno)
+      /* Rating se je preračunal od dneva srečanja (lestvica, profili,
+         kartice), lestvice lige pa srečanja ne štejejo več — isto kot po
+         popravku rezultata. */
+      odjemalec.invalidateQueries()
+    },
+  })
+
+  return (
+    <div className="srecanje__razveljavitev">
+      <p className="namig">
+        Napačni igralci ali napačno srečanje? Zapisnik razveljavi in ga vnesi znova.
+      </p>
+      <button
+        type="button"
+        className="gumb gumb--majhen gumb--nevaren"
+        disabled={razveljavi.isPending}
+        onClick={() => nastaviPotrjujem(true)}
+      >
+        {razveljavi.isPending ? 'Razveljavljam …' : 'Razveljavi zapisnik'}
+      </button>
+      {razveljavi.error && <SporociloNapake napaka={razveljavi.error} />}
+      {potrjujem && (
+        <PotrditvenoOkno
+          naslov="Razveljavi zapisnik"
+          sporocilo={
+            'Izbrišejo se postava, vsi vpisani izidi in točke po nizih tega srečanja, '
+            + 'rating igralcev pa se preračuna, kot da srečanja ni bilo. Srečanje bo spet '
+            + 'čakalo na vnos — postavo in izide nato vpišeš znova.'
+          }
+          besedaPotrditve="Razveljavi zapisnik"
+          onPotrdi={() => razveljavi.mutate()}
+          onZapri={() => nastaviPotrjujem(false)}
+        />
+      )}
+    </div>
   )
 }
 

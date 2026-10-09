@@ -1,6 +1,7 @@
 /* Poslovna logika srecanj: dolocanje postave, generiranje posamicnih tekem po
    formatu, menjave igralcev v tekmah, ki se cakajo, vnos rezultatov, pravilo
-   predcasnega konca (prvi do N zmag) in obracun ratinga za posamicne tekme.
+   predcasnega konca (prvi do N zmag), obracun ratinga za posamicne tekme in
+   razveljavitev zapisnika (srecanje nazaj v razpored).
 
    Postava dodeli igralce iz kadra na mesta (A/B/C, X/Y/Z) in oznaci par za
    dvojice; iz nje se generira urejen seznam tekem. Ko ena stran doseze prag
@@ -61,6 +62,7 @@ import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
+import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
 import si.turnirko.repozitoriji.RatingZgodovinaRepozitorij;
@@ -93,6 +95,7 @@ public class SrecanjeStoritev {
     private final KoncnicaStoritev koncnicaStoritev;
     private final LastnistvoStoritev lastnistvo;
     private final PreracunRatingaStoritev preracunRatinga;
+    private final LigaRepozitorij ligaRepozitorij;
 
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
                             PostavaSrecanjaRepozitorij postavaRepozitorij,
@@ -108,7 +111,8 @@ public class SrecanjeStoritev {
                             TekmaStoritev tekmaStoritev,
                             KoncnicaStoritev koncnicaStoritev,
                             LastnistvoStoritev lastnistvo,
-                            PreracunRatingaStoritev preracunRatinga) {
+                            PreracunRatingaStoritev preracunRatinga,
+                            LigaRepozitorij ligaRepozitorij) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -124,6 +128,7 @@ public class SrecanjeStoritev {
         this.koncnicaStoritev = koncnicaStoritev;
         this.lastnistvo = lastnistvo;
         this.preracunRatinga = preracunRatinga;
+        this.ligaRepozitorij = ligaRepozitorij;
     }
 
     @Transactional(readOnly = true)
@@ -256,9 +261,131 @@ public class SrecanjeStoritev {
         }
 
         posodobiSrecanje(s, pravila.zmagZaSrecanje());
+        if (s.getStatus() == StatusSrecanja.KONCANO && preracunajCeVnesenoZaNazaj(s)) {
+            // preracun izprazni sejo (pobrisiZaTekmeSrecanja), igralca para pa
+            // najdiZaObracun ne nalozi - tekmo za odgovor preberemo znova
+            t = tekmaRepozitorij.najdiZaSrecanje(s.getId()).stream()
+                    .filter(x -> x.getId().equals(idTekma)).findFirst().orElseThrow();
+        }
 
         Map<Long, Map<Long, Integer>> delte = delteRatinga(List.of(t.getId()));
         return tekmaDto(t, delte, vneseniNizi, postavaRepozitorij.najdiZaSrecanje(s.getId()));
+    }
+
+    /* Obracun tece v vrstnem redu VNOSA (glej RatingStoritev), zato je
+       srecanje, vneseno za nazaj, obracunano proti stevilkam, ki ze vsebujejo
+       poznejse tekme istih igralcev - tipicno srecanje, ki ga je organizator
+       razveljavil in vnesel znova, ali vecer, vnesen od zadnje ure proti prvi.
+       Ko je srecanje vneseno do konca, zato preverimo, ali ima kdo od njegovih
+       igralcev v dnevniku zapis, ki velja POZNEJE, in v tem primeru rating
+       preracunamo od casa srecanja. Enkrat na srecanje in ne ob vsaki tekmi:
+       preracun obnovi stanje vseh igralcev in traja nekaj sekund. Pri sprotnem
+       vnosu poznejsih zapisov ni in preracun ne tece.
+
+       Samo ligasko srecanje: ekipna tekma turnirja ima cas dneva turnirja kot
+       ostale tekme turnirja, ki tega preverjanja nimajo. Vrne, ali je preracun
+       tekel. */
+    private boolean preracunajCeVnesenoZaNazaj(Srecanje s) {
+        if (s.jeTurnirsko() || !s.pravila().raven().steje()) {
+            return false;
+        }
+        Set<Long> igralci = new HashSet<>();
+        for (TekmaSrecanja t : tekmaRepozitorij.najdiZaSrecanje(s.getId())) {
+            if (t.getTip() == TipTekmeSrecanja.POSAMICNA && t.getStatus() == StatusTekmeSrecanja.KONCANA
+                    && stejeVElo(t.getIzidTip())) {
+                igralci.add(t.getIgralecDomaci().getId());
+                igralci.add(t.getIgralecGost().getId());
+            }
+        }
+        LocalDateTime cas = s.casOdigranja();
+        if (igralci.isEmpty() || cas == null || zgodovinaRepozitorij.steviloPoznejsihZapisov(
+                RatingStanje.SISTEM_TURNIRKO, igralci, cas, s.getId()) == 0) {
+            return false;
+        }
+        preracunRatinga.preracunajPoPopravku(cas);
+        return true;
+    }
+
+    /* RAZVELJAVITEV ZAPISNIKA: srecanje se vrne v stanje pred vnosom, kot da
+       ga nihce ni vpisal - postava, posamicne tekme (z menjavami), tocke po
+       nizih in obracun ratinga gredo, srecanje pa spet caka v razporedu.
+
+       Zakaj in ne popravek: popravek zamenja izid, igralcev pa ne - ti so
+       nastali iz postave, postave pa po prvem izidu ni mogoce spremeniti.
+       Ko organizator vpise napacna igralca (ali celo napacno srecanje), je
+       edina pot, da zapisnik razveljavi in ga vnese znova.
+
+       Kdaj ne: kadar je po izidu srecanja ze teklo nekaj drugega - isto
+       pravilo kot pri popravku, ki obrne zmagovalca (preveriZamenjavoZmagovalca):
+       ekipna tekma turnirja (izid je postal izid tekme v mrezi), koncana tekma
+       koncnice (serija je tekla) in srecanje rednega dela, kadar sta iz koncne
+       lestvice ze nastali koncnica ali kvalifikacije.
+
+       Cas prvega izida (odigranOb) gre z zapisnikom: pri ponovnem vnosu se
+       zapise znova, sicer bi srecanje, razveljavljeno zato, ker je bilo
+       vpisano v napacen par ekip, obdrzalo cas tujega vecera. Rating se
+       preracuna od casa srecanja, ker je izid vstopal v vse poznejse tekme
+       njegovih igralcev; ponovni vnos to poskrbi za nazaj sam
+       (preracunajCeVnesenoZaNazaj). */
+    @Transactional
+    public SrecanjePodrobnoDto razveljaviZapisnik(Long idSrecanje) {
+        lastnistvo.preveriPoSrecanju(idSrecanje);
+        Srecanje s = najdiPodrobno(idSrecanje);
+        preveriRazveljavitev(s);
+
+        List<TekmaSrecanja> tekme = tekmaRepozitorij.najdiZaSrecanje(idSrecanje);
+        LocalDateTime cas = s.casOdigranja();
+        for (TekmaSrecanja t : tekme) {
+            nizRepozitorij.deleteAll(nizRepozitorij.findByTekmaIdOrderByZaporednaStAsc(t.getId()));
+        }
+        /* Dnevnik pred tekmami (tuji kljuc), izbris pa izprazni sejo - zato
+           srecanje spodaj preberemo znova. */
+        int obracunov = tekme.isEmpty() ? 0 : zgodovinaRepozitorij.pobrisiZaTekmeSrecanja(
+                RatingStanje.SISTEM_TURNIRKO, tekme.stream().map(TekmaSrecanja::getId).toList());
+        tekmaRepozitorij.deleteBySrecanjeId(idSrecanje);
+        postavaRepozitorij.deleteBySrecanjeId(idSrecanje);
+        tekmaRepozitorij.flush();
+        postavaRepozitorij.flush();
+
+        Srecanje prazno = najdiPodrobno(idSrecanje);
+        prazno.setDobljeneDomaci(0);
+        prazno.setDobljeneGost(0);
+        prazno.setOdigranOb(null);
+        prazno.setStatus(StatusSrecanja.RAZPORED);
+        srecanjeRepozitorij.save(prazno);
+
+        if (obracunov > 0) {
+            preracunRatinga.preracunajPoPopravku(cas);
+        }
+        return podrobno(idSrecanje);
+    }
+
+    private void preveriRazveljavitev(Srecanje s) {
+        if (s.jeTurnirsko()) {
+            throw new DomenskaIzjema("Zapisnika ekipne tekme turnirja ni mogoce razveljaviti:"
+                    + " izid srecanja je postal izid tekme v mrezi oz. skupini in po njem je"
+                    + " turnir ze tekel. Popravi lahko izid posamezne tekme.");
+        }
+        if (s.getStatus() == StatusSrecanja.RAZPORED) {
+            throw new DomenskaIzjema("Srecanje se nima vpisanega zapisnika.");
+        }
+        if (s.jeKoncnica()) {
+            if (s.getStatus() == StatusSrecanja.KONCANO) {
+                throw new DomenskaIzjema("Tekma koncnice je ze koncana in po njej je serija ze"
+                        + " tekla, zato njenega zapisnika ni mogoce razveljaviti. Popravi lahko"
+                        + " izid posamezne tekme.");
+            }
+            return;
+        }
+        Long idLiga = s.getLiga().getId();
+        if (koncnicaStoritev.jeSestavljena(idLiga)) {
+            throw new DomenskaIzjema("Koncnica je ze sestavljena iz koncne lestvice rednega dela."
+                    + " Najprej razveljavi koncnico, nato zapisnik.");
+        }
+        if (ligaRepozitorij.existsByKvalifikacijeVisjaIdOrKvalifikacijeNizjaId(idLiga, idLiga)) {
+            throw new DomenskaIzjema("Iz koncne lestvice te lige so ze nastale kvalifikacije."
+                    + " Najprej razveljavi kvalifikacije, nato zapisnik.");
+        }
     }
 
     /* POPRAVEK ze shranjenega rezultata posamicne tekme srecanja.

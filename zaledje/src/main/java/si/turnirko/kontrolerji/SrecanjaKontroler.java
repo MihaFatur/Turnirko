@@ -1,9 +1,11 @@
-/* Koncne tocke za srecanja: podroben pogled (zapisnik), postava in vnos
-   rezultatov posamicnih tekem; za tekme koncnice se termin in domace pravice.
+/* Koncne tocke za srecanja: podroben pogled (zapisnik), postava, vnos
+   rezultatov posamicnih tekem in razveljavitev zapisnika; za tekme koncnice se
+   termin in domace pravice.
    Tanek adapter nad SrecanjeStoritev in KoncnicaStoritev. Srecanje je lahko
    ligasko ali ekipna tekma turnirja - koncne tocke so iste. */
 package si.turnirko.kontrolerji;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -66,6 +68,13 @@ public class SrecanjaKontroler {
     public TekmaSrecanjaDto popraviRezultat(@PathVariable Long idTekma,
                                             @Valid @RequestBody VnosRezultataSrecanja vnos) {
         return srecanjeStoritev.popraviRezultat(idTekma, vnos);
+    }
+
+    /* Razveljavitev zapisnika: postava, izidi in obracun gredo, srecanje spet
+       caka na vnos (SrecanjeStoritev.razveljaviZapisnik); rating preracuna sam. */
+    @DeleteMapping("/{id}/zapisnik")
+    public SrecanjePodrobnoDto razveljaviZapisnik(@PathVariable Long id) {
+        return srecanjeStoritev.razveljaviZapisnik(id);
     }
 
     /* Termin tekme koncnice (redni del ima termine po kolih - /lige/{id}/termini). */

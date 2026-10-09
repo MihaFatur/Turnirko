@@ -600,6 +600,8 @@
   odsotnosti (`SledilnikVrnitve` termin premika samo naprej) in prvi dan
   igranja novinca (`prva_tekma_ob` se postavi ob **prvem vnosu**). Popravek je
   `preracunajOd(datum)` — in prav to je razlog, da preračun sploh obstaja.
+  Ligaško srečanje ga od okt 2026 ob koncu vnosa sproži samo (glej »Srečanje,
+  vneseno za nazaj«); turnirske tekme še ne.
 - **Popravek že shranjenega rezultata**
   (`TekmaStoritev.popraviRezultat`, `SrecanjeStoritev.popraviRezultat`;
   `PUT /tekme/{id}/rezultat` in `PUT /srecanja/tekme/{id}/rezultat`).
@@ -640,6 +642,40 @@
   - Popravek na koncu pokliče `preracunajPoPopravku` (= `preracunajOd` dneva
     tekme). Sam obračun te tekme ne zadošča — njen izid je vstopal v vse
     poznejše tekme obeh igralcev. Regresija je `PopravekRezultataTest`.
+- **Razveljavitev zapisnika ligaškega srečanja**
+  (`SrecanjeStoritev.razveljaviZapisnik`, `DELETE /srecanja/{id}/zapisnik`;
+  okt 2026 — v Savinja ligi C je organizator v postavo vpisal napačna igralca
+  in srečanje vnesel do konca). Popravek zamenja izid, igralcev pa ne, postave
+  po prvem izidu ni mogoče spremeniti — zato srečanje gre **nazaj v razpored,
+  kot da ga nihče ni vpisal**: postava, tekme (z menjavami), točke po nizih,
+  obračun v dnevniku in `odigran_ob` gredo, rating se preračuna od časa
+  srečanja. Organizator nato postavo in izide vpiše znova.
+  - Sme lastnik lige (organizator ali klubski kolega) in admin, v vmesniku
+    gumb »Razveljavi zapisnik« s `PotrditvenoOkno` na dnu zapisnika.
+  - **Zavrne se, kjer je po izidu že kaj teklo** (isto merilo kot obrnjen
+    zmagovalec pri popravku): ekipna tekma turnirja, **končana** tekma končnice
+    (srečanje končnice v teku se razveljavi) in srečanje rednega dela, kadar
+    sta iz končne lestvice že nastali končnica ali kvalifikacije. Srečanje brez
+    zapisnika (`RAZPORED`) nima česa razveljaviti; uvoženo je samo za branje.
+  - `odigran_ob` gre z zapisnikom namenoma: srečanje, razveljavljeno zato, ker
+    je bilo vpisano v napačen par ekip, sicer obdrži čas tujega večera.
+  - Regresiji: `RazveljavitevZapisnikaTest` (storitev) in
+    `RazveljavitevZapisnikaDostopTest` (pot skozi varnostno verigo).
+- **Srečanje, vneseno za nazaj, se ob koncu vnosa preračuna samo**
+  (`SrecanjeStoritev.preracunajCeVnesenoZaNazaj`). Ko ligaško srečanje
+  postane `KONCANO`, se preveri, ali ima kdo od njegovih igralcev v dnevniku
+  zapis, ki velja POZNEJE od časa srečanja in ni iz tega srečanja
+  (`RatingZgodovinaRepozitorij.steviloPoznejsihZapisov`; postavitve ne štejejo,
+  ker so izhodišče). Če ga ima, teče `preracunajPoPopravku(čas srečanja)`.
+  Brez tega bi bilo ponovno vneseno (razveljavljeno) srečanje obračunano proti
+  številkam, ki že vsebujejo poznejše tekme — isto velja za večer, vnesen od
+  zadnje ure proti prvi (Savinja D, okt 2026). **Enkrat na srečanje in ne ob
+  vsaki tekmi**: preračun obnovi stanje vseh igralcev in na polni bazi traja
+  nekaj sekund; pri sprotnem vnosu poznejših zapisov ni in ne teče. Ekipna
+  tekma turnirja tega nima (kot turnirske tekme). Merilo:
+  `ponovniVnosZaNazajDaIstiRatingKotPreracun`,
+  `srecanjeVnesenoZaPoznejsimSeUrediSamo` (vnos mora dati isto kot preračun od
+  začetka).
 - **Postavitveni (začetni) rating** (`RatingStoritev.nastaviZacetniRating`):
   admin sme novincu določiti vstopni rating **samo dokler `stTekem == 0`**; potem
   ga določajo le rezultati. Zabeleži se kot zapis v `rating_zgodovina` **brez

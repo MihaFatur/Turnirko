@@ -302,6 +302,26 @@ public interface RatingZgodovinaRepozitorij extends JpaRepository<RatingZgodovin
     List<Object[]> tekmovalnihTekem(@Param("sistem") String sistem,
                                     @Param("ravni") Collection<RavenTekmovanja> ravni);
 
+    /* Koliko zapisov danih igralcev velja POZNEJE od danega casa in ne izvira
+       iz tega srecanja. Vec kot nic pomeni, da je bilo srecanje obracunano za
+       nazaj (SrecanjeStoritev.preracunajCeVnesenoZaNazaj). Iskanje je po
+       igralcu, zato `z.sistem` (glej opombo na vrhu). Brez tekme srecanja so
+       tudi turnirske tekme, odbitki in zunanje uvrstitve - vsi stojijo v
+       casovni vrsti, ki jo je vnos za nazaj prehitel; zato LEFT JOIN.
+       Postavitev ne steje: je izhodisce igralca in preracun jo postavi pred
+       prvo tekmo ne glede na to, kdaj je bila vpisana. */
+    @Query("""
+            SELECT COUNT(z) FROM RatingZgodovina z
+            LEFT JOIN z.tekmaSrecanja ts
+            WHERE z.sistem = :sistem AND z.igralec.id IN :igralci AND z.veljaOb > :cas
+              AND (ts IS NULL OR ts.srecanje.id <> :idSrecanje)
+              AND (z.razlog IS NULL OR z.razlog <> si.turnirko.modeli.RazlogSpremembe.POSTAVITEV)
+            """)
+    long steviloPoznejsihZapisov(@Param("sistem") String sistem,
+                                 @Param("igralci") Collection<Long> igralci,
+                                 @Param("cas") LocalDateTime cas,
+                                 @Param("idSrecanje") Long idSrecanje);
+
     /* --- odbitek za neaktivnost ------------------------------------------- */
 
     /* Koliko stopenj odbitka je igralec ze dobil za TEKOCI premor (po zadnji

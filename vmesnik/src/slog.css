@@ -9997,6 +9997,26 @@ a.ekipa-okno__srecanje:hover {
   justify-content: flex-end;
 }
 
+/* Razveljavitev zapisnika: redko in nepovratno dejanje, zato na dnu strani in
+   za tanko crto - ne ob vsakdanjih gumbih zapisnika. */
+.srecanje__razveljavitev {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r1) var(--r2);
+  padding-top: var(--r2);
+  border-top: 1px solid var(--barva-crta);
+}
+
+.srecanje__razveljavitev .namig {
+  margin: 0;
+}
+
+.srecanje__razveljavitev .napaka {
+  flex-basis: 100%;
+}
+
 /* Zapisnik srecanja: oznaka, domaci, izid, gost, status. */
 .srecanje__tabela td,
 .srecanje__tabela th {
