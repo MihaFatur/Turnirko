@@ -307,7 +307,8 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
    ikon ni.
    *Druga izjema (ilustracija, ne ikona): maskota »Igralec Premium«, razdelek 5b
    (tudi lik ob palici paketa v organizatorskem pregledu);
-   tretja: risbe v oglasu »Igralec Premium«, razdelek 5c.*
+   tretja: risbe v oglasu »Igralec Premium«, razdelek 5c; četrta: isti lik s
+   tablo na strani »Kako deluje« (`/o-ratingu`), razdelek 5d.*
 10. **`color: inherit` na obarvani podlagi** — barvo besedila zapiši izrecno.
 11. **Novi razredi za obstoječ vzorec.** Najprej poglej razdelek 4.
 12. **Animacije stanja »zaradi lepšega«.** Dovoljen je samo `transition` barve
@@ -318,7 +319,8 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
     in dvig aktivne ikone za 2 px. Daljši čas je tu premik podčrtaja, ki ga
     točka že dovoljuje; viden je samo zato, ker je pot dolga cel stolpec.
     *Druga izjema: maskota »Igralec Premium«, razdelek 5b. Tretja: celozaslonski
-    oglas »Igralec Premium«, razdelek 5c.*
+    oglas »Igralec Premium«, razdelek 5c. Četrta: animirani grafi in lik na
+    strani »Kako deluje«, razdelek 5d.*
 
 ### 5b. Izjema: maskota »Igralec Premium«
 
@@ -460,6 +462,37 @@ telefonu, nalepka in žig sta zasukana, zavesa in ključavnica se gibljeta do
    dekoracija, tu je oglas čez cel zaslon.
 6. **Drugih oglasov ni.** Nova različica, nov sprožilec ali kaj podobnega na
    drugem mestu je nova odločitev.
+
+### 5d. Izjema: razlaga ratinga (`/o-ratingu`)
+
+Odločitev lastnika, 9. 10. 2026 (predaja `design_handoff_razlaga_ratinga`, smer
+»1a Zapisnik«). Stran »Kako deluje Turnirko rating« je ena zgodba v desetih
+korakih in ima tri stvari, ki jih drugje v vmesniku ni; izjema velja samo za to
+stran (`strani/RazlagaRatingaStran.tsx`, `komponente/RazlagaKoraki.tsx`, slogi v
+razdelku »Javna razlaga ratinga« v `slog.css`):
+
+1. **Maskota na treh mestih** — korak 02 (»Zmaga je zmaga.«), 07 (»Prvi dan
+   skače.«) in 10 (»Vprašaj.«). Isti lik in ista tabla kot v 5b (`Lik` +
+   `Tabla`, ovoj `LikSTablo` v `MaskotaPrizori.tsx`), a **statična poza**:
+   roki dvignjeni, tabla nad glavo (leva roka `rotate(150)`, podlaket
+   `rotate(20)`, desna zrcalno). Lik stoji na 1 px črti črnila in ima **en
+   nastop ob prvem prikazu sekcije**: dvig izza črte (`translateY(105%) → 0`,
+   620 ms `cubic-bezier(.2,.8,.2,1)`), tabla se v 520 ms z zamikom 260 ms
+   poravna iz −10°. Lik je `aria-hidden`; pri `prefers-reduced-motion: reduce`
+   je takoj v končnem stanju (kot oglas 5c, drugače kot maskota v glavi).
+2. **Animirani grafi ob prvem prikazu in vlečenje krivulje** — 60 stolpcev
+   napovedi, 61 stolpcev K in palice teže zrastejo v 600–700 ms (`transform` oz.
+   višina/širina, nikoli barva), ko sekcija prvič pride v okno; krivulja v koraku
+   01 je drsnik (`role="slider"`: miška, dotik, puščici levo/desno za 10 točk).
+   Ostali prehodi: barve in obrobe 120 ms, plošča lestvic, razmerje možnosti in
+   trak napredka na telefonu 200 ms.
+3. **Vse ostalo velja brez izjeme**: radij 0, brez senc, brez gradientov, tri
+   pisne družine, samo spremenljivke iz razdelka 2, zadetna površina na dotik
+   ≥ 44 px, ikon ni.
+
+Merilo ujemanja z maketo je prototip `*.dc.html` v istem brezglavem Chromu (ob
+postrežbi prek HTTP, ker se `dc-import` prek `file://` ne naloži), ne PNG iz
+predaje; podrobnosti in pasti so v `CLAUDE.md`.
 
 ---
 

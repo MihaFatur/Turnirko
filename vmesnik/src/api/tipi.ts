@@ -2143,14 +2143,22 @@ export interface PravilaRatingaDto {
   navideznihTekem: number
   pragRekreativca: number
   spodnjaMeja: number
-  napovedi: { razlika: number; odstotek: number }[]
+  /* Verjetnost zmage boljšega pri razliki od −600 do +600 po 10 — decimalna,
+     iz nje stran nariše krivuljo, stolpce in odstotke. */
+  napovedi: { razlika: number; verjetnost: number }[]
+  /* Sidra za starosti 8–45 (drsnik novinca). */
   sidra: { spol: Spol; starost: number; vrednost: number }[]
+  /* Mladinski pasovi: za igralce, mlajše od `mlajsiOd`; veteran je od `veteraniOd`. */
+  kategorije: { pas: StarostniPas; mlajsiOd: number }[]
+  veteraniOd: number
 }
 
 /* Preizkus ene tekme dveh izmišljenih igralcev; ravni so iste vrstice kot v
    zasebni napovedi na profilu. */
 export interface IzracunTekmeDto {
   pricakovanOdstotek: number
+  /* Ista verjetnost, nezaokrožena: iz nje stran izpiše račun (K × teža × (izid − p)). */
+  pricakovano: number
   k: number
   kNasprotnika: number
   ravni: NapovedRaven[]
@@ -2166,6 +2174,8 @@ export interface PrviDanNovincaDto {
     sprememba: number
     /* Rating je izračunan znova iz vseh izidov dneva (od druge tekme naprej). */
     uvrstitev: boolean
+    /* Kje bi bil novinec, če bi se tekme seštevale kot navadni koraki (črtkana črta). */
+    ratingSestevek: number
   }[]
 }
 

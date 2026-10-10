@@ -23,6 +23,7 @@ import si.turnirko.dto.PrviDanNovincaDto;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.StarostniPas;
 
 @Service
 public class RazlagaRatingaStoritev {
@@ -31,11 +32,21 @@ public class RazlagaRatingaStoritev {
     private static final List<RavenTekmovanja> RAVNI = List.of(
             RavenTekmovanja.URADNO, RavenTekmovanja.KLUBSKO, RavenTekmovanja.REKREATIVNO);
 
-    /* Razlike, pri katerih stran pokaze verjetnost zmage. */
-    private static final int[] RAZLIKE = { 0, 50, 100, 200, 300, 400 };
+    /* Krivulja napovedi: razlika od -600 do +600 po 10. Stran iz nje narise
+       krivuljo, 60 stolpcev (po 20) in vse odstotke, zato je gosta in
+       decimalna - zaokrozen odstotek bi bil stopnicast. */
+    private static final int NAJVECJA_RAZLIKA = 600;
+    private static final int KORAK_RAZLIKE = 10;
 
-    /* Starosti, za katere stran pokaze sidro (od U11 do odraslih). */
-    private static final int[] STAROSTI = { 10, 12, 14, 16, 18, 21, 30 };
+    /* Krivulja je odvisna samo od razlike; 1000 je rating, okoli katerega
+       jo stran izpise (isti, kot ga stran vzame za nasprotnika v primerih). */
+    private static final int OSNOVA_KRIVULJE = 1000;
+
+    /* Starosti, za katere stran pokaze sidro: drsnik novinca (8-45). Brez
+       sidra je starost izven tabele prilepljena na najblizjo (SidroStoritev),
+       zato je vrstic toliko, kolikor jih drsnik premore. */
+    private static final int NAJMLAJSA_STAROST = 8;
+    private static final int NAJSTAREJSA_STAROST = 45;
 
     /* Prvi dan ima v praksi do deset tekem (turnir s skupino in mrezo);
        meja varuje strezek pred dolgimi naslovi zahtev. */
@@ -60,17 +71,23 @@ public class RazlagaRatingaStoritev {
                 .map(s -> new PravilaRatingaDto.Odbitek(s.mesecev(), s.skupaj()))
                 .toList();
         List<PravilaRatingaDto.Napoved> napovedi = new ArrayList<>();
-        for (int razlika : RAZLIKE) {
-            double p = turnirkoRating.pricakovanaVerjetnost(1000 + razlika, 1000);
-            napovedi.add(new PravilaRatingaDto.Napoved(razlika, (int) Math.round(p * 100)));
+        for (int razlika = -NAJVECJA_RAZLIKA; razlika <= NAJVECJA_RAZLIKA; razlika += KORAK_RAZLIKE) {
+            napovedi.add(new PravilaRatingaDto.Napoved(razlika,
+                    turnirkoRating.pricakovanaVerjetnost(OSNOVA_KRIVULJE + razlika, OSNOVA_KRIVULJE)));
         }
         List<PravilaRatingaDto.Sidro> sidra = new ArrayList<>();
         for (Spol spol : Spol.values()) {
-            for (int starost : STAROSTI) {
+            for (int starost = NAJMLAJSA_STAROST; starost <= NAJSTAREJSA_STAROST; starost++) {
                 Integer vrednost = sidroStoritev.sidro(spol, starost);
                 if (vrednost != null) {
                     sidra.add(new PravilaRatingaDto.Sidro(spol, starost, vrednost));
                 }
+            }
+        }
+        List<PravilaRatingaDto.Kategorija> kategorije = new ArrayList<>();
+        for (StarostniPas pas : StarostniPas.values()) {
+            if (pas.mlajsiOd() != null) {
+                kategorije.add(new PravilaRatingaDto.Kategorija(pas, pas.mlajsiOd()));
             }
         }
         return new PravilaRatingaDto(
@@ -82,7 +99,7 @@ public class RazlagaRatingaStoritev {
                 ravni, odbitki, Neaktivnost.MESECEV_DO_SKRITJA,
                 SidroStoritev.REKREATIVNI_ZACETEK, UvrstitevNovinca.NAVIDEZNE_TEKME,
                 RekreativecStoritev.PRAG_TEKEM, TurnirkoRatingStoritev.SPODNJA_MEJA,
-                napovedi, sidra);
+                napovedi, sidra, kategorije, StarostniPas.veteraniOd());
     }
 
     /* Ena tekma dveh izmisljenih igralcev na vseh treh ravneh. Igralca sta
@@ -104,8 +121,10 @@ public class RazlagaRatingaStoritev {
                     izid(jaz, on, true, raven.getTeza()),
                     izid(jaz, on, false, raven.getTeza())));
         }
+        double pricakovano = turnirkoRating.pricakovanaVerjetnost(rating, nasprotnik);
         return new IzracunTekmeDto(
-                (int) Math.round(turnirkoRating.pricakovanaVerjetnost(rating, nasprotnik) * 100),
+                (int) Math.round(pricakovano * 100),
+                pricakovano,
                 turnirkoRating.kFaktor(tekem, vrnitev),
                 turnirkoRating.kFaktor(tekemNasprotnika, vrnitevNasprotnika),
                 ravni);
@@ -141,18 +160,23 @@ public class RazlagaRatingaStoritev {
         List<UvrstitevNovinca.Izid> izidi = new ArrayList<>();
         List<PrviDanNovincaDto.Korak> koraki = new ArrayList<>();
         int rating = izhodisce;
+        // Kje bi bil novinec, ce bi se vsaka tekma sestela kot navaden korak.
+        int sestevek = izhodisce;
         for (int i = 0; i < nasprotniki.size(); i++) {
             int nasprotnik = nasprotniki.get(i);
             boolean zmaga = zmage.get(i);
+            var ustaljeni = TurnirkoRatingStoritev.StanjeIgralca.ustaljeno(nasprotnik,
+                    TurnirkoRatingStoritev.PRAG_USTALJEN);
             TurnirkoRatingStoritev.Izracun korak = turnirkoRating.izracunaj(
                     new TurnirkoRatingStoritev.StanjeIgralca(rating, i, false),
-                    TurnirkoRatingStoritev.StanjeIgralca.ustaljeno(nasprotnik,
-                            TurnirkoRatingStoritev.PRAG_USTALJEN),
-                    zmaga, raven.getTeza());
+                    ustaljeni, zmaga, raven.getTeza());
+            sestevek = turnirkoRating.izracunaj(
+                    new TurnirkoRatingStoritev.StanjeIgralca(sestevek, i, false),
+                    ustaljeni, zmaga, raven.getTeza()).ratingPo1();
             izidi.add(new UvrstitevNovinca.Izid(nasprotnik, zmaga));
             boolean uvrstitev = izidi.size() >= UvrstitevNovinca.NAJMANJ_TEKEM;
             int nov = uvrstitev ? UvrstitevNovinca.izracunaj(izidi, izhodisce) : korak.ratingPo1();
-            koraki.add(new PrviDanNovincaDto.Korak(nasprotnik, zmaga, nov, nov - rating, uvrstitev));
+            koraki.add(new PrviDanNovincaDto.Korak(nasprotnik, zmaga, nov, nov - rating, uvrstitev, sestevek));
             rating = nov;
         }
         return new PrviDanNovincaDto(izhodisce, koraki);

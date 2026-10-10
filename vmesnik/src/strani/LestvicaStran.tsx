@@ -490,7 +490,7 @@ export function LestvicaStran() {
             ))}
           </ul>
           <p className="lestvica-namig__vec">
-            <Link to="/o-ratingu#lestvica">Kdo je na lestvici in zakaj →</Link>
+            <Link to="/o-ratingu#k9">Kdo je na lestvici in zakaj →</Link>
           </p>
         </>
       )}

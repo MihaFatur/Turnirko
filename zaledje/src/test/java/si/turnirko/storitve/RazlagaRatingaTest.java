@@ -29,11 +29,14 @@ import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SistemTekmovanja;
+import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.StarostniPas;
 import si.turnirko.modeli.Tekma;
 
 class RazlagaRatingaTest extends IntegracijskiTest {
 
     @Autowired private RazlagaRatingaStoritev razlaga;
+    @Autowired private TurnirkoRatingStoritev turnirkoRating;
 
     /* Novinec odigra krozni dogodek s tremi ustaljenimi igralci: zmaga proti
        najsibkejsemu, nato dva poraza. Prva tekma je korak, drugi dve
@@ -118,9 +121,117 @@ class RazlagaRatingaTest extends IntegracijskiTest {
         assertEquals(TurnirkoRatingStoritev.K_OSNOVNI, p.kOsnovni());
         assertEquals(List.of(new PravilaRatingaDto.Odbitek(6, 10), new PravilaRatingaDto.Odbitek(12, 25),
                 new PravilaRatingaDto.Odbitek(24, 40)), p.odbitki());
-        assertEquals(50, p.napovedi().get(0).odstotek());
         assertEquals(0.75, p.ravni().get(1).teza(), 0.0001);
         assertFalse(p.sidra().isEmpty(), "sidra pridejo iz tabele starostno_sidro");
+    }
+
+    /* Krivulja na strani je ena sama: od -600 do +600 po 10, decimalna.
+       Iz nje stran odcita odstotek, 60 stolpcev in 0,76 v koraku 02 - zato
+       mora biti natanko formula obracuna, ne zaokrozena tabela. */
+    @Test
+    void krivuljaJeGostaDecimalnaInSimetricna() {
+        List<PravilaRatingaDto.Napoved> napovedi = razlaga.pravila().napovedi();
+
+        assertEquals(121, napovedi.size());
+        assertEquals(-600, napovedi.get(0).razlika());
+        assertEquals(600, napovedi.get(napovedi.size() - 1).razlika());
+        for (int i = 0; i < napovedi.size(); i++) {
+            PravilaRatingaDto.Napoved n = napovedi.get(i);
+            assertEquals(turnirkoRating.pricakovanaVerjetnost(1000 + n.razlika(), 1000), n.verjetnost(), 1e-12);
+            // enak rating je 50 : 50, razlika +d in -d pa dasta skupaj 1
+            assertEquals(1.0, n.verjetnost() + napovedi.get(napovedi.size() - 1 - i).verjetnost(), 1e-12);
+            if (i > 0) {
+                assertTrue(n.verjetnost() > napovedi.get(i - 1).verjetnost(), "krivulja narasca");
+            }
+        }
+        assertEquals(0.5, napovedi.get(60).verjetnost(), 1e-12);
+        assertEquals(76, Math.round(napovedi.get(80).verjetnost() * 100), "200 tock razlike je 76 %");
+        assertEquals(91, Math.round(napovedi.get(100).verjetnost() * 100), "400 tock razlike je 91 %");
+    }
+
+    /* Drsnik novinca gre od 8 do 45 let in za vsako starost mora biti sidro:
+       vmesnik vrednosti ne ugiba. */
+    @Test
+    void sidraPokrivajoVseStarostiDrsnika() {
+        PravilaRatingaDto p = razlaga.pravila();
+
+        for (Spol spol : Spol.values()) {
+            for (int starost = 8; starost <= 45; starost++) {
+                final int s = starost;
+                PravilaRatingaDto.Sidro sidro = p.sidra().stream()
+                        .filter(x -> x.spol() == spol && x.starost() == s)
+                        .findFirst()
+                        .orElseThrow(() -> new AssertionError("manjka sidro " + spol + " " + s));
+                assertEquals(sidroStoritev.sidro(spol, starost), sidro.vrednost());
+            }
+        }
+    }
+
+    /* Vmesnik K po stevilu tekem (korak 03) sestavi iz stevilk pravil, ne iz
+       strezniske metode. Ta test drzi, da sestava da isto kot obracun. */
+    @Test
+    void kPoTekmahSledSestaviIzPravil() {
+        PravilaRatingaDto p = razlaga.pravila();
+
+        for (int tekem = 0; tekem <= 60; tekem++) {
+            for (boolean vrnitev : new boolean[] { false, true }) {
+                int k = p.kOsnovni()
+                        + (tekem < p.pragUstaljen() ? p.pribitekNeustaljen() : 0)
+                        + (tekem < p.pragNovinec() ? p.pribitekNovinec() : 0)
+                        + (vrnitev ? p.pribitekVrnitev() : 0);
+                assertEquals(k, turnirkoRating.kFaktor(tekem, vrnitev),
+                        "K pri " + tekem + " tekmah" + (vrnitev ? " po vrnitvi" : ""));
+            }
+        }
+    }
+
+    @Test
+    void kategorijePovedoMejePasov() {
+        PravilaRatingaDto p = razlaga.pravila();
+
+        assertEquals(List.of(StarostniPas.U11, StarostniPas.U13, StarostniPas.U15, StarostniPas.U17,
+                StarostniPas.U19, StarostniPas.U21),
+                p.kategorije().stream().map(PravilaRatingaDto.Kategorija::pas).toList());
+        assertEquals(List.of(11, 13, 15, 17, 19, 21),
+                p.kategorije().stream().map(PravilaRatingaDto.Kategorija::mlajsiOd).toList());
+        assertEquals(40, p.veteraniOd());
+    }
+
+    /* Racun v koraku 06 (K x teza x (izid - verjetnost)) potrebuje nezaokrozeno
+       verjetnost; odstotek je njen zaokrozek. */
+    @Test
+    void izracunNosiTudiNezaokrozenoVerjetnost() {
+        IzracunTekmeDto i = razlaga.izracun(1342, 1484, 30, 30, false, false);
+
+        assertEquals(turnirkoRating.pricakovanaVerjetnost(1342, 1484), i.pricakovano(), 1e-12);
+        assertEquals(Math.round(i.pricakovano() * 100), i.pricakovanOdstotek());
+        // Primer iz koraka 06: poraz ustaljenega igralca na uradnem tekmovanju je -15
+        assertEquals(-15, i.ravni().get(0).poraz().sprememba());
+    }
+
+    /* Crtkana crta v koraku 07: kje bi bil novinec, ce bi se tekme sestevale
+       kot navadni koraki. Prva tekma je navaden korak (zato sta crti tam
+       skupaj), od druge naprej se razideta. */
+    @Test
+    void sestevekPrvegaDneJeNavadenKorakBrezUvrstitve() {
+        List<Integer> nasprotniki = List.of(960, 700, 650, 1000);
+        List<Boolean> zmage = List.of(true, false, false, true);
+
+        PrviDanNovincaDto dan = razlaga.prviDan(800, RavenTekmovanja.KLUBSKO, nasprotniki, zmage);
+
+        int sestevek = 800;
+        for (int i = 0; i < nasprotniki.size(); i++) {
+            sestevek = turnirkoRating.izracunaj(
+                    new TurnirkoRatingStoritev.StanjeIgralca(sestevek, i, false),
+                    TurnirkoRatingStoritev.StanjeIgralca.ustaljeno(nasprotniki.get(i),
+                            TurnirkoRatingStoritev.PRAG_USTALJEN),
+                    zmage.get(i), RavenTekmovanja.KLUBSKO.getTeza()).ratingPo1();
+            assertEquals(sestevek, dan.koraki().get(i).ratingSestevek(), "seštevek po " + (i + 1) + ". tekmi");
+        }
+        assertEquals(dan.koraki().get(0).rating(), dan.koraki().get(0).ratingSestevek(),
+                "prva tekma je navaden korak");
+        assertTrue(dan.koraki().stream().skip(1).anyMatch(k -> k.rating() != k.ratingSestevek()),
+                "od druge tekme naprej uvrstitev odstopa od seštevka");
     }
 
     @Test

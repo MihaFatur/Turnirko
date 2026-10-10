@@ -16,12 +16,16 @@ public record PrviDanNovincaDto(
 ) {
 
     /* Ena tekma prvega dne. uvrstitev = rating je izracunan znova iz vseh
-       izidov dneva (od druge tekme naprej); sicer je navaden korak. */
+       izidov dneva (od druge tekme naprej); sicer je navaden korak.
+       ratingSestevek = kje bi bil igralec, ce bi se vsaka tekma sestela kot
+       navaden korak (K novinca x teza) od izhodisca - crtkana crta na grafu,
+       ki pokaze, kaj uvrstitev spremeni. */
     public record Korak(
             int ratingNasprotnika,
             boolean zmaga,
             int rating,
             int sprememba,
-            boolean uvrstitev
+            boolean uvrstitev,
+            int ratingSestevek
     ) {}
 }

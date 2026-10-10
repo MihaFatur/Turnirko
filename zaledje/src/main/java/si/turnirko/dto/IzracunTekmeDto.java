@@ -11,6 +11,9 @@ import java.util.List;
 public record IzracunTekmeDto(
         // verjetnost zmage prvega igralca v odstotkih
         int pricakovanOdstotek,
+        // ista verjetnost, nezaokrozena: iz nje stran izpise racun
+        // (K x teza x (izid - verjetnost)) tako, kot ga je izracunal obracun
+        double pricakovano,
         int k,
         int kNasprotnika,
         List<NapovedTekmeDto.Raven> ravni

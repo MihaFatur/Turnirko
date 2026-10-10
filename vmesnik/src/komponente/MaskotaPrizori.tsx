@@ -37,18 +37,30 @@ function Roka({
   x,
   lopar,
   palec,
+  kot,
 }: {
   stran: 'L' | 'D'
   x: number
   lopar: boolean
   palec: boolean
+  /* Nepremična poza (glej `Lik`): kota rame in komolca v stopinjah. Prizori
+     kota ne podajo, ker ju postavlja animator. */
+  kot?: { rama: number; komolec: number }
 }) {
   return (
     <g transform={`translate(${x} 38.5)`}>
-      <g data-del={`roka${stran}`} className="maskota__roka">
+      <g
+        data-del={`roka${stran}`}
+        className="maskota__roka"
+        transform={kot ? `rotate(${kot.rama})` : undefined}
+      >
         <path d="M0 0 V10.5" />
         <g transform="translate(0 10.5)">
-          <g data-del={`pod${stran}`} className="maskota__podlaket">
+          <g
+            data-del={`pod${stran}`}
+            className="maskota__podlaket"
+            transform={kot ? `rotate(${kot.komolec})` : undefined}
+          >
             <path d="M0 0 V11.5" />
             <path className="maskota__zapestnica" d="M0 8 V11" />
             {/* Lopar nadaljuje podlaket, dlan ga drži od spodaj. */}
@@ -86,11 +98,15 @@ export function Lik({
   palec = false,
   rekvizit = null,
   tablaNaprej = false,
+  poza,
 }: {
   lopar?: boolean
   palec?: boolean
   rekvizit?: ReactNode
   tablaNaprej?: boolean
+  /* Nepremična poza rok (javna razlaga ratinga): kota ramen in komolcev, ki ju
+     sicer postavlja animator. Brez nje roke stojijo ob telesu. */
+  poza?: { levaRama: number; levKomolec: number; desnaRama: number; desniKomolec: number }
 }) {
   return (
     <g transform="translate(88 45)">
@@ -139,8 +155,20 @@ export function Lik({
 
           {!tablaNaprej && rekvizit}
 
-          <Roka stran="L" x={83.5} lopar={lopar} palec={palec} />
-          <Roka stran="D" x={92.5} lopar={lopar} palec={palec} />
+          <Roka
+            stran="L"
+            x={83.5}
+            lopar={lopar}
+            palec={palec}
+            kot={poza && { rama: poza.levaRama, komolec: poza.levKomolec }}
+          />
+          <Roka
+            stran="D"
+            x={92.5}
+            lopar={lopar}
+            palec={palec}
+            kot={poza && { rama: poza.desnaRama, komolec: poza.desniKomolec }}
+          />
 
           {tablaNaprej && rekvizit}
 
@@ -164,14 +192,27 @@ export function Lik({
    rob in da se dolg napis ne izteče čez rob. Vrtišče je spodnji sredinski rob,
    ker ga držita dlani (`x`, `y` ga postavita; privzeto nad glavo lika). Višina
    in velikost pisave sta odvisni od naprave (MERA_LIKA): besedilo je vedno
-   ~12 px na zaslonu. */
-function Tabla({
+   ~12 px na zaslonu.
+
+   `obroba` (enote lika) je debelina obrobe, ki leži NOTRI v škatli table kot CSS
+   border: zunanji rob je natanko `sirina` × `visina`, naglasni trak pa je
+   odmaknjen od notranjega roba. Brez nje je obroba 2 enoti in leži na sredini
+   roba (tabla v glavi). Okras na strani razlage ratinga jo poda, da se ujema z
+   maketo, ki tablo riše kot HTML škatlo z obrobo.
+
+   `opsz` je optična velikost pisave (Bricolage ima os `opsz`): brskalnik jo
+   za SVG besedilo vzame iz velikosti pred merilom lika (13), HTML besedilo
+   maketi pa iz prave velikosti na zaslonu (13 × merilo) - in pri majhni
+   optični velikosti so črke širše. Okras na strani razlage ratinga jo poda. */
+export function Tabla({
   napis,
   sirina,
   visina = 19,
   pisava = 13,
   x = 88,
   y = 19.5,
+  obroba,
+  opsz,
 }: {
   napis: string
   sirina: number
@@ -179,21 +220,34 @@ function Tabla({
   pisava?: number
   x?: number
   y?: number
+  obroba?: number
+  opsz?: number
 }) {
+  const o = obroba ?? 0
   return (
     <g transform={`translate(${x} ${y})`}>
       <g data-del="tabla" className="maskota__tabla">
-        <rect className="maskota__plosca" x={-sirina / 2} y={-visina} width={sirina} height={visina} />
+        <rect
+          className="maskota__plosca"
+          x={-sirina / 2 + o / 2}
+          y={-visina + o / 2}
+          width={sirina - o}
+          height={visina - o}
+          style={obroba ? { strokeWidth: obroba } : undefined}
+        />
         <rect
           className="maskota__poudarek"
-          x={-sirina / 2 + 1.5}
-          y={-visina + 1.5}
+          x={-sirina / 2 + o + 1.5}
+          y={-visina + o + 1.5}
           width="6"
-          height={visina - 3}
+          height={visina - 2 * o - 3}
         />
         <text
           className="maskota__napis"
-          style={{ fontSize: pisava }}
+          style={{
+            fontSize: pisava,
+            fontVariationSettings: opsz ? `'opsz' ${opsz}` : undefined,
+          }}
           x="3.25"
           y={-visina / 2 + 0.3 * pisava}
           textAnchor="middle"
@@ -531,6 +585,66 @@ export function LikNaPalici({
           ))}
         </g>
       </svg>
+    </div>
+  )
+}
+
+/* Nepremična poza »tabla«: roki dvignjeni, tabla nad glavo (leva roka
+   rotate(150) s komolcem rotate(20), desna zrcalno). */
+const POZA_TABLA = { levaRama: 150, levKomolec: 20, desnaRama: -150, desniKomolec: -20 }
+
+/* Lik s tablo na javni strani razlage ratinga (/o-ratingu; izjema od DESIGN.md,
+   razdelek 5d, odločitev lastnika 9. 10. 2026). Isti lik in ista tabla kot v
+   glavi, a nepremična in brez platna čez stran: okvir stoji v vrstici
+   vsebine, lik na 1 px črti črnila. Ko `vidno` postane res (sekcija je prvič
+   prišla v okno), se lik dvigne izza črte (620 ms), tabla pa se v 520 ms z
+   zamikom 260 ms poravna iz −10°. Gibanje in njegov izklop ob
+   `prefers-reduced-motion` nosi CSS (`.razlaga-lik`).
+
+   Okvir sledi širini table, da napis ne seže čez rob: širina table je 7 enot
+   na znak in 24 enot odmika, okvir ima 10 enot več. `merilo` pretvori enote
+   lika v piksle (korak 02 in 07: 1,5; korak 10: 1,8). */
+export function LikSTablo({
+  napis,
+  merilo,
+  vidno,
+}: {
+  napis: string
+  merilo: number
+  vidno: boolean
+}) {
+  const sirinaTable = Math.round(napis.length * 7 + 24)
+  const sirinaOkvira = Math.max(56, sirinaTable + 10)
+  const vrh = -2
+  const visinaOkvira = 66 - vrh
+  const px = (v: number) => Math.round(v * merilo)
+  /* Maketa: obroba table je (merilo + 0,5) px, zaokrožena na desetinko. */
+  const obroba = Math.round((merilo + 0.5) * 10) / 10 / merilo
+
+  return (
+    <div
+      className="razlaga-lik"
+      aria-hidden="true"
+      style={{ width: px(sirinaOkvira), height: px(visinaOkvira) }}
+    >
+      <div className={'razlaga-lik__dvig' + (vidno ? ' razlaga-lik__dvig--viden' : '')}>
+        <svg
+          className="razlaga-lik__slika"
+          viewBox={`${88 - sirinaOkvira / 2} ${vrh} ${sirinaOkvira} ${visinaOkvira}`}
+          width={px(sirinaOkvira)}
+          height={px(visinaOkvira)}
+          focusable="false"
+        >
+          <Lik
+            poza={POZA_TABLA}
+            rekvizit={
+              <g className="razlaga-lik__tabla">
+                <Tabla napis={napis} sirina={sirinaTable} obroba={obroba} opsz={13 * merilo} />
+              </g>
+            }
+          />
+        </svg>
+      </div>
     </div>
   )
 }

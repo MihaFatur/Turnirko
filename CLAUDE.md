@@ -2226,16 +2226,31 @@
     mora ostati odprta) in ob koncu razveljavi **ves** predpomnilnik poizvedb
     (`invalidateQueries()` brez ključa) — rating stoji na lestvici, v profilih,
     na karticah tekem in v napovedih.
-- **Javna razlaga ratinga `/o-ratingu`** (`strani/RazlagaRatingaStran.tsx`,
-  razdelek »Javna razlaga ratinga« v `slog.css`; oktober 2026). Za gledalca, ki
-  je po enem porazu izgubil 113 točk ali se ne najde na lestvici: kako rating
-  nastane, odgovori »Zakaj …?« in dva preizkusa. Povezave nanjo: modri blok
-  ratinga na profilu, točka uvrstitve v grafu (`#prvi-dan`), dno zapisnika
-  srečanja, dno lestvice in namig iskanja (`#lestvica`).
+- **Javna razlaga ratinga `/o-ratingu`** (okvir `strani/RazlagaRatingaStran.tsx`,
+  koraki `komponente/RazlagaKoraki.tsx`, čista logika `pomozno/razlagaRatinga.ts`,
+  razdelek »Javna razlaga ratinga« v `slog.css`; predaja
+  `design_handoff_razlaga_ratinga`, smer »1a Zapisnik«, 10. 10. 2026). Za
+  gledalca, ki je po enem porazu izgubil 113 točk ali se ne najde na lestvici:
+  **ena zgodba v desetih korakih** (01 napoved, 02 sprememba, 03 K, 04 teža, 05
+  preizkus tekme, 06 razloži mojo spremembo, 07 prvi dan novinca, 08 ko ne igraš,
+  09 na kateri lestvici si, 10 zakaj …?); vsak gradi na prejšnjem in ima svoj
+  preizkus. Izjema od DESIGN.md je razdelek 5d (maskota na treh mestih,
+  animirani grafi, vlečenje krivulje). Sidra korakov so `#k1` … `#k10`; povezave
+  nanjo: modri blok ratinga na profilu, točka uvrstitve v grafu (`#k7`), dno
+  zapisnika srečanja, dno lestvice in namig iskanja (`#k9`); stara `#prvi-dan`
+  in `#lestvica` stran preusmeri (`VZDEVKI_SIDER`).
   - **Številke pravil pridejo s strežnika** (`GET /rating/pravila`,
     `PravilaRatingaDto`: K, pragovi, teže, odbitki, sidra po starosti) — iz
     istih konstant, ki jih bere obračun. Na roko zapisana številka bi se ob
-    naslednji umeritvi razšla z obračunom.
+    naslednji umeritvi razšla z obračunom. Za deset korakov so zraven še:
+    **krivulja napovedi −600…+600 po 10 kot decimalna verjetnost** (`napovedi`;
+    iz nje stran nariše krivuljo, 60 stolpcev in vse odstotke), **sidra za
+    starosti 8–45** (drsnik novinca), **mladinski pasovi** (`kategorije` iz
+    `StarostniPas.mlajsiOd()` in `veteraniOd()` — meje pasov ostanejo na enem
+    mestu), `IzracunTekmeDto.pricakovano` (nezaokrožena verjetnost: račun v
+    koraku 06 izpiše K × teža × (izid − verjetnost) natanko tako, kot ga je
+    izračunal obračun) in `PrviDanNovincaDto.Korak.ratingSestevek` (črtkana črta
+    v koraku 07: kje bi bil novinec, če bi se prvi dan seštevalo po tekmah).
   - **Preizkusa računa strežnik po istih razredih kot obračun**
     (`RazlagaRatingaStoritev`): tekma (`GET /rating/izracun`, vrstice ravni so
     `NapovedTekmeDto.Raven`) in prvi dan novinca (`GET /rating/prvi-dan`:
@@ -2245,6 +2260,60 @@
     `prviDanPreizkusaJeTisti_kiGaObracunZaresDa` isti dan najprej preizkusi in
     nato zares odigra. Poti so GET (gost sme samo GET), nič ne zapišejo in ne
     nosijo osebnih podatkov.
+  - **Vmesnik ne računa ratinga.** Primeri v korakih 02–04 so ista zmaga, ki jo
+    računa strežnik (`izracun`: rating 1000 + razlika proti 1000, `tekem` 30 oz.
+    K iz koraka 03); korak 06 pokliče štiri izračune (K 48/58/68/78) in išče
+    številko iz zapisnika med njimi. **Edina izjema je K po številu tekem**
+    (`kZa`, 61 stolpcev v koraku 03): vsota osnove in pribitkov iz pravil, ki jo
+    drži `kPoTekmahSledSestaviIzPravil`. Klici se ob vlečenju zakasnijo 120 ms
+    (`useZakasnjeno`), do odgovora ostane prejšnji (`placeholderData`).
+    Koraki 01–04 delijo stanje (razlika, K, vrnitev) v `RazlagaKoraki`.
+  - **Opazovalec korakov** (`useOpazovalecKorakov`, `IntersectionObserver`,
+    `rootMargin: '-25% 0px -55% 0px'`) pove, kateri korak gledalec bere (kazalo
+    ob strani od 1100 px, trak napredka v lepljivi glavi telefona prek
+    `GlavaNaslov`) in katere je že videl (`videni`): ob prvem prikazu zrastejo
+    stolpci krivulje in K, palice teže in lik se dvigne izza črte.
+  - **Maskota** je `LikSTablo` (`MaskotaPrizori.tsx`) — isti `Lik` in `Tabla` kot
+    v glavi, nepremična poza prek `Lik poza`; da se ujema z maketo (tabla je tam
+    HTML škatla), `Tabla` dobi `obroba` (obroba NOTRI v škatli, ne na sredini
+    roba) in `opsz` (SVG besedilo vzame optično velikost pisave iz velikosti PRED
+    merilom lika, zato bi bil napis ožji ali širši od HTML besedila).
+  - **Merilo ujemanja je prototip `*.dc.html` v istem brezglavem Chromu, ne
+    PNG iz predaje** (glej tudi »Posnetki vmesnika« in `docs`): namizje 0,09 %,
+    telefon 0,24 % različnih pikslov (glava aplikacije, anti-aliasing besedila
+    in tabla maskote). Pasti, ki jih je pokazala primerjava:
+    - **Prototip postreži prek HTTP** (`node` strežnik na mapi `prototip/`):
+      prek `file://` se `dc-import` (maskota) ne naloži in v prototipu stoji
+      siv kvadrat — brez maskote višine strani ne ujameš (korak 07 in 10 sta
+      za 7,5 oz. 8 px nižja).
+    - **Vrstični `span` v maketi je vrstica po telesu (17 × 1,5 = 25,5 px)**,
+      ne po oznaki (16,8 px): oznake nad izbirniki (korak 05, 06, 07, 09) so
+      vrstične, blokovne samo z izrecnim zamikom (`--r16`, `--r24`). Brez tega
+      je stran 8,7 px nižja na vsako takšno oznako. Isto velja za ovoj maskote
+      (okvir 102 px, ovoj 109,5 px).
+    - **Mreža v koraku 06 ima v maketi napako v `padding`** (»10px« + »10px 0« =
+      trije zneski za K, neveljaven zapis za številke): vrstice so kompaktne, K
+      zamaknjen 10 px, številke ob desnem robu. Posnetek kaže prav to, zato je
+      v CSS **namenoma** tako (komentar nad `.razlaga__mreza-k`). Ne popravljaj,
+      dokler lastnik ne odloči drugače.
+    - **Mono 700 je v aplikaciji naložen, v maketi ne** (400–600): `<strong>` v
+      mono besedilu je izrecno 600 (rating v seznamu tekem prvega dne, števec
+      »Odigranih tekem: 4«). K ob vrnitvi (korak 08) ima v maketi proporcionalne
+      števke (`--razmerna`), drugi odčitki tabularne.
+    - **Naslov strani ima koren 34 px** (razmik črk −1,19 px je `-0.035em` od
+      `h1` privzetih 2 × 17 px v maketi; v aplikaciji bi bil `h1` 40 px →
+      −1,4 px).
+    - **Gumba v nogi sta vrstici po telesu strani** (`line-height: 1.5` →
+      48,5 px, ne 44 px); kljukica se na telefonu skrči skupaj z besedilom
+      (`flex: 0 1 auto`, globalno pravilo je `flex: none`).
+    - **Aktivni korak ob posnetku cele strani ni merilo**: pri visokem oknu
+      (okno = cela stran) opazovalec ob preoblikovanju postavi `aktiven` drugam
+      kot v maketi. Ob nalaganju (vidno okno) sta kazali identična.
+    - **Posnetek `telefon-celota.png` / `telefon-prvi-zaslon.png` ima večji
+      naslov** (nadnaslov ~37 px, »Kako deluje« v dveh vrsticah) kot README
+      (`clamp(32px,4vw,48px)` in `clamp(56px,7.4vw,88px)`) in prototip, ki ju
+      pri 390 px dasta 32 in 56 px. Stran sledi README in prototipu; posnetek
+      je najverjetneje artefakt okolja, v katerem je nastal.
 - **Pogoji in zasebnost `/pogoji`** (`strani/PogojiStran.tsx`, zasebnost je
   `/pogoji#zasebnost`). Podatki o ponudniku (NTK Žalec, naslov, matična in
   davčna, e-pošta, gostovanje) so v `pomozno/pravno.ts` — kar je `null`, se ne

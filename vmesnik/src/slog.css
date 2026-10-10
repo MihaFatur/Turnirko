@@ -17645,21 +17645,1417 @@ a.ekipa-okno__srecanje:hover {
 
 /* ---------- Javna razlaga ratinga (/o-ratingu) ---------- */
 
-/* Besedilna stran za gledalca: ozek stolpec za branje, sekcije s črto kot
-   povsod, dva preizkusa iz istih gradnikov kot napoved na profilu
-   (izbirnik, kazalniki). Tabele so vrstice s črtami, ne mreža. */
+/* Predloga: design_handoff_razlaga_ratinga (smer »1a Zapisnik«). Ena zgodba v
+   desetih korakih; vsak ima naslovno vrstico s 3 px črto, odstavek in svoj
+   preizkus. Podatke nosijo vrstice s črtami in veliki mono/display odčitki,
+   nikoli kartice. Izjema od DESIGN.md (razdelek 5d, odločitev lastnika
+   9. 10. 2026): maskota na treh mestih (korak 02, 07, 10), animirani grafi ob
+   prvem prikazu in vlečenje krivulje. Vse ostalo - radij 0, brez senc, hišne
+   barve, tri pisave - velja brez izjeme.
+
+   Merilo ujemanja je prototip v istem brezglavem Chromu, ne posnetek (glej
+   CLAUDE.md): razmik črk naslova je -1,19 px, ker maketa ga postavi na h1 s
+   privzetimi 34 px (2 x 17 px telesa); zato ima koren naslova 34 px, črke
+   spanov pa so v em svojih velikosti. */
+
+/* Stran stoji v glavnem stolpcu brez omejitve (kolofon, kazalo in koraki si
+   delijo 1200 px); drugačen je samo telefon. */
 .razlaga {
+  min-width: 0;
+}
+
+/* Kazalo in skoki na korak: gladko drsenje samo na tej strani - na drugih bi
+   ob prehodu med potmi mehko drsel tudi skok na vrh. */
+html:has(.razlaga) {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.razlaga) {
+    scroll-behavior: auto;
+  }
+}
+
+/* --- Glava strani --- */
+
+.razlaga__glava {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: var(--r5) var(--r7);
+  align-items: end;
+  max-width: 1200px;
+}
+
+.razlaga__glava-levo {
+  min-width: 0;
+}
+
+.razlaga .naslov-strani {
+  font-size: 34px;
+}
+
+.razlaga .naslov-strani__nad {
+  font-size: clamp(32px, 4vw, 48px);
+}
+
+.razlaga .naslov-strani__glavni {
+  font-size: clamp(56px, 7.4vw, 88px);
+}
+
+.razlaga__kolofon {
+  border-top: 3px solid var(--barva-crnilo);
+  max-width: 420px;
+}
+
+/* --- Telo: kazalo korakov in stolpec korakov --- */
+
+.razlaga__telo {
+  display: flex;
+  gap: var(--r7);
+  align-items: flex-start;
+}
+
+.razlaga__koraki {
+  flex: 1;
+  min-width: 0;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 88px;
+}
+
+/* Kazalo je od 1100 px naprej; pod tem so koraki v celi širini (na telefonu
+   jih kaže trak v lepljivi glavi). Lepi se pod masthead: višino izmeri
+   Postavitev (--visina-glave) in jo zapiše na <html>. */
+.razlaga__kazalo {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .razlaga__kazalo {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: calc(var(--visina-glave, 0px) + var(--r3));
+    flex: 0 0 208px;
+  }
+}
+
+.razlaga__kazalo-glava {
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Trije stanja: aktiven (modra), mimo (črna), pred tabo (siva). */
+.razlaga__kazalo-povezava {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-height: 40px;
+  padding: 10px 0 10px 12px;
+  border-left: 4px solid var(--barva-crta);
+  font: 500 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  text-decoration: none;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+
+.razlaga__kazalo-povezava:hover {
+  text-decoration: none;
+}
+
+.razlaga__kazalo-povezava--mimo {
+  border-left-color: var(--barva-crnilo);
+  color: var(--barva-crnilo);
+}
+
+.razlaga__kazalo-povezava--aktiven {
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__kazalo-st {
+  flex: none;
+  font-weight: 600;
+}
+
+/* --- Korak: naslovna vrstica in uvodni odstavek --- */
+
+.razlaga__korak {
+  /* Namizna glava je lepljiva (html scroll-padding-top); tu je le zrak. */
+  scroll-margin-top: var(--r3);
+}
+
+.razlaga__glava-koraka {
+  gap: var(--r2);
+}
+
+.razlaga__naslov-koraka {
+  font-size: clamp(32px, 3.4vw, 40px);
+  text-wrap: wrap;
+}
+
+.razlaga__odstavek {
+  max-width: 62ch;
+  margin: var(--r2) 0 0;
+  font-size: var(--tip-telo);
+  line-height: 1.55;
+  color: var(--barva-crnilo-2);
+}
+
+.razlaga__odstavek--r1 {
+  max-width: none;
+  margin-top: var(--r1);
+}
+
+.razlaga__odstavek--r3 {
+  margin-top: var(--r3);
+}
+
+.razlaga__odstavek--r4 {
+  margin-top: var(--r4);
+}
+
+.razlaga__odstavek--ozko {
+  max-width: 44ch;
+}
+
+.razlaga__odstavek--brez-zgoraj {
+  margin: 0;
+}
+
+/* Pripis pod preizkusom: lahek, drobnejši; krepko mora biti res krepko. */
+.razlaga__namig {
+  margin: var(--r2) 0 0;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__namig strong {
+  font-weight: 700;
+}
+
+.razlaga__namig--ozko {
+  max-width: 74ch;
+}
+
+.razlaga__napaka {
+  margin: var(--r2) 0 0;
+  font-size: 15px;
+  color: var(--barva-negativna-tekst);
+}
+
+/* Oznake mono nad polji in odčitki. Vrstične (kot span v maketi): vrstica je
+   visoka po telesu strani (17 × 1,5 = 25,5 px), ne po oznaki (16,8 px) - zato
+   so oznake nad izbirniki in poljem »Ti« za 8,7 px više kot blokovne. Blokovne
+   so samo tiste z izrecnim zamikom (--r16, --r24) in oznake znotraj label. */
+.razlaga__oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Mono 700 je v aplikaciji res naložen, maketa ima samo 400–600 (»bolder« od
+   500 da tam 600): krepko je izrecno 600, kot kaže posnetek. */
+.razlaga__oznaka strong {
+  color: var(--barva-crnilo);
+  font-weight: 600;
+}
+
+.razlaga__oznaka--glavna {
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__oznaka--r16 {
+  display: block;
+  margin-top: var(--r2);
+}
+
+.razlaga__oznaka--r24 {
+  display: block;
+  margin-top: var(--r3);
+}
+
+.razlaga__poz {
+  color: var(--barva-poudarek-tekst);
+}
+
+.razlaga__neg {
+  color: var(--barva-negativna);
+}
+
+.razlaga__glavna {
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__podnaslov {
+  margin: 0;
+  text-wrap: wrap;
+}
+
+/* Izbirnik: .izbirnik + .izbirnik__gumb iz sistema; tu le zamiki in dve
+   širini gumba. */
+.razlaga__izbirnik {
+  margin-top: var(--r1);
+}
+
+.razlaga__izbirnik-vrsta {
+  margin-top: var(--r2);
+}
+
+.razlaga__izbirnik-vrsta .razlaga__izbirnik,
+.razlaga__dvojno--sidro .razlaga__izbirnik {
+  margin-top: 0;
+}
+
+.razlaga__izbirnik-vrsta--r16 {
+  margin-top: var(--r2);
+}
+
+.izbirnik__gumb--siroki {
+  padding: var(--r1) var(--r2);
+}
+
+.izbirnik__gumb--ozki {
+  padding: var(--r1) 10px;
+}
+
+/* Polja: oznaka nad poljem v stolpcu. */
+.razlaga__polje-stolpec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+}
+
+.razlaga__polje-stolpec--tesno {
+  gap: 4px;
+}
+
+.razlaga__polje-stolpec--ozko {
+  max-width: 420px;
+}
+
+.razlaga__polje-stolpec--r12 {
+  margin-top: 12px;
+}
+
+.razlaga__polje-stolpec--r16 {
+  margin-top: var(--r2);
+}
+
+.razlaga__polje-stolpec--r24 {
+  margin-top: var(--r3);
+}
+
+/* Vnos ratinga: mono, črna obroba, bela podlaga. */
+.razlaga__vnos {
+  font-family: var(--pisava-mono);
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 12px 14px;
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  width: 100%;
+}
+
+.razlaga__vnos--velik {
+  font-size: 20px;
+  min-height: 52px;
+}
+
+.razlaga__vnos--srednji {
+  font-size: 18px;
+  min-height: 48px;
+}
+
+.razlaga__vnos--vrstica {
+  font-size: 16px;
+  padding: 10px;
+  min-height: 44px;
+}
+
+/* Drsnik in kljukica: izvorna, samo modra barva poudarka; zadetna površina
+   44 px. Globalna pravila za input (obroba, ozadje) tu ne veljajo. */
+.razlaga__drsnik {
+  width: 100%;
+  height: 44px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  accent-color: var(--barva-glavna);
+}
+
+.razlaga__kljukica {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+/* Kljukica se v ozki vrstici (telefon) skrči skupaj z besedilom, kot v maketi
+   (globalno pravilo za kljukico je flex: none). */
+.razlaga__kljukica input {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  margin: 0;
+  flex: 0 1 auto;
+  accent-color: var(--barva-glavna);
+}
+
+.razlaga__kljukica--r8 {
+  margin-top: var(--r1);
+}
+
+/* Dva stolpca, ki se na ozkem zaslonu zložita: korak 02, 03, 07. */
+.razlaga__dvojno {
+  --najmanj: 300px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--najmanj), 100%), 1fr));
+  gap: var(--r4);
+  margin-top: var(--r5);
+  align-items: end;
+}
+
+.razlaga__dvojno--siroko {
+  gap: var(--r4) var(--r6);
+  margin-top: var(--r3);
+  align-items: stretch;
+}
+
+.razlaga__dvojno--sidro {
+  --najmanj: 280px;
+  gap: var(--r3) var(--r6);
+  margin-top: var(--r3);
+}
+
+.razlaga__dvojno--dan {
+  --najmanj: 280px;
+  gap: var(--r3) var(--r5);
+  margin-top: var(--r3);
+}
+
+/* --- 01 Napoved --- */
+
+.razlaga__odcitek {
+  display: flex;
+  gap: var(--r4);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: var(--r4);
+}
+
+.razlaga__odstotek {
+  font: 800 clamp(88px, 11vw, 152px) / 0.8 var(--pisava-display);
+  letter-spacing: -0.06em;
+  color: var(--barva-glavna-tekst);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.razlaga__odstotek-znak {
+  font-size: 0.45em;
+  letter-spacing: -0.02em;
+}
+
+.razlaga__oznaka-pod {
+  margin-top: 12px;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__razlika {
+  padding-left: var(--r3);
+  border-left: 1px solid var(--barva-crta);
+}
+
+.razlaga__razlika-vrednost {
+  font: 800 48px / 0.9 var(--pisava-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Krivulja je drsnik: vleče se z miško ali prstom, puščici premakneta za 10. */
+.razlaga__graf {
+  position: relative;
+  margin-top: var(--r4);
+  user-select: none;
+  touch-action: none;
+}
+
+.razlaga__krivulja {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: ew-resize;
+}
+
+.razlaga__os-oznaka {
+  position: absolute;
+  bottom: -22px;
+  transform: translateX(-50%);
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  pointer-events: none;
+}
+
+/* 60 stolpcev napovedi: ob prvem prikazu zrastejo iz tal (samo transform, brez
+   preračuna postavitve). Barva pove, kje je izbrana razlika. */
+.razlaga__stolpec {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+  transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.razlaga__stolpec--viden {
+  transform: scaleY(1);
+}
+
+.razlaga__stolpec--izbran {
+  fill: var(--barva-glavna);
+}
+
+.razlaga__stolpec--levo {
+  fill: var(--barva-glavna-crta);
+}
+
+.razlaga__stolpec--desno {
+  fill: var(--barva-polnilo);
+}
+
+.razlaga__smeri {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--r5);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- 02 Sprememba: pas petih členov in obrazec --- */
+
+.razlaga__clenovi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(108px, 100%), 1fr));
+  margin-top: var(--r3);
+  border-top: 1px solid var(--barva-crnilo);
+  border-bottom: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__clen {
+  padding: var(--r2) 12px;
+  border-left: 1px solid var(--barva-crta);
+}
+
+.razlaga__clen--poudarek {
+  background: var(--barva-glavna-mehko);
+}
+
+.razlaga__clen-oznaka {
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__clen-vrednost {
+  margin-top: var(--r1);
+  font: 800 32px / 1 var(--pisava-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.razlaga__clen--poudarek .razlaga__clen-vrednost {
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__clen-opis {
+  margin-top: 6px;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  line-height: 1.35;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__obrazec {
+  margin: var(--r2) 0 0;
+  padding: 14px var(--r2);
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  font: 600 15px / 1.7 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Maskota ob zgodbi: stoji na črti, ki jo kaže okvir (.razlaga-lik). Okvir je
+   vrstični (inline-block), zato ovoj dobi vrstico po telesu strani in pod
+   črto ostane ~8 px zraka (maketa ima isto: višina vrstice je 109,5 px za
+   okvir 102 px). */
+.razlaga__maskota {
+  display: block;
+}
+
+.razlaga__maskota--levo {
+  justify-self: start;
+}
+
+.razlaga__maskota--desno {
+  justify-self: end;
+}
+
+.razlaga-lik {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  border-bottom: 1px solid var(--barva-crnilo);
+  line-height: 0;
+}
+
+/* Lik se dvigne izza črte, ko sekcija prvič pride v okno. */
+.razlaga-lik__dvig {
+  position: absolute;
+  inset: 0;
+  transform: translateY(105%);
+  transition: transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.razlaga-lik__dvig--viden {
+  transform: translateY(0);
+}
+
+.razlaga-lik__slika {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* Lik v glavi je klikljiv in ima noge v pikslih zaslona; tu je okras, ki se
+   z merilom veča, zato noge in roke niso klikljive in imajo debelino lika. */
+.razlaga-lik .maskota__figura {
+  pointer-events: none;
+  cursor: default;
+}
+
+.razlaga-lik .maskota__noge path {
+  vector-effect: none;
+  stroke-width: 3px;
+}
+
+/* Tabla se po dvigu poravna iz −10° (520 ms, zamik 260 ms). */
+.razlaga-lik__tabla {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: rotate(-10deg);
+  transition: transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 260ms;
+}
+
+.razlaga-lik__dvig--viden .razlaga-lik__tabla {
+  transform: rotate(0deg);
+}
+
+/* --- 03 K --- */
+
+.razlaga__k-stolpci {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 120px;
+  margin-top: var(--r2);
+  border-bottom: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__k-stolpec {
+  flex: 1;
+  background: var(--barva-crta);
+  transition: height 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.razlaga__k-stolpec--odigran {
+  background: var(--barva-crnilo);
+}
+
+.razlaga__k-stolpec--trenutni {
+  background: var(--barva-glavna-polna);
+}
+
+.razlaga__k-oznake {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font: 500 11px / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__k-vrednost {
+  display: flex;
+  align-items: baseline;
+  gap: var(--r2);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__k-stevilka {
+  font: 800 96px / 0.85 var(--pisava-display);
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__k-stevilka--crna {
+  color: var(--barva-crnilo);
+}
+
+.razlaga__razclen {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  transition: color 120ms;
+}
+
+.razlaga__razclen > :first-child {
+  font-size: 16px;
+}
+
+.razlaga__razclen > :last-child {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.razlaga__razclen--mirna {
+  color: var(--barva-crnilo-4);
+}
+
+/* --- 04 Teža --- */
+
+.razlaga__teze {
+  margin-top: var(--r3);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__teza {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(80px, 200px) 64px 64px;
+  align-items: center;
+  gap: var(--r2);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.razlaga__teza-ime {
+  font-size: var(--tip-vrstica);
+  font-weight: 600;
+}
+
+.razlaga__teza-opis {
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__palica {
+  display: block;
+  height: 6px;
+  background: var(--barva-polnilo);
+}
+
+.razlaga__palica-polnilo {
+  display: block;
+  height: 6px;
+  background: var(--barva-glavna);
+  transition: width 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.razlaga__teza-odstotek {
+  text-align: right;
+  font: 600 16px / 1.4 var(--pisava-mono);
+}
+
+.razlaga__teza-primer {
+  text-align: right;
+  font: 600 20px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-poudarek-tekst);
+}
+
+/* --- 05 Preizkus tekme --- */
+
+.razlaga__stranici {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: var(--r3) var(--r5);
+  margin-top: var(--r3);
+}
+
+.razlaga__stran {
+  border-top: 1px solid var(--barva-crnilo);
+  padding-top: var(--r2);
+}
+
+.razlaga__izid {
+  margin-top: var(--r4);
+  padding-top: var(--r2);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.razlaga__izid-vrstica {
+  display: flex;
+  justify-content: space-between;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Dvobarvna palica brez prehoda barve: zelena = tvoja možnost, rjasta =
+   nasprotnikova. Širina se premika 200 ms. */
+.razlaga__razmerje {
+  display: flex;
+  height: 6px;
+  margin-top: var(--r1);
+}
+
+.razlaga__razmerje-ti {
+  background: var(--barva-poudarek);
+  transition: width 200ms;
+}
+
+.razlaga__razmerje-on {
+  flex: 1;
+  background: var(--barva-negativna);
+}
+
+.razlaga__kazalniki {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  margin-top: var(--r3);
+}
+
+.razlaga__kazalniki--trije {
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+  margin-top: var(--r2);
+  padding-top: var(--r2);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__kazalnik {
+  padding-right: var(--r3);
+}
+
+.razlaga__kazalnik--drugi {
+  padding-right: 0;
+  padding-left: var(--r3);
+  border-left: 1px solid var(--barva-crta);
+}
+
+.razlaga__kazalnik-vrednost {
+  font: 800 clamp(56px, 6vw, 72px) / 0.9 var(--pisava-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.razlaga__kazalnik-oznaka {
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__stevilka-48 {
+  font: 800 48px / 1 var(--pisava-display);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* K ob vrnitvi je v maketi brez tabularnih števk. */
+.razlaga__stevilka-48--razmerna {
+  font-variant-numeric: normal;
+}
+
+.razlaga__racun {
+  margin: var(--r2) 0 0;
+  font: 500 13px / 1.7 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* --- 06 Razloži mojo spremembo --- */
+
+.razlaga__tri-polja {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: var(--r2);
+  margin-top: var(--r3);
+}
+
+.razlaga__razlaga {
+  margin-top: var(--r3);
+  padding: var(--r2) 20px;
+  border-left: 4px solid var(--barva-crta);
+}
+
+.razlaga__razlaga--ujema {
+  border-left-color: var(--barva-poudarek);
+  background: var(--barva-poudarek-mehko);
+}
+
+.razlaga__razlaga--ne {
+  border-left-color: var(--barva-negativna);
+  background: var(--barva-negativna-mehko);
+}
+
+.razlaga__razlaga-naslov {
+  font: 800 var(--tip-h3) / 1.1 var(--pisava-display);
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+}
+
+.razlaga__razlaga-besedilo {
+  margin: var(--r1) 0 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--barva-crnilo-2);
+}
+
+.razlaga__razlaga-racun {
+  margin: var(--r1) 0 0;
+  font: 600 var(--tip-drobno) / 1.6 var(--pisava-mono);
+  color: var(--barva-crnilo);
+}
+
+.razlaga__mreza-blok {
+  margin-top: var(--r3);
+}
+
+.razlaga__mreza {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  margin-top: var(--r1);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__mreza-glava {
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__mreza-glava--desno {
+  text-align: right;
+}
+
+.razlaga__mreza-glava--zadnja {
+  padding-right: var(--r1);
+}
+
+/* Maketa ima v teh dveh pravilih napako v padding (»10px« in »10px 0« skupaj
+   dasta tri zneske za K, za številke neveljaven zapis), zato so vrstice
+   kompaktne, K je zamaknjen za 10 px, številke pa stojijo ob desnem robu.
+   Posnetki iz predaje kažejo prav to in tako ostane. */
+.razlaga__mreza-k {
+  padding: 10px 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font: 600 var(--tip-drobno) / 1.3 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Celica, ki se ujema, je modra podlaga z belo številko. */
+.razlaga__mreza-celica {
+  padding: 0;
+  border-bottom: 1px solid var(--barva-crta);
+  text-align: right;
+  font: 500 15px / 1.3 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-2);
+}
+
+.razlaga__mreza-celica--zadetek {
+  background: var(--barva-glavna-polna);
+  color: var(--barva-bela);
+  font-weight: 700;
+}
+
+/* --- 07 Prvi dan novinca --- */
+
+.razlaga__graf-dne {
+  position: relative;
+  margin-top: var(--r2);
+}
+
+.razlaga__graf-dne-slika {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--barva-bela);
+  border: 1px solid var(--barva-crta);
+}
+
+.razlaga__graf-dne-oznaka {
+  position: absolute;
+  transform: translate(-50%, -140%);
+  padding: 2px 3px;
+  background: var(--barva-bela);
+  font: 600 var(--tip-mono) / 1 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  pointer-events: none;
+}
+
+.razlaga__kljuc {
+  display: flex;
+  gap: var(--r3);
+  flex-wrap: wrap;
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__kljuc > span {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+}
+
+.razlaga__kljuc-polna {
+  width: 24px;
+  height: 3px;
+  background: var(--barva-glavna);
+}
+
+.razlaga__kljuc-crtkana {
+  width: 24px;
+  border-top: 2px dashed var(--barva-crnilo-4);
+}
+
+.razlaga__tekme {
+  list-style: none;
+  margin: var(--r3) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__tekma {
+  display: grid;
+  grid-template-columns: 28px minmax(72px, 96px) auto minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.razlaga__tekma-st {
+  font: 600 var(--tip-drobno) / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__izid-tekme {
+  display: flex;
+  gap: 4px;
+}
+
+.razlaga__tekma-rezultat {
+  justify-self: end;
+  text-align: right;
+  font: 500 15px / 1.3 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.razlaga__tekma-rezultat strong {
+  font-weight: 600;
+}
+
+.razlaga__tekma-nacin {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__odstrani {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: none;
+  font: 500 20px / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  cursor: pointer;
+}
+
+.razlaga__odstrani:disabled {
+  cursor: not-allowed;
+}
+
+.razlaga__dodaj {
+  align-self: flex-start;
+  margin-top: var(--r2);
+}
+
+/* --- 08 Ko ne igraš: ravnilo mesecev --- */
+
+.razlaga__ravnilo {
+  position: relative;
+  height: 120px;
+  margin-top: var(--r1);
+}
+
+.razlaga__ravnilo-podlaga,
+.razlaga__ravnilo-polnilo {
+  position: absolute;
+  left: 0;
+  top: 56px;
+  height: 6px;
+}
+
+.razlaga__ravnilo-podlaga {
+  right: 0;
+  background: var(--barva-polnilo);
+}
+
+.razlaga__ravnilo-polnilo {
+  background: var(--barva-glavna);
+  transition: width 120ms;
+}
+
+.razlaga__crtica {
+  position: absolute;
+  top: 52px;
+  width: 1px;
+  height: 14px;
+  background: var(--barva-crnilo);
+}
+
+.razlaga__crtica--dolga {
+  top: 48px;
+  height: 22px;
+}
+
+/* Mejniki izmenično nad in pod ravnilom; dosežen je moder, skritje z lestvice
+   rjast, nedosežen siv. */
+.razlaga__mejnik {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  font: 600 var(--tip-mono) / 1.3 var(--pisava-mono);
+  color: var(--barva-crnilo-4);
+  transition: color 120ms;
+}
+
+.razlaga__mejnik--spodaj {
+  top: 76px;
+}
+
+.razlaga__mejnik--dosezen {
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__mejnik--skrit {
+  color: var(--barva-negativna);
+}
+
+.razlaga__mejnik-opis {
+  display: block;
+  font: 500 10px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- 09 Na kateri lestvici si --- */
+
+.razlaga__opis-igralca {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--r2) var(--r4);
+  margin-top: var(--r3);
+}
+
+.razlaga__lestvice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+  margin-top: var(--r3);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.razlaga__lestvica {
+  margin-top: -1px;
+  padding: 14px 12px var(--r2);
+  border-left: 1px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+  border-top: 4px solid var(--barva-crnilo);
+  color: var(--barva-crnilo-4);
+  transition: background-color 200ms, border-color 200ms;
+}
+
+.razlaga__lestvica--izbrana {
+  border-top-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  color: var(--barva-crnilo);
+}
+
+.razlaga__lestvica--zunaj {
+  border-top-color: var(--barva-negativna);
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-crnilo);
+}
+
+.razlaga__lestvica-oznaka {
+  font: 500 11px / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.razlaga__lestvica-ime {
+  margin-top: 6px;
+  font: 800 22px / 1.05 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.razlaga__razlog {
+  margin: var(--r2) 0 0;
+  font-size: var(--tip-telo);
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--barva-crnilo);
+}
+
+.razlaga__kategorije {
+  margin-top: var(--r2);
+}
+
+.razlaga__znacke {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: var(--r1);
+}
+
+.razlaga__znacka {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px var(--r1);
+  background: var(--barva-polnilo);
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-4);
+  transition: background-color 120ms;
+}
+
+.razlaga__znacka--aktivna {
+  background: var(--barva-crnilo);
+  color: var(--barva-papir);
+}
+
+/* --- 10 Zakaj …? --- */
+
+.razlaga__vrstica-vprasanj {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--r3);
+  flex-wrap: wrap;
+  margin-top: var(--r3);
+}
+
+.razlaga__vprasanja {
+  margin-top: var(--r3);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.razlaga__vprasanje {
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.razlaga__vprasanje summary {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 24px;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 64px;
+  padding: 18px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.razlaga__vprasanje summary::-webkit-details-marker {
+  display: none;
+}
+
+.razlaga__vprasanje-st {
+  font: 600 13px / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.razlaga__vprasanje-besedilo {
+  font: 800 22px / 1.15 var(--pisava-display);
+  letter-spacing: -0.02em;
+  color: var(--barva-crnilo);
+}
+
+/* Znak + je besedilo, ne ikona; ob odprtju se zasuče v ×. */
+.razlaga__znak {
+  font: 600 var(--tip-h3) / 1 var(--pisava-mono);
+  color: var(--barva-glavna-tekst);
+  transition: transform 120ms;
+}
+
+.razlaga__vprasanje[open] .razlaga__znak {
+  transform: rotate(45deg);
+}
+
+.razlaga__vprasanje p {
+  max-width: 62ch;
+  margin: 0 0 20px 52px;
+  font-size: var(--tip-telo);
+  line-height: 1.6;
+  color: var(--barva-crnilo-2);
+}
+
+.razlaga__vprasanje-povezava {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__noga {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--r2);
+  flex-wrap: wrap;
+  margin-top: var(--r6);
+  padding-top: var(--r2);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.razlaga__noga p {
+  max-width: 52ch;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--barva-crnilo-3);
+}
+
+/* Povezavi sta v maketi vrstici po telesu strani (17 × 1,5), ne po gumbu. */
+.razlaga__noga .gumb {
+  line-height: 1.5;
+}
+
+.razlaga__noga-gumba {
+  display: flex;
+  gap: var(--r1);
+  flex-wrap: wrap;
+}
+
+/* --- Telefon --- */
+
+/* Trak napredka v lepljivi glavi: »03/10«, ime koraka, palica (korak × 10 %). */
+.razlaga__trak {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--barva-crta);
+  background: var(--barva-papir);
+}
+
+.razlaga__trak-st {
+  font: 600 var(--tip-mono) / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  color: var(--barva-glavna-tekst);
+}
+
+.razlaga__trak-ime {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 500 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.razlaga__trak-palica {
+  flex: none;
+  width: 64px;
+  height: 6px;
+  background: var(--barva-polnilo);
+}
+
+.razlaga__trak-polnilo {
+  display: block;
+  height: 6px;
+  background: var(--barva-glavna);
+  transition: width 200ms;
+}
+
+/* Na telefonu stran sama nosi razmik 56 px med glavo in telesom (privzetek
+   telefona je 32 px), zgornji rob je 24 px, koraki pa podrsajo pod lepljivo
+   glavo z vrstico napredka (56 + črta + ~34 px). */
+.vsebina--telefon:has(> .razlaga) {
+  padding-top: var(--r3);
+}
+
+.vsebina--telefon > .razlaga {
+  gap: var(--r7);
+}
+
+@media (max-width: 640px) {
+  .razlaga__korak {
+    scroll-margin-top: 112px;
+  }
+}
+
+/* Pogoji in zasebnost: ozek stolpec za branje, kazalo kot vrstica povezav in
+   sekcije s črto. Do oktobra 2026 je isti slog nosila razlaga ratinga
+   (.razlaga); odkar je ta stran v desetih korakih, ima Pogoji svoja razreda. */
+.pogoji {
   max-width: 760px;
 }
 
-/* :where - brez dodatne specifičnosti, da posebni odstavki (račun, obrazec)
-   obdržijo svojo velikost. */
-.razlaga :where(p, li) {
+/* :where - brez dodatne specifičnosti, da posebni odstavki obdržijo svojo
+   velikost. */
+.pogoji :where(p, li) {
   font-size: var(--tip-telo);
   line-height: 1.55;
 }
 
-.razlaga__kazalo {
+.pogoji__kazalo {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 20px;
@@ -17669,7 +19065,7 @@ a.ekipa-okno__srecanje:hover {
   border-bottom: 1px solid var(--barva-crta);
 }
 
-.razlaga__kazalo a {
+.pogoji__kazalo a {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
@@ -17680,237 +19076,20 @@ a.ekipa-okno__srecanje:hover {
   text-decoration: none;
 }
 
-.razlaga__sekcija {
+.pogoji__sekcija {
   margin-top: var(--r6);
 }
 
-.razlaga__podnaslov {
-  margin: var(--r4) 0 var(--r1);
-  font-family: var(--pisava-display);
-  font-size: var(--tip-h3);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.razlaga__obrazec {
-  margin: var(--r2) 0;
-  padding: 14px 16px;
-  border-left: 4px solid var(--barva-glavna);
-  background: var(--barva-glavna-mehko);
-  font: 600 16px / 1.4 var(--pisava-mono);
-}
-
-.razlaga__tabela {
-  margin: var(--r2) 0;
-  border-top: 1px solid var(--barva-crnilo);
-}
-
-.razlaga__vrstica {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--barva-crta);
-  font-size: 16px;
-}
-
-.razlaga__vrstica--tri {
-  grid-template-columns: minmax(0, 1fr) 80px 80px;
-}
-
-.razlaga__vrstica--glava {
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-}
-
-.razlaga__desno {
-  text-align: right;
-}
-
-.razlaga__stevilka {
-  font: 600 16px / 1.4 var(--pisava-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Vprasanja: zaprta, dokler jih gledalec ne odpre. Znak + / − je besedilo,
-   ne ikona. */
-.razlaga__vprasanje {
-  border-bottom: 1px solid var(--barva-crta);
-}
-
-.razlaga__vprasanje summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 52px;
-  padding: 10px 0;
-  cursor: pointer;
-  list-style: none;
-  font-size: var(--tip-vrstica);
-  font-weight: 600;
-  color: var(--barva-crnilo);
-}
-
-.razlaga__vprasanje summary::-webkit-details-marker {
-  display: none;
-}
-
-.razlaga__vprasanje summary::after {
-  content: '+';
-  flex-shrink: 0;
-  font: 600 22px / 1 var(--pisava-mono);
-  color: var(--barva-glavna-tekst);
-}
-
-.razlaga__vprasanje[open] summary::after {
-  content: '−';
-}
-
-.razlaga__vprasanje p {
-  margin: 0 0 var(--r2);
-  color: var(--barva-crnilo-2);
-}
-
-.razlaga__vprasanje a,
-.razlaga p a {
-  color: var(--barva-glavna-tekst);
-}
-
-/* Preizkusa */
-.razlaga__preizkus {
-  margin-top: var(--r2);
-}
-
-.razlaga__polja {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--r2);
-  max-width: 420px;
-}
-
-.razlaga__oznaka {
-  display: block;
-  margin-top: var(--r2);
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-}
-
-.razlaga__izbirnik {
-  margin-top: var(--r1);
-}
-
-.razlaga__kljukica {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  margin-top: var(--r1);
-  font-size: 16px;
-}
-
-.razlaga__kljukica input {
-  width: 20px;
-  min-height: 20px;
-  height: 20px;
-  padding: 0;
-}
-
-.razlaga__izid {
-  margin-top: var(--r3);
-  padding-top: var(--r2);
-  border-top: 1px solid var(--barva-crnilo);
-}
-
-.razlaga__verjetnost {
-  margin: 0;
-}
-
-.razlaga__racun {
-  margin: var(--r2) 0 0;
-  font: 500 13px / 1.6 var(--pisava-mono);
-  color: var(--barva-crnilo-3);
-}
-
-.razlaga__tekme {
-  list-style: none;
-  margin: var(--r2) 0;
-  padding: 0;
-  border-top: 1px solid var(--barva-crnilo);
-}
-
-.razlaga__tekma {
-  display: grid;
-  grid-template-columns: 28px 96px auto minmax(0, 1fr) 44px;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--barva-crta);
-}
-
-.razlaga__tekma-st {
-  font: 600 14px / 1 var(--pisava-mono);
-  color: var(--barva-crnilo-3);
-}
-
-.razlaga__tekma-polje input {
-  padding: 10px;
-}
-
-.razlaga__izid-tekme {
-  margin: 0;
-}
-
-.razlaga__tekma-izid {
-  justify-self: end;
-  font: 500 15px / 1.3 var(--pisava-mono);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.razlaga__odstrani {
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--barva-crta);
-  background: none;
-  font: 500 20px / 1 var(--pisava-mono);
-  color: var(--barva-crnilo-3);
-  cursor: pointer;
-}
-
-/* Na telefonu gre izid tekme v svojo vrsto pod vnos - pet stolpcev v 335 px
-   ne gre. */
 @media (max-width: 640px) {
-  .razlaga__tekma {
-    grid-template-columns: 24px 84px minmax(0, 1fr) 44px;
-    grid-template-areas:
-      'st polje izid odstrani'
-      '. rezultat rezultat rezultat';
-  }
-
-  .razlaga__tekma-st { grid-area: st; }
-  .razlaga__tekma-polje { grid-area: polje; }
-  .razlaga__izid-tekme { grid-area: izid; }
-  .razlaga__odstrani { grid-area: odstrani; }
-
-  .razlaga__tekma-izid {
-    grid-area: rezultat;
-    justify-self: start;
-  }
-
-  .razlaga__sekcija {
+  .pogoji__sekcija {
     margin-top: var(--r5);
     /* Lepljiva glava telefona (56 px in črta) bi pokrila naslov sekcije, do
-       katere vodi sidro (#prvi-dan, #zasebnost). */
+       katere vodi sidro (#zasebnost). */
     scroll-margin-top: 72px;
   }
 }
 
-/* Pogoji in zasebnost: isti ozek stolpec kot razlaga ratinga. */
+
 .pogoji__naslov {
   margin: var(--r3) 0 var(--r1);
   font-size: var(--tip-vrstica);

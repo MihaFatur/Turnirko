@@ -311,7 +311,7 @@ export function GrafRatinga({
               {podrobnost.nacin === 'UVRSTITEV' && (
                 <>
                   {' '}
-                  <Link to="/o-ratingu#prvi-dan">Preizkusi s svojimi izidi →</Link>
+                  <Link to="/o-ratingu#k7">Preizkusi s svojimi izidi →</Link>
                 </>
               )}
             </p>

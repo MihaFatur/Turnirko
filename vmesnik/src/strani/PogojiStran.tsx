@@ -27,7 +27,7 @@ export function PogojiStran() {
   }, [lokacija.hash])
 
   return (
-    <section className="razlaga pogoji">
+    <section className="pogoji">
       <div className="stran-glava stran-glava--ozka">
         <div>
           <h1 className="naslov-strani">
@@ -42,7 +42,7 @@ export function PogojiStran() {
         </div>
       </div>
 
-      <nav className="razlaga__kazalo" aria-label="Vsebina strani">
+      <nav className="pogoji__kazalo" aria-label="Vsebina strani">
         <a href="#pogoji">Pogoji uporabe</a>
         <a href="#zasebnost">Varstvo osebnih podatkov</a>
         <a href="#kontakt">Kontakt</a>
@@ -161,7 +161,7 @@ export function PogojiStran() {
 
 function Sekcija({ id, naslov, children }: { id: string; naslov: string; children: ReactNode }) {
   return (
-    <section id={id} className="razlaga__sekcija" aria-labelledby={`${id}-naslov`}>
+    <section id={id} className="pogoji__sekcija" aria-labelledby={`${id}-naslov`}>
       <div className="naslovna-vrstica">
         <h2 id={`${id}-naslov`}>{naslov}</h2>
       </div>

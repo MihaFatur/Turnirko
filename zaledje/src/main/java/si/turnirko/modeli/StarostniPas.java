@@ -33,6 +33,23 @@ public enum StarostniPas {
     private static final StarostniPas[] MLADINSKI = { U11, U13, U15, U17, U19, U21 };
     private static final int LET_VETERAN = 40;
 
+    /* Mladinski pas je za igralce MLAJSE od te starosti (U11 = mlajsi od 11);
+       CLANI in VETERANI mejo nimata - clan je vsak, ki mladinskega pasu
+       prerase, veteran od veteraniOd() naprej. Meje berejo tudi javna razlaga
+       ratinga, zato ostanejo na enem mestu. */
+    public Integer mlajsiOd() {
+        for (int i = 0; i < MLADINSKI.length; i++) {
+            if (MLADINSKI[i] == this) {
+                return MLADINSKE_MEJE[i];
+            }
+        }
+        return null;
+    }
+
+    public static int veteraniOd() {
+        return LET_VETERAN;
+    }
+
     /* Starost se za sezono doloca na 31. december v letu, v katerem se sezona
        zacne (11. clen PST): igralec mora biti na ta dan MLAJSI od stevilke
        kategorije. Zato od januarja do junija se vedno velja letnica prejsnjega

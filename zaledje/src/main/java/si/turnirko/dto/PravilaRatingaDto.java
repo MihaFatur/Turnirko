@@ -10,6 +10,7 @@ import java.util.List;
 
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.StarostniPas;
 
 public record PravilaRatingaDto(
         // K = osnova + pribitki za negotovost (sestevajo se)
@@ -28,10 +29,13 @@ public record PravilaRatingaDto(
         int navideznihTekem,
         int pragRekreativca,
         int spodnjaMeja,
-        // pricakovana verjetnost zmage pri dani razliki ratingov
+        // pricakovana verjetnost zmage boljsega pri razliki od -600 do +600 po 10
         List<Napoved> napovedi,
         // kje zacne novinec dane starosti (starostno sidro)
-        List<Sidro> sidra
+        List<Sidro> sidra,
+        // mladinski pasovi (U11 ... U21) z zgornjo mejo in starost, od katere je veteran
+        List<Kategorija> kategorije,
+        int veteraniOd
 ) {
 
     public record Raven(RavenTekmovanja raven, double teza) {}
@@ -39,7 +43,12 @@ public record PravilaRatingaDto(
     /* Po toliko mesecih brez tekme je skupaj odbitih toliko tock. */
     public record Odbitek(int mesecev, int skupaj) {}
 
-    public record Napoved(int razlika, int odstotek) {}
+    /* Verjetnost zmage igralca, ki ima za `razlika` tock vec od nasprotnika.
+       Decimalna, ne zaokrozena: iz nje stran narise krivuljo in odstotke. */
+    public record Napoved(int razlika, double verjetnost) {}
 
     public record Sidro(Spol spol, int starost, int vrednost) {}
+
+    /* Mladinski pas za igralce, mlajse od `mlajsiOd` (starost po 11. clenu PST). */
+    public record Kategorija(StarostniPas pas, int mlajsiOd) {}
 }
