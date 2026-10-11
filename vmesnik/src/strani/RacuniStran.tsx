@@ -7,17 +7,21 @@
    potreben); registracije brez kode se same izbrišejo in so tu le za
    pregled. Računi, ki so se povezali samodejno, so označeni — admin jih
    lahko razveže, če je ujemanje zgrešilo soimenjaka.
+
+   Pri vsakem računu (tudi pred potrditvijo) je vidna naročnina — paket in
+   stanje. Plačan paket se zabeleži s plačilom, še preden admin račun potrdi.
    Vidi jo samo administrator. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, racuniApi } from '../api/zahteve'
-import type { RacunIgralcaDto } from '../api/tipi'
-import { OZNAKE_STATUSA_RACUNA, OZNAKE_VLOGA } from '../api/tipi'
+import type { NarocninaRacuna, RacunIgralcaDto } from '../api/tipi'
+import { OZNAKE_PAKET, OZNAKE_STATUSA_RACUNA, OZNAKE_VLOGA } from '../api/tipi'
 import { IskalniIzbirnik, type MoznostIzbirnika } from '../komponente/IskalniIzbirnik'
 import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { oblikujDatum } from '../pomozno/oblikovanje'
 
 /* Zahteva, ki jo admin lahko obdela: naslov potrjen, skrbnik (če je
    potreben) tudi. */
@@ -100,6 +104,7 @@ export function RacuniStran() {
                 <tr>
                   <th scope="col">E-pošta</th>
                   <th scope="col">Navedeno ime</th>
+                  <th scope="col">Naročnina</th>
                   <th scope="col">Stanje</th>
                   <th scope="col" className="tabela__dejanja"></th>
                 </tr>
@@ -128,6 +133,7 @@ export function RacuniStran() {
                 <tr>
                   <th scope="col">E-pošta</th>
                   <th scope="col">Vloga</th>
+                  <th scope="col">Naročnina</th>
                   <th scope="col">Igralec / klub</th>
                   <th scope="col">Stanje</th>
                   <th scope="col" className="tabela__dejanja"></th>
@@ -204,6 +210,7 @@ function ZahtevaKartica({ racun }: { racun: RacunIgralcaDto }) {
             {racun.email}
             {racun.prijavljeniDatumRojstva && ` · rojen ${datum(racun.prijavljeniDatumRojstva)}`}
             {racun.klubZelja && ` · navedel klub: ${racun.klubZelja}`}
+            {` · naročnina: ${opisNarocnine(racun.narocnina)}`}
           </span>
         </div>
         <span className={`racun__vloga racun__vloga--${racun.vloga}`}>
@@ -302,6 +309,7 @@ function ZahtevaOrganizator({ racun }: { racun: RacunIgralcaDto }) {
           <span className="racun__podrobnost">
             {racun.email}
             {racun.klubZelja && ` · navedel klub: ${racun.klubZelja}`}
+            {` · naročnina: ${opisNarocnine(racun.narocnina)}`}
           </span>
         </div>
         <span className="racun__vloga racun__vloga--ORGANIZATOR">Organizator</span>
@@ -367,6 +375,9 @@ function NepotrjenaVrstica({ racun }: { racun: RacunIgralcaDto }) {
       <td>
         {racun.prijavljenoIme} {racun.prijavljeniPriimek}
         <span className="enanaena__vir">{OZNAKE_VLOGA[racun.vloga]}</span>
+      </td>
+      <td>
+        <NarocninaOznaka narocnina={racun.narocnina} />
       </td>
       <td>{racun.emailPotrjen ? 'čaka kodo skrbnika' : 'e-pošta ni potrjena'}</td>
       <td className="racun__dejanja">
@@ -445,6 +456,9 @@ function ObstojecaVrstica({ racun }: { racun: RacunIgralcaDto }) {
     <tr>
       <td>{racun.email}</td>
       <td>{OZNAKE_VLOGA[racun.vloga]}</td>
+      <td>
+        <NarocninaOznaka narocnina={racun.narocnina} />
+      </td>
       <td>
         {racun.vloga === 'ORGANIZATOR' ? (racun.klub ?? '—') : (racun.imeIgralca ?? '—')}
         {povezanIgralec && racun.virPovezave === 'SAMODEJNO' && (
@@ -547,4 +561,49 @@ function ObstojecaVrstica({ racun }: { racun: RacunIgralcaDto }) {
 function datum(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('sl-SI')
+}
+
+/* Ime paketa brez oznake vloge (»Organizator Plus« → »Plus«, kot v
+   registraciji). Organizator brez zapisa nima paketa; igralec brez zapisa je
+   brezplačen. */
+function imeNarocnine(n: NarocninaRacuna): string {
+  if (n.paket === null) return 'Brez paketa'
+  if (n.paket === 'BREZPLACNO') return 'Brezplačno'
+  return OZNAKE_PAKET[n.paket].replace(/^(Igralec|Organizator) /, '')
+}
+
+/* Stanje, kadar ga zapis pove: cikel in datum konca obdobja pri aktivni,
+   preklicana (do konca obdobja še velja) in potekla (ne velja več) sta
+   različni stvari. Brezplačen paket stanja nima. */
+function stanjeNarocnine(n: NarocninaRacuna): string | null {
+  if (n.paket === null || n.paket === 'BREZPLACNO' || n.status === null) return null
+  const datumDo = n.obdobjeDo ? `do ${oblikujDatum(n.obdobjeDo)}` : null
+  switch (n.status) {
+    case 'AKTIVNA':
+      return [n.ciklus === 'LETNO' ? 'letno' : 'mesečno', datumDo].filter(Boolean).join(' ')
+    case 'PREKLICANA':
+      return n.veljavna ? ['preklicana', datumDo].filter(Boolean).join(' ') : 'potekla'
+    case 'ZAPADLA':
+      return 'zapadla'
+    case 'CAKA_PLACILO':
+      return 'čaka plačilo'
+  }
+}
+
+/* Naročnina v eni vrstici, npr. »Premium, letno do 12. 10. 2027« (kartica). */
+function opisNarocnine(n: NarocninaRacuna): string {
+  const stanje = stanjeNarocnine(n)
+  return stanje ? `${imeNarocnine(n)}, ${stanje}` : imeNarocnine(n)
+}
+
+/* Naročnina v celici tabele: ime, za njim stanje v drobnem napisu (kot
+   »samodejno« pri povezavi). */
+function NarocninaOznaka({ narocnina }: { narocnina: NarocninaRacuna }) {
+  const stanje = stanjeNarocnine(narocnina)
+  return (
+    <>
+      {imeNarocnine(narocnina)}
+      {stanje && <span className="enanaena__vir">{stanje}</span>}
+    </>
+  )
 }

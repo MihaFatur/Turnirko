@@ -884,7 +884,21 @@ export interface RacunIgralcaDto {
   virPovezave: VirPovezave | null
   povezanOb: string | null
   ustvarjenOb: string
+  /* Naročnina računa, vedno izpolnjena (RacunIgralcaDto.NarocninaRacuna). */
+  narocnina: NarocninaRacuna
   predlogi: PredlogIgralcaDto[]
+}
+
+/* Naročnina računa v administratorjevem pregledu. `paket` je null samo pri
+   organizatorju brez zapisa (paket se zabeleži šele s plačilom); igralec brez
+   zapisa je BREZPLACNO. `obdobjeDo` je koledarski dan (ISO). */
+export interface NarocninaRacuna {
+  paket: Paket | null
+  status: StatusNarocnine | null
+  ciklus: CiklusPlacila | null
+  obdobjeDo: string | null
+  /* Ali paket zdaj daje pravice; preklicana ostane true do konca obdobja. */
+  veljavna: boolean
 }
 
 /* Administratorjeva potrditev organizatorja: (neobvezni) klub. */

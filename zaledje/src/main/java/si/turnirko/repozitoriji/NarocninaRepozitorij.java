@@ -32,4 +32,9 @@ public interface NarocninaRepozitorij extends JpaRepository<Narocnina, Long> {
                                si.turnirko.modeli.StatusNarocnine.PREKLICANA)
             """)
     List<Narocnina> najdiPremiumIgralce();
+
+    /* Vse narocnine skupaj z racunom - en poizvedba za administratorjev seznam
+       racunov. Brez join fetch bi vsak racun sprozil svojo poizvedbo za uporabnika. */
+    @Query("select n from Narocnina n join fetch n.uporabnik")
+    List<Narocnina> najdiVseZRacuni();
 }

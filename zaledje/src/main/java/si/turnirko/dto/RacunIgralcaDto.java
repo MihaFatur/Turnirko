@@ -2,13 +2,18 @@
    registraciji, v katerem stanju je racun in s katerim igralcem je povezan.
    Predlogi so igralci iz sifranta, ki se ujemajo z navedenim imenom -
    potrditev je zato en klik. Pogled je samo administratorjev, zato sme
-   nositi tudi navedeni datum rojstva (podlaga za pravo povezavo). */
+   nositi tudi navedeni datum rojstva (podlaga za pravo povezavo). Enako
+   velja za naročnino: administrator mora videti, kdo ima kateri paket, tudi
+   pred potrditvijo racuna. */
 package si.turnirko.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import si.turnirko.modeli.CiklusPlacila;
+import si.turnirko.modeli.Paket;
+import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.VirPovezave;
@@ -38,10 +43,13 @@ public record RacunIgralcaDto(
         VirPovezave virPovezave,
         LocalDateTime povezanOb,
         LocalDateTime ustvarjenOb,
+        // placilni paket racuna (vedno izpolnjen; vsebina je odvisna od vloge)
+        NarocninaRacuna narocnina,
         List<PredlogIgralcaDto> predlogi
 ) {
 
-    public static RacunIgralcaDto iz(Uporabnik u, List<PredlogIgralcaDto> predlogi) {
+    public static RacunIgralcaDto iz(Uporabnik u, List<PredlogIgralcaDto> predlogi,
+                                     NarocninaRacuna narocnina) {
         return new RacunIgralcaDto(
                 u.getId(),
                 u.getUporabniskoIme(),
@@ -61,8 +69,24 @@ public record RacunIgralcaDto(
                 u.getVirPovezave(),
                 u.getPovezanOb(),
                 u.getUstvarjenOb(),
+                narocnina,
                 predlogi);
     }
+
+    /* Naročnina racuna. Igralec brez zapisa je BREZPLACNO (Free); organizator
+       brez zapisa nima paketa (paket = null), ker ga zapis dobi sele s placilom.
+       Stanje se pokaze ne glede na vlogo, tudi ce racun se caka na potrditev -
+       placan paket pred potrditvijo je ravno tisto, kar admin mora videti. */
+    public record NarocninaRacuna(
+            Paket paket,
+            // null = zapisa ni (igralec Free ali organizator brez paketa)
+            StatusNarocnine status,
+            CiklusPlacila ciklus,
+            // konec placanega obdobja kot koledarski dan (ISO), null brez zapisa
+            LocalDate obdobjeDo,
+            // ali paket zdaj daje pravice (preklicana ostane true do konca obdobja)
+            boolean veljavna
+    ) {}
 
     /* Kandidat za povezavo. Igralci, ki racun ze imajo, so oznaceni, da jih
        administrator ne poveze dvakrat. */

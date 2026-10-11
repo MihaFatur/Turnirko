@@ -259,7 +259,7 @@ public class UpravljanjeNarocnineStoritev {
     }
 
     /* Cas iz baze je v casovnem pasu streznika (LocalDateTime brez pasu). */
-    private static LocalDate dan(LocalDateTime cas) {
+    static LocalDate dan(LocalDateTime cas) {
         if (cas == null) {
             return null;
         }

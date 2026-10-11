@@ -10,8 +10,10 @@ package si.turnirko.storitve;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,8 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.VirPovezave;
@@ -94,12 +98,18 @@ public class RacuniStoritev {
 
     @Transactional(readOnly = true)
     public List<RacunIgralcaDto> racuni() {
+        // naročnine vseh računov naenkrat - ena poizvedba, ne ena na račun
+        Map<Long, Narocnina> narocnine = new HashMap<>();
+        for (Narocnina n : narocninaRepozitorij.najdiVseZRacuni()) {
+            narocnine.put(n.getUporabnik().getId(), n);
+        }
         List<RacunIgralcaDto> seznam = new ArrayList<>();
         for (Uporabnik u : uporabnikRepozitorij.najdiRacuneOseb()) {
             // predlogi za povezavo veljajo le pri cakajocem racunu IGRALCA
             // (organizatorja ne povezujemo z zapisom v sifrantu igralcev)
             boolean predlagaj = u.getVloga() == Vloga.IGRALEC && u.getStatus() == StatusRacuna.CAKA;
-            seznam.add(RacunIgralcaDto.iz(u, predlagaj ? predlogi(u) : List.of()));
+            seznam.add(RacunIgralcaDto.iz(u, predlagaj ? predlogi(u) : List.of(),
+                    narocnina(u, narocnine.get(u.getId()))));
         }
         return seznam;
     }
@@ -133,7 +143,7 @@ public class RacuniStoritev {
         u.setAktiven(true);
         u.setVirPovezave(VirPovezave.ADMIN);
         u.setPovezanOb(LocalDateTime.now());
-        return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
+        return racunDto(uporabnikRepozitorij.save(u), List.of());
     }
 
     /* Razvezava: racun ostane (z e-posto in geslom), a brez igralca in spet v
@@ -149,7 +159,7 @@ public class RacuniStoritev {
         u.setStatus(StatusRacuna.CAKA);
         u.setVirPovezave(null);
         u.setPovezanOb(null);
-        return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
+        return racunDto(uporabnikRepozitorij.save(u), List.of());
     }
 
     /* Potrditev organizatorja: racun dobi vlogo organizatorja in (neobvezno)
@@ -170,7 +180,7 @@ public class RacuniStoritev {
         }
         u.setStatus(StatusRacuna.POTRJEN);
         u.setAktiven(true);
-        return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
+        return racunDto(uporabnikRepozitorij.save(u), List.of());
     }
 
     /* Zavrnitev: racun ostane (da se ista e-posta ne registrira znova),
@@ -183,7 +193,7 @@ public class RacuniStoritev {
         u.setVirPovezave(null);
         u.setPovezanOb(null);
         u.setAktiven(false);
-        return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
+        return racunDto(uporabnikRepozitorij.save(u), List.of());
     }
 
     /* Vklop/izklop dostopa ze potrjenemu racunu. */
@@ -191,7 +201,7 @@ public class RacuniStoritev {
     public RacunIgralcaDto nastaviAktiven(Long idRacuna, boolean aktiven) {
         Uporabnik u = najdiRacun(idRacuna);
         u.setAktiven(aktiven);
-        return RacunIgralcaDto.iz(uporabnikRepozitorij.save(u), List.of());
+        return racunDto(uporabnikRepozitorij.save(u), List.of());
     }
 
     /* Izbris racuna. Potreben je, ker zavrnjen racun sicer za vedno zasede
@@ -229,6 +239,25 @@ public class RacuniStoritev {
     }
 
     // ---------- Pomozno ----------
+
+    /* Odgovor mutacije nosi isti zapis kot seznam - sicer bi po mutaciji
+       administrator za trenutek videl drug paket kot v seznamu. */
+    private RacunIgralcaDto racunDto(Uporabnik u, List<RacunIgralcaDto.PredlogIgralcaDto> predlogi) {
+        Narocnina n = narocninaRepozitorij.findByUporabnikId(u.getId()).orElse(null);
+        return RacunIgralcaDto.iz(u, predlogi, narocnina(u, n));
+    }
+
+    /* Igralec brez zapisa je Free; organizator brez zapisa nima paketa. Datum
+       konca obdobja gre skozi isti rez kot pri naročnini igralca. */
+    private static RacunIgralcaDto.NarocninaRacuna narocnina(Uporabnik u, Narocnina n) {
+        if (n == null) {
+            return new RacunIgralcaDto.NarocninaRacuna(
+                    u.getVloga() == Vloga.IGRALEC ? Paket.BREZPLACNO : null, null, null, null, false);
+        }
+        return new RacunIgralcaDto.NarocninaRacuna(n.getPaket(), n.getStatus(), n.getCiklus(),
+                UpravljanjeNarocnineStoritev.dan(n.getTrenutnoObdobjeDo()),
+                n.jeVeljavna(LocalDateTime.now()));
+    }
 
     /* Kandidati za povezavo: ujemanje po priimku in imenu, sicer po priimku.
        Namen je prihraniti iskanje - administrator lahko izbere kogarkoli. */
