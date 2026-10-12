@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IgralnaRoka;
 import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.StarostniPas;
 
 public record IgralecDto(
         Long id,
@@ -26,7 +27,10 @@ public record IgralecDto(
         // zacetni rating; nizko stevilo -> rating je se provizoricen
         int steviloTekem,
         // rating zacne pri 800 namesto pri starostnem sidru (V36)
-        boolean rekreativniVstop
+        boolean rekreativniVstop,
+        /* Isti izpeljani pas kot v IgralecJavniDto: stran Igralci filtrira po
+           njem, datum rojstva pa mora ostati le tu, pri adminu. */
+        StarostniPas starostniPas
 ) {
 
     public static IgralecDto iz(Igralec igralec, Integer rating) {
@@ -50,7 +54,8 @@ public record IgralecDto(
                 KlubDto.iz(igralec.getKlub()),
                 rating,
                 steviloTekem,
-                igralec.isRekreativniVstop()
+                igralec.isRekreativniVstop(),
+                StarostniPas.izpelji(igralec.getDatumRojstva(), LocalDate.now())
         );
     }
 }

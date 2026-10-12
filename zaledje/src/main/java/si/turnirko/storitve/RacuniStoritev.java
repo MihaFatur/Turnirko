@@ -8,6 +8,7 @@
    en igralec ima najvec en racun. */
 package si.turnirko.storitve;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,6 +51,8 @@ public class RacuniStoritev {
     private final CenikStoritev cenik;
     private final PasswordEncoder kodirnik;
     private final KodeStoritev kode;
+    private final RacunDnevnikStoritev dnevnik;
+    private final NarocninaStoritev narocninaStoritev;
 
     public RacuniStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                           IgralecRepozitorij igralecRepozitorij,
@@ -57,7 +60,9 @@ public class RacuniStoritev {
                           NarocninaRepozitorij narocninaRepozitorij,
                           CenikStoritev cenik,
                           PasswordEncoder kodirnik,
-                          KodeStoritev kode) {
+                          KodeStoritev kode,
+                          RacunDnevnikStoritev dnevnik,
+                          NarocninaStoritev narocninaStoritev) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -65,6 +70,8 @@ public class RacuniStoritev {
         this.cenik = cenik;
         this.kodirnik = kodirnik;
         this.kode = kode;
+        this.dnevnik = dnevnik;
+        this.narocninaStoritev = narocninaStoritev;
     }
 
     // ---------- Lastni racun ----------
@@ -103,13 +110,19 @@ public class RacuniStoritev {
         for (Narocnina n : narocninaRepozitorij.najdiVseZRacuni()) {
             narocnine.put(n.getUporabnik().getId(), n);
         }
+        // prijave in dnevnik: ena poizvedba za vse racune, ne ena na racun
+        Map<Long, RacunIgralcaDto.Prijave> prijave = dnevnik.prijaveVsehRacunov();
+        Map<Long, List<RacunIgralcaDto.Dogodek>> dnevniki = dnevnik.dnevnikVsehRacunov();
+        LocalDate danes = LocalDate.now();
         List<RacunIgralcaDto> seznam = new ArrayList<>();
         for (Uporabnik u : uporabnikRepozitorij.najdiRacuneOseb()) {
             // predlogi za povezavo veljajo le pri cakajocem racunu IGRALCA
             // (organizatorja ne povezujemo z zapisom v sifrantu igralcev)
             boolean predlagaj = u.getVloga() == Vloga.IGRALEC && u.getStatus() == StatusRacuna.CAKA;
+            Narocnina n = narocnine.get(u.getId());
             seznam.add(RacunIgralcaDto.iz(u, predlagaj ? predlogi(u) : List.of(),
-                    narocnina(u, narocnine.get(u.getId()))));
+                    narocnina(u, n), prijave.get(u.getId()), poraba(u, n, danes),
+                    dnevniki.getOrDefault(u.getId(), List.of())));
         }
         return seznam;
     }
@@ -143,7 +156,9 @@ public class RacuniStoritev {
         u.setAktiven(true);
         u.setVirPovezave(VirPovezave.ADMIN);
         u.setPovezanOb(LocalDateTime.now());
-        return racunDto(uporabnikRepozitorij.save(u), List.of());
+        uporabnikRepozitorij.save(u);
+        dnevnik.zabelezi(u.getId(), "Administrator povezal z igralcem " + igralec.polnoIme());
+        return racunDto(u, List.of());
     }
 
     /* Razvezava: racun ostane (z e-posto in geslom), a brez igralca in spet v
@@ -159,7 +174,9 @@ public class RacuniStoritev {
         u.setStatus(StatusRacuna.CAKA);
         u.setVirPovezave(null);
         u.setPovezanOb(null);
-        return racunDto(uporabnikRepozitorij.save(u), List.of());
+        uporabnikRepozitorij.save(u);
+        dnevnik.zabelezi(u.getId(), "Administrator razvezal račun od igralca");
+        return racunDto(u, List.of());
     }
 
     /* Potrditev organizatorja: racun dobi vlogo organizatorja in (neobvezno)
@@ -180,7 +197,12 @@ public class RacuniStoritev {
         }
         u.setStatus(StatusRacuna.POTRJEN);
         u.setAktiven(true);
-        return racunDto(uporabnikRepozitorij.save(u), List.of());
+        // pri organizatorju je to datum potrditve (karton ga kaze kot »Potrjen«)
+        u.setPovezanOb(LocalDateTime.now());
+        uporabnikRepozitorij.save(u);
+        dnevnik.zabelezi(u.getId(), "Administrator potrdil organizatorja"
+                + (u.getKlub() != null ? " (" + u.getKlub().getIme() + ")" : ""));
+        return racunDto(u, List.of());
     }
 
     /* Zavrnitev: racun ostane (da se ista e-posta ne registrira znova),
@@ -193,7 +215,9 @@ public class RacuniStoritev {
         u.setVirPovezave(null);
         u.setPovezanOb(null);
         u.setAktiven(false);
-        return racunDto(uporabnikRepozitorij.save(u), List.of());
+        uporabnikRepozitorij.save(u);
+        dnevnik.zabelezi(u.getId(), "Administrator zavrnil zahtevo");
+        return racunDto(u, List.of());
     }
 
     /* Vklop/izklop dostopa ze potrjenemu racunu. */
@@ -201,7 +225,9 @@ public class RacuniStoritev {
     public RacunIgralcaDto nastaviAktiven(Long idRacuna, boolean aktiven) {
         Uporabnik u = najdiRacun(idRacuna);
         u.setAktiven(aktiven);
-        return racunDto(uporabnikRepozitorij.save(u), List.of());
+        uporabnikRepozitorij.save(u);
+        dnevnik.zabelezi(u.getId(), aktiven ? "Administrator vklopil račun" : "Administrator izklopil račun");
+        return racunDto(u, List.of());
     }
 
     /* Izbris racuna. Potreben je, ker zavrnjen racun sicer za vedno zasede
@@ -223,6 +249,7 @@ public class RacuniStoritev {
         String novo = nakljucnoGeslo();
         u.setGesloHash(kodirnik.encode(novo));
         uporabnikRepozitorij.save(u);
+        dnevnik.zabelezi(u.getId(), "Administrator ponastavil geslo");
         return novo;
     }
 
@@ -236,6 +263,7 @@ public class RacuniStoritev {
         Uporabnik u = najdiRacun(idRacuna);
         u.setGesloHash(kodirnik.encode(geslo));
         uporabnikRepozitorij.save(u);
+        dnevnik.zabelezi(u.getId(), "Administrator nastavil geslo");
     }
 
     // ---------- Pomozno ----------
@@ -244,7 +272,28 @@ public class RacuniStoritev {
        administrator za trenutek videl drug paket kot v seznamu. */
     private RacunIgralcaDto racunDto(Uporabnik u, List<RacunIgralcaDto.PredlogIgralcaDto> predlogi) {
         Narocnina n = narocninaRepozitorij.findByUporabnikId(u.getId()).orElse(null);
-        return RacunIgralcaDto.iz(u, predlogi, narocnina(u, n));
+        return RacunIgralcaDto.iz(u, predlogi, narocnina(u, n),
+                dnevnik.prijave(u.getId()).orElse(null), poraba(u, n, LocalDate.now()),
+                dnevnik.dnevnik(u.getId()));
+    }
+
+    /* Poraba paketa: samo organizator z organizatorskim paketom. Isti stevili,
+       ki ju preverja ustvarjanje turnirja in lige (NarocninaStoritev) - zato ju
+       kartona ne sestavljamo iz stetja vrstic. Paket se bere iz zapisa in ne iz
+       tega, ali velja: organizator, ki mu je placilo zapadlo, mora administratorju
+       se vedno pokazati, koliko je porabil. */
+    private RacunIgralcaDto.Poraba poraba(Uporabnik u, Narocnina n, LocalDate danes) {
+        if (u.getVloga() != Vloga.ORGANIZATOR || n == null || n.getPaket() == null) {
+            return null;
+        }
+        return narocninaStoritev.omejitev(n.getPaket())
+                .map(o -> new RacunIgralcaDto.Poraba(
+                        new RacunIgralcaDto.Kvota(
+                                (int) narocninaStoritev.steviloLigVSezoni(u.getId(), danes), o.lig()),
+                        new RacunIgralcaDto.Kvota(
+                                (int) narocninaStoritev.steviloTurnirjevVSezoni(u.getId(), danes),
+                                o.turnirjev())))
+                .orElse(null);
     }
 
     /* Igralec brez zapisa je Free; organizator brez zapisa nima paketa. Datum

@@ -144,6 +144,23 @@ export interface PodobenIgralecPodrobenDto {
   arhiviran: boolean
 }
 
+/* Par igralcev s podobnim imenom za pogled »Čistka duplikatov«
+   (GET /igralci/duplikati, samo admin). Levi je tisti z več tekmami. */
+export interface DvojnikIgralcaDto {
+  /* Stabilen ključ para (»12-345«). */
+  id: string
+  levi: IgralecPodrobenDto
+  desni: IgralecPodrobenDto
+  ujemanje: UjemanjeImena
+  datum: PrimerjavaDatuma
+}
+
+/* Izid združitve: obdržani igralec in ali je bil rating sestavljen znova. */
+export interface ZdruzitevIgralcevDto {
+  igralec: IgralecPodrobenDto
+  preracunan: boolean
+}
+
 export interface TurnirDto {
   id: number
   ime: string
@@ -870,6 +887,8 @@ export interface RacunIgralcaDto {
   klubZelja: string | null
   /* Potrjen klub organizatorja (pri igralcu null). */
   idKlub: number | null
+  /* Klub računa: pri organizatorju potrjeni klub, pri igralcu klub povezanega
+     igralca (račun sam kluba nima). */
   klub: string | null
   status: StatusRacuna
   aktiven: boolean
@@ -887,6 +906,23 @@ export interface RacunIgralcaDto {
   /* Naročnina računa, vedno izpolnjena (RacunIgralcaDto.NarocninaRacuna). */
   narocnina: NarocninaRacuna
   predlogi: PredlogIgralcaDto[]
+  /* Zadnja prijava: prva overjena zahteva po vsaj 30 minutah mirovanja. */
+  zadnjaPrijava: string | null
+  prijavNaZadnjih30Dni: number
+  /* Samo organizator z organizatorskim paketom. */
+  poraba: PorabaPaketa | null
+  /* Najnovejši prvi, največ 8. */
+  dnevnik: DogodekRacuna[]
+}
+
+export interface PorabaPaketa {
+  lige: { uporabljeno: number; najvec: number }
+  turnirji: { uporabljeno: number; najvec: number }
+}
+
+export interface DogodekRacuna {
+  ob: string
+  tekst: string
 }
 
 /* Naročnina računa v administratorjevem pregledu. `paket` je null samo pri

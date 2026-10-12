@@ -158,7 +158,8 @@ public class VarnostneNastavitve {
                         // za vodenje tekmovanja zadosca javni izpis, skupni sifrant pa
                         // nosi podatke igralcev vseh klubov. Zato ADMIN, ne urejevalec.
                         .requestMatchers(HttpMethod.GET,
-                                "/api/v1/igralci/podrobno", "/api/v1/igralci/*/podrobno")
+                                "/api/v1/igralci/podrobno", "/api/v1/igralci/*/podrobno",
+                                "/api/v1/igralci/duplikati")
                                 .hasRole("ADMIN")
                         // izbor spremljanih lig je osebna nastavitev racuna:
                         // gost ga nima (svojega si zapomni brskalnik), vsak

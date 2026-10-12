@@ -13,12 +13,16 @@ export function IzbirnikKluba({
   klubi,
   izbrano,
   naSpremembo,
+  vObrazcu = true,
 }: {
   oznaka?: string
   namig?: string
   klubi: KlubDto[]
   izbrano: number | null
   naSpremembo: (id: number | null) => void
+  /* Brez obrazca (npr. v kartonu računa) polje nima vidne oznake in je
+     visoko 44 px kot ostala polja vnosa; oznaka ostane za bralnik. */
+  vObrazcu?: boolean
 }) {
   const moznosti = useMemo(
     () => klubi.map((k) => ({ id: k.id, ime: k.ime, iskalno: `${k.ime} ${k.kratica ?? ''}` })),
@@ -27,7 +31,7 @@ export function IzbirnikKluba({
 
   return (
     <IskalniIzbirnik
-      vObrazcu
+      vObrazcu={vObrazcu}
       oznaka={oznaka}
       namig={namig}
       moznosti={moznosti}

@@ -90,6 +90,7 @@ public class PlacilaStoritev {
     private final LastnistvoStoritev lastnistvo;
     private final PasswordEncoder kodirnik;
     private final StripeNarocnine stripe;
+    private final RacunDnevnikStoritev racunDnevnik;
 
     public PlacilaStoritev(
             @Value("${turnirko.stripe.tajni-kljuc:}") String tajniKljuc,
@@ -101,7 +102,8 @@ public class PlacilaStoritev {
             CenikStoritev cenik,
             LastnistvoStoritev lastnistvo,
             PasswordEncoder kodirnik,
-            StripeNarocnine stripe) {
+            StripeNarocnine stripe,
+            RacunDnevnikStoritev racunDnevnik) {
         Stripe.apiKey = tajniKljuc;
         this.webhookSkrivnost = webhookSkrivnost;
         this.vrniNaKoren = vrniNaKoren;
@@ -112,6 +114,7 @@ public class PlacilaStoritev {
         this.lastnistvo = lastnistvo;
         this.kodirnik = kodirnik;
         this.stripe = stripe;
+        this.racunDnevnik = racunDnevnik;
     }
 
     // ---------- Zacetek placila: nova registracija ----------
@@ -313,6 +316,7 @@ public class PlacilaStoritev {
         n.setNaslednjiPaket(null);
         zapisiObdobje(n, session.getSubscription());
         narocninaRepozitorij.save(n);
+        racunDnevnik.zabelezi(u.getId(), RacunDnevnikStoritev.opisPlacila(paket, ciklus));
     }
 
     private void ustvariNarocnino(Uporabnik uporabnik, String customerId, String subscriptionId,
@@ -327,6 +331,7 @@ public class PlacilaStoritev {
         n.setZacetekOb(LocalDateTime.now());
         zapisiObdobje(n, subscriptionId);
         narocninaRepozitorij.save(n);
+        racunDnevnik.zabelezi(uporabnik.getId(), RacunDnevnikStoritev.opisPlacila(paket, ciklus));
     }
 
     /* Preklic ob koncu obdobja pusti narocnino AKTIVNO do konca placanega

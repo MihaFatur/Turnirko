@@ -16,24 +16,36 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 
+import si.turnirko.dto.DvojnikIgralcaDto;
 import si.turnirko.dto.IgralecDto;
 import si.turnirko.dto.IgralecJavniDto;
 import si.turnirko.dto.IgralecVnos;
+import si.turnirko.dto.NiDuplikatVnos;
 import si.turnirko.dto.PodobenIgralecDto;
 import si.turnirko.dto.PodobenIgralecJavniDto;
 import si.turnirko.dto.PodobniIgralciVnos;
 import si.turnirko.dto.ZacetniRatingVnos;
+import si.turnirko.dto.ZdruzitevIgralcevDto;
+import si.turnirko.dto.ZdruzitevIgralcevVnos;
 import si.turnirko.dto.ZunanjaUvrstitevVnos;
+import si.turnirko.storitve.DvojnikiIgralcevStoritev;
 import si.turnirko.storitve.IgralciStoritev;
+import si.turnirko.storitve.IgralciZdruzitevStoritev;
 
 @RestController
 @RequestMapping("/api/v1/igralci")
 public class IgralciKontroler {
 
     private final IgralciStoritev igralciStoritev;
+    private final DvojnikiIgralcevStoritev dvojnikiStoritev;
+    private final IgralciZdruzitevStoritev zdruzitevStoritev;
 
-    public IgralciKontroler(IgralciStoritev igralciStoritev) {
+    public IgralciKontroler(IgralciStoritev igralciStoritev,
+                            DvojnikiIgralcevStoritev dvojnikiStoritev,
+                            IgralciZdruzitevStoritev zdruzitevStoritev) {
         this.igralciStoritev = igralciStoritev;
+        this.dvojnikiStoritev = dvojnikiStoritev;
+        this.zdruzitevStoritev = zdruzitevStoritev;
     }
 
     /* Javni seznam brez osebnih podatkov - bere ga tudi gost (izbirniki
@@ -49,6 +61,27 @@ public class IgralciKontroler {
     @GetMapping("/podrobno")
     public List<IgralecDto> seznamPodrobno() {
         return igralciStoritev.seznamPodrobno();
+    }
+
+    /* Cistka duplikatov: pari igralcev s podobnim imenom, z datumi rojstva -
+       samo ADMIN (veriga), kot /podrobno. */
+    @GetMapping("/duplikati")
+    public List<DvojnikIgralcaDto> duplikati() {
+        return dvojnikiStoritev.pari();
+    }
+
+    /* »Ni duplikat«: par se ne pokaze vec. */
+    @PostMapping("/duplikati/ni-duplikat")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void niDuplikat(@Valid @RequestBody NiDuplikatVnos vnos) {
+        dvojnikiStoritev.niDuplikat(vnos.idA(), vnos.idB());
+    }
+
+    /* Obdrzi igralca v naslovu, odvecnega iz telesa preusmeri nanj in arhiviraj. */
+    @PostMapping("/{id}/zdruzi")
+    public ZdruzitevIgralcevDto zdruzi(@PathVariable Long id,
+                                       @Valid @RequestBody ZdruzitevIgralcevVnos vnos) {
+        return zdruzitevStoritev.zdruzi(id, vnos.idOdvec());
     }
 
     @GetMapping("/{id}")

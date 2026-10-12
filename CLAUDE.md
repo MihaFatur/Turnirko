@@ -48,6 +48,27 @@
     pogoj). Admin vidi pri vsakem zadetku tudi, ali je datum enak, podoben
     ali drug; ob popravku vnosa opozorilo izgine in se ob shranjevanju preveri
     znova.
+- **Čistka duplikatov** (stran Igralci, V44, `DvojnikiIgralcevStoritev`,
+  `IgralciZdruzitevStoritev`). `GET /igralci/duplikati` (samo ADMIN, nosi datume
+  rojstva) vrne pare aktivnih igralcev z istimi pravili podobnosti kot opozorilo
+  ob vpisu (`PodobnostImen`); enak datum ni pogoj, le podatek ob paru, neznan
+  datum (1. 1. 1900) pa ni nikoli »enak«. `POST /igralci/duplikati/ni-duplikat`
+  par trajno skrije (`igralec_ni_duplikat`, urejen par), `POST
+  /igralci/{id}/zdruzi` obdrži igralca v naslovu, odvečnega arhivira.
+  - **Zdruzitev preusmeri VSE tuje kljuce** (prijave, kader, postave, tekme
+    srečanj, račun, `zunanja_povezava`) in prazna polja obdržanega izpolni iz
+    odvečnega (licenca, e-pošta in telefon sta UNIQUE: odvečni ju najprej izgubi).
+    **Zavrne** (409), kadar bi preusmeritev trčila: oba v istem dogodku/postavi/
+    tekmi, oba z računom, ali ročni rating (postavitev, zunanja uvrstitev) ene
+    strani in zapisi ratinga druge — ročne odločitve ni mogoče pomešati z obračunom.
+  - **Rating**: obračuni odvečnega se zbrišejo, rating obdržanega se sestavi znova
+    (`PreracunRatingaStoritev.preracunajOd` od dneva odvečnikove prve tekme);
+    brez tekem preračuna ni, ročna postavitev se prenese. Preračun teče po
+    transakciji združitve in je sinhron (kot `/rating/preracun`), zato lahko
+    traja nekaj minut. Varuje ga `IgralciZdruzitevTest`, dostop
+    `DvojnikiIgralcevDostopTest`.
+  - Admin dobi v `IgralecDto` tudi izpeljan `starostniPas` (isti kot v javnem
+    izpisu; datum rojstva ostane samo pri adminu).
 - **Ime pred priimkom, povsod.** Slovensko se oseba imenuje »Ana Novak« in tak
   je *vsak* izpis igralca — v zaledju ga sestavi `Igralec.polnoIme()`, v
   vmesniku pa vsako mesto, ki ime in priimek izpiše ločeno (izbirniki,
@@ -2201,6 +2222,61 @@
   »Lestvica / Končnica« nad lestvico, na telefonu zavihek; liga samo s
   končnico (kvalifikacije med ligami) kaže serije kar na strani. Razpored
   rednega dela srečanj serij ne kaže (`idSerija == null`).
+- **Stran `/racuni` (Dostopi, samo admin)** je »Nabiralnik + kartoteka«
+  (`strani/RacuniStran.tsx`, karton `komponente/DostopiKarton.tsx`, logika
+  `pomozno/dostopi.ts`, razdelek 15 v `slog.css`, `.dostopi-…`; predaja
+  `design_handoff_dostopi`, 12. 10. 2026, DESIGN.md vzorec 9). Merila in pasti:
+  - **Stanje računa je izpeljanka** (`stanjeRacuna`): čakajoč račun s potrjeno
+    e-pošto (in skrbnikom) je »Čaka« in gre v nabiralnik; brez kode se sam
+    izbriše, zato je samo v kartoteki (»Brez kode« / »Čaka skrbnika«). Števila na
+    žetonih so **skupna**, ne glede na filtre.
+  - **Kartoteka kaže tudi administratorje** (`najdiRacuneOseb` jih vključuje),
+    a je njihov karton samo za branje: strežnik adminovega računa ne ureja,
+    izklop lastnega pa bi bil zaklep. Račun brez imena (admin) se bere po naslovu.
+  - **Zadnja prijava = prva overjena zahteva po ≥ 30 min mirovanja**
+    (`RacunDnevnikStoritev`, tabela `racun_prijava`, V45): veriga je brez
+    stanja (HTTP Basic), seje ni. Zadnji čas zahteve je v pomnilniku, v bazo gre
+    ena vrstica na prijavo (`PrijavaDogodki`); napaka zapisa ne ustavi zahteve.
+    Po zagonu strežnika je prva zahteva vsakega računa nova prijava. Preizkusi,
+    ki belezijo prijave, morajo uporabiti vsak svoj naslov (pomnilnik živi med
+    preizkusi).
+  - **Dnevnik računa** (`racun_dogodek`, V45): besedilo se zapiše ob dogodku in
+    se ne računa nazaj (registracija, e-pošta, skrbnik, povezava, potrditev,
+    zavrnitev, razvezava, izklop/vklop, geslo, plačilo). V45 je za obstoječe
+    račune napolnila le dogodke z znanim datumom; zavrnitve, izklopa in gesla
+    datuma nista hranila, zato ju ni. Karton nosi največ 8, najnovejši prvi.
+  - **Poraba paketa** v kartonu je ista številka kot pri ustvarjanju
+    (`NarocninaStoritev.steviloLigVSezoni` / `…TurnirjevVSezoni`), ne štetje
+    vrstic; paket se bere iz zapisa, ne iz tega, ali velja.
+  - **Klub igralca** v `RacunIgralcaDto.klub` je klub povezanega igralca (`idKlub`
+    ostane prazen: račun sam kluba nima). `potrdiOrganizatorja` zdaj zapiše
+    `povezanOb` (datum potrditve, karton ga kaže kot »Potrjen«).
+  - **Karton se izriše znova** ob zamenjavi računa ali njegovega stanja (`key`):
+    predizbira (prvi predlog brez računa, navedeni klub) in lokalno stanje
+    (geslo, potrditev, iskanje) tako ne puščajo sledi. **Obvestilo po dejanju drži
+    stran** (po instanci: nabiralnik, kartoteka), ker mora preživeti zamenjavo
+    računa — potrjena zahteva izgine iz nabiralnika, karton pokaže naslednjo, na
+    njenem vrhu pa obvestilo o prejšnji.
+  - **Klub organizatorja v zahtevi je `IzbirnikKluba`** (`vObrazcu={false}`: brez
+    vidne oznake, ker jo nosi rjava oznaka bloka), ne žetoni iz prototipa: v
+    registru je 70+ klubov.
+  - **Merilo ujemanja so posnetki iz predaje, ne 0,05 %**: pisave so pri
+    aplikaciji lokalne, pri posnetkih iz Googla (skripta `preveri.mjs` je tekla
+    z `playwright-core` in sistemskim Chromom, zunaj repozitorija); izmerjeno je,
+    da se geometrija ujame (višine strani enake, razlike le v zglajevanju pisav 0,2–0,45 %
+    na namizju, 0,09–0,15 % na telefonu list). Pasti: prototip je
+    **content-box** (kvadratek 16 + 2 px obroba = 18 px, vrstica zahteve na
+    telefonu `min-height` 56 + 2 × 10 + 1 = 77 px, seznam 680 + 1 px); **telefonski
+    posnetki imajo vsebino 2 px (1 CSS px) pomaknjeno** glede na rez skripte
+    (obrez 0 namesto 2 px); `desktop-06` kaže v izbirniku še vedno »Priimek A–Ž«
+    (neobvladan `select` v prototipu), seznam pa je po prijavi; v `desktop-04/07`
+    ima polje fokusni obroč (`outline` aplikacije); **list na telefonu ima na
+    vrhu 56 px zastora** (`max-height: calc(100% - 56px)`, ne 90 % iz README);
+    na telefonu številka nabiralnika brez tabularnih števk. Pri `desktop-02` se
+    primerja le del nad kontrolnikom kluba.
+  - **Brez oznak »NOVO«**: predaja jih je imela za podatke, ki jih API ni
+    vračal (`zadnjaPrijava`, `prijavNaZadnjih30Dni`, `poraba`, `dnevnik`, klub
+    igralca) — zaledje jih zdaj vrača, zato jih ni.
 - **Stran `/uvoz` (Uvoz NTZS, samo admin)** vodi sinhronizacijo s Stupo:
   sezona → tekmovanja s stanjem zadnjega uvoza → predogled (preverbe, napake,
   odločitve o istovetnosti z vpisom manjkajočih podatkov, novi igralci s

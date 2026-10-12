@@ -89,7 +89,17 @@ final class PodobnostImen {
         if (a.equals(b)) {
             return 0;
         }
-        return razdalja(a, b) <= dovoljenaRazdalja(a, b) || jePredponaBesed(a, b) ? 1 : -1;
+        if (jePredponaBesed(a, b)) {
+            return 1;
+        }
+        int dovoljena = dovoljenaRazdalja(a, b);
+        /* Razdalja ni manjsa od razlike v dolzini: dolgega izracuna ni treba
+           za pare, ki se ne morejo ujemati (cistka duplikatov primerja ves
+           register med seboj). */
+        if (Math.abs(a.length() - b.length()) > dovoljena) {
+            return -1;
+        }
+        return razdalja(a, b) <= dovoljena ? 1 : -1;
     }
 
     /* Isto za ime: poleg tipkarske napake tudi krajsa oblika (»Miha« / »Mihael«). */

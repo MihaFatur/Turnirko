@@ -89,6 +89,7 @@ public class RegistracijaStoritev {
     private final PostaStoritev posta;
     private final OmejevalnikPoskusov omejevalnik;
     private final IgralciStoritev igralci;
+    private final RacunDnevnikStoritev racunDnevnik;
 
     public RegistracijaStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                                 IgralecRepozitorij igralecRepozitorij,
@@ -97,7 +98,8 @@ public class RegistracijaStoritev {
                                 KodeStoritev kode,
                                 PostaStoritev posta,
                                 OmejevalnikPoskusov omejevalnik,
-                                IgralciStoritev igralci) {
+                                IgralciStoritev igralci,
+                                RacunDnevnikStoritev racunDnevnik) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -106,6 +108,7 @@ public class RegistracijaStoritev {
         this.posta = posta;
         this.omejevalnik = omejevalnik;
         this.igralci = igralci;
+        this.racunDnevnik = racunDnevnik;
     }
 
     // ---------- Registracija ----------
@@ -206,6 +209,8 @@ public class RegistracijaStoritev {
             u.setKlubZelja(klub);
         }
         u = uporabnikRepozitorij.save(u);
+        racunDnevnik.zabelezi(u.getId(),
+                "Registracija (" + (organizator ? "organizator" : "igralec") + ")");
 
         posljiKodo(u, NamenKode.EPOSTA);
         if (emailSkrbnika != null) {
@@ -241,6 +246,7 @@ public class RegistracijaStoritev {
             throw new NeveljavenVnosIzjema(NAPACNA_KODA);
         }
         u.setEmailPotrjenOb(LocalDateTime.now());
+        racunDnevnik.zabelezi(u.getId(), "E-pošta potrjena s kodo");
         boolean povezan = poskusiSamodejnoPovezavo(u);
         uporabnikRepozitorij.save(u);
         return odgovor(u, povezan);
@@ -261,6 +267,7 @@ public class RegistracijaStoritev {
             throw new NeveljavenVnosIzjema(NAPACNA_KODA);
         }
         u.setSkrbnikPotrjenOb(LocalDateTime.now());
+        racunDnevnik.zabelezi(u.getId(), "Skrbnik potrdil soglasje s kodo");
         boolean povezan = poskusiSamodejnoPovezavo(u);
         uporabnikRepozitorij.save(u);
         return odgovor(u, povezan);
@@ -388,6 +395,7 @@ public class RegistracijaStoritev {
         u.setVirPovezave(VirPovezave.SAMODEJNO);
         u.setPovezanOb(LocalDateTime.now());
         dnevnik.info("Racun {} samodejno povezan z igralcem {}.", u.getId(), igralec.getId());
+        racunDnevnik.zabelezi(u.getId(), "Samodejno povezan z igralcem " + igralec.polnoIme());
         return true;
     }
 

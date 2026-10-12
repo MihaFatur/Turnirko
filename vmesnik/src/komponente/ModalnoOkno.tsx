@@ -22,6 +22,11 @@ interface Lastnosti {
      design_handoff_onboarding) - okno tu poskrbi le za lupino (zastor,
      portal, fokus, Escape), ne za njeno vsebino. */
   razdeljeno?: boolean
+  /* Okno »zapisnik« (stran Igralci): 680 px, papir, 3 px črna črta na vrhu,
+     naslov h3 in mono »ZAPRI ×« v glavi; noga z gumbi je del vsebine. Okno
+     brez obrazca (potrditev, rating) ima telo zgoraj 8 px odmika. */
+  zapisnik?: boolean
+  brezObrazca?: boolean
   onZapri: () => void
   children: ReactNode
 }
@@ -33,6 +38,8 @@ export function ModalnoOkno({
   nevarno,
   siroko,
   razdeljeno,
+  zapisnik,
+  brezObrazca,
   onZapri,
   children,
 }: Lastnosti) {
@@ -90,6 +97,7 @@ export function ModalnoOkno({
     + (siroko ? ' modal--siroko' : '')
     + (nevarno ? ' modal--nevarno' : '')
     + (razdeljeno ? ' modal--razdeljeno' : '')
+    + (zapisnik ? ' modal--zapisnik' : '')
 
   return createPortal(
     <div className="modal__zastor" onClick={onZapri}>
@@ -104,6 +112,19 @@ export function ModalnoOkno({
       >
         {razdeljeno ? (
           children
+        ) : zapisnik ? (
+          <>
+            <div className="zapisnik__glava">
+              <h3>{naslov}</h3>
+              {/* Vidno besedilo je ime gumba; znak »×« ni ikona. */}
+              <button type="button" className="zapisnik__zapri" onClick={onZapri}>
+                Zapri ×
+              </button>
+            </div>
+            <div className={'zapisnik__telo' + (brezObrazca ? ' zapisnik__telo--besedilo' : '')}>
+              {children}
+            </div>
+          </>
         ) : (
           <>
             <div className="modal__glava">

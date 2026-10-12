@@ -3,7 +3,8 @@
    pobrise. Spring Security objavi dogodek ob vsaki Basic prijavi (veriga je
    brez stanja, prijava je vsaka zahteva), zato so stevci vedno sveza slika.
    Neobstojece ime se skriva za BadCredentials - napadalec iz odgovora ne
-   izve, ali racun obstaja. */
+   izve, ali racun obstaja. Uspesna prijava se belezi tudi v dnevnik prijav
+   racuna (RacunDnevnikStoritev), a na koncu in brez posledic za zahtevo. */
 package si.turnirko.nastavitve;
 
 import org.springframework.context.event.EventListener;
@@ -14,14 +15,17 @@ import org.springframework.security.web.authentication.WebAuthenticationDetails;
 import org.springframework.stereotype.Component;
 
 import si.turnirko.storitve.OmejevalnikPoskusov;
+import si.turnirko.storitve.RacunDnevnikStoritev;
 
 @Component
 public class PrijavaDogodki {
 
     private final OmejevalnikPoskusov omejevalnik;
+    private final RacunDnevnikStoritev racunDnevnik;
 
-    public PrijavaDogodki(OmejevalnikPoskusov omejevalnik) {
+    public PrijavaDogodki(OmejevalnikPoskusov omejevalnik, RacunDnevnikStoritev racunDnevnik) {
         this.omejevalnik = omejevalnik;
+        this.racunDnevnik = racunDnevnik;
     }
 
     @EventListener
@@ -41,6 +45,8 @@ public class PrijavaDogodki {
         if (prijava.getName() != null) {
             omejevalnik.pocisti(OmejevalnikPoskusov.kljucPrijave(prijava.getName()));
             omejevalnik.pocisti(OmejevalnikPoskusov.kljucPrijave(prijava.getName(), naslov(prijava)));
+            // stran Dostopi: zadnja prijava in prijave v 30 dneh (glej RacunDnevnikStoritev)
+            racunDnevnik.zabeleziPrijavo(prijava.getName());
         }
     }
 

@@ -44,16 +44,16 @@ public interface UporabnikRepozitorij extends JpaRepository<Uporabnik, Long> {
             """)
     Optional<Uporabnik> najdiZVsemPoId(Long id);
 
-    /* Vsi racuni oseb (igralcev in organizatorjev - ne administratorjev, ki se
-       ne potrjujejo), cakajoci najprej (administrator jih mora obdelati),
-       znotraj tega najnovejsi na vrhu. Nalozi tudi (pri organizatorju potrjen)
-       klub, ker ga bere DTO. */
+    /* Vsi racuni (igralci, organizatorji IN administratorji - kartoteka na strani
+       Dostopi jih steje in kaze; administratorjev se ne potrjuje in ne ureja,
+       zato jih mutacije zavrnejo), cakajoci najprej (administrator jih mora
+       obdelati), znotraj tega najnovejsi na vrhu. Nalozi tudi (pri organizatorju
+       potrjen) klub, ker ga bere DTO. */
     @Query("""
             SELECT u FROM Uporabnik u
             LEFT JOIN FETCH u.igralec i LEFT JOIN FETCH i.klub
             LEFT JOIN FETCH u.klub
             LEFT JOIN FETCH u.klubZelja
-            WHERE u.vloga IN (si.turnirko.modeli.Vloga.IGRALEC, si.turnirko.modeli.Vloga.ORGANIZATOR)
             ORDER BY CASE WHEN u.status = si.turnirko.modeli.StatusRacuna.CAKA THEN 0 ELSE 1 END,
                      u.id DESC
             """)

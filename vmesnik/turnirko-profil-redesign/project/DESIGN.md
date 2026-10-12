@@ -272,8 +272,65 @@ iz `../api/tipi`. Poizvedbe vedno prek `@tanstack/react-query`.
    `--barva-glavna`. Brez radija.
 8. **Značka statusa** — 11–12 px mono uppercase, `6px 8px`, polna podlaga.
    V teku = modra/bela, priprava = polnilo/tercialno, zaključeno = zelena mehka.
+9. **Nabiralnik + kartoteka** (stran Dostopi, oktober 2026, predaja
+   `design_handoff_dostopi`, različica 1b; razredi `.dostopi-…`). Dva dela z
+   dvema opraviloma: **nabiralnik** zgoraj (število čakajočih je naslov strani —
+   rjasta številka 112 px display 800, v mejah `--tip-rezultat`; ob njej vrstice
+   zahtev z rjavim levim robom; izbrana zahteva je odprta kot karton na desni) in
+   **kartoteka** spodaj (vsi računi po črki priimka, abecedno kazalo, iskanje,
+   filtri, stalen karton; brez izbire karton kaže »Stanje dostopov« — palice 6 px
+   po vzorcu 7). Rjasta pomeni »čaka na tvoje dejanje« in »nevarno«, ne le napako.
+   Levi rob vrstice pove vlogo (igralec črta, organizator modra, admin rjasta).
+   **Karton** je skupna komponenta (`DostopiKarton`): vsa dejanja so v njem, nič
+   ni v vrstici seznama. **Potrditve nepovratnih dejanj so vrinjene v karton**
+   (rjava mehka ploskev z gumbom in »Prekliči«), ne modalno okno — zavestna
+   izjema od pravila o `PotrditvenoOkno` za ta vzorec: karton je že stalna
+   ploskev ob seznamu in okno bi zakrilo račun, o katerem admin odloča. Na
+   telefonu (≤ 640 px) je karton spodnji list čez stran (zastor, na vrhu 56 px
+   glave telefona; `inert` na ozadje kot pri predalu »Več«), abecedno kazalo je
+   navpičen trak ob desnem robu, brez animacije. Vsi kontrolniki 44 px
+   (glavna krmila 48 px), brez ikon (puščici ← → in »×« sta znaka v besedilu).
 
 ---
+
+### 4b. Stran Igralci (»Kartoteka«, oktober 2026)
+
+Prenova po `design_handoff_igralci_prenova` (smer 1a + 1c, gostota udobno).
+Razredi so `.kartoteka__*` (stran) in `.zapisnik__*` (okna), zadnji razdelek
+`slog.css`; mere so prepisane iz prototipa, zato jih ne »poravnavaj« na ritem 8
+(na primer vrstica podatkov ima 14 px odmika, kolofon 8 px).
+
+- **Kolofon s števci** (`.kartoteka__kolofon`, desni stolpec 440 px): oznaka mono ↔
+  vrednost mono, ločeno s črto. Števci igralcev, klubov in ratingov so
+  neodvisni od filtrov. Admin ima še »Provizorični (★ pod 10 tekem)« in modro
+  vrstico »Možnih duplikatov · pregled →« (število PAROV; čip v vrsti filtrov
+  šteje IGRALCE v parih, razlika je namerna). Glave strani »Kartoteka /
+  Igralci« **ni** (odločitev lastnika, 11. 10. 2026): kje si, pove navigacija.
+- **Vrstica podatkov**: ime (300) pred priimkom (600), ker se ime bere prvo
+  (CLAUDE.md), seznam pa teče po priimku — zato črkovni ločevalniki (Bricolage
+  800/24 px) stojijo nad priimki. Mono značke: `REKR.` (zelena mehka),
+  `DUPLIKAT?` (črna obroba, samo admin), `★ 2/10` (provizoričen rating, polnilo).
+  Provizoričen rating je siv, brez ratinga »—«.
+- **Filtri**: iskalnik, segmentiran izbirnik spola (ponovni klik = vsi), klub,
+  pas (točen pas igralca), čipi (brez ratinga, provizorični, možni duplikati).
+  Vsak filter ponastavi na prvo stran; paginacija je v odjemalcu (20 vrstic).
+- **Meni »⋯«** (`.kartoteka__meni`, 248 px, bel, črn rob, brez sence): Uredi,
+  Postavi/Popravi začetni rating (samo pri 0 tekmah), Zunanja uvrstitev,
+  Arhiviraj (rjasta). Zadnje 4 vrstice strani ga odpirajo navzgor. Zapre se s
+  klikom zunaj in z Escape.
+- **Čistka duplikatov**: pogled namesto seznama; par = dve strani in sredina
+  (črna značka ujemanja, vrstica datuma — rjasta pri enakem —, »Ni duplikat«).
+  »Obdrži tega, združi« vedno vpraša (okno kot pri arhiviranju, rjast gumb):
+  združitev je nepovratna, prototip tega koraka nima.
+- **Okna »zapisnik«** (`ModalnoOkno zapisnik`): 680 px, papir, 3 px črna črta na
+  vrhu, naslov h3, mono »ZAPRI ×«; sklopi obrazca z mono naslovom in črno črto.
+  Opozorilo o podobnih igralcih je 2 px črn okvir na polnilu.
+- Primarni gumb je `.gumb--glavni` (polnilo #0071AB z obrobo #0088CE, razdelek 2),
+  ne čisti #0088CE iz prototipa; odtenek zdrži belo besedilo.
+- **Telefon (≤ 640 px)**: enovrstični seznam (ime, »klub · letnik · pas«, rating
+  in ★, »⋯«), čipi se drsijo vodoravno, filtri spol/klub/pas so za čipom
+  »Filtri«. Masthead in spodnjo vrstico nosi aplikacija; »+ Nov igralec« je
+  lepljiv nad spodnjo vrstico.
 
 ## 5. Prepovedano
 

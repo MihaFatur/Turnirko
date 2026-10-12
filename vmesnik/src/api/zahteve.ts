@@ -15,6 +15,8 @@ import type {
   DvobojDto,
   EkipaDto,
   EkipaVnos,
+  DvojnikIgralcaDto,
+  ZdruzitevIgralcevDto,
   IgralecDto,
   IgralecPodrobenDto,
   IgralecVnos,
@@ -201,6 +203,14 @@ export const igralciApi = {
      vidno na profilu. */
   zunanjaUvrstitev: (id: number, vnos: ZunanjaUvrstitevVnos) =>
     api.objavi<IgralecDto>(`/igralci/${id}/zunanja-uvrstitev`, vnos),
+  /* Čistka duplikatov (samo admin): pari podobnih imen, odločitev »ni
+     duplikat« (par se ne pokaže več) in združitev — obdrži prvega, odvečni
+     se arhivira, njegove tekme in prijave se prenesejo. */
+  duplikati: () => api.vrni<DvojnikIgralcaDto[]>('/igralci/duplikati'),
+  niDuplikat: (idA: number, idB: number) =>
+    api.objavi<void>('/igralci/duplikati/ni-duplikat', { idA, idB }),
+  zdruzi: (idObdrzan: number, idOdvec: number) =>
+    api.objavi<ZdruzitevIgralcevDto>(`/igralci/${idObdrzan}/zdruzi`, { idOdvec }),
 }
 
 /* Vzdrževanje Turnirko ratinga (samo admin). Oboje je dolgotrajno opravilo,

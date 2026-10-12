@@ -4,7 +4,8 @@
    potrditev je zato en klik. Pogled je samo administratorjev, zato sme
    nositi tudi navedeni datum rojstva (podlaga za pravo povezavo). Enako
    velja za naročnino: administrator mora videti, kdo ima kateri paket, tudi
-   pred potrditvijo racuna. */
+   pred potrditvijo racuna. Isto za zadnjo prijavo, porabo paketa in dnevnik
+   (stran Dostopi: karton racuna). */
 package si.turnirko.dto;
 
 import java.time.LocalDate;
@@ -45,11 +46,19 @@ public record RacunIgralcaDto(
         LocalDateTime ustvarjenOb,
         // placilni paket racuna (vedno izpolnjen; vsebina je odvisna od vloge)
         NarocninaRacuna narocnina,
-        List<PredlogIgralcaDto> predlogi
+        List<PredlogIgralcaDto> predlogi,
+        // zadnja prijava (prva overjena zahteva po 30 min mirovanja), prazno = nikoli
+        LocalDateTime zadnjaPrijava,
+        int prijavNaZadnjih30Dni,
+        // samo organizator s paketom
+        Poraba poraba,
+        // najnovejsi prvi, najvec 8
+        List<Dogodek> dnevnik
 ) {
 
     public static RacunIgralcaDto iz(Uporabnik u, List<PredlogIgralcaDto> predlogi,
-                                     NarocninaRacuna narocnina) {
+                                     NarocninaRacuna narocnina, Prijave prijave, Poraba poraba,
+                                     List<Dogodek> dnevnik) {
         return new RacunIgralcaDto(
                 u.getId(),
                 u.getUporabniskoIme(),
@@ -59,7 +68,7 @@ public record RacunIgralcaDto(
                 u.getPrijavljeniDatumRojstva(),
                 u.getKlubZelja() != null ? u.getKlubZelja().getIme() : null,
                 u.getKlub() != null ? u.getKlub().getId() : null,
-                u.getKlub() != null ? u.getKlub().getIme() : null,
+                klub(u),
                 u.getStatus(),
                 u.isAktiven(),
                 u.getIgralec() != null ? u.getIgralec().getId() : null,
@@ -70,7 +79,22 @@ public record RacunIgralcaDto(
                 u.getPovezanOb(),
                 u.getUstvarjenOb(),
                 narocnina,
-                predlogi);
+                predlogi,
+                prijave == null ? null : prijave.zadnja(),
+                prijave == null ? 0 : prijave.vZadnjih30Dneh(),
+                poraba,
+                dnevnik);
+    }
+
+    /* Klub racuna: pri organizatorju potrjen klub, pri igralcu klub povezanega
+       igralca (racun sam kluba nima; prej je bil pri igralcu prazen). */
+    private static String klub(Uporabnik u) {
+        if (u.getKlub() != null) {
+            return u.getKlub().getIme();
+        }
+        return u.getIgralec() != null && u.getIgralec().getKlub() != null
+                ? u.getIgralec().getKlub().getIme()
+                : null;
     }
 
     /* Naročnina racuna. Igralec brez zapisa je BREZPLACNO (Free); organizator
@@ -87,6 +111,18 @@ public record RacunIgralcaDto(
             // ali paket zdaj daje pravice (preklicana ostane true do konca obdobja)
             boolean veljavna
     ) {}
+
+    /* Zadnja prijava in stevilo prijav v zadnjih 30 dneh (RacunDnevnikStoritev). */
+    public record Prijave(LocalDateTime zadnja, int vZadnjih30Dneh) {}
+
+    /* Poraba organizatorjevega paketa v tekoci sezoni - isti stevili, ki ju
+       preverja ustvarjanje (NarocninaStoritev), ne stetje vrstic. */
+    public record Poraba(Kvota lige, Kvota turnirji) {}
+
+    public record Kvota(int uporabljeno, int najvec) {}
+
+    /* Vrstica dnevnika racuna. */
+    public record Dogodek(LocalDateTime ob, String tekst) {}
 
     /* Kandidat za povezavo. Igralci, ki racun ze imajo, so oznaceni, da jih
        administrator ne poveze dvakrat. */
