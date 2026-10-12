@@ -378,9 +378,8 @@ class ProfilStoritevTest extends IntegracijskiTest {
         assertEquals(4, z.niziInTocke().dobljeniNizi() + z.niziInTocke().prejetiNizi());
     }
 
-    /* Trije razrezi, ki jih uporablja prenovljena stran profila: razsevni graf
-       (rating nasprotnika ob tekmi), mesecni izkupicek proti pricakovanemu in
-       tocke v tesnih nizih. */
+    /* Dva razreza, ki ju uporablja prenovljena stran profila: mesecni izkupicek
+       proti pricakovanemu in tocke v tesnih nizih. */
     @Test
     void zasebnaStatistikaDaPodatkeZaGrafeProfila() {
         Dogodek dogodek = pripraviDogodek(4);
@@ -398,12 +397,6 @@ class ProfilStoritevTest extends IntegracijskiTest {
 
         ProfilZasebnoDto z = profilStoritev.zasebno(zmagovalec.getId(), adminIme());
 
-        // razsevni graf: ena pika, rating nasprotnika PRED tekmo je zacetni
-        assertEquals(1, z.razsevni().size());
-        assertEquals(sidroZa(porazenec), z.razsevni().get(0).ratingNasprotnika());
-        assertTrue(z.razsevni().get(0).zmaga());
-        assertTrue(z.razsevni().get(0).sprememba() > 0);
-
         // pri enakem ratingu je pricakovana zmaga natanko pol
         assertEquals(1, z.forma().poMesecih().size());
         assertEquals(1, z.forma().poMesecih().get(0).zmage());
@@ -420,8 +413,82 @@ class ProfilStoritevTest extends IntegracijskiTest {
         // nasprotnik vidi zrcalno sliko: poraz in negativna sprememba
         ProfilZasebnoDto zp = profilStoritev.zasebno(porazenec.getId(), adminIme());
         assertEquals(0, zp.forma().poMesecih().get(0).zmage());
-        assertTrue(zp.razsevni().get(0).sprememba() < 0);
         assertEquals(0, zp.niziInTocke().brezIzgubljenegaNiza().odstotek());
+    }
+
+    /* Razrez po nizu: vsak zaporedni niz steje posebej, ne glede na izid tekme.
+       Zmagovalec 3:1 izgubi drugi niz, zato je pri 2. nizu 0 : 1, pri 1., 3. in 4.
+       pa zmaga. Porazenec vidi zrcalno sliko. */
+    @Test
+    void razrezPoNizuStejeVsakZaporedniNizPosebej() {
+        Dogodek dogodek = pripraviDogodek(4);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma tekma = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                .findFirst().orElseThrow();
+        tekmaStoritev.vnesiRezultat(tekma.getId(), new VnosRezultata(null, 3, 1, null,
+                List.of(new NizVnos(11, 4),
+                        new NizVnos(5, 11),
+                        new NizVnos(11, 9),
+                        new NizVnos(11, 6))));
+        Igralec zmagovalec = tekma.getPrijava1().getIgralec();
+        Igralec porazenec = tekma.getPrijava2().getIgralec();
+
+        List<ProfilZasebnoDto.Delez> po = profilStoritev.zasebno(zmagovalec.getId(), adminIme())
+                .niziInTocke().poNizu();
+        assertEquals(7, po.size(), "razrez gre do sedmega niza, tudi ce ga ni bilo");
+        assertEquals("1. niz", po.get(0).oznaka());
+        assertEquals(1, po.get(0).zmage());
+        assertEquals(0, po.get(1).zmage());
+        assertEquals(1, po.get(1).porazi(), "2. niz je zmagovalec izgubil");
+        assertEquals(0, po.get(1).odstotek());
+        assertEquals(1, po.get(2).zmage(), "3. niz je tekma dobila, ker jo je vodil");
+        assertEquals(1, po.get(3).zmage());
+        assertEquals(0, po.get(4).odigrane(), "5. niza tekma ni dosegla");
+
+        List<ProfilZasebnoDto.Delez> poPorazencu = profilStoritev.zasebno(porazenec.getId(), adminIme())
+                .niziInTocke().poNizu();
+        assertEquals(1, poPorazencu.get(0).porazi());
+        assertEquals(1, poPorazencu.get(1).zmage());
+        assertEquals(100, poPorazencu.get(1).odstotek());
+    }
+
+    /* Ligaski nizi so v svoji tabeli (niz_srecanja) in imajo domaci/gost, ne
+       prve/druge strani - razrez mora tudi tu brati stran igralca pravilno. */
+    @Test
+    void razrezPoNizuBereLigaskeNize() {
+        Long idLiga = ligaStoritev.ustvari(new LigaVnos(
+                "Nizi za profil", "2024/25", SpolKategorija.MOSKI, FormatSrecanja.SNTL, 5,
+                null, false, 2, 1, 0, true, false, RavenTekmovanja.URADNO, false, null,
+                LocalDateTime.now().minusYears(2), 7)).id();
+        dodajEkipoSKadrom(idLiga, "Nizi A", 3);
+        dodajEkipoSKadrom(idLiga, "Nizi B", 3);
+        ligaStoritev.generirajRazpored(idLiga);
+
+        Long idSrecanje = srecanjeStoritev.zaLigo(idLiga).get(0).id();
+        SrecanjePodrobnoDto s = srecanjeStoritev.podrobno(idSrecanje);
+        List<PostavaVnos.MestoVnos> mesta = new ArrayList<>();
+        for (int i = 0; i < s.pozicijeDomaci().size(); i++) {
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.DOMACI, s.pozicijeDomaci().get(i),
+                    s.kaderDomaci().get(i).idIgralec(), i < 2));
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.GOST, s.pozicijeGost().get(i),
+                    s.kaderGost().get(i).idIgralec(), i < 2));
+        }
+        srecanjeStoritev.nastaviPostavo(idSrecanje, new PostavaVnos(mesta));
+        // domaci igralec z mesta A dobi 3:1 - nize 1, 3, 4 gredo njemu, 2. gre gostu
+        srecanjeStoritev.vnesiRezultat(srecanjeStoritev.podrobno(idSrecanje).tekme().get(1).id(),
+                new VnosRezultataSrecanja(null, 3, 1, null, List.of(
+                        new NizVnos(11, 5), new NizVnos(5, 11),
+                        new NizVnos(11, 9), new NizVnos(11, 6))));
+
+        Long idIgralec = s.kaderDomaci().get(0).idIgralec();
+        List<ProfilZasebnoDto.Delez> po = profilStoritev.zasebno(idIgralec, adminIme())
+                .niziInTocke().poNizu();
+        assertEquals(1, po.get(0).zmage());
+        assertEquals(1, po.get(1).porazi());
+        assertEquals(1, po.get(2).zmage());
+        assertEquals(1, po.get(3).zmage());
+        assertEquals(0, po.get(4).odigrane());
     }
 
     @Test

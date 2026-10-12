@@ -818,8 +818,9 @@ function RezultatOkno({
   const [zmagovalec, nastaviZmagovalca] = useState<StranEkipe>(
     popravek ? (tekma.zmagovalecStran ?? 'DOMACI') : 'DOMACI',
   )
-  /* Točke po nizih so tudi v ligi neobvezne (enako kot pri turnirjih). */
-  const [vnasamTocke, nastaviVnasamTocke] = useState(popravek && tekma.nizi.length > 0)
+  /* Točke po nizih so tudi v ligi privzeto vklopljene (enako kot pri turnirjih);
+     odznačenje jih izključi. Pri popravku ostane stanje, kakršno je shranjeno. */
+  const [vnasamTocke, nastaviVnasamTocke] = useState(popravek ? tekma.nizi.length > 0 : true)
   /* Pri popravku je izid že vpisan, zato se vrstice ne morejo pojaviti ob
      njegovem vnosu — pripravimo jih takoj (glej VnosRezultataOkno). */
   const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>(() =>

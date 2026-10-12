@@ -63,6 +63,11 @@ public class ProfilStoritev {
     /* Niz je "tesen", ko sta oba dosegla vsaj toliko tock (izid 9:9 in vec). */
     private static final int TOCK_ZA_TESEN_NIZ = 9;
 
+    /* Razrez po nizu gre do sedmega niza, kot ga zahteva stran profila. Najdaljsi
+       zapisani niz v lokalni bazi je sedmi (turnir) oz. peti (liga), zato meja
+       doslej ni odrezala nobene tekme. */
+    private static final int NAJVEC_NIZOV_V_RAZREZU = 7;
+
     private final IgralecRepozitorij igralecRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
@@ -185,8 +190,7 @@ public class ProfilStoritev {
                 nasprotniki(nastopi),
                 niziInTocke(nastopi),
                 forma(idIgralec, nastopi),
-                poTekmovanjih(idIgralec, nastopi),
-                razsevni(nastopi));
+                poTekmovanjih(idIgralec, nastopi));
     }
 
     // ---------- Zbiranje nastopov ----------
@@ -693,7 +697,56 @@ public class ProfilStoritev {
                         .toList(),
                 Delez.iz("odločilni niz", odlocilni[0], odlocilni[1]),
                 Delez.iz("brez izgubljenega niza", brezIzgube, nastopi.size() - brezIzgube),
+                poNizu(nastopi),
                 tocke(nastopi));
+    }
+
+    /* Uspesnost po zaporednem nizu: pri vsakem nizu posebej, ne glede na izid
+       tekme. Tekma 1:3 steje vse stiri nize, tudi tiste, ki jih je igralec dobil,
+       ker je tekla do njih. Niz z enakim stevilom tock ni ne zmaga ne poraz, zato
+       se ne steje. Dvojice niso med nastopi, njihovi nizi se ne stejejo. */
+    private List<ProfilZasebnoDto.Delez> poNizu(List<Nastop> nastopi) {
+        Map<Long, Boolean> turnirske = new HashMap<>();
+        Map<Long, Boolean> ligaske = new HashMap<>();
+        for (Nastop n : nastopi) {
+            (n.ligaska() ? ligaske : turnirske).put(n.idTekme(), n.jazPrvi());
+        }
+
+        // izidi[k][0] = zmage v k-tem nizu, izidi[k][1] = porazi; indeks 0 se ne uporablja
+        int[][] izidi = new int[NAJVEC_NIZOV_V_RAZREZU + 1][2];
+        if (!turnirske.isEmpty()) {
+            stejNize(izidi, nizRepozitorij.zaporedneTockeZaTekme(turnirske.keySet()), turnirske);
+        }
+        if (!ligaske.isEmpty()) {
+            stejNize(izidi, nizSrecanjaRepozitorij.zaporedneTockeZaTekme(ligaske.keySet()), ligaske);
+        }
+
+        List<ProfilZasebnoDto.Delez> poNizu = new ArrayList<>();
+        for (int k = 1; k <= NAJVEC_NIZOV_V_RAZREZU; k++) {
+            poNizu.add(Delez.iz(k + ". niz", izidi[k][0], izidi[k][1]));
+        }
+        return poNizu;
+    }
+
+    /* Vrstice [idTekme, zaporedna, tockePrve strani, tockeDruge strani] razvrsti
+       v izidi. "stran" pove, ali je lastnik profila prva stran te tekme - enako
+       kot v Sestevek.dodaj. Ligaska vrstica nosi tocke domacih in gostov, zato
+       je "prva stran" tam domaci. */
+    private static void stejNize(int[][] izidi, List<Object[]> vrstice, Map<Long, Boolean> stran) {
+        for (Object[] v : vrstice) {
+            Long idTekme = ((Number) v[0]).longValue();
+            Boolean jazPrvi = stran.get(idTekme);
+            int zaporedna = ((Number) v[1]).intValue();
+            if (jazPrvi == null || zaporedna > NAJVEC_NIZOV_V_RAZREZU) {
+                continue;
+            }
+            int moje = ((Number) (jazPrvi ? v[2] : v[3])).intValue();
+            int njegove = ((Number) (jazPrvi ? v[3] : v[2])).intValue();
+            if (moje == njegove) {
+                continue;
+            }
+            izidi[zaporedna][moje > njegove ? 0 : 1]++;
+        }
     }
 
     /* Tocke po nizih so pri obeh vrstah tekem neobvezne, zato se stejejo samo
@@ -763,20 +816,6 @@ public class ProfilStoritev {
                     tesnihNizov,
                     tesneSkupaj == 0 ? 0 : Math.round(tesneZa * 100f / tesneSkupaj));
         }
-    }
-
-    /* Razsevni graf: samo tekme, pri katerih sta znana oba ratinga ob tekmi in
-       je bila sprememba obracunana - sicer pika nima ne osi x ne osi y. */
-    private static List<ProfilZasebnoDto.RazsevnaTocka> razsevni(List<Nastop> nastopi) {
-        List<ProfilZasebnoDto.RazsevnaTocka> tocke = new ArrayList<>();
-        for (Nastop n : nastopi) {
-            if (n.ratingNasprotnikaPred() != null && n.mojRatingPred() != null
-                    && n.spremembaRatinga() != null) {
-                tocke.add(new ProfilZasebnoDto.RazsevnaTocka(
-                        n.ratingNasprotnikaPred(), n.spremembaRatinga(), n.zmaga()));
-            }
-        }
-        return tocke;
     }
 
     /* Pricakovane zmage po mesecih: vsota verjetnosti zmage po formuli rating

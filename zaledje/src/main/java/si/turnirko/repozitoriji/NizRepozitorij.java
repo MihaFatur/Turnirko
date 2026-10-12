@@ -21,6 +21,11 @@ public interface NizRepozitorij extends JpaRepository<Niz, Long> {
     @Query("SELECT n.tekma.id, n.tocke1, n.tocke2 FROM Niz n WHERE n.tekma.id IN :idjiTekem")
     List<Object[]> tockeZaTekme(@Param("idjiTekem") Collection<Long> idjiTekem);
 
+    /* Enako kot tockeZaTekme, a z zaporedno stevilko niza - razrez po nizu
+       mora vedeti, ali gre za prvi, drugi ... Vrne [idTekme, zaporedna, tocke1, tocke2]. */
+    @Query("SELECT n.tekma.id, n.zaporednaSt, n.tocke1, n.tocke2 FROM Niz n WHERE n.tekma.id IN :idjiTekem")
+    List<Object[]> zaporedneTockeZaTekme(@Param("idjiTekem") Collection<Long> idjiTekem);
+
     /* Nizi CELEGA turnirja, urejeni po tekmi in zaporedju - za zavihek
        statistike (obrat, najdaljsi niz, sestevek tock).
 

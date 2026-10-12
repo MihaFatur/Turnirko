@@ -74,7 +74,10 @@ export function VnosRezultataOkno({
   const [rezultat, nastaviRezultat] = useState(
     popravek && tekma.izidTip === 'IGRANO' ? `${tekma.dobljeniNizi1}:${tekma.dobljeniNizi2}` : '',
   )
-  const [vnasamTocke, nastaviVnasamTocke] = useState(popravek && tekma.nizi.length > 0)
+  /* Točke po nizih so privzeto vklopljene - organizator jih prepisuje s papirja
+     pri vsakem rezultatu, izklopi pa jih odznačenje. Pri popravku ostane stanje,
+     kakršno je shranjeno. */
+  const [vnasamTocke, nastaviVnasamTocke] = useState(popravek ? tekma.nizi.length > 0 : true)
   /* Pri popravku je rezultat že izbran, zato se vrstice ne morejo pojaviti ob
      njegovi izbiri — pripravimo jih takoj, sicer bi organizator, ki točke
      dodaja k tekmi brez njih, dobil prazno mrežo in nerazumljivo napako. */

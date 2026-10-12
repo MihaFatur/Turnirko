@@ -13,11 +13,7 @@ public record ProfilZasebnoDto(
         Nasprotniki nasprotniki,
         NiziInTocke niziInTocke,
         Forma forma,
-        PoTekmovanjih poTekmovanjih,
-        /* Razsevni graf "rating nasprotnika proti izidu". Rating nasprotnika ob
-           tekmi je sicer javen podatek, a razrez zivi tu, ker pove, proti
-           komu je igralec mocan oziroma sibek - to je analiza, ne rezultat. */
-        List<RazsevnaTocka> razsevni
+        PoTekmovanjih poTekmovanjih
 ) {
 
     /* Izkupicek ene skupine tekem (npr. "proti desnicarjem", "v gosteh"). */
@@ -73,6 +69,11 @@ public record ProfilZasebnoDto(
             /* "Zmage" so tu tekme brez izgubljenega niza, "porazi" vse ostale -
                Delez je nosilec razmerja, ne izida. */
             Delez brezIzgubljenegaNiza,
+            /* Uspesnost po zaporednem nizu: "1. niz" ... "7. niz". Stevilo
+               odigranih je stevilo NIZOV na tem mestu, ne tekem - tekma 3:0 da
+               nize 1-3, tekma 1:3 pa 1-4. Prazno mesto (nihce ni igral 7. niza)
+               ima odigrane 0. */
+            List<Delez> poNizu,
             Tocke tocke
     ) {}
 
@@ -110,10 +111,6 @@ public record ProfilZasebnoDto(
                katerih sta bila znana oba ratinga (sicer pricakovanja ni). */
             List<Mesec> poMesecih
     ) {}
-
-    /* Ena tekma v razsevnem grafu: rating nasprotnika ob tekmi proti
-       spremembi lastnega ratinga. */
-    public record RazsevnaTocka(int ratingNasprotnika, int sprememba, boolean zmaga) {}
 
     public record PoTekmovanjih(
             Delez turnirji,

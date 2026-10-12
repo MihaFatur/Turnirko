@@ -7729,71 +7729,6 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-negativna-tekst);
 }
 
-/* ---- Nasprotniki: razsevni graf ratinga nasprotnika proti izidu ---- */
-
-.razsevni {
-  position: relative;
-  margin-top: var(--r2);
-}
-
-.razsevni__svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.razsevni__nicla {
-  stroke: var(--barva-crnilo);
-  stroke-width: 1;
-}
-
-.razsevni__meja {
-  stroke: var(--barva-glavna);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
-}
-
-.razsevni__tocka {
-  opacity: 0.85;
-}
-
-.razsevni__tocka--z {
-  fill: var(--barva-poudarek-tekst);
-}
-
-.razsevni__tocka--p {
-  fill: var(--barva-negativna);
-}
-
-.razsevni__moj {
-  position: absolute;
-  top: 2%;
-  font: 500 11px / 1 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--barva-glavna-tekst);
-}
-
-.razsevni__os-x {
-  position: absolute;
-  bottom: 0;
-  transform: translateX(-50%);
-  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--barva-crnilo-3);
-}
-
-.razsevni__os-y {
-  position: absolute;
-  left: 0;
-  width: 4%;
-  text-align: right;
-  transform: translateY(-50%);
-  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--barva-crnilo-3);
-}
-
 /* ---- Kaj prinese tekma (napoved proti izbranemu nasprotniku) ---- */
 
 /* Izbirnik in izbrani nasprotnik stojita v isti vrsti: polje je orodje, ime
@@ -12289,11 +12224,6 @@ a.ekipa-okno__srecanje:hover {
   .profil__povzetek .kazalnik--prvi {
     padding-left: 0;
     padding-right: var(--r2);
-  }
-
-  .razsevni__os-x,
-  .razsevni__os-y {
-    display: none;
   }
 
   .forma__znak {

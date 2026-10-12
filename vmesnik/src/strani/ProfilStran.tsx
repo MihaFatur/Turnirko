@@ -9,8 +9,8 @@
    posebej in samo takrat, ko je profil last prijavljenega igralca ali ko gleda
    administrator - streznik na ta klic sicer odgovori s 403.
 
-   Vsi izpeljani prikazi (kolobar, toplotna karta, trak izidov, razsevni graf,
-   osi razrezov) se izracunajo iz ProfilDto in ProfilZasebnoDto med izrisom -
+   Vsi izpeljani prikazi (kolobar, toplotna karta, trak izidov, osi razrezov)
+   se izracunajo iz ProfilDto in ProfilZasebnoDto med izrisom -
    brez novih poizvedb. Okolico na lestvici izracunamo iz lestvice, ki jo
    vmesnik ima ze predpomnjeno (isti kljuc kot LestvicaStran), zozene na
    lestvico igralcevega spola. */
@@ -27,7 +27,6 @@ import type {
   ProfilMesec,
   ProfilNasprotnik,
   ProfilZasebnoDto,
-  RazsevnaTocka,
   Razmerje,
   StarostniPas,
   TekmaDvojic,
@@ -308,7 +307,7 @@ export function ProfilStran() {
       {smemZasebno && z && (
         <>
           <Forma podatki={z} pregled={p.pregled} okolica={okolica} />
-          <Nasprotniki podatki={z} tekme={p.tekme} lestvica={lestvica.data} mojRating={p.glava.rating} />
+          <Nasprotniki podatki={z} tekme={p.tekme} lestvica={lestvica.data} />
           {/* Napoved stoji za »Nasprotniki«: tam gledalec vidi, proti komu je
               igral, tu pa vpraša, kaj bi prinesel naslednji. Vrstni red je
               isti kot pripoved strani — najprej kaj je bilo, potem kaj bo. */}
@@ -623,12 +622,10 @@ function Nasprotniki({
   podatki,
   tekme,
   lestvica,
-  mojRating,
 }: {
   podatki: ProfilZasebnoDto
   tekme: TekmaProfila[]
   lestvica: LestvicaIgralcaDto[] | undefined
-  mojRating: number | null
 }) {
   const n = podatki.nasprotniki
   const h2h = izracunajH2H(tekme, lestvica)
@@ -705,101 +702,7 @@ function Nasprotniki({
           ))}
         </>
       )}
-
-      <RazsevniGraf tocke={podatki.razsevni} mojRating={mojRating} />
     </div>
-  )
-}
-
-/* Razsevni graf: vodoravno rating nasprotnika ob tekmi, navpično sprememba
-   lastnega ratinga. Črtkana navpičnica je lasten rating — kar je desno od nje,
-   je bilo odigrano proti močnejšemu. */
-function RazsevniGraf({ tocke, mojRating }: { tocke: RazsevnaTocka[]; mojRating: number | null }) {
-  if (tocke.length === 0) return null
-
-  const SIRINA = 1120
-  const VISINA = 300
-  const LEVO = 56
-  const DESNO = 16
-  const SREDINA = 150
-  const RAZPON = 112
-
-  const ratingi = tocke.map((t) => t.ratingNasprotnika)
-  const najmanj = Math.min(...ratingi, mojRating ?? Infinity)
-  const najvec = Math.max(...ratingi, mojRating ?? -Infinity)
-  const rob = Math.max(30, (najvec - najmanj) * 0.08)
-  const od = najmanj - rob
-  const doKam = najvec + rob
-  const x = (r: number) => LEVO + ((r - od) / (doKam - od)) * (SIRINA - LEVO - DESNO)
-
-  const meja = Math.max(5, Math.ceil(Math.max(...tocke.map((t) => Math.abs(t.sprememba)))))
-  const y = (s: number) => SREDINA - (s / meja) * RAZPON
-
-  const korak = doKam - od > 400 ? 100 : doKam - od > 200 ? 50 : 25
-  const oznakeX: number[] = []
-  for (let v = Math.ceil(od / korak) * korak; v <= doKam; v += korak) oznakeX.push(v)
-
-  const zmagProtiMocnejsim =
-    mojRating === null ? 0 : tocke.filter((t) => t.zmaga && t.ratingNasprotnika > mojRating).length
-
-  return (
-    <>
-      <div className="podnaslov-sekcije">rating nasprotnika proti izidu</div>
-      <div className="razsevni">
-        {mojRating !== null && (
-          <span
-            className="razsevni__moj"
-            style={{ left: `${((x(mojRating) + 8) / SIRINA) * 100}%` }}
-          >
-            Tvoj rating {mojRating}
-          </span>
-        )}
-        {oznakeX.map((v) => (
-          <span
-            key={v}
-            className="razsevni__os-x"
-            style={{ left: `${(x(v) / SIRINA) * 100}%` }}
-          >
-            {v}
-          </span>
-        ))}
-        <span className="razsevni__os-y" style={{ top: `${(y(meja) / VISINA) * 100}%` }}>
-          +{meja}
-        </span>
-        <span className="razsevni__os-y" style={{ top: `${(SREDINA / VISINA) * 100}%` }}>
-          0
-        </span>
-        <span className="razsevni__os-y" style={{ top: `${(y(-meja) / VISINA) * 100}%` }}>
-          −{meja}
-        </span>
-        <svg
-          className="razsevni__svg"
-          viewBox={`0 0 ${SIRINA} ${VISINA}`}
-          role="img"
-          aria-label="Razsevni graf: rating nasprotnika proti spremembi ratinga"
-        >
-          <line className="razsevni__nicla" x1={LEVO} x2={SIRINA - DESNO} y1={SREDINA} y2={SREDINA} />
-          {mojRating !== null && (
-            <line className="razsevni__meja" x1={x(mojRating)} x2={x(mojRating)} y1={16} y2={VISINA - 32} />
-          )}
-          {tocke.map((t, i) => (
-            <circle
-              key={i}
-              className={'razsevni__tocka ' + (t.zmaga ? 'razsevni__tocka--z' : 'razsevni__tocka--p')}
-              cx={x(t.ratingNasprotnika)}
-              cy={y(t.sprememba)}
-              r="4"
-            />
-          ))}
-        </svg>
-      </div>
-      <p className="profil__primerjava">
-        Vsaka pika je tekma: vodoravno rating nasprotnika, navpično sprememba tvojega ratinga.
-        {mojRating !== null && (
-          <> Zelene pike desno od črtkane črte so zmage proti močnejšim — teh je {zmagProtiMocnejsim}.</>
-        )}
-      </p>
-    </>
   )
 }
 
@@ -944,8 +847,11 @@ function PritiskVrstica({
 function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
   const n = podatki.nasprotniki
   const pt = podatki.poTekmovanjih
+  const nt = podatki.niziInTocke
 
-  const skupine: { naslov: string; vrstice: Delez[] }[] = [
+  /* »enota« je naslov stolpca s številom odigranih: pri nizih to niso tekme
+     (tekma 3:0 da tri nize), zato bi »Tekem« zavajalo. */
+  const skupine: { naslov: string; enota?: string; vrstice: Delez[]; opomba?: string }[] = [
     {
       naslov: 'Po igralni roki nasprotnika',
       vrstice: [
@@ -979,6 +885,14 @@ function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
         ...pt.poPoziciji.map((d) => preimenuj(d, zVelikoZacetnico(d.oznaka))),
       ],
     },
+    {
+      naslov: 'Po zaporednem nizu',
+      enota: 'Nizov',
+      vrstice: nt.poNizu,
+      /* Tekme brez točk po nizih ne dajo nizov; opomba pove, zakaj se število
+         ne ujema s številom tekem. */
+      opomba: 'Upoštevane so le tekme, pri katerih so vpisane točke po nizih.',
+    },
   ]
 
   const vidne = skupine
@@ -1000,7 +914,7 @@ function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
             <div className="razrez__naslov">{s.naslov}</div>
             <div className="razrez__vrstica razrez__vrstica--glava">
               <span>Razrez</span>
-              <span className="razrez__desno">Tekem</span>
+              <span className="razrez__desno">{s.enota ?? 'Tekem'}</span>
               <span className="razrez__desno">Z–P</span>
               <span className="razrez__sredina">0 – 50 – 100 %</span>
               <span className="razrez__desno">%</span>
@@ -1016,6 +930,7 @@ function Razrezi({ podatki }: { podatki: ProfilZasebnoDto }) {
                 <span className="razrez__odstotek">{d.odstotek} %</span>
               </div>
             ))}
+            {s.opomba && <p className="profil__opomba">{s.opomba}</p>}
           </div>
         ))}
       </div>

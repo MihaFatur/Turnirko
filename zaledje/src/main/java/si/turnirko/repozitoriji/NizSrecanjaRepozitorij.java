@@ -32,6 +32,15 @@ public interface NizSrecanjaRepozitorij extends JpaRepository<NizSrecanja, Long>
             """)
     List<Object[]> tockeZaTekme(@Param("idjiTekem") Collection<Long> idjiTekem);
 
+    /* Dvojnik NizRepozitorij.zaporedneTockeZaTekme za ligaske tekme:
+       [idTekme, zaporedna, tockeDomaci, tockeGost]. */
+    @Query("""
+            SELECT n.tekma.id, n.zaporednaSt, n.tockeDomaci, n.tockeGost
+            FROM NizSrecanja n
+            WHERE n.tekma.id IN :idjiTekem
+            """)
+    List<Object[]> zaporedneTockeZaTekme(@Param("idjiTekem") Collection<Long> idjiTekem);
+
     /* Nizi CELE lige, urejeni po tekmi in zaporedju - za zavihek statistike
        lige. Dvojnik tockeZaTurnir v NizRepozitorij; po ligi in ne po seznamu
        id-jev iz istega razloga (omejitev stevila vezanih parametrov). */

@@ -2024,15 +2024,6 @@ export interface ProfilZasebnoDto {
   niziInTocke: ProfilNiziInTocke
   forma: ProfilForma
   poTekmovanjih: ProfilPoTekmovanjih
-  razsevni: RazsevnaTocka[]
-}
-
-/* Ena tekma v razsevnem grafu: rating nasprotnika ob tekmi proti spremembi
-   lastnega ratinga. */
-export interface RazsevnaTocka {
-  ratingNasprotnika: number
-  sprememba: number
-  zmaga: boolean
 }
 
 export interface Delez {
@@ -2079,6 +2070,8 @@ export interface ProfilNiziInTocke {
   odlocilniNiz: Delez
   /* »Zmage« so tu tekme brez izgubljenega niza, »porazi« vse ostale. */
   brezIzgubljenegaNiza: Delez
+  /* Od »1. niz« do »7. niz«; število odigranih je število nizov na tem mestu. */
+  poNizu: Delez[]
   tocke: ProfilTocke
 }
 
