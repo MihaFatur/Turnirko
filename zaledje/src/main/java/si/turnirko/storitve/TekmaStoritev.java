@@ -95,6 +95,11 @@ public class TekmaStoritev {
         preveriStanje(tekma);
 
         IzidTekme izid = vnos.izidTip() == null ? IzidTekme.IGRANO : vnos.izidTip();
+        // stevilo nizov gre PRED preverbo izida: zmagovalec in tocke se preverjajo
+        // proti tekmi; ce preverba odpove, se prepis razveljavi z vso transakcijo
+        if (vnos.steviloNizov() != null) {
+            nastaviSteviloNizov(tekma, vnos.steviloNizov());
+        }
         if (tekma.getDogodek().jeEkipno()) {
             if (izid != IzidTekme.BREZ_BOJA && izid != IzidTekme.DISKVALIFIKACIJA) {
                 throw new NeveljavenVnosIzjema("Izid ekipne tekme nastane iz srecanja: vpisi postavo"
@@ -161,6 +166,10 @@ public class TekmaStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
 
         preveriPopravek(tekma);
+        // stevilo nizov je del izida, ki je tekma ze odigrala - popravek ga ne prepisuje
+        if (vnos.steviloNizov() != null) {
+            throw new DomenskaIzjema("Stevilo nizov se ob popravku ne spreminja - popravi izid.");
+        }
 
         IzidTekme izid = vnos.izidTip() == null ? IzidTekme.IGRANO : vnos.izidTip();
         /* Zmagovalec se preveri, PREDEN se karkoli spremeni. Preklic po zapisu
@@ -372,6 +381,18 @@ public class TekmaStoritev {
                 : dogodek.getFormatSrecanja().stTekem() / 2 + 1;
     }
 
+    /* Organizator lahko tekmo prepise na drugo stevilo nizov kot dogodek.
+       Pri ekipnem dogodku nize doloca dogodek prek pravil srecanja, zato
+       posamezni tekmi tam ni kaj prepisovati. */
+    private static void nastaviSteviloNizov(Tekma tekma, int steviloNizov) {
+        if (tekma.getDogodek().jeEkipno()) {
+            throw new NeveljavenVnosIzjema("Pri ekipnem dogodku stevilo nizov doloca dogodek,"
+                    + " ne posamezna tekma.");
+        }
+        NiziPravila.preveriSteviloNizov(steviloNizov);
+        tekma.setSteviloNizov(steviloNizov);
+    }
+
     /* Preveri, ali je tekmo v trenutnem stanju sploh dovoljeno vnasati. */
     private void preveriStanje(Tekma tekma) {
         if (tekma.getDogodek().getStatus() != StatusTekmovanja.V_TEKU) {
@@ -491,6 +512,11 @@ public class TekmaStoritev {
         // skupine za mesta: po predtekmovanju morajo nastati finalne skupine -
         // dokler jih ni, dogodek ni koncan, ceprav so vse obstojece tekme odigrane
         if (sistem == SistemTekmovanja.SKUPINE_ZA_MESTA && !skupineStoritev.imaFinalneSkupine(idDogodka)) {
+            return;
+        }
+        // skupine + izlocilni: dokler organizator ni izbral izlocilnega dela (zreb ali
+        // rocni vpis), ni koncano, ceprav so vse skupinske tekme odigrane
+        if (sistem == SistemTekmovanja.SKUPINE_IZLOCILNI && !skupineStoritev.imaIzlocilniDel(idDogodka)) {
             return;
         }
         // SV regija: skupine vseh nivojev so odigrane, a zrebi nivojev morajo biti zgrajeni

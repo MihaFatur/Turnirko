@@ -734,10 +734,13 @@ class UpravljanjeNarocnineStoritevTest {
 
     // ---------- Pomozno ----------
 
+    /* Obdobje je relativno na zdaj: z dnevom v trdo vpisanem koncu (12. 10. 2026
+       ob 10.00) je bila "preklicana a se veljavna" narocnina od tistega trenutka
+       naprej potekla in dva testa sta padla brez kakrsne koli spremembe kode. */
     private static StripeNarocnine.Stanje stanje(CiklusPlacila ciklus, boolean preklic, String urnik) {
         return new StripeNarocnine.Stanje(
-                LocalDateTime.of(2026, 9, 12, 10, 0),
-                LocalDateTime.of(2026, 10, 12, 10, 0),
+                LocalDateTime.now().minusDays(20),
+                LocalDateTime.now().plusDays(10),
                 ciklus, ciklus == CiklusPlacila.LETNO ? 53.49 : 4.99, preklic, urnik);
     }
 

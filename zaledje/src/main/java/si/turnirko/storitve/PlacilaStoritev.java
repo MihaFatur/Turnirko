@@ -146,8 +146,7 @@ public class PlacilaStoritev {
         double cena = cenik.cena(vnos.paket(), vnos.ciklus(), starejsiOd21);
         String gesloHash = kodirnik.encode(racun.geslo());
 
-        SessionCreateParams params = SessionCreateParams.builder()
-                .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+        SessionCreateParams params = osnovaSeje(vnos.paket(), vnos.ciklus())
                 .setCustomerEmail(email)
                 .setSuccessUrl(vrniNaKoren + "/registracija/zakljucena?stanje=uspeh")
                 .setCancelUrl(vrniNaKoren + "/registracija/zakljucena?stanje=preklic")
@@ -172,6 +171,26 @@ public class PlacilaStoritev {
 
     // ---------- Zacetek placila: nadgradnja obstojecega racuna ----------
 
+    /* Druga Stripe narocnina ob zivi prvi pomeni dvojno zaracunavanje: stara
+       tece naprej, nova pa v bazi prepise vrstico in stara ostane brez lastnika,
+       ki bi jo videl ali preklical. Najnevarnejsa je ZAPADLA: stran Narocnina
+       takrat pokaze stanje brez paketa, torej ponudbo nakupa, Stripe pa staro
+       narocnino se ponavlja in jo lahko uspesno zaracuna. Potekla preklicana
+       narocnina je konec in je nov nakup pravilen ("nova narocnina prek
+       Checkouta"); narocnina brez Stripe placila (brezplacno leto Pro) tudi. */
+    private static void zavrniCeJeNarocninaZiva(Narocnina n) {
+        if (n.getStripeNarocninaId() == null) {
+            return;
+        }
+        if (n.getStatus() == StatusNarocnine.ZAPADLA) {
+            throw new DomenskaIzjema("Zadnje placilo narocnine ni uspelo. Posodobi kartico prek gumba "
+                    + "\"Kartica in racuni v Stripe\" - ko se placilo izvede, se paket vklopi sam.");
+        }
+        if (n.jeVeljavna(LocalDateTime.now())) {
+            throw new DomenskaIzjema("Narocnino ze imas. Spremenis jo lahko na strani Narocnina.");
+        }
+    }
+
     public PlacilnaSejaDto zacniNadgradnjo(NadgradnjaVnos vnos) {
         Uporabnik jaz = zahtevajPrijavo();
         if (vnos.paket() == Paket.BREZPLACNO) {
@@ -185,14 +204,15 @@ public class PlacilaStoritev {
             throw new NeveljavenVnosIzjema("Ta paket je za organizatorja.");
         }
 
+        narocninaRepozitorij.findByUporabnikId(jaz.getId()).ifPresent(PlacilaStoritev::zavrniCeJeNarocninaZiva);
+
         // Starost za ceno je VEDNO iz vpisanega datuma ob registraciji - isto
         // pravilo kot pri novi registraciji, ne iz kasneje povezanega igralca.
         boolean starejsiOd21 = paketJePremium
                 && cenik.stariEnaindvajset(jaz.getPrijavljeniDatumRojstva());
         double cena = cenik.cena(vnos.paket(), vnos.ciklus(), starejsiOd21);
 
-        SessionCreateParams params = SessionCreateParams.builder()
-                .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+        SessionCreateParams params = osnovaSeje(vnos.paket(), vnos.ciklus())
                 .setCustomerEmail(jaz.getUporabniskoIme())
                 .setSuccessUrl(vrniNaKoren + "/narocnina?stanje=uspeh")
                 .setCancelUrl(vrniNaKoren + "/narocnina?stanje=preklic")
@@ -303,6 +323,13 @@ public class PlacilaStoritev {
 
         Narocnina n = narocninaRepozitorij.findByUporabnikId(idUporabnik)
                 .orElseGet(() -> new Narocnina(u, paket));
+        if (n.getStripeNarocninaId() != null && !n.getStripeNarocninaId().equals(session.getSubscription())
+                && (n.getStatus() == StatusNarocnine.ZAPADLA || n.jeVeljavna(LocalDateTime.now()))) {
+            // zavora v zacniNadgradnjo to prepreci; ostane tek dveh hkrati odprtih Checkoutov
+            dnevnik.warn("Racun {} je ob zivi narocnini {} placal se {} - stara tece naprej v Stripu in jo je "
+                    + "treba preklicati rocno (ali vrniti novo placilo).",
+                    idUporabnik, n.getStripeNarocninaId(), session.getSubscription());
+        }
         n.setPaket(paket);
         n.setCiklus(ciklus);
         n.setCenaObSklenitvi(cenik.cena(paket, ciklus, starejsiOd21));
@@ -346,9 +373,13 @@ public class PlacilaStoritev {
        prispe brez polja schedule. Vrstni red ni pomemben: storitev za
        upravljanje narocnine zapise isto stanje, ki ga vrne Stripe. */
     private void obdelajPosodobitevNarocnine(Subscription sub) {
+        if ("canceled".equals(sub.getStatus())) {
+            // Stripe je narocnino koncal (npr. po zadnjem neuspelem poskusu): enako kot izbris
+            obdelajIzbrisNarocnine(sub);
+            return;
+        }
         narocninaRepozitorij.findByStripeNarocninaId(sub.getId()).ifPresent(n -> {
-            boolean preklicOKoncu = Boolean.TRUE.equals(sub.getCancelAtPeriodEnd());
-            n.setStatus(preklicOKoncu ? StatusNarocnine.PREKLICANA : StatusNarocnine.AKTIVNA);
+            n.setStatus(statusIzStripa(sub));
             LocalDateTime staroObdobjeDo = n.getTrenutnoObdobjeDo();
             StripeNarocnine.Stanje stanje = StripeNarocnine.stanje(sub);
             StripeNarocnine.uskladi(n, stanje);
@@ -369,6 +400,23 @@ public class PlacilaStoritev {
                 sprostiUrnikPoPreklopu(n);
             }
         });
+    }
+
+    /* Lokalno stanje se izpelje iz STRIPOVEGA statusa narocnine, ne samo iz
+       preklica ob koncu obdobja: past_due in unpaid pomenita neplacano obnovo
+       (ZAPADLA - dostop se ugasne, Stripe pa placilo ponavlja), active po
+       uspesnem ponovnem poskusu vse vrne. Ob neuspeli obnovi Stripe poslje dva
+       dogodka (invoice.payment_failed in ta) in vrstni red ni zagotovljen:
+       prej je posodobitev, ki je prisla zadnja, narocnino vrnila na AKTIVNA in
+       neplacnik je obdrzal dostop. Brez statusa (starejsa oblika dogodka) velja
+       stara presoja po preklicu. */
+    static StatusNarocnine statusIzStripa(Subscription sub) {
+        String status = sub.getStatus();
+        if ("past_due".equals(status) || "unpaid".equals(status)) {
+            return StatusNarocnine.ZAPADLA;
+        }
+        return Boolean.TRUE.equals(sub.getCancelAtPeriodEnd())
+                ? StatusNarocnine.PREKLICANA : StatusNarocnine.AKTIVNA;
     }
 
     /* Zabelezeno znizanje paketa je izvedeno, ko se je zacelo NOVO obdobje: urnik
@@ -407,7 +455,16 @@ public class PlacilaStoritev {
         });
     }
 
+    /* Dostop ugasne samo neuspela OBNOVA. Doplacilo ob nadgradnji organizatorja
+       (subscription_update) Stripe ob zavrnjeni kartici zavrne skupaj z
+       nadgradnjo: narocnina tece naprej po starem in ostane placana, zato je
+       ne smemo oznaciti kot zapadlo. */
     private void obdelajNeuspeloPlacilo(Invoice invoice) {
+        if (!"subscription_cycle".equals(invoice.getBillingReason())) {
+            dnevnik.info("Neuspelo placilo racuna {} ({}) ni obnova - narocnina se ne spremeni.",
+                    invoice.getId(), invoice.getBillingReason());
+            return;
+        }
         String subscriptionId = subscriptionIzRacuna(invoice);
         if (subscriptionId == null) {
             return;
@@ -426,6 +483,62 @@ public class PlacilaStoritev {
             throw new PrepovedanoIzjema("Za to dejanje je potrebna prijava.");
         }
         return jaz;
+    }
+
+    /* Skupni del obeh zacetkov placila (nova registracija, nadgradnja): kar kupec
+       vidi in mora potrditi na Stripovi strani. Cisto sestavljanje parametrov
+       brez klica Stripa, zato ga test prebere prek toMap().
+
+       - Samo kartica (Apple Pay in Google Pay sta del nje): kartica je po
+         ZDavPR placilo z gotovino, zato vsako placilo dobi davcno potrjen
+         racun. Drugi nacini (npr. SEPA) bi terjali posebno presojo.
+       - Soglasje s pogoji je obvezno; povezava na /pogoji je v besedilu, URL
+         pogojev mora biti tudi v Stripovi nadzorni plosci (Public details),
+         sicer Stripe seje ne ustvari - velja za testni in zivi nacin.
+       - Organizator je pogosto klub ali podjetje: racun brez naslova in davcne
+         stevilke kupca knjigovodstvu kluba ne koristi. Igralec tega ne
+         potrebuje (en obrazec manj pri nakupu za nekaj evrov). */
+    SessionCreateParams.Builder osnovaSeje(Paket paket, CiklusPlacila ciklus) {
+        SessionCreateParams.Builder seja = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+                .setLocale(SessionCreateParams.Locale.SL)
+                .setConsentCollection(SessionCreateParams.ConsentCollection.builder()
+                        .setTermsOfService(SessionCreateParams.ConsentCollection.TermsOfService.REQUIRED)
+                        .build())
+                .setCustomText(SessionCreateParams.CustomText.builder()
+                        .setSubmit(SessionCreateParams.CustomText.Submit.builder()
+                                .setMessage(besediloPredPotrditvijo(ciklus))
+                                .build())
+                        .setTermsOfServiceAcceptance(SessionCreateParams.CustomText.TermsOfServiceAcceptance.builder()
+                                .setMessage(besediloSoglasja())
+                                .build())
+                        .build());
+        if (paket.jeOrganizatorski()) {
+            seja.setBillingAddressCollection(SessionCreateParams.BillingAddressCollection.REQUIRED)
+                    .setTaxIdCollection(SessionCreateParams.TaxIdCollection.builder().setEnabled(true).build());
+        }
+        return seja;
+    }
+
+    /* Nad gumbom za potrditev. Besedilo ne omenja napisa na gumbu: ta pride
+       od Stripa in se lahko spremeni. Kar pise, mora drzati tudi za aplikacijo
+       (obnova, preklic, odstop - glej strani Pogoji in Narocnina). */
+    private static String besediloPredPotrditvijo(CiklusPlacila ciklus) {
+        String obnova = ciklus == CiklusPlacila.LETNO ? "vsako leto" : "vsak mesec";
+        return "Z gumbom za potrditev spodaj sklenete naročilo z obveznostjo plačila. "
+                + "Naročnina se obnavlja " + obnova + ", dokler je ne prekličete (kadar koli na strani Naročnina). "
+                + "Račun prejmete po e-pošti.";
+    }
+
+    /* Ob kljukici. Storitev se zacne takoj, zato kupec izrecno zahteva zacetek v
+       odstopnem roku in ve, da ob odstopu placa sorazmerni del - isto kot
+       odstavek o odstopu na strani Pogoji. Pravica do odstopa je potrosnikova
+       (organizator je pogosto klub ali podjetje), zato besedilo pravi "kot
+       potrosnik" in te pravice ne obljublja vsem. */
+    private String besediloSoglasja() {
+        return "Strinjam se s [pogoji uporabe](" + vrniNaKoren + "/pogoji) in zahtevam, da se storitev začne takoj. "
+                + "Kot potrošnik vem, da ob odstopu v 14 dneh plačam sorazmerni del za že porabljeno obdobje.";
     }
 
     private SessionCreateParams.LineItem vrsticaSeje(Paket paket, CiklusPlacila ciklus, double cena) {

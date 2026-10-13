@@ -33,6 +33,9 @@ import si.turnirko.modeli.Tekma;
 
 class ZrebNosilciTest extends IntegracijskiTest {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private IzlocilniZrebStoritev izlocilniZrebStoritev;
+
     @BeforeEach
     void deterministicniZreb() {
         zrebStoritev.nastaviNakljucje(new Random(42));
@@ -263,6 +266,7 @@ class ZrebNosilciTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(32, SistemTekmovanja.SKUPINE_IZLOCILNI);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupineTakoDaZmagaMocnejsi(dogodek.getId());
+        izlocilniZrebStoritev.izvediZreb(dogodek.getId());
 
         List<List<Prijava>> skupine = poSkupinah(dogodek);
         assertEquals(8, skupine.size());
@@ -285,6 +289,7 @@ class ZrebNosilciTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(32, SistemTekmovanja.SKUPINE_IZLOCILNI);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupineTakoDaZmagaMocnejsi(dogodek.getId());
+        izlocilniZrebStoritev.izvediZreb(dogodek.getId());
 
         Prijava[] mreza = mrezaPrvegaKola(dogodek.getId());
         for (List<Prijava> skupina : poSkupinah(dogodek)) {
@@ -299,6 +304,7 @@ class ZrebNosilciTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(32, SistemTekmovanja.SKUPINE_IZLOCILNI);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupineTakoDaZmagaMocnejsi(dogodek.getId());
+        izlocilniZrebStoritev.izvediZreb(dogodek.getId());
 
         Set<Long> zmagovalciSkupin = new HashSet<>(
                 poSkupinah(dogodek).stream().map(s -> s.get(0).getId()).toList());

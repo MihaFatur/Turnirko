@@ -36,9 +36,14 @@
        je tam B-Y in ne C-Z.
    POKAL_NTZS: 3 igralci brez dvojic, prvi do treh zmag: A-Y, B-X, C-Z, A-X,
        B-Y. Tako je teklo pokalno tekmovanje NTZS 2026.
+   DSI (DŠI): 2 igralca + dvojice, prva ekipa do dveh zmag: A-X, B-Y, dvojice.
+       Dvojice odlocajo samo pri 1 : 1 - pri 2 : 0 srecanje konca ze po dveh
+       posamicnih. Prag dveh zmag je zato FIKSEN (fiksniPragZmag), ne izbira.
 
    Nove formate dodas tako, da dopolnis enum in metodo razpored() (in razsiris
-   CHECK omejitev stolpca liga.format_srecanja z novo migracijo). */
+   CHECK omejitev stolpcev liga.format_srecanja in dogodek.format_srecanja z
+   novo migracijo). Nov format dodaj NA KONEC enuma: uvoz (SrecanjaStupe,
+   StaraLigeUvoz) izbira med formati po vrstnem redu values(). */
 package si.turnirko.modeli;
 
 import java.util.List;
@@ -54,7 +59,8 @@ public enum FormatSrecanja {
     CORBILLON(2, true, false),
     SAVINJA(2, true, false),
     EKIPNI_DP(3, true, true),
-    POKAL_NTZS(3, false, false);
+    POKAL_NTZS(3, false, false),
+    DSI(2, true, false);
 
     /* Formata, ki ju pozna samo ekipni DOGODEK turnirja. Omejitev CHECK stolpca
        liga.format_srecanja ju ne nasteje - liga bi ju zavrnila v bazi, zato ju
@@ -185,11 +191,24 @@ public enum FormatSrecanja {
                     new MestoTekme(p, "C", "Z"),
                     new MestoTekme(p, "A", "X"),
                     new MestoTekme(p, "B", "Y"));
+            case DSI -> List.of(
+                    new MestoTekme(p, "A", "X"),
+                    new MestoTekme(p, "B", "Y"),
+                    new MestoTekme(d, null, null));
         };
     }
 
     /* Skupno stevilo tekem v srecanju pri tem formatu. */
     public int stTekem() {
         return razpored().size();
+    }
+
+    /* Prag zmag, pri katerem se srecanje konca, kadar ga format sam doloci;
+       null, kadar prag izbere organizator. DSI je »prva ekipa do dveh zmag« -
+       brez fiksnega praga bi lahko organizator pustil vse tri tekme, dvojice
+       pa bi se igrale tudi pri 2 : 0. Obrazec prag zaklene na to vrednost,
+       zaledje pa ga zahteva (LigaStoritev, TurnirjiStoritev). */
+    public Integer fiksniPragZmag() {
+        return this == DSI ? 2 : null;
     }
 }

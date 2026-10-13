@@ -761,37 +761,12 @@ public class SvRegijaStoritev {
     // Zrebi nivojev
     // ---------------------------------------------------------------------
 
-    /* Po vsaki koncani skupinski tekmi: nivo, katerega skupine so vse odigrane,
-       dobi zreba. Nivoji tecejo neodvisno - zreb prvega nivoja ne caka na
-       zadnjega. Klic je varen za ponavljanje (zgrajeni zrebi se preskocijo). */
-    @Transactional
-    public void obKoncaniSkupinski(Dogodek dogodek, List<Skupina> skupine,
-                                   List<Prijava> prijave, List<Tekma> tekme) {
-        Map<Integer, List<Skupina>> poNivojih = predtekmovalnePoNivojih(skupine);
-        for (Map.Entry<Integer, List<Skupina>> nivo : poNivojih.entrySet()) {
-            Set<Long> idjiSkupin = nivo.getValue().stream().map(Skupina::getId).collect(Collectors.toSet());
-            List<Tekma> skupinske = tekme.stream()
-                    .filter(t -> t.getFaza() == FazaTekme.SKUPINA && idjiSkupin.contains(t.getIdSkupina()))
-                    .toList();
-            if (skupinske.isEmpty()
-                    || !skupinske.stream().allMatch(t -> t.getStatus() == StatusTekme.KONCANA)) {
-                continue;
-            }
-            List<Zreb> zrebi = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(
-                    dogodek.getId(), nivo.getKey());
-            if (zrebi.stream().allMatch(Zreb::isZgrajen)) {
-                continue;
-            }
-            List<List<Prijava>> uvrstitve = uvrstitveNivoja(nivo.getValue(), prijave, tekme);
-            for (Zreb zreb : zrebi) {
-                if (!zreb.isZgrajen()) {
-                    zgradiZreb(dogodek, zreb, nakljucnaMesta(zreb, uvrstitve), false);
-                }
-            }
-        }
-    }
+    /* Zrebi nivojev ne nastanejo sami, ko so odigrane skupine nivoja: organizator izbere
+       racunalniski zreb (znovaZrebaj) ali rocno razporeditev (nastaviMesta). Dokler se
+       nobena tekma zreba ni zacela, ga lahko popravi. Dogodek se ne zakljuci, dokler
+       zrebi niso zgrajeni (vsiZrebiZgrajeni).
 
-    /* Predtekmovalne skupine po nivojih, urejene po oznaki (A, B, C ...). */
+       Predtekmovalne skupine po nivojih, urejene po oznaki (A, B, C ...). */
     private static Map<Integer, List<Skupina>> predtekmovalnePoNivojih(List<Skupina> skupine) {
         Map<Integer, List<Skupina>> poNivojih = new TreeMap<>();
         for (Skupina skupina : skupine) {
@@ -943,20 +918,38 @@ public class SvRegijaStoritev {
         return new PodatkiNivoja(prijave, uvrstitveNivoja(skupine, prijave, tekme));
     }
 
-    /* Zreb se sme popravljati, ce je zgrajen in se nobena njegova tekma ni
-       zacela: sicer bi popravek unicil ze odigrane rezultate. */
+    /* Zreb se sme vpisati ali popraviti, ko so odigrane skupine nivoja (tudi ce se se ni
+       zgradil), dokler se nobena njegova tekma ni zacela: sicer bi popravek unicil ze
+       odigrane rezultate. */
     private void preveriUredljiv(Zreb zreb) {
         if (zreb.getDogodek().getStatus() != StatusTekmovanja.V_TEKU) {
             throw new DomenskaIzjema("Žreb je mogoče urejati samo, dokler dogodek teče.");
         }
-        if (!zreb.isZgrajen()) {
-            throw new DomenskaIzjema("Žreb še ni zgrajen: počakaj, da se odigrajo vse skupine nivoja.");
+        if (!zreb.isZgrajen() && !skupineNivojaKoncane(zreb)) {
+            throw new DomenskaIzjema("Žreb še ni pripravljen: počakaj, da se odigrajo vse skupine nivoja.");
         }
         boolean zacet = tekmaRepozitorij.findByIdZreb(zreb.getId()).stream()
                 .anyMatch(t -> t.getStatus() == StatusTekme.KONCANA || t.getStatus() == StatusTekme.V_IGRI);
         if (zacet) {
             throw new DomenskaIzjema("Žreba ni mogoče spremeniti: nekatere njegove tekme so že začete.");
         }
+    }
+
+    /* Ali so vse skupinske tekme danih skupin (nivoja) odigrane. Takrat se zreb nivoja sme
+       zgraditi. */
+    private static boolean skupineKoncane(List<Skupina> skupineNivoja, List<Tekma> tekme) {
+        Set<Long> idjiSkupin = skupineNivoja.stream().map(Skupina::getId).collect(Collectors.toSet());
+        return tekme.stream()
+                .filter(t -> t.getFaza() == FazaTekme.SKUPINA && idjiSkupin.contains(t.getIdSkupina()))
+                .allMatch(t -> t.getStatus() == StatusTekme.KONCANA);
+    }
+
+    private boolean skupineNivojaKoncane(Zreb zreb) {
+        Long idDogodka = zreb.getDogodek().getId();
+        List<Skupina> skupine = predtekmovalnePoNivojih(
+                        skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(idDogodka))
+                .getOrDefault(zreb.getNivo(), List.of());
+        return skupineKoncane(skupine, tekmaRepozitorij.najdiZaDogodek(idDogodka));
     }
 
     // ---------------------------------------------------------------------
@@ -1083,13 +1076,18 @@ public class SvRegijaStoritev {
                 List<Integer> velikosti = nivo.getValue().stream()
                         .map(s -> clanov.getOrDefault(s.getId(), 0L).intValue()).toList();
                 int velikostNivoja = velikosti.stream().mapToInt(Integer::intValue).sum();
+                boolean skupineKoncane = skupineKoncane(nivo.getValue(), tekme);
                 List<SvRegijaDto.ZrebDto> zrebi = zrebRepozitorij
                         .findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), nivo.getKey()).stream()
                         .map(z -> zrebDto(z.getId(), z.getIndeks(), z.getPrvoMesto(), z.getStUdelezencev(),
                                 z.isZgrajen(), z.isRocni(),
-                                vTeku && z.isZgrajen() && tekmePoZrebu.getOrDefault(z.getId(), List.of())
-                                        .stream().allMatch(t -> t.getStatus() == StatusTekme.CAKA
-                                                || t.getStatus() == StatusTekme.PRIPRAVLJENA),
+                                // nezgrajen zreb se sme zgraditi, ko so skupine nivoja odigrane;
+                                // zgrajen se sme popraviti, dokler se nobena njegova tekma ni zacela
+                                vTeku && (z.isZgrajen()
+                                        ? tekmePoZrebu.getOrDefault(z.getId(), List.of()).stream()
+                                                .allMatch(t -> t.getStatus() == StatusTekme.CAKA
+                                                        || t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                                        : skupineKoncane),
                                 z.razporedKotSeznam()))
                         .toList();
                 nivoji.add(new SvRegijaDto.NivoDto(nivo.getKey(), velikostNivoja, odMesta,

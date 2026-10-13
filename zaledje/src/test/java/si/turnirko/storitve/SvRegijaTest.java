@@ -164,6 +164,11 @@ class SvRegijaTest extends IntegracijskiTest {
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupine(dogodek.getId(), 1);
 
+        // zreba nivoja ne nastane sam: po koncu skupin caka na organizatorja
+        List<Zreb> cakajoci = zrebRepozitorij.findByDogodekIdOrderByNivoAscIndeksAsc(dogodek.getId());
+        assertTrue(cakajoci.stream().noneMatch(Zreb::isZgrajen), "zreb caka na organizatorja");
+        zgradiPripravljeneZrebe(dogodek.getId());
+
         List<Zreb> zrebi = zrebRepozitorij.findByDogodekIdOrderByNivoAscIndeksAsc(dogodek.getId());
         assertTrue(zrebi.stream().allMatch(Zreb::isZgrajen));
 
@@ -194,6 +199,7 @@ class SvRegijaTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
 
         Zreb glavni = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1).get(0);
         List<Tekma> tekme = tekmaRepozitorij.findByIdZreb(glavni.getId());
@@ -214,6 +220,7 @@ class SvRegijaTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
 
         for (Zreb zreb : zrebRepozitorij.findByDogodekIdOrderByNivoAscIndeksAsc(dogodek.getId())) {
             for (Tekma t : tekmaRepozitorij.findByIdZreb(zreb.getId())) {
@@ -308,7 +315,10 @@ class SvRegijaTest extends IntegracijskiTest {
 
         List<Zreb> prvi = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1);
         List<Zreb> drugi = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 2);
-        assertTrue(prvi.stream().allMatch(Zreb::isZgrajen), "zreb 1. nivoja nastane takoj");
+        assertTrue(prvi.stream().noneMatch(Zreb::isZgrajen), "zreb 1. nivoja caka na organizatorja");
+        assertTrue(drugi.stream().noneMatch(Zreb::isZgrajen), "2. nivo se ni odigral skupin");
+        zgradiPripravljeneZrebe(dogodek.getId());
+        assertTrue(prvi.stream().allMatch(Zreb::isZgrajen), "zreb 1. nivoja zgrajen po izbiri organizatorja");
         assertTrue(drugi.stream().noneMatch(Zreb::isZgrajen), "2. nivo se ni odigral skupin");
 
         // cel prvi nivo do konca: dogodek se NE zakljuci, drugi nivo se igra
@@ -504,6 +514,7 @@ class SvRegijaTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
 
         Zreb glavni = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1).get(0);
         SvZrebPredlogDto predlog = svRegija.predlogZreba(glavni.getId());
@@ -539,6 +550,7 @@ class SvRegijaTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
 
         List<Zreb> zrebi = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1);
         List<Long> glavni = svRegija.predlogZreba(zrebi.get(0).getId()).mesta().stream()
@@ -559,6 +571,7 @@ class SvRegijaTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
         Zreb tolazilni = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1).get(1);
 
         svRegija.znovaZrebaj(tolazilni.getId());
@@ -653,6 +666,9 @@ class SvRegijaTest extends IntegracijskiTest {
             List<Tekma> pripravljene = tekmeDogodka(idDogodka).stream()
                     .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA).toList();
             if (pripravljene.isEmpty()) {
+                if (zgradiPripravljeneZrebe(idDogodka)) {
+                    continue;
+                }
                 return;
             }
             for (Tekma t : pripravljene) {
@@ -686,12 +702,34 @@ class SvRegijaTest extends IntegracijskiTest {
                     .filter(t -> idjiSkupin.contains(t.getIdSkupina()) || idjiZrebov.contains(t.getIdZreb()))
                     .toList();
             if (pripravljene.isEmpty()) {
+                if (zgradiPripravljeneZrebe(idDogodka)) {
+                    continue;
+                }
                 return;
             }
             for (Tekma t : pripravljene) {
                 tekmaStoritev.vnesiRezultat(t.getId(), new VnosRezultata(null, 3, 0, null, null));
             }
         }
+    }
+
+    /* Organizator zreb nivoja zgradi sam, ko so odigrane skupine nivoja - racunalniski
+       zreb (znovaZrebaj). Ce zreb se ni pripravljen (skupine niso odigrane), ga preskoci.
+       Vrne true, ce je zgradil vsaj enega. */
+    private boolean zgradiPripravljeneZrebe(Long idDogodka) {
+        boolean zgradil = false;
+        for (Zreb zreb : zrebRepozitorij.findByDogodekIdOrderByNivoAscIndeksAsc(idDogodka)) {
+            if (zreb.isZgrajen()) {
+                continue;
+            }
+            try {
+                svRegija.znovaZrebaj(zreb.getId());
+                zgradil = true;
+            } catch (si.turnirko.izjeme.DomenskaIzjema e) {
+                // skupine nivoja se niso odigrane - zreba se se ne da zgraditi
+            }
+        }
+        return zgradil;
     }
 
     private List<Integer> koncnaMesta(Long idDogodka) {

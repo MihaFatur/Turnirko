@@ -18518,6 +18518,12 @@ a.ekipa-okno__srecanje:hover {
   min-width: 72px;
 }
 
+/* Nosilec in skupina v isti vrstici; pri ozkem zaslonu ostaneta drug ob drugem. */
+.sv-urejanje__izbira {
+  display: flex;
+  gap: var(--r1);
+}
+
 @media (max-width: 640px) {
   .sv-razrez__vrstica {
     grid-template-columns: 40px minmax(0, 1fr);

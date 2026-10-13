@@ -58,23 +58,17 @@ public class SkupineStoritev {
     private final TekmaRepozitorij tekmaRepozitorij;
     private final RazvrstitevStoritev razvrstitevStoritev;
     private final ZrebStoritev zrebStoritev;
-    private final NosilciStoritev nosilci;
-    private final SvRegijaStoritev svRegija;
 
     public SkupineStoritev(SkupinaRepozitorij skupinaRepozitorij,
                            PrijavaRepozitorij prijavaRepozitorij,
                            TekmaRepozitorij tekmaRepozitorij,
                            RazvrstitevStoritev razvrstitevStoritev,
-                           ZrebStoritev zrebStoritev,
-                           NosilciStoritev nosilci,
-                           SvRegijaStoritev svRegija) {
+                           ZrebStoritev zrebStoritev) {
         this.skupinaRepozitorij = skupinaRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.razvrstitevStoritev = razvrstitevStoritev;
         this.zrebStoritev = zrebStoritev;
-        this.nosilci = nosilci;
-        this.svRegija = svRegija;
     }
 
     @Transactional
@@ -109,24 +103,24 @@ public class SkupineStoritev {
                 .toList();
         boolean predtekmovanjeKoncano = jeKoncana(predtekmovanje);
 
-        // Format TOP (sistem SKUPINE) se konca po zadnjem kolu skupin -
-        // izlocilnega dela ni in skupne razvrstitve cez skupine ne racunamo,
-        // ker so skupine RANGI (A je mocnejsa od B), ne enakovredne skupine.
-        if (sistem == SistemTekmovanja.SKUPINE_IZLOCILNI) {
-            boolean izlocilniZeObstaja = tekme.stream().anyMatch(t -> t.getFaza() == FazaTekme.GLAVNI);
-            if (predtekmovanjeKoncano && !izlocilniZeObstaja) {
-                zgenerirajIzlocilniDel(koncana.getDogodek(), skupine, prijave, tekme);
-            }
-        } else if (sistem == SistemTekmovanja.SKUPINE_ZA_MESTA) {
+        // Izlocilni del (SKUPINE_IZLOCILNI, SV_REGIJA) ne nastane sam, ko se skupine
+        // koncajo: organizator izbere racunalniski zreb ali rocni vpis
+        // (IzlocilniZrebStoritev, SvRegijaStoritev). Format TOP (SKUPINE) izlocilnega
+        // dela nima in skupne razvrstitve cez skupine ne racunamo - skupine so RANGI.
+        if (sistem == SistemTekmovanja.SKUPINE_ZA_MESTA) {
             boolean finalneZeObstajajo = skupine.stream().anyMatch(s -> s.getStopnja() > 1);
             if (predtekmovanjeKoncano && !finalneZeObstajajo) {
                 zgenerirajFinalneSkupine(koncana.getDogodek(), skupine, prijave, tekme);
             }
-        } else if (sistem == SistemTekmovanja.SV_REGIJA) {
-            // nivoji tecejo neodvisno: zreba nivoja nastaneta, ko so odigrane SKUPINE
-            // TEGA nivoja, ne ko je odigran cel dogodek
-            svRegija.obKoncaniSkupinski(koncana.getDogodek(), skupine, prijave, tekme);
         }
+    }
+
+    /* Ali ima dogodek izlocilni del (zreb izbran). Pri SKUPINE_IZLOCILNI dokler ga ni,
+       dogodek ni koncan, ceprav so vse skupinske tekme odigrane. */
+    @Transactional(readOnly = true)
+    public boolean imaIzlocilniDel(Long idDogodka) {
+        return tekmaRepozitorij.najdiZaDogodek(idDogodka).stream()
+                .anyMatch(t -> t.getFaza() == FazaTekme.GLAVNI);
     }
 
     /* Ali ima dogodek ze finalne skupine za mesta (stopnja 2). */
@@ -183,35 +177,6 @@ public class SkupineStoritev {
         return prijave.stream()
                 .filter(p -> skupina.getId().equals(p.getIdSkupina()) || idji.contains(p.getId()))
                 .toList();
-    }
-
-    /* Iz najboljsih dveh vsake skupine sestavi seznam nosilcev in zgradi
-       izlocilno mrezo. Zmagovalec skupine A je 1. nosilec, zmagovalec B 2. in
-       tako naprej - skupine so namrec nastale iz jakostnih pasov, zato je
-       njihov vrstni red hkrati vrstni red nosilcev. Kam nosilci padejo in kam
-       se zrebajo drugouvrsceni, doloca NosilciStoritev. */
-    private void zgenerirajIzlocilniDel(Dogodek dogodek, List<Skupina> skupine,
-                                        List<Prijava> prijave, List<Tekma> tekme) {
-        List<Prijava> zmagovalci = new ArrayList<>();
-        List<Prijava> drugi = new ArrayList<>();
-
-        Map<Long, Prijava> poId = new HashMap<>();
-        for (Prijava p : prijave) {
-            poId.put(p.getId(), p);
-        }
-
-        for (Skupina skupina : skupine) {
-            if (skupina.getStopnja() != 1) {
-                continue;
-            }
-            List<VrsticaLestviceDto> lestvica = razvrstitevStoritev.lestvica(
-                    clani(skupina, prijave, tekme),
-                    tekmeSkupine(tekme, skupina.getId()));
-            zmagovalci.add(poId.get(lestvica.get(0).idPrijave()));
-            drugi.add(poId.get(lestvica.get(1).idPrijave()));
-        }
-
-        zrebStoritev.zgradiIzlocilnoMrezo(dogodek, nosilci.vMrezoIzSkupin(zmagovalci, drugi));
     }
 
     /* Finalne skupine za mesta. Pas b (0, 1, ...) zdruzi mesta b*2+1 in b*2+2

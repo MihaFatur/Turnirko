@@ -471,7 +471,32 @@ export interface SvNivoPredlogDto {
   skupine: SvSkupinaPredlogDto[]
 }
 
-/* Predlog skupin brez zapisa v bazo (isti žreb, kot bi ga izvedel dogodek). */
+/* Igralec z jakostnim mestom v skupini (ročni vpis skupin in predlog). */
+export interface RocniClanVnos {
+  idPrijave: number
+  nosilec: number
+}
+
+export interface PredlogClanDto {
+  idPrijave: number
+  nosilec: number
+}
+
+/* Predlog skupin za ročni vpis: skupine po vrsti A, B ...; rezerve so samo pri formatu
+   TOP (tam, kdor ni v izboru najboljših N). Predlog ničesar ne zapiše. */
+export interface SkupinePredlogDto {
+  skupine: PredlogClanDto[][]
+  rezerve: PredlogClanDto[]
+}
+
+/* Predlog izločilne mreže za ročni vpis: udeleženci in razporeditev po mestih od vrha
+   navzdol (null = prosto mesto). */
+export interface IzlocilniPredlogDto {
+  udelezenci: number[]
+  idjiPoMestih: (number | null)[]
+}
+
+/* Predlog razporeditve žreba SV regije brez zapisa v bazo. */
 export interface SvPredlogDto {
   nivoji: SvNivoPredlogDto[]
 }
@@ -1180,6 +1205,8 @@ export interface VnosRezultata {
   dobljeniNizi2: number | null
   zmagovalecStran: 1 | 2 | null
   nizi: NizVnos[] | null
+  /* Prepis števila nizov za to tekmo (3, 5 ali 7); null pusti, kar je določil dogodek. */
+  steviloNizov: number | null
 }
 
 /* ---------- Oznake za prikaz (tu so sumniki dovoljeni) ---------- */
@@ -1327,7 +1354,7 @@ export function nizovZaZmago(steviloNizov: number): number {
 export type FormatSrecanja =
   | 'SNTL' | 'SNTL_PRVA' | 'SNTL_DVOJICE_SEDMA' | 'SNTL_PRVA_DVOJICE_CETRTA'
   | 'SNTL_BREZ_DVOJIC' | 'OLIMPIJSKI' | 'CORBILLON' | 'SAVINJA'
-  | 'EKIPNI_DP' | 'POKAL_NTZS'
+  | 'EKIPNI_DP' | 'POKAL_NTZS' | 'DSI'
 
 /* Formata, ki ju pozna samo ekipni dogodek turnirja (liga ju zavrne). */
 export const FORMATI_SAMO_TURNIR: FormatSrecanja[] = ['EKIPNI_DP', 'POKAL_NTZS']
@@ -1347,6 +1374,7 @@ export const OZNAKE_FORMAT: Record<FormatSrecanja, string> = {
   SAVINJA: 'Savinja liga (2 igralca, dvojice prve)',
   EKIPNI_DP: 'Ekipni DP (dvojice + 4 posamične)',
   POKAL_NTZS: 'Pokal NTZS (5 posamičnih)',
+  DSI: 'DŠI (2 igralca, dvojice ob 1 : 1)',
 }
 
 /* Samo ime sistema, brez sestave v oklepaju (»SNTL (3 igralci + dvojice)« →
@@ -1371,7 +1399,13 @@ export const RAZPORED_FORMATA: Record<FormatSrecanja, string[]> = {
   SAVINJA: ['dvojice', 'A-X', 'B-Y', 'A-Y', 'B-X'],
   EKIPNI_DP: ['dvojice', 'A-X', 'C-Z', 'A-Y', 'B-X'],
   POKAL_NTZS: ['A-Y', 'B-X', 'C-Z', 'A-X', 'B-Y'],
+  DSI: ['A-X', 'B-Y', 'dvojice'],
 }
+
+/* Formati, pri katerih prag zmag določa pravilo tekmovanja (zaledje:
+   FormatSrecanja.fiksniPragZmag). Obrazec prag zaklene na to vrednost, zaledje
+   jo zahteva, zato drugačnega praga ne more ponuditi ne obrazec ne API. */
+export const FIKSNI_PRAG_FORMATA: Partial<Record<FormatSrecanja, number>> = { DSI: 2 }
 
 /* Koliko igralcev postavi format za mizo (A, B, C) - toliko jih mora imeti
    kader ekipe pred žrebom. Izpeljano iz razporeda, da se ne more raziti z

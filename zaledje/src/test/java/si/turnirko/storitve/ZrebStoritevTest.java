@@ -94,10 +94,21 @@ class ZrebStoritevTest extends IntegracijskiTest {
         assertEquals(StatusTekmovanja.V_TEKU, dogodek.getTurnir().getStatus());
     }
 
+    /* Ponovni zreb je popravek do prve tekme: pred njo nadomesti prejsnjega, ko se igra,
+       pa ni vec mogoc - z zrebom bi se izbrisali rezultati in rating. */
     @Test
-    void ponovniZrebNiMogoc() {
+    void ponovniZrebJeMogocSamoDoPrveTekme() {
         Dogodek dogodek = pripraviDogodek(4);
         zrebStoritev.izvediZreb(dogodek.getId());
+        int prvotno = tekmeDogodka(dogodek.getId()).size();
+
+        zrebStoritev.izvediZreb(dogodek.getId());
+        assertEquals(prvotno, tekmeDogodka(dogodek.getId()).size(),
+                "ponovni zreb nadomesti prejsnjega, ne doda drugega");
+
+        Tekma prva = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA).findFirst().orElseThrow();
+        tekmaStoritev.vnesiRezultat(prva.getId(), new si.turnirko.dto.VnosRezultata(null, 3, 0, null, null));
         assertThrows(DomenskaIzjema.class, () -> zrebStoritev.izvediZreb(dogodek.getId()));
     }
 

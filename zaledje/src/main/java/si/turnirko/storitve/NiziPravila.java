@@ -14,6 +14,14 @@ public final class NiziPravila {
 
     private NiziPravila() {}
 
+    /* Dovoljena stevila nizov tekme ("najboljsi od N": prvi do 2, 3 ali 4).
+       Enako za dogodek in za prepis na posamezni tekmi, zato je na enem mestu. */
+    public static void preveriSteviloNizov(int steviloNizov) {
+        if (steviloNizov != 3 && steviloNizov != 5 && steviloNizov != 7) {
+            throw new NeveljavenVnosIzjema("Stevilo nizov mora biti 3, 5 ali 7.");
+        }
+    }
+
     /* Preveri vnesene nize glede na koncni izid tekme (dobljeni nizi obeh
        strani). Ne shrani nicesar: preveri se VSE, sele nato klicatelj pise,
        da ob napacnem vnosu v bazi ne ostanejo delni zapisi.

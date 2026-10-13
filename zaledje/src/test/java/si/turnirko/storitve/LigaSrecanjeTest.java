@@ -229,6 +229,52 @@ class LigaSrecanjeTest extends IntegracijskiTest {
                 () -> ustvariLigo(FormatSrecanja.SAVINJA, 6, false));
     }
 
+    /* DSI je »prva ekipa do dveh zmag«: prag je del formata. Brez njega bi
+       liga igrala vse tri tekme tudi pri 2 : 0, z 3 pa je to drug format. */
+    @Test
+    void dsiBrezPragaDveZmagiLigaNeSprejme() {
+        assertThrows(NeveljavenVnosIzjema.class, () -> ustvariLigo(FormatSrecanja.DSI, null, false));
+        assertThrows(NeveljavenVnosIzjema.class, () -> ustvariLigo(FormatSrecanja.DSI, 3, false));
+    }
+
+    /* Pri 2 : 0 srecanje konca po dveh posamicnih; dvojic ni treba igrati. */
+    @Test
+    void dsiPriDvehZmagahKonaBrezDvojic() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.DSI, 2);
+        nastaviPostavo(srecanje);
+        List<TekmaSrecanjaDto> tekme = srecanjeStoritev.podrobno(srecanje).tekme();
+        assertEquals(List.of("A-X", "B-Y", "dvojice"),
+                tekme.stream().map(TekmaSrecanjaDto::oznaka).toList());
+
+        srecanjeStoritev.vnesiRezultat(tekme.get(0).id(), izid(true));
+        srecanjeStoritev.vnesiRezultat(tekme.get(1).id(), izid(true));
+
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        assertEquals(StatusSrecanja.KONCANO, p.srecanje().status());
+        assertEquals(2, p.srecanje().dobljeneDomaci());
+        assertEquals(StatusTekmeSrecanja.NEODIGRANA, p.tekme().get(2).status());
+    }
+
+    /* Pri 1 : 1 odlocajo dvojice: srecanje ostane odprto, dokler jih ni. */
+    @Test
+    void dsiPriEnaNaEnoOdlocajoDvojice() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.DSI, 2);
+        nastaviPostavo(srecanje);
+        List<TekmaSrecanjaDto> tekme = srecanjeStoritev.podrobno(srecanje).tekme();
+        srecanjeStoritev.vnesiRezultat(tekme.get(0).id(), izid(true));
+        srecanjeStoritev.vnesiRezultat(tekme.get(1).id(), izid(false));
+
+        SrecanjePodrobnoDto vmes = srecanjeStoritev.podrobno(srecanje);
+        assertEquals(StatusSrecanja.POTEKA, vmes.srecanje().status());
+        assertEquals(StatusTekmeSrecanja.CAKA, vmes.tekme().get(2).status());
+
+        srecanjeStoritev.vnesiRezultat(tekme.get(2).id(), izid(false));
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        assertEquals(StatusSrecanja.KONCANO, p.srecanje().status());
+        assertEquals(1, p.srecanje().dobljeneDomaci());
+        assertEquals(2, p.srecanje().dobljeneGost());
+    }
+
     @Test
     void predcasniKonecOznaciPreostaleNeodigrane() {
         // prag 4: domaci dobi prve 4 tekme (dvojice + A-X + B-Y + C-Z) -> konec

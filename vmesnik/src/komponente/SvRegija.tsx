@@ -369,11 +369,40 @@ function VsebinaZreba({
       <SporociloNapake napaka={znova.error} />
 
       {!zreb.zgrajen ? (
-        <p className="obvestilo">
-          Žreb nastane, ko so odigrane vse skupine nivoja. Vanj gresta
-          {zreb.indeks === 0 ? ' prvo- in drugouvrščeni' : zreb.indeks === 1 ? ' tretje- in četrtouvrščeni' : ' naslednja dva'}{' '}
-          vsake skupine.
-        </p>
+        smem && zreb.uredljiv ? (
+          /* Skupine nivoja so odigrane, zreb pa ne nastane sam: organizator izbere. */
+          <div className="sv-zreb__cakanje">
+            <p className="obvestilo">
+              Skupine nivoja so odigrane. Žreb še ni narejen: izberi računalniški žreb
+              {zreb.stUdelezencev > 2 ? ' ali ročno razporeditev mest' : ''}.
+            </p>
+            <span className="sv-zreb__dejanja">
+              <button
+                type="button"
+                className="gumb gumb--majhen"
+                disabled={znova.isPending}
+                onClick={() => znova.mutate()}
+              >
+                {znova.isPending ? 'Žrebam …' : 'Računalniški žreb'}
+              </button>
+              {zreb.stUdelezencev > 2 && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => nastaviUrejam(true)}
+                >
+                  Ročna razporeditev
+                </button>
+              )}
+            </span>
+          </div>
+        ) : (
+          <p className="obvestilo">
+            Žreb nastane, ko so odigrane vse skupine nivoja. Vanj gresta
+            {zreb.indeks === 0 ? ' prvo- in drugouvrščeni' : zreb.indeks === 1 ? ' tretje- in četrtouvrščeni' : ' naslednja dva'}{' '}
+            vsake skupine.
+          </p>
+        )
       ) : tekme.length === 0 ? (
         <p className="obvestilo">
           {zreb.stUdelezencev === 1

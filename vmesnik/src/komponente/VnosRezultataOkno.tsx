@@ -8,6 +8,8 @@
      toliko, kot je odigranih nizov. Vnos in preverba sta v skupni komponenti
      TockeNizov - isti kot pri ligaski tekmi, ker so pravila niza ista.
    - Predaja: delni rezultat pred koncem tekme + zmagovalec.
+   - Število nizov je privzeto tisto, ki ga je določil dogodek; pri vnosu ga lahko
+     prepišeš za to tekmo (npr. finale na 3). Pri popravku prepisa ni.
    - Brez boja / diskvalifikacija: samo zmagovalec, nizi se pripisejo.
 
    POPRAVEK (lastnost popravek) je isti obrazec nad ze koncano tekmo: polja so
@@ -51,7 +53,13 @@ export function VnosRezultataOkno({
   samoBrezIgre = false,
   popravek = false,
 }: Lastnosti) {
-  const zaZmago = nizovZaZmago(tekma.steviloNizov)
+  /* Prepis števila nizov za to tekmo (privzeto kar je določil dogodek). Pri popravku
+     in ekipni tekmi ga ni: izid je že odigran oz. nastane iz srečanja. */
+  const prepisMozen = !popravek && !samoBrezIgre
+  const [steviloNizov, nastaviSteviloNizov] = useState(tekma.steviloNizov)
+  /* Strežnik dobi število samo ob spremembi; nespremenjeno pusti, kar je v bazi. */
+  const prepis = prepisMozen && steviloNizov !== tekma.steviloNizov ? steviloNizov : null
+  const zaZmago = nizovZaZmago(steviloNizov)
   const ime1 = imeUdelezenca(tekma.udelezenec1) ?? 'Igralec 1'
   const ime2 = imeUdelezenca(tekma.udelezenec2) ?? 'Igralec 2'
   const izidi = samoBrezIgre
@@ -127,6 +135,16 @@ export function VnosRezultataOkno({
     nastaviTockeNizov((prejsnje) => vrsticeZaIzid(prejsnje, nizi1 + nizi2))
   }
 
+  /* Nova meja spremeni veljavne izide, zato izbrani rezultat in točke po nizih
+     pri stari meji ne ostanejo veljavni - organizator jih izbere znova. */
+  function obSpremembiSteviloNizov(nov: number) {
+    nastaviSteviloNizov(nov)
+    nastaviRezultat('')
+    nastaviTockeNizov([])
+    nastaviPredajaNizi1('0')
+    nastaviPredajaNizi2('0')
+  }
+
   function obOddaji(dogodek: FormEvent) {
     dogodek.preventDefault()
     nastaviNapakoVnosa(null)
@@ -161,6 +179,7 @@ export function VnosRezultataOkno({
         dobljeniNizi2: nizi2,
         zmagovalecStran: null,
         nizi,
+        steviloNizov: prepis,
       })
       return
     }
@@ -176,6 +195,7 @@ export function VnosRezultataOkno({
       dobljeniNizi2: izidTip === 'PREDAJA' ? Number(predajaNizi2) : null,
       zmagovalecStran: Number(zmagovalecStran) as 1 | 2,
       nizi: null,
+      steviloNizov: prepis,
     })
   }
 
@@ -190,7 +210,7 @@ export function VnosRezultataOkno({
       <p className="modal__podnaslov">
         {ime1} : {ime2}
         {!samoBrezIgre && (
-          <span className="modal__namig"> (najboljši od {tekma.steviloNizov} nizov)</span>
+          <span className="modal__namig"> (najboljši od {steviloNizov} nizov)</span>
         )}
       </p>
       {samoBrezIgre && !popravek && (
@@ -221,6 +241,23 @@ export function VnosRezultataOkno({
             ))}
           </select>
         </label>
+
+        {prepisMozen && (
+          <>
+            <label className="obrazec__polje">
+              <span>Prvi do (dobljenih nizov)</span>
+              <select
+                value={steviloNizov}
+                onChange={(dogodek) => obSpremembiSteviloNizov(Number(dogodek.target.value))}
+              >
+                <option value={3}>2</option>
+                <option value={5}>3</option>
+                <option value={7}>4</option>
+              </select>
+            </label>
+            <p className="namig">Velja samo za to tekmo; dogodek ostane pri svoji nastavitvi.</p>
+          </>
+        )}
 
         {izidTip === 'IGRANO' && (
           <>

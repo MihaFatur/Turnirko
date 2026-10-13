@@ -27,13 +27,22 @@
 package si.turnirko.storitve;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import si.turnirko.dto.IzlocilniPredlogDto;
+import si.turnirko.dto.RocniSkupineVnos;
+import si.turnirko.dto.SkupinePredlogDto;
 import si.turnirko.dto.SvVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
@@ -48,6 +57,7 @@ import si.turnirko.modeli.Skupina;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Tekma;
+import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.VlogaIzvora;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
@@ -123,11 +133,13 @@ public class ZrebStoritev {
         Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
                 .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
 
+        // ponovni zreb je popravek do prve tekme: prejsnji zreb se razveljavi
+        // (razveljaviZreb sam zavrne zacet zreb)
+        if (tekmaRepozitorij.existsByDogodekId(idDogodka)) {
+            razveljaviZreb(dogodek);
+        }
         if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
             throw new DomenskaIzjema("Zreb je mogoc samo, dokler je dogodek v pripravi.");
-        }
-        if (tekmaRepozitorij.existsByDogodekId(idDogodka)) {
-            throw new DomenskaIzjema("Zreb za ta dogodek ze obstaja.");
         }
 
         List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodekSStatusom(
@@ -238,6 +250,419 @@ public class ZrebStoritev {
         return tekme;
     }
 
+    /* Ali sistem skupinski del vpisuje z jakostnimi skupinami (rocni vpis skupin).
+       SV regija ima svoj vpis (izvediRocniZrebSv) zaradi nivojev in zrebov nivojev. */
+    static boolean imaRocneSkupine(SistemTekmovanja sistem) {
+        return sistem == SistemTekmovanja.SKUPINE_IZLOCILNI
+                || sistem == SistemTekmovanja.SKUPINE
+                || sistem == SistemTekmovanja.SKUPINE_ZA_MESTA;
+    }
+
+    /* ROCNI vpis skupin namesto nakljucnega zreba: organizator pove, kdo je v kateri
+       skupini in kot kateri nosilec (jakostni vrstni red, 1 = najmocnejsi). Pri formatu
+       TOP ostali prijavljeni niso v izboru - so rezerve, kot pri zrebu.
+
+       Konca v isti tocki kot zreb (zapisiSkupineIzlocilni), zato krozne tekme, lestvice,
+       izlocilni del in rating tecejo po nespremenjeni kodi. Ce skupine ze obstajajo in se
+       nobena tekma se ni zacela, se najprej razveljavijo - tako je vpis tudi popravek. */
+    @Transactional
+    public List<Tekma> izvediRocniZrebSkupin(Long idDogodka, List<List<RocniSkupineVnos.Clan>> skupine) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        if (!imaRocneSkupine(dogodek.getSistemTekmovanja())) {
+            throw new DomenskaIzjema("Ročni vpis skupin ni mogoč za ta sistem tekmovanja.");
+        }
+        if (tekmaRepozitorij.existsByDogodekId(idDogodka)) {
+            razveljaviZreb(dogodek);
+        }
+        if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Skupine je mogoče vpisati samo, dokler je dogodek v pripravi.");
+        }
+
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodekSStatusom(
+                idDogodka, Prijava.StatusPrijave.PRIJAVLJEN);
+        if (dogodek.jeDvojice()) {
+            preveriSestavljenePare(prijave);
+        }
+        if (dogodek.jeEkipno()) {
+            preveriKadre(dogodek, prijave);
+        }
+        int najmanj = switch (dogodek.getSistemTekmovanja()) {
+            case SKUPINE_IZLOCILNI -> NAJMANJ_ZA_SKUPINE;
+            case SKUPINE_ZA_MESTA -> NAJMANJ_ZA_SKUPINE_ZA_MESTA;
+            // format TOP: dve skupini po dve prijavi, manj ni skupin
+            default -> 4;
+        };
+        if (prijave.size() < najmanj) {
+            throw new DomenskaIzjema("Za vpis skupin je potrebnih vsaj " + najmanj
+                    + " prijav (trenutno: " + prijave.size() + ").");
+        }
+        if (skupine == null || skupine.size() < 2) {
+            throw new NeveljavenVnosIzjema("Vpisani morata biti vsaj dve skupini.");
+        }
+
+        Map<Long, Prijava> poId = new HashMap<>();
+        for (Prijava p : prijave) {
+            poId.put(p.getId(), p);
+        }
+        Map<Long, Integer> nosilecPoId = new HashMap<>();
+        Set<Integer> zasedeniNosilci = new HashSet<>();
+        List<List<Prijava>> poSkupinah = new ArrayList<>();
+        for (List<RocniSkupineVnos.Clan> skupina : skupine) {
+            if (skupina == null || skupina.size() < 2) {
+                throw new NeveljavenVnosIzjema("V vsaki skupini morata biti vsaj dve prijavi.");
+            }
+            List<Prijava> clani = new ArrayList<>();
+            for (RocniSkupineVnos.Clan clan : skupina) {
+                if (clan == null || clan.idPrijave() == null || clan.nosilec() == null) {
+                    throw new NeveljavenVnosIzjema("Vsak igralec v skupini mora imeti nosilca.");
+                }
+                Prijava prijava = poId.get(clan.idPrijave());
+                if (prijava == null) {
+                    throw new NeveljavenVnosIzjema("Prijava " + clan.idPrijave()
+                            + " ni prijavljena na ta dogodek.");
+                }
+                if (nosilecPoId.containsKey(prijava.getId())) {
+                    throw new NeveljavenVnosIzjema("Prijava " + clan.idPrijave() + " je vpisana v več skupin.");
+                }
+                if (!zasedeniNosilci.add(clan.nosilec())) {
+                    throw new NeveljavenVnosIzjema("Nosilec " + clan.nosilec() + " je dodeljen dvema igralcema.");
+                }
+                nosilecPoId.put(prijava.getId(), clan.nosilec());
+                clani.add(prijava);
+            }
+            // najmocnejsi prvi, kot pri zrebu: krozni razpored igra prvega z najsibkejsim
+            clani.sort(Comparator.comparingInt(p -> nosilecPoId.get(p.getId())));
+            poSkupinah.add(clani);
+        }
+
+        int vpisanih = nosilecPoId.size();
+        if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE) {
+            if (dogodek.getSteviloSkupin() == null || dogodek.getVelikostSkupine() == null) {
+                throw new DomenskaIzjema("Dogodek nima nastavljenega števila skupin in velikosti skupine.");
+            }
+            int meja = dogodek.getSteviloSkupin() * dogodek.getVelikostSkupine();
+            if (vpisanih > meja) {
+                throw new NeveljavenVnosIzjema("Igrati sme največ " + meja + " prijav, vpisanih je "
+                        + vpisanih + ".");
+            }
+        } else if (vpisanih != prijave.size()) {
+            throw new NeveljavenVnosIzjema("V skupine morajo biti razporejeni vsi prijavljeni ("
+                    + prijave.size() + "), vpisanih je " + vpisanih + ".");
+        }
+        // nosilci igralcev v skupinah so 1 do vpisanih - brez lukenj in podvojitev
+        for (int n = 1; n <= vpisanih; n++) {
+            if (!zasedeniNosilci.contains(n)) {
+                throw new NeveljavenVnosIzjema("Nosilci morajo biti od 1 do " + vpisanih
+                        + ", manjka nosilec " + n + ".");
+            }
+        }
+
+        zabeleziRatingObZrebu(prijave);
+        for (Map.Entry<Long, Integer> vnos : nosilecPoId.entrySet()) {
+            poId.get(vnos.getKey()).setStNosilca(vnos.getValue());
+        }
+        // rezerve (pri TOP) dobijo naslednje jakostne stevilke po ratingu
+        List<Prijava> rezerve = new ArrayList<>(prijave);
+        rezerve.removeIf(p -> nosilecPoId.containsKey(p.getId()));
+        int mesto = vpisanih + 1;
+        for (Prijava rezerva : izborStoritev.vrstniRed(rezerve)) {
+            rezerva.setStNosilca(mesto++);
+            rezerva.setStatus(Prijava.StatusPrijave.REZERVA);
+        }
+        prijavaRepozitorij.saveAll(prijave);
+
+        List<Tekma> tekme = zapisiSkupineIzlocilni(dogodek, poSkupinah);
+        if (dogodek.jeEkipno()) {
+            ekipneTekme.zagotoviSrecanja(dogodek.getId());
+        }
+        zacniDogodek(dogodek);
+        return tekme;
+    }
+
+    /* Predlog skupin za rocni vpis: razporeditev, kot bi jo naredil zreb, brez zapisa v
+       bazo. Organizator jo popravi in vrne kot RocniSkupineVnos. Vzame iste prijave kot
+       zreb (tudi rezerve, ce je zreb ze bil), zato predlog ustreza ponovnemu zrebu. */
+    @Transactional(readOnly = true)
+    public SkupinePredlogDto predlogSkupin(Long idDogodka) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        SistemTekmovanja sistem = dogodek.getSistemTekmovanja();
+        if (!imaRocneSkupine(sistem)) {
+            throw new DomenskaIzjema("Predlog skupin ni na voljo za ta sistem tekmovanja.");
+        }
+
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodek(idDogodka).stream()
+                .filter(p -> p.getStatus() == Prijava.StatusPrijave.PRIJAVLJEN
+                        || p.getStatus() == Prijava.StatusPrijave.REZERVA)
+                .toList();
+        List<Prijava> poJakosti = izborStoritev.vrstniRed(prijave);
+        Map<Long, Integer> nosilecPoId = new HashMap<>();
+        for (int i = 0; i < poJakosti.size(); i++) {
+            nosilecPoId.put(poJakosti.get(i).getId(), i + 1);
+        }
+        if (sistem == SistemTekmovanja.SKUPINE) {
+            return predlogTop(dogodek, poJakosti, nosilecPoId);
+        }
+
+        int najmanj = sistem == SistemTekmovanja.SKUPINE_ZA_MESTA
+                ? NAJMANJ_ZA_SKUPINE_ZA_MESTA : NAJMANJ_ZA_SKUPINE;
+        if (poJakosti.size() < najmanj) {
+            throw new DomenskaIzjema("Za sistem " + (sistem == SistemTekmovanja.SKUPINE_ZA_MESTA
+                    ? "skupin za mesta" : "skupine+izločilni") + " je potrebnih vsaj " + najmanj
+                    + " prijav (trenutno: " + poJakosti.size() + ").");
+        }
+        int stSkupin = steviloSkupin(dogodek, poJakosti.size());
+        if (stSkupin < 1 || poJakosti.size() / stSkupin < 2) {
+            throw new DomenskaIzjema("V vsaki skupini morata biti vsaj dve prijavi ("
+                    + poJakosti.size() + " prijav v " + stSkupin + " skupinah).");
+        }
+        List<List<Prijava>> razpored = nosilci.vSkupine(poJakosti, stSkupin);
+        List<List<SkupinePredlogDto.Clan>> skupine = new ArrayList<>();
+        for (List<Prijava> skupina : razpored) {
+            skupine.add(clani(skupina, nosilecPoId));
+        }
+        return new SkupinePredlogDto(skupine, List.of());
+    }
+
+    /* Format TOP: predlog je zaporedni, kot zreb - najboljsih N v skupine po pasovih
+       (A = najmocnejsa), ostali so rezerve. */
+    private SkupinePredlogDto predlogTop(Dogodek dogodek, List<Prijava> poJakosti,
+                                         Map<Long, Integer> nosilecPoId) {
+        if (dogodek.getSteviloSkupin() == null || dogodek.getVelikostSkupine() == null) {
+            throw new DomenskaIzjema("Dogodek nima nastavljenega števila skupin in velikosti skupine.");
+        }
+        int igra = Math.min(dogodek.getSteviloSkupin() * dogodek.getVelikostSkupine(), poJakosti.size());
+        List<Integer> velikosti = velikostiSkupin(igra, dogodek.getVelikostSkupine());
+        String zadrzek = zadrzekRazreza(velikosti);
+        if (zadrzek != null) {
+            throw new DomenskaIzjema(zadrzek);
+        }
+        List<List<SkupinePredlogDto.Clan>> skupine = new ArrayList<>();
+        int od = 0;
+        for (int velikost : velikosti) {
+            skupine.add(clani(poJakosti.subList(od, od + velikost), nosilecPoId));
+            od += velikost;
+        }
+        return new SkupinePredlogDto(skupine, clani(poJakosti.subList(igra, poJakosti.size()), nosilecPoId));
+    }
+
+    private static List<SkupinePredlogDto.Clan> clani(List<Prijava> prijave, Map<Long, Integer> nosilecPoId) {
+        return prijave.stream()
+                .map(p -> new SkupinePredlogDto.Clan(p.getId(), nosilecPoId.get(p.getId())))
+                .toList();
+    }
+
+    /* Stevilo skupin: ce je dogodek nastavil stevilo (zaporedni za mesta), ga vzame, sicer
+       izracuna iz stevila prijav. Enako za zreb in za predlog. */
+    private static int steviloSkupin(Dogodek dogodek, int steviloIgralcev) {
+        return dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_ZA_MESTA
+                && dogodek.getSteviloSkupin() != null
+                ? dogodek.getSteviloSkupin()
+                : izberiSteviloSkupin(steviloIgralcev);
+    }
+
+    /* Razveljavi zreb (skupine in vse tekme) in dogodek vrne v pripravo. Mogoce samo,
+       dokler nobena tekma ni zacela: sicer bi se z zrebom izbrisali rezultati in rating.
+       SV regija ima zreb nivojev, zato ga razveljavi njena storitev. */
+    @Transactional
+    public void razveljaviZreb(Dogodek dogodek) {
+        if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SV_REGIJA) {
+            svRegija.razveljaviZrebSkupin(dogodek.getId());
+            return;
+        }
+        if (dogodek.getStatus() != StatusTekmovanja.V_TEKU) {
+            throw new DomenskaIzjema("Žreb je mogoče razveljaviti samo, dokler dogodek teče.");
+        }
+        List<Tekma> tekme = tekmaRepozitorij.najdiZaDogodek(dogodek.getId());
+        if (tekme.stream().anyMatch(ZrebStoritev::zacet)) {
+            throw new DomenskaIzjema("Žreba ni mogoče ponoviti: nekatere tekme so že začete ali odigrane.");
+        }
+        if (dogodek.jeEkipno()) {
+            for (Tekma tekma : tekme) {
+                ekipneTekme.odstraniNezacetoSrecanje(tekma.getId());
+            }
+        }
+        izbrisiTekme(tekme);
+        skupinaRepozitorij.deleteAll(skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId()));
+
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodek(dogodek.getId());
+        for (Prijava prijava : prijave) {
+            prijava.setIdSkupina(null);
+            prijava.setMestoVSkupini(null);
+            prijava.setKoncnoMesto(null);
+            // rezerve (TOP) so med zrebom odlozene - zreb jih zdaj znova obravnava
+            if (prijava.getStatus() == Prijava.StatusPrijave.REZERVA) {
+                prijava.setStatus(Prijava.StatusPrijave.PRIJAVLJEN);
+            }
+        }
+        prijavaRepozitorij.saveAll(prijave);
+        prijavaRepozitorij.flush();
+
+        dogodek.setStatus(StatusTekmovanja.PRIPRAVA);
+        // turnir se vrne v pripravo samo, ce noben njegov dogodek ni zacel
+        Turnir turnir = dogodek.getTurnir();
+        boolean kakDrugZacel = dogodekRepozitorij.findByTurnirIdOrderByIdAsc(turnir.getId()).stream()
+                .anyMatch(d -> d.getStatus() != StatusTekmovanja.PRIPRAVA);
+        if (!kakDrugZacel && turnir.getStatus() == StatusTekmovanja.V_TEKU) {
+            turnir.setStatus(StatusTekmovanja.PRIPRAVA);
+        }
+    }
+
+    /* Izbrise tekme; najprej pretrga povezave med izvornimi in odvisnimi tekmami mreze,
+       sicer brisanje trci ob tuje kljuce. */
+    public void izbrisiTekme(List<Tekma> tekme) {
+        for (Tekma tekma : tekme) {
+            tekma.setIdIzvorTekma1(null);
+            tekma.setVlogaIzvora1(null);
+            tekma.setIdIzvorTekma2(null);
+            tekma.setVlogaIzvora2(null);
+        }
+        tekmaRepozitorij.saveAll(tekme);
+        tekmaRepozitorij.flush();
+        tekmaRepozitorij.deleteAll(tekme);
+        tekmaRepozitorij.flush();
+    }
+
+    /* Ali je tekma ze zacela: igra se ali je bila odigrana. Prosti prehod (bye) je
+       KONCANA ze ob nastanku, zato ga ne steje - sicer se mreze z prostimi mesti ne bi
+       dalo nikoli ponoviti. */
+    static boolean zacet(Tekma tekma) {
+        return tekma.getStatus() == StatusTekme.V_IGRI
+                || (tekma.getStatus() == StatusTekme.KONCANA && tekma.getIzidTip() != IzidTekme.PROSTO);
+    }
+
+    /* Predlog mreze za rocni vpis pri IZLOCILNI: razporeditev, kot bi jo naredil zreb
+       (jakostna, pri dvojicah nakljucna), brez zapisa v bazo. */
+    @Transactional(readOnly = true)
+    public IzlocilniPredlogDto predlogIzlocilni(Long idDogodka) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        if (dogodek.getSistemTekmovanja() != SistemTekmovanja.IZLOCILNI) {
+            throw new DomenskaIzjema("Predlog mreže je na voljo samo pri izločilnem sistemu.");
+        }
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodekSStatusom(
+                idDogodka, Prijava.StatusPrijave.PRIJAVLJEN);
+        List<Prijava> poSeedu;
+        if (dogodek.jeDvojice()) {
+            poSeedu = new ArrayList<>(prijave);
+            Collections.shuffle(poSeedu, nakljucje());
+        } else {
+            poSeedu = nosilci.vMrezo(izborStoritev.vrstniRed(prijave));
+        }
+        return new IzlocilniPredlogDto(
+                prijave.stream().map(Prijava::getId).toList(),
+                idjiPoMestih(mestaIzSeeda(poSeedu)));
+    }
+
+    /* ROCNA mreza pri IZLOCILNI: organizator vpise, kdo stoji na katerem mestu mreze.
+       Konca v isti tocki kot zreb (zgradiIzlocilnoMrezoIzMest), zato napredovanje in
+       rating tecejo nespremenjeno. Ponovitev je popravek do prve tekme, kot pri zrebu. */
+    @Transactional
+    public List<Tekma> rocniZrebIzlocilni(Long idDogodka, List<Long> idjiPoMestih) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        if (dogodek.getSistemTekmovanja() != SistemTekmovanja.IZLOCILNI) {
+            throw new DomenskaIzjema("Ročna mreža je mogoča samo pri izločilnem sistemu.");
+        }
+        if (tekmaRepozitorij.existsByDogodekId(idDogodka)) {
+            razveljaviZreb(dogodek);
+        }
+        if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Mrežo je mogoče vpisati samo, dokler je dogodek v pripravi.");
+        }
+
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodekSStatusom(
+                idDogodka, Prijava.StatusPrijave.PRIJAVLJEN);
+        if (dogodek.jeDvojice()) {
+            preveriSestavljenePare(prijave);
+        }
+        if (dogodek.jeEkipno()) {
+            preveriKadre(dogodek, prijave);
+        }
+        if (prijave.size() < 2) {
+            throw new DomenskaIzjema("Za mrežo sta potrebna vsaj 2 prijavljena (trenutno: "
+                    + prijave.size() + ").");
+        }
+        Prijava[] mesta = mestaZaRocniVpis(prijave, idjiPoMestih);
+
+        zabeleziRatingObZrebu(prijave);
+        zabeleziJakostnaMesta(prijave);
+        List<Tekma> tekme = zgradiIzlocilnoMrezoIzMest(dogodek, mesta);
+        if (dogodek.jeEkipno()) {
+            ekipneTekme.zagotoviSrecanja(dogodek.getId());
+        }
+        zacniDogodek(dogodek);
+        return tekme;
+    }
+
+    /* Rocna razporeditev mest: id-ji po mestih od vrha navzdol, null za prosto mesto.
+       Udelezenci morajo biti vsi in vsak samo enkrat; mest je toliko, kolikor zahteva
+       mreza (najblizja potenca 2), in dve sosednji prosti mesti ne smeta biti (v prvem
+       kolu bi igrali drug proti drugemu, a nobeden ne bi igral). */
+    public static Prijava[] mestaZaRocniVpis(List<Prijava> udelezenci, List<Long> idjiPoMestih) {
+        int velikost = NosilciStoritev.najblizjaPotencaDve(udelezenci.size());
+        if (idjiPoMestih == null || idjiPoMestih.size() != velikost) {
+            throw new NeveljavenVnosIzjema("Mrežo sestavlja " + velikost + " mest, prejetih je "
+                    + (idjiPoMestih == null ? 0 : idjiPoMestih.size()) + ".");
+        }
+        Map<Long, Prijava> poId = new HashMap<>();
+        for (Prijava p : udelezenci) {
+            poId.put(p.getId(), p);
+        }
+        Prijava[] mesta = new Prijava[velikost];
+        Set<Long> videni = new HashSet<>();
+        for (int i = 0; i < velikost; i++) {
+            Long id = idjiPoMestih.get(i);
+            if (id == null) {
+                continue;
+            }
+            Prijava prijava = poId.get(id);
+            if (prijava == null) {
+                throw new NeveljavenVnosIzjema("Prijava " + id + " ne sodi v ta žreb.");
+            }
+            if (!videni.add(id)) {
+                throw new NeveljavenVnosIzjema("Prijava " + id + " je v mreži dvakrat.");
+            }
+            mesta[i] = prijava;
+        }
+        if (videni.size() != udelezenci.size()) {
+            throw new NeveljavenVnosIzjema("V mreži mora biti vseh " + udelezenci.size()
+                    + " udeležencev žreba (vpisanih: " + videni.size() + ").");
+        }
+        for (int i = 0; i < velikost; i += 2) {
+            if (mesta[i] == null && mesta[i + 1] == null) {
+                throw new NeveljavenVnosIzjema("Dve sosednji prosti mesti ne smeta biti skupaj"
+                        + " - v prvem kolu bi ne igral nihče.");
+            }
+        }
+        return mesta;
+    }
+
+    /* Jakostni seznam (po nosilcih) razporedi po mestih mreze: nosilca 1 in 2 na svojih
+       mestih, ostali po seed polozajih. Prosta mesta so null. */
+    public static Prijava[] mestaIzSeeda(List<Prijava> poSeedu) {
+        int steviloIgralcev = poSeedu.size();
+        int velikostMreze = NosilciStoritev.najblizjaPotencaDve(steviloIgralcev);
+        int[] vrstniRedPolozajev = NosilciStoritev.seedVrstniRed(velikostMreze);
+        Prijava[] mesta = new Prijava[velikostMreze];
+        for (int i = 0; i < velikostMreze; i++) {
+            int zaporednaStevilka = vrstniRedPolozajev[i]; // 1..velikostMreze
+            if (zaporednaStevilka <= steviloIgralcev) {
+                mesta[i] = poSeedu.get(zaporednaStevilka - 1);
+            }
+        }
+        return mesta;
+    }
+
+    static List<Long> idjiPoMestih(Prijava[] mesta) {
+        return Arrays.stream(mesta).map(m -> m == null ? null : m.getId()).toList();
+    }
+
     // ---------------------------------------------------------------------
     // IZLOCILNI
     // ---------------------------------------------------------------------
@@ -257,19 +682,13 @@ public class ZrebStoritev {
        (poSeedu.get(0) = prvi nosilec). Metodo uporablja tudi skupinski
        sistem za izlocilni del iz kvalificiranih igralcev. */
     public List<Tekma> zgradiIzlocilnoMrezo(Dogodek dogodek, List<Prijava> poSeedu) {
-        int steviloIgralcev = poSeedu.size();
-        int velikostMreze = NosilciStoritev.najblizjaPotencaDve(steviloIgralcev);
+        return zgradiIzlocilnoMrezoIzMest(dogodek, mestaIzSeeda(poSeedu));
+    }
 
-        // razporeditev po "seed" polozajih: polozaji manjkajocih stevilk
-        // (od steviloIgralcev naprej) ostanejo prazni = prosta mesta
-        int[] vrstniRedPolozajev = NosilciStoritev.seedVrstniRed(velikostMreze);
-        Prijava[] mesta = new Prijava[velikostMreze];
-        for (int i = 0; i < velikostMreze; i++) {
-            int zaporednaStevilka = vrstniRedPolozajev[i]; // 1..velikostMreze
-            if (zaporednaStevilka <= steviloIgralcev) {
-                mesta[i] = poSeedu.get(zaporednaStevilka - 1);
-            }
-        }
+    /* Zgradi mrezo iz razporeditve po mestih (null = prosto mesto). Dolzina mest je
+       potenca 2; ce razporeditev prihaja od organizatorja, to preveri mestaZaRocniVpis. */
+    public List<Tekma> zgradiIzlocilnoMrezoIzMest(Dogodek dogodek, Prijava[] mesta) {
+        int velikostMreze = mesta.length;
 
         // 1. kolo: pari sosednjih mest; kjer je eno mesto prazno, je prost prehod
         List<Tekma> prvoKolo = new ArrayList<>();
@@ -423,36 +842,40 @@ public class ZrebStoritev {
         }
 
         List<Prijava> poJakosti = zabeleziJakostnaMesta(prijave);
-        int stSkupin = zaMesta && dogodek.getSteviloSkupin() != null
-                ? dogodek.getSteviloSkupin()
-                : izberiSteviloSkupin(poJakosti.size());
+        int stSkupin = steviloSkupin(dogodek, poJakosti.size());
         if (stSkupin < 1 || poJakosti.size() / stSkupin < 2) {
             throw new DomenskaIzjema("V vsaki skupini morata biti vsaj dve prijavi ("
                     + poJakosti.size() + " prijav v " + stSkupin + " skupinah).");
         }
 
-        // ustvari skupine (A, B, C ...) in jih shrani, da dobijo id-je
-        List<Skupina> skupine = new ArrayList<>();
-        for (int i = 0; i < stSkupin; i++) {
-            skupine.add(new Skupina(dogodek, String.valueOf((char) ('A' + i))));
-        }
-        skupinaRepozitorij.saveAll(skupine);
-
         // razdelitev po jakostnih pasovih: 1. nosilec v A, 2. v B ...,
         // vsak naslednji pas nakljucno po eden v vsako skupino
         List<List<Prijava>> poSkupinah = nosilci.vSkupine(poJakosti, stSkupin);
+        return zapisiSkupineIzlocilni(dogodek, poSkupinah);
+    }
+
+    /* Zapise skupine (A, B, C ...) in v vsaki krozni razpored. Kdo je v kateri skupini,
+       odloca klicatelj - nakljucni zreb ali organizator z rocnim vpisom; od tu naprej
+       je vse enako. */
+    private List<Tekma> zapisiSkupineIzlocilni(Dogodek dogodek, List<List<Prijava>> poSkupinah) {
+        // ustvari skupine (A, B, C ...) in jih shrani, da dobijo id-je
+        List<Skupina> skupine = new ArrayList<>();
+        for (int i = 0; i < poSkupinah.size(); i++) {
+            skupine.add(new Skupina(dogodek, String.valueOf((char) ('A' + i))));
+        }
+        skupinaRepozitorij.saveAll(skupine);
 
         // krozne tekme znotraj vsake skupine; pozicija je enolicna cez ves
         // dogodek (UNIQUE dogodek+faza+kolo+pozicija), zato jo stejemo globalno
         List<Tekma> vse = new ArrayList<>();
         int globalnaPozicija = 1;
-        for (int i = 0; i < stSkupin; i++) {
+        for (int i = 0; i < poSkupinah.size(); i++) {
             List<Prijava> clani = poSkupinah.get(i);
             for (Prijava clan : clani) {
                 clan.setIdSkupina(skupine.get(i).getId());
             }
-            // clani so ze urejeni po jakostnih pasovih, zato brez mesanja:
-            // nosilec skupine zacne z najsibkejsim, dvoboj 1-2 pade v zadnje kolo
+            // clani so najmocnejsi prvi (zreb in rocni vpis): krozni razpored igra
+            // prvega z najsibkejsim, dvoboj prvih dveh pade v zadnje kolo
             for (Tekma tekma : kroznePare(dogodek, clani, skupine.get(i).getId())) {
                 tekma.setPozicija(globalnaPozicija++);
                 vse.add(tekma);

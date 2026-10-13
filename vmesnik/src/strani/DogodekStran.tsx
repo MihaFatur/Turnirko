@@ -78,6 +78,8 @@ import {
 } from '../komponente/PodnavigacijaDogodka'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SkupinaVrstica } from '../komponente/SkupinaVrstica'
+import { RocniSkupineOkno } from '../komponente/RocniSkupineOkno'
+import { IzlocilniZrebDel, RocnaMrezaZaDogodek } from '../komponente/IzlocilniZreb'
 import { SvPriprava } from '../komponente/SvPriprava'
 import { SvRegijaDel } from '../komponente/SvRegija'
 import { VsebinaSkupine, opisSkupine } from '../komponente/VsebinaSkupine'
@@ -152,6 +154,9 @@ export function DogodekStran() {
      napaka v zapisniku, ki se pokaže šele čez nekaj dni. */
   const [popravljana, nastaviPopravljano] = useState<TekmaDto | null>(null)
   const [potrjujemZreb, nastaviPotrjujemZreb] = useState(false)
+  /* Ročni vpis skupin namesto naključnega žreba; ročna izločilna mreža. */
+  const [rocniSkupine, nastaviRocniSkupine] = useState(false)
+  const [rocnaMreza, nastaviRocnaMreza] = useState(false)
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['dogodek', idDogodka] })
 
@@ -210,6 +215,16 @@ export function DogodekStran() {
   const zrebOnemogocen =
     aktivnePrijave.length < 2 || zadrzekZreba !== null || zreb.isPending
     || (ekipno && ekipe.isPending)
+  /* Ročni vpis skupin in mreže sta popravek zreba: mogoč je, dokler se ni začela nobena
+     tekma. Zadržka razreza ne upoštevata - okno sam pove, kaj manjka. */
+  const sistem = dogodek.sistemTekmovanja
+  const imaRocneSkupine = sistem === 'SKUPINE_IZLOCILNI' || sistem === 'SKUPINE'
+    || sistem === 'SKUPINE_ZA_MESTA'
+  const zacetaTekma = podatki.tekme.some(
+    (t) => t.status === 'V_IGRI' || (t.status === 'KONCANA' && t.izidTip !== 'PROSTO'),
+  )
+  const popravljivo = dogodek.status === 'V_TEKU' && !zacetaTekma
+  const rocniOnemogocen = aktivnePrijave.length < 2 || zreb.isPending
 
   /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
      stavku; enak vrstni red na obeh širinah. Disciplina stoji na začetku samo
@@ -315,6 +330,34 @@ export function DogodekStran() {
                       {aktivnePrijave.length < 2 ? premaloZaZreb : zadrzekZreba}
                     </p>
                   )}
+                  {smem && imaRocneSkupine && (vPripravi || popravljivo) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      disabled={rocniOnemogocen}
+                      onClick={() => {
+                        zapri()
+                        nastaviRocniSkupine(true)
+                      }}
+                    >
+                      {vPripravi ? 'Ročni vpis skupin' : 'Popravi skupine'}
+                    </button>
+                  )}
+                  {smem && sistem === 'IZLOCILNI' && (vPripravi || popravljivo) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      disabled={rocniOnemogocen}
+                      onClick={() => {
+                        zapri()
+                        nastaviRocnaMreza(true)
+                      }}
+                    >
+                      {vPripravi ? 'Ročna mreža' : 'Popravi mrežo'}
+                    </button>
+                  )}
                   {/* Listki so sodniški listki posamičnih tekem; ekipna tekma
                       ima svoj zapisnik z natisom na strani srečanja. */}
                   {smem && dogodek.status === 'V_TEKU' && !ekipno && (
@@ -377,6 +420,24 @@ export function DogodekStran() {
                   {zreb.isPending ? 'Žrebam …' : 'Izvedi žreb'}
                 </button>
               )}
+              {smem && imaRocneSkupine && (vPripravi || popravljivo) && (
+                <button
+                  className="gumb"
+                  disabled={rocniOnemogocen}
+                  onClick={() => nastaviRocniSkupine(true)}
+                >
+                  {vPripravi ? 'Ročni vpis skupin' : 'Popravi skupine'}
+                </button>
+              )}
+              {smem && sistem === 'IZLOCILNI' && (vPripravi || popravljivo) && (
+                <button
+                  className="gumb"
+                  disabled={rocniOnemogocen}
+                  onClick={() => nastaviRocnaMreza(true)}
+                >
+                  {vPripravi ? 'Ročna mreža' : 'Popravi mrežo'}
+                </button>
+              )}
               {/* Ura zadnjega odgovora strežnika: brez nje gledalec ne ve, ali
                   stoji rezultat ali njegova povezava. */}
               {jeVZivo(dogodek.status) && (
@@ -390,6 +451,12 @@ export function DogodekStran() {
       )}
 
       <SporociloNapake napaka={zreb.error} />
+
+      {/* Izlocilni del po skupinah ne nastane sam: dokler ga organizator ne izbere, je
+          to edino dejanje, ki dogodek drzi. */}
+      {smem && !vPripravi && (
+        <IzlocilniZrebDel podatki={podatki} idDogodka={idDogodka} osvezi={osvezi} />
+      )}
 
       {vPripravi ? (
         smem ? (
@@ -417,6 +484,32 @@ export function DogodekStran() {
           besedaPotrditve="Izvedi žreb"
           onPotrdi={() => zreb.mutate()}
           onZapri={() => nastaviPotrjujemZreb(false)}
+        />
+      )}
+
+      {rocniSkupine && (
+        <RocniSkupineOkno
+          idDogodka={idDogodka}
+          sistem={sistem}
+          /* Pri formatu TOP so po zrebu ostali rezerve; okno jih mora videti, da jih lahko
+             popravi. */
+          prijave={podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN' || p.status === 'REZERVA')}
+          skupine={podatki.skupine}
+          steviloSkupin={
+            dogodek.steviloSkupin ?? Math.min(8, Math.max(2, Math.floor(aktivnePrijave.length / 3)))
+          }
+          velikostSkupine={dogodek.velikostSkupine}
+          onZapri={() => nastaviRocniSkupine(false)}
+          onShranjeno={osvezi}
+        />
+      )}
+
+      {rocnaMreza && (
+        <RocnaMrezaZaDogodek
+          podatki={podatki}
+          idDogodka={idDogodka}
+          onZapri={() => nastaviRocnaMreza(false)}
+          onShranjeno={osvezi}
         />
       )}
 

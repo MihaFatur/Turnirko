@@ -144,6 +144,13 @@ class LenoNalaganjeSvRegijaTest {
                 tekmaStoritev.vnesiRezultat(t.getId(), new VnosRezultata(null, 3, 0, null, null));
             }
         }
+        // zreba nivoja po koncu skupin se ni: organizator ga zgradi sam (racunalniski zreb)
+        MrezaDto pred = dogodkiKontroler.mreza(dogodek.getId());
+        assertTrue(pred.svRegija().nivoji().get(0).zrebi().stream()
+                .allMatch(z -> !z.zgrajen() && z.uredljiv()), "zreba caka na organizatorja");
+        for (var zreb : pred.svRegija().nivoji().get(0).zrebi()) {
+            svRegijaKontroler.znova(zreb.id());
+        }
         MrezaDto po = dogodkiKontroler.mreza(dogodek.getId());
         var zrebi = po.svRegija().nivoji().get(0).zrebi();
         assertEquals(2, zrebi.size());

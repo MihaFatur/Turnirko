@@ -169,6 +169,10 @@ function PogledNarocnine({
   /* Brezplačno leto Pro (obstoječi organizatorji) nima Stripa: paketa ni mogoče
      zamenjati ne preklicati, stran ga samo pokaže. */
   const upravlja = jeBrez || n.upravljiva
+  /* Obnova ni uspela: Stripe plačilo še ponavlja, paket pa je izklopljen. Stran ne
+     sme ponuditi nakupa (nova naročnina ob stari, ki jo Stripe še ponavlja, bi
+     pomenila dvojno zaračunavanje) - pokaže, kaj popraviti. */
+  const placiloNiUspelo = n.status === 'ZAPADLA' && n.upravljiva
 
   /* Zabeleženo znižanje ob obnovi. */
   const prehodNa: OrganizatorPaket | null =
@@ -176,11 +180,13 @@ function PogledNarocnine({
 
   /* Ciljni paket v primerjavi: pri »brez« je vedno kakšen (privzeto Plus), sicer
      samo, kar je uporabnik izbral. */
-  const cilj: OrganizatorPaket | null = jeBrez
-    ? (izbranPaket ?? PRIVZETI_PAKET)
-    : upravlja
-      ? izbranPaket
-      : null
+  const cilj: OrganizatorPaket | null = placiloNiUspelo
+    ? null
+    : jeBrez
+      ? (izbranPaket ?? PRIVZETI_PAKET)
+      : upravlja
+        ? izbranPaket
+        : null
   const kazeRazliko = cilj !== null && (jeBrez || cilj !== trenutni)
 
   // ---------- Obdobje ----------
@@ -287,7 +293,7 @@ function PogledNarocnine({
   })
 
   const izberi = (paket: OrganizatorPaket) => () => {
-    if (!upravlja) return
+    if (!upravlja || placiloNiUspelo) return
     nastaviIzbran(!jeBrez && paket === trenutni ? null : paket)
     nastaviVprasanje(false)
   }
@@ -304,7 +310,14 @@ function PogledNarocnine({
           uspeh: true,
           razveljavi: true,
         }
-      : null)
+      : placiloNiUspelo
+        ? {
+            besedilo:
+              'Zadnje plačilo naročnine ni uspelo, zato je paket začasno izklopljen. Posodobi kartico v Stripe: '
+              + 'ko se plačilo izvede, se paket vklopi sam.',
+            uspeh: false,
+          }
+        : null)
 
   const zasedeno =
     zamenjaj.isPending || razveljavi.isPending || preklici.isPending || obnovi.isPending
@@ -423,7 +436,8 @@ function PogledNarocnine({
     if (jeTrenutni) oznaka = jePreklicana ? `Do ${konecKratko}` : 'Trenutno'
     if (!jeCilj && !jeTrenutni && prehodNa === paket) oznaka = 'Od obnove'
     if (jeCilj) oznaka = 'Izbrano'
-    return { paket, jeCilj, jeTrenutni, oznaka }
+    // Brez izbire (plačilo ni uspelo): stolpec ni gumb, zato tudi ne vabi k izbiri.
+    return { paket, jeCilj, jeTrenutni, oznaka: placiloNiUspelo ? '' : oznaka }
   })
   const razredStolpca = (s: { jeCilj: boolean; jeTrenutni: boolean }) =>
     s.jeCilj ? 'izbran' : s.jeTrenutni ? 'trenutni' : null
@@ -437,14 +451,22 @@ function PogledNarocnine({
   // ---------- Besedila ----------
 
   const imeStrani = trenutni ? `Organizator ${KRATKO_IME_PAKETA[trenutni]}` : 'Organizator'
-  const statusNapis = jeBrez ? 'Paket · ni aktiven' : jePreklicana ? 'Naročnina · preklicana' : 'Naročnina · aktivna'
-  const statusDesno = jeBrez
-    ? 'Preklic kadarkoli'
-    : jePreklicana || !upravlja
-      ? `Velja do ${konec}`
-      : `Obnova ${konec}`
-  const naslovPlosce = jeBrez ? 'Izberi paket' : jePreklicana ? 'Brez obnove' : 'Tvoja naročnina'
-  const trakCena = jeBrez
+  const statusNapis = placiloNiUspelo
+    ? 'Paket · plačilo ni uspelo'
+    : jeBrez ? 'Paket · ni aktiven' : jePreklicana ? 'Naročnina · preklicana' : 'Naročnina · aktivna'
+  const statusDesno = placiloNiUspelo
+    ? 'Posodobi kartico'
+    : jeBrez
+      ? 'Preklic kadarkoli'
+      : jePreklicana || !upravlja
+        ? `Velja do ${konec}`
+        : `Obnova ${konec}`
+  const naslovPlosce = placiloNiUspelo
+    ? 'Plačilo ni uspelo'
+    : jeBrez ? 'Izberi paket' : jePreklicana ? 'Brez obnove' : 'Tvoja naročnina'
+  const trakCena = placiloNiUspelo
+    ? 'Neplačano'
+    : jeBrez
     ? oblikujCeno(CENA[cilj ?? PRIVZETI_PAKET]) + enota
     : jePreklicana
       ? 'Brez obnove'
@@ -713,7 +735,7 @@ function PogledNarocnine({
                             + (stanje ? ` narocnina__stolp--${stanje}` : '')
                           }
                           aria-pressed={s.jeCilj}
-                          disabled={!upravlja}
+                          disabled={!upravlja || placiloNiUspelo}
                           onClick={izberi(s.paket)}
                         >
                           <span className="registracija__stolp-ime">{KRATKO_IME_PAKETA[s.paket]}</span>
@@ -882,7 +904,7 @@ function PogledNarocnine({
             <span className="registracija__placilo-pripis">
               Plačilo prek Stripe · <Link to="/pogoji#pogoji">Pogoji</Link>
             </span>
-            {jeBrez && (
+            {jeBrez && !placiloNiUspelo && (
               <button
                 type="button"
                 className="gumb gumb--glavni narocnina__dejanje"
@@ -894,14 +916,16 @@ function PogledNarocnine({
                   : `Nadaljuj na plačilo · ${oblikujCeno(CENA[cilj ?? PRIVZETI_PAKET])}`}
               </button>
             )}
-            {imaPaket && upravlja && (
+            {((imaPaket && upravlja) || placiloNiUspelo) && (
               <button
                 type="button"
-                className="gumb narocnina__dejanje"
+                className={'gumb narocnina__dejanje' + (placiloNiUspelo ? ' gumb--glavni' : '')}
                 disabled={portal.isPending}
                 onClick={() => portal.mutate()}
               >
-                {portal.isPending ? 'Odpiram …' : 'Kartica in računi v Stripe'}
+                {portal.isPending
+                  ? 'Odpiram …'
+                  : placiloNiUspelo ? 'Posodobi kartico v Stripe' : 'Kartica in računi v Stripe'}
               </button>
             )}
           </div>

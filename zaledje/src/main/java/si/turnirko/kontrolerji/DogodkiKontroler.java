@@ -31,7 +31,11 @@ import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.ParVnos;
 import si.turnirko.dto.PrijavaDto;
 import si.turnirko.dto.PrijaviIgralceVnos;
+import si.turnirko.dto.IzlocilniPredlogDto;
+import si.turnirko.dto.RocniMestaVnos;
+import si.turnirko.dto.RocniSkupineVnos;
 import si.turnirko.dto.SkupinaDto;
+import si.turnirko.dto.SkupinePredlogDto;
 import si.turnirko.dto.SvRegijaDto;
 import si.turnirko.dto.TekmaDto;
 import si.turnirko.dto.VrstniRedVnos;
@@ -52,6 +56,7 @@ import si.turnirko.repozitoriji.SrecanjeRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
 import si.turnirko.storitve.EkipeDogodkaStoritev;
 import si.turnirko.storitve.IzborStoritev;
+import si.turnirko.storitve.IzlocilniZrebStoritev;
 import si.turnirko.storitve.RazvrstitevStoritev;
 import si.turnirko.storitve.SkupineStoritev;
 import si.turnirko.storitve.SpremembeRatingaStoritev;
@@ -79,6 +84,7 @@ public class DogodkiKontroler {
     private final TekmaStoritev tekmaStoritev;
     private final EkipeDogodkaStoritev ekipeDogodka;
     private final SvRegijaStoritev svRegija;
+    private final IzlocilniZrebStoritev izlocilniZrebStoritev;
 
     public DogodkiKontroler(DogodekRepozitorij dogodekRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
@@ -93,7 +99,8 @@ public class DogodkiKontroler {
                             IzborStoritev izborStoritev,
                             TekmaStoritev tekmaStoritev,
                             EkipeDogodkaStoritev ekipeDogodka,
-                            SvRegijaStoritev svRegija) {
+                            SvRegijaStoritev svRegija,
+                            IzlocilniZrebStoritev izlocilniZrebStoritev) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -108,6 +115,7 @@ public class DogodkiKontroler {
         this.tekmaStoritev = tekmaStoritev;
         this.ekipeDogodka = ekipeDogodka;
         this.svRegija = svRegija;
+        this.izlocilniZrebStoritev = izlocilniZrebStoritev;
     }
 
     /* Celotna slika dogodka: podatki, prijave, mreza in - glede na sistem -
@@ -382,5 +390,40 @@ public class DogodkiKontroler {
     @ResponseStatus(HttpStatus.CREATED)
     public List<TekmaDto> zreb(@PathVariable Long id) {
         return zrebStoritev.izvediZreb(id).stream().map(TekmaDto::iz).toList();
+    }
+
+    /* Predlog skupin za rocni vpis: zreb brez zapisa, organizator ga popravi. */
+    @PostMapping("/{id}/skupine/predlog")
+    public SkupinePredlogDto skupinePredlog(@PathVariable Long id) {
+        return zrebStoritev.predlogSkupin(id);
+    }
+
+    /* Rocni vpis skupin namesto nakljucnega zreba (skupine+izlocilni, skupine za mesta,
+       format TOP). Ce skupine ze obstajajo in se nobena tekma ni zacela, se popravijo. */
+    @PutMapping("/{id}/skupine")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void rocniSkupine(@PathVariable Long id, @Valid @RequestBody RocniSkupineVnos vnos) {
+        zrebStoritev.izvediRocniZrebSkupin(id, vnos.skupine());
+    }
+
+    /* Predlog izlocilne mreze za rocni vpis (IZLOCILNI ali izlocilni del po skupinah). */
+    @PostMapping("/{id}/izlocilni/predlog")
+    public IzlocilniPredlogDto izlocilniPredlog(@PathVariable Long id) {
+        return izlocilniZrebStoritev.predlog(id);
+    }
+
+    /* Racunalniski zreb izlocilne mreze: pri izlocilnem delu po skupinah ga organizator
+       izbere sam, ko se skupine koncajo; pri IZLOCILNI je to zreb dogodka. */
+    @PostMapping("/{id}/izlocilni/zreb")
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<TekmaDto> izlocilniZreb(@PathVariable Long id) {
+        return izlocilniZrebStoritev.izvediZreb(id).stream().map(TekmaDto::iz).toList();
+    }
+
+    /* Rocni vpis izlocilne mreze: id-ji prijav po mestih od vrha navzdol, null za prosto. */
+    @PutMapping("/{id}/izlocilni/mesta")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void izlocilniMesta(@PathVariable Long id, @Valid @RequestBody RocniMestaVnos vnos) {
+        izlocilniZrebStoritev.rocniZreb(id, vnos.idjiPoMestih());
     }
 }

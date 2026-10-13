@@ -3,6 +3,9 @@
 
 import { api } from './odjemalec'
 import type {
+  IzlocilniPredlogDto,
+  RocniClanVnos,
+  SkupinePredlogDto,
   SvNastavitveVnos,
   SvPredlogDto,
   SvSkupineVnos,
@@ -133,6 +136,20 @@ export const dogodkiApi = {
   razdruziPar: (idPrijave: number) =>
     api.objavi<PrijavaDto[]>(`/dogodki/pari/${idPrijave}/razdruzi`),
   izvediZreb: (id: number) => api.objavi<TekmaDto[]>(`/dogodki/${id}/zreb`),
+  /* Ročni vpis skupin namesto naključnega žreba (skupine+izločilni, skupine za mesta,
+     format TOP): po skupinah, po vrsti A, B ..., z jakostnim mestom (nosilcem) vsakega
+     igralca. Ponovni vpis pred prvo tekmo je popravek. */
+  rocniSkupine: (id: number, skupine: RocniClanVnos[][]) =>
+    api.posodobi<void>(`/dogodki/${id}/skupine`, { skupine }),
+  /* Predlog skupin za ročni vpis - žreb brez zapisa v bazo. */
+  predlogSkupin: (id: number) => api.objavi<SkupinePredlogDto>(`/dogodki/${id}/skupine/predlog`),
+  /* Izločilni del po skupinah (ali mreža IZLOCILNI): predlog, računalniški zreb in ročna
+     razporeditev po mestih od vrha navzdol (null = prosto mesto). */
+  izlocilniPredlog: (id: number) =>
+    api.objavi<IzlocilniPredlogDto>(`/dogodki/${id}/izlocilni/predlog`),
+  izlocilniZreb: (id: number) => api.objavi<TekmaDto[]>(`/dogodki/${id}/izlocilni/zreb`),
+  izlocilniMesta: (id: number, idjiPoMestih: (number | null)[]) =>
+    api.posodobi<void>(`/dogodki/${id}/izlocilni/mesta`, { idjiPoMestih }),
 
   /* Ekipni dogodek: prijava je ekipa s kadrom. Igralec sme biti v kadru ene
      same ekipe dogodka (preveri strežnik). */

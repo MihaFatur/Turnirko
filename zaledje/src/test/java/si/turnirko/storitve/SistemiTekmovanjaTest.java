@@ -23,6 +23,9 @@ import si.turnirko.modeli.Tekma;
 
 class SistemiTekmovanjaTest extends IntegracijskiTest {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private IzlocilniZrebStoritev izlocilniZrebStoritev;
+
     @BeforeEach
     void deterministicniZreb() {
         zrebStoritev.nastaviNakljucje(new Random(42));
@@ -96,10 +99,15 @@ class SistemiTekmovanjaTest extends IntegracijskiTest {
         Dogodek dogodek = pripraviDogodek(8, SistemTekmovanja.SKUPINE_IZLOCILNI);
         zrebStoritev.izvediZreb(dogodek.getId());
         odigrajVse(dogodek.getId());
+        // izlocilni del ne nastane sam: organizator ga izbere, ko so skupine odigrane
+        assertTrue(tekmeDogodka(dogodek.getId()).stream().noneMatch(t -> t.getFaza() == FazaTekme.GLAVNI),
+                "izlocilni del caka na organizatorja");
+        izlocilniZrebStoritev.izvediZreb(dogodek.getId());
+        odigrajVse(dogodek.getId());
 
         List<Tekma> tekme = tekmeDogodka(dogodek.getId());
         assertTrue(tekme.stream().anyMatch(t -> t.getFaza() == FazaTekme.GLAVNI),
-                "po skupinah se zgenerira izlocilni del");
+                "po izboru organizatorja nastane izlocilni del");
 
         assertEquals(StatusTekmovanja.ZAKLJUCEN,
                 dogodekRepozitorij.findById(dogodek.getId()).orElseThrow().getStatus());

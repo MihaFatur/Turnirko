@@ -21,6 +21,7 @@ import type {
   SpolKategorija,
 } from '../api/tipi'
 import {
+  FIKSNI_PRAG_FORMATA,
   OZNAKE_FORMAT,
   OZNAKE_RAVEN,
   OZNAKE_SISTEM,
@@ -548,6 +549,9 @@ function NovDogodekOkno({
   const kategorije = kategorijeZaDisciplino(disciplina)
   const tekemFormata = RAZPORED_FORMATA[format].length
   const najmanjsiPrag = Math.floor(tekemFormata / 2) + 1
+  /* Format z zaklenjenim pragom (DŠI) prag določi sam; vrednost gre v oddajo. */
+  const fiksniPrag = FIKSNI_PRAG_FORMATA[format]
+  const pragVeljaven = fiksniPrag ?? prag
   const sistemDogodka: SistemTekmovanja = dvojice ? 'IZLOCILNI' : sistem
   /* Tekma za 3. mesto je del izločilne mreže. */
   const mozna3mesto = sistemDogodka === 'IZLOCILNI' || sistemDogodka === 'SKUPINE_IZLOCILNI'
@@ -594,7 +598,7 @@ function NovDogodekOkno({
       steviloSkupin: skupinskiSistem ? Number(steviloSkupin) : null,
       velikostSkupine: skupinskiSistem ? Number(velikostSkupine) : null,
       formatSrecanja: ekipno ? format : null,
-      zmagZaSrecanje: ekipno ? prag : null,
+      zmagZaSrecanje: ekipno ? pragVeljaven : null,
       tekmaZaTretjeMesto: mozna3mesto && zaTretje,
     })
   }
@@ -684,8 +688,9 @@ function NovDogodekOkno({
                 <span>Srečanje se konča pri zmagah ({najmanjsiPrag}–{tekemFormata})</span>
                 <StevilskoPolje
                   najvec={tekemFormata}
-                  vrednost={String(prag)}
+                  vrednost={String(pragVeljaven)}
                   naSpremembo={(v) => nastaviPrag(Number(v))}
+                  disabled={fiksniPrag !== undefined}
                   required
                 />
               </label>

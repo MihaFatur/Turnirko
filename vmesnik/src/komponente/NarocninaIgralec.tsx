@@ -129,6 +129,10 @@ function PogledNarocnine({
   const jePreklicana = n.aktivna && n.preklicana
   const imaPremium = n.aktivna
   const jeFree = !imaPremium
+  /* Obnova ni uspela: Stripe plačilo še ponavlja, Premium pa je izklopljen. Stran
+     ne sme pokazati ponudbe nakupa (nova naročnina ob stari, ki jo Stripe še
+     ponavlja, bi pomenila dvojno zaračunavanje) - pokaže, kaj popraviti. */
+  const placiloNiUspelo = n.status === 'ZAPADLA' && n.upravljiva
 
   const ciklus: CiklusPlacila = n.ciklus ?? 'MESECNO'
   const preklopNa = jePremium ? n.naslednjiCiklus : null
@@ -243,17 +247,30 @@ function PogledNarocnine({
           uspeh: true,
           razveljavi: true,
         }
-      : null)
+      : placiloNiUspelo
+        ? {
+            besedilo:
+              'Zadnje plačilo naročnine ni uspelo, zato je Premium začasno izklopljen. Posodobi kartico v Stripe: '
+              + 'ko se plačilo izvede, se Premium vklopi sam.',
+            uspeh: false,
+          }
+        : null)
 
   const prikaziPreklop = jePremium && !preklopNa && izbran !== ciklus
 
   // ---------- Besedila ----------
 
   const imePaketa = OZNAKE_PAKET[imaPremium ? 'PREMIUM' : 'BREZPLACNO']
-  const naslov = jeFree ? 'Nadgradi na Premium' : 'Igralec Premium'
-  const statusNapis = jeFree ? 'Paket · Free' : jePreklicana ? 'Naročnina · preklicana' : 'Naročnina · aktivna'
-  const naslovDesno = jeFree ? 'Preklic kadarkoli' : jePreklicana ? `Velja do ${konec}` : `Obnova ${konec}`
-  const trakCena = jeFree
+  const naslov = placiloNiUspelo ? 'Plačilo ni uspelo' : jeFree ? 'Nadgradi na Premium' : 'Igralec Premium'
+  const statusNapis = placiloNiUspelo
+    ? 'Naročnina · plačilo ni uspelo'
+    : jeFree ? 'Paket · Free' : jePreklicana ? 'Naročnina · preklicana' : 'Naročnina · aktivna'
+  const naslovDesno = placiloNiUspelo
+    ? 'Posodobi kartico'
+    : jeFree ? 'Preklic kadarkoli' : jePreklicana ? `Velja do ${konec}` : `Obnova ${konec}`
+  const trakCena = placiloNiUspelo
+    ? 'Neplačano'
+    : jeFree
     ? oblikujCeno(cene[izbran]) + enota(izbran)
     : jePreklicana
       ? 'Brez obnove'
@@ -263,7 +280,7 @@ function PogledNarocnine({
 
   const izbiraVrstice = jeFree
     ? [
-        { oznaka: 'Paket', vrednost: 'Free' },
+        { oznaka: 'Paket', vrednost: placiloNiUspelo ? 'Neplačano' : 'Free' },
         { oznaka: 'Plačevanje', vrednost: imeCiklusa(izbran) },
         { oznaka: 'Cena', vrednost: oblikujCeno(cene[izbran]) },
       ]
@@ -355,7 +372,7 @@ function PogledNarocnine({
           {jeFree && (
             <div className="registracija__kolofon narocnina__kolofon--crn">
               {[
-                { oznaka: 'Paket', vrednost: 'Free' },
+                { oznaka: 'Paket', vrednost: placiloNiUspelo ? 'Neplačano' : 'Free' },
                 { oznaka: 'Premium mesečno', vrednost: oblikujCeno(cene.MESECNO) },
                 { oznaka: 'Premium letno', vrednost: oblikujCeno(cene.LETNO) },
               ].map((v) => (
@@ -483,7 +500,7 @@ function PogledNarocnine({
               </div>
             )}
 
-            {jeFree && (
+            {jeFree && !placiloNiUspelo && (
               <div className="narocnina__nakup">
                 <div className="izbirnik">
                   <button
@@ -702,7 +719,7 @@ function PogledNarocnine({
             <span className="registracija__placilo-pripis">
               Plačilo prek Stripe · <Link to="/pogoji#pogoji">Pogoji</Link>
             </span>
-            {jeFree ? (
+            {jeFree && !placiloNiUspelo ? (
               <button
                 type="button"
                 className="gumb gumb--glavni narocnina__dejanje"
@@ -714,11 +731,13 @@ function PogledNarocnine({
             ) : (
               <button
                 type="button"
-                className="gumb narocnina__dejanje"
+                className={'gumb narocnina__dejanje' + (placiloNiUspelo ? ' gumb--glavni' : '')}
                 disabled={portal.isPending}
                 onClick={() => portal.mutate()}
               >
-                {portal.isPending ? 'Odpiram …' : 'Kartica in računi v Stripe'}
+                {portal.isPending
+                  ? 'Odpiram …'
+                  : placiloNiUspelo ? 'Posodobi kartico v Stripe' : 'Kartica in računi v Stripe'}
               </button>
             )}
           </div>

@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ligeApi } from '../api/zahteve'
 import type { FormatSrecanja, LigaDto, LigaVnos, PredlogaLige, RavenTekmovanja, SpolKategorija } from '../api/tipi'
 import {
+  FIKSNI_PRAG_FORMATA,
   FORMATI_SAMO_TURNIR,
   OZNAKE_FORMAT,
   OZNAKE_PREDLOGA_LIGE,
@@ -130,6 +131,12 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
   const odjemalec = useQueryClient()
 
   const tekme = RAZPORED_FORMATA[format]
+  /* Format z zaklenjenim pragom (DŠI: prvi do dveh zmag) ima konec srečanja
+     določen s pravilom. Polj ne skrijemo, ker gledalec ob njih vidi, zakaj
+     je prag takšen; zaklenjena vrednost gre tudi v oddajo. */
+  const fiksni = FIKSNI_PRAG_FORMATA[format]
+  const konecVeljaven: KonecSrecanja = fiksni !== undefined ? 'PRAG' : konec
+  const pragVeljaven = fiksni ?? prag
 
   /* Ob zamenjavi formata se prag prilagodi: mej, večjih od števila tekem,
      strežnik ne sprejme, tiho poslana napaka pa bi bila nerazumljiva. */
@@ -186,7 +193,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
       spolKategorija: spol,
       formatSrecanja: format,
       steviloNizov,
-      zmagZaSrecanje: konec === 'PRAG' ? prag : null,
+      zmagZaSrecanje: konecVeljaven === 'PRAG' ? pragVeljaven : null,
       dvokrozno,
       tockeZmaga,
       tockeNeodloceno,
@@ -270,23 +277,25 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">
             <span>Konec srečanja</span>
-            <select value={konec} onChange={(d) => nastaviKonec(d.target.value as KonecSrecanja)}>
+            <select value={konecVeljaven} disabled={fiksni !== undefined}
+              onChange={(d) => nastaviKonec(d.target.value as KonecSrecanja)}>
               <option value="VSE">Odigrajo se vse tekme</option>
               <option value="PRAG">Konča se pri pragu zmag</option>
             </select>
           </label>
-          {konec === 'PRAG' && (
+          {konecVeljaven === 'PRAG' && (
             <label className="obrazec__polje">
               <span>Prag zmag (največ {tekme.length})</span>
-              <StevilskoPolje najvec={tekme.length} vrednost={String(prag)}
-                naSpremembo={(v) => nastaviPrag(Number(v))} required />
+              <StevilskoPolje najvec={tekme.length} vrednost={String(pragVeljaven)}
+                naSpremembo={(v) => nastaviPrag(Number(v))} disabled={fiksni !== undefined}
+                required />
             </label>
           )}
         </div>
         <p className="namig">
-          {konec === 'VSE'
+          {konecVeljaven === 'VSE'
             ? 'Vseh ' + tekme.length + ' tekem se odigra do konca, tudi ko je zmagovalec srečanja že znan.'
-            : `Ko ena ekipa doseže ${prag} dobljenih tekem, se srečanje konča; preostale tekme ostanejo neodigrane.`}
+            : `Ko ena ekipa doseže ${pragVeljaven} dobljenih tekem, se srečanje konča; preostale tekme ostanejo neodigrane.`}
         </p>
 
         <fieldset className="obrazec__skupina">

@@ -922,6 +922,11 @@ public class LigaStoritev {
                         + v.formatSrecanja().stTekem() + ").");
             }
         }
+        Integer fiksni = v.formatSrecanja().fiksniPragZmag();
+        if (fiksni != null && !fiksni.equals(v.zmagZaSrecanje())) {
+            throw new NeveljavenVnosIzjema("Format " + v.formatSrecanja() + " se igra do " + fiksni
+                    + " zmag - prag zmag mora biti " + fiksni + ".");
+        }
         if (v.razmikDni() != null && (v.razmikDni() < 1 || v.razmikDni() > 365)) {
             throw new NeveljavenVnosIzjema("Razmik med koli mora biti med 1 in 365 dnevi.");
         }

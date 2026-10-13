@@ -80,6 +80,18 @@ class EkipniTurnirTest extends IntegracijskiTest {
         assertEquals(3, dogodek.getZmagZaSrecanje(), "pet tekem: prvi do treh zmag");
     }
 
+    /* DSI na ekipnem dogodku: prag dveh zmag je fiksen. Brez praga ali s
+       pragom 2 dogodek nastane z dvema zmagama, drugacen prag se zavrne. */
+    @Test
+    void dsiEkipniDogodekImaFiksniPragDveZmagi() {
+        Turnir turnir = turnir();
+        Dogodek brezPraga = turnirjiStoritev.dodajDogodek(turnir.getId(),
+                vnosSPragom(SistemTekmovanja.IZLOCILNI, FormatSrecanja.DSI, null));
+        assertEquals(2, brezPraga.getZmagZaSrecanje());
+        assertThrows(NeveljavenVnosIzjema.class, () -> turnirjiStoritev.dodajDogodek(turnir.getId(),
+                vnosSPragom(SistemTekmovanja.IZLOCILNI, FormatSrecanja.DSI, 3)));
+    }
+
     @Test
     void naEkipniDogodekSeIgralciNePrijavljajo() {
         Dogodek dogodek = ekipniDogodek(SistemTekmovanja.IZLOCILNI, FormatSrecanja.POKAL_NTZS);
@@ -279,6 +291,20 @@ class EkipniTurnirTest extends IntegracijskiTest {
     // Pomozno
     // ---------------------------------------------------------------
 
+    /* Stevilo nizov ekipne tekme doloca dogodek prek pravil srecanja - prepisa
+       na posamezni tekmi ni, tudi ce je stevilo veljavno. */
+    @Test
+    void ekipnaTekmaNimaPrepisaSteviloNizov() {
+        Dogodek dogodek = ekipniDogodek(SistemTekmovanja.IZLOCILNI, FormatSrecanja.EKIPNI_DP);
+        prijaviEkipe(dogodek, 4, 3);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma polfinale = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getKolo() == 1).findFirst().orElseThrow();
+
+        assertThrows(NeveljavenVnosIzjema.class, () -> tekmaStoritev.vnesiRezultat(
+                polfinale.getId(), new VnosRezultata(null, 3, 0, null, null, 5)));
+    }
+
     private Turnir turnir() {
         Turnir turnir = new Turnir();
         turnir.setIme("Ekipni turnir");
@@ -288,8 +314,12 @@ class EkipniTurnirTest extends IntegracijskiTest {
     }
 
     private static DogodekVnos vnos(SistemTekmovanja sistem, FormatSrecanja format) {
+        return vnosSPragom(sistem, format, null);
+    }
+
+    private static DogodekVnos vnosSPragom(SistemTekmovanja sistem, FormatSrecanja format, Integer prag) {
         return new DogodekVnos("U15 ekipno", SpolKategorija.MOSKI, "U15", 5, null, null,
-                Disciplina.EKIPNO, sistem, null, null, format, null, null);
+                Disciplina.EKIPNO, sistem, null, null, format, prag, null);
     }
 
     private Dogodek ekipniDogodek(SistemTekmovanja sistem, FormatSrecanja format) {

@@ -13,7 +13,7 @@
    Izhodišče je trenutna razporeditev žreba, ne naključni predlog: sicer bi
    vsako odprtje okna zavrglo prejšnjo ročno razporeditev. »Naključno« in
    »Trenutno« sta zato gumba, ne privzetek. */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
 import { svApi } from '../api/zahteve'
@@ -30,7 +30,12 @@ interface Lastnosti {
 }
 
 export function SvZrebOkno({ zreb, podatki, onZapri, onShranjeno }: Lastnosti) {
+  /* Zreb, ki se ni zgrajen, nima razporeda: okno začne s predlogom (spodaj), udeležence pa
+     prevzame iz njega. */
   const [mesta, nastaviMesta] = useState<(number | null)[]>(zreb.razpored)
+  const [udelezenci, nastaviUdelezence] = useState<number[]>(() =>
+    zreb.razpored.filter((id): id is number => id !== null),
+  )
 
   /* Igralec po id-ju prijave, z mestom v skupini - tako organizator vidi, kdo
      je prišel kot zmagovalec skupine in kdo kot drugi. */
@@ -48,18 +53,26 @@ export function SvZrebOkno({ zreb, podatki, onZapri, onShranjeno }: Lastnosti) {
     )
   }, [podatki.prijave, podatki.skupine])
 
-  const udelezenci = useMemo(
-    () => zreb.razpored.filter((id): id is number => id !== null),
-    [zreb.razpored],
-  )
   const prostih = mesta.filter((m) => m === null).length
 
   const spremenjeno = mesta.some((m, i) => m !== zreb.razpored[i])
 
   const predlog = useMutation({
     mutationFn: () => svApi.predlogZreba(zreb.id as number),
-    onSuccess: (p) => nastaviMesta(p.mesta.map((c) => (c === null ? null : c.idPrijave))),
+    onSuccess: (p) => {
+      nastaviMesta(p.mesta.map((c) => (c === null ? null : c.idPrijave)))
+      if (!zreb.zgrajen) {
+        nastaviUdelezence(p.mesta.flatMap((c) => (c === null ? [] : [c.idPrijave])))
+      }
+    },
   })
+
+  /* Nezgrajen zreb: prvi predlog je izhodisce, organizator ga popravi. */
+  useEffect(() => {
+    if (!zreb.zgrajen) predlog.mutate()
+    // predlog ob odprtju; kasneje ga organizator prikliče z gumbom
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const shranjevanje = useMutation({
     mutationFn: () => svApi.shraniMesta(zreb.id as number, mesta),
@@ -107,14 +120,16 @@ export function SvZrebOkno({ zreb, podatki, onZapri, onShranjeno }: Lastnosti) {
         >
           {predlog.isPending ? 'Žrebam …' : 'Naključno'}
         </button>
-        <button
-          type="button"
-          className="gumb gumb--majhen"
-          disabled={!spremenjeno}
-          onClick={() => nastaviMesta(zreb.razpored)}
-        >
-          Trenutno
-        </button>
+        {zreb.zgrajen && (
+          <button
+            type="button"
+            className="gumb gumb--majhen"
+            disabled={!spremenjeno}
+            onClick={() => nastaviMesta(zreb.razpored)}
+          >
+            Trenutno
+          </button>
+        )}
       </div>
       <SporociloNapake napaka={predlog.error} />
 

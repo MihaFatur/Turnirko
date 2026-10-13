@@ -93,9 +93,7 @@ public class TurnirjiStoritev {
             throw new DomenskaIzjema("Na zakljucen turnir ni mogoce dodajati dogodkov.");
         }
         int steviloNizov = vnos.privzetoSteviloNizov();
-        if (steviloNizov != 3 && steviloNizov != 5 && steviloNizov != 7) {
-            throw new NeveljavenVnosIzjema("Stevilo nizov mora biti 3, 5 ali 7.");
-        }
+        NiziPravila.preveriSteviloNizov(steviloNizov);
 
         Dogodek dogodek = new Dogodek();
         dogodek.setTurnir(turnir);
@@ -145,6 +143,11 @@ public class TurnirjiStoritev {
         if (prag < tekem / 2 + 1 || prag > tekem) {
             throw new NeveljavenVnosIzjema("Prag zmag za srecanje mora biti med " + (tekem / 2 + 1)
                     + " in " + tekem + " - sicer lahko zmagata obe ekipi ali nobena.");
+        }
+        Integer fiksni = vnos.formatSrecanja().fiksniPragZmag();
+        if (fiksni != null && prag != fiksni) {
+            throw new NeveljavenVnosIzjema("Format " + vnos.formatSrecanja() + " se igra do " + fiksni
+                    + " zmag - prag zmag mora biti " + fiksni + ".");
         }
         dogodek.setFormatSrecanja(vnos.formatSrecanja());
         dogodek.setZmagZaSrecanje(prag);

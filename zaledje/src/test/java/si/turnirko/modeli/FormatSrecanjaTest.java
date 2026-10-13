@@ -185,4 +185,28 @@ class FormatSrecanjaTest {
                         .map(FormatSrecanja.MestoTekme::oznaka).sorted().toList(),
                 dejansko.stream().sorted().toList());
     }
+
+    /* DSI (DŠI): prva ekipa do dveh zmag. Dvojice pridejo na tretje mesto in
+       odlocajo samo pri 1 : 1; prag dveh zmag je fiksen, ker je to pravilo
+       formata, ne izbira organizatorja. */
+    @Test
+    void dsiImaDvojiceTretjeInFiksniPragDve() {
+        FormatSrecanja f = FormatSrecanja.DSI;
+        assertEquals(List.of("A-X", "B-Y", "dvojice"),
+                f.razpored().stream().map(FormatSrecanja.MestoTekme::oznaka).toList());
+        assertEquals(2, f.getStIgralcev());
+        assertTrue(f.imaDvojice());
+        assertTrue(!f.izbiraDvojice(), "pri DSI igrata oba igralca");
+        assertEquals(2, f.stVDvojici());
+        assertEquals(Integer.valueOf(2), f.fiksniPragZmag());
+        assertEquals(2, f.stTekem() / 2 + 1, "prag dveh zmag je vecina treh tekem");
+    }
+
+    /* Samo DSI ima fiksen prag; pri ostalih ga izbere organizator. */
+    @Test
+    void samoDsiImaFiksniPrag() {
+        for (FormatSrecanja f : FormatSrecanja.values()) {
+            assertEquals(f == FormatSrecanja.DSI, f.fiksniPragZmag() != null, f.name());
+        }
+    }
 }

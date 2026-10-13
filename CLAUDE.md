@@ -913,6 +913,25 @@
   je migracija obstoječe dogodke prepisala v `KDORKOLI`. **Tabele `liga` se
   to ne dotakne**: tam `MESANO` še naprej pomeni ligo, v kateri igrajo oboji,
   in `KDORKOLI` ni izbira (obrazec lige našteje svoje tri možnosti sam).
+- **Ročni žreb skupin in izločilne mreže** (okt 2026). Žreb skupin (vsi sistemi z
+  jakostnimi skupinami, razen SV regije, ki ima svoj vpis) lahko organizator vpiše
+  ročno: vsak igralec dobi skupino **in nosilca** (jakostno mesto). Vpis konča v isti
+  točki kot zreb (`ZrebStoritev.zapisiSkupineIzlocilni`), zato tekme in napredovanje
+  tečejo po nespremenjeni kodi; predlog (`POST …/skupine/predlog`) je zreb brez zapisa.
+  - **Izločilni del po skupinah NE nastane sam** (`SKUPINE_IZLOCILNI`, tudi SV
+    regija): ko se skupine končajo, organizator izbere računalniški žreb ali ročno
+    mrežo (`IzlocilniZrebStoritev`, `POST …/izlocilni/zreb`, `PUT …/izlocilni/mesta`).
+    Dokler ni izbire, dogodek **ni zaključen** (`TekmaStoritev.zakljuciDogodekCeKoncan`
+    in `SkupineStoritev.imaIzlocilniDel`); pri SV regiji to varuje `vsiZrebiZgrajeni`.
+    Razlog: organizator naj ima pred žrebom možnost izbire (računalniški žreb ali
+    ročna mreža), ne da se mu izločilni del zgradi sam.
+  - **Popravek do prve tekme:** skupine, mreža in zrebi nivojev se smejo ponovno
+    zrebati ali vpisati, dokler nobena tekma ni začeta (`ZrebStoritev.razveljaviZreb`,
+    SV: `razveljaviZrebSkupin`). »Začeta« je `V_IGRI` ali `KONCANA` **razen** prostega
+    prehoda (`IzidTekme.PROSTO`, ta je koncan ob nastanku) — `ZrebStoritev.zacet`.
+    Brisanje tekem gre skozi `izbrisiTekme`, ki najprej pretrga izvorne povezave.
+  - **Mreža:** sosednja mesta igrata v prvem kolu; dva prosta mesta drug ob drugem
+    ne smeta biti (`ZrebStoritev.mestaZaRocniVpis`). Prosta mesta so `null`.
 - **`SKUPINE` = format TOP** (npr. TOP 24 kot 3 skupine po 8):
   - igra najboljših N prijavljenih (N = `steviloSkupin` × `velikostSkupine`);
     kdor ne pride v izbor, dobi status `REZERVA` in ne igra;
