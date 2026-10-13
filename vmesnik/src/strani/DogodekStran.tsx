@@ -63,6 +63,7 @@ import {
   type Razvrstitev,
   type SkupinaFiltra,
 } from '../komponente/Filtri'
+import { DogodekObrazecOkno } from '../komponente/DogodekObrazecOkno'
 import { GlavaDejanja, GlavaNaslov, useNazaj } from '../komponente/GlavaTelefona'
 import { IskalniIzbirnik, type MoznostIzbirnika } from '../komponente/IskalniIzbirnik'
 import { IskalnikSeznama } from '../komponente/IskanjeSeznama'
@@ -157,6 +158,8 @@ export function DogodekStran() {
   /* Ročni vpis skupin namesto naključnega žreba; ročna izločilna mreža. */
   const [rocniSkupine, nastaviRocniSkupine] = useState(false)
   const [rocnaMreza, nastaviRocnaMreza] = useState(false)
+  /* Popravek imena in pravil; zaklene se z zrebom (strežnik), zato gumb stoji samo v pripravi. */
+  const [urejamDogodek, nastaviUrejamDogodek] = useState(false)
 
   const osvezi = () => odjemalec.invalidateQueries({ queryKey: ['dogodek', idDogodka] })
 
@@ -330,6 +333,19 @@ export function DogodekStran() {
                       {aktivnePrijave.length < 2 ? premaloZaZreb : zadrzekZreba}
                     </p>
                   )}
+                  {smem && vPripravi && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={() => {
+                        zapri()
+                        nastaviUrejamDogodek(true)
+                      }}
+                    >
+                      Uredi dogodek
+                    </button>
+                  )}
                   {smem && imaRocneSkupine && (vPripravi || popravljivo) && (
                     <button
                       type="button"
@@ -420,6 +436,11 @@ export function DogodekStran() {
                   {zreb.isPending ? 'Žrebam …' : 'Izvedi žreb'}
                 </button>
               )}
+              {smem && vPripravi && (
+                <button className="gumb" onClick={() => nastaviUrejamDogodek(true)}>
+                  Uredi dogodek
+                </button>
+              )}
               {smem && imaRocneSkupine && (vPripravi || popravljivo) && (
                 <button
                   className="gumb"
@@ -466,6 +487,19 @@ export function DogodekStran() {
         )
       ) : (
         <Tekmovanje podatki={podatki} klik={klik} osvezi={osvezi} jeAdmin={smem} />
+      )}
+
+      {urejamDogodek && (
+        <DogodekObrazecOkno
+          idTurnirja={dogodek.idTurnir}
+          dogodek={dogodek}
+          imaPrijave={podatki.prijave.length > 0}
+          onZapri={() => nastaviUrejamDogodek(false)}
+          onShranjeno={() => {
+            osvezi()
+            odjemalec.invalidateQueries({ queryKey: ['turnir', dogodek.idTurnir, 'dogodki'] })
+          }}
+        />
       )}
 
       {potrjujemZreb && (

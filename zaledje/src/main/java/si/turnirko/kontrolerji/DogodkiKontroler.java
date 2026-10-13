@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import si.turnirko.dto.DogodekDto;
+import si.turnirko.dto.DogodekVnos;
 import si.turnirko.dto.EkipaDto;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.IzborDto;
@@ -383,6 +384,12 @@ public class DogodkiKontroler {
     @PostMapping("/prijave/{idPrijave}/odstop")
     public PrijavaDto odstop(@PathVariable Long idPrijave) {
         return PrijavaDto.iz(tekmaStoritev.odstopiIgralca(idPrijave));
+    }
+
+    /* Popravek imena in pravil dogodka; dovoljen samo, dokler zreb se ni narejen. */
+    @PutMapping("/{id}")
+    public DogodekDto uredi(@PathVariable Long id, @Valid @RequestBody DogodekVnos vnos) {
+        return DogodekDto.iz(turnirjiStoritev.urediDogodek(id, vnos));
     }
 
     /* Izvede zreb in vrne ustvarjene tekme. */

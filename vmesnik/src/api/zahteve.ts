@@ -116,6 +116,8 @@ export const turnirjiApi = {
 export const dogodkiApi = {
   /* Celotna slika dogodka: podatki, prijave in mreza tekem. */
   mreza: (id: number) => api.vrni<MrezaDto>(`/dogodki/${id}`),
+  /* Popravek imena in pravil; strežnik ga zavrne, ko je zreb že narejen. */
+  uredi: (id: number, vnos: DogodekVnos) => api.posodobi<DogodekDto>(`/dogodki/${id}`, vnos),
   prijaviIgralce: (id: number, idjiIgralcev: number[]) =>
     api.objavi<PrijavaDto[]>(`/dogodki/${id}/prijave`, { idjiIgralcev }),
   odjavi: (idPrijave: number) =>

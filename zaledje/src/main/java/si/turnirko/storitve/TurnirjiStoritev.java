@@ -14,6 +14,7 @@ import si.turnirko.dto.TurnirVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
+import si.turnirko.modeli.Disciplina;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Prijava;
@@ -92,25 +93,79 @@ public class TurnirjiStoritev {
         if (turnir.getStatus() == StatusTekmovanja.ZAKLJUCEN) {
             throw new DomenskaIzjema("Na zakljucen turnir ni mogoce dodajati dogodkov.");
         }
-        int steviloNizov = vnos.privzetoSteviloNizov();
-        NiziPravila.preveriSteviloNizov(steviloNizov);
-
         Dogodek dogodek = new Dogodek();
         dogodek.setTurnir(turnir);
         dogodek.setIme(vnos.ime().trim());
-        dogodek.setSpolKategorija(vnos.spolKategorija());
-        dogodek.setStarostnaKategorija(vnos.starostnaKategorija());
-        dogodek.setPrivzetoSteviloNizov(steviloNizov);
-        dogodek.setPrijavnina(vnos.prijavnina());
-        dogodek.setRokPrijave(vnos.rokPrijave());
-        // disciplina in sistem dolocita organizator; null pomeni privzeto
-        // (POSAMICNO oz. IZLOCILNI)
+        // disciplino dolocita organizator; null pomeni privzeto (POSAMICNO)
         if (vnos.disciplina() != null) {
             dogodek.setDisciplina(vnos.disciplina());
         }
-        if (vnos.sistemTekmovanja() != null) {
-            dogodek.setSistemTekmovanja(vnos.sistemTekmovanja());
+        nastaviPravila(dogodek, vnos);
+        return dogodekRepozitorij.save(dogodek);
+    }
+
+    /* Popravek imena in pravil dogodka. Dokler zreb ni narejen, je dogodek v pripravi
+       in pravila se lahko popravijo - najpogostejsi razlog je napacna nastavitev ob
+       vnosu (stevilo nizov, sistem, kategorija). Po zrebu se zaklenejo: iz pravil so
+       nastale tekme, popravek pa bi jih tiho spremenil.
+
+       Vnos je celotno novo stanje pravil in ga preverja enako kot ustvarjanje. Vrste
+       dogodka (posamicno, dvojice, ekipno) ni mogoce spremeniti, ce so na dogodku
+       ze prijave: prijava je igralec, par ali ekipa, in tega se ne da tiho pretvoriti. */
+    @Transactional
+    public Dogodek urediDogodek(Long idDogodka, DogodekVnos vnos) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        if (dogodek.getStatus() != StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Dogodek je mogoce popravljati samo, dokler zreb ni narejen.");
         }
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodek(idDogodka);
+
+        Disciplina nova = vnos.disciplina() != null ? vnos.disciplina() : Disciplina.POSAMICNO;
+        if (nova != dogodek.getDisciplina()) {
+            if (dogodek.jeEkipno() || nova == Disciplina.EKIPNO) {
+                throw new DomenskaIzjema("Ekipnega dogodka ni mogoce spremeniti v drugo vrsto"
+                        + " ali obratno. Ustvari nov dogodek.");
+            }
+            if (!prijave.isEmpty()) {
+                throw new DomenskaIzjema("Vrste dogodka ni mogoce spremeniti, ker so na dogodku"
+                        + " ze prijave.");
+            }
+            dogodek.setDisciplina(nova);
+        }
+        dogodek.setIme(vnos.ime().trim());
+
+        SpolKategorija staraKategorija = dogodek.getSpolKategorija();
+        nastaviPravila(dogodek, vnos);
+        // ekipe se po spolu preverjajo ob vpisu igralca v kader, popravka kategorije
+        // pa ne preverjamo prek kadra - zato pri ekipnem dogodku ne dovolimo
+        if (dogodek.jeEkipno() && dogodek.getSpolKategorija() != staraKategorija) {
+            throw new DomenskaIzjema("Kategorije ekipnega dogodka ni mogoce spremeniti.");
+        }
+        preveriPrijaveNaPravila(dogodek, prijave);
+        return dogodek;
+    }
+
+    /* Pravila dogodka, ki se po zrebu zaklenejo. Dodajanje in popravek jih preverjata
+       enako. Polja, ki jih vnos ne pozna (skupine, format, tekma za 3. mesto), se
+       najprej pocistijo: sicer bi popravek sistema pustil nastavitve prejsnjega. */
+    private void nastaviPravila(Dogodek dogodek, DogodekVnos vnos) {
+        NiziPravila.preveriSteviloNizov(vnos.privzetoSteviloNizov());
+        dogodek.setSpolKategorija(vnos.spolKategorija());
+        dogodek.setStarostnaKategorija(vnos.starostnaKategorija());
+        dogodek.setPrivzetoSteviloNizov(vnos.privzetoSteviloNizov());
+        dogodek.setPrijavnina(vnos.prijavnina());
+        dogodek.setRokPrijave(vnos.rokPrijave());
+        // sistem: null pomeni privzeto (IZLOCILNI)
+        dogodek.setSistemTekmovanja(vnos.sistemTekmovanja() != null
+                ? vnos.sistemTekmovanja() : SistemTekmovanja.IZLOCILNI);
+        dogodek.setSteviloSkupin(null);
+        dogodek.setVelikostSkupine(null);
+        dogodek.setSteviloNivojev(null);
+        dogodek.setFormatSrecanja(null);
+        dogodek.setZmagZaSrecanje(null);
+        dogodek.setTekmaZaTretjeMesto(false);
         preveriDisciplino(dogodek);
         nastaviEkipneNastavitve(dogodek, vnos);
         nastaviSkupinskeNastavitve(dogodek, vnos);
@@ -121,7 +176,23 @@ public class TurnirjiStoritev {
             }
             dogodek.setTekmaZaTretjeMesto(true);
         }
-        return dogodekRepozitorij.save(dogodek);
+    }
+
+    /* Prijave morajo ustrezati pravilom, ki veljajo po popravku: igralec po spolu sodi
+       v kategorijo, par pa je mesan, ce je kategorija MESANO. Odjavljeni ne igrajo, zato
+       jih ne preverjamo - ob ponovni prijavi se preverijo znova. Ekipe preskocimo, ker
+       kategorije ekipnega dogodka sploh ne spreminjamo. */
+    private void preveriPrijaveNaPravila(Dogodek dogodek, List<Prijava> prijave) {
+        for (Prijava prijava : prijave) {
+            if (prijava.jeEkipa() || prijava.getStatus() == Prijava.StatusPrijave.ODJAVLJEN) {
+                continue;
+            }
+            preveriSpolZaKategorijo(prijava.getIgralec(), dogodek.getSpolKategorija());
+            if (prijava.jePar()) {
+                preveriSpolZaKategorijo(prijava.getIgralec2(), dogodek.getSpolKategorija());
+                preveriMesanPar(dogodek, prijava.getIgralec(), prijava.getIgralec2());
+            }
+        }
     }
 
     /* Ekipni dogodek potrebuje format srecanja; prag zmag je privzeto
