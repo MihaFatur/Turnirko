@@ -33,7 +33,7 @@ interface Lastnosti {
 
 export function EkipeDogodka({ dogodek, smem, dejanje }: Lastnosti) {
   const odjemalec = useQueryClient()
-  const vPripravi = dogodek.status === 'PRIPRAVA'
+  const vPripravi = dogodek.dejanskiStatus === 'PRIPRAVA'
   const koncan = dogodek.status === 'ZAKLJUCEN'
   const potrebno = dogodek.formatSrecanja ? igralcevFormata(dogodek.formatSrecanja) : 0
   const ekipe = useQuery({
@@ -265,7 +265,7 @@ function KaderEkipe({
     queryFn: igralciApi.seznam,
     enabled: urejanje,
   })
-  const vPripravi = dogodek.status === 'PRIPRAVA'
+  const vPripravi = dogodek.dejanskiStatus === 'PRIPRAVA'
 
   const osvezi = () => {
     odjemalec.invalidateQueries({ queryKey: ['kader-dogodka', ekipa.id] })

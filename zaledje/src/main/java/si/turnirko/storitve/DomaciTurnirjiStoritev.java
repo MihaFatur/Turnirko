@@ -35,6 +35,7 @@ import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StarostniPas;
+import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
@@ -100,8 +101,10 @@ public class DomaciTurnirjiStoritev {
         turnirji.forEach(t -> datumi.put(t.getId(), t.getDatumZacetka()));
         Map<Long, Boolean> primerni = primerniRazpisi(igralec, datumi, danes);
 
+        /* Izbor ocenjuje stanje, kakrsno gledalec vidi: zreb pred datumom ni "v teku". */
         List<IzborTurnirjev.Kandidat> kandidati = turnirji.stream()
-                .map(t -> new IzborTurnirjev.Kandidat(t.getId(), t.getDatumZacetka(), t.getStatus(),
+                .map(t -> new IzborTurnirjev.Kandidat(t.getId(), t.getDatumZacetka(),
+                        StatusTekmovanja.zaPrikaz(t.getStatus(), t.getDatumZacetka(), danes),
                         t.getRaven(), primerni.getOrDefault(t.getId(), true),
                         kolegi.contains(t.getId()), moji.contains(t.getId())))
                 .toList();

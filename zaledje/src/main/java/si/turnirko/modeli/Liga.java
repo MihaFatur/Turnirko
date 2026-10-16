@@ -4,6 +4,7 @@
    ustvarjanju. Lige so lahko povezane (id_visja_liga) za prehode med sezonami. */
 package si.turnirko.modeli;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
@@ -264,6 +265,12 @@ public class Liga {
 
     public LocalDateTime getZacetekPrvegaKola() { return zacetekPrvegaKola; }
     public void setZacetekPrvegaKola(LocalDateTime zacetekPrvegaKola) { this.zacetekPrvegaKola = zacetekPrvegaKola; }
+
+    /* Dan zacetka lige (prvo kolo) - po njem StatusTekmovanja.zaPrikaz presodi, ali je
+       liga z razporedom ze "v teku". Brez zacetka je null (pravilo ostane kot doslej). */
+    public LocalDate zacetekDne() {
+        return zacetekPrvegaKola == null ? null : zacetekPrvegaKola.toLocalDate();
+    }
 
     public Integer getRazmikDni() { return razmikDni; }
     public void setRazmikDni(Integer razmikDni) { this.razmikDni = razmikDni; }

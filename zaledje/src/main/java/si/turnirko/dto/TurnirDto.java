@@ -81,7 +81,7 @@ public record TurnirDto(
                 turnir.getDvorana(),
                 turnir.getDatumZacetka(),
                 turnir.getDatumKonca(),
-                turnir.getStatus(),
+                StatusTekmovanja.zaPrikaz(turnir.getStatus(), turnir.getDatumZacetka()),
                 turnir.getOpombe(),
                 turnir.getRaven(),
                 turnir.getUstvaril() != null ? turnir.getUstvaril().getId() : null,

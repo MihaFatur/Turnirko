@@ -1,8 +1,8 @@
 /* Podatki o ponudniku za stran Pogoji in zasebnost (/pogoji).
 
    Na enem mestu, ker jih bere več strani (pogoji, zasebnost, kasneje računi)
-   in se spremenijo hkrati. Prodajalec naročnin je Namiznoteniški klub Žalec
-   (odločitev lastnika, 28. 9. 2026). Kar je null, še ni vpisano - stran
+   in se spremenijo hkrati. Prodajalec naročnin je Jaka Golavšek s.p.
+   (odločitev lastnika, 12. 10. 2026; prej NTK Žalec). Kar je null, še ni vpisano - stran
    vrstico izpusti, zato jih DOPOLNI pred objavo: brez naslova in e-pošte
    pogoji ne izpolnjujejo zahteve ZEPT po stalno dostopnih podatkih o
    ponudniku, brez kontakta pa igralec ne more uveljavljati pravic. */
@@ -15,12 +15,12 @@ export const PONUDNIK: {
   /* Kje teče strežnik (ime ponudnika gostovanja) - obdelovalec podatkov. */
   gostovanje: string | null
 } = {
-  ime: 'Namiznoteniški klub Žalec',
-  naslov: null,
-  maticna: null,
-  davcna: null,
-  eposta: null,
-  gostovanje: null,
+  ime: 'Jaka Golavšek s.p.',
+  naslov: 'Šešče pri Preboldu 6, 3312 Prebold',
+  maticna: '7178638000',
+  davcna: '19045301',
+  eposta: 'info@turnirko-nt.si',
+  gostovanje: 'Herznet',
 }
 
 /* Od kdaj veljajo objavljeni pogoji (ISO datum); null = se ne izpiše. */

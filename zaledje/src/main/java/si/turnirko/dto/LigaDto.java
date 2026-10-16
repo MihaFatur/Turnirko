@@ -57,7 +57,12 @@ public record LigaDto(
         // izpadom igra kvalifikacije s sosednjo ligo
         int stKvalifikacijeGor,
         int stKvalifikacijeDol,
+        // Kar vidi gledalec: pred zacetkom lige je po razporedu "V pripravi" (glej
+        // StatusTekmovanja.zaPrikaz). Dejanski status je v dejanskiStatus.
         StatusTekmovanja status,
+        // Stanje, po katerem streznik odloca (razpored, rezultati, kolo). Vmesnik ga
+        // bere za kontrole, napis pa za status.
+        StatusTekmovanja dejanskiStatus,
         int steviloEkip,
         // Napredek rednega dela: koliko kol ima razpored in koliko jih je za
         // nami. Kolo je odigrano, ko je njegov datum mimo (kolo brez datuma,
@@ -119,7 +124,8 @@ public record LigaDto(
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getId() : null,
                 l.getVisjaLiga() != null ? l.getVisjaLiga().getIme() : null,
                 l.getStNapreduje(), l.getStIzpade(),
-                l.getStKvalifikacijeGor(), l.getStKvalifikacijeDol(), l.getStatus(), steviloEkip,
+                l.getStKvalifikacijeGor(), l.getStKvalifikacijeDol(),
+                StatusTekmovanja.zaPrikaz(l.getStatus(), l.zacetekDne()), l.getStatus(), steviloEkip,
                 odigranaKola.size(), steviloKol, odigranaKola, naslednje, l.isNaDomaci(),
                 l.getUstvaril() != null ? l.getUstvaril().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getId() : null,

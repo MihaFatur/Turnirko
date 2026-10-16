@@ -147,7 +147,7 @@ public class DomovStoritev {
             lige = poIzboru(ogledane).stream().limit(PRIVZETO_LIG).toList();
         } else {
             lige = ligaRepozitorij.najdiVse().stream()
-                    .filter(l -> l.getStatus() == StatusTekmovanja.V_TEKU)
+                    .filter(l -> StatusTekmovanja.zaPrikaz(l.getStatus(), l.zacetekDne()) == StatusTekmovanja.V_TEKU)
                     .limit(PRIVZETO_LIG)
                     .toList();
         }
@@ -171,7 +171,8 @@ public class DomovStoritev {
         }
         // razvrscanje je stabilno: znotraj stanja ostane vrstni red vpisa (id)
         return ligaRepozitorij.najdiNezakljuceneZaIgralca(jaz).stream()
-                .sorted(Comparator.comparing(l -> l.getStatus() != StatusTekmovanja.V_TEKU))
+                .sorted(Comparator.comparing(l -> StatusTekmovanja.zaPrikaz(l.getStatus(), l.zacetekDne())
+                        != StatusTekmovanja.V_TEKU))
                 .toList();
     }
 
@@ -219,7 +220,8 @@ public class DomovStoritev {
 
         PotekLige.Naslednje naslednje = potek.naslednje();
         return new DomovLigaDto(
-                liga.getId(), liga.getIme(), liga.getSezona(), liga.getStatus(),
+                liga.getId(), liga.getIme(), liga.getSezona(),
+                StatusTekmovanja.zaPrikaz(liga.getStatus(), liga.zacetekDne()),
                 potek.odigranih(), potek.vseh(), vrh, lestvica.size(),
                 naslednje == null ? null : new DomovLigaDto.Naslednje(naslednje.kolo(), naslednje.datum()),
                 izEkipe);

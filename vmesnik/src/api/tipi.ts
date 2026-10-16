@@ -208,7 +208,12 @@ export interface DogodekDto {
   velikostSkupine: number | null
   prijavnina: number | null
   rokPrijave: string | null
+  /* Kar vidi gledalec. Pred datumom turnirja je po zrebu "V pripravi". */
   status: StatusTekmovanja
+  /* Stanje, po katerem streznik odloca (prijave, zreb, rezultati). Razlikuje se
+     od statusa samo pred datumom turnirja po zrebu: tedaj so prijave zaprte, zreb
+     pa se da popraviti. Kontrole vmesnika berejo to, napise pa status. */
+  dejanskiStatus: StatusTekmovanja
   /* Stevci vrstice dogodka: palica napredka je edino, kar loci dogodek
      z 12 igralci od dogodka s 100. */
   steviloPrijav: number
@@ -471,15 +476,17 @@ export interface SvNivoPredlogDto {
   skupine: SvSkupinaPredlogDto[]
 }
 
-/* Igralec z jakostnim mestom v skupini (ročni vpis skupin in predlog). */
+/* Igralec na poziciji v skupini (ročni vpis skupin): 1 = najmočnejši v svoji skupini.
+   Pozicija ni nosilec turnirja; vsaka skupina ima svoje 1., 2., ... mesto. */
 export interface RocniClanVnos {
   idPrijave: number
-  nosilec: number
+  pozicija: number
 }
 
+/* Pri rezervah (format TOP) pozicije v skupini ni, zato je null. */
 export interface PredlogClanDto {
   idPrijave: number
-  nosilec: number
+  pozicija: number | null
 }
 
 /* Predlog skupin za ročni vpis: skupine po vrsti A, B ...; rezerve so samo pri formatu
@@ -1466,7 +1473,10 @@ export interface LigaDto {
      oz. tik nad neposrednim izpadom (dol) igra kvalifikacije s sosednjo ligo. */
   stKvalifikacijeGor: number
   stKvalifikacijeDol: number
+  /* Kar vidi gledalec: po razporedu je pred zacetkom lige "V pripravi". */
   status: StatusTekmovanja
+  /* Dejanski status, po katerem streznik odloca; kontrole vmesnika berejo tega. */
+  dejanskiStatus: StatusTekmovanja
   steviloEkip: number
   /* Napredek rednega dela: koliko kol ima razpored in koliko jih je za nami.
      Kolo je odigrano, ko je njegov datum mimo (kolo brez datuma, ko je končano

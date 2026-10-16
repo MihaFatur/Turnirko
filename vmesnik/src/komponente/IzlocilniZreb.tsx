@@ -79,7 +79,7 @@ export function IzlocilniZrebDel({
   )
   if (
     podatki.dogodek.sistemTekmovanja !== 'SKUPINE_IZLOCILNI'
-    || podatki.dogodek.status !== 'V_TEKU'
+    || podatki.dogodek.dejanskiStatus !== 'V_TEKU'
     || !skupineKoncane
     || zacet
   ) {

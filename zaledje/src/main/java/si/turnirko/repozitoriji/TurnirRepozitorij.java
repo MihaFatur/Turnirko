@@ -58,6 +58,15 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             """)
     List<Turnir> najdiVObdobju(LocalDate od, LocalDate doKdaj);
 
+    /* Turnirji, ki imajo zreb (dejanski V_TEKU), a se ne zacnejo do danes - gledalcu
+       se kazejo "V pripravi" (StatusTekmovanja.zaPrikaz). Vrne samo id-je. */
+    @Query("""
+            SELECT t.id FROM Turnir t
+            WHERE t.status = si.turnirko.modeli.StatusTekmovanja.V_TEKU
+              AND t.datumZacetka > :danes
+            """)
+    List<Long> idjiZrebanihPrihodnjih(LocalDate danes);
+
     // ---------- Lastnistvo (za preverjanje pravice organizatorja) ----------
     // Vse variante nalozijo ustvaril + klubLastnik; po njiju LastnistvoStoritev
     // razsodi, kdo sme urejati. Otroske poti (dogodek/prijava/tekma) razresijo

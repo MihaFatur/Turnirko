@@ -27,6 +27,10 @@ public record DogodekDto(
         Double prijavnina,
         LocalDate rokPrijave,
         StatusTekmovanja status,
+        /* Stanje, po katerem streznik odloca (zreb, prijave, tekme). Od statusa se razlikuje
+           samo pred datumom turnirja, ko je zreb ze narejen: gledalec vidi "V pripravi",
+           vmesnik pa mora vedeti, da so prijave zaprte in da je zreb se popravljiv. */
+        StatusTekmovanja dejanskiStatus,
         /* Stevci za vrstico dogodka: koliko ljudi igra in koliko je odigranega.
            Palica napredka je edino, kar loci dogodek z 12 igralci od dogodka
            s 100, zato stojita oba podatka ze v seznamu dogodkov. */
@@ -66,6 +70,7 @@ public record DogodekDto(
                 dogodek.getVelikostSkupine(),
                 dogodek.getPrijavnina(),
                 dogodek.getRokPrijave(),
+                StatusTekmovanja.zaPrikaz(dogodek.getStatus(), dogodek.getTurnir().getDatumZacetka()),
                 dogodek.getStatus(),
                 steviloPrijav,
                 odigranihTekem,

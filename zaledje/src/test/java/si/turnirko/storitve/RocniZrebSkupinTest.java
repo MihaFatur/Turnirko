@@ -32,17 +32,17 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
 
     @Autowired private IzlocilniZrebStoritev izlocilniZrebStoritev;
 
-    /* Clan skupine: prijava z nosilcem (jakostnim mestom). */
-    private static RocniSkupineVnos.Clan clan(Prijava prijava, int nosilec) {
-        return new RocniSkupineVnos.Clan(prijava.getId(), nosilec);
+    /* Clan skupine: prijava na poziciji v skupini (1 = najmocnejsi v njej). */
+    private static RocniSkupineVnos.Clan clan(Prijava prijava, int pozicija) {
+        return new RocniSkupineVnos.Clan(prijava.getId(), pozicija);
     }
 
-    /* Skupine za osem prijav: A = indeksi 0, 5, 6, 7 (nosilci 1, 3, 6, 8),
-       B = indeksi 1, 2, 3, 4 (nosilci 2, 4, 5, 7). Skupine niso po vrsti prijav. */
+    /* Skupine za osem prijav: A = indeksi 0, 5, 6, 7 (pozicije 1-4 v A),
+       B = indeksi 1, 2, 3, 4 (pozicije 1-4 v B). Skupine niso po vrsti prijav. */
     private static List<List<RocniSkupineVnos.Clan>> osemPrijavVDveSkupini(List<Prijava> p) {
         return List.of(
-                List.of(clan(p.get(0), 1), clan(p.get(5), 3), clan(p.get(6), 6), clan(p.get(7), 8)),
-                List.of(clan(p.get(1), 2), clan(p.get(2), 4), clan(p.get(3), 5), clan(p.get(4), 7)));
+                List.of(clan(p.get(0), 1), clan(p.get(5), 2), clan(p.get(6), 3), clan(p.get(7), 4)),
+                List.of(clan(p.get(1), 1), clan(p.get(2), 2), clan(p.get(3), 3), clan(p.get(4), 4)));
     }
 
     private static Prijava prijava(List<Prijava> prijave, int indeks) {
@@ -76,6 +76,20 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
                 "vsaka tekma je znotraj ene skupine");
         assertEquals(StatusTekmovanja.V_TEKU,
                 dogodekRepozitorij.findById(dogodek.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void jakostnoMestoSeIzpeljeIzPozicijVSkupini() {
+        Dogodek dogodek = pripraviDogodek(8, SistemTekmovanja.SKUPINE_IZLOCILNI);
+        List<Prijava> prijave = prijavePoVrsti(dogodek.getId());
+
+        zrebStoritev.izvediRocniZrebSkupin(dogodek.getId(), osemPrijavVDveSkupini(prijave));
+
+        // najprej pozicija v skupini (1. v A pred 1. v B, nato 2. v A pred 2. v B ...)
+        assertEquals(1, osvezi(prijava(prijave, 0)).getStNosilca(), "1. v A");
+        assertEquals(2, osvezi(prijava(prijave, 1)).getStNosilca(), "1. v B");
+        assertEquals(7, osvezi(prijava(prijave, 7)).getStNosilca(), "4. v A");
+        assertEquals(8, osvezi(prijava(prijave, 4)).getStNosilca(), "4. v B");
     }
 
     @Test
@@ -129,8 +143,8 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
                 dogodek.getId(), List.of(
                         List.of(clan(prijave.get(0), 1), clan(prijave.get(1), 2),
                                 clan(prijave.get(2), 3), clan(prijave.get(3), 4)),
-                        List.of(clan(prijave.get(4), 5), clan(prijave.get(5), 6),
-                                clan(prijave.get(6), 7)))));
+                        List.of(clan(prijave.get(4), 1), clan(prijave.get(5), 2),
+                                clan(prijave.get(6), 3)))));
     }
 
     @Test
@@ -141,9 +155,9 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
                 dogodek.getId(), List.of(
                         List.of(clan(prijave.get(0), 1), clan(prijave.get(1), 2),
                                 clan(prijave.get(2), 3), clan(prijave.get(3), 4)),
-                        List.of(clan(prijave.get(3), 5), clan(prijave.get(4), 6),
-                                clan(prijave.get(5), 7), clan(prijave.get(6), 8),
-                                clan(prijave.get(7), 9)))));
+                        List.of(clan(prijave.get(3), 1), clan(prijave.get(4), 2),
+                                clan(prijave.get(5), 3), clan(prijave.get(6), 4),
+                                clan(prijave.get(7), 5)))));
     }
 
     @Test
@@ -156,7 +170,7 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
                                 clan(prijave.get(2), 3), clan(prijave.get(3), 4),
                                 clan(prijave.get(4), 5), clan(prijave.get(5), 6),
                                 clan(prijave.get(6), 7)),
-                        List.of(clan(prijave.get(7), 8)))));
+                        List.of(clan(prijave.get(7), 1)))));
     }
 
     @Test
@@ -169,23 +183,23 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
     }
 
     @Test
-    void nosilciMoraIzPrijavitiNatanko() {
+    void pozicijeVSkupiniMorajoBitiEnolicneInDoVelikosti() {
         Dogodek dogodek = pripraviDogodek(8, SistemTekmovanja.SKUPINE_IZLOCILNI);
         List<Prijava> prijave = prijavePoVrsti(dogodek.getId());
-        // dvakrat nosilec 1 - dvojnik
+        // dvakrat pozicija 1 v isti skupini - dvojnik
         assertThrows(NeveljavenVnosIzjema.class, () -> zrebStoritev.izvediRocniZrebSkupin(
                 dogodek.getId(), List.of(
                         List.of(clan(prijave.get(0), 1), clan(prijave.get(1), 1),
                                 clan(prijave.get(2), 3), clan(prijave.get(3), 4)),
-                        List.of(clan(prijave.get(4), 5), clan(prijave.get(5), 6),
-                                clan(prijave.get(6), 7), clan(prijave.get(7), 8)))));
-        // nosilec 8 manjka (vpisanih je 8, nosilci morajo biti 1..8)
+                        List.of(clan(prijave.get(4), 1), clan(prijave.get(5), 2),
+                                clan(prijave.get(6), 3), clan(prijave.get(7), 4)))));
+        // pozicija 5 v skupini s štirimi igralci ne obstaja
         assertThrows(NeveljavenVnosIzjema.class, () -> zrebStoritev.izvediRocniZrebSkupin(
                 dogodek.getId(), List.of(
                         List.of(clan(prijave.get(0), 1), clan(prijave.get(1), 2),
                                 clan(prijave.get(2), 3), clan(prijave.get(3), 4)),
-                        List.of(clan(prijave.get(4), 5), clan(prijave.get(5), 6),
-                                clan(prijave.get(6), 7), clan(prijave.get(7), 9)))));
+                        List.of(clan(prijave.get(4), 1), clan(prijave.get(5), 2),
+                                clan(prijave.get(6), 3), clan(prijave.get(7), 5)))));
     }
 
     @Test
@@ -292,9 +306,9 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
 
         // popravek: nove skupine (tri namesto dveh) nadomestijo prejsnje
         zrebStoritev.izvediRocniZrebSkupin(dogodek.getId(), List.of(
-                List.of(clan(prijave.get(0), 1), clan(prijave.get(1), 4), clan(prijave.get(2), 7)),
-                List.of(clan(prijave.get(3), 2), clan(prijave.get(4), 5), clan(prijave.get(5), 8)),
-                List.of(clan(prijave.get(6), 3), clan(prijave.get(7), 6))));
+                List.of(clan(prijave.get(0), 1), clan(prijave.get(1), 2), clan(prijave.get(2), 3)),
+                List.of(clan(prijave.get(3), 1), clan(prijave.get(4), 2), clan(prijave.get(5), 3)),
+                List.of(clan(prijave.get(6), 1), clan(prijave.get(7), 2))));
 
         assertEquals(3, skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId()).size());
         assertEquals(StatusTekmovanja.V_TEKU,

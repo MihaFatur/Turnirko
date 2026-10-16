@@ -27,6 +27,7 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.Srecanje;
+import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.pomozno.SlovenskaAbeceda;
 import si.turnirko.repozitoriji.SrecanjeRepozitorij;
@@ -94,7 +95,7 @@ public class KoledarStoritev {
                 t.getDvorana(),
                 null,
                 imeKluba(t.getKlubLastnik()),
-                t.getStatus(),
+                StatusTekmovanja.zaPrikaz(t.getStatus(), t.getDatumZacetka()),
                 List.of());
     }
 
@@ -163,7 +164,7 @@ public class KoledarStoritev {
                     null,
                     liga.getSezona(),
                     imeKluba(liga.getKlubLastnik()),
-                    liga.getStatus(),
+                    StatusTekmovanja.zaPrikaz(liga.getStatus(), liga.zacetekDne()),
                     List.copyOf(pari));
         }
     }

@@ -110,6 +110,13 @@
 - Vsaka sprememba domenske logike (žreb, rezultati, rating) MORA imeti test.
   Testi: `cd zaledje && mvnw test`.
 - Statuse določa strežnik; prehodi stanj se preverjajo v storitvah.
+- **Status, ki ga vidi gledalec, ni vedno dejanski.** Zreb turnirja ali razpored
+  lige pred datumom začetka je dejansko `V_TEKU` (prijave zaprte, popravek mogoč),
+  gledalcu pa je »V pripravi« do tega dne (`StatusTekmovanja.zaPrikaz`, odločitev
+  lastnika, okt 2026; za lige datum prvega kola). `TurnirDto`, `DogodekDto` in
+  `LigaDto` nosijo prikazni `status`; `dejanskiStatus` nosi dejanskega, po katerem
+  vmesnik odloča o kontrolah. Storitve in prehodi berejo SAMO dejanski status
+  (entiteta), nikoli `zaPrikaz`.
 - Rating se spreminja izključno prek `RatingStoritev` (dnevnik v `rating_zgodovina`).
 - **Vsako tekmovanje ima RAVEN, ta pa težo v ratingu** (`RavenTekmovanja`,
   `turnir.raven` in `liga.raven`, V20 — nadomešča prejšnjo zastavico
@@ -915,9 +922,13 @@
   in `KDORKOLI` ni izbira (obrazec lige našteje svoje tri možnosti sam).
 - **Ročni žreb skupin in izločilne mreže** (okt 2026). Žreb skupin (vsi sistemi z
   jakostnimi skupinami, razen SV regije, ki ima svoj vpis) lahko organizator vpiše
-  ročno: vsak igralec dobi skupino **in nosilca** (jakostno mesto). Vpis konča v isti
-  točki kot zreb (`ZrebStoritev.zapisiSkupineIzlocilni`), zato tekme in napredovanje
-  tečejo po nespremenjeni kodi; predlog (`POST …/skupine/predlog`) je zreb brez zapisa.
+  ročno: vsak igralec dobi skupino **in pozicijo v skupini** (`RocniClanVnos.pozicija`,
+  1 = najmočnejši v svoji skupini). **Pozicija ni nosilec turnirja** — vsaka skupina ima
+  svoje 1., 2., … mesto, in pozicije so v skupini brez lukenj. Strežnik iz njih izpelje
+  `Prijava.stNosilca` (najprej pozicija, nato skupina A pred B; rezerve po ratingu).
+  Vpis konča v isti točki kot zreb (`ZrebStoritev.zapisiSkupineIzlocilni`), zato tekme in
+  napredovanje tečejo po nespremenjeni kodi; predlog (`POST …/skupine/predlog`) je zreb
+  brez zapisa in vrne pozicije (rezerve brez pozicije).
   - **Izločilni del po skupinah NE nastane sam** (`SKUPINE_IZLOCILNI`, tudi SV
     regija): ko se skupine končajo, organizator izbere računalniški žreb ali ročno
     mrežo (`IzlocilniZrebStoritev`, `POST …/izlocilni/zreb`, `PUT …/izlocilni/mesta`).

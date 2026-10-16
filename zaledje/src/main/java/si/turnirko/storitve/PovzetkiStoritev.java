@@ -9,8 +9,10 @@
 package si.turnirko.storitve;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,7 @@ import si.turnirko.modeli.Tekma;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
+import si.turnirko.repozitoriji.TurnirRepozitorij;
 
 @Service
 public class PovzetkiStoritev {
@@ -30,13 +33,16 @@ public class PovzetkiStoritev {
     private final DogodekRepozitorij dogodekRepozitorij;
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
+    private final TurnirRepozitorij turnirRepozitorij;
 
     public PovzetkiStoritev(DogodekRepozitorij dogodekRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
-                            TekmaRepozitorij tekmaRepozitorij) {
+                            TekmaRepozitorij tekmaRepozitorij,
+                            TurnirRepozitorij turnirRepozitorij) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
+        this.turnirRepozitorij = turnirRepozitorij;
     }
 
     /* Stevci enega dogodka: prijavljenih, odigranih tekem, vseh tekem. */
@@ -52,16 +58,27 @@ public class PovzetkiStoritev {
         Map<Long, long[]> tekme = vVrstice(tekmaRepozitorij.stejPoTurnirjih(), 2);
         Map<Long, long[]> prijave = vVrstice(
                 prijavaRepozitorij.stejPoTurnirjih(Prijava.StatusPrijave.ODJAVLJEN), 1);
+        Set<Long> zrebaniPrihodnji = prihodnjiZrebi();
 
         Map<Long, TurnirDto.Stevci> povzetki = new HashMap<>();
         for (Map.Entry<Long, long[]> vnos : dogodki.entrySet()) {
             long[] d = vnos.getValue();
             long[] t = tekme.getOrDefault(vnos.getKey(), new long[2]);
             long[] p = prijave.getOrDefault(vnos.getKey(), new long[1]);
+            // zreb pred datumom turnirja je se "V pripravi" (StatusTekmovanja.zaPrikaz)
+            boolean pripravljen = zrebaniPrihodnji.contains(vnos.getKey());
+            long vTeku = pripravljen ? 0 : d[1];
+            long vPripravi = pripravljen ? d[1] + d[2] : d[2];
             povzetki.put(vnos.getKey(), new TurnirDto.Stevci(
-                    (int) d[0], (int) d[1], (int) d[2], (int) p[0], (int) t[1], (int) t[0]));
+                    (int) d[0], (int) vTeku, (int) vPripravi, (int) p[0], (int) t[1], (int) t[0]));
         }
         return povzetki;
+    }
+
+    /* Turnirji z zrebom, ki se se ne zacnejo: gledalcu so "V pripravi", zato njihovih
+       faz ne smemo izpisati kot da tekmujejo. */
+    private Set<Long> prihodnjiZrebi() {
+        return new HashSet<>(turnirRepozitorij.idjiZrebanihPrihodnjih(PotekLige.danes()));
     }
 
     /* Stevci enega turnirja (za njegovo stran). */
@@ -120,11 +137,12 @@ public class PovzetkiStoritev {
                             + t.getPrijava2().prikazaniPriimek());
         }
 
+        Set<Long> zrebaniPrihodnji = prihodnjiZrebi();
         Map<Long, TurnirDto.Potek> poteki = new HashMap<>();
         for (Long idTurnir : vsiKljuci(faze, zmagovalci, zadnjiIzidi)) {
             Kandidat faza = faze.get(idTurnir);
             poteki.put(idTurnir, new TurnirDto.Potek(
-                    faza != null ? faza.opis() : null,
+                    faza != null && !zrebaniPrihodnji.contains(idTurnir) ? faza.opis() : null,
                     zmagovalci.get(idTurnir),
                     zadnjiIzidi.get(idTurnir)));
         }

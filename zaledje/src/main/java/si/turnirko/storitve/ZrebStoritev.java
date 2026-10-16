@@ -29,7 +29,6 @@ package si.turnirko.storitve;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -259,8 +258,8 @@ public class ZrebStoritev {
     }
 
     /* ROCNI vpis skupin namesto nakljucnega zreba: organizator pove, kdo je v kateri
-       skupini in kot kateri nosilec (jakostni vrstni red, 1 = najmocnejsi). Pri formatu
-       TOP ostali prijavljeni niso v izboru - so rezerve, kot pri zrebu.
+       skupini in na kateri poziciji v njej (1 = najmocnejsi v skupini; to ni nosilec
+       turnirja). Pri formatu TOP ostali prijavljeni niso v izboru - so rezerve, kot pri zrebu.
 
        Konca v isti tocki kot zreb (zapisiSkupineIzlocilni), zato krozne tekme, lestvice,
        izlocilni del in rating tecejo po nespremenjeni kodi. Ce skupine ze obstajajo in se
@@ -306,38 +305,41 @@ public class ZrebStoritev {
         for (Prijava p : prijave) {
             poId.put(p.getId(), p);
         }
-        Map<Long, Integer> nosilecPoId = new HashMap<>();
-        Set<Integer> zasedeniNosilci = new HashSet<>();
+        Map<Long, Integer> pozicijaPoId = new HashMap<>();
         List<List<Prijava>> poSkupinah = new ArrayList<>();
         for (List<RocniSkupineVnos.Clan> skupina : skupine) {
             if (skupina == null || skupina.size() < 2) {
                 throw new NeveljavenVnosIzjema("V vsaki skupini morata biti vsaj dve prijavi.");
             }
-            List<Prijava> clani = new ArrayList<>();
+            // mesta 1..velikost; ker je vsako mesto zasedeno natanko enkrat, je skupina po vrsti
+            Prijava[] poMestih = new Prijava[skupina.size()];
             for (RocniSkupineVnos.Clan clan : skupina) {
-                if (clan == null || clan.idPrijave() == null || clan.nosilec() == null) {
-                    throw new NeveljavenVnosIzjema("Vsak igralec v skupini mora imeti nosilca.");
+                if (clan == null || clan.idPrijave() == null || clan.pozicija() == null) {
+                    throw new NeveljavenVnosIzjema("Vsak igralec v skupini mora imeti pozicijo v skupini.");
                 }
                 Prijava prijava = poId.get(clan.idPrijave());
                 if (prijava == null) {
                     throw new NeveljavenVnosIzjema("Prijava " + clan.idPrijave()
                             + " ni prijavljena na ta dogodek.");
                 }
-                if (nosilecPoId.containsKey(prijava.getId())) {
+                if (pozicijaPoId.containsKey(prijava.getId())) {
                     throw new NeveljavenVnosIzjema("Prijava " + clan.idPrijave() + " je vpisana v več skupin.");
                 }
-                if (!zasedeniNosilci.add(clan.nosilec())) {
-                    throw new NeveljavenVnosIzjema("Nosilec " + clan.nosilec() + " je dodeljen dvema igralcema.");
+                int pozicija = clan.pozicija();
+                if (pozicija < 1 || pozicija > skupina.size()) {
+                    throw new NeveljavenVnosIzjema("Pozicija v skupini mora biti od 1 do " + skupina.size()
+                            + ", vpisana je " + pozicija + ".");
                 }
-                nosilecPoId.put(prijava.getId(), clan.nosilec());
-                clani.add(prijava);
+                if (poMestih[pozicija - 1] != null) {
+                    throw new NeveljavenVnosIzjema("V skupini sta dva igralca na " + pozicija + ". mestu.");
+                }
+                poMestih[pozicija - 1] = prijava;
+                pozicijaPoId.put(prijava.getId(), pozicija);
             }
-            // najmocnejsi prvi, kot pri zrebu: krozni razpored igra prvega z najsibkejsim
-            clani.sort(Comparator.comparingInt(p -> nosilecPoId.get(p.getId())));
-            poSkupinah.add(clani);
+            poSkupinah.add(new ArrayList<>(Arrays.asList(poMestih)));
         }
 
-        int vpisanih = nosilecPoId.size();
+        int vpisanih = pozicijaPoId.size();
         if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE) {
             if (dogodek.getSteviloSkupin() == null || dogodek.getVelikostSkupine() == null) {
                 throw new DomenskaIzjema("Dogodek nima nastavljenega števila skupin in velikosti skupine.");
@@ -351,11 +353,17 @@ public class ZrebStoritev {
             throw new NeveljavenVnosIzjema("V skupine morajo biti razporejeni vsi prijavljeni ("
                     + prijave.size() + "), vpisanih je " + vpisanih + ".");
         }
-        // nosilci igralcev v skupinah so 1 do vpisanih - brez lukenj in podvojitev
-        for (int n = 1; n <= vpisanih; n++) {
-            if (!zasedeniNosilci.contains(n)) {
-                throw new NeveljavenVnosIzjema("Nosilci morajo biti od 1 do " + vpisanih
-                        + ", manjka nosilec " + n + ".");
+        /* Jakostno mesto (Prijava.stNosilca) se izpelje iz pozicij: najprej pozicija v skupini,
+           nato skupina (A pred B). Vrstni red v vsaki skupini ostane tisti, ki ga je vpisal
+           organizator. */
+        Map<Long, Integer> nosilecPoId = new HashMap<>();
+        int naslednje = 1;
+        int najvecPozicij = poSkupinah.stream().mapToInt(List::size).max().orElse(0);
+        for (int pozicija = 0; pozicija < najvecPozicij; pozicija++) {
+            for (List<Prijava> skupina : poSkupinah) {
+                if (pozicija < skupina.size()) {
+                    nosilecPoId.put(skupina.get(pozicija).getId(), naslednje++);
+                }
             }
         }
 
@@ -399,12 +407,8 @@ public class ZrebStoritev {
                         || p.getStatus() == Prijava.StatusPrijave.REZERVA)
                 .toList();
         List<Prijava> poJakosti = izborStoritev.vrstniRed(prijave);
-        Map<Long, Integer> nosilecPoId = new HashMap<>();
-        for (int i = 0; i < poJakosti.size(); i++) {
-            nosilecPoId.put(poJakosti.get(i).getId(), i + 1);
-        }
         if (sistem == SistemTekmovanja.SKUPINE) {
-            return predlogTop(dogodek, poJakosti, nosilecPoId);
+            return predlogTop(dogodek, poJakosti);
         }
 
         int najmanj = sistem == SistemTekmovanja.SKUPINE_ZA_MESTA
@@ -422,15 +426,14 @@ public class ZrebStoritev {
         List<List<Prijava>> razpored = nosilci.vSkupine(poJakosti, stSkupin);
         List<List<SkupinePredlogDto.Clan>> skupine = new ArrayList<>();
         for (List<Prijava> skupina : razpored) {
-            skupine.add(clani(skupina, nosilecPoId));
+            skupine.add(clani(skupina));
         }
         return new SkupinePredlogDto(skupine, List.of());
     }
 
     /* Format TOP: predlog je zaporedni, kot zreb - najboljsih N v skupine po pasovih
        (A = najmocnejsa), ostali so rezerve. */
-    private SkupinePredlogDto predlogTop(Dogodek dogodek, List<Prijava> poJakosti,
-                                         Map<Long, Integer> nosilecPoId) {
+    private SkupinePredlogDto predlogTop(Dogodek dogodek, List<Prijava> poJakosti) {
         if (dogodek.getSteviloSkupin() == null || dogodek.getVelikostSkupine() == null) {
             throw new DomenskaIzjema("Dogodek nima nastavljenega števila skupin in velikosti skupine.");
         }
@@ -443,15 +446,25 @@ public class ZrebStoritev {
         List<List<SkupinePredlogDto.Clan>> skupine = new ArrayList<>();
         int od = 0;
         for (int velikost : velikosti) {
-            skupine.add(clani(poJakosti.subList(od, od + velikost), nosilecPoId));
+            skupine.add(clani(poJakosti.subList(od, od + velikost)));
             od += velikost;
         }
-        return new SkupinePredlogDto(skupine, clani(poJakosti.subList(igra, poJakosti.size()), nosilecPoId));
+        return new SkupinePredlogDto(skupine, claniRezerv(poJakosti.subList(igra, poJakosti.size())));
     }
 
-    private static List<SkupinePredlogDto.Clan> clani(List<Prijava> prijave, Map<Long, Integer> nosilecPoId) {
+    /* Clani skupine po vrsti, najmocnejsi prvi: pozicija v skupini je mesto v seznamu. */
+    private static List<SkupinePredlogDto.Clan> clani(List<Prijava> skupina) {
+        List<SkupinePredlogDto.Clan> clani = new ArrayList<>();
+        for (int i = 0; i < skupina.size(); i++) {
+            clani.add(new SkupinePredlogDto.Clan(skupina.get(i).getId(), i + 1));
+        }
+        return clani;
+    }
+
+    /* Rezerve nimajo pozicije v skupini. */
+    private static List<SkupinePredlogDto.Clan> claniRezerv(List<Prijava> prijave) {
         return prijave.stream()
-                .map(p -> new SkupinePredlogDto.Clan(p.getId(), nosilecPoId.get(p.getId())))
+                .map(p -> new SkupinePredlogDto.Clan(p.getId(), null))
                 .toList();
     }
 

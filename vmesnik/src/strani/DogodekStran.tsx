@@ -137,7 +137,7 @@ export function DogodekStran() {
      (vsaka ekipa mora imeti za mizo dovolj igralcev). Ključ je isti kot v
      seznamu ekip, zato si odgovor delita. */
   const ekipniVPripravi =
-    mreza.data?.dogodek.disciplina === 'EKIPNO' && mreza.data.dogodek.status === 'PRIPRAVA'
+    mreza.data?.dogodek.disciplina === 'EKIPNO' && mreza.data.dogodek.dejanskiStatus === 'PRIPRAVA'
   const ekipe = useQuery({
     queryKey: ['ekipe-dogodka', idDogodka],
     queryFn: () => dogodkiApi.ekipe(idDogodka),
@@ -193,7 +193,9 @@ export function DogodekStran() {
   const smem = !uvozen
     && (jeAdmin || (!!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik)))
 
-  const vPripravi = dogodek.status === 'PRIPRAVA'
+  /* Kontrole sledijo dejanskemu stanju, napis (status) pa gledalcu: po zrebu, pred
+     datumom turnirja, so prijave zaprte, zreb pa je se popravljiv. */
+  const vPripravi = dogodek.dejanskiStatus === 'PRIPRAVA'
   const aktivnePrijave = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
   /* Zadržek pove strežnik (npr. zadnja skupina bi imela enega igralca),
      da vmesnik ne podvaja pravil razreza. */
@@ -226,7 +228,7 @@ export function DogodekStran() {
   const zacetaTekma = podatki.tekme.some(
     (t) => t.status === 'V_IGRI' || (t.status === 'KONCANA' && t.izidTip !== 'PROSTO'),
   )
-  const popravljivo = dogodek.status === 'V_TEKU' && !zacetaTekma
+  const popravljivo = dogodek.dejanskiStatus === 'V_TEKU' && !zacetaTekma
   const rocniOnemogocen = aktivnePrijave.length < 2 || zreb.isPending
 
   /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
@@ -376,7 +378,7 @@ export function DogodekStran() {
                   )}
                   {/* Listki so sodniški listki posamičnih tekem; ekipna tekma
                       ima svoj zapisnik z natisom na strani srečanja. */}
-                  {smem && dogodek.status === 'V_TEKU' && !ekipno && (
+                  {smem && dogodek.dejanskiStatus === 'V_TEKU' && !ekipno && (
                     <Link
                       to={`/dogodki/${idDogodka}/listki`}
                       role="menuitem"
@@ -416,7 +418,7 @@ export function DogodekStran() {
               <p className="uvod">{lastnosti}</p>
             </div>
             <div className="naslovna-vrstica__desno">
-              {smem && dogodek.status === 'V_TEKU' && !ekipno && (
+              {smem && dogodek.dejanskiStatus === 'V_TEKU' && !ekipno && (
                 <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
                   Listki za tiskanje
                 </Link>

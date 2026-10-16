@@ -1,10 +1,11 @@
-/* Rocni vpis skupin: organizator pove, kdo je v kateri skupini in kot kateri nosilec
-   (jakostno mesto, 1 = najmocnejsi). Izhodisce je racunalniski predlog - isti zreb, kot
-   bi ga izvedel dogodek, brez zapisa - pri popravku pa trenutne skupine.
+/* Rocni vpis skupin: organizator pove, kdo je v kateri skupini in na kateri poziciji v njej
+   (1 = najmocnejsi v skupini). Pozicija NI nosilec turnirja - vsaka skupina ima svoje
+   1., 2., ... mesto. Izhodisce je racunalniski predlog - isti zreb, kot bi ga izvedel
+   dogodek, brez zapisa - pri popravku pa trenutne skupine.
 
-   Nosilec se zamenja z igralcem, ki ga ze ima (kot pri jakostnem vrstnem redu), zato je
-   vsak nosilec dodeljen najvec enemu igralcu. Format TOP ima fiksno stevilo skupin, igralci
-   brez skupine pa so rezerve. Strežnik vse preveri se enkrat. */
+   Pozicije so v vsaki skupini 1..velikost brez lukenj in podvojitev: igralec, ki se
+   preseli v drugo skupino, pride na njen konec; zamenjava pozicije znotraj skupine zamenja
+   dva igralca. Strežnik vse preveri se enkrat in jakostni vrstni red izpelje sam. */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
@@ -22,7 +23,8 @@ const NAJVEC_SKUPIN = 8
 interface Mesto {
   /* Indeks skupine (0 = A); null = brez skupine (pri TOP rezerva). */
   skupina: number | null
-  nosilec: number
+  /* Pozicija v skupini, 1 = najmocnejsi v njej; 0 = brez skupine. */
+  pozicija: number
 }
 
 interface Stanje {
@@ -48,41 +50,37 @@ function oznaka(j: number): string {
   return String.fromCharCode(65 + j)
 }
 
-/* Nosilci 1..n brez lukenj in podvojitev; vrstni red ohrani, kot ga da vhod. */
-function normaliziraj(mesta: Record<number, Mesto>, prijave: PrijavaDto[]): Record<number, Mesto> {
-  const urejeni = [...prijave].sort(
-    (a, b) => (mesta[a.id]?.nosilec ?? Number.MAX_SAFE_INTEGER) - (mesta[b.id]?.nosilec ?? Number.MAX_SAFE_INTEGER),
-  )
-  const nova: Record<number, Mesto> = {}
-  urejeni.forEach((p, i) => {
-    nova[p.id] = { skupina: mesta[p.id]?.skupina ?? null, nosilec: i + 1 }
-  })
-  return nova
-}
-
 function izPredloga(predlog: SkupinePredlogDto, prijave: PrijavaDto[]): Stanje {
   const mesta: Record<number, Mesto> = {}
+  prijave.forEach((p) => {
+    mesta[p.id] = { skupina: null, pozicija: 0 }
+  })
   predlog.skupine.forEach((skupina, j) =>
     skupina.forEach((c) => {
-      mesta[c.idPrijave] = { skupina: j, nosilec: c.nosilec }
+      mesta[c.idPrijave] = { skupina: j, pozicija: c.pozicija ?? 0 }
     }),
   )
-  predlog.rezerve.forEach((c) => {
-    mesta[c.idPrijave] = { skupina: null, nosilec: c.nosilec }
-  })
-  return { k: predlog.skupine.length, mesta: normaliziraj(mesta, prijave) }
+  return { k: predlog.skupine.length, mesta }
 }
 
+/* Pozicija pri obstojecih skupinah je mesto po jakosti (stNosilca) znotraj skupine. */
 function izTrenutnih(skupine: SkupinaDto[], prijave: PrijavaDto[]): Stanje {
   const urejene = skupine
     .filter((s) => s.stopnja === 1)
     .sort((a, b) => a.oznaka.localeCompare(b.oznaka, 'sl'))
   const mesta: Record<number, Mesto> = {}
   prijave.forEach((p) => {
-    const j = urejene.findIndex((s) => s.id === p.idSkupina)
-    mesta[p.id] = { skupina: j >= 0 ? j : null, nosilec: p.stNosilca ?? Number.MAX_SAFE_INTEGER }
+    mesta[p.id] = { skupina: null, pozicija: 0 }
   })
-  return { k: urejene.length, mesta: normaliziraj(mesta, prijave) }
+  urejene.forEach((s, j) => {
+    prijave
+      .filter((p) => p.idSkupina === s.id)
+      .sort((a, b) => (a.stNosilca ?? Number.MAX_SAFE_INTEGER) - (b.stNosilca ?? Number.MAX_SAFE_INTEGER))
+      .forEach((p, i) => {
+        mesta[p.id] = { skupina: j, pozicija: i + 1 }
+      })
+  })
+  return { k: urejene.length, mesta }
 }
 
 export function RocniSkupineOkno({
@@ -138,30 +136,50 @@ export function RocniSkupineOkno({
       Object.keys(nova).forEach((id) => {
         const m = nova[Number(id)]
         if (m.skupina !== null && m.skupina >= novo) {
-          nova[Number(id)] = { ...m, skupina: null }
+          nova[Number(id)] = { skupina: null, pozicija: 0 }
         }
       })
       return { k: novo, mesta: nova }
     })
   }
 
+  /* Igralec v novi skupini pride na njen konec; v stari se za njim vrstni red zapre. */
   function nastaviSkupino(id: number, j: number | null) {
-    nastaviStanje((prej) =>
-      prej && { ...prej, mesta: { ...prej.mesta, [id]: { ...prej.mesta[id], skupina: j } } },
-    )
-  }
-
-  /* Nosilec, ki ga ze ima drug igralec, se zamenja - nosilci ostanejo enolicni. */
-  function nastaviNosilca(id: number, novi: number) {
     nastaviStanje((prej) => {
       if (!prej) return prej
-      const stari = prej.mesta[id].nosilec
+      const m = prej.mesta[id]
+      if (m.skupina === j) return prej
+      const nova = { ...prej.mesta }
+      if (m.skupina !== null) {
+        Object.keys(nova).forEach((d) => {
+          const o = nova[Number(d)]
+          if (o.skupina === m.skupina && o.pozicija > m.pozicija) {
+            nova[Number(d)] = { ...o, pozicija: o.pozicija - 1 }
+          }
+        })
+      }
+      if (j === null) {
+        nova[id] = { skupina: null, pozicija: 0 }
+      } else {
+        const naKoncu = Object.values(nova).filter((o) => o.skupina === j).length
+        nova[id] = { skupina: j, pozicija: naKoncu + 1 }
+      }
+      return { ...prej, mesta: nova }
+    })
+  }
+
+  /* Pozicija znotraj skupine: igralec, ki je bil na novi poziciji, dobi staro. */
+  function nastaviPozicijo(id: number, novaPozicija: number) {
+    nastaviStanje((prej) => {
+      if (!prej) return prej
+      const m = prej.mesta[id]
+      if (m.skupina === null || m.pozicija === novaPozicija) return prej
       const drugi = Object.keys(prej.mesta)
         .map(Number)
-        .find((d) => d !== id && prej.mesta[d].nosilec === novi)
-      const nova = { ...prej.mesta, [id]: { ...prej.mesta[id], nosilec: novi } }
+        .find((d) => d !== id && prej.mesta[d].skupina === m.skupina && prej.mesta[d].pozicija === novaPozicija)
+      const nova = { ...prej.mesta, [id]: { ...m, pozicija: novaPozicija } }
       if (drugi !== undefined) {
-        nova[drugi] = { ...nova[drugi], nosilec: stari }
+        nova[drugi] = { ...nova[drugi], pozicija: m.pozicija }
       }
       return { ...prej, mesta: nova }
     })
@@ -173,7 +191,8 @@ export function RocniSkupineOkno({
     const m = mesta[p.id]
     if (m && m.skupina !== null && m.skupina < k) claniSkupin[m.skupina].push(p)
   })
-  claniSkupin.forEach((c) => c.sort((a, b) => mesta[a.id].nosilec - mesta[b.id].nosilec))
+  claniSkupin.forEach((c) => c.sort((a, b) => mesta[a.id].pozicija - mesta[b.id].pozicija))
+  const stIgralcevV = (j: number) => claniSkupin[j]?.length ?? 0
   const vSkupinah = claniSkupin.reduce((vsota, c) => vsota + c.length, 0)
   const brezSkupine = prijave.length - vSkupinah
 
@@ -190,16 +209,12 @@ export function RocniSkupineOkno({
       opozorila.push(`Skupina ${oznaka(j)} ima ${c.length} ${sklonIgralcev(c.length)} (vsaj 2).`)
     }
   })
-  const nosilciVSkupinah = claniSkupin.flat().map((p) => mesta[p.id].nosilec).sort((a, b) => a - b)
-  if (nosilciVSkupinah.some((n, i) => n !== i + 1)) {
-    opozorila.push(`Jakostna mesta igralcev v skupinah morajo biti od 1 do ${vSkupinah}.`)
-  }
 
   const shranjevanje = useMutation({
     mutationFn: () =>
       dogodkiApi.rocniSkupine(
         idDogodka,
-        claniSkupin.map((c) => c.map((p) => ({ idPrijave: p.id, nosilec: mesta[p.id].nosilec }))),
+        claniSkupin.map((c) => c.map((p) => ({ idPrijave: p.id, pozicija: mesta[p.id].pozicija }))),
       ),
     onSuccess: () => {
       onShranjeno()
@@ -207,10 +222,14 @@ export function RocniSkupineOkno({
     },
   })
 
-  /* Igralci po jakostnem mestu - tako organizator vidi vrstni red, ki ga vpisuje. */
-  const urejeni = [...prijave].sort(
-    (a, b) => (mesta[a.id]?.nosilec ?? Number.MAX_SAFE_INTEGER) - (mesta[b.id]?.nosilec ?? Number.MAX_SAFE_INTEGER),
-  )
+  /* Igralci po skupinah in po poziciji v njej; brez skupine na koncu, v vrstnem redu prijav. */
+  const urejeni = [...prijave].sort((a, b) => {
+    const ma = mesta[a.id]
+    const mb = mesta[b.id]
+    const ja = ma?.skupina ?? Number.MAX_SAFE_INTEGER
+    const jb = mb?.skupina ?? Number.MAX_SAFE_INTEGER
+    return ja - jb || (ma?.pozicija ?? 0) - (mb?.pozicija ?? 0)
+  })
   const opcijeSkupin = Array.from(
     { length: NAJVEC_SKUPIN - NAJMANJ_SKUPIN + 1 },
     (_, i) => NAJMANJ_SKUPIN + i,
@@ -221,7 +240,9 @@ export function RocniSkupineOkno({
       <p className="obvestilo">
         {zeZrebano
           ? 'Skupine so že žrebane. Popravek je mogoč, dokler se ne začne prva tekma dogodka.'
-          : 'Skupine in nosilce vpišeš sam; izhodišče je računalniški predlog. Po shranjevanju se dogodek začne.'}
+          : 'Skupine in pozicije vpišeš sam; izhodišče je računalniški predlog. Po shranjevanju se dogodek začne.'}
+        {' '}Pozicija je mesto v skupini, ne nosilec turnirja: 1. nosilec skupine je njen najmočnejši
+        igralec, 2. nosilec skupine drugi, in tako naprej.
         {fiksno && ' Format TOP: v skupinah so najboljši, ostali so rezerve.'}
       </p>
 
@@ -259,45 +280,50 @@ export function RocniSkupineOkno({
         <p className="obvestilo">Žrebam predlog …</p>
       ) : (
         <ul className="sv-urejanje__clani">
-          {urejeni.map((p) => (
-            <li key={p.id}>
-              <span className="sv-urejanje__ime">
-                {imePrijave(p)}
-                <span className="sv-urejanje__podrobnost">
-                  {[p.klub ?? 'brez kluba', p.rating]
-                    .filter((d) => d !== null)
-                    .join(' · ')}
+          {urejeni.map((p) => {
+            const m = mesta[p.id]
+            return (
+              <li key={p.id}>
+                <span className="sv-urejanje__ime">
+                  {imePrijave(p)}
+                  <span className="sv-urejanje__podrobnost">
+                    {[p.klub ?? 'brez kluba', p.rating]
+                      .filter((d) => d !== null)
+                      .join(' · ')}
+                  </span>
                 </span>
-              </span>
-              <span className="sv-urejanje__izbira">
-                <select
-                  aria-label={`Nosilec igralca ${imePrijave(p)}`}
-                  value={mesta[p.id].nosilec}
-                  onChange={(d) => nastaviNosilca(p.id, Number(d.target.value))}
-                >
-                  {urejeni.map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1}.
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label={`Skupina igralca ${imePrijave(p)}`}
-                  value={mesta[p.id].skupina === null ? '' : String(mesta[p.id].skupina)}
-                  onChange={(d) =>
-                    nastaviSkupino(p.id, d.target.value === '' ? null : Number(d.target.value))
-                  }
-                >
-                  <option value="">{fiksno ? 'rezerva' : 'brez skupine'}</option>
-                  {Array.from({ length: k }, (_, j) => (
-                    <option key={j} value={j}>
-                      {oznaka(j)}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </li>
-          ))}
+                <span className="sv-urejanje__izbira">
+                  {m.skupina !== null && (
+                    <select
+                      aria-label={`Pozicija igralca ${imePrijave(p)} v skupini`}
+                      value={m.pozicija}
+                      onChange={(d) => nastaviPozicijo(p.id, Number(d.target.value))}
+                    >
+                      {Array.from({ length: stIgralcevV(m.skupina) }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1}. nosilec skupine
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <select
+                    aria-label={`Skupina igralca ${imePrijave(p)}`}
+                    value={m.skupina === null ? '' : String(m.skupina)}
+                    onChange={(d) =>
+                      nastaviSkupino(p.id, d.target.value === '' ? null : Number(d.target.value))
+                    }
+                  >
+                    <option value="">{fiksno ? 'rezerva' : 'brez skupine'}</option>
+                    {Array.from({ length: k }, (_, j) => (
+                      <option key={j} value={j}>
+                        {oznaka(j)}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </li>
+            )
+          })}
         </ul>
       )}
 

@@ -216,7 +216,7 @@ export function LigaStran() {
   const smemPoLastnistvu = smemUrejati(l.idLastnik, l.idKlubLastnik)
   const uvozena = l.vir != null
   const smem = smemPoLastnistvu && !uvozena
-  const vPripravi = l.status === 'PRIPRAVA'
+  const vPripravi = l.dejanskiStatus === 'PRIPRAVA'
   /* Redni del in končnica sta ločena: tekme serij nosijo krog končnice in ne
      kola rednega dela, zato bi v razporedu padle v 1. in 2. kolo. */
   const vsa = (srecanja.data ?? []).filter((s) => s.idSerija == null)
@@ -565,10 +565,13 @@ export function LigaStran() {
                    samostojni ligi in tam pove, da piramide ni - zavihek, ki
                    se od lige do lige pojavlja in izginja, bi zmedel. Liga
                    kvalifikacij ni nivo piramide, ampak meja med dvema. */
-                { kljuc: 'PIRAMIDA', oznaka: jeKval ? 'Med ligama' : 'Piramida lig' },
+                /* Zanimivosti pred piramido: v pasu so trije zavihki, ostali gredo
+                   pod »Več«. Zanimivosti so vsebina, zaradi katere gledalec odpre
+                   ligo, piramida pa kontekst lige, zato na telefonu odide v meni. */
                 ...(imaZanimivosti
                   ? [{ kljuc: 'ZANIMIVOSTI' as const, oznaka: 'Zanimivosti' }]
                   : []),
+                { kljuc: 'PIRAMIDA', oznaka: jeKval ? 'Med ligama' : 'Piramida lig' },
                 /* Pravila niso pogled, ampak referenca - zato okno in ne
                    zavihek z vsebino. */
                 { kljuc: 'PRAVILA', oznaka: 'Pravila' },
@@ -2217,7 +2220,7 @@ function PravilaOkno({
     ['Kolo', opisKola(liga.ureSrecanj)],
     /* Kako so nastali pari, je del opisa tekmovanja — pred žrebom pa še ni
        odgovora, zato se vrstica takrat ne izpiše. */
-    ...(liga.status === 'PRIPRAVA'
+    ...(liga.dejanskiStatus === 'PRIPRAVA'
       ? []
       : ([['Žreb', liga.rocniZreb ? 'vpisal organizator' : 'naključni']] as [string, string][])),
     ['Točke', `${liga.tockeZmaga} / ${liga.tockeNeodloceno} / ${liga.tockePoraz} (Z/N/P)`],
