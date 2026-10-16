@@ -43,11 +43,15 @@ export function ZapisnikEkipnegaDvoboja({
   podrobno,
   liga,
   varianta,
+  gosto = false,
 }: {
   podrobno: SrecanjePodrobnoDto
   liga: LigaDto | undefined
   /* null = ekipna tekma turnirja (brez liginih predlog). */
   varianta: PredlogaLige | null
+  /* Zgoščen obrazec za 2 ali 3 zapisnike na list: manjši razmiki in nižje
+     vrstice; pomanjšanje do reze opravi, kdor ga postavi na list. */
+  gosto?: boolean
 }) {
   const s = podrobno.srecanje
   const tekme = [...podrobno.tekme].sort((a, b) => a.zaporedje - b.zaporedje)
@@ -85,7 +89,11 @@ export function ZapisnikEkipnegaDvoboja({
   const jeLiga = s.idLiga != null
 
   return (
-    <article className={prazen ? 'zapisnik zapisnik--prazen' : 'zapisnik'}>
+    <article
+      className={['zapisnik', prazen && 'zapisnik--prazen', gosto && 'zapisnik--gosto']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <header className="zapisnik__vrh">
         <div className="zapisnik__naziv">
           <div className="zapisnik__zveza">NAMIZNOTENIŠKA ZVEZA SLOVENIJE</div>

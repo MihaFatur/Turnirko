@@ -23,6 +23,7 @@ import jakarta.validation.Valid;
 import si.turnirko.dto.DogodekDto;
 import si.turnirko.dto.DogodekVnos;
 import si.turnirko.dto.EkipaDto;
+import si.turnirko.dto.EkipaImeVnos;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.IzborDto;
 import si.turnirko.dto.KaderIgralecDto;
@@ -353,6 +354,12 @@ public class DogodkiKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void odstraniEkipo(@PathVariable Long idEkipa) {
         ekipeDogodka.odstraniEkipo(idEkipa);
+    }
+
+    /* Samo ime in v vsakem stanju dogodka (odjava je vezana na pripravo). */
+    @PutMapping("/ekipe/{idEkipa}/ime")
+    public EkipaDto preimenujEkipo(@PathVariable Long idEkipa, @RequestBody EkipaImeVnos vnos) {
+        return ekipeDogodka.preimenujEkipo(idEkipa, vnos);
     }
 
     @GetMapping("/ekipe/{idEkipa}/kader")

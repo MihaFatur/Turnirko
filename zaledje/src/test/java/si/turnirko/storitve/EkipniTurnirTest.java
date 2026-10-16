@@ -25,9 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import si.turnirko.dto.DogodekVnos;
 import si.turnirko.dto.EkipaDto;
+import si.turnirko.dto.EkipaImeVnos;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.PostavaVnos;
+import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.TekmaSrecanjaDto;
 import si.turnirko.dto.VnosRezultata;
@@ -325,6 +327,74 @@ class EkipniTurnirTest extends IntegracijskiTest {
 
         assertThrows(NeveljavenVnosIzjema.class, () -> tekmaStoritev.vnesiRezultat(
                 polfinale.getId(), new VnosRezultata(null, 3, 0, null, null, 5)));
+    }
+
+    // ---------------------------------------------------------------
+    // Preimenovanje ekipe
+    // ---------------------------------------------------------------
+
+    /* Odjava ekipe je po zrebu zaprta (uporabi se odstop), preimenovanje pa ne:
+       napaka v imenu se opazi, ko je mreza ze izzrebana in tabele natisnjene.
+       Ekipa ostane ista, zato srecanje v mrezi takoj kaze novo ime. */
+    @Test
+    void ekipoDogodkaVTekuSeLahkoPreimenuje() {
+        Dogodek dogodek = ekipniDogodek(SistemTekmovanja.IZLOCILNI, FormatSrecanja.EKIPNI_DP);
+        List<EkipaDto> ekipe = prijaviEkipe(dogodek, 4, 3);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        EkipaDto prva = ekipe.get(0);
+        assertThrows(DomenskaIzjema.class, () -> ekipeDogodka.odstraniEkipo(prva.id()),
+                "po zrebu odjave ni vec");
+
+        EkipaDto po = ekipeDogodka.preimenujEkipo(prva.id(), new EkipaImeVnos("Zeleni zmaji"));
+
+        assertEquals(prva.id(), po.id());
+        assertEquals("Zeleni zmaji", po.prikazanoIme());
+        assertEquals(prva.idKlub(), po.idKlub(), "klub ostane");
+        assertEquals(3, po.steviloKadra(), "kader ostane");
+        assertTrue(ekipeDogodka.ekipe(dogodek.getId()).stream()
+                .anyMatch(e -> e.id().equals(prva.id()) && e.prikazanoIme().equals("Zeleni zmaji")));
+
+        SrecanjeDto srecanje = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getKolo() == 1)
+                .map(t -> SrecanjeDto.iz(srecanjeRepozitorij.najdiZaTekmo(t.getId()).orElseThrow()))
+                .filter(s -> prva.id().equals(s.idEkipaDomaci()) || prva.id().equals(s.idEkipaGost()))
+                .findFirst().orElseThrow();
+        assertEquals("Zeleni zmaji",
+                prva.id().equals(srecanje.idEkipaDomaci()) ? srecanje.domaci() : srecanje.gost());
+    }
+
+    /* Ime ni pravilo tekmovanja, zato velja tudi po zakljucku - takrat se
+       napake najpogosteje odkrijejo. */
+    @Test
+    void ekipoSePrejmenujeTudiPoZakljucku() {
+        Dogodek dogodek = ekipniDogodek(SistemTekmovanja.IZLOCILNI, FormatSrecanja.EKIPNI_DP);
+        List<EkipaDto> ekipe = prijaviEkipe(dogodek, 2, 3);
+        dogodek.setStatus(StatusTekmovanja.ZAKLJUCEN);
+        dogodekRepozitorij.save(dogodek);
+
+        assertEquals("Popravljeno",
+                ekipeDogodka.preimenujEkipo(ekipe.get(0).id(), new EkipaImeVnos("Popravljeno")).prikazanoIme());
+    }
+
+    /* Pravila imena so ista kot v ligi: klubska se sme vrniti na "Klub N",
+       ime pa mora biti v dogodku enolicno. */
+    @Test
+    void imeEkipeDogodkaJeEnolicnoInSeSmeVrnitiNaPrivzeto() {
+        Dogodek dogodek = ekipniDogodek(SistemTekmovanja.IZLOCILNI, FormatSrecanja.EKIPNI_DP);
+        List<EkipaDto> ekipe = prijaviEkipe(dogodek, 2, 3);
+        Long prva = ekipe.get(0).id();
+
+        assertThrows(DomenskaIzjema.class,
+                () -> ekipeDogodka.preimenujEkipo(prva, new EkipaImeVnos("ekipa 02")),
+                "ime druge ekipe, brez razlike med velikimi in malimi crkami");
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> ekipeDogodka.preimenujEkipo(prva, new EkipaImeVnos("x")));
+        assertEquals("Ekipa 01",
+                ekipeDogodka.preimenujEkipo(prva, new EkipaImeVnos("Ekipa 01")).prikazanoIme(),
+                "svoje ime ni trk");
+
+        EkipaDto nazaj = ekipeDogodka.preimenujEkipo(prva, new EkipaImeVnos(""));
+        assertEquals("Ekipa 01 1", nazaj.prikazanoIme(), "klub in zaporedna");
     }
 
     private Turnir turnir() {

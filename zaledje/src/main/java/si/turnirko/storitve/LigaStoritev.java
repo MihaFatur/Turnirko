@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.EkipaDto;
+import si.turnirko.dto.EkipaImeVnos;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
@@ -560,6 +561,59 @@ public class LigaStoritev {
         prestevilci(ekipaRepozitorij.najdiZaLigoPoJakosti(idLiga));
         // za DTO potrebujemo klub (nalozen); ponovno preberi z join fetch
         return EkipaDto.iz(ekipaRepozitorij.najdiZKlubomInLigo(ekipa.getId()).orElseThrow(), 0);
+    }
+
+    /* Preimenovanje ekipe je dovoljeno v VSAKEM stanju lige, tudi ko ta tece ali
+       je ze zakljucena. Ime ni pravilo tekmovanja: razpored je razpored ekip
+       (id-jev), lestvica, zapisniki in rating ga ne berejo, ime se bere sproti
+       iz ekipe. Napako v imenu pa organizator opazi prav, ko so ekipe ze
+       razposlane in se igra - odstranitev in ponoven vpis ekipe takrat ni vec
+       mogoca (preveriVPripravi).
+
+       Spremeni se samo LASTNO ime; klub in zaporedna ostaneta. Prazno ime pri
+       klubski ekipi jo vrne na "Klub N".
+
+       Kvalifikacije med ligami imajo KOPIJE ekip obeh lig (KvalifikacijeStoritev)
+       in z izvirnikom nimajo druge zveze kot enak klub, zaporedno in ime. Kopija,
+       ki je se enaka izvirniku, se preimenuje z njim - drugace bi liga
+       kvalifikacij do konca kazala staro ime. Kopija, ki jo je kdo ze
+       preimenoval sam, se ne dotakne. */
+    @Transactional
+    public EkipaDto preimenujEkipo(Long idEkipa, EkipaImeVnos v) {
+        lastnistvo.preveriPoEkipi(idEkipa);
+        Ekipa ekipa = ekipaRepozitorij.najdiZKlubomInLigo(idEkipa)
+                .orElseThrow(() -> new NiNajdenoIzjema("Ekipa z id " + idEkipa + " ne obstaja."));
+        Long idLiga = ekipa.getLiga().getId();
+
+        String staroIme = ekipa.getIme();
+        String novoIme = PravilaImenaEkipe.preberi(ekipa, v.ime());
+        if (!Objects.equals(staroIme, novoIme)) {
+            PravilaImenaEkipe.preveriEnolicno(ekipa, PravilaImenaEkipe.prikazano(ekipa, novoIme),
+                    ekipaRepozitorij.najdiZaLigoNeurejene(idLiga), "v tej ligi");
+            preimenujKopijeVKvalifikacijah(ekipa, staroIme, novoIme);
+            ekipa.setIme(novoIme);
+            ekipaRepozitorij.saveAndFlush(ekipa);
+        }
+        return EkipaDto.iz(ekipa, kaderRepozitorij.najdiZaEkipo(idEkipa).size());
+    }
+
+    private void preimenujKopijeVKvalifikacijah(Ekipa izvirna, String staroIme, String novoIme) {
+        Long idKlub = izvirna.jeProsta() ? null : izvirna.getKlub().getId();
+        for (Liga kval : ligaRepozitorij.najdiKvalifikacijeZaLigo(izvirna.getLiga().getId())) {
+            List<Ekipa> ekipe = ekipaRepozitorij.najdiZaLigoNeurejene(kval.getId());
+            for (Ekipa kopija : ekipe) {
+                Long idKlubKopije = kopija.jeProsta() ? null : kopija.getKlub().getId();
+                boolean jeKopija = Objects.equals(idKlubKopije, idKlub)
+                        && kopija.getZaporedna() == izvirna.getZaporedna()
+                        && Objects.equals(kopija.getIme(), staroIme);
+                if (!jeKopija) continue;
+                String prikazano = PravilaImenaEkipe.prikazano(kopija, novoIme);
+                PravilaImenaEkipe.preveriEnolicno(kopija, prikazano, ekipe,
+                        "v ligi kvalifikacij " + kval.getIme());
+                kopija.setIme(novoIme);
+                ekipaRepozitorij.save(kopija);
+            }
+        }
     }
 
     @Transactional

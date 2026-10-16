@@ -1667,6 +1667,12 @@ export interface EkipaVnos {
   ime: string | null
 }
 
+/* Preimenovanje obstoječe ekipe. Prazno ime pri klubski ekipi pomeni »brez
+   lastnega imena« (ime iz kluba in zaporedne); prosta ekipa ga mora imeti. */
+export interface EkipaImeVnos {
+  ime: string | null
+}
+
 export interface KaderIgralecDto {
   id: number
   idIgralec: number

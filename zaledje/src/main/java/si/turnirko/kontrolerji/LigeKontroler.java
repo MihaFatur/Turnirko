@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import si.turnirko.dto.EkipaDto;
+import si.turnirko.dto.EkipaImeVnos;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
@@ -139,6 +140,13 @@ public class LigeKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void odstraniEkipo(@PathVariable Long idEkipa) {
         ligaStoritev.odstraniEkipo(idEkipa);
+    }
+
+    /* Samo ime in v vsakem stanju lige (za razliko od odstranitve, ki je
+       vezana na pripravo) - glej LigaStoritev.preimenujEkipo. */
+    @PutMapping("/ekipe/{idEkipa}/ime")
+    public EkipaDto preimenujEkipo(@PathVariable Long idEkipa, @RequestBody EkipaImeVnos vnos) {
+        return ligaStoritev.preimenujEkipo(idEkipa, vnos);
     }
 
     /* Jakostni vrstni red ekip (enakomerna razvrstitev). Svoja koncna tocka kot

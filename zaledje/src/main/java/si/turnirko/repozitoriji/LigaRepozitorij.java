@@ -30,6 +30,14 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
             """)
     Optional<Liga> najdiKvalifikacije(Long idVisja, Long idNizja);
 
+    /* Lige kvalifikacij, ki imajo to ligo za eno od obeh strani (kopije njenih
+       ekip, glej preimenovanje ekipe). */
+    @Query("""
+            SELECT l FROM Liga l
+            WHERE l.kvalifikacijeVisja.id = :idLiga OR l.kvalifikacijeNizja.id = :idLiga
+            """)
+    List<Liga> najdiKvalifikacijeZaLigo(Long idLiga);
+
     /* Ali so iz koncne lestvice lige ze nastale kvalifikacije (z visjo ali
        nizjo ligo) - takrat njen redni del ni vec samo izpeljanka. */
     boolean existsByKvalifikacijeVisjaIdOrKvalifikacijeNizjaId(Long idVisja, Long idNizja);

@@ -17,6 +17,7 @@ import type {
   DomovTurnirDto,
   DvobojDto,
   EkipaDto,
+  EkipaImeVnos,
   EkipaVnos,
   DvojnikIgralcaDto,
   ZdruzitevIgralcevDto,
@@ -158,6 +159,9 @@ export const dogodkiApi = {
   ekipe: (id: number) => api.vrni<EkipaDto[]>(`/dogodki/${id}/ekipe`),
   dodajEkipo: (id: number, vnos: EkipaVnos) => api.objavi<EkipaDto>(`/dogodki/${id}/ekipe`, vnos),
   odstraniEkipo: (idEkipa: number) => api.izbrisi(`/dogodki/ekipe/${idEkipa}`),
+  /* Samo ime, v vsakem stanju dogodka (odjava je vezana na pripravo). */
+  preimenujEkipo: (idEkipa: number, vnos: EkipaImeVnos) =>
+    api.posodobi<EkipaDto>(`/dogodki/ekipe/${idEkipa}/ime`, vnos),
   kader: (idEkipa: number) => api.vrni<KaderIgralecDto[]>(`/dogodki/ekipe/${idEkipa}/kader`),
   dodajVKader: (idEkipa: number, vnos: KaderVnos) =>
     api.objavi<KaderIgralecDto>(`/dogodki/ekipe/${idEkipa}/kader`, vnos),
@@ -412,6 +416,9 @@ export const ligeApi = {
   ekipe: (id: number) => api.vrni<EkipaDto[]>(`/lige/${id}/ekipe`),
   dodajEkipo: (id: number, vnos: EkipaVnos) => api.objavi<EkipaDto>(`/lige/${id}/ekipe`, vnos),
   odstraniEkipo: (idEkipa: number) => api.izbrisi(`/lige/ekipe/${idEkipa}`),
+  /* Samo ime, v vsakem stanju lige (odstranitev je vezana na pripravo). */
+  preimenujEkipo: (idEkipa: number, vnos: EkipaImeVnos) =>
+    api.posodobi<EkipaDto>(`/lige/ekipe/${idEkipa}/ime`, vnos),
   /* Jakostni vrstni red ekip (enakomerna razvrstitev) — kot celota, ker se
      mesta preštevilčijo vsem. Odgovor so vse ekipe lige v novem vrstnem redu. */
   vrstniRedEkip: (id: number, idjiEkip: number[]) =>

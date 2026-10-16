@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import si.turnirko.dto.EkipaDto;
+import si.turnirko.dto.EkipaImeVnos;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.KoncnicaDto;
@@ -227,7 +228,56 @@ class KvalifikacijeTest extends IntegracijskiTest {
                 KvalifikacijeStoritev.predlaganoIme("1. SNTL", "2. SNTL vzhod"));
     }
 
+    /* Liga kvalifikacij nosi KOPIJE ekip obeh lig. Preimenovana ekipa se mora
+       preimenovati tudi tam, sicer bi kvalifikacije do konca kazale staro ime;
+       kopija, ki jo je kdo ze preimenoval sam, pa ostane, kot je. */
+    @Test
+    void preimenovanaEkipaSePreimenujeTudiVLigiKvalifikacij() {
+        Lige l = dveLigi(1, 1);
+        LigaDto kval = kvalifikacijeStoritev.ustvari(l.a, new KvalifikacijeVnos(l.b, NacinKvalifikacij.ENA_TEKMA, null));
+        Long izvirnaA = l.ekipeA.get(2);
+        Long izvirnaB = l.ekipeB.get(1);
+
+        ligaStoritev.preimenujEkipo(izvirnaA, new EkipaImeVnos("Zeleni zmaji"));
+
+        assertEquals("Zeleni zmaji", imeKopije(kval.id(), "Klub A3"), "kopija sledi izvirniku");
+        assertEquals("Klub B2 1", imeKopije(kval.id(), "Klub B2"), "druga ekipa je nedotaknjena");
+        KoncnicaDto.Serija par = koncnicaStoritev.koncnica(kval.id()).serije().get(0);
+        assertEquals("Zeleni zmaji", par.stran1().ekipa(), "koncnica bere ime iz ekipe");
+
+        // kopija, preimenovana na roke, ni vec "ista" kot izvirnik: ostane
+        Long kopijaB = ligaStoritev.ekipe(kval.id()).stream()
+                .filter(e -> e.klub().equals("Klub B2")).findFirst().orElseThrow().id();
+        ligaStoritev.preimenujEkipo(kopijaB, new EkipaImeVnos("Po svoje"));
+        ligaStoritev.preimenujEkipo(izvirnaB, new EkipaImeVnos("Rumeni zmaji"));
+        assertEquals("Po svoje", imeKopije(kval.id(), "Klub B2"));
+        assertEquals("Rumeni zmaji", ligaStoritev.ekipe(l.b).stream()
+                .filter(e -> e.id().equals(izvirnaB)).findFirst().orElseThrow().prikazanoIme());
+    }
+
+    /* V ligi kvalifikacij so ekipe obeh lig skupaj, zato se ime ne sme
+       ujeti z ekipo druge lige - preimenovanje se zavrne v celoti. */
+    @Test
+    void imeBiSeVLigiKvalifikacijUjeloZEkipoDrugeLige() {
+        Lige l = dveLigi(1, 1);
+        kvalifikacijeStoritev.ustvari(l.a, new KvalifikacijeVnos(l.b, NacinKvalifikacij.ENA_TEKMA, null));
+        Long izvirnaA = l.ekipeA.get(2);
+
+        assertThrows(DomenskaIzjema.class,
+                () -> ligaStoritev.preimenujEkipo(izvirnaA, new EkipaImeVnos("klub b2 1")),
+                "v ligi A tega imena ni, v ligi kvalifikacij pa je");
+        assertEquals("Klub A3 1", ligaStoritev.ekipe(l.a).stream()
+                .filter(e -> e.id().equals(izvirnaA)).findFirst().orElseThrow().prikazanoIme(),
+                "izvirnik je ostal, kakrsen je bil");
+    }
+
     // ---------- pomozno ----------
+
+    /* Prikazano ime kopije (iz kluba z danim imenom) v ligi kvalifikacij. */
+    private String imeKopije(Long idKval, String klub) {
+        return ligaStoritev.ekipe(idKval).stream()
+                .filter(e -> klub.equals(e.klub())).findFirst().orElseThrow().prikazanoIme();
+    }
 
     private record Lige(Long a, Long b, List<Long> ekipeA, List<Long> ekipeB) {}
 

@@ -23,6 +23,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import si.turnirko.dto.EkipaImeVnos;
+import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.TurnirVnos;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Klub;
@@ -146,6 +148,27 @@ class LastnistvoTest {
 
         prijava("ligaA@test"); // lastnik sme
         assertDoesNotThrow(() -> ligaStoritev.zbrisi(liga.getId()));
+    }
+
+    /* Ime ekipe sme popraviti lastnik lige (in njegov klub, in admin), tuj
+       organizator pa ne - preimenovanje je odprto v vsakem stanju lige, zato
+       lastnistvo ostane edina zapora. */
+    @Test
+    void organizatorNeMorePreimenovatiEkipeTujeLige() {
+        Klub klubA = klub("Klub A");
+        Klub klubB = klub("Klub B");
+        Uporabnik orgA = organizator("ekipaA@test", klubA);
+        organizator("ekipaB@test", klubB);
+        Liga liga = liga(orgA, klubA);
+        Long idEkipa = ligaStoritev.dodajEkipo(liga.getId(), new EkipaVnos(null, null, "Kuhinja")).id();
+
+        prijava("ekipaB@test");
+        assertThrows(PrepovedanoIzjema.class,
+                () -> ligaStoritev.preimenujEkipo(idEkipa, new EkipaImeVnos("Pisarna")));
+
+        prijava("ekipaA@test"); // lastnik sme
+        assertEquals("Pisarna",
+                ligaStoritev.preimenujEkipo(idEkipa, new EkipaImeVnos("Pisarna")).prikazanoIme());
     }
 
     // ---------- Pomozno ----------

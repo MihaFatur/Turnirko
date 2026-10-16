@@ -35,6 +35,7 @@ import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
+import { PreimenovanjeEkipe, PreimenujEkipoOkno } from '../komponente/PreimenovanjeEkipe'
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { RocniZrebOkno } from '../komponente/RocniZrebOkno'
@@ -2366,6 +2367,9 @@ function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => vo
               </button>
               {odprta === e.id && (
                 <div className="liga__kader">
+                  {/* Ime se sme popraviti v vsakem stanju lige - tu, ker se
+                      napaka v imenu opazi šele, ko liga že teče. */}
+                  <PreimenovanjeEkipe ekipa={e} preimenuj={ligeApi.preimenujEkipo} />
                   <UrejanjeKadra idEkipa={e.id} />
                 </div>
               )}
@@ -2375,7 +2379,7 @@ function EkipeKaderOkno({ idLiga, onZapri }: { idLiga: number; onZapri: () => vo
       )}
       <p className="namig">
         Ekipe so po žrebu zaklenjene, kader pa lahko dopolniš tudi med sezono. Kdor je za
-        ekipo že igral, v kadru ostane.
+        ekipo že igral, v kadru ostane. Ime ekipe lahko popraviš kadar koli — ekipo razpri.
       </p>
     </ModalnoOkno>
   )
@@ -2400,6 +2404,7 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
   const [idKlub, nastaviKlub] = useState('')
   const [ime, nastaviIme] = useState('')
   const [urejanKader, nastaviUrejanKader] = useState<EkipaDto | null>(null)
+  const [preimenovana, nastaviPreimenovano] = useState<EkipaDto | null>(null)
   const [zrebOdprt, nastaviZrebOdprt] = useState(false)
 
   /* Strežnik pošlje ekipe že v veljavnem jakostnem vrstnem redu; tu se ureja
@@ -2571,6 +2576,9 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
                 <span className="liga__ekipa-gumbi">
                   <span className="sekcija__meta">{kaderTekst(e.steviloKadra)}</span>
                   <button className="gumb gumb--majhen" onClick={() => nastaviUrejanKader(e)}>Kader</button>
+                  <button className="gumb gumb--majhen" onClick={() => nastaviPreimenovano(e)}>
+                    Preimenuj
+                  </button>
                   <button className="gumb gumb--majhen gumb--nevaren" onClick={() => odstrani.mutate(e.id)}>
                     Odstrani
                   </button>
@@ -2635,6 +2643,14 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
 
       {urejanKader && (
         <KaderOkno ekipa={urejanKader} onZapri={() => nastaviUrejanKader(null)} />
+      )}
+
+      {preimenovana && (
+        <PreimenujEkipoOkno
+          ekipa={preimenovana}
+          preimenuj={ligeApi.preimenujEkipo}
+          onZapri={() => nastaviPreimenovano(null)}
+        />
       )}
 
       {zrebOdprt && (

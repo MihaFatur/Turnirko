@@ -13177,6 +13177,16 @@ a.ekipa-okno__srecanje:hover {
   margin-left: auto;
 }
 
+/* Izbirnik ob stevcu (stevec ze potisne vrstico desno), ne se en auto rob. */
+.listki-orodja__izbira--zraven {
+  margin-left: 0;
+}
+
+/* Opozorilo pod naslovom (zaslon): pomanjsan obrazec je tesen za pisanje. */
+.listki-naslov__opozorilo {
+  color: var(--barva-negativna);
+}
+
 .listki-stran {
   max-width: 210mm;
   margin: 0 auto;
@@ -13500,6 +13510,74 @@ a.ekipa-okno__srecanje:hover {
   margin-top: var(--r5);
 }
 
+/* 2 ali 3 zapisniki na list: list je steber visok kot uporabna povrsina A4
+   (276 mm, 190 mm sirine), vsak zapisnik v svoji rezi enake visine
+   (--rez, izracuna jo komponenta). Obrazec v rezi pomanjsa JS (zoom) natanko
+   toliko, da se prilega; na zaslonu je list prikazan kot na papirju. */
+.zapisnik-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+  width: 190mm;
+  max-width: 100%;
+  height: 276mm;
+  margin: 0 auto;
+  outline: 1px dashed var(--barva-crnilo-3);
+  outline-offset: 4px;
+}
+
+.zapisnik-list + .zapisnik-list {
+  margin-top: var(--r6);
+}
+
+.zapisnik-rez {
+  flex: 0 0 auto;
+  height: var(--rez);
+  overflow: hidden;
+}
+
+/* Zgosceni obrazec: manj zraka med bloki in nizje vrstice, da je potrebno
+   manjse pomanjsanje (pomanjsano pisanje z roko je tesno). Prazne vrstice
+   ostanejo visje od tistih z vnosom. */
+.zapisnik--gosto {
+  padding: 2.5mm;
+  gap: 1.5mm;
+}
+
+.zapisnik--gosto .zapisnik__vrh {
+  gap: 3mm;
+}
+
+.zapisnik--gosto .zapisnik__meta th,
+.zapisnik--gosto .zapisnik__meta td {
+  padding: 0.4mm 1.2mm;
+}
+
+.zapisnik--gosto .zapisnik__ekipi {
+  padding: 0.8mm 0;
+}
+
+.zapisnik--gosto .zapisnik__postava th,
+.zapisnik--gosto .zapisnik__postava td {
+  padding: 0.6mm 1.2mm;
+}
+
+.zapisnik--gosto .zapisnik__tekme th,
+.zapisnik--gosto .zapisnik__tekme td {
+  height: 5mm;
+  padding: 0.4mm 0.8mm;
+}
+
+.zapisnik--gosto.zapisnik--prazen .zapisnik__postava th,
+.zapisnik--gosto.zapisnik--prazen .zapisnik__postava td,
+.zapisnik--gosto.zapisnik--prazen .zapisnik__tekme td {
+  height: 6.5mm;
+}
+
+.zapisnik--gosto .zapisnik__podpisi {
+  gap: 3mm;
+}
+
 .zapisnik__izid,
 .zapisnik__sodniki,
 .zapisnik__gledalci,
@@ -13588,6 +13666,19 @@ a.ekipa-okno__srecanje:hover {
   }
 
   .zapisnik-stran + .zapisnik-stran {
+    margin-top: 0;
+    break-before: page;
+  }
+
+  .zapisnik-list {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    outline: none;
+    break-inside: avoid;
+  }
+
+  .zapisnik-list + .zapisnik-list {
     margin-top: 0;
     break-before: page;
   }
@@ -15192,9 +15283,13 @@ a.ekipa-okno__srecanje:hover {
     flex-wrap: wrap;
   }
 
+  /* Gumbi se prelomijo in ne skrčijo: ekipa ekipnega dogodka v teku nosi
+     velikost kadra in tri gumbe (Kader, Odstopila, Preimenuj), ki jih 335 px
+     ne sprejme v eni vrsti - »Kader ▾« bi se razlomil na dve vrstici. */
   .liga__ekipa-gumbi {
     width: 100%;
     justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   /* Pri jakostni lestvici ostanejo mesto in puscici v prvi vrsti ob imenu

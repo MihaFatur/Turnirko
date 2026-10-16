@@ -16,11 +16,13 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.EkipaDto;
+import si.turnirko.dto.EkipaImeVnos;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
@@ -129,6 +131,27 @@ public class EkipeDogodkaStoritev {
         Ekipa ekipa = ekipaRepozitorij.save(new Ekipa(dogodek, klub, zaporedna, ime));
         prijavaRepozitorij.save(new Prijava(dogodek, ekipa));
         return EkipaDto.iz(ekipaRepozitorij.najdiZKlubomInDogodkom(ekipa.getId()).orElseThrow(), 0);
+    }
+
+    /* Preimenovanje ekipe je dovoljeno v vsakem stanju dogodka (isti razlogi kot
+       pri ligi, LigaStoritev.preimenujEkipo): zreb, mreza, skupine in
+       srecanja nosijo prijavo oz. ekipo po id-ju, ime se bere sproti. Napako v
+       imenu organizator opazi, ko so tabele ze natisnjene in se igra - takrat
+       ekipe ni vec mogoce odjaviti. Spremeni se samo lastno ime. */
+    @Transactional
+    public EkipaDto preimenujEkipo(Long idEkipa, EkipaImeVnos v) {
+        lastnistvo.preveriPoEkipi(idEkipa);
+        Ekipa ekipa = najdiEkipo(idEkipa);
+
+        String novoIme = PravilaImenaEkipe.preberi(ekipa, v.ime());
+        if (!Objects.equals(ekipa.getIme(), novoIme)) {
+            PravilaImenaEkipe.preveriEnolicno(ekipa, PravilaImenaEkipe.prikazano(ekipa, novoIme),
+                    ekipaRepozitorij.najdiZaDogodekNeurejene(ekipa.getDogodek().getId()),
+                    "na tem dogodku");
+            ekipa.setIme(novoIme);
+            ekipaRepozitorij.saveAndFlush(ekipa);
+        }
+        return EkipaDto.iz(ekipa, kaderRepozitorij.najdiZaEkipo(idEkipa).size());
     }
 
     /* Odjava ekipe pred zrebom - kot pri igralcu, a tu gre izbris do konca:

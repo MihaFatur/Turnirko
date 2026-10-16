@@ -21,6 +21,7 @@ import { IzbirnikIgralca } from './IzbirnikIgralca'
 import { IzbirnikKluba } from './IzbirnikKluba'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { PotrditvenoOkno } from './PotrditvenoOkno'
+import { PreimenujEkipoOkno } from './PreimenovanjeEkipe'
 import { SporociloNapake } from './SporociloNapake'
 
 interface Lastnosti {
@@ -42,6 +43,7 @@ export function EkipeDogodka({ dogodek, smem, dejanje }: Lastnosti) {
   })
   const [odprta, nastaviOdprto] = useState<number | null>(null)
   const [zaOdjavo, nastaviZaOdjavo] = useState<EkipaDto | null>(null)
+  const [preimenovana, nastaviPreimenovano] = useState<EkipaDto | null>(null)
 
   /* Kader premakne tudi jakost ekipe v jakostnem vrstnem redu (povprečje
      najboljših ratingov kadra), zato se z ekipami osveži še dogodek. */
@@ -103,6 +105,17 @@ export function EkipeDogodka({ dogodek, smem, dejanje }: Lastnosti) {
                       Kader {odprt ? '▴' : '▾'}
                     </button>
                     {dejanje?.(ekipa)}
+                    {/* Ime se sme popraviti v vsakem stanju dogodka, tudi po
+                        zaključku (odjava je vezana na pripravo). */}
+                    {smem && (
+                      <button
+                        type="button"
+                        className="gumb gumb--majhen"
+                        onClick={() => nastaviPreimenovano(ekipa)}
+                      >
+                        Preimenuj
+                      </button>
+                    )}
                     {smem && vPripravi && (
                       <button
                         type="button"
@@ -136,6 +149,14 @@ export function EkipeDogodka({ dogodek, smem, dejanje }: Lastnosti) {
         </p>
       )}
       <SporociloNapake napaka={odjava.error} />
+
+      {preimenovana && (
+        <PreimenujEkipoOkno
+          ekipa={preimenovana}
+          preimenuj={dogodkiApi.preimenujEkipo}
+          onZapri={() => nastaviPreimenovano(null)}
+        />
+      )}
 
       {zaOdjavo && (
         <PotrditvenoOkno

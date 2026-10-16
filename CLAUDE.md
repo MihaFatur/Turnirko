@@ -197,6 +197,30 @@
   celotno srečanje iz razporeda, lestvic in profilov (`EkipaRepozitorij`,
   `SrecanjeRepozitorij`, `TekmaSrecanjaRepozitorij`); regresija je
   `ProstaEkipaTest`.
+- **Ime ekipe se sme spremeniti v VSAKEM stanju tekmovanja** (okt 2026,
+  `PUT /lige/ekipe/{id}/ime` → `LigaStoritev.preimenujEkipo`, `PUT
+  /dogodki/ekipe/{id}/ime` → `EkipeDogodkaStoritev.preimenujEkipo`). Odstranitev
+  oz. odjava ekipe je vezana na pripravo, napaka v imenu pa se opazi, ko igra že
+  teče. Ime ni pravilo tekmovanja: razpored, lestvica, mreža in zapisniki nosijo
+  ekipo po id-ju in ime berejo sproti, zato popravek ničesar ne preračunava.
+  - Velja tudi po zaključku; uvoženo tekmovanje ostane samo za branje, sicer
+    sme lastnik (ali njegov klub) in admin — preverba je `preveriPoEkipi`.
+  - Spremeni se samo LASTNO ime (`ekipa.ime`), klub in zaporedna ostaneta. Prazno
+    ime pri klubski ekipi jo vrne na »Klub N«, prosta ekipa ga ne more izgubiti.
+    Pravila so v `PravilaImenaEkipe`: 2–60 znakov (isti meji kot CHECK v shemi,
+    zavrne se pred zapisom) in prikazano ime enolično v ligi oz. dogodku, brez
+    razlike med velikimi in malimi črkami ter čez klubski in prosti tip; ime, ki
+    ga ekipa že ima, ni trk.
+  - **Kopije ekip v ligi kvalifikacij** se preimenujejo z izvirnikom, če so še
+    enake (klub + zaporedna + lastno ime) — zveze med njima ni drugje. Kopija, ki
+    jo je kdo preimenoval sam, ostane. Trk imena z ekipo druge lige v ligi
+    kvalifikacij zavrne vse preimenovanje.
+  - Vmesnik: `komponente/PreimenovanjeEkipe` — vrstica v razprti ekipi okna
+    »Ekipe in kader« (liga v teku; okno v oknu ne, ker Escape zapre obe) in
+    okno »Preimenuj ekipo« iz vrstice ekipe (priprava lige, ekipni dogodek, tudi
+    po žrebu). Po shranjevanju se osvežijo vse poizvedbe razen šifrantov. Testi:
+    `PreimenovanjeEkipeTest`, `PreimenovanjeEkipeDostopTest`, po en v
+    `EkipniTurnirTest`, `KvalifikacijeTest` in `LastnistvoTest`.
 - **Enakomerna razvrstitev je žreb po PARIH, ne premešan krožni sistem** (V16).
   `liga.enakomerna_razvrstitev` prižge dvoje: ekipe dobijo jakostni vrstni red
   (`ekipa.st_nosilca`, isti pojem kot `prijava.st_nosilca`) in žreb teče po
@@ -2170,6 +2194,16 @@
       (`.zapisnik-stran`, `break-before: page`); podatke bere iz poizvedbe
       srečanja, ki jo deli s stranjo srečanja. Tekma brez srečanja (prenesen
       izid, še nedoločen nasprotnik) odpade.
+    - **2 ali 3 zapisniki na list** (izbirnik »Na list« na strani ekipnega
+      dogodka, izbira ostane v `localStorage['turnirko-zapisnikov-na-list']`):
+      list je steber 190 × 276 mm (`.zapisnik-list`), zapisnik v svoji rezi
+      (`.zapisnik-rez`, višina `--rez`) in v zgoščeni obliki (`gosto` →
+      `.zapisnik--gosto`). Merilo se **izmeri** (`ZapisnikVRezi`: višina obrazca
+      pri tiskarski širini 190 mm, po naloženih pisavah, CSS `zoom`, nikoli
+      povečava, 1,5 % rezerve), ne ugiba — višina je odvisna od formata.
+      Izmerjeno (blank, 8 ekip): 2 na list SNTL (10 vrstic) 84 %, 3 na list
+      SNTL 55 % (stran opozori pod 70 %), 3 na list Pokal NTZS (5 vrstic) 70 %,
+      DŠI 82 %. Pri 1 na list se nič ne meri in ne pomanjšuje.
     - **Razreda `.zapisnik__glava` in `.zapisnik__oznaka` pripadata oknom
       igralcev (razdelek 21)** — obrazec NTZS zato uporablja `__vrh` in `__par`;
       pri istem imenu je glava dobila odmik, stolpec »Par« pa se je razširil čez
