@@ -1835,6 +1835,9 @@ export interface SrecanjePodrobnoDto {
   srecanje: SrecanjeDto
   kontekst: KontekstSrecanja
   format: FormatSrecanja
+  /* Pravilo tekmovanja, ne lastnost tekme: pred postavo tekem še ni, prazen
+     zapisnik za tisk pa mora vedeti, koliko stolpcev za nize narisati. */
+  steviloNizov: number
   pozicijeDomaci: string[]
   pozicijeGost: string[]
   izbiraDvojice: boolean

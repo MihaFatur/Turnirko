@@ -1,10 +1,13 @@
-/* Natisljivi uraden ekipni zapisnik (NTZS) za eno srecanje lige.
+/* Natisljivi uraden ekipni zapisnik (NTZS) za eno srecanje lige ali ekipno
+   tekmo turnirja.
 
-   En list na srecanje: mreza vseh posamicnih tekem z imeni, sodnik ga izpolni
-   z roko za mizo. Pot je zunaj skupne postavitve (brez navigacije), tiska
-   brskalnik (window.print), brez zaledja in nove sheme. Predlogo (1. SNTL oz.
-   2./3. SNTL) doloca liga, na tej strani pa jo je mogoce zacasno preklopiti za
-   ta natis. */
+   En list na srecanje: mreza vseh posamicnih tekem, sodnik ga izpolni z roko
+   za mizo. Pred postavo so imena ekip ze natisnjena, postavo in igralce
+   tekem vpise ekipa sama (glej ZapisnikEkipnegaDvoboja). Pot je zunaj skupne
+   postavitve (brez navigacije), tiska brskalnik (window.print), brez zaledja
+   in nove sheme. Predlogo (1. SNTL oz. 2./3. SNTL) doloca liga, na tej strani
+   pa jo je mogoce zacasno preklopiti za ta natis; ekipna tekma turnirja
+   predloge nima. */
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -38,8 +41,10 @@ export function ListkiSrecanjaStran() {
   if (podrobno.isPending) return <p className="obvestilo">Nalaganje …</p>
   if (podrobno.error || !podrobno.data) return <SporociloNapake napaka={podrobno.error} />
 
-  const izbrana: PredlogaLige = varianta ?? liga.data?.predlogaListka ?? 'SNTL_23'
   const srecanje = podrobno.data.srecanje
+  /* Ekipna tekma turnirja nima lige in zato ne predloge (null). */
+  const izbrana: PredlogaLige | null =
+    srecanje.idLiga == null ? null : (varianta ?? liga.data?.predlogaListka ?? 'SNTL_23')
 
   return (
     <>
@@ -47,15 +52,21 @@ export function ListkiSrecanjaStran() {
         <Link to={`/srecanja/${idSrecanje}`} className="povezava-nazaj">
           ← Nazaj na srečanje
         </Link>
-        <label className="listki-orodja__izbira">
-          Predloga:
-          <select value={izbrana} onChange={(d) => nastaviVarianto(d.target.value as PredlogaLige)}>
-            {(Object.keys(OZNAKE_PREDLOGA_LIGE) as PredlogaLige[]).map((p) => (
-              <option key={p} value={p}>{OZNAKE_PREDLOGA_LIGE[p]}</option>
-            ))}
-          </select>
-        </label>
-        <button className="gumb gumb--glavni" onClick={() => window.print()}>
+        {izbrana && (
+          <label className="listki-orodja__izbira">
+            Predloga:
+            <select value={izbrana} onChange={(d) => nastaviVarianto(d.target.value as PredlogaLige)}>
+              {(Object.keys(OZNAKE_PREDLOGA_LIGE) as PredlogaLige[]).map((p) => (
+                <option key={p} value={p}>{OZNAKE_PREDLOGA_LIGE[p]}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {/* Brez izbirnika predloge gumb sam zaseda desni rob vrstice. */}
+        <button
+          className={izbrana ? 'gumb gumb--glavni' : 'gumb gumb--glavni listki-orodja__desno'}
+          onClick={() => window.print()}
+        >
           Natisni
         </button>
       </div>

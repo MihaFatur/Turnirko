@@ -1,7 +1,11 @@
 /* Podroben pogled srecanja: povzetek, tekmovanje, ki mu pripada (liga ali
    ekipni dogodek turnirja), format (mesta in dvojice za urejanje postave),
    trenutne postave, posamicne tekme (zapisnik) in kadra obeh ekip za izbiro
-   postave. */
+   postave.
+
+   steviloNizov je pravilo tekmovanja in ne lastnost tekme: tekem pred postavo
+   se ni (nastanejo z njo), natisnjeni prazen zapisnik pa mora vedeti, koliko
+   stolpcev za nize narisati. */
 package si.turnirko.dto;
 
 import java.util.List;
@@ -13,6 +17,7 @@ public record SrecanjePodrobnoDto(
         SrecanjeDto srecanje,
         Kontekst kontekst,
         FormatSrecanja format,
+        int steviloNizov,
         List<String> pozicijeDomaci,
         List<String> pozicijeGost,
         boolean izbiraDvojice,

@@ -199,6 +199,28 @@ class EkipniTurnirTest extends IntegracijskiTest {
         assertEquals(FormatSrecanja.POKAL_NTZS, p.format());
     }
 
+    /* Prazen zapisnik za tisk nastane PRED postavo, ko tekem srecanja se ni.
+       Vse, kar potrebuje (mesta ekip, vrstni red tekem iz formata, stevilo
+       nizov), mora zato priti iz pravil tekmovanja in ne iz tekem. */
+    @Test
+    void srecanjePredPostavoNosiPravilaZaPrazenZapisnik() {
+        Dogodek dogodek = turnirjiStoritev.dodajDogodek(turnir().getId(), new DogodekVnos(
+                "U15 ekipno", SpolKategorija.MOSKI, "U15", 7, null, null, Disciplina.EKIPNO,
+                SistemTekmovanja.IZLOCILNI, null, null, FormatSrecanja.POKAL_NTZS, null, null));
+        prijaviEkipe(dogodek, 4, 3);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma polfinale = tekmeDogodka(dogodek.getId()).stream().filter(t -> t.getKolo() == 1)
+                .findFirst().orElseThrow();
+        Srecanje s = srecanjeRepozitorij.najdiZaTekmo(polfinale.getId()).orElseThrow();
+
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(s.getId());
+
+        assertTrue(p.tekme().isEmpty(), "postave se ni, zato tudi tekem ne");
+        assertEquals(List.of("A", "B", "C"), p.pozicijeDomaci());
+        assertEquals(List.of("X", "Y", "Z"), p.pozicijeGost());
+        assertEquals(7, p.steviloNizov(), "stolpci za nize sledijo dogodku, ne privzetku 5");
+    }
+
     // ---------------------------------------------------------------
     // Skupine za mesta s prenesenim izidom
     // ---------------------------------------------------------------

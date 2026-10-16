@@ -99,8 +99,11 @@ export function SrecanjeStran() {
     && s.status !== 'RAZPORED'
     && !s.prenesen
     && !(s.idSerija != null && s.status === 'KONCANO')
-  /* Listki so smiselni le, ko je postava določena in kaka tekma še čaka. */
-  const imaZaTiskanje = p.tekme.some((t) => t.status === 'CAKA')
+  /* Zapisnik za tisk je smiseln, dokler srečanje ni končano: pred postavo se
+     natisne prazen obrazec (imeni ekip sta vpisani, postavo in igralce tekem
+     vpiše ekipa sama), po njej pa dokler kaka tekma še čaka. */
+  const imaZaTiskanje = s.status !== 'KONCANO'
+    && (p.tekme.length === 0 || p.tekme.some((t) => t.status === 'CAKA'))
 
   /* Koncano srecanje brez posamicnih tekem ima izid: poraz brez borbe (5 : 0)
      in prenesen izid finalne skupine ekipnega DP (tekme so v predtekmovanju). */

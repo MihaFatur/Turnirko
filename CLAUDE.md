@@ -2153,6 +2153,27 @@
     `SNTL_1` / `SNTL_23`) izbere liga (`liga.predlogaListka`); varianta določa
     oznako lige in prisotnost vrstice za delegata NTZS. Na strani je še živ
     izbirnik variante za ta natis. (Ne uporablja več komponente `Listek`.)
+    - **Obrazec se natisne tudi PRED postavo** (okt 2026): ekipi sta že
+      natisnjeni, postavo in igralce tekem / dvojic vpiše ekipa z roko. Tekem
+      srečanja pred postavo še ni, zato `ZapisnikEkipnegaDvoboja` prazne
+      vrstice sestavi iz `RAZPORED_FORMATA[podrobno.format]` (višje vrstice,
+      razred `zapisnik--prazen`); število stolpcev za nize pove
+      `SrecanjePodrobnoDto.steviloNizov` (pravilo tekmovanja, ne tekma). Gumb
+      »Zapisnik za tisk« na strani srečanja je zato ponujen, dokler srečanje ni
+      končano (prej šele po postavi).
+    - **Ekipna tekma turnirja** nima lige in zato nima predloge
+      (`varianta = null`): podnaslov je ime dogodka, vrstica »Turnir«, brez
+      delegata. Ura 00:00 pomeni »ura ni določena« in ostane prazno polje.
+    - **Ekipni dogodek** natisne vse pripravljene tekme naenkrat: isti naslov
+      `/dogodki/:id/listki` (`ListkiStran` ga za `disciplina === 'EKIPNO'`
+      preda `ZapisnikiEkipnegaDogodka`), vsak zapisnik na svoj list
+      (`.zapisnik-stran`, `break-before: page`); podatke bere iz poizvedbe
+      srečanja, ki jo deli s stranjo srečanja. Tekma brez srečanja (prenesen
+      izid, še nedoločen nasprotnik) odpade.
+    - **Razreda `.zapisnik__glava` in `.zapisnik__oznaka` pripadata oknom
+      igralcev (razdelek 21)** — obrazec NTZS zato uporablja `__vrh` in `__par`;
+      pri istem imenu je glava dobila odmik, stolpec »Par« pa se je razširil čez
+      vso tabelo in stisnil imeni igralcev.
   - Listki so **črno-beli ne glede na temo** (fiksni `#000/#fff`, ne temo
     odvisne spremenljivke); sloge in `@media print` (`@page` A4,
     `break-inside: avoid`, `print-color-adjust: exact`) drži `slog.css`.

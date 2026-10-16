@@ -376,16 +376,16 @@ export function DogodekStran() {
                       {vPripravi ? 'Ročna mreža' : 'Popravi mrežo'}
                     </button>
                   )}
-                  {/* Listki so sodniški listki posamičnih tekem; ekipna tekma
-                      ima svoj zapisnik z natisom na strani srečanja. */}
-                  {smem && dogodek.dejanskiStatus === 'V_TEKU' && !ekipno && (
+                  {/* Listki so sodniški listki posamičnih tekem; ekipni dogodek
+                      natisne uradni zapisnik za vsako tekmo (isti naslov). */}
+                  {smem && dogodek.dejanskiStatus === 'V_TEKU' && (
                     <Link
                       to={`/dogodki/${idDogodka}/listki`}
                       role="menuitem"
                       className="uporabnik-meni__postavka"
                       onClick={zapri}
                     >
-                      Listki za tiskanje
+                      {ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'}
                     </Link>
                   )}
                 </>
@@ -418,9 +418,9 @@ export function DogodekStran() {
               <p className="uvod">{lastnosti}</p>
             </div>
             <div className="naslovna-vrstica__desno">
-              {smem && dogodek.dejanskiStatus === 'V_TEKU' && !ekipno && (
+              {smem && dogodek.dejanskiStatus === 'V_TEKU' && (
                 <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
-                  Listki za tiskanje
+                  {ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'}
                 </Link>
               )}
               <ZnackaStatusa status={dogodek.status} />

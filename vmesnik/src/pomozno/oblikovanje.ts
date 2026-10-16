@@ -203,6 +203,12 @@ export function sklonListkov(n: number): string {
   return 'listkov'
 }
 
+/* Ekipni zapisniki za tisk (1 zapisnik, 2 zapisnika, 3/4 zapisniki,
+   5+ zapisnikov). */
+export function sklonZapisnikov(n: number): string {
+  return sklon(n, 'zapisnik', 'zapisnika', 'zapisniki', 'zapisnikov')
+}
+
 /* Slovnicno pravilno sklanjanje besede "tekma" ob stevilu (1 tekma,
    2 tekmi, 3/4 tekme, 5+ tekem; pravilo glej pri sklon). */
 export function sklonTekem(n: number): string {

@@ -8,7 +8,11 @@
 
    Natisnejo se VSE pripravljene tekme dogodka: tiste, kjer sta znana oba
    igralca in še niso odigrane (status PRIPRAVLJENA ali V_IGRI). Prosti prehodi
-   in še nedoločene tekme odpadejo sami, ker nimajo obeh udeležencev. */
+   in še nedoločene tekme odpadejo sami, ker nimajo obeh udeležencev.
+
+   Ekipni dogodek ima namesto listkov uradni ekipni zapisnik za vsako tekmo
+   (ZapisnikiEkipnegaDogodka): iste pripravljene tekme, v istem vrstnem redu,
+   le da je vsaka srečanje s postavo in mrežo posamičnih tekem. */
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -20,6 +24,7 @@ import { imeKola, sklonListkov } from '../pomozno/oblikovanje'
 import { imeTekmeZreba } from '../pomozno/svRegija'
 import { Listek } from '../komponente/Listek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { ZapisnikiEkipnegaDogodka } from '../komponente/ZapisnikiEkipnegaDogodka'
 
 /* Skupine se natisnejo prve (predtekmovanje), nato glavna mreža, nato
    tolažilne tekme (npr. za 3. mesto). */
@@ -57,6 +62,18 @@ export function ListkiStran() {
   if (mreza.error) return <SporociloNapake napaka={mreza.error} />
 
   const dogodek = mreza.data!.dogodek
+
+  /* Ekipna tekma nima listka, ampak zapisnik srečanja. Tekma brez srečanja
+     (npr. prenesen izid finalne skupine) zapisnika nima, zato odpade. */
+  if (dogodek.disciplina === 'EKIPNO') {
+    return (
+      <ZapisnikiEkipnegaDogodka
+        dogodek={dogodek}
+        imeTurnirja={turnir.data?.ime ?? null}
+        idjiSrecanj={listki.flatMap(({ tekma }) => (tekma.idSrecanje !== null ? [tekma.idSrecanje] : []))}
+      />
+    )
+  }
 
   return (
     <>

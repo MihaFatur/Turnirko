@@ -155,7 +155,7 @@ public class SrecanjeStoritev {
                 ? lestvicaLigeStoritev.bilancePosamicnihDogodka(s.getTekma().getDogodek().getId())
                 : lestvicaLigeStoritev.bilancePosamicnih(s.getLiga().getId());
         return new SrecanjePodrobnoDto(
-                SrecanjeDto.iz(s), kontekst(s), format,
+                SrecanjeDto.iz(s), kontekst(s), format, s.pravila().steviloNizov(),
                 format.pozicijeDomaci(), format.pozicijeGost(),
                 format.izbiraDvojice(), format.stVDvojici(),
                 postave, tekmeDto,

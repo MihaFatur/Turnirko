@@ -13173,6 +13173,10 @@ a.ekipa-okno__srecanje:hover {
   width: auto;
 }
 
+.listki-orodja__desno {
+  margin-left: auto;
+}
+
 .listki-stran {
   max-width: 210mm;
   margin: 0 auto;
@@ -13311,7 +13315,10 @@ a.ekipa-okno__srecanje:hover {
   -webkit-print-color-adjust: exact;
 }
 
-.zapisnik__glava {
+/* Razreda glave in stolpca »par« NE smeta nositi imen okenskega zapisnika
+   (razdelek 21: .zapisnik__glava, .zapisnik__oznaka): ta bi obrazcu vsilil
+   odmik glave in stolpec »Par« čez vso širino, imeni igralcev pa stisnil. */
+.zapisnik__vrh {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -13447,8 +13454,9 @@ a.ekipa-okno__srecanje:hover {
   font-family: var(--pisava-mono);
 }
 
-.zapisnik__oznaka {
-  width: 13mm;
+/* 16 mm: »dvojice« (mono, 7 znakov) je v 13 mm segla čez rob celice. */
+.zapisnik__par {
+  width: 16mm;
   font-family: var(--pisava-mono);
   font-weight: 600;
 }
@@ -13475,6 +13483,21 @@ a.ekipa-okno__srecanje:hover {
 
 .zapisnik__stanje {
   width: 13mm;
+}
+
+/* Prazen obrazec (pred postavo): imena in izide vpisuje roka za mizo, zato so
+   vrstice postave in mreze visje od natisnjenih z vnosom (list ima prostora
+   dovolj tudi pri desetih tekmah). */
+.zapisnik--prazen .zapisnik__postava th,
+.zapisnik--prazen .zapisnik__postava td,
+.zapisnik--prazen .zapisnik__tekme td {
+  height: 8mm;
+}
+
+/* Vec zapisnikov na eni strani za tisk (ekipni dogodek): vsak na svoj list.
+   Na zaslonu jih loci presledek, na papirju prelom strani. */
+.zapisnik-stran + .zapisnik-stran {
+  margin-top: var(--r5);
 }
 
 .zapisnik__izid,
@@ -13558,6 +13581,15 @@ a.ekipa-okno__srecanje:hover {
 
   .zapisnik {
     border-width: 1px;
+  }
+
+  .zapisnik-stran {
+    break-inside: avoid;
+  }
+
+  .zapisnik-stran + .zapisnik-stran {
+    margin-top: 0;
+    break-before: page;
   }
 
   /* Tisk je enobarven: tri poteze so polne, cetrta (odlocilni niz) ostane

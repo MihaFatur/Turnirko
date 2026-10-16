@@ -5,11 +5,17 @@
    ki jih ne hranimo (kraj, ura, st. gledalcev ...), ostanejo prazne crte za
    rocni vpis - enako kot na papirnatem obrazcu.
 
+   Obrazec se natisne tudi PRED postavo: ekipi na list sami vpisete postavo,
+   sodnik pa mrezo tekem. Tekem srecanja takrat se ni (nastanejo s postavo),
+   zato se prazne vrstice sestavijo iz formata - v vrstnem redu, kot ga bo
+   igralo srecanje - z mesti (A-X ... dvojice) in praznimi polji za imena.
+
    Varianta (1. SNTL / 2./3. SNTL) doloca oznako lige v glavi in prisotnost
-   vrstice za delegata NTZS (imajo jo tekme 1. SNTL). Zapisnik je crno-bel ne
-   glede na temo (natis na papir). */
-import type { LigaDto, PredlogaLige, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
-import { izidNizov } from '../api/tipi'
+   vrstice za delegata NTZS (imajo jo tekme 1. SNTL). Ekipna tekma turnirja
+   variante nima (null): v glavi stoji ime dogodka, delegata ni. Zapisnik je
+   crno-bel ne glede na temo (natis na papir). */
+import type { LigaDto, NizVnos, PredlogaLige, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
+import { RAZPORED_FORMATA, izidNizov } from '../api/tipi'
 
 /* Papirnati obrazec ima pet stolpcev za nize (SNTL igra na 5), zato je to
    privzetek; liga na 7 nizov jih dobi sedem, da natis ne odreze vpisanih
@@ -21,6 +27,18 @@ const OZNAKA_VARIANTE: Record<PredlogaLige, string> = {
   SNTL_23: '2. in 3. SNTL',
 }
 
+/* Ena vrstica mreze: bodisi odigrana/napovedana tekma srecanja bodisi prazno
+   mesto iz formata (pred postavo). */
+interface VrsticaTekme {
+  kljuc: number
+  zaporedje: number
+  oznaka: string
+  domaci: string
+  gost: string
+  nizi: NizVnos[]
+  igre: string
+}
+
 export function ZapisnikEkipnegaDvoboja({
   podrobno,
   liga,
@@ -28,27 +46,55 @@ export function ZapisnikEkipnegaDvoboja({
 }: {
   podrobno: SrecanjePodrobnoDto
   liga: LigaDto | undefined
-  varianta: PredlogaLige
+  /* null = ekipna tekma turnirja (brez liginih predlog). */
+  varianta: PredlogaLige | null
 }) {
   const s = podrobno.srecanje
   const tekme = [...podrobno.tekme].sort((a, b) => a.zaporedje - b.zaporedje)
+  /* Brez tekem postave se ni: obrazec ostane prazen in ga izpolni roka. */
+  const prazen = tekme.length === 0
   const NIZI = Array.from(
-    { length: Math.max(PRIVZETO_NIZOV, tekme[0]?.steviloNizov ?? PRIVZETO_NIZOV) },
+    { length: Math.max(PRIVZETO_NIZOV, podrobno.steviloNizov, ...tekme.map((t) => t.steviloNizov)) },
     (_, i) => i + 1,
   )
+
+  const vrstice: VrsticaTekme[] = prazen
+    ? RAZPORED_FORMATA[podrobno.format].map((oznaka, i) => ({
+        kljuc: i,
+        zaporedje: i + 1,
+        oznaka,
+        domaci: '',
+        gost: '',
+        nizi: [],
+        igre: '',
+      }))
+    : tekme.map((t) => ({
+        kljuc: t.id,
+        zaporedje: t.zaporedje,
+        oznaka: t.oznaka,
+        domaci: [t.domaci, t.domaci2].filter(Boolean).join(' / ') || '—',
+        gost: [t.gost, t.gost2].filter(Boolean).join(' / ') || '—',
+        nizi: t.nizi,
+        igre: t.status === 'KONCANA' ? izidNizov(t.dobljeniNiziDomaci, t.dobljeniNiziGost, t.izidTip) : '',
+      }))
 
   const imeNa = (stran: StranEkipe, poz: string) =>
     podrobno.postave.find((p) => p.stran === stran && p.pozicija === poz)?.polnoIme ?? ''
 
   const { datum, ura } = razbijCas(s.predvidenZacetek)
+  const jeLiga = s.idLiga != null
 
   return (
-    <article className="zapisnik">
-      <header className="zapisnik__glava">
+    <article className={prazen ? 'zapisnik zapisnik--prazen' : 'zapisnik'}>
+      <header className="zapisnik__vrh">
         <div className="zapisnik__naziv">
           <div className="zapisnik__zveza">NAMIZNOTENIŠKA ZVEZA SLOVENIJE</div>
           <div className="zapisnik__naslov">ZAPISNIK EKIPNEGA DVOBOJA</div>
-          <div className="zapisnik__podnaslov">ZA MOŠKE IN ŽENSKE · {OZNAKA_VARIANTE[varianta]}</div>
+          <div className="zapisnik__podnaslov">
+            {varianta
+              ? `ZA MOŠKE IN ŽENSKE · ${OZNAKA_VARIANTE[varianta]}`
+              : (podrobno.kontekst.dogodek ?? podrobno.kontekst.tekmovanje)}
+          </div>
         </div>
         <table className="zapisnik__meta">
           <tbody>
@@ -64,11 +110,12 @@ export function ZapisnikEkipnegaDvoboja({
               <th>Dvorana</th><td className="zapisnik__vpis" colSpan={3} />
             </tr>
             <tr>
-              <th>Liga</th><td className="zapisnik__vpis" colSpan={3}>{liga?.ime ?? [podrobno.kontekst.tekmovanje, podrobno.kontekst.dogodek].filter(Boolean).join(' · ')}</td>
+              <th>{jeLiga ? 'Liga' : 'Turnir'}</th>
+              <td className="zapisnik__vpis" colSpan={3}>{liga?.ime ?? podrobno.kontekst.tekmovanje}</td>
             </tr>
             <tr>
               <th>Sezona</th><td className="zapisnik__vpis">{liga?.sezona ?? podrobno.kontekst.sezona ?? ''}</td>
-              <th>Krog</th><td className="zapisnik__vpis">{s.idLiga != null && s.idSerija == null ? `${s.kolo}.` : podrobno.kontekst.opis ?? `${s.kolo}.`}</td>
+              <th>Krog</th><td className="zapisnik__vpis">{jeLiga && s.idSerija == null ? `${s.kolo}.` : podrobno.kontekst.opis ?? `${s.kolo}.`}</td>
             </tr>
           </tbody>
         </table>
@@ -92,7 +139,7 @@ export function ZapisnikEkipnegaDvoboja({
         <thead>
           <tr>
             <th className="zapisnik__st">#</th>
-            <th className="zapisnik__oznaka">Par</th>
+            <th className="zapisnik__par">Par</th>
             <th>Domači</th>
             <th>Gost</th>
             {NIZI.map((n) => (
@@ -103,31 +150,26 @@ export function ZapisnikEkipnegaDvoboja({
           </tr>
         </thead>
         <tbody>
-          {tekme.map((t) => {
-            const konec = t.status === 'KONCANA'
-            return (
-              <tr key={t.id}>
-                <td className="zapisnik__st">{t.zaporedje}</td>
-                <td className="zapisnik__oznaka">{t.oznaka}</td>
-                <td className="zapisnik__igralec">{[t.domaci, t.domaci2].filter(Boolean).join(' / ') || '—'}</td>
-                <td className="zapisnik__igralec">{[t.gost, t.gost2].filter(Boolean).join(' / ') || '—'}</td>
-                {/* Ze vneseno se izpise, ostalo ostane prazna celica za rocni
-                    vpis - obrazec se natisne tudi pred srecanjem. */}
-                {NIZI.map((n) => {
-                  const niz = t.nizi[n - 1]
-                  return (
-                    <td key={n} className="zapisnik__niz">
-                      {niz ? `${niz.tocke1}:${niz.tocke2}` : ''}
-                    </td>
-                  )
-                })}
-                <td className="zapisnik__igre">
-                  {konec ? izidNizov(t.dobljeniNiziDomaci, t.dobljeniNiziGost, t.izidTip) : ''}
-                </td>
-                <td className="zapisnik__stanje" />
-              </tr>
-            )
-          })}
+          {vrstice.map((v) => (
+            <tr key={v.kljuc}>
+              <td className="zapisnik__st">{v.zaporedje}</td>
+              <td className="zapisnik__par">{v.oznaka}</td>
+              <td className="zapisnik__igralec">{v.domaci}</td>
+              <td className="zapisnik__igralec">{v.gost}</td>
+              {/* Ze vneseno se izpise, ostalo ostane prazna celica za rocni
+                  vpis - obrazec se natisne tudi pred srecanjem. */}
+              {NIZI.map((n) => {
+                const niz = v.nizi[n - 1]
+                return (
+                  <td key={n} className="zapisnik__niz">
+                    {niz ? `${niz.tocke1}:${niz.tocke2}` : ''}
+                  </td>
+                )
+              })}
+              <td className="zapisnik__igre">{v.igre}</td>
+              <td className="zapisnik__stanje" />
+            </tr>
+          ))}
         </tbody>
       </table>
 
@@ -196,12 +238,14 @@ function PodpisnoPolje({ naslov }: { naslov: string }) {
 }
 
 /* Iz ISO datuma-casa (npr. "2026-07-28T18:00") loci datum (dd.mm.llll) in uro
-   (hh:mm). Kadar casa ni, vrne prazna niza (obrazec izpise prazno crto). */
+   (hh:mm). Kadar casa ni, vrne prazna niza (obrazec izpise prazno crto). Ura
+   00:00 pomeni »ura ni dolocena« (turnirsko srecanje pozna samo dan) - tam
+   mora ostati polje prazno za rocni vpis, ne pa lagati o polnoci. */
 function razbijCas(iso: string | null): { datum: string; ura: string } {
   if (!iso) return { datum: '', ura: '' }
   const [d, t] = iso.split('T')
   const deli = d.split('-')
   const datum = deli.length === 3 ? `${deli[2]}.${deli[1]}.${deli[0]}` : ''
-  const ura = t ? t.slice(0, 5) : ''
+  const ura = t && t.slice(0, 5) !== '00:00' ? t.slice(0, 5) : ''
   return { datum, ura }
 }
