@@ -168,7 +168,11 @@ public class RatingStoritev {
        tekme (vir pove samo dan) in isto, kot jo razvrsti preracun
        (VrstaRatinskeTekme). */
     public static LocalDateTime casLigaskeTekme(TekmaSrecanja tekma) {
-        Srecanje srecanje = tekma.getSrecanje();
+        return casSrecanja(tekma.getSrecanje());
+    }
+
+    /* Isto pravilo za srecanje kot celoto (razveljavitev zapisnika). */
+    public static LocalDateTime casSrecanja(Srecanje srecanje) {
         if (srecanje.jeTurnirsko()) {
             LocalDate datum = srecanje.datumTurnirja();
             return datum == null ? VrstaRatinskeTekme.BREZ_DATUMA : datum.atStartOfDay();

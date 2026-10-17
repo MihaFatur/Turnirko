@@ -702,13 +702,41 @@
   kot da ga nihče ni vpisal**: postava, tekme (z menjavami), točke po nizih,
   obračun v dnevniku in `odigran_ob` gredo, rating se preračuna od časa
   srečanja. Organizator nato postavo in izide vpiše znova.
-  - Sme lastnik lige (organizator ali klubski kolega) in admin, v vmesniku
-    gumb »Razveljavi zapisnik« s `PotrditvenoOkno` na dnu zapisnika.
+  - Sme lastnik lige oz. turnirja (organizator ali klubski kolega) in admin, v
+    vmesniku gumb »Razveljavi zapisnik« s `PotrditvenoOkno` na dnu zapisnika
+    (`SrecanjeStran`; pri ekipni tekmi turnirja okno pove, kaj se vrne v turnirju).
   - **Zavrne se, kjer je po izidu že kaj teklo** (isto merilo kot obrnjen
-    zmagovalec pri popravku): ekipna tekma turnirja, **končana** tekma končnice
-    (srečanje končnice v teku se razveljavi) in srečanje rednega dela, kadar
-    sta iz končne lestvice že nastali končnica ali kvalifikacije. Srečanje brez
-    zapisnika (`RAZPORED`) nima česa razveljaviti; uvoženo je samo za branje.
+    zmagovalec pri popravku): **končana** tekma končnice (srečanje končnice v
+    teku se razveljavi), srečanje rednega dela, kadar sta iz končne lestvice že
+    nastali končnica ali kvalifikacije, in ekipna tekma turnirja, po kateri je
+    naslednji del turnirja že začet (spodaj). Srečanje brez zapisnika
+    (`RAZPORED`) nima česa razveljaviti; uvoženo je samo za branje.
+  - **Ekipna tekma turnirja** (`RazveljavitevEkipneTekmeStoritev`, okt 2026):
+    izid srečanja je tam postal izid tekme v mreži ali skupini
+    (`TekmaStoritev.posledice`), zato razveljavitev vrne tudi **turnir**, kot da
+    tekme ni bilo: tekma je spet `PRIPRAVLJENA` (brez zmagovalca in izida),
+    zmagovalec/poraženec gre iz naslednje tekme v mreži (ta spet `CAKA` in ji
+    gre prazno srečanje; nastane znova, ko sta znani obe ekipi), skupina ni več
+    odigrana (`mesto_v_skupini` gre), **kar je nastalo iz predtekmovalne
+    skupine, gre**: finalne skupine za mesta (`SKUPINE_ZA_MESTA`, s prenesenimi
+    tekmami in koncnimi mesti, ki so jih ekipe dobile ob nastanku) oz. izločilni
+    del (`SKUPINE_IZLOCILNI`). **Dogodek, zaključen s to tekmo, spet teče**
+    (končna mesta gredo; pri `SKUPINE_ZA_MESTA` samo mesta članov finalnih
+    skupin) in **turnir, zaprt zaradi tega, se odpre** — organizator ga po
+    novem vnosu zaključi znova. Srečanje v teku (`V_IGRI`) nima posledic in se
+    razveljavi vedno.
+    - **Zavrne se, ko je naslednji del že začet ali odigran** (naslednja tekma
+      mreže, tekma finalne skupine, tekma izločilnega dela; prenesene tekme ne
+      štejejo): organizator najprej razveljavi njen zapisnik, nato tega
+      (obratni vrstni red od vnosa). Preverba teče PRED prvim zapisom
+      (`preveri`), kot pri `preveriZamenjavoZmagovalca`.
+    - Rating se preračuna od dneva turnirja (`RatingStoritev.casSrecanja`). Ponovni
+      vnos ekipne tekme **ne sproži** `preracunajCeVnesenoZaNazaj` (kot ostale
+      turnirske tekme): pri turnirju iz preteklosti, ko imajo igralci
+      poznejše zapise, je treba rating po vnosu preračunati ročno.
+    - Regresije: `RazveljavitevEkipneTekmeTest` (mreža, tekma za 3. mesto,
+      zaključen dogodek + turnir, skupine z finalnimi skupinami, izločilni del,
+      zavrnitve).
   - `odigran_ob` gre z zapisnikom namenoma: srečanje, razveljavljeno zato, ker
     je bilo vpisano v napačen par ekip, sicer obdrži čas tujega večera.
   - Regresiji: `RazveljavitevZapisnikaTest` (storitev) in

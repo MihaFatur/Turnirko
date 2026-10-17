@@ -96,6 +96,7 @@ public class SrecanjeStoritev {
     private final LastnistvoStoritev lastnistvo;
     private final PreracunRatingaStoritev preracunRatinga;
     private final LigaRepozitorij ligaRepozitorij;
+    private final RazveljavitevEkipneTekmeStoritev razveljavitevEkipne;
 
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
                             PostavaSrecanjaRepozitorij postavaRepozitorij,
@@ -112,7 +113,8 @@ public class SrecanjeStoritev {
                             KoncnicaStoritev koncnicaStoritev,
                             LastnistvoStoritev lastnistvo,
                             PreracunRatingaStoritev preracunRatinga,
-                            LigaRepozitorij ligaRepozitorij) {
+                            LigaRepozitorij ligaRepozitorij,
+                            RazveljavitevEkipneTekmeStoritev razveljavitevEkipne) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -129,6 +131,7 @@ public class SrecanjeStoritev {
         this.lastnistvo = lastnistvo;
         this.preracunRatinga = preracunRatinga;
         this.ligaRepozitorij = ligaRepozitorij;
+        this.razveljavitevEkipne = razveljavitevEkipne;
     }
 
     @Transactional(readOnly = true)
@@ -315,9 +318,16 @@ public class SrecanjeStoritev {
        Ko organizator vpise napacna igralca (ali celo napacno srecanje), je
        edina pot, da zapisnik razveljavi in ga vnese znova.
 
+       Ekipna tekma turnirja: izid srecanja je postal izid tekme v mrezi ali
+       skupini, zato se vrne tudi turnir (RazveljavitevEkipneTekmeStoritev):
+       zmagovalec gre iz naslednje tekme, mesta v skupini in kar je nastalo iz
+       nje (finalne skupine, izlocilni del) in dogodek, zakljucen s to tekmo,
+       spet tece.
+
        Kdaj ne: kadar je po izidu srecanja ze teklo nekaj drugega - isto
        pravilo kot pri popravku, ki obrne zmagovalca (preveriZamenjavoZmagovalca):
-       ekipna tekma turnirja (izid je postal izid tekme v mrezi), koncana tekma
+       ekipna tekma, po kateri je naslednja tekma mreze, finalna skupina ali
+       izlocilni del ze zacet (najprej se razveljavi tisto), koncana tekma
        koncnice (serija je tekla) in srecanje rednega dela, kadar sta iz koncne
        lestvice ze nastali koncnica ali kvalifikacije.
 
@@ -326,7 +336,7 @@ public class SrecanjeStoritev {
        vpisano v napacen par ekip, obdrzalo cas tujega vecera. Rating se
        preracuna od casa srecanja, ker je izid vstopal v vse poznejse tekme
        njegovih igralcev; ponovni vnos to poskrbi za nazaj sam
-       (preracunajCeVnesenoZaNazaj). */
+       (preracunajCeVnesenoZaNazaj, samo pri ligi). */
     @Transactional
     public SrecanjePodrobnoDto razveljaviZapisnik(Long idSrecanje) {
         lastnistvo.preveriPoSrecanju(idSrecanje);
@@ -334,7 +344,7 @@ public class SrecanjeStoritev {
         preveriRazveljavitev(s);
 
         List<TekmaSrecanja> tekme = tekmaRepozitorij.najdiZaSrecanje(idSrecanje);
-        LocalDateTime cas = s.casOdigranja();
+        LocalDateTime cas = RatingStoritev.casSrecanja(s);
         for (TekmaSrecanja t : tekme) {
             nizRepozitorij.deleteAll(nizRepozitorij.findByTekmaIdOrderByZaporednaStAsc(t.getId()));
         }
@@ -353,6 +363,9 @@ public class SrecanjeStoritev {
         prazno.setOdigranOb(null);
         prazno.setStatus(StatusSrecanja.RAZPORED);
         srecanjeRepozitorij.save(prazno);
+        if (prazno.jeTurnirsko()) {
+            razveljavitevEkipne.razveljavi(prazno.getTekma().getId());
+        }
 
         if (obracunov > 0) {
             preracunRatinga.preracunajPoPopravku(cas);
@@ -361,13 +374,12 @@ public class SrecanjeStoritev {
     }
 
     private void preveriRazveljavitev(Srecanje s) {
-        if (s.jeTurnirsko()) {
-            throw new DomenskaIzjema("Zapisnika ekipne tekme turnirja ni mogoce razveljaviti:"
-                    + " izid srecanja je postal izid tekme v mrezi oz. skupini in po njem je"
-                    + " turnir ze tekel. Popravi lahko izid posamezne tekme.");
-        }
         if (s.getStatus() == StatusSrecanja.RAZPORED) {
             throw new DomenskaIzjema("Srecanje se nima vpisanega zapisnika.");
+        }
+        if (s.jeTurnirsko()) {
+            razveljavitevEkipne.preveri(s.getTekma().getId());
+            return;
         }
         if (s.jeKoncnica()) {
             if (s.getStatus() == StatusSrecanja.KONCANO) {

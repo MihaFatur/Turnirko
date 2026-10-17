@@ -91,11 +91,11 @@ export function SrecanjeStran() {
   const opis = k.opis ?? `${s.kolo}. kolo`
   const imaRezultate = p.tekme.some((t) => t.status === 'KONCANA')
   const lahkoUrejaPostavo = smem && s.status !== 'KONCANO' && !imaRezultate
-  /* Razveljaviti se da zapisnik ligaškega srečanja, ki ga ima. Končana tekma
-     končnice ne (po njej je serija tekla); srečanje rednega dela po sestavi
-     končnice oz. kvalifikacij zavrne strežnik s pojasnilom. */
+  /* Razveljaviti se da zapisnik ligaškega srečanja oz. ekipne tekme turnirja,
+     ki ga ima. Končana tekma končnice ne (po njej je serija tekla); srečanje
+     rednega dela po sestavi končnice oz. kvalifikacij in ekipno tekmo, po kateri
+     je turnir že tekel naprej, zavrne strežnik s pojasnilom. */
   const lahkoRazveljavi = smem
-    && s.idLiga != null
     && s.status !== 'RAZPORED'
     && !s.prenesen
     && !(s.idSerija != null && s.status === 'KONCANO')
@@ -244,6 +244,12 @@ function RazveljavitevZapisnika({ srecanje }: { srecanje: SrecanjeDto }) {
             'Izbrišejo se postava, vsi vpisani izidi in točke po nizih tega srečanja, '
             + 'rating igralcev pa se preračuna, kot da srečanja ni bilo. Srečanje bo spet '
             + 'čakalo na vnos — postavo in izide nato vpišeš znova.'
+            + (srecanje.idDogodek != null
+              ? ' Turnir se vrne v stanje pred to tekmo: zmagovalec odide iz naslednje '
+                + 'tekme, mesta v skupini in kar je iz njih nastalo (finalne skupine, '
+                + 'izločilni del) se zbrišejo, zaključen dogodek spet teče. Če je naslednja '
+                + 'tekma že začeta, najprej razveljavi njen zapisnik.'
+              : '')
           }
           besedaPotrditve="Razveljavi zapisnik"
           onPotrdi={() => razveljavi.mutate()}
