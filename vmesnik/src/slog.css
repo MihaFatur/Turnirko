@@ -13637,6 +13637,227 @@ a.ekipa-okno__srecanje:hover {
   text-transform: uppercase;
 }
 
+/* ---------- Zreb skupin za vrata dvorane ----------
+   Objava, ki jo igralci preberejo z razdalje, ne zapisnik: imena so vecja
+   kot na listku, vsaka skupina je svoj okvir, ki se ne zlomi cez stran, in
+   nosi ime dogodka, da list ostane berljiv, ko ga kdo odlepi in obesi loceno.
+   Isti pravili kot zgoraj: fiksni #000/#fff, samo crte, brez podlag. */
+
+.zreb-dogodek {
+  color: #000;
+}
+
+.zreb-dogodek + .zreb-dogodek {
+  margin-top: var(--r8);
+}
+
+.zreb-glava {
+  margin-bottom: 5mm;
+  padding-bottom: 3mm;
+  border-bottom: 3px solid #000;
+}
+
+.zreb-glava__nad,
+.zreb-glava__pod {
+  margin: 0;
+  font: 500 8.5pt / 1.35 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #000;
+}
+
+.zreb-glava__ime {
+  margin: 1mm 0 2mm;
+  font-family: var(--pisava-display);
+  font-size: 28pt;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #000;
+}
+
+/* Naslov sklopa (Predtekmovanje, Nivo 2 ...) ne sme obstati sam na dnu strani. */
+.zreb-sklop {
+  margin: 6mm 0 3mm;
+  font: 600 10pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #000;
+  break-after: avoid;
+}
+
+.zreb-skupina {
+  margin: 0 0 4mm;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  break-inside: avoid;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.zreb-skupina__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4mm;
+  padding: 2mm 4mm;
+  border-bottom: 2px solid #000;
+}
+
+.zreb-skupina__naslov {
+  margin: 0;
+  font-family: var(--pisava-display);
+  font-size: 20pt;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #000;
+}
+
+.zreb-skupina__dogodek {
+  font: 500 8pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+}
+
+/* Levo igralci (kdo je v skupini), desno tekme po kolih (kdaj in proti komu). */
+.zreb-skupina__telo {
+  display: grid;
+  grid-template-columns: 58mm minmax(0, 1fr);
+}
+
+.zreb-clani {
+  display: flex;
+  flex-direction: column;
+  gap: 2.2mm;
+  margin: 0;
+  padding: 3mm 4mm;
+  list-style: none;
+  border-right: 1px solid #000;
+}
+
+.zreb-clan__ime {
+  display: block;
+  font-family: var(--pisava-display);
+  font-size: 13pt;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.zreb-clan__klub {
+  display: block;
+  margin-top: 0.4mm;
+  font: 400 7.5pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zreb-kola {
+  padding: 2mm 4mm;
+}
+
+.zreb-kola__prazno {
+  margin: 1mm 0;
+  font: 400 9pt / 1.4 var(--pisava-telo);
+}
+
+/* Kolo je vrstica tabele: oznaka kola v levem tazu, tekme desno, med koli
+   tanka crta. Tako skupina stirih igralcev ostane nizka (stiri skupine na
+   list) in je kolo se vedno prepoznavno z razdalje. */
+.zreb-kolo {
+  display: grid;
+  grid-template-columns: 15mm minmax(0, 1fr);
+  gap: 0 2mm;
+  align-items: baseline;
+  padding: 1.2mm 0;
+  border-top: 1px solid #000;
+  break-inside: avoid;
+}
+
+.zreb-kolo:first-child {
+  border-top: 0;
+}
+
+.zreb-kolo__naslov {
+  margin: 0;
+  font: 600 8pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #000;
+}
+
+.zreb-tekme {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Prvi igralec desno, drugi levo od crtice: crtice tvorijo ravno os, po kateri
+   se pari berejo kot na razpisni tabli. Zadnji stolpec je izid, ko je tekma
+   odigrana; stolpec mize obstaja samo, ko je kakšna miza dodeljena. */
+.zreb-tekma {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 13mm;
+  gap: 2mm;
+  align-items: baseline;
+  padding: 0.8mm 0;
+  font: 500 11pt / 1.25 var(--pisava-telo);
+}
+
+.zreb-skupina--mize .zreb-tekma {
+  grid-template-columns: 13mm minmax(0, 1fr) auto minmax(0, 1fr) 13mm;
+}
+
+.zreb-tekma__ime {
+  overflow-wrap: anywhere;
+}
+
+.zreb-tekma__ime--levo {
+  text-align: right;
+}
+
+.zreb-tekma__crtica {
+  text-align: center;
+}
+
+.zreb-tekma__miza {
+  font: 500 7.5pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.zreb-tekma__izid {
+  font: 600 10pt / 1.25 var(--pisava-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* »b. b.« in »predaja« pod nizi, da izidni stolpec ostane ozek. */
+.zreb-tekma__oznaka {
+  display: block;
+  font: 500 6.5pt / 1.2 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Kdor v kolu ne igra (liho stevilo clanov): oznaka v mono, ime ostane ime. */
+.zreb-prost {
+  padding: 0.9mm 0;
+  font: 400 9.5pt / 1.3 var(--pisava-telo);
+}
+
+.zreb-prost__oznaka {
+  margin-right: 1.5mm;
+  font: 500 7.5pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -13683,6 +13904,12 @@ a.ekipa-okno__srecanje:hover {
     break-before: page;
   }
 
+  /* Vsak dogodek zreba skupin na svoj list. */
+  .zreb-dogodek + .zreb-dogodek {
+    margin-top: 0;
+    break-before: page;
+  }
+
   /* Tisk je enobarven: tri poteze so polne, cetrta (odlocilni niz) ostane
      samo obrisana, da se razlika ohrani tudi brez barve. */
   .logo-znak__poteza,
@@ -13700,6 +13927,41 @@ a.ekipa-okno__srecanje:hover {
 @media (max-width: 640px) {
   .listki-mreza {
     grid-template-columns: 1fr;
+  }
+
+  /* Zreb skupin: na ozkem zaslonu igralci nad tekmami (A4 je pri tisku vedno
+     dovolj sirok za dva stolpca). */
+  .zreb-skupina__telo {
+    grid-template-columns: 1fr;
+  }
+
+  .zreb-clani {
+    border-right: 0;
+    border-bottom: 1px solid #000;
+  }
+
+  /* Oznaka kola nad tekmami, izid ob imenu: na 390 px bi levi taz in stolpec
+     izida pojedla vec kot pol sirine in imena bi se lomila sredi besede. */
+  .zreb-kolo {
+    grid-template-columns: 1fr;
+    row-gap: 0.5mm;
+  }
+
+  .zreb-tekma,
+  .zreb-skupina--mize .zreb-tekma {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  }
+
+  .zreb-tekma__izid {
+    min-width: 11mm;
+  }
+
+  .zreb-skupina--mize .zreb-tekma__miza {
+    grid-column: 1 / -1;
+  }
+
+  .zreb-tekma__ime {
+    overflow-wrap: break-word;
   }
 
   .listki-stran {

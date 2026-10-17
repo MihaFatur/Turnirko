@@ -2211,6 +2211,29 @@
   - Listki so **črno-beli ne glede na temo** (fiksni `#000/#fff`, ne temo
     odvisne spremenljivke); sloge in `@media print` (`@page` A4,
     `break-inside: avoid`, `print-color-adjust: exact`) drži `slog.css`.
+- **Žreb skupin za vrata dvorane** (okt 2026): natisljiva objava vseh skupin in
+  njihovih tekem po kolih, da organizator žreb obesi tudi na papirju. Isti
+  zasnovi kot listki — stran zunaj `Postavitve`, tiska brskalnik, **brez
+  zaledja**: vse je že v `MrezaDto` (skupine, prijave, tekme).
+  - Poti: `/dogodki/:id/zreb-skupin` (ena kategorija) in
+    `/turnirji/:id/zreb-skupin` (vse kategorije turnirja z izžrebanimi
+    skupinami, vsaka na svoji strani). Strani `ZrebSkupinDogodkaStran` /
+    `ZrebSkupinTurnirjaStran` (`strani/ZrebSkupinStran`), izris
+    `komponente/ZrebSkupinTisk`, **sestava lista je čista logika** v
+    `pomozno/zrebSkupin.ts` (`sklopiZrebSkupin`).
+  - Gumb »Žreb skupin za tiskanje« se pokaže organizatorju (`smem`), ko
+    dogodek **teče** (`imaZrebanoSkupine`: skupinski sistem + dejanski status
+    `V_TEKU`) — pred žrebom skupin ni, zaključena kategorija z vrat odpade.
+    Na strani turnirja je gumb, ko ima skupine vsaj ena kategorija.
+  - Igralci predtekmovalne skupine so našteti **po jakosti** (`stNosilca`,
+    kakor jih je žreb razporedil), ne po lestvici — ta bi jih med turnirjem
+    premetavala po izidih. Pri skupinah za mesta ostane vrstni red lestvice.
+  - Pri **lihem številu članov** vsako kolo pove, kdo je prost (izpeljano iz
+    tega, kdo v kolu ne nastopa — tekme za prostega ni). Odigrana tekma pokaže
+    izid, zato je list ob ponovnem tisku tudi pregled stanja; stolpec mize je
+    samo, ko je kakšna miza dodeljena.
+  - Vsak okvir skupine nosi ime kategorije (list ostane berljiv, ko ga kdo
+    odlepi) in se ne zlomi čez stran; sloge drži razdelek 16 v `slog.css`.
 - **Kaj pomeni klik na tekmo, odloči stran** (`KlikTekme` v `TekmaKartica`:
   `klikljiva`, `naKlik`, `namig`) — kartica mreže in vrstica seznama ne ugibata
   po stanju tekme. Posamično tekmovanje: organizatorju vnos rezultata.

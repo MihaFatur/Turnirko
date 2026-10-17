@@ -104,6 +104,7 @@ import {
 import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
+import { imaZrebanoSkupine } from '../pomozno/zrebSkupin'
 
 export function DogodekStran() {
   const { id } = useParams()
@@ -230,6 +231,8 @@ export function DogodekStran() {
   )
   const popravljivo = dogodek.dejanskiStatus === 'V_TEKU' && !zacetaTekma
   const rocniOnemogocen = aktivnePrijave.length < 2 || zreb.isPending
+  /* Žreb skupin za vrata dvorane: ko so skupine izžrebane in dogodek teče. */
+  const zaTiskSkupin = smem && imaZrebanoSkupine(dogodek) && podatki.skupine.length > 0
 
   /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
      stavku; enak vrstni red na obeh širinah. Disciplina stoji na začetku samo
@@ -388,6 +391,16 @@ export function DogodekStran() {
                       {ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'}
                     </Link>
                   )}
+                  {zaTiskSkupin && (
+                    <Link
+                      to={`/dogodki/${idDogodka}/zreb-skupin`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Žreb skupin za tiskanje
+                    </Link>
+                  )}
                 </>
               )}
             </MeniDejanj>
@@ -421,6 +434,11 @@ export function DogodekStran() {
               {smem && dogodek.dejanskiStatus === 'V_TEKU' && (
                 <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
                   {ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'}
+                </Link>
+              )}
+              {zaTiskSkupin && (
+                <Link to={`/dogodki/${idDogodka}/zreb-skupin`} className="gumb">
+                  Žreb skupin za tiskanje
                 </Link>
               )}
               <ZnackaStatusa status={dogodek.status} />

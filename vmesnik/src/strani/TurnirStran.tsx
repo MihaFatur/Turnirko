@@ -43,6 +43,7 @@ import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 import { PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
+import { imaZrebanoSkupine } from '../pomozno/zrebSkupin'
 
 /* Zavihka strani turnirja. »Zanimivosti« so čez VSE dogodke skupaj — na ravni
    ene kategorije je tekem pogosto premalo, da bi kaj povedale. */
@@ -108,6 +109,9 @@ export function TurnirStran() {
     dogodki.data!.every((dogodek) => dogodek.status === 'ZAKLJUCEN')
 
   const seUreja = smem && podatki.status !== 'ZAKLJUCEN'
+  /* Žreb skupin za vrata dvorane: ponujen, ko ima vsaj ena kategorija
+     izžrebane skupine in teče. */
+  const zaTiskSkupin = seUreja && (dogodki.data ?? []).some(imaZrebanoSkupine)
   const kraj = [podatki.kraj?.ime, podatki.dvorana].filter(Boolean).join(', ')
 
   /* Zavihek se ponudi že med turnirjem — gledalec pride pogledat, kaj se je
@@ -186,23 +190,35 @@ export function TurnirStran() {
           {seUreja && (
             <MeniDejanj naslov="Dejanja turnirja">
               {(zapri) => (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="uporabnik-meni__postavka"
-                  disabled={zakljucevanje.isPending || !vsiDogodkiZakljuceni}
-                  onClick={() => {
-                    zapri()
-                    nastaviPotrjujemZakljucek(true)
-                  }}
-                >
-                  Zaključi turnir
-                  {!vsiDogodkiZakljuceni && (
-                    <span className="uporabnik-meni__pojasnilo">
-                      Mogoče šele, ko so zaključeni vsi dogodki
-                    </span>
+                <>
+                  {zaTiskSkupin && (
+                    <Link
+                      to={`/turnirji/${idTurnirja}/zreb-skupin`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Žreb skupin za tiskanje
+                    </Link>
                   )}
-                </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    disabled={zakljucevanje.isPending || !vsiDogodkiZakljuceni}
+                    onClick={() => {
+                      zapri()
+                      nastaviPotrjujemZakljucek(true)
+                    }}
+                  >
+                    Zaključi turnir
+                    {!vsiDogodkiZakljuceni && (
+                      <span className="uporabnik-meni__pojasnilo">
+                        Mogoče šele, ko so zaključeni vsi dogodki
+                      </span>
+                    )}
+                  </button>
+                </>
               )}
             </MeniDejanj>
           )}
@@ -330,6 +346,11 @@ export function TurnirStran() {
               <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
                 + Nov dogodek
               </button>
+            )}
+            {zaTiskSkupin && (
+              <Link to={`/turnirji/${idTurnirja}/zreb-skupin`} className="gumb">
+                Žreb skupin za tiskanje
+              </Link>
             )}
             {smem && podatki.status !== 'ZAKLJUCEN' && (
               <button
