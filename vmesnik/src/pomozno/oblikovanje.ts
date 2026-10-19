@@ -244,6 +244,10 @@ export function sklonSkupin(n: number): string {
   return sklon(n, 'skupina', 'skupini', 'skupine', 'skupin')
 }
 
+export function sklonListov(n: number): string {
+  return sklon(n, 'list', 'lista', 'liste', 'listov')
+}
+
 export function sklonNivojev(n: number): string {
   return sklon(n, 'nivo', 'nivoja', 'nivoji', 'nivojev')
 }

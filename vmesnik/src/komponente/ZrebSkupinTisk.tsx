@@ -10,11 +10,12 @@
    njimi tekme po kolih. Odigrana tekma pokaže izid, zato je list ob ponovnem
    tisku tudi pregled stanja. */
 import type { MrezaDto, TurnirDto } from '../api/tipi'
-import { oblikujObdobje, sklonEkip, sklonIgralcev, sklonSkupin } from '../pomozno/oblikovanje'
+import { sklonEkip, sklonIgralcev, sklonSkupin } from '../pomozno/oblikovanje'
 import {
   sklopiZrebSkupin,
   steviloSkupinVSklopih,
   type TiskSkupina,
+  vrsticaTurnirja,
 } from '../pomozno/zrebSkupin'
 
 export function ZrebSkupinDogodka({ mreza, turnir }: { mreza: MrezaDto; turnir?: TurnirDto }) {
@@ -29,19 +30,7 @@ export function ZrebSkupinDogodka({ mreza, turnir }: { mreza: MrezaDto; turnir?:
     ),
   ).size
 
-  /* Nad naslovom: turnir, datum in kraj - vse, po čemer list prepoznaš na
-     vratih, ko jih je obešenih več. Uvožena tekmovanja imajo datum že v
-     imenu (»1. OT ZA U-13, KIDRIČEVO, 19. 9. 2026«), zato se ne ponovi. */
-  const datum = turnir ? oblikujObdobje(turnir.datumZacetka, turnir.datumKonca) : ''
-  const nadNaslovom = turnir
-    ? [
-        turnir.ime,
-        datum && !turnir.ime.includes(datum) ? datum : null,
-        [turnir.kraj?.ime, turnir.dvorana].filter(Boolean).join(', '),
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : null
+  const nadNaslovom = vrsticaTurnirja(turnir)
 
   /* Ime dogodka je že naslov lista; spola in starosti ne ponavljamo (uvoz ju
      včasih zapiše kar v ime). */

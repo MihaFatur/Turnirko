@@ -1547,10 +1547,22 @@ export interface LigaVnos {
    pravila se po žrebu zaklenejo, kolo pa se sme prestaviti tudi sredi sezone.
    Termin kola dobijo vsa srečanja kola; kolo, ki ga seznam ne našteje, ostane
    nedotaknjeno, kolo z zacetek = null termin izgubi. Liga z urami srečanj
-   našteje še posamezna srečanja — njihov začetek obvelja za terminom kola. */
+   našteje še posamezna srečanja — njihov začetek obvelja za terminom kola.
+
+   Srečanje se v istem vnosu lahko PRESTAVI (V47): `kolo` je kolo, v katerem se
+   bo igralo (različno od kola iz žreba ga prestavi, enako ga vrne), `cakaNaTermin`
+   ga pusti brez dneva (kolo in začetek se prezreta), `razlog` pa je neobvezen
+   javni opis. Začetek strežnik ne ugiba — poda ga vmesnik; `razlog` brez vrednosti
+   obstoječega razloga ne spremeni, prazen niz ga zbriše. */
 export interface TerminiVnos {
   kola: { kolo: number; zacetek: string | null }[]
-  srecanja?: { id: number; zacetek: string | null }[]
+  srecanja?: {
+    id: number
+    zacetek: string | null
+    kolo?: number | null
+    cakaNaTermin?: boolean
+    razlog?: string | null
+  }[]
 }
 
 /* Ročno vpisan razpored lige: kdo s kom igra v katerem kolu. Ločeno od žreba,
@@ -1773,6 +1785,14 @@ export interface SrecanjeDto {
   /* Izid je prenesen iz predtekmovanja (finalna skupina ekipnega DP): posamičnih
      tekem srečanje nima - odigrane so bile v predtekmovalni skupini. */
   prenesen: boolean
+  /* Prestavitev (V47). `kolo` je kolo, v katerem se srečanje IGRA; izvirnoKolo
+     je kolo iz žreba, kadar je srečanje prestavljeno (sicer null). */
+  izvirnoKolo: number | null
+  /* Prestavljeno brez novega termina: ne sodi v noben dan, zato ga razpored ne
+     kaže v kolu, ampak v seznamu čakajočih. */
+  cakaNaTermin: boolean
+  /* Razlog prestavitve, ki ga je vpisal organizator; viden vsem. */
+  razlogPrestavitve: string | null
 }
 
 export interface TekmaSrecanjaDto {

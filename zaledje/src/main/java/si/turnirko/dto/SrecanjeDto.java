@@ -44,7 +44,14 @@ public record SrecanjeDto(
         // izid oznaci, da ga gledalec ne bere kot odigranega
         boolean brezBoja,
         // izid je prenesen iz predtekmovanja (V39) - posamicnih tekem nima
-        boolean prenesen
+        boolean prenesen,
+        // prestavitev (V47): kolo iz zreba, kadar je srecanje prestavljeno
+        // (`kolo` je kolo, v katerem se igra); prazno, kadar je tam, kamor sodi
+        Integer izvirnoKolo,
+        // prestavljeno brez novega termina - ne sodi v nobeno kolo razporeda
+        boolean cakaNaTermin,
+        // razlog prestavitve; viden vsem
+        String razlogPrestavitve
 ) {
 
     public static SrecanjeDto iz(Srecanje s) {
@@ -69,6 +76,9 @@ public record SrecanjeDto(
                 s.jeKoncnica() ? s.getSerija().getKrog() : null,
                 s.getTekmaVSeriji(),
                 s.isBrezBoja(),
-                s.isPrenesen());
+                s.isPrenesen(),
+                s.getIzvirnoKolo(),
+                s.isCakaNaTermin(),
+                s.getRazlogPrestavitve());
     }
 }

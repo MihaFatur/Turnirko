@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ligeApi } from '../api/zahteve'
 import type { LigaDto, SrecanjeDto } from '../api/tipi'
 import { danesIso, imeKola, oblikujTermin } from '../pomozno/oblikovanje'
+import { opisPrestavitve, terminKola, vKolih } from '../pomozno/prestavitve'
 import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 
@@ -47,6 +48,10 @@ function zacetekPostavke(p: Postavka): string | null {
   return p.vrsta === 'SRECANJE' ? p.srecanje.predvidenZacetek : p.zacetek
 }
 
+function cakaNaTermin(p: Postavka): boolean {
+  return p.vrsta === 'SRECANJE' && p.srecanje.cakaNaTermin
+}
+
 /* Končnica pride za rednim delom tudi brez datumov. */
 function fazaPostavke(p: Postavka): number {
   return p.vrsta === 'SRECANJE' && p.srecanje.idSerija != null ? 1 : 0
@@ -69,8 +74,15 @@ function redPostavke(p: Postavka): number {
    seznam, ki ni urejen po nobenem. */
 function postavkeEkipe(idEkipa: number, srecanja: SrecanjeDto[]): Postavka[] {
   const svoja = srecanja.filter((s) => s.idEkipaDomaci === idEkipa || s.idEkipaGost === idEkipa)
-  const redna = srecanja.filter((s) => s.idSerija == null)
-  const kolaEkipe = new Set(svoja.filter((s) => s.idSerija == null).map((s) => s.kolo))
+  const redna = vKolih(srecanja.filter((s) => s.idSerija == null))
+  /* Kolo, v katerem je imela ekipa srečanje po žrebu, ni prosto, tudi če je
+     srečanje prestavljeno drugam - prosto kolo je samo tisto, kjer ekipa po
+     žrebu ne igra. */
+  const kolaEkipe = new Set(
+    svoja
+      .filter((s) => s.idSerija == null)
+      .flatMap((s) => [s.kolo, s.izvirnoKolo ?? s.kolo]),
+  )
 
   /* Liga z lihim številom ekip (ali parov pri enakomerni razvrstitvi) ima v
      vsakem kolu ekipo, ki ne igra. V razporedu je to samo odsotnost, igralec
@@ -80,18 +92,23 @@ function postavkeEkipe(idEkipa: number, srecanja: SrecanjeDto[]): Postavka[] {
     .map((k) => ({
       vrsta: 'PROSTO',
       kolo: k,
-      zacetek: redna.find((s) => s.kolo === k && s.predvidenZacetek)?.predvidenZacetek ?? null,
+      zacetek: terminKola(redna, k),
     }))
 
   const vse: Postavka[] = [
     ...svoja.map((s): Postavka => ({ vrsta: 'SRECANJE', srecanje: s })),
     ...prosta,
   ]
-  const poDatumu = vse.every((p) => zacetekPostavke(p) != null)
+  /* Prestavljeno srečanje brez novega termina nima dneva, zato bi mešanje z
+     datumi seznam spravilo na vrstni red kol: čakajoča gredo na konec rednega
+     dela, ostala se urejajo po datumu. */
+  const poDatumu = vse.filter((p) => !cakaNaTermin(p)).every((p) => zacetekPostavke(p) != null)
   return vse.sort((a, b) => {
     const faza = fazaPostavke(a) - fazaPostavke(b)
     if (faza !== 0) return faza
-    if (poDatumu) {
+    const caka = Number(cakaNaTermin(a)) - Number(cakaNaTermin(b))
+    if (caka !== 0) return caka
+    if (poDatumu && !cakaNaTermin(a)) {
       const za = zacetekPostavke(a) as string
       const zb = zacetekPostavke(b) as string
       if (za !== zb) return za < zb ? -1 : 1
@@ -106,6 +123,9 @@ function kdajSrecanja(s: SrecanjeDto, steviloKrogov: number): string[] {
     s.idSerija != null && s.krogKoncnice != null
       ? [imeKola(s.krogKoncnice, steviloKrogov), s.tekmaVSeriji != null ? `${s.tekmaVSeriji}. tekma` : '']
       : [`${s.kolo}. kolo`]
+  /* Čakajoče srečanje ima kolo iz žreba, dneva pa ne: namesto praznine pove
+     to izrecno. */
+  if (s.cakaNaTermin) return [...del, 'termin še ni znan']
   return [...del, ...deliTermina(s.predvidenZacetek)].filter(Boolean)
 }
 
@@ -161,9 +181,12 @@ export function EkipaLigeOkno({ liga, idEkipa, srecanja, onZapri }: Lastnosti) {
      brez novega datuma - za »naslednje« bi zavajalo. Brez terminov velja
      prvo neodigrano po vrsti. */
   const danes = danesIso()
+  /* Čakajoče srečanje (prestavljeno brez novega termina) ni naslednje: dneva
+     nima, zato bi pred pravim naslednjim stalo samo zato, ker datuma ni. */
   const naslednje = svoja.find(
     (s) =>
       s.status === 'RAZPORED' &&
+      !s.cakaNaTermin &&
       (s.predvidenZacetek == null || s.predvidenZacetek.slice(0, 10) >= danes),
   )
 
@@ -235,12 +258,17 @@ function VrsticaSrecanja({
   const konec = s.status === 'KONCANO'
   const vTeku = s.status === 'POTEKA'
   const izid = konec ? izidZaEkipo(s, idEkipa) : null
+  const prestavitev = opisPrestavitve(s)
   const oznaka = vTeku ? 'V teku' : naslednje ? 'Naslednje' : null
 
   return (
     <Link
       to={`/srecanja/${s.id}`}
-      className={'ekipa-okno__srecanje' + (oznaka ? ' ekipa-okno__srecanje--naslednje' : '')}
+      className={
+        'ekipa-okno__srecanje'
+        + (oznaka ? ' ekipa-okno__srecanje--naslednje' : '')
+        + (prestavitev ? ' ekipa-okno__srecanje--z-opombo' : '')
+      }
     >
       <Kdaj deli={kdaj} oznaka={oznaka} />
       <span className="ekipa-okno__nasprotnik">
@@ -264,6 +292,17 @@ function VrsticaSrecanja({
           </span>
         )}
       </span>
+      {/* Prestavljeno srečanje ne sme ostati nepojasnjeno: igralec vidi, da ga
+          je zdaj v drugem kolu kot po žrebu, in če je organizator vpisal,
+          zakaj. */}
+      {prestavitev && (
+        <span className="ekipa-okno__opomba">
+          {prestavitev.naslov}
+          {prestavitev.razlog && (
+            <span className="ekipa-okno__razlog">{prestavitev.razlog}</span>
+          )}
+        </span>
+      )}
     </Link>
   )
 }

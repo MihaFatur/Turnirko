@@ -97,6 +97,22 @@ public class Srecanje {
     @Column(name = "ura_v_kolu")
     private Integer uraVKolu;
 
+    /* Kolo, v katerega je srecanje uvrstil zreb, kadar ga je organizator
+       prestavil (V47); prazno = srecanje je tam, kamor sodi. Pri prestavljenem
+       srecanju je `kolo` kolo, v katerem se IGRA - razpored, potek lige in
+       okno ekipe tako ne potrebujejo posebne veje. */
+    @Column(name = "izvirno_kolo")
+    private Integer izvirnoKolo;
+
+    /* Prestavljeno srecanje, ki novega termina se nima: ne sodi v nobeno kolo
+       (kolo ostane izvirno) in nima zacetka. */
+    @Column(name = "caka_na_termin", nullable = false)
+    private boolean cakaNaTermin = false;
+
+    /* Neobvezen razlog prestavitve; viden vsem. */
+    @Column(name = "razlog_prestavitve")
+    private String razlogPrestavitve;
+
     /* Kdaj je srecanje v aplikaciji dobilo PRVI izid - zgornja meja za cas,
        ko je bilo odigrano (glej casOdigranja). Pretvornik iz istega razloga
        kot pri terminu; starejsi zapisi so brez ure. */
@@ -183,6 +199,50 @@ public class Srecanje {
 
     public Integer getUraVKolu() { return uraVKolu; }
     public void setUraVKolu(Integer uraVKolu) { this.uraVKolu = uraVKolu; }
+
+    public Integer getIzvirnoKolo() { return izvirnoKolo; }
+    public boolean isCakaNaTermin() { return cakaNaTermin; }
+    public String getRazlogPrestavitve() { return razlogPrestavitve; }
+
+    /* Ali je srecanje v kolu, ki ni tisto iz zreba. */
+    public boolean jePremaknjenoVDrugoKolo() {
+        return izvirnoKolo != null && izvirnoKolo != kolo;
+    }
+
+    /* Premakne srecanje v kolo, v katerem se bo igralo. Izvirno kolo se ohrani
+       tudi ob vecih premikih zapored: prestavitev nazaj v kolo iz zreba srecanje
+       spet naredi navadno in zbrise razlog, ki ga ni vec cemu pojasnjevati.
+       Zacetka ne ugiba - nastavi ga klicatelj. */
+    public void prestaviVKolo(int novoKolo, String razlog) {
+        int izvirno = izvirnoKolo != null ? izvirnoKolo : kolo;
+        kolo = novoKolo;
+        cakaNaTermin = false;
+        if (novoKolo == izvirno) {
+            izvirnoKolo = null;
+            razlogPrestavitve = null;
+        } else {
+            izvirnoKolo = izvirno;
+            razlogPrestavitve = razlog;
+        }
+    }
+
+    /* Prestavljeno brez novega termina: srecanje se vrne v kolo iz zreba (tam
+       ga ekipa pozna), a ne sodi v noben dan, dokler se ne vpise novi. */
+    public void zacniCakatiNaTermin(String razlog) {
+        int izvirno = izvirnoKolo != null ? izvirnoKolo : kolo;
+        kolo = izvirno;
+        izvirnoKolo = izvirno;
+        cakaNaTermin = true;
+        predvidenZacetek = null;
+        razlogPrestavitve = razlog;
+    }
+
+    /* Razlog prestavitve brez premika kola - samo pri prestavljenem srecanju. */
+    public void nastaviRazlog(String razlog) {
+        if (izvirnoKolo != null) {
+            razlogPrestavitve = razlog;
+        }
+    }
 
     public LocalDateTime getOdigranOb() { return odigranOb; }
     public void setOdigranOb(LocalDateTime odigranOb) { this.odigranOb = odigranOb; }

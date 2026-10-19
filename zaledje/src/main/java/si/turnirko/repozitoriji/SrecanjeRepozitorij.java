@@ -127,7 +127,7 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
     List<Srecanje> najdiVObdobju(LocalDateTime od, LocalDateTime doKdaj);
 
     /* Termini rednega dela vseh lig, ena vrstica na srecanje:
-       [idLiga, kolo, status, predvidenZacetek].
+       [idLiga, kolo, status, predvidenZacetek, izvirnoKolo, cakaNaTermin].
 
        Skupinsko, ker vrstica lige v seznamu nosi "odigrano 7 od 18 kol" in
        palico napredka za VSAKO ligo - poizvedba na ligo bi bila N+1. Koliko
@@ -136,15 +136,16 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
        pravilo potrebuje datum in stanje vsakega srecanja. Koncnica ni kolo
        rednega dela in ne steje. */
     @Query("""
-            SELECT s.liga.id, s.kolo, s.status, s.predvidenZacetek
+            SELECT s.liga.id, s.kolo, s.status, s.predvidenZacetek, s.izvirnoKolo, s.cakaNaTermin
             FROM Srecanje s
             WHERE s.liga IS NOT NULL AND s.serija IS NULL
             """)
     List<Object[]> terminiRednegaDelaPoLigah();
 
-    /* Isto za eno ligo: [kolo, status, predvidenZacetek]. */
+    /* Isto za eno ligo: [kolo, status, predvidenZacetek, izvirnoKolo,
+       cakaNaTermin]. */
     @Query("""
-            SELECT s.kolo, s.status, s.predvidenZacetek
+            SELECT s.kolo, s.status, s.predvidenZacetek, s.izvirnoKolo, s.cakaNaTermin
             FROM Srecanje s
             WHERE s.liga.id = :idLiga AND s.serija IS NULL
             """)

@@ -9,9 +9,9 @@
    vrstica v verzalkah pred vsebino. */
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { turnirjiApi } from '../api/zahteve'
+import { dogodkiApi, turnirjiApi } from '../api/zahteve'
 import type { DogodekDto } from '../api/tipi'
 import {
   OZNAKE_RAVEN,
@@ -43,6 +43,7 @@ import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 import { PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
+import { imaMrezoZaTisk, jeKandidatZaTiskMreze } from '../pomozno/zrebMreze'
 import { imaZrebanoSkupine } from '../pomozno/zrebSkupin'
 
 /* Zavihka strani turnirja. »Zanimivosti« so čez VSE dogodke skupaj — na ravni
@@ -92,6 +93,25 @@ export function TurnirStran() {
     },
   })
 
+  /* Gumb za izločilni žreb: mreža pri skupinah nastane šele po njih, zato jo
+     vprašamo za dogodke, ki bi jo lahko imeli. Odgovor je pod ključem strani
+     dogodka (isti zapis), pri čistem izločilnem sistemu mreža obstaja od žreba.
+     Naloži se samo za urejevalca - gost gumba ne vidi. */
+  const smemUrejatiTurnir =
+    !!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik)
+    && turnir.data.vir == null && turnir.data.status !== 'ZAKLJUCEN'
+  const kandidatiMreze = smemUrejatiTurnir
+    ? (dogodki.data ?? []).filter(
+        (d) => jeKandidatZaTiskMreze(d) && d.sistemTekmovanja !== 'IZLOCILNI',
+      )
+    : []
+  const mrezeKandidatov = useQueries({
+    queries: kandidatiMreze.map((dogodek) => ({
+      queryKey: ['dogodek', dogodek.id],
+      queryFn: () => dogodkiApi.mreza(dogodek.id),
+    })),
+  })
+
   useNaslovStrani(turnir.data?.ime)
 
   if (turnir.isLoading) return <p className="obvestilo">Nalaganje …</p>
@@ -112,6 +132,14 @@ export function TurnirStran() {
   /* Žreb skupin za vrata dvorane: ponujen, ko ima vsaj ena kategorija
      izžrebane skupine in teče. */
   const zaTiskSkupin = seUreja && (dogodki.data ?? []).some(imaZrebanoSkupine)
+  /* Žreb izločilnega dela: čisti izločilni dogodek v teku mrežo že ima, pri
+     skupinah jo pokaže šele naložena mreža. */
+  const zaTiskMreze =
+    seUreja
+    && ((dogodki.data ?? []).some(
+      (d) => jeKandidatZaTiskMreze(d) && d.sistemTekmovanja === 'IZLOCILNI',
+    )
+      || mrezeKandidatov.some((m) => m.data !== undefined && imaMrezoZaTisk(m.data)))
   const kraj = [podatki.kraj?.ime, podatki.dvorana].filter(Boolean).join(', ')
 
   /* Zavihek se ponudi že med turnirjem — gledalec pride pogledat, kaj se je
@@ -199,6 +227,16 @@ export function TurnirStran() {
                       onClick={zapri}
                     >
                       Žreb skupin za tiskanje
+                    </Link>
+                  )}
+                  {zaTiskMreze && (
+                    <Link
+                      to={`/turnirji/${idTurnirja}/zreb-mreze`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Izločilni žreb za tiskanje
                     </Link>
                   )}
                   <button
@@ -350,6 +388,11 @@ export function TurnirStran() {
             {zaTiskSkupin && (
               <Link to={`/turnirji/${idTurnirja}/zreb-skupin`} className="gumb">
                 Žreb skupin za tiskanje
+              </Link>
+            )}
+            {zaTiskMreze && (
+              <Link to={`/turnirji/${idTurnirja}/zreb-mreze`} className="gumb">
+                Izločilni žreb za tiskanje
               </Link>
             )}
             {smem && podatki.status !== 'ZAKLJUCEN' && (

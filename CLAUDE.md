@@ -351,6 +351,50 @@
     dobi naslov z dnevom. `RocniZrebOkno` srečanja kola razdeli po urah (tako
     jih ima papirnati razpored); zamenjava ekip velja samo med srečanji iste
     ure.
+- **Prestavitev srečanja** (V47, okt 2026; `TerminiVnos.TerminSrecanja`,
+  `Srecanje.prestaviVKolo` / `zacniCakatiNaTermin`). Organizator jo vpiše **samo v
+  oknu »Termini kol«** (razdelek »Prestavitve« z enim urejevalnikom) — odločitev
+  lastnika; gumba pri vrstici razporeda ni. Gre v istem `PUT /lige/{id}/termini`
+  kot termini kol: najprej prestavitve, nato termini kol, nazadnje izrecni začetki.
+  - **`kolo` je kolo, v katerem se srečanje IGRA**, ne kolo iz žreba: prestavljeno
+    srečanje stoji v razporedu, v oknu ekipe, v koledarju in v poteku lige
+    **samo v kolu igranja** (odločitev lastnika: »samo v kolu novega termina«, ne
+    podvojeno), zato igralec v vsakem kolu vidi, s kom je igral in kaj je
+    odigrano. Kolo iz žreba hrani `srecanje.izvirno_kolo` (prazno = ni
+    prestavljeno): potrebujeta ga vrnitev in okno ekipe (kolo, v katerem je imela
+    ekipa srečanje po žrebu, ni »prosto kolo«). Kolo je znano tudi, ko se je
+    izpraznilo (kolo ali izvirno kolo kakega srečanja) — vanj se da vrniti.
+  - **Prestavi se lahko tudi odigrano srečanje** (poznega kola, odigrano že zdaj)
+    in neodigrano, ki bi moralo biti že odigrano (odločitev lastnika). Izid in
+    stanje ostaneta; rating se ob prestavitvi ne preračuna (kot pri popravku
+    termina kola — `Srecanje.casOdigranja` bere shranjeni vrednosti).
+  - **»Termin še ni znan«** (`srecanje.caka_na_termin`, samo srečanje v
+    `RAZPORED`, sicer zavrnitev): kolo ostane izvirno, začetka ni. Tako srečanje
+    ne sodi v noben dan: razpored ga kaže pod gumbom **»?« na koncu traku
+    »Vsa kola«** (odločitev lastnika; seznam nad kolom je bil najprej, a je bil
+    viden ob vsakem kolu). »?« je še ena postaja traku (`KOLO_BREZ_TERMINA` = 0,
+    `SrecanjaBrezTermina`; »Naslednje« z zadnjega kola vodi vanj) in obstaja samo,
+    dokler je kaj brez termina. `PotekLige` ga ne šteje (ne zadrži kola, ni
+    »naslednje«), okno ekipe ga uvrsti na konec z napisom »termin še ni znan«
+    (z datumi bi sicer cel seznam padel na vrstni red kol) in ga ne šteje za
+    »Naslednje«. Koledar ga izpusti sam (`najdiVObdobju` bere samo srečanja z
+    začetkom).
+  - **Dan prestavljenega srečanja je lahko svoj** (kolo je sicer en dan), zato
+    datum kola določajo samo srečanja, ki v njem sodijo (`PotekLige.Termin.vDrugemKolu`,
+    `pomozno/prestavitve.terminKola`) — sicer bi srečanje v četrtek premaknilo
+    kolo, ki je bilo v torek. **Strežnik začetka ne ugiba**: vnos ga poda
+    izrecno (`zacetek` null = brez termina), vmesnik prestavljenemu srečanju vedno
+    pošlje svojega, sicer bi ga termin kola pogazil ali pa zadel ob uro, ob kateri
+    obe ekipi v kolu že igrata (`preveriHkratnaSrecanja` to zavrne). Zato je ura
+    pri novi prestavitvi prazna (00:00 = ni določena), vpiše jo organizator.
+  - **Razlog** (neobvezen, ≤ 200 znakov) je **javen**; okno opozori, naj bo brez
+    osebnih podatkov (zdravje, naslovi). `razlog` brez vrednosti ga pusti, prazen
+    niz ga zbriše; z vrnitvijo v kolo iz žreba izgine.
+  - Testi: `PrestavitevSrecanjaTest`, `PotekLigeTest` (prestavljeno in čakajoče).
+    Vmesnik: `TerminiOkno`, `LigaStran` (`OpombaPrestavitve`, `CakajocaSrecanja`),
+    `EkipaLigeOkno`, skupna pravila v `pomozno/prestavitve.ts`.
+  - **Ni pokrito**: končnica lige (ima svoje termine, `KoncnicaStoritev`),
+    ekipni turnirji in stran zapisnika srečanja (o prestavitvi molči).
 - **Časovni žig s pomembno uro potrebuje `@Convert(CasKotBesedilo.class)`.**
   Gonilnik sqlite-jdbc pozna eno samo obliko za datume (`date_string_format`,
   v `application.properties` `yyyy-MM-dd`) in z njo piše **tudi** časovne žige
@@ -2193,11 +2237,38 @@
   - `ListkiStran` (`/dogodki/:id/listki`) — turnirski dogodek; natisne
     **pripravljene tekme** (oba igralca znana, status `PRIPRAVLJENA`/`V_IGRI`;
     prosti prehodi in `CAKA` odpadejo sami) kot posamične **sodniške listke**
-    (`komponente/Listek`, normaliziran `ListekPodatki`): niz je vrstica, vsak
-    igralec svoj stolpec, spodaj skupni rezultat. Mreža 2 stolpcev s skupnimi
-    robovi (negativni rob = ena črta za rezanje) da **6 listkov na A4**. Gumb
-    »🖨 Listki« na `DogodekStran` se pokaže adminu ob `V_TEKU`. Turnir ima le
-    to eno predlogo (ni izbire).
+    (`komponente/Listek`, normaliziran `ListekPodatki`), narejene po papirnati
+    predlogi lastnika (okt 2026). Povezava »Listki za tiskanje« na
+    `DogodekStran` se pokaže organizatorju ob `V_TEKU`. Turnir ima le to eno
+    predlogo (ni izbire). Pravila, ki jih ne razbij:
+    - **Listek je tabela, v kateri ima vsak igralec SVOJ stolpec**: ime je
+      glava stolpca, pod njim znački »Prvi servis« in »Timeout« (kvadratek, v
+      katerega sodnik zapiše križ), nato po ena celica za vsak niz in
+      rezultat (dobljeni nizi, debelejša obroba). Vse vrstice delijo
+      `--listek-stolpci`, zato so točke vedno natanko pod imenom tistega, ki jih
+      je dosegel. Dvopičje v sredinskem žlebu bere vrstico kot »11 : 7«.
+    - Vsebina: znamka (`ZnakTurnirko` + »Turnirko«) in prazna črta »Miza št.«
+      (številka se izpiše, če je že dodeljena), nato Dogodek (= turnir, kot ga
+      igralci poznajo), Kategorija (ime dogodka; spol in starost se dodata samo,
+      če ju ime ne pove, `oznakaKategorije`; »Kdorkoli« se izpusti), Skupina +
+      kolo oz. Faza pri mreži, spodaj Sodnik in Podpis. **Kluba na listku ni**
+      (prostor; sodnik igralca vidi). Dvojica ima vsakega igralca v svoji vrstici.
+      Pri 6–7 nizih se listek stisne (`.listek--gosto`), da celice ostanejo
+      ≥ 4,2 mm.
+    - **List A4 = natanko 210 × 297 mm = 2 × 3 listki po 105 × 99 mm, brez
+      robov** (`@page listki { margin: 0 }`, `page: listki` na
+      `.listki-stran--listki`). Globalni rob 10 mm bi listek skrčil na
+      95 × 92 mm in rez ne bi šel po sredini lista; brez roba brskalnik tudi ne
+      natisne glave in noge. Trije rezi (ena navpična, dve vodoravni) so črtkane
+      obrobe listkov (`.listek:nth-child`), narisane tudi na praznih mestih
+      zadnjega lista (`razdeliNaListe`), da so rezi povsod isti. Vsebina je
+      6–7 mm od roba lista, da je tiskalnik ne odreže. Vsak list pri tisku
+      `break-before: page`; na ožjem zaslonu ga pomanjša CSS `zoom`
+      (`ListkiStran`, pri tisku `zoom: 1 !important`).
+    - Izmerjeno z brezglavim Chromom (PDF → mupdf, glej »Posnetki vmesnika«):
+      12 listkov = 2 strani A4 (595 × 842 pt), brez prazne tretje; najslabši
+      primer (7 nizov, imena v dveh vrsticah, 55 znakov dolg turnir) ostane
+      znotraj listka. Ob spremembi mer ponovi.
   - `ListkiSrecanjaStran` (`/srecanja/:id/listki`) — ekipno srečanje; natisne
     **en uraden ekipni zapisnik NTZS** (`komponente/ZapisnikEkipnegaDvoboja`)
     za celotno srečanje: glava, obe ekipi s postavo (A/B/C : X/Y/Z), mreža vseh
@@ -2262,6 +2333,38 @@
     samo, ko je kakšna miza dodeljena.
   - Vsak okvir skupine nosi ime kategorije (list ostane berljiv, ko ga kdo
     odlepi) in se ne zlomi čez stran; sloge drži razdelek 16 v `slog.css`.
+- **Žreb izločilnega dela za vrata dvorane** (okt 2026): ista zasnova za
+  izločilno mrežo — stran zunaj `Postavitve`, tiska brskalnik, brez zaledja
+  (vse je v `MrezaDto`). Okvir strani (orodna vrstica, števec, »Natisni«,
+  pomanjšanje na ožjem zaslonu) je skupen listu skupin: `komponente/ZrebOkvir`.
+  - Poti: `/dogodki/:id/zreb-mreze` in `/turnirji/:id/zreb-mreze` (vse
+    kategorije turnirja z mrežo, vsaka na svojem listu). Strani
+    `ZrebMrezeDogodkaStran` / `ZrebMrezeTurnirjaStran` (`strani/ZrebMrezeStran`),
+    izris `komponente/ZrebMrezeTisk`, **sestava lista je čista logika** v
+    `pomozno/zrebMreze.ts` (`sklopiZrebMreze`).
+  - Gumb »Izločilni žreb za tiskanje« vidi organizator (`smem`), ko dogodek
+    **teče** (`jeKandidatZaTiskMreze`) in mreža res **obstaja** (`imaMrezoZaTisk`:
+    pri skupinah nastane šele po njih, zato jo stran turnirja vpraša za dogodke
+    `SKUPINE_IZLOCILNI`; čisti `IZLOCILNI` jo ima od žreba). SV regija
+    (svoje drevo za vsa mesta) in skupine za mesta mreže za tisk nimata.
+  - **Ležeči A4** (`@page zreb-mreze`, `page` na `.zreb-stran--lezeci`; ostali
+    tiski so pokončni). Mreža je **CSS grid**: tekma kola k zaseda 2^(k−1)
+    vrstic, zato stoji natanko med svojima virovoma; črte (navpičnica med
+    virovoma, vstop v okvir) risajo `::before`/`::after` ovoja tekme.
+    Mreža mora biti polno binarno drevo (v kolu k tekme s pozicijami
+    1…2^(K−k)), sicer lista ne ponudimo.
+  - **Do 16 tekem v prvem kolu (32 igralcev) gre na en list.** Večja se razreže
+    na poddrevesa po 16 tekem (5 kol, »1. del od 2« …) in **končni list** s
+    preostalimi koli, katerega prvi stolpec piše »Zmagovalec 2. dela«. Stolpec
+    zmagovalca stoji ob vsakem listu (na poddrevesu »Zmagovalec 1. dela«).
+  - **Prazno mesto ostane črta za ročni vpis** (list je tudi delovni obrazec);
+    odigrana tekma pokaže nize in odebeli zmagovalca, »b. b.« / »predaja« stoji
+    pri poražencu; prost prehod je vrstica »prost«. Tekma za 3. mesto je v
+    stolpcu zmagovalca. **Kluba in nosilcev na listu ni** (prostor; pozicija ob
+    ročnem žrebu ni nosilec).
+  - Izmerjeno z brezglavim Chromom (PDF → mupdf): 12, 32 in 64 igralcev, 6 po
+    skupinah; vsak list je ležeči A4 (842 × 595 pt), mreža 32 igralcev ob robu
+    (150 mm visoka). Ob spremembi mer ponovi.
 - **Kaj pomeni klik na tekmo, odloči stran** (`KlikTekme` v `TekmaKartica`:
   `klikljiva`, `naKlik`, `namig`) — kartica mreže in vrstica seznama ne ugibata
   po stanju tekme. Posamično tekmovanje: organizatorju vnos rezultata.

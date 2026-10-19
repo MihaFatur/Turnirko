@@ -8,13 +8,12 @@
    - /turnirji/:id/zreb-skupin - vse kategorije turnirja, ki imajo izžrebane
      skupine, vsaka na svoji strani (na vrata gre žreb cele dvorane). */
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
 import { dogodkiApi, turnirjiApi } from '../api/zahteve'
 import type { MrezaDto, TurnirDto } from '../api/tipi'
-import { SporociloNapake } from '../komponente/SporociloNapake'
+import { ZrebOkvir } from '../komponente/ZrebOkvir'
 import { ZrebSkupinDogodka } from '../komponente/ZrebSkupinTisk'
-import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { sklonSkupin } from '../pomozno/oblikovanje'
 import {
   imaZrebanoSkupine,
@@ -106,47 +105,27 @@ function ListZreba({
   napaka: Error | null
   mreze: MrezaDto[]
 }) {
-  useNaslovStrani(naslov)
-
-  if (nalaganje) return <p className="obvestilo">Nalaganje …</p>
-  if (napaka) return <SporociloNapake napaka={napaka} />
-
   const steviloSkupin = mreze.reduce(
     (vsota, mreza) => vsota + steviloSkupinVSklopih(sklopiZrebSkupin(mreza)),
     0,
   )
 
   return (
-    <>
-      <div className="listki-orodja zaslon-samo">
-        <Link to={nazaj} className="povezava-nazaj">
-          {nazajOznaka}
-        </Link>
-        <span className="listki-orodja__stevec">
-          {steviloSkupin} {sklonSkupin(steviloSkupin)}
-        </span>
-        <button
-          className="gumb gumb--glavni"
-          disabled={steviloSkupin === 0}
-          onClick={() => window.print()}
-        >
-          Natisni
-        </button>
-      </div>
-
-      <div className="listki-stran zreb-stran">
-        {steviloSkupin === 0 ? (
-          <p className="obvestilo zaslon-samo">
-            Ni skupin za tisk. Žreb skupin se natisne, ko je izveden in tekmovanje teče.
-          </p>
-        ) : (
-          mreze
-            .filter((mreza) => mreza.skupine.length > 0)
-            .map((mreza) => (
-              <ZrebSkupinDogodka key={mreza.dogodek.id} mreza={mreza} turnir={turnir} />
-            ))
-        )}
-      </div>
-    </>
+    <ZrebOkvir
+      nazaj={nazaj}
+      nazajOznaka={nazajOznaka}
+      naslov={naslov}
+      nalaganje={nalaganje}
+      napaka={napaka}
+      stevec={`${steviloSkupin} ${sklonSkupin(steviloSkupin)}`}
+      steviloZaTisk={steviloSkupin}
+      prazno="Ni skupin za tisk. Žreb skupin se natisne, ko je izveden in tekmovanje teče."
+    >
+      {mreze
+        .filter((mreza) => mreza.skupine.length > 0)
+        .map((mreza) => (
+          <ZrebSkupinDogodka key={mreza.dogodek.id} mreza={mreza} turnir={turnir} />
+        ))}
+    </ZrebOkvir>
   )
 }

@@ -104,6 +104,7 @@ import {
 import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
+import { imaMrezoZaTisk } from '../pomozno/zrebMreze'
 import { imaZrebanoSkupine } from '../pomozno/zrebSkupin'
 
 export function DogodekStran() {
@@ -233,6 +234,8 @@ export function DogodekStran() {
   const rocniOnemogocen = aktivnePrijave.length < 2 || zreb.isPending
   /* Žreb skupin za vrata dvorane: ko so skupine izžrebane in dogodek teče. */
   const zaTiskSkupin = smem && imaZrebanoSkupine(dogodek) && podatki.skupine.length > 0
+  /* Žreb izločilnega dela: ko mreža obstaja (pri skupinah nastane šele po njih). */
+  const zaTiskMreze = smem && imaMrezoZaTisk(podatki)
 
   /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
      stavku; enak vrstni red na obeh širinah. Disciplina stoji na začetku samo
@@ -401,6 +404,16 @@ export function DogodekStran() {
                       Žreb skupin za tiskanje
                     </Link>
                   )}
+                  {zaTiskMreze && (
+                    <Link
+                      to={`/dogodki/${idDogodka}/zreb-mreze`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Izločilni žreb za tiskanje
+                    </Link>
+                  )}
                 </>
               )}
             </MeniDejanj>
@@ -439,6 +452,11 @@ export function DogodekStran() {
               {zaTiskSkupin && (
                 <Link to={`/dogodki/${idDogodka}/zreb-skupin`} className="gumb">
                   Žreb skupin za tiskanje
+                </Link>
+              )}
+              {zaTiskMreze && (
+                <Link to={`/dogodki/${idDogodka}/zreb-mreze`} className="gumb">
+                  Izločilni žreb za tiskanje
                 </Link>
               )}
               <ZnackaStatusa status={dogodek.status} />

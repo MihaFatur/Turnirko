@@ -159,9 +159,14 @@ public class LigaStoritev {
 
     /* Vrstica [.., kolo, status, predvidenZacetek]; "odmik" pove, kje se v
        vrstici zacne kolo (skupinska poizvedba cez vse lige ima spredaj se id). */
+    /* Vrstica poizvedbe terminiRednegaDela: [kolo, status, zacetek, izvirnoKolo,
+       cakaNaTermin]. */
     private static PotekLige.Termin termin(Object[] r, int odmik) {
-        return new PotekLige.Termin(((Number) r[odmik]).intValue(), (StatusSrecanja) r[odmik + 1],
-                (LocalDateTime) r[odmik + 2], false);
+        int kolo = ((Number) r[odmik]).intValue();
+        Integer izvirno = r[odmik + 3] == null ? null : ((Number) r[odmik + 3]).intValue();
+        return new PotekLige.Termin(kolo, (StatusSrecanja) r[odmik + 1],
+                (LocalDateTime) r[odmik + 2], false,
+                izvirno != null && izvirno != kolo, Boolean.TRUE.equals(r[odmik + 4]));
     }
 
     @Transactional
@@ -309,7 +314,15 @@ public class LigaStoritev {
 
        Seme (zacetek prvega kola, razmik, ure) ostane, kakrsno je bilo: opisuje
        nacrt ob nastanku lige in je privzetek za polnjenje v vmesniku, ne pa
-       zapis o tem, kdaj se kolo dejansko igra. */
+       zapis o tem, kdaj se kolo dejansko igra.
+
+       PRESTAVITEV srecanja (V47) je del istega vnosa, ker je tudi ona termin:
+       srecanje se igra v drugem kolu ali pa novega termina se nima. Vrstni red
+       dela je pomemben: najprej prestavitve (kolo srecanja je zdaj tisto, v
+       katerem se igra), nato termini kol za srecanja v njih in nazadnje
+       izrecni zacetki srecanj, ki obveljajo. Srecanje, ki ga vnos ne nasteje,
+       zato dobi termin kola, v katerem je; nastetemu obvelja njegov zacetek
+       (tudi null = brez termina). */
     @Transactional
     public List<SrecanjeDto> nastaviTermine(Long id, TerminiVnos v) {
         lastnistvo.preveriLigaPoId(id);
@@ -325,12 +338,12 @@ public class LigaStoritev {
             // null je veljaven vnos (kolo termin izgubi), zato loceno od "kolo ni nasteto"
             poKolih.put(t.kolo(), t.zacetek());
         }
-        Map<Long, LocalDateTime> poSrecanjih = new HashMap<>();
+        Map<Long, TerminiVnos.TerminSrecanja> poSrecanjih = new HashMap<>();
         for (TerminiVnos.TerminSrecanja t : v.srecanja() != null ? v.srecanja() : List.<TerminiVnos.TerminSrecanja>of()) {
             if (poSrecanjih.containsKey(t.id())) {
                 throw new NeveljavenVnosIzjema("Srecanje z id " + t.id() + " je v seznamu dvakrat.");
             }
-            poSrecanjih.put(t.id(), t.zacetek());
+            poSrecanjih.put(t.id(), t);
         }
 
         // termin kola je last rednega dela; tekme koncnice imajo vsaka svoj
@@ -339,35 +352,100 @@ public class LigaStoritev {
         if (srecanja.isEmpty()) {
             throw new DomenskaIzjema("Termine je mogoce vpisati sele, ko je razpored generiran.");
         }
-        Set<Integer> obstojeca = srecanja.stream().map(Srecanje::getKolo).collect(Collectors.toSet());
+        /* Kolo je znano, ce se v njem srecanje igra ALI ga je zreb dodelil
+           srecanju, ki se igra drugje - kolo, iz katerega so se vsa srecanja
+           izselila, je se vedno kolo lige in vanj se da vrniti. */
+        Set<Integer> obstojeca = new HashSet<>();
+        for (Srecanje s : srecanja) {
+            obstojeca.add(s.getKolo());
+            if (s.getIzvirnoKolo() != null) {
+                obstojeca.add(s.getIzvirnoKolo());
+            }
+        }
         for (Integer kolo : nasteta) {
             if (!obstojeca.contains(kolo)) {
                 throw new NeveljavenVnosIzjema("Liga nima " + kolo + ". kola.");
             }
         }
         Set<Long> obstojecaSrecanja = srecanja.stream().map(Srecanje::getId).collect(Collectors.toSet());
-        for (Long idSrecanje : poSrecanjih.keySet()) {
-            if (!obstojecaSrecanja.contains(idSrecanje)) {
-                throw new NeveljavenVnosIzjema("Srecanje z id " + idSrecanje + " ni srecanje rednega dela te lige.");
+        for (TerminiVnos.TerminSrecanja t : poSrecanjih.values()) {
+            if (!obstojecaSrecanja.contains(t.id())) {
+                throw new NeveljavenVnosIzjema("Srecanje z id " + t.id() + " ni srecanje rednega dela te lige.");
+            }
+            boolean caka = Boolean.TRUE.equals(t.cakaNaTermin());
+            if (!caka && t.kolo() != null && !obstojeca.contains(t.kolo())) {
+                throw new NeveljavenVnosIzjema("Liga nima " + t.kolo() + ". kola.");
             }
         }
 
         Set<Long> spremenjena = new HashSet<>();
+        Map<Long, LocalDateTime> prejZacetek = new HashMap<>();
+        Map<Long, Integer> prejKolo = new HashMap<>();
         for (Srecanje s : srecanja) {
-            LocalDateTime prej = s.getPredvidenZacetek();
+            prejZacetek.put(s.getId(), s.getPredvidenZacetek());
+            prejKolo.put(s.getId(), s.getKolo());
+            TerminiVnos.TerminSrecanja t = poSrecanjih.get(s.getId());
+            if (t != null) {
+                uporabiPrestavitev(s, t);
+            }
+        }
+        for (Srecanje s : srecanja) {
+            // srecanje brez termina ne sodi v noben dan, tudi v dan svojega kola ne
+            if (s.isCakaNaTermin()) {
+                continue;
+            }
             if (poKolih.containsKey(s.getKolo())) {
                 s.setPredvidenZacetek(poKolih.get(s.getKolo()));
             }
-            if (poSrecanjih.containsKey(s.getId())) {
-                s.setPredvidenZacetek(poSrecanjih.get(s.getId()));
+            TerminiVnos.TerminSrecanja t = poSrecanjih.get(s.getId());
+            if (t != null) {
+                s.setPredvidenZacetek(t.zacetek());
             }
-            if (!Objects.equals(prej, s.getPredvidenZacetek())) {
+        }
+        for (Srecanje s : srecanja) {
+            if (!Objects.equals(prejZacetek.get(s.getId()), s.getPredvidenZacetek())
+                    || prejKolo.get(s.getId()) != s.getKolo()) {
                 spremenjena.add(s.getId());
             }
         }
         preveriHkratnaSrecanja(srecanja, spremenjena);
         srecanjeRepozitorij.saveAll(srecanja);
-        return srecanja.stream().map(SrecanjeDto::iz).toList();
+        return srecanja.stream()
+                .sorted(Comparator.comparingInt(Srecanje::getKolo)
+                        .thenComparing(Srecanje::getPredvidenZacetek, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Srecanje::getId))
+                .map(SrecanjeDto::iz)
+                .toList();
+    }
+
+    /* Kolo in razlog enega srecanja iz vnosa; zacetek obdela klicatelj.
+
+       Srecanje, ki trenutno caka na termin in dobi zacetek, se vrne v kolo, v
+       katerem je (kolo iz zreba), tudi ce vnos kola ne pove. Razlog: prazen niz
+       ga zbrise, "ni podan" (null) ga pusti - vmesnik ob navadnem popravku ure
+       razloga ne nosi. */
+    private static void uporabiPrestavitev(Srecanje s, TerminiVnos.TerminSrecanja t) {
+        String razlog = t.razlog() == null ? null : t.razlog().strip();
+        if (Boolean.TRUE.equals(t.cakaNaTermin())) {
+            /* Srecanje, ki ima izid ali je v teku, se je ze igralo: njegov dan
+               je znan, brez dne pa bi ostal izid, ki ga razpored ne bi nikjer
+               pokazal. Premakne se v kolo, ne pusti brez termina. */
+            if (s.getStatus() != StatusSrecanja.RAZPORED) {
+                throw new NeveljavenVnosIzjema("Srecanje " + s.getEkipaDomaci().prikazanoIme() + " : "
+                        + s.getEkipaGost().prikazanoIme() + " je ze zacelo, zato ne more cakati na termin.");
+            }
+            s.zacniCakatiNaTermin(razlog == null || razlog.isEmpty() ? null : razlog);
+            return;
+        }
+        Integer novoKolo = t.kolo();
+        if (novoKolo == null && s.isCakaNaTermin() && t.zacetek() != null) {
+            novoKolo = s.getKolo();
+        }
+        if (novoKolo != null && (novoKolo != s.getKolo() || s.isCakaNaTermin())) {
+            s.prestaviVKolo(novoKolo, razlog == null || razlog.isEmpty() ? null : razlog);
+        } else if (razlog != null) {
+            s.nastaviRazlog(razlog.isEmpty() ? null : razlog);
+        }
     }
 
     /* Ekipa ne more igrati dveh srecanj hkrati. Pri kolu kroznega sistema se to

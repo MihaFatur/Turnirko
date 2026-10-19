@@ -55,6 +55,7 @@ import {
 import { imeLigeSSezono, useNaslovStrani } from '../pomozno/naslovStrani'
 import { zabeleziOgledLige } from '../pomozno/ogledaneLige'
 import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
+import { KOLO_BREZ_TERMINA, opisPrestavitve, terminKola, vKolih } from '../pomozno/prestavitve'
 import { odigranihTekemLige, PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
 import { intervalOsvezevanja } from '../pomozno/osvezevanje'
 import { useTelefon } from '../pomozno/telefon'
@@ -220,9 +221,13 @@ export function LigaStran() {
   const vPripravi = l.dejanskiStatus === 'PRIPRAVA'
   /* Redni del in končnica sta ločena: tekme serij nosijo krog končnice in ne
      kola rednega dela, zato bi v razporedu padle v 1. in 2. kolo. */
-  const vsa = (srecanja.data ?? []).filter((s) => s.idSerija == null)
+  const vsiRedni = (srecanja.data ?? []).filter((s) => s.idSerija == null)
+  /* Prestavljeno srečanje brez novega termina ne sodi v noben dan: kola ga ne
+     kažejo in ne štejejo, razpored pa ga našteje pod »?« na koncu traku kol. */
+  const cakajoca = vsiRedni.filter((s) => s.cakaNaTermin)
+  const vsa = vKolih(vsiRedni)
   const tekmeKoncnice = (srecanja.data ?? []).filter((s) => s.idSerija != null)
-  const imaRazpored = vsa.length > 0
+  const imaRazpored = vsiRedni.length > 0
   const imaKoncnico = l.koncnicaEkip != null
 
   /* Napredek lige pove strežnik (LigaDto, PotekLige): kolo je odigrano, ko je
@@ -237,17 +242,24 @@ export function LigaStran() {
   const naslednjeKolo = l.naslednje?.kolo ?? null
   /* Kvalifikacije in končnica nastanejo iz KONČNE lestvice, zato tu ne zadošča
      datum: redni del je končan, ko je vpisan izid vsakega srečanja. */
-  const vseKoncano = vsa.every((s) => s.status === 'KONCANO')
+  const vseKoncano = vsiRedni.every((s) => s.status === 'KONCANO')
   /* Razpored se sme razveljaviti, dokler se ni začelo nobeno srečanje: prepis
      papirnatega žreba je dolg in tipkarska napaka se odkrije šele, ko jo kdo
      prebere. Postavljeno srečanje (POTEKA) ima že tekme in morda rezultate,
      zato tam vrata zapre tudi strežnik. */
-  const nobenoOdigrano = imaRazpored && vsa.every((s) => s.status === 'RAZPORED')
+  const nobenoOdigrano = imaRazpored && vsiRedni.every((s) => s.status === 'RAZPORED')
 
   /* Ob prihodu na stran je izbrano naslednje kolo (to gledalec išče), sicer
      zadnje. Ročno izbiro spustimo, če je razpored medtem prišel drugačen. */
   const privzetoKolo = naslednjeKolo ?? kola[kola.length - 1] ?? 1
-  const kolo = rocnoKolo != null && kola.includes(rocnoKolo) ? rocnoKolo : privzetoKolo
+  /* »?« velja, dokler je kaj brez termina - ko organizator vpiše zadnji dan,
+     gumba ni več in stran se vrne na privzeto kolo. */
+  const brezTerminaIzbrano = rocnoKolo === KOLO_BREZ_TERMINA && cakajoca.length > 0
+  const kolo = brezTerminaIzbrano
+    ? KOLO_BREZ_TERMINA
+    : rocnoKolo != null && kola.includes(rocnoKolo)
+      ? rocnoKolo
+      : privzetoKolo
 
   /* Zavihek se ponudi, ko je odigranih dovolj tekem (isti prag kot pri turnirju
      in v zaledju). Merilo ni celo kolo: v ligi, kjer se ekipe menjajo za
@@ -351,7 +363,7 @@ export function LigaStran() {
       {terminiOdprti && (
         <TerminiOkno
           liga={l}
-          srecanja={vsa}
+          srecanja={vsiRedni}
           onZapri={() => nastaviTerminiOdprte(false)}
           onShranjeno={() => {
             odjemalec.invalidateQueries({ queryKey: ['srecanja', idLiga] })
@@ -659,6 +671,7 @@ export function LigaStran() {
         {imaRazpored && mobilniPogled === 'RAZPORED' && (
           <RazporedMobi
             srecanja={vsa}
+            cakajoca={cakajoca}
             kola={kola}
             kolo={kolo}
             rocniZreb={l.rocniZreb}
@@ -941,6 +954,7 @@ export function LigaStran() {
           >
             <Razpored
               srecanja={vsa}
+              cakajoca={cakajoca}
               kola={kola}
               kolo={kolo}
               odigranihKol={odigranihKol}
@@ -1171,13 +1185,10 @@ function skupineKola(vKolu: SrecanjeDto[]): { naslov: string | null; srecanja: S
   return skupine
 }
 
-/* Termin kola vzamemo iz prvega srečanja, ki ga ima: kolo se odigra en dan,
-   zaledje pa srečanja kola vrne po uri, zato je to tudi najzgodnejši začetek
-   (piše ga zaledje iz semena lige oz. ročnega popravka v TerminiOkno). */
-function terminKola(srecanja: SrecanjeDto[], kolo: number): string | null {
-  return srecanja.find((x) => x.kolo === kolo && x.predvidenZacetek)?.predvidenZacetek ?? null
-}
-
+/* Termin kola (pomozno/prestavitve): najzgodnejši začetek srečanj, ki v kolu
+   sodijo - kolo se odigra en dan, prestavljeno srečanje pa se sme igrati na
+   svoj dan in kola ne premakne. Piše ga zaledje iz semena lige oz. ročnega
+   popravka v TerminiOkno. */
 function datumKola(srecanja: SrecanjeDto[], kolo: number): string | null {
   return terminKola(srecanja, kolo)?.slice(0, 10) ?? null
 }
@@ -1924,8 +1935,113 @@ function OznakaRocnegaZreba() {
   )
 }
 
+/* Poved o prestavitvi pod vrstico srečanja: »Prestavljeno iz 5. kola« in, če ga
+   je organizator vpisal, razlog. Srečanje stoji samo v kolu, v katerem se igra,
+   zato je tu edino mesto, kjer gledalec izve, da je bilo kje drugje predvideno. */
+function OpombaPrestavitve({ s }: { s: SrecanjeDto }) {
+  const opis = opisPrestavitve(s, true)
+  if (!opis) return null
+  return (
+    <span className="liga__srecanje-opomba liga__srecanje-opomba--prestavljeno">
+      {opis.naslov}
+      {opis.razlog && <span className="liga__srecanje-razlog">{opis.razlog}</span>}
+    </span>
+  )
+}
+
+/* »Srečanje«, »srečanji«, »srečanja«, »srečanj« glede na število. */
+function sklonSrecanj(n: number): string {
+  const ostanek = n % 100
+  if (ostanek === 1) return 'srečanje'
+  if (ostanek === 2) return 'srečanji'
+  if (ostanek === 3 || ostanek === 4) return 'srečanja'
+  return 'srečanj'
+}
+
+/* Prestavljena srečanja brez novega termina: ne sodijo v noben dan, zato jih
+   kola ne kažejo. Stojijo pod »?« na koncu traku kol, kot da bi bilo to še eno
+   kolo - igralec, ki svojega srečanja ne najde v nobenem kolu, pogleda tja;
+   ko organizator vpiše dan, se srečanje pokaže v svojem kolu. */
+function SrecanjaBrezTermina({ srecanja, mobi }: { srecanja: SrecanjeDto[]; mobi: boolean }) {
+  const vrstica = (s: SrecanjeDto) => (
+    <Link
+      key={s.id}
+      to={`/srecanja/${s.id}`}
+      className={mobi ? 'liga-mobi__srecanje' : 'liga__srecanje'}
+    >
+      <span
+        className={
+          mobi
+            ? 'liga-mobi__ekipa liga-mobi__ekipa--desno'
+            : 'liga__srecanje-ekipa liga__srecanje-ekipa--desno'
+        }
+      >
+        {s.domaci}
+      </span>
+      <span
+        className={
+          mobi
+            ? 'liga-mobi__izid liga-mobi__izid--caka'
+            : 'liga__srecanje-izid liga__srecanje-izid--caka'
+        }
+      >
+        vs
+      </span>
+      <span className={mobi ? 'liga-mobi__ekipa' : 'liga__srecanje-ekipa'}>{s.gost}</span>
+      {!mobi && <span className="liga__srecanje-dejanje">Postava</span>}
+      <OpombaPrestavitve s={s} />
+    </Link>
+  )
+  return mobi ? (
+    <div className="liga-mobi__srecanja">{srecanja.map(vrstica)}</div>
+  ) : (
+    <ul className="liga__srecanja">
+      {srecanja.map((s) => (
+        <li key={s.id}>{vrstica(s)}</li>
+      ))}
+    </ul>
+  )
+}
+
+/* Napis ob izbiri »?« v krmarju kola (namizje in telefon). */
+function metaBrezTermina(n: number): string {
+  return `${n} ${sklonSrecanj(n)} · termin še ni znan`
+}
+
+/* Gumb »?« na koncu traku kol - samo kadar je kaj brez termina. */
+function GumbBrezTermina({
+  stevilo,
+  izbran,
+  razred,
+  onIzberi,
+}: {
+  stevilo: number
+  izbran: boolean
+  /* Razred gumba traku (namizje oz. telefon) in njegov »izbrano« */
+  razred: string
+  onIzberi: () => void
+}) {
+  if (stevilo === 0) return null
+  const opis = `Brez termina — ${metaBrezTermina(stevilo)}`
+  return (
+    <button
+      type="button"
+      className={razred + (izbran ? ` ${razred}--izbrano` : '') + ` ${razred}--brez-termina`}
+      aria-current={izbran ? 'true' : undefined}
+      aria-label={opis}
+      title={opis}
+      onClick={onIzberi}
+    >
+      ?
+    </button>
+  )
+}
+
 interface RazporedLastnosti {
   srecanja: SrecanjeDto[]
+  /* Prestavljena srečanja brez novega termina - ne sodijo v noben dan (kola jih
+     ne kažejo), zato jih kaže »?« na koncu traku kol (KOLO_BREZ_TERMINA). */
+  cakajoca: SrecanjeDto[]
   kola: number[]
   kolo: number
   odigranihKol: number
@@ -1938,6 +2054,7 @@ interface RazporedLastnosti {
 
 function Razpored({
   srecanja,
+  cakajoca,
   kola,
   kolo,
   odigranihKol,
@@ -1945,13 +2062,16 @@ function Razpored({
   koloOdigrano,
   onKolo,
 }: RazporedLastnosti) {
-  const mesto = kola.indexOf(kolo)
+  const brezTermina = kolo === KOLO_BREZ_TERMINA
+  /* »?« je zadnja postaja traku: »Naslednje« z zadnjega kola vodi vanj. */
+  const postaje = cakajoca.length > 0 ? [...kola, KOLO_BREZ_TERMINA] : kola
+  const mesto = postaje.indexOf(kolo)
   const vKolu = srecanja.filter((s) => s.kolo === kolo)
-  const odigrano = koloOdigrano(kolo)
-  const meta = metaKola(srecanja, kolo, odigrano)
+  const odigrano = !brezTermina && koloOdigrano(kolo)
+  const meta = brezTermina ? metaBrezTermina(cakajoca.length) : metaKola(srecanja, kolo, odigrano)
   /* Termin kola, ki šele pride, je poudarjen - to je vprašanje, s katerim
      gledalec pride na razpored. */
-  const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
+  const poudarjenTermin = !brezTermina && !odigrano && terminKola(srecanja, kolo) != null
 
   return (
     <div>
@@ -1967,12 +2087,12 @@ function Razpored({
           type="button"
           className="izbirnik__gumb"
           disabled={mesto <= 0}
-          onClick={() => onKolo(kola[mesto - 1])}
+          onClick={() => onKolo(postaje[mesto - 1])}
         >
           ← Prejšnje
         </button>
         <span className="liga__krmar-sredina">
-          <span className="liga__krmar-kolo">{kolo}. kolo</span>
+          <span className="liga__krmar-kolo">{brezTermina ? 'Brez termina' : `${kolo}. kolo`}</span>
           <span className={'sekcija__meta' + (poudarjenTermin ? ' liga__kolo-termin' : '')}>
             {meta}
           </span>
@@ -1980,12 +2100,14 @@ function Razpored({
         <button
           type="button"
           className="izbirnik__gumb"
-          disabled={mesto < 0 || mesto >= kola.length - 1}
-          onClick={() => onKolo(kola[mesto + 1])}
+          disabled={mesto < 0 || mesto >= postaje.length - 1}
+          onClick={() => onKolo(postaje[mesto + 1])}
         >
           Naslednje →
         </button>
       </div>
+
+      {brezTermina && <SrecanjaBrezTermina srecanja={cakajoca} mobi={false} />}
 
       <ul className="liga__srecanja">
         {skupineKola(vKolu).map((skupina) => (
@@ -2029,6 +2151,7 @@ function Razpored({
                       {s.gost}
                     </span>
                     <span className="liga__srecanje-dejanje">{konec ? 'Zapisnik' : 'Postava'}</span>
+                    <OpombaPrestavitve s={s} />
                     {zamuja && <span className="liga__srecanje-opomba">Izid ni vpisan</span>}
                   </Link>
                 </li>
@@ -2063,6 +2186,12 @@ function Razpored({
               {k}
             </button>
           ))}
+          <GumbBrezTermina
+            stevilo={cakajoca.length}
+            izbran={brezTermina}
+            razred="liga__trak-gumb"
+            onIzberi={() => onKolo(KOLO_BREZ_TERMINA)}
+          />
         </div>
       </div>
     </div>
@@ -2075,17 +2204,20 @@ function Razpored({
    - pove ga zavihek, ki je pripeljal sem. */
 function RazporedMobi({
   srecanja,
+  cakajoca,
   kola,
   kolo,
   rocniZreb,
   koloOdigrano,
   onKolo,
 }: Omit<RazporedLastnosti, 'odigranihKol'>) {
-  const mesto = kola.indexOf(kolo)
+  const brezTermina = kolo === KOLO_BREZ_TERMINA
+  const postaje = cakajoca.length > 0 ? [...kola, KOLO_BREZ_TERMINA] : kola
+  const mesto = postaje.indexOf(kolo)
   const vKolu = srecanja.filter((s) => s.kolo === kolo)
-  const odigrano = koloOdigrano(kolo)
-  const meta = metaKola(srecanja, kolo, odigrano)
-  const poudarjenTermin = !odigrano && terminKola(srecanja, kolo) != null
+  const odigrano = !brezTermina && koloOdigrano(kolo)
+  const meta = brezTermina ? metaBrezTermina(cakajoca.length) : metaKola(srecanja, kolo, odigrano)
+  const poudarjenTermin = !brezTermina && !odigrano && terminKola(srecanja, kolo) != null
 
   return (
     <>
@@ -2096,12 +2228,12 @@ function RazporedMobi({
             className="liga-mobi__krmar-gumb"
             aria-label="Prejšnje kolo"
             disabled={mesto <= 0}
-            onClick={() => onKolo(kola[mesto - 1])}
+            onClick={() => onKolo(postaje[mesto - 1])}
           >
             ←
           </button>
           <span className="liga-mobi__krmar-sredina">
-            <span className="liga-mobi__kolo">{kolo}. kolo</span>
+            <span className="liga-mobi__kolo">{brezTermina ? 'Brez termina' : `${kolo}. kolo`}</span>
             <span
               className={
                 'liga-mobi__kolo-meta' + (poudarjenTermin ? ' liga__kolo-termin' : '')
@@ -2114,12 +2246,14 @@ function RazporedMobi({
             type="button"
             className="liga-mobi__krmar-gumb"
             aria-label="Naslednje kolo"
-            disabled={mesto < 0 || mesto >= kola.length - 1}
-            onClick={() => onKolo(kola[mesto + 1])}
+            disabled={mesto < 0 || mesto >= postaje.length - 1}
+            onClick={() => onKolo(postaje[mesto + 1])}
           >
             →
           </button>
         </div>
+
+        {brezTermina && <SrecanjaBrezTermina srecanja={cakajoca} mobi />}
 
         <div className="liga-mobi__srecanja">
           {skupineKola(vKolu).map((skupina) => (
@@ -2154,6 +2288,7 @@ function RazporedMobi({
                     >
                       {s.gost}
                     </span>
+                    <OpombaPrestavitve s={s} />
                     {zamuja && <span className="liga__srecanje-opomba">Izid ni vpisan</span>}
                   </Link>
                 )
@@ -2185,6 +2320,12 @@ function RazporedMobi({
               {k}
             </button>
           ))}
+          <GumbBrezTermina
+            stevilo={cakajoca.length}
+            izbran={brezTermina}
+            razred="liga-mobi__trak-gumb"
+            onIzberi={() => onKolo(KOLO_BREZ_TERMINA)}
+          />
         </div>
       </div>
     </>

@@ -1,9 +1,10 @@
 /* Modalno okno za vnos rezultata tekme.
 
    Pravila (dokoncno jih preverja zaledje, tu jih le vodimo):
-   - Odigrana tekma: zmagovalec mora dobiti natanko toliko nizov, kolikor
-     jih je potrebnih za zmago (npr. 3 pri "najboljsi od 5"), zato rezultat
-     izbiramo s seznama veljavnih izidov in napacen vnos sploh ni mogoc.
+   - Odigrana tekma: nize vpisemo rocno, kot pri ligaski tekmi (zapisnik
+     srecanja), ker se rezultat prepisuje s papirja. Zmagovalec mora dobiti
+     natanko toliko nizov, kolikor jih je potrebnih za zmago (npr. 3 pri
+     "najboljsi od 5"), porazenec manj; to preveri zaledje in napako vrne.
    - Tocke po nizih so neobvezne; ce so vnesene, jih mora biti natanko
      toliko, kot je odigranih nizov. Vnos in preverba sta v skupni komponenti
      TockeNizov - isti kot pri ligaski tekmi, ker so pravila niza ista.
@@ -24,6 +25,7 @@ import { imeUdelezenca, nizovZaZmago, priimekUdelezenca } from '../api/tipi'
 import type { IzidTekme, NizVnos, TekmaDto, VnosRezultata } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
+import { StevilskoPolje } from './StevilskoPolje'
 import { TockeNizov, preveriNize, vrsticeZaIzid, type VrsticaNiza } from './TockeNizov'
 
 interface Lastnosti {
@@ -62,6 +64,9 @@ export function VnosRezultataOkno({
   const zaZmago = nizovZaZmago(steviloNizov)
   const ime1 = imeUdelezenca(tekma.udelezenec1) ?? 'Igralec 1'
   const ime2 = imeUdelezenca(tekma.udelezenec2) ?? 'Igralec 2'
+  /* Priimka nad polji za nize in nad stolpci točk - prepis s papirja gre po imenu. */
+  const priimek1 = priimekUdelezenca(tekma.udelezenec1) || 'Igralec 1'
+  const priimek2 = priimekUdelezenca(tekma.udelezenec2) || 'Igralec 2'
   const izidi = samoBrezIgre
     ? ROCNI_IZIDI.filter((izid) => izid.vrednost === 'BREZ_BOJA' || izid.vrednost === 'DISKVALIFIKACIJA')
     : ROCNI_IZIDI
@@ -78,16 +83,20 @@ export function VnosRezultataOkno({
   const [izidTip, nastaviIzidTip] = useState<IzidTekme>(
     popravek ? (tekma.izidTip ?? 'IGRANO') : samoBrezIgre ? 'BREZ_BOJA' : 'IGRANO',
   )
-  /* Koncni rezultat v obliki "3:1" - izbran s seznama veljavnih izidov. */
-  const [rezultat, nastaviRezultat] = useState(
-    popravek && tekma.izidTip === 'IGRANO' ? `${tekma.dobljeniNizi1}:${tekma.dobljeniNizi2}` : '',
+  /* Dobljeni nizi vsakega igralca, vpisani rocno kot pri ligaski tekmi. Prazno
+     pomeni, da še ni vpisano; pri popravku sta napolnjena s shranjenim izidom. */
+  const [niziPrvi, nastaviNiziPrvi] = useState(
+    popravek && tekma.izidTip === 'IGRANO' ? String(tekma.dobljeniNizi1) : '',
+  )
+  const [niziDrugi, nastaviNiziDrugi] = useState(
+    popravek && tekma.izidTip === 'IGRANO' ? String(tekma.dobljeniNizi2) : '',
   )
   /* Točke po nizih so privzeto vklopljene - organizator jih prepisuje s papirja
      pri vsakem rezultatu, izklopi pa jih odznačenje. Pri popravku ostane stanje,
      kakršno je shranjeno. */
   const [vnasamTocke, nastaviVnasamTocke] = useState(popravek ? tekma.nizi.length > 0 : true)
-  /* Pri popravku je rezultat že izbran, zato se vrstice ne morejo pojaviti ob
-     njegovi izbiri — pripravimo jih takoj, sicer bi organizator, ki točke
+  /* Pri popravku so nizi že vpisani, zato se vrstice ne morejo pojaviti ob
+     njihovem vpisu — pripravimo jih takoj, sicer bi organizator, ki točke
      dodaja k tekmi brez njih, dobil prazno mrežo in nerazumljivo napako. */
   const [tockeNizov, nastaviTockeNizov] = useState<VrsticaNiza[]>(() =>
     popravek && tekma.izidTip === 'IGRANO'
@@ -101,12 +110,12 @@ export function VnosRezultataOkno({
   const [zmagovalecStran, nastaviZmagovalecStran] = useState<'' | '1' | '2'>(
     popravek ? shranjenaStran : '',
   )
-  /* Delni rezultat ob predaji. */
+  /* Delni rezultat ob predaji - tudi ta se vpisuje rocno. */
   const [predajaNizi1, nastaviPredajaNizi1] = useState(
-    popravek && tekma.izidTip === 'PREDAJA' ? String(tekma.dobljeniNizi1) : '0',
+    popravek && tekma.izidTip === 'PREDAJA' ? String(tekma.dobljeniNizi1) : '',
   )
   const [predajaNizi2, nastaviPredajaNizi2] = useState(
-    popravek && tekma.izidTip === 'PREDAJA' ? String(tekma.dobljeniNizi2) : '0',
+    popravek && tekma.izidTip === 'PREDAJA' ? String(tekma.dobljeniNizi2) : '',
   )
   const [napakaVnosa, nastaviNapakoVnosa] = useState<string | null>(null)
 
@@ -119,30 +128,30 @@ export function VnosRezultataOkno({
     },
   })
 
-  /* Vsi veljavni koncni rezultati, najprej zmage prvega igralca. */
-  const veljavniRezultati1: string[] = []
-  const veljavniRezultati2: string[] = []
-  for (let porazencevi = 0; porazencevi < zaZmago; porazencevi++) {
-    veljavniRezultati1.push(`${zaZmago}:${porazencevi}`)
-    veljavniRezultati2.push(`${porazencevi}:${zaZmago}`)
+  /* Koliko nizov je odigranih - po tem se ravna stevilo vrstic za tocke. Dokler
+     je vpisan samo en igralec, ni izida in ni vrstic. */
+  const odigranihNizov =
+    niziPrvi !== '' && niziDrugi !== '' ? Number(niziPrvi) + Number(niziDrugi) : 0
+
+  /* Ob vpisu nizov prilagodi stevilo vrstic za tocke nizov. */
+  function obSpremembiNizov(stran: 'prvi' | 'drugi', vrednost: string) {
+    const prvi = stran === 'prvi' ? vrednost : niziPrvi
+    const drugi = stran === 'drugi' ? vrednost : niziDrugi
+    if (stran === 'prvi') nastaviNiziPrvi(vrednost)
+    else nastaviNiziDrugi(vrednost)
+    const skupaj = prvi !== '' && drugi !== '' ? Number(prvi) + Number(drugi) : 0
+    nastaviTockeNizov((prejsnje) => vrsticeZaIzid(prejsnje, skupaj))
   }
 
-  /* Ob spremembi rezultata prilagodi stevilo vrstic za tocke nizov. */
-  function obSpremembiRezultata(nov: string) {
-    nastaviRezultat(nov)
-    if (!nov) return
-    const [nizi1, nizi2] = nov.split(':').map(Number)
-    nastaviTockeNizov((prejsnje) => vrsticeZaIzid(prejsnje, nizi1 + nizi2))
-  }
-
-  /* Nova meja spremeni veljavne izide, zato izbrani rezultat in točke po nizih
-     pri stari meji ne ostanejo veljavni - organizator jih izbere znova. */
+  /* Nova meja spremeni, koliko nizov se igra, zato vpisani nizi in točke pri stari
+     meji ne ostanejo veljavni - organizator jih vpiše znova. */
   function obSpremembiSteviloNizov(nov: number) {
     nastaviSteviloNizov(nov)
-    nastaviRezultat('')
+    nastaviNiziPrvi('')
+    nastaviNiziDrugi('')
     nastaviTockeNizov([])
-    nastaviPredajaNizi1('0')
-    nastaviPredajaNizi2('0')
+    nastaviPredajaNizi1('')
+    nastaviPredajaNizi2('')
   }
 
   function obOddaji(dogodek: FormEvent) {
@@ -150,11 +159,12 @@ export function VnosRezultataOkno({
     nastaviNapakoVnosa(null)
 
     if (izidTip === 'IGRANO') {
-      if (!rezultat) {
-        nastaviNapakoVnosa('Izberi končni rezultat.')
+      if (niziPrvi === '' || niziDrugi === '') {
+        nastaviNapakoVnosa('Vnesi dobljene nize obeh igralcev.')
         return
       }
-      const [nizi1, nizi2] = rezultat.split(':').map(Number)
+      const nizi1 = Number(niziPrvi)
+      const nizi2 = Number(niziDrugi)
 
       let nizi: NizVnos[] | null = null
       if (vnasamTocke) {
@@ -198,9 +208,6 @@ export function VnosRezultataOkno({
       steviloNizov: prepis,
     })
   }
-
-  /* Moznosti delnega rezultata ob predaji: 0 .. zaZmago-1 dobljenih nizov. */
-  const delniNizi = Array.from({ length: zaZmago }, (_, indeks) => String(indeks))
 
   return (
     <ModalnoOkno
@@ -261,29 +268,27 @@ export function VnosRezultataOkno({
 
         {izidTip === 'IGRANO' && (
           <>
-            <label className="obrazec__polje">
-              <span>Končni rezultat (nizi)</span>
-              <select
-                value={rezultat}
-                onChange={(dogodek) => obSpremembiRezultata(dogodek.target.value)}
-              >
-                <option value="">— izberi —</option>
-                <optgroup label={`Zmaga: ${ime1}`}>
-                  {veljavniRezultati1.map((moznost) => (
-                    <option key={moznost} value={moznost}>
-                      {moznost}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label={`Zmaga: ${ime2}`}>
-                  {veljavniRezultati2.map((moznost) => (
-                    <option key={moznost} value={moznost}>
-                      {moznost}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-            </label>
+            {/* Nad poljema stoji priimek, ne »igralec 1«: s papirja se prepisuje ime. */}
+            <div className="obrazec__vrstica">
+              <label className="obrazec__polje">
+                <span>Dobljeni nizi — {priimek1}</span>
+                <StevilskoPolje
+                  najvec={zaZmago}
+                  vrednost={niziPrvi}
+                  naSpremembo={(vrednost) => obSpremembiNizov('prvi', vrednost)}
+                  required
+                />
+              </label>
+              <label className="obrazec__polje">
+                <span>Dobljeni nizi — {priimek2}</span>
+                <StevilskoPolje
+                  najvec={zaZmago}
+                  vrednost={niziDrugi}
+                  naSpremembo={(vrednost) => obSpremembiNizov('drugi', vrednost)}
+                  required
+                />
+              </label>
+            </div>
 
             <label className="obrazec__potrditev">
               <input
@@ -294,12 +299,12 @@ export function VnosRezultataOkno({
               <span>Vnesi tudi točke po nizih</span>
             </label>
 
-            {vnasamTocke && rezultat && (
+            {vnasamTocke && odigranihNizov > 0 && (
               <TockeNizov
                 vrstice={tockeNizov}
                 nastaviVrstice={nastaviTockeNizov}
-                priimek1={priimekUdelezenca(tekma.udelezenec1)}
-                priimek2={priimekUdelezenca(tekma.udelezenec2)}
+                priimek1={priimek1}
+                priimek2={priimek2}
               />
             )}
           </>
@@ -332,32 +337,26 @@ export function VnosRezultataOkno({
             </div>
 
             {izidTip === 'PREDAJA' && (
-              <label className="obrazec__polje">
-                <span>Delni rezultat ob predaji (nizi)</span>
-                <div className="obrazec__niz">
-                  <select
-                    value={predajaNizi1}
-                    onChange={(dogodek) => nastaviPredajaNizi1(dogodek.target.value)}
-                  >
-                    {delniNizi.map((vrednost) => (
-                      <option key={vrednost} value={vrednost}>
-                        {vrednost}
-                      </option>
-                    ))}
-                  </select>
-                  <span>:</span>
-                  <select
-                    value={predajaNizi2}
-                    onChange={(dogodek) => nastaviPredajaNizi2(dogodek.target.value)}
-                  >
-                    {delniNizi.map((vrednost) => (
-                      <option key={vrednost} value={vrednost}>
-                        {vrednost}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </label>
+              <div className="obrazec__vrstica">
+                <label className="obrazec__polje">
+                  <span>Dobljeni nizi ob predaji — {priimek1}</span>
+                  <StevilskoPolje
+                    najvec={zaZmago - 1}
+                    vrednost={predajaNizi1}
+                    naSpremembo={nastaviPredajaNizi1}
+                    required
+                  />
+                </label>
+                <label className="obrazec__polje">
+                  <span>Dobljeni nizi ob predaji — {priimek2}</span>
+                  <StevilskoPolje
+                    najvec={zaZmago - 1}
+                    vrednost={predajaNizi2}
+                    naSpremembo={nastaviPredajaNizi2}
+                    required
+                  />
+                </label>
+              </div>
             )}
           </>
         )}

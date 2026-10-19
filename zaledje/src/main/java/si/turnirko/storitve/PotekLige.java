@@ -22,7 +22,14 @@
 
    Koncnica ni kolo rednega dela (njena "kola" so krogi serij) in v stevcu ne
    steje; v "naslednje" pa steje, ce jo klicatelj poda (domaca stran po rednem
-   delu obljublja naslednjo tekmo serije). */
+   delu obljublja naslednjo tekmo serije).
+
+   PRESTAVLJENA srecanja (V47): srecanje, premaknjeno v drugo kolo, tam steje
+   (kolo srecanja je kolo, v katerem se igra), a datuma kola ne dolocata ona -
+   igra se lahko na svoj dan in kolo, ki so ga sicer odigrali v nedeljo, ne
+   sme zaradi srecanja v sredo dobiti sredinega datuma. Srecanje, ki caka na
+   termin, ne sodi v nobeno kolo: kolo, iz katerega je odslo, je brez njega
+   odigrano, "naslednje" pa ga ne ponuja, ker dneva ni. */
 package si.turnirko.storitve;
 
 import java.time.LocalDate;
@@ -44,8 +51,15 @@ public final class PotekLige {
     private static final ZoneId SLOVENIJA = ZoneId.of("Europe/Ljubljana");
 
     /* Kar o srecanju potrebujemo: kolo, stanje, termin in ali je tekma
-       koncnice. */
-    public record Termin(int kolo, StatusSrecanja status, LocalDateTime zacetek, boolean koncnica) {}
+       koncnice. `vDrugemKolu`: srecanje je prestavljeno v to kolo iz drugega;
+       `caka`: prestavljeno brez novega termina. */
+    public record Termin(int kolo, StatusSrecanja status, LocalDateTime zacetek, boolean koncnica,
+                         boolean vDrugemKolu, boolean caka) {
+
+        public Termin(int kolo, StatusSrecanja status, LocalDateTime zacetek, boolean koncnica) {
+            this(kolo, status, zacetek, koncnica, false, false);
+        }
+    }
 
     /* Naslednje kolo: njegova stevilka in dan (null, ce termina ni). */
     public record Naslednje(int kolo, LocalDate datum) {}
@@ -69,13 +83,16 @@ public final class PotekLige {
     public static Potek izracunaj(List<Termin> srecanja, LocalDate danes) {
         Map<Integer, List<Termin>> poKolih = new TreeMap<>();
         for (Termin s : srecanja) {
-            if (!s.koncnica()) {
+            if (!s.koncnica() && !s.caka()) {
                 poKolih.computeIfAbsent(s.kolo(), k -> new ArrayList<>()).add(s);
             }
         }
         List<Integer> odigrana = new ArrayList<>();
         poKolih.forEach((kolo, vKolu) -> {
-            LocalDate datumKola = vKolu.stream()
+            /* Datum kola dolocajo srecanja, ki v njem sodijo; prestavljena iz
+               drugega kola ga dolocajo samo, ce drugih ni. */
+            List<Termin> domaca = vKolu.stream().filter(s -> !s.vDrugemKolu()).toList();
+            LocalDate datumKola = (domaca.isEmpty() ? vKolu : domaca).stream()
                     .map(PotekLige::datum)
                     .filter(Objects::nonNull)
                     .min(Comparator.naturalOrder())
@@ -108,7 +125,8 @@ public final class PotekLige {
                 .toList();
         Termin izbran = null;
         for (Termin s : poVrsti) {
-            if (s.status() == StatusSrecanja.KONCANO) {
+            // brez termina ni dneva: srecanje, ki caka, ni "naslednje"
+            if (s.status() == StatusSrecanja.KONCANO || s.caka()) {
                 continue;
             }
             LocalDate datum = datum(s);

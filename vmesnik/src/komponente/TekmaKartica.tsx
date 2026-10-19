@@ -45,9 +45,10 @@ export function klubZaIzpis(udelezenec: Udelezenec): string | null {
   return klub ? kratekKlub(klub) : klub
 }
 
-/* Kratka oznaka posebnega izida ob rezultatu. */
+/* Kratka oznaka posebnega izida ob rezultatu. Prostega prehoda tu ni: to, da
+   je nasprotnika "prosto", pove že prazna polovica kartice (»— prosto —«),
+   rdeč napis pod njo bi isto povedal drugič. */
 const OZNAKA_POSEBNEGA_IZIDA: Record<string, string> = {
-  PROSTO: 'prosto',
   BREZ_BOJA: 'b. b.',
   PREDAJA: 'predaja',
   DISKVALIFIKACIJA: 'diskv.',

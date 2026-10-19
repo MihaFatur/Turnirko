@@ -1801,17 +1801,6 @@ input[type='radio'] {
   white-space: nowrap;
 }
 
-.obrazec__niz {
-  display: flex;
-  align-items: center;
-  gap: var(--r1);
-}
-
-.obrazec__niz input,
-.obrazec__niz select {
-  max-width: 7rem;
-}
-
 .obrazec__nizi input {
   text-align: center;
   padding-left: 4px;
@@ -1898,6 +1887,62 @@ input[type='radio'] {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--tip-drobno);
+}
+
+/* Prestavitve srecanj (V47): seznam prestavljenih, izbira novega in
+   urejevalnik izbranega. Oznaka pove, iz katerega kola je srecanje prislo;
+   pri ligi z urami stoji tudi v seznamu kola, kamor je bilo premaknjeno. */
+.termini__oznaka-srecanja {
+  display: inline-block;
+  margin-left: 8px;
+  font: 500 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.termini__prestavljena {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.termini__prestavljeno {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.termini__prestavljeno .termini__par {
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/* Urejevalnik izbranega srecanja: modra crta ob robu, kot oznaceno vrstico v
+   oknu ekipe - "to urejas zdaj". Brez sence in radija. */
+.termini__prestavitev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  padding: var(--r2);
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.termini__prestavitev-naslov {
+  margin: 0;
+  font-size: var(--tip-telo);
+  font-weight: 600;
+}
+
+.termini__prestavitev-cas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .termini__polnilo {
@@ -9196,6 +9241,32 @@ a.ekipa-okno__srecanje:hover {
   color: var(--barva-crnilo-3);
 }
 
+/* Prestavljeno srecanje ima pod vrstico se poved o prestavitvi (iz katerega
+   kola je prislo, razlog). Tretja vrstica je samo pri taki vrstici: v ostalih
+   bi razmik med vrsticama dodal prazen prostor pod vsako srecanje. */
+.ekipa-okno__srecanje--z-opombo {
+  grid-template-areas:
+    'kdaj izid znak'
+    'nasprotnik izid znak'
+    'opomba opomba opomba';
+}
+
+.ekipa-okno__opomba {
+  grid-area: opomba;
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.ekipa-okno__razlog {
+  display: block;
+  margin-top: 2px;
+  font: 400 var(--tip-drobno) / 1.35 var(--pisava-telo);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 /* Na telefonu je okno cel zaslon in ne skatla sredi njega (isto kot okno z
    merili): seznam srecanj je dolg, krizec pa mora ostati pod palcem. */
 @media (max-width: 640px) {
@@ -9832,6 +9903,44 @@ a.ekipa-okno__srecanje:hover {
   text-transform: uppercase;
   text-align: center;
   color: var(--barva-crnilo-3);
+}
+
+/* Prestavljeno srecanje (V47): pod vrstico pise, iz katerega kola je prislo, in
+   po potrebi razlog. Polno crnilo namesto sivine: gledalec, ki v kolu ne najde
+   pricakovanega srecanja ali najde dodatno, isce prav to pojasnilo. Razlog je
+   besedilo, ki ga je napisal clovek - zato navadna pisava z malimi crkami, ne
+   mono napis z velikimi. */
+.liga__srecanje-opomba--prestavljeno {
+  color: var(--barva-crnilo);
+  font-weight: 600;
+}
+
+.liga__srecanje-razlog {
+  display: block;
+  margin-top: 2px;
+  font: 400 var(--tip-drobno) / 1.35 var(--pisava-telo);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--barva-crnilo-2);
+}
+
+/* »?« na koncu traku kol: srecanja brez termina niso kolo, zato crtkan rob in
+   odmik od stevilk; v celoti polno crnilo (kot termin prihajajocega kola),
+   sicer bi ga gledalec prebral kot se eno sivo kolo. Izbran je moder kot kolo. */
+.liga__trak-gumb--brez-termina,
+.liga-mobi__trak-gumb--brez-termina {
+  margin-left: var(--r1);
+  border-style: dashed;
+  border-color: var(--barva-crnilo-3);
+  color: var(--barva-crnilo);
+  font-weight: 700;
+}
+
+.liga__trak-gumb--brez-termina.liga__trak-gumb--izbrano,
+.liga-mobi__trak-gumb--brez-termina.liga-mobi__trak-gumb--izbrano {
+  border-style: solid;
+  border-color: var(--barva-glavna);
+  color: var(--barva-na-glavni);
 }
 
 /* Registriran izid srecanja brez borbe: droben mono napis pod izidom, da se
@@ -13209,103 +13318,342 @@ a.ekipa-okno__srecanje:hover {
   color: var(--barva-crnilo-3);
 }
 
-/* Listki v mrezi 2 stolpcev; robovi sosedov se prekrijejo v eno crto,
-   ki je hkrati crta reza. */
-.listki-mreza {
+/* ---------- Sodniski listek turnirske tekme ----------
+   List A4 je natancno 210 x 297 mm in nosi 2 x 3 listke po 105 x 99 mm, brez
+   robov in brez vrzeli (@page listki ima rob 0): razrezejo ga samo trije
+   rezi, ena navpicna in dve vodoravni, po crtkanih crtah na meji listkov.
+   Vsebina listka je 6-7 mm od roba, da je tiskalnik ne odreze.
+
+   Listek je tabela: ime igralca je glava njegovega stolpca, pod njim sta
+   znacki za prvi servis in timeout, nato po ena celica za vsak niz in
+   rezultat. Vse vrstice delijo isto mrezo stolpcev (--listek-stolpci), zato
+   so tocke vedno natanko pod imenom, ki jim pripada. */
+
+.listki-stran--listki {
+  max-width: none;
+  page: listki;
+}
+
+.listki-naslov .listki-naslov__navodilo {
+  max-width: 64ch;
+  font: 400 15px / 1.45 var(--pisava-telo);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--barva-crnilo-3);
+}
+
+.listki-listi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--r3);
+}
+
+.listki-list {
+  box-sizing: border-box;
+  flex: none;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0;
+  grid-template-columns: repeat(2, 105mm);
+  grid-template-rows: repeat(3, 99mm);
+  width: 210mm;
+  height: 297mm;
+  background: #fff;
+  outline: 1px solid var(--barva-crnilo-3);
 }
 
 .listek {
-  display: flex;
-  flex-direction: column;
-  gap: 3mm;
-  padding: 4mm;
-  border: 1px solid #000;
-  margin: 0 -1px -1px 0;
-  background: #fff;
-  color: #000;
-  font-family: var(--pisava-telo);
-  break-inside: avoid;
-}
-
-.listek__glava {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 3mm;
-  font: 500 11px / 1.2 var(--pisava-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #000;
-}
-
-/* Prazna crta za rocni vpis mize: brez min-height bi bila visoka 0 px in bi
-   crta lezala nize od osnovne crte besedila v glavi. */
-.listek__vpis {
-  display: inline-block;
-  min-width: 9mm;
-  min-height: 11px;
-  border-bottom: 1px solid #000;
-  text-align: center;
-}
-
-/* Igralec: ime display 800, klub mono — locena s tanko crto. */
-.listek__igralci {
+  --listek-stolpci: 15mm minmax(0, 1fr) 5.5mm minmax(0, 1fr);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 2mm;
+  padding: 6mm 7mm;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  font-family: var(--pisava-telo);
 }
 
-.listek__igralec {
+/* Rezi: crtkana crta na desnem robu levega stolpca in na spodnjem robu prvih
+   dveh vrstic. Zadnji list ima prazna mesta z istimi crtami. */
+.listek:nth-child(odd) {
+  border-right: 0.3mm dashed #000;
+}
+
+.listek:nth-child(-n + 4) {
+  border-bottom: 0.3mm dashed #000;
+}
+
+/* Glava: znamka levo, prazna crta za mizo desno. Crte pod znamko ni: crta mize
+   bi z njo tvorila dvojno crto. */
+.listek__glava {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 3mm;
-  padding-bottom: 2mm;
-  border-bottom: 1px solid #000;
 }
 
-.listek__ime {
-  font-family: var(--pisava-display);
-  font-size: 15px;
-  font-weight: 800;
+.listek__znamka {
+  display: flex;
+  align-items: center;
+  gap: 1.6mm;
+  font: 800 11pt / 1 var(--pisava-display);
   letter-spacing: -0.02em;
-  color: #000;
+}
+
+/* Znak je na zaslonu crn kot na papirju (tretja poteza polna, cetrta obrisana). */
+.listek .logo-znak__poteza,
+.listek .logo-znak__poteza--glavna {
+  fill: #000;
+}
+
+.listek .logo-znak__poteza--izid {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.listek__miza {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.6mm;
+  font: 500 7pt / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Prazna crta za rocni vpis mize; brez min-height bi bila visoka 0 in bi
+   crta lezala nize od crte besedila. */
+.listek__vpis {
+  min-width: 22mm;
+  min-height: 5mm;
+  border-bottom: 0.35mm solid #000;
+  text-align: center;
+  font: 500 11pt / 1.2 var(--pisava-mono);
+  letter-spacing: 0;
+}
+
+/* Dogodek, kategorija, skupina in kolo: oznaka v prvem stolpcu, vrednost
+   desno. Vrstica skupine ima dve vrednosti (skupina, kolo). */
+.listek__kontekst {
+  display: grid;
+  grid-template-columns: 17mm auto auto auto 1fr;
+  column-gap: 2mm;
+  row-gap: 0.6mm;
+  align-items: baseline;
+}
+
+.listek__oznaka {
+  font: 500 6pt / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Vrednost brez svoje oznake (kolo ob skupini) stoji desno od skupine. */
+.listek__vrednost--drugo {
+  grid-column: 3 / -1;
+  margin-left: 3mm;
+}
+
+.listek__vrednost {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 8.5pt / 1.2 var(--pisava-telo);
+}
+
+.listek__vrednost--sirok {
+  grid-column: 2 / -1;
+}
+
+/* Dolgo ime turnirja se skrci, preden se odreze. */
+.listek__vrednost--dolga {
+  font-size: 7.3pt;
+}
+
+.listek__vrednost--poudarjeno {
+  font: 800 10pt / 1.1 var(--pisava-display);
+  letter-spacing: -0.01em;
+}
+
+.listek__tabela {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1mm;
+}
+
+.listek__vrsta {
+  display: grid;
+  grid-template-columns: var(--listek-stolpci);
+}
+
+.listek__vrsta--imena {
+  align-items: end;
+}
+
+/* Ime je glava stolpca: debela crta pod njim loci glavo od nizov. Posameznik
+   ima prostor za dve vrstici, dvojica za dve imeni po eno vrstico. */
+.listek__ime {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+  min-height: 8.6mm;
+  padding-bottom: 0.9mm;
+  border-bottom: 0.5mm solid #000;
+  font: 800 10pt / 1.1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.listek__ime-vrstica {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.listek__ime--par {
+  font-size: 8.5pt;
+  line-height: 1.15;
+}
+
+.listek__ime--par .listek__ime-vrstica {
+  display: block;
+  -webkit-line-clamp: unset;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.listek__klub {
-  font: 400 11px / 1.2 var(--pisava-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #000;
+.listek__dvopicje {
+  align-self: center;
+  text-align: center;
+  font: 700 11pt / 1 var(--pisava-mono);
+}
+
+.listek__vrsta--imena .listek__dvopicje {
+  align-self: end;
+  padding-bottom: 1.2mm;
+}
+
+/* Prvi servis in timeout: kvadratek, v katerega sodnik zapise kriz. */
+.listek__znaki {
+  display: flex;
+  align-items: center;
+  gap: 2.4mm;
+  white-space: nowrap;
+  font: 500 6.6pt / 1 var(--pisava-telo);
+}
+
+.listek__znak {
+  display: inline-flex;
+  align-items: center;
+  gap: 1mm;
+}
+
+.listek__kvadratek {
+  flex: none;
+  box-sizing: border-box;
+  width: 2.8mm;
+  height: 2.8mm;
+  border: 0.3mm solid #000;
+}
+
+/* Celice nizov: najvec 10 mm visoke, kadar je nizov malo (pri treh zapolnijo
+   prostor); pri sedmih se skrcijo, a ostanejo vsaj 4,2 mm. */
+.listek__nizi {
+  flex: 1 1 0;
+  min-height: calc(var(--nizov) * 4.2mm + (var(--nizov) - 1) * 1mm);
+  display: grid;
+  grid-template-rows: repeat(var(--nizov), minmax(0, 10mm));
+  align-content: center;
+  gap: 1.1mm;
+}
+
+.listek__niz-oznaka {
+  align-self: center;
+  font: 500 6.6pt / 1 var(--pisava-mono);
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
-/* Polja za vpis nizov: prazni pravokotniki 40 px, mreza 5 x 1fr, vrzel 4 px. */
-.listek__nizi {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+.listek__celica {
+  box-sizing: border-box;
+  border: 0.3mm solid #000;
 }
 
-.listek__niz-polje {
-  height: 40px;
-  border: 1px solid #000;
+.listek__vrsta--rezultat {
+  height: 8mm;
+}
+
+.listek__rezultat-oznaka {
+  align-self: center;
+  font: 800 8pt / 1 var(--pisava-display);
+  letter-spacing: -0.01em;
+}
+
+/* Rezultat ima debelejso obrobo: to je edino polje, ki ga glavni sodnik prepise. */
+.listek__celica--rezultat {
+  border-width: 0.55mm;
 }
 
 .listek__noga {
   display: flex;
-  justify-content: space-between;
-  gap: 3mm;
-  font: 500 11px / 1.3 var(--pisava-mono);
+  align-items: flex-end;
+  gap: 4mm;
+}
+
+.listek__podpis {
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  gap: 1.6mm;
+  font: 500 6.4pt / 1 var(--pisava-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #000;
+}
+
+.listek__podpis--sodnik {
+  flex-grow: 1.5;
+}
+
+.listek__crta {
+  flex: 1 1 0;
+  height: 5.5mm;
+  border-bottom: 0.35mm solid #000;
+}
+
+/* Sedem nizov (najboljsi od 7): ostali bloki se stisnejo, da celice nizov
+   ostanejo dovolj visoke za pisanje. */
+.listek--gosto {
+  gap: 1.3mm;
+  padding-top: 5mm;
+  padding-bottom: 5mm;
+}
+
+.listek--gosto .listek__ime {
+  min-height: 7.4mm;
+}
+
+.listek--gosto .listek__tabela {
+  gap: 0.9mm;
+}
+
+.listek--gosto .listek__nizi {
+  gap: 0.9mm;
+}
+
+.listek--gosto .listek__vrsta--rezultat {
+  height: 7mm;
+}
+
+.listek--gosto .listek__crta {
+  height: 5mm;
 }
 
 /* ---------- Ekipni zapisnik (uraden NTZS obrazec) ---------- */
@@ -13858,6 +14206,263 @@ a.ekipa-okno__srecanje:hover {
   text-transform: uppercase;
 }
 
+/* ---------- Zreb izlocilnega dela za vrata dvorane ----------
+   Mreza kot na papirju: stolpec za vsako kolo, tekme povezane s crtami, na koncu
+   crta za zmagovalca. Lezeci A4 (277 x 190 mm znotraj robov 10 mm); mreza do 16
+   tekem v prvem kolu gre na en list, vecja na poddrevesa (pomozno/zrebMreze).
+   Rastrska mreza je CSS grid: tekma (kolo k) zavzema 2^(k-1) vrstic, zato je
+   vedno natanko med svojima virovoma. Crte risejo pseudo-elementi ovoja tekme:
+   desna stran povezuje zgornji in spodnji vir (navpicnica), leva vodi v okvir.
+   Isti pravili kot zgoraj: fiksni #000/#fff, samo crte, brez podlag. */
+
+@page zreb-mreze {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+.zreb-stran--lezeci {
+  max-width: none;
+  page: zreb-mreze;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--r3);
+}
+
+.zreb-mreza {
+  /* Vodoravni razmik med okvirji je 2 x --spoj, navpicnica stoji na sredi. */
+  --spoj: 4mm;
+  /* Visina vrstice (ene tekme prvega kola): cela mreza gre v ~150 mm, a nikoli
+     visja od 16 mm, da majhna mreza ne bi imela razmetanih okvirjev. */
+  --mreza-vrstica: min(16mm, calc(150mm / var(--vrstic)));
+  box-sizing: border-box;
+  flex: none;
+  width: 297mm;
+  padding: 10mm;
+  background: #fff;
+  color: #000;
+  outline: 1px solid var(--barva-crnilo-3);
+  zoom: var(--zreb-merilo, 1);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.zreb-glava--mreza {
+  margin-bottom: 3mm;
+  padding-bottom: 2mm;
+}
+
+.zreb-glava--mreza .zreb-glava__ime {
+  margin: 0.5mm 0 1.2mm;
+  font-size: 22pt;
+}
+
+/* Stolpec je najvec 60 mm: list z dvema stolpcema (finale + zmagovalec) se ne
+   razleze cez cel list. Pri 5-6 stolpcih meja ne pride do veljave. */
+.zreb-mreza__naslovi,
+.zreb-mreza__mreza {
+  display: grid;
+  grid-template-columns: repeat(var(--stolpcev), minmax(0, 1fr));
+  max-width: calc(var(--stolpcev) * 60mm);
+}
+
+/* Naslov kola stoji nad levim robom okvirja, zato ima isti odmik kot ovoj. */
+.zreb-mreza__naslov {
+  margin: 0 0 1.5mm;
+  padding: 0 var(--spoj);
+  font: 600 8pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #000;
+}
+
+.zreb-mreza__naslov--prvi {
+  padding-left: 0;
+}
+
+.zreb-mreza__naslov--prvak {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.zreb-mreza__mreza {
+  grid-template-rows: repeat(var(--vrstic), 1fr);
+  height: calc(var(--vrstic) * var(--mreza-vrstica));
+}
+
+.zreb-mreza__tekma {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 var(--spoj);
+}
+
+.zreb-mreza__tekma--prvi {
+  padding-left: 0;
+}
+
+/* Vstop v okvir z leve (vsa kola razen prvega). */
+.zreb-mreza__tekma:not(.zreb-mreza__tekma--prvi)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: var(--spoj);
+  border-top: 1px solid #000;
+}
+
+/* Izhod: vodoravna crta do roba stolpca, nato navpicnica do sredine naslednje
+   tekme (zgornji vir navzdol, spodnji navzgor). */
+.zreb-mreza__tekma--zgoraj::after,
+.zreb-mreza__tekma--spodaj::after,
+.zreb-mreza__tekma--zadnja::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  width: var(--spoj);
+}
+
+.zreb-mreza__tekma--zgoraj::after {
+  top: 50%;
+  bottom: 0;
+  border-top: 1px solid #000;
+  border-right: 1px solid #000;
+}
+
+.zreb-mreza__tekma--spodaj::after {
+  top: 0;
+  bottom: 50%;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+}
+
+.zreb-mreza__tekma--zadnja::after {
+  top: 50%;
+  border-top: 1px solid #000;
+}
+
+.zreb-mreza__okvir {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.zreb-mreza__stran {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5mm;
+  min-height: 4.6mm;
+  padding: 0.5mm 1.5mm;
+  font: 500 11pt / 1.2 var(--pisava-telo);
+}
+
+.zreb-mreza__stran + .zreb-mreza__stran {
+  border-top: 1px solid #000;
+}
+
+/* Zmagovalec je krepek, porazenec ostane navaden - izid se bere tudi brez nizov. */
+.zreb-mreza__stran--zmagovalec {
+  font-weight: 800;
+}
+
+.zreb-mreza__ime {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Od kod pride zmagovalec (nadaljevanje na drugem listu), v mono kot oznake. */
+.zreb-mreza__ime i {
+  font: 500 6.5pt / 1.2 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.zreb-mreza__stran--prost .zreb-mreza__ime {
+  font: 500 7pt / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.zreb-mreza__nizi {
+  flex: none;
+  min-width: 3mm;
+  font: 600 10pt / 1.2 var(--pisava-mono);
+  text-align: right;
+}
+
+.zreb-mreza__oznaka {
+  flex: none;
+  margin-left: auto;
+  font: 500 6pt / 1.2 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Vec kot osem tekem v prvem kolu: vrstica ~9,5 mm, dve vrstici imen morata
+   v okvir z rezervo. */
+.zreb-mreza--gosto .zreb-mreza__stran {
+  min-height: 3.5mm;
+  padding: 0.15mm 1.2mm;
+  font-size: 8.5pt;
+  line-height: 1.15;
+}
+
+.zreb-mreza--gosto .zreb-mreza__nizi {
+  font-size: 8pt;
+}
+
+/* Stolpec zmagovalca: crta, nad njo ime (ali prazno za vpis); tekma za 3. mesto
+   spodaj - v tem stolpcu je dovolj prostora, ker je ob finalu samo ena tekma. */
+.zreb-mreza__prvak {
+  position: relative;
+  min-width: 0;
+}
+
+.zreb-mreza__prvak-crta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  min-height: 8mm;
+  transform: translateY(-100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 0 1mm 0.6mm;
+  border-bottom: 2px solid #000;
+  font-family: var(--pisava-display);
+  font-size: 14pt;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.zreb-mreza__tretje {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.zreb-mreza__tretje-naslov {
+  margin: 0 0 1mm;
+  font: 600 8pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Sodniski listki so edini tisk brez robov: 6 listkov po 105 x 99 mm zapolni
+   list A4 do roba, zato je rob strani 0 (z robom 10 mm bi bil listek 95 x 92 mm
+   in rezi ne bi sli skozi sredino lista). Brez roba brskalnik tudi ne natisne
+   glave in noge strani. */
+@page listki {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -13876,6 +14481,22 @@ a.ekipa-okno__srecanje:hover {
     max-width: none;
     margin: 0;
     padding: 0;
+  }
+
+  /* Vsak list A4 na svojo stran; pomanjsanje za ozek zaslon se pri tisku
+     izklopi, sicer bi listki ostali manjsi od 105 x 99 mm. */
+  .listki-listi {
+    display: block;
+  }
+
+  .listki-list {
+    zoom: 1 !important;
+    outline: none;
+    break-inside: avoid;
+  }
+
+  .listki-list + .listki-list {
+    break-before: page;
   }
 
   .zapisnik {
@@ -13910,6 +14531,24 @@ a.ekipa-okno__srecanje:hover {
     break-before: page;
   }
 
+  /* Mreza: en list ležeči A4 na mrežo (ali poddrevo); pomanjsanje za ozek
+     zaslon se pri tisku izklopi, okvir (robove 10 mm) da @page. */
+  .zreb-stran--lezeci {
+    display: block;
+  }
+
+  .zreb-mreza {
+    zoom: 1 !important;
+    width: auto;
+    padding: 0;
+    outline: none;
+    break-inside: avoid;
+  }
+
+  .zreb-mreza + .zreb-mreza {
+    break-before: page;
+  }
+
   /* Tisk je enobarven: tri poteze so polne, cetrta (odlocilni niz) ostane
      samo obrisana, da se razlika ohrani tudi brez barve. */
   .logo-znak__poteza,
@@ -13925,10 +14564,6 @@ a.ekipa-okno__srecanje:hover {
 }
 
 @media (max-width: 640px) {
-  .listki-mreza {
-    grid-template-columns: 1fr;
-  }
-
   /* Zreb skupin: na ozkem zaslonu igralci nad tekmami (A4 je pri tisku vedno
      dovolj sirok za dva stolpca). */
   .zreb-skupina__telo {

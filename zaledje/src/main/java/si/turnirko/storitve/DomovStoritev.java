@@ -191,7 +191,7 @@ public class DomovStoritev {
            rednem delu pa je njena tekma "naslednje". */
         List<PotekLige.Termin> termini = srecanjeRepozitorij.najdiZaLigo(liga.getId()).stream()
                 .map(s -> new PotekLige.Termin(s.getKolo(), s.getStatus(), s.getPredvidenZacetek(),
-                        s.getSerija() != null))
+                        s.getSerija() != null, s.jePremaknjenoVDrugoKolo(), s.isCakaNaTermin()))
                 .toList();
         PotekLige.Potek potek = PotekLige.izracunaj(termini, PotekLige.danes());
 

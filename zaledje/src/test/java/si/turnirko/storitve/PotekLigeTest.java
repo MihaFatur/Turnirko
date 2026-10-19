@@ -141,6 +141,74 @@ class PotekLigeTest {
         assertNull(p.naslednje());
     }
 
+    private static PotekLige.Termin vDrugemKolu(int kolo, StatusSrecanja status, LocalDate dan) {
+        return new PotekLige.Termin(kolo, status, dan.atTime(18, 30), false, true, false);
+    }
+
+    private static PotekLige.Termin caka(int kolo) {
+        return new PotekLige.Termin(kolo, StatusSrecanja.RAZPORED, null, false, false, true);
+    }
+
+    /* Prestavitev (V47): srecanje 5. kola, odigrano ze v 2. kolu, stoji v 2.
+       kolu - in ga ne odigra, ker je 2. kolo mimo, 5. pa ima zdaj eno srecanje
+       manj. */
+    @Test
+    void srecanjeIzPoznegaKolaSteVKoloKjerSeIgra() {
+        List<PotekLige.Termin> s = List.of(
+                srecanje(2, StatusSrecanja.KONCANO, DANES.minusDays(3)),
+                vDrugemKolu(2, StatusSrecanja.KONCANO, DANES.minusDays(3)),
+                srecanje(5, StatusSrecanja.RAZPORED, DANES.plusDays(14)));
+
+        PotekLige.Potek p = PotekLige.izracunaj(s, DANES);
+
+        assertEquals(List.of(2), p.odigranaKola());
+        assertEquals(2, p.vseh());
+    }
+
+    /* Prestavljeno srecanje ima lahko svoj dan, a kolo zato ne dobi njegovega
+       datuma: 2. kolo je bilo v nedeljo, srecanje v sredo ga ne sme premakniti
+       v prihodnost (sicer bi kolo, ki je mimo, spet postalo naslednje). */
+    @Test
+    void prestavljenoSrecanjeNeDolocaDatumaKola() {
+        List<PotekLige.Termin> s = List.of(
+                srecanje(2, StatusSrecanja.KONCANO, DANES.minusDays(10)),
+                vDrugemKolu(2, StatusSrecanja.RAZPORED, DANES.plusDays(2)),
+                srecanje(3, StatusSrecanja.RAZPORED, DANES.plusDays(7)));
+
+        PotekLige.Potek p = PotekLige.izracunaj(s, DANES);
+
+        assertEquals(List.of(2), p.odigranaKola(), "kolo ima datum svojih srecanj");
+        assertEquals(new PotekLige.Naslednje(2, DANES.plusDays(2)), p.naslednje(),
+                "prestavljeno srecanje se igra prej kot 3. kolo");
+    }
+
+    /* Srecanje, ki caka na termin, ne sodi v noben dan: ne zadrzi kola, ne
+       steje med kola in ni naslednje. */
+    @Test
+    void srecanjeBrezNovegaTerminaNeZadrziKolaInNiNaslednje() {
+        List<PotekLige.Termin> s = List.of(
+                srecanje(1, StatusSrecanja.KONCANO, DANES.minusDays(7)),
+                caka(1),
+                srecanje(2, StatusSrecanja.RAZPORED, DANES.plusDays(7)));
+
+        PotekLige.Potek p = PotekLige.izracunaj(s, DANES);
+
+        assertEquals(List.of(1), p.odigranaKola());
+        assertEquals(2, p.vseh());
+        assertEquals(new PotekLige.Naslednje(2, DANES.plusDays(7)), p.naslednje());
+    }
+
+    /* Liga, v kateri caka samo se prestavljeno srecanje, nima naslednjega
+       kola - cakajoce ni kandidat, tudi ce nic drugega ni ostalo. */
+    @Test
+    void samoCakajocaSrecanjaNimajoNaslednjega() {
+        List<PotekLige.Termin> s = List.of(
+                srecanje(1, StatusSrecanja.KONCANO, DANES.minusDays(7)),
+                caka(1));
+
+        assertNull(PotekLige.izracunaj(s, DANES).naslednje());
+    }
+
     /* Ura ne premakne dneva: srecanje ob 00.00 je se vedno tisti dan. */
     @Test
     void uraNeSpremeniDneva() {

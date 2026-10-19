@@ -12,9 +12,26 @@ import type {
   SistemTekmovanja,
   SkupinaDto,
   TekmaDto,
+  TurnirDto,
 } from '../api/tipi'
 import { imePrijave, imeUdelezenca } from '../api/tipi'
-import { kratekKlub } from './oblikovanje'
+import { kratekKlub, oblikujObdobje } from './oblikovanje'
+
+/* Vrstica nad naslovom lista (turnir, datum, kraj) - vse, po čemer list
+   prepoznaš na vratih, ko jih je obešenih več. Uvožena tekmovanja imajo datum
+   že v imenu (»1. OT ZA U-13, KIDRIČEVO, 19. 9. 2026«), zato se ne ponovi.
+   Skupna listu skupin in listu izločilne mreže. */
+export function vrsticaTurnirja(turnir: TurnirDto | undefined): string | null {
+  if (!turnir) return null
+  const datum = oblikujObdobje(turnir.datumZacetka, turnir.datumKonca)
+  return [
+    turnir.ime,
+    datum && !turnir.ime.includes(datum) ? datum : null,
+    [turnir.kraj?.ime, turnir.dvorana].filter(Boolean).join(', '),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
 
 /* Sistemi, ki imajo skupine; krožni sistem je ena sama lestvica brez skupin. */
 const SISTEMI_S_SKUPINAMI: ReadonlySet<SistemTekmovanja> = new Set([
@@ -80,7 +97,7 @@ export interface TiskSklop {
 
 /* Kratka oznaka izida, kadar tekma ni bila odigrana do konca; enaka besedila
    kot na kartici tekme. */
-const OZNAKE_IZIDA: Partial<Record<IzidTekme, string>> = {
+export const OZNAKE_IZIDA: Partial<Record<IzidTekme, string>> = {
   BREZ_BOJA: 'b. b.',
   PREDAJA: 'predaja',
   DISKVALIFIKACIJA: 'diskv.',

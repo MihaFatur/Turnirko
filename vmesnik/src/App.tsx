@@ -20,6 +20,7 @@ import { LigeStran } from './strani/LigeStran'
 import { LigaStran } from './strani/LigaStran'
 import { SrecanjeStran } from './strani/SrecanjeStran'
 import { ListkiSrecanjaStran } from './strani/ListkiSrecanjaStran'
+import { ZrebMrezeDogodkaStran, ZrebMrezeTurnirjaStran } from './strani/ZrebMrezeStran'
 import { ZrebSkupinDogodkaStran, ZrebSkupinTurnirjaStran } from './strani/ZrebSkupinStran'
 import { ProfilStran } from './strani/ProfilStran'
 import { RacuniStran } from './strani/RacuniStran'
@@ -148,6 +149,9 @@ export function App() {
       {/* Žreb skupin za vrata dvorane: ena kategorija ali ves turnir. */}
       <Route path="/dogodki/:id/zreb-skupin" element={<ZrebSkupinDogodkaStran />} />
       <Route path="/turnirji/:id/zreb-skupin" element={<ZrebSkupinTurnirjaStran />} />
+      {/* Žreb izločilnega dela (mreža) za vrata dvorane, ležeči list. */}
+      <Route path="/dogodki/:id/zreb-mreze" element={<ZrebMrezeDogodkaStran />} />
+      <Route path="/turnirji/:id/zreb-mreze" element={<ZrebMrezeTurnirjaStran />} />
       <Route element={<Postavitev />}>
         <Route index element={<DomacaStran />} />
         <Route path="/turnirji" element={<TurnirjiStran />} />
