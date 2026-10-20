@@ -737,7 +737,7 @@ function PogledNarocnine({
               >
                 {portal.isPending
                   ? 'Odpiram …'
-                  : placiloNiUspelo ? 'Posodobi kartico v Stripe' : 'Kartica in računi v Stripe'}
+                  : placiloNiUspelo ? 'Posodobi kartico v Stripe' : 'Kartica v Stripe'}
               </button>
             )}
           </div>

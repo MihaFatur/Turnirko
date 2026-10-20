@@ -4,10 +4,14 @@
 
    Dva zacetka, en webhook:
    - NOVA registracija (zacniRegistracijskoPlacilo): racun SE NE USTVARI tu -
-     podatki obrazca gredo v Stripe kot metapodatki seje in racun (v stanju
-     CAKA, s kodo za potrditev e-poste) nastane sele v webhooku, ko Stripe
-     potrdi "checkout.session.completed". Neuspesen/opuscen nakup zato ne
-     pusti "napol" racuna v bazi.
+     podatki obrazca pocakajo v nasi bazi (CakajocaRegistracija), v Stripe gre
+     samo nakljucen zeton, in racun (v stanju CAKA, s kodo za potrditev
+     e-poste) nastane sele v webhooku, ko Stripe potrdi
+     "checkout.session.completed". Neuspesen/opuscen nakup zato ne pusti
+     "napol" racuna v bazi, nocno ciscenje pa pobrise njegovo cakajoco vrstico.
+     Gesla, datuma rojstva in naslova skrbnika v Stripu ni: njegove dogodke
+     bere tudi Moj Racun (davcno potrjeni racuni) in kdor koli upravlja
+     Stripov racun.
    - NADGRADNJA obstojecega prijavljenega racuna (zacniNadgradnjo): racun ze
      obstaja, metapodatki nosijo samo id racuna in izbran paket.
 
@@ -17,8 +21,9 @@
    zato je obdelava idempotentna po stripe_narocnina_id. */
 package si.turnirko.storitve;
 
-import java.time.LocalDate;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,12 +53,14 @@ import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
+import si.turnirko.modeli.CakajocaRegistracija;
 import si.turnirko.modeli.CiklusPlacila;
 import si.turnirko.modeli.Narocnina;
 import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.CakajocaRegistracijaRepozitorij;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
@@ -62,28 +69,26 @@ public class PlacilaStoritev {
 
     private static final Logger dnevnik = LoggerFactory.getLogger(PlacilaStoritev.class);
 
-    // Kljuci metapodatkov Stripe seje - Stripe hrani samo nize.
-    private static final String M_NAMEN = "namen";
-    private static final String M_IME = "ime";
-    private static final String M_PRIIMEK = "priimek";
-    private static final String M_ID_KLUB = "idKlub";
-    private static final String M_EMAIL = "email";
-    private static final String M_GESLO_HASH = "gesloHash";
-    private static final String M_ORGANIZATOR = "organizator";
-    private static final String M_DATUM_ROJSTVA = "datumRojstva";
-    private static final String M_EMAIL_SKRBNIKA = "emailSkrbnika";
+    // Kljuci metapodatkov Stripe seje - Stripe hrani samo nize. Osebnih
+    // podatkov med njimi ni (glej uvod); e-posta gre kot customer_email,
+    // ker jo Stripe in Moj Racun potrebujeta za racun.
+    static final String M_NAMEN = "namen";
+    static final String M_ZETON = "registracija";
     private static final String M_PAKET = "paket";
     private static final String M_CIKLUS = "ciklus";
     private static final String M_STAREJSI_OD_21 = "starejsiOd21";
     private static final String M_ID_UPORABNIK = "idUporabnik";
 
-    private static final String NAMEN_REGISTRACIJA = "registracija";
+    static final String NAMEN_REGISTRACIJA = "registracija";
     private static final String NAMEN_NADGRADNJA = "nadgradnja";
+
+    private static final SecureRandom NAKLJUCJE = new SecureRandom();
 
     private final String webhookSkrivnost;
     private final String vrniNaKoren;
 
     private final RegistracijaStoritev registracija;
+    private final CakajocaRegistracijaRepozitorij cakajoce;
     private final NarocninaRepozitorij narocninaRepozitorij;
     private final UporabnikRepozitorij uporabnikRepozitorij;
     private final CenikStoritev cenik;
@@ -97,6 +102,7 @@ public class PlacilaStoritev {
             @Value("${turnirko.stripe.webhook-skrivnost:}") String webhookSkrivnost,
             @Value("${turnirko.stripe.vrni-na}") String vrniNaKoren,
             RegistracijaStoritev registracija,
+            CakajocaRegistracijaRepozitorij cakajoce,
             NarocninaRepozitorij narocninaRepozitorij,
             UporabnikRepozitorij uporabnikRepozitorij,
             CenikStoritev cenik,
@@ -108,6 +114,7 @@ public class PlacilaStoritev {
         this.webhookSkrivnost = webhookSkrivnost;
         this.vrniNaKoren = vrniNaKoren;
         this.registracija = registracija;
+        this.cakajoce = cakajoce;
         this.narocninaRepozitorij = narocninaRepozitorij;
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.cenik = cenik;
@@ -123,6 +130,21 @@ public class PlacilaStoritev {
        zaracuna vnosa, ki bi ga tako ali tako zavrnili) in vrne naslov Stripe
        Checkouta. Racun se ustvari sele v webhooku. */
     public PlacilnaSejaDto zacniRegistracijskoPlacilo(PlacanaRegistracijaVnos vnos) {
+        PripravljenaRegistracija pripravljena = pripraviRegistracijo(vnos);
+        try {
+            return new PlacilnaSejaDto(ustvariSejo(pripravljena.seja()));
+        } catch (DomenskaIzjema e) {
+            // seje ni, placila torej ne bo - vrstica nima cesa cakati
+            cakajoce.deleteById(pripravljena.cakajoca().getId());
+            throw e;
+        }
+    }
+
+    /* Cakajoca vrstica in parametri seje, preden gre karkoli v Stripe - locen
+       korak, da test prebere, kaj bi Stripe dobil (toMap()). */
+    record PripravljenaRegistracija(CakajocaRegistracija cakajoca, SessionCreateParams seja) {}
+
+    PripravljenaRegistracija pripraviRegistracijo(PlacanaRegistracijaVnos vnos) {
         if (vnos.paket() == Paket.BREZPLACNO) {
             throw new NeveljavenVnosIzjema("Brezplacna registracija ne gre prek placila.");
         }
@@ -144,7 +166,11 @@ public class PlacilaStoritev {
 
         boolean starejsiOd21 = paketJePremium && cenik.stariEnaindvajset(preverjen.datumRojstva());
         double cena = cenik.cena(vnos.paket(), vnos.ciklus(), starejsiOd21);
-        String gesloHash = kodirnik.encode(racun.geslo());
+
+        CakajocaRegistracija cakajoca = cakajoce.save(new CakajocaRegistracija(
+                novZeton(), racun.ime().trim(), racun.priimek().trim(), racun.idKlub(), email,
+                kodirnik.encode(racun.geslo()), organizator, preverjen.datumRojstva(),
+                preverjen.emailSkrbnika(), LocalDateTime.now()));
 
         SessionCreateParams params = osnovaSeje(vnos.paket(), vnos.ciklus())
                 .setCustomerEmail(email)
@@ -152,21 +178,20 @@ public class PlacilaStoritev {
                 .setCancelUrl(vrniNaKoren + "/registracija/zakljucena?stanje=preklic")
                 .addLineItem(vrsticaSeje(vnos.paket(), vnos.ciklus(), cena))
                 .putMetadata(M_NAMEN, NAMEN_REGISTRACIJA)
-                .putMetadata(M_IME, racun.ime().trim())
-                .putMetadata(M_PRIIMEK, racun.priimek().trim())
-                .putMetadata(M_ID_KLUB, racun.idKlub() == null ? "" : String.valueOf(racun.idKlub()))
-                .putMetadata(M_EMAIL, email)
-                .putMetadata(M_GESLO_HASH, gesloHash)
-                .putMetadata(M_ORGANIZATOR, String.valueOf(organizator))
-                .putMetadata(M_DATUM_ROJSTVA,
-                        preverjen.datumRojstva() == null ? "" : preverjen.datumRojstva().toString())
-                .putMetadata(M_EMAIL_SKRBNIKA,
-                        preverjen.emailSkrbnika() == null ? "" : preverjen.emailSkrbnika())
+                .putMetadata(M_ZETON, cakajoca.getZeton())
                 .putMetadata(M_PAKET, vnos.paket().name())
                 .putMetadata(M_CIKLUS, vnos.ciklus() == null ? "" : vnos.ciklus().name())
                 .putMetadata(M_STAREJSI_OD_21, String.valueOf(starejsiOd21))
                 .build();
-        return new PlacilnaSejaDto(ustvariSejo(params));
+        return new PripravljenaRegistracija(cakajoca, params);
+    }
+
+    /* 192 nakljucnih bitov: zeton sam ne odpre nicesar, a ga ne sme uganiti
+       nihce, ki bi z njim podtaknil svoje placilo tuji registraciji. */
+    private static String novZeton() {
+        byte[] bajti = new byte[24];
+        NAKLJUCJE.nextBytes(bajti);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bajti);
     }
 
     // ---------- Zacetek placila: nadgradnja obstojecega racuna ----------
@@ -184,7 +209,7 @@ public class PlacilaStoritev {
         }
         if (n.getStatus() == StatusNarocnine.ZAPADLA) {
             throw new DomenskaIzjema("Zadnje placilo narocnine ni uspelo. Posodobi kartico prek gumba "
-                    + "\"Kartica in racuni v Stripe\" - ko se placilo izvede, se paket vklopi sam.");
+                    + "\"Posodobi kartico v Stripe\" - ko se placilo izvede, se paket vklopi sam.");
         }
         if (n.jeVeljavna(LocalDateTime.now())) {
             throw new DomenskaIzjema("Narocnino ze imas. Spremenis jo lahko na strani Narocnina.");
@@ -285,18 +310,25 @@ public class PlacilaStoritev {
             return; // Stripe dostavi "vsaj enkrat" - ze obdelano
         }
 
+        Optional<CakajocaRegistracija> najdena = Optional.ofNullable(prazenVNull(meta.get(M_ZETON)))
+                .flatMap(cakajoce::findByZeton);
+        if (najdena.isEmpty()) {
+            dnevnik.warn("Placilo seje {} ({}) je uspelo, a racun ni nastal (cakajoce registracije "
+                    + "ni vec - potekla ali seja izpred V48) - potrebna rocna obravnava.",
+                    session.getId(), session.getCustomerEmail());
+            return;
+        }
+        CakajocaRegistracija c = najdena.get();
         RegistracijaVnos racun = new RegistracijaVnos(
-                meta.get(M_IME), meta.get(M_PRIIMEK),
-                prazenVNull(meta.get(M_ID_KLUB)) == null ? null : Long.valueOf(meta.get(M_ID_KLUB)),
-                meta.get(M_EMAIL), "placano-preko-stripe",
-                Boolean.parseBoolean(meta.get(M_ORGANIZATOR)),
-                prazenVNull(meta.get(M_DATUM_ROJSTVA)) == null ? null : LocalDate.parse(meta.get(M_DATUM_ROJSTVA)),
-                prazenVNull(meta.get(M_EMAIL_SKRBNIKA)));
+                c.getIme(), c.getPriimek(), c.getIdKlub(), c.getEmail(), "placano-preko-stripe",
+                c.isOrganizator(), c.getDatumRojstva(), c.getEmailSkrbnika());
 
-        Optional<Uporabnik> nastal = registracija.registrirajPoPlacilu(racun, meta.get(M_GESLO_HASH));
+        Optional<Uporabnik> nastal = registracija.registrirajPoPlacilu(racun, c.getGesloHash());
+        // podatki so zdaj v racunu ali pa racuna ne bo - kopija ne ostane
+        cakajoce.delete(c);
         if (nastal.isEmpty()) {
             dnevnik.warn("Placilo za {} je uspelo, a racun ni nastal (naslov je medtem "
-                    + "postal neuporaben) - potrebna rocna obravnava.", meta.get(M_EMAIL));
+                    + "postal neuporaben) - potrebna rocna obravnava.", c.getEmail());
             return;
         }
         ustvariNarocnino(nastal.get(), session.getCustomer(), session.getSubscription(),

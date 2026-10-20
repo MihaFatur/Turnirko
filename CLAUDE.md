@@ -1625,6 +1625,18 @@
       do nove sezone ne ustvariš« (predaja je to trdila drugače; odločitev lastnika
       pri nadzorni plošči velja tudi tu).
 
+- **Osebni podatki ne gredo v Stripe** (V48, `CakajocaRegistracija`, okt 2026).
+  Stripove dogodke bere tudi Moj Račun (davčno potrjeni računi) in vsak skrbnik
+  Stripovega računa, zato so v metapodatkih seje samo namen, naključen žeton
+  (`registracija`), paket, cikel in cenovni pas; e-pošta gre kot `customer_email`, ker
+  je račun potrebuje. Podatki obrazca plačljive registracije (zgoščeno geslo, datum
+  rojstva, e-pošta skrbnika, ime, klub) čakajo na plačilo v naši bazi; webhook jih
+  najde po žetonu, iz njih ustvari račun in vrstico zbriše (tudi če račun ne more
+  nastati). Neplačane pobriše `CiscenjeRacunovStoritev` po 4 dneh (seja 24 ur +
+  Stripovi ponovni poskusi webhooka do 3 dni). Novega podatka v metapodatke ne dodajaj
+  brez tega premisleka; varuje `PlacilaStoritevTest.vStripeGreSamoZeton`. Postopek
+  preklopa v živo je v `docs/NAROCNINE-V-ZIVO.md`.
+
 - **Organizatorski pregled** (`OrganizatorPregledStoritev`, `GET
   /api/v1/organizator/pregled`, samo `ORGANIZATOR`; pot mora v
   `VarnostneNastavitve` stati pred »GET je javen«, varuje ga

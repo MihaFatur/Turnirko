@@ -36,7 +36,7 @@ export function PogojiStran() {
           </h1>
           <p className="uvod">
             Turnirko je spletna stran za namizni tenis: rezultati turnirjev in lig, koledar,
-            lestvica in profili igralcev. Upravlja jo {PONUDNIK.ime}.
+            lestvica in profili igralcev. Upravlja jo {zPiko(PONUDNIK.ime)}
             {POGOJI_VELJAJO_OD && ` Pogoji veljajo od ${oblikujDatum(POGOJI_VELJAJO_OD)}.`}
           </p>
         </div>
@@ -64,7 +64,9 @@ export function PogojiStran() {
           pogoji, lahko onemogočimo.
         </Odstavek>
         <Odstavek naslov="Naročnina Premium in paketi organizatorjev">
-          Cena je izpisana pred nakupom. Plačilo obdela Stripe. Naročnina se ob koncu obdobja
+          Naročnino prodaja {zPiko(PONUDNIK.ime)} Cena je izpisana pred nakupom. Plačilo obdela
+          Stripe, račun za vsako plačilo (tudi za vsako obnovo) prejmeš po e-pošti na naslov,
+          s katerim plačaš. Naročnina se ob koncu obdobja
           (mesec ali leto) samodejno obnovi, dokler je ne prekličeš. Prekličeš jo kadar koli na
           strani <Link to="/narocnina">Naročnina</Link>; velja do konca že plačanega obdobja.
           Preklop med mesečnim in letnim plačilom velja ob naslednji obnovi. Kot potrošnik lahko
@@ -114,8 +116,10 @@ export function PogojiStran() {
         </Odstavek>
         <Odstavek naslov="Plačila">
           Plačilo s kartico obdela Stripe; številke kartice Turnirko ne vidi in ne hrani. Hranimo
-          stanje naročnine (paket, obdobje, cena) in podatke, ki jih zahtevajo računovodski
-          predpisi.
+          stanje naročnine (paket, obdobje, cena). Račun izda in pri finančni upravi davčno
+          potrdi program Moj Račun, ki od Stripa dobi znesek, izdelek in e-poštni naslov kupca,
+          pri paketih organizatorjev še naslov in davčno številko, če ju vpišeš. Podlaga je
+          zakonska obveznost izdaje računa.
         </Odstavek>
         <Odstavek naslov="Obisk strani">
           Piškotkov ne uporabljamo. Statistika obiska teče na našem strežniku, brez piškotkov in
@@ -125,14 +129,17 @@ export function PogojiStran() {
           ostanejo le nastavitve (npr. nazadnje ogledane lige) in prijava za trenutno sejo.
         </Odstavek>
         <Odstavek naslov="Kdo še obdeluje podatke">
-          Stripe (plačila), Brevo (pošiljanje e-pošte s potrditvenimi kodami)
+          Stripe (plačila), Moj Račun (izdaja in hramba računov), Brevo (pošiljanje e-pošte s
+          potrditvenimi kodami)
           {PONUDNIK.gostovanje ? ` in ${PONUDNIK.gostovanje} (strežnik)` : ' in ponudnik strežnika'}.
           Podatkov ne prodajamo in jih ne posredujemo za oglaševanje.
         </Odstavek>
         <Odstavek naslov="Koliko časa">
           Račun, katerega e-pošta ni potrjena, se izbriše po 48 urah; račun mlajšega od 15 let
-          brez soglasja skrbnika po 30 dneh. Račun izbrišemo na tvojo zahtevo. Rezultati tekmovanj
-          ostanejo kot zapis zgodovine tekmovanja.
+          brez soglasja skrbnika po 30 dneh. Podatki registracije s plačljivim paketom, ki ni
+          bila plačana, se izbrišejo po 4 dneh. Račun izbrišemo na tvojo zahtevo. Izdane račune za
+          plačila hranimo toliko časa, kot zahtevajo davčni predpisi, tudi po izbrisu računa.
+          Rezultati tekmovanj ostanejo kot zapis zgodovine tekmovanja.
         </Odstavek>
         <Odstavek naslov="Tvoje pravice">
           Imaš pravico do vpogleda v svoje podatke, popravka, izbrisa, omejitve obdelave in
@@ -157,6 +164,11 @@ export function PogojiStran() {
       </Sekcija>
     </section>
   )
+}
+
+/* Ime, ki se konča z okrajšavo (»s.p.«), ne dobi še ene pike na koncu stavka. */
+function zPiko(ime: string) {
+  return ime.endsWith('.') ? ime : `${ime}.`
 }
 
 function Sekcija({ id, naslov, children }: { id: string; naslov: string; children: ReactNode }) {

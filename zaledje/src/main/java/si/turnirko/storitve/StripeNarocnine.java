@@ -343,7 +343,7 @@ public class StripeNarocnine {
         } catch (CardException e) {
             dnevnik.warn("Stripe ({}): kartica zavrnjena: {}", opis, e.getMessage());
             throw new DomenskaIzjema("Kartica je bila zavrnjena, zato nismo spremenili nicesar. "
-                    + "Posodobi kartico prek gumba \"Kartica in racuni v Stripe\" in poskusi znova.");
+                    + "Posodobi kartico prek gumba \"Kartica v Stripe\" in poskusi znova.");
         } catch (StripeException e) {
             dnevnik.error("Stripe ({}) ni uspel: {}", opis, e.getMessage());
             throw new DomenskaIzjema("Narocnine trenutno ni mogoce spremeniti. Poskusi kasneje.");
