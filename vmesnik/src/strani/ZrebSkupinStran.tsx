@@ -1,24 +1,27 @@
-/* Natisljiv žreb skupin za vrata dvorane: vse skupine z igralci in tekmami po
-   kolih. Kot listki je stran namenoma zunaj skupne postavitve (brez
-   navigacije), da je natis čist, in jo tiska brskalnik (window.print) -
-   zaledje ne rabi ničesar svojega, vse je že v mreži dogodka.
+/* Natisljivi listki skupin: vsaka skupina s križno tabelo in razporedom po
+   kolih, listki zloženi na liste A4 brez robov. Kot sodniški listki je stran
+   namenoma zunaj skupne postavitve (brez navigacije), da je natis čist, in jo
+   tiska brskalnik (window.print) - zaledje ne rabi ničesar svojega, vse je že
+   v mreži dogodka.
 
    Dve poti, ista vsebina:
    - /dogodki/:id/zreb-skupin  - ena kategorija,
    - /turnirji/:id/zreb-skupin - vse kategorije turnirja, ki imajo izžrebane
-     skupine, vsaka na svoji strani (na vrata gre žreb cele dvorane). */
+     skupine, ena za drugo (listek nosi kategorijo, zato si lahko delijo list). */
+import { useMemo, useState } from 'react'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 
 import { dogodkiApi, turnirjiApi } from '../api/zahteve'
 import type { MrezaDto, TurnirDto } from '../api/tipi'
 import { ZrebOkvir } from '../komponente/ZrebOkvir'
-import { ZrebSkupinDogodka } from '../komponente/ZrebSkupinTisk'
-import { sklonSkupin } from '../pomozno/oblikovanje'
+import { ListiSkupin } from '../komponente/ZrebSkupinTisk'
+import { sklonListov, sklonSkupin } from '../pomozno/oblikovanje'
 import {
   imaZrebanoSkupine,
-  sklopiZrebSkupin,
-  steviloSkupinVSklopih,
+  listkiSkupin,
+  type NacinListka,
+  zloziNaListe,
 } from '../pomozno/zrebSkupin'
 
 export function ZrebSkupinDogodkaStran() {
@@ -30,7 +33,7 @@ export function ZrebSkupinDogodkaStran() {
     queryFn: () => dogodkiApi.mreza(idDogodka),
   })
 
-  /* Ime turnirja, datum in kraj za glavo lista; dogodek pozna le id turnirja. */
+  /* Ime turnirja, datum in kraj za glavo listka; dogodek pozna le id turnirja. */
   const idTurnir = mreza.data?.dogodek.idTurnir
   const turnir = useQuery({
     queryKey: ['turnir', idTurnir],
@@ -39,7 +42,7 @@ export function ZrebSkupinDogodkaStran() {
   })
 
   return (
-    <ListZreba
+    <ListkiZreba
       nazaj={`/dogodki/${idDogodka}`}
       nazajOznaka="← Nazaj na dogodek"
       naslov={mreza.data ? `Žreb skupin · ${mreza.data.dogodek.ime}` : null}
@@ -75,7 +78,7 @@ export function ZrebSkupinTurnirjaStran() {
   })
 
   return (
-    <ListZreba
+    <ListkiZreba
       nazaj={`/turnirji/${idTurnirja}`}
       nazajOznaka="← Nazaj na turnir"
       naslov={turnir.data ? `Žreb skupin · ${turnir.data.ime}` : null}
@@ -87,7 +90,17 @@ export function ZrebSkupinTurnirjaStran() {
   )
 }
 
-function ListZreba({
+/* Kaj nosi listek pod tabelo; izbira velja za ta natis. Samodejno: do šest
+   igralcev razpored z nizi, večja skupina samo pare - po kategorijah, zato se
+   izbira ne shranjuje. */
+const SAMODEJNO = 'samodejno'
+const NACINI: { vrednost: NacinListka | typeof SAMODEJNO; oznaka: string }[] = [
+  { vrednost: SAMODEJNO, oznaka: 'samodejno po velikosti skupine' },
+  { vrednost: 'nizi', oznaka: 'razpored z nizi' },
+  { vrednost: 'razpored', oznaka: 'samo razpored parov' },
+]
+
+function ListkiZreba({
   nazaj,
   nazajOznaka,
   naslov,
@@ -98,17 +111,25 @@ function ListZreba({
 }: {
   nazaj: string
   nazajOznaka: string
-  /* Naslov zavihka; brskalnik ga natisne v glavo lista. */
+  /* Naslov zavihka. */
   naslov: string | null
   turnir: TurnirDto | undefined
   nalaganje: boolean
   napaka: Error | null
   mreze: MrezaDto[]
 }) {
-  const steviloSkupin = mreze.reduce(
-    (vsota, mreza) => vsota + steviloSkupinVSklopih(sklopiZrebSkupin(mreza)),
-    0,
+  const [izbranNacin, izberiNacin] = useState<NacinListka | null>(null)
+  const listki = useMemo(
+    () =>
+      listkiSkupin(
+        mreze.filter((mreza) => mreza.skupine.length > 0),
+        turnir,
+        izbranNacin,
+      ),
+    [mreze, turnir, izbranNacin],
   )
+  const listi = useMemo(() => zloziNaListe(listki), [listki])
+  const steviloSkupin = new Set(listki.map((listek) => listek.skupina.id)).size
 
   return (
     <ZrebOkvir
@@ -117,15 +138,35 @@ function ListZreba({
       naslov={naslov}
       nalaganje={nalaganje}
       napaka={napaka}
-      stevec={`${steviloSkupin} ${sklonSkupin(steviloSkupin)}`}
+      stevec={`${steviloSkupin} ${sklonSkupin(steviloSkupin)} · ${listi.length} ${sklonListov(listi.length)}`}
       steviloZaTisk={steviloSkupin}
-      prazno="Ni skupin za tisk. Žreb skupin se natisne, ko je izveden in tekmovanje teče."
+      prazno="Ni skupin za tisk. Listki skupin se natisnejo, ko je žreb izveden in tekmovanje teče."
+      razred="zreb-stran--skupine"
+      orodja={
+        <label className="listki-orodja__izbira listki-orodja__izbira--zraven">
+          Pod tabelo:
+          <select
+            value={izbranNacin ?? SAMODEJNO}
+            onChange={(d) =>
+              izberiNacin(d.target.value === SAMODEJNO ? null : (d.target.value as NacinListka))
+            }
+          >
+            {NACINI.map((n) => (
+              <option key={n.vrednost} value={n.vrednost}>
+                {n.oznaka}
+              </option>
+            ))}
+          </select>
+        </label>
+      }
+      navodilo={
+        <>
+          Natisni na A4 v merilu 100 %, brez robov ter brez glave in noge. Vsaka skupina je svoj
+          listek čez vso širino lista; list razreži po vodoravnih črtkanih črtah.
+        </>
+      }
     >
-      {mreze
-        .filter((mreza) => mreza.skupine.length > 0)
-        .map((mreza) => (
-          <ZrebSkupinDogodka key={mreza.dogodek.id} mreza={mreza} turnir={turnir} />
-        ))}
+      <ListiSkupin listi={listi} />
     </ZrebOkvir>
   )
 }

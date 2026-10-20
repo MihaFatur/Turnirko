@@ -14294,19 +14294,9 @@ a.ekipa-okno__srecanje:hover {
   text-transform: uppercase;
 }
 
-/* ---------- Zreb skupin za vrata dvorane ----------
-   Objava, ki jo igralci preberejo z razdalje, ne zapisnik: imena so vecja
-   kot na listku, vsaka skupina je svoj okvir, ki se ne zlomi cez stran, in
-   nosi ime dogodka, da list ostane berljiv, ko ga kdo odlepi in obesi loceno.
-   Isti pravili kot zgoraj: fiksni #000/#fff, samo crte, brez podlag. */
-
-.zreb-dogodek {
-  color: #000;
-}
-
-.zreb-dogodek + .zreb-dogodek {
-  margin-top: var(--r8);
-}
+/* ---------- Glava lista izlocilne mreze ----------
+   Turnir nad naslovom, ime kategorije, pod njim stevci. Fiksni #000/#fff,
+   samo crte, brez podlag. */
 
 .zreb-glava {
   margin-bottom: 5mm;
@@ -14333,186 +14323,526 @@ a.ekipa-okno__srecanje:hover {
   color: #000;
 }
 
-/* Naslov sklopa (Predtekmovanje, Nivo 2 ...) ne sme obstati sam na dnu strani. */
-.zreb-sklop {
-  margin: 6mm 0 3mm;
-  font: 600 10pt / 1.3 var(--pisava-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #000;
-  break-after: avoid;
+/* ---------- Listki skupin ----------
+   Po papirnati predlogi lastnika (okt 2026): vsaka skupina je listek s krizno
+   tabelo (vsak z vsakim) in razporedom po kolih. List A4 je natancno
+   210 x 297 mm brez robov (@page zreb-skupin); listek je sirok kot list in
+   visok sestino lista ali vec (99, 148,5, 198 ali 297 mm), zato se list reze
+   samo vodoravno, po crtkani crti pod listkom. Vsebina je 8 mm od stranskega
+   in 6 mm od zgornjega in spodnjega roba listka, da je tiskalnik ne odreze.
+
+   Visine vrstic NISO zapisane tu: izracuna jih pomozno/zrebSkupin.ts (MERE,
+   raztezek do polnega listka) in jih izris postavi v spremenljivke na
+   .listek-skupine. Vse vrstice imajo stalno visino in besedilo se ne lomi, zato
+   je visina listka natanko vsota vrstic. Celica diagonale je siva kot na
+   papirnati predlogi (25 %, nad mejo 10 % iz DESIGN.md). */
+
+.zreb-stran--skupine {
+  max-width: none;
+  page: zreb-skupin;
 }
 
-.zreb-skupina {
-  margin: 0 0 4mm;
-  border: 2px solid #000;
+.zreb-stran__navodilo {
+  max-width: 210mm;
+  margin: 0 auto var(--r3);
+  font: 400 15px / 1.45 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+}
+
+.listki-skupin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--r3);
+}
+
+.listki-skupin__list {
+  box-sizing: border-box;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
   background: #fff;
   color: #000;
-  break-inside: avoid;
+  outline: 1px solid var(--barva-crnilo-3);
+  zoom: var(--zreb-merilo, 1);
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
 
-.zreb-skupina__glava {
+.listek-skupine {
+  box-sizing: border-box;
+  flex: none;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4mm;
-  padding: 2mm 4mm;
-  border-bottom: 2px solid #000;
-}
-
-.zreb-skupina__naslov {
-  margin: 0;
-  font-family: var(--pisava-display);
-  font-size: 20pt;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  flex-direction: column;
+  padding: var(--rob-zgoraj) 8mm var(--rob-spodaj);
+  overflow: hidden;
+  font-family: var(--pisava-telo);
   color: #000;
 }
 
-.zreb-skupina__dogodek {
-  font: 500 8pt / 1.3 var(--pisava-mono);
+/* Deli listka se ne krcijo: njihova visina je izracunana. */
+.listek-skupine > * {
+  flex: none;
+}
+
+/* Rez: crtkana crta pod listkom, ki ne sega do dna lista. */
+.listek-skupine--rez {
+  border-bottom: 0.3mm dashed #000;
+}
+
+/* Glava: kategorija (najvecja beseda listka), turnir v mono, znamka desno. */
+.listek-skupine__glava {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  height: calc(var(--glava) - 2.5mm);
+  margin: 0 0 2.5mm;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.listek-skupine__kategorija {
+  flex: none;
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 800 11.5pt / 1.15 var(--pisava-display);
+  letter-spacing: -0.01em;
+}
+
+.listek-skupine__turnir {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 500 6.5pt / 1.2 var(--pisava-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  text-align: right;
 }
 
-/* Levo igralci (kdo je v skupini), desno tekme po kolih (kdaj in proti komu). */
-.zreb-skupina__telo {
-  display: grid;
-  grid-template-columns: 58mm minmax(0, 1fr);
-}
-
-.zreb-clani {
+.listek-skupine__znamka {
+  flex: none;
+  align-self: center;
   display: flex;
-  flex-direction: column;
-  gap: 2.2mm;
+  align-items: center;
+  gap: 1.4mm;
+  margin-left: auto;
+  font: 800 9.5pt / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+/* Znak je na zaslonu crn kot na papirju (tretja poteza polna, cetrta obrisana). */
+.listek-skupine .logo-znak__poteza,
+.listek-skupine .logo-znak__poteza--glavna {
+  fill: #000;
+}
+
+.listek-skupine .logo-znak__poteza--izid {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1;
+}
+
+/* Nadaljevanje razporeda velike skupine na naslednjem listku. */
+.listek-skupine__nadaljevanje {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  height: var(--nadaljevanje);
   margin: 0;
-  padding: 3mm 4mm;
-  list-style: none;
-  border-right: 1px solid #000;
+  white-space: nowrap;
+  font: 500 6.5pt / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.zreb-clan__ime {
-  display: block;
-  font-family: var(--pisava-display);
-  font-size: 13pt;
-  font-weight: 800;
+.listek-skupine__nadaljevanje strong {
+  font: 800 11pt / 1 var(--pisava-display);
   letter-spacing: -0.01em;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
+  text-transform: none;
 }
 
-.zreb-clan__klub {
-  display: block;
-  margin-top: 0.4mm;
-  font: 400 7.5pt / 1.3 var(--pisava-mono);
+/* --- Krizna tabela ---
+   Stolpci: stevilka, ime, klub, celica za vsakega clana, nizi, zmage, mesto
+   (--kriz-stolpci postavi izris po velikosti skupine). Vrstica je
+   display: contents, da celice vseh vrstic delijo isto mrezo. Crte so leve in
+   spodnje obrobe celic (znotraj celice, zato visina ostane izracunana); debele
+   loci ime od celic in celice od vsot, kot na papirju. */
+
+.krizna {
+  display: grid;
+  grid-template-columns: var(--kriz-stolpci);
+  grid-template-rows: var(--kriz-glava) repeat(var(--kriz-clanov), var(--kriz-vrstica));
+  border: 0.5mm solid #000;
+}
+
+.krizna__vrsta {
+  display: contents;
+}
+
+.krizna__vrsta > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  border-left: 0.2mm solid #000;
+  border-bottom: 0.2mm solid #000;
+}
+
+.krizna__vrsta > :first-child {
+  border-left: 0;
+}
+
+.krizna__vrsta:last-child > * {
+  border-bottom: 0;
+}
+
+.krizna__vrsta--glava > * {
+  border-bottom: 0.5mm solid #000;
+}
+
+.krizna__celica--prva,
+.krizna__glava-celice--prva,
+.krizna__vsota--prva,
+.krizna__glava-vsote--prva {
+  border-left-width: 0.5mm;
+}
+
+/* Glava: »Skupina A« cez stevilko, ime in klub (kot »1. skupina« na papirju),
+   nad njo sklop, kadar ga dogodek ima. */
+.krizna__naslov {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.6mm;
+  padding: 0 2.5mm;
+}
+
+.krizna__sklop {
+  font: 500 6pt / 1 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.krizna__skupina {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 14pt / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.krizna__glava-celice {
+  font: 700 10pt / 1 var(--pisava-mono);
+}
+
+.krizna__glava-vsote {
+  font: 500 6.3pt / 1 var(--pisava-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.zreb-kola {
-  padding: 2mm 4mm;
+.krizna__stevilka {
+  font: 700 9.5pt / 1 var(--pisava-mono);
 }
 
-.zreb-kola__prazno {
-  margin: 1mm 0;
-  font: 400 9pt / 1.4 var(--pisava-telo);
+.krizna__ime {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0 1.6mm;
+  font: 600 9.5pt / 1.15 var(--pisava-telo);
 }
 
-/* Kolo je vrstica tabele: oznaka kola v levem tazu, tekme desno, med koli
-   tanka crta. Tako skupina stirih igralcev ostane nizka (stiri skupine na
-   list) in je kolo se vedno prepoznavno z razdalje. */
-.zreb-kolo {
+.krizna__ime-vrstica {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dolgo ime se zmanjsa, preden se odreze. */
+.krizna__ime--dolgo {
+  font-size: 8pt;
+}
+
+.krizna__ime--zelo-dolgo {
+  font-size: 7pt;
+}
+
+/* Klub v dveh vrsticah: uvožena imena so cela (»Kema - Murexin Puconci«),
+   kratice ima le tretjina klubov. */
+.krizna__klub {
+  padding: 0 1mm;
+  text-align: center;
+  font: 500 7pt / 1.1 var(--pisava-telo);
+}
+
+.krizna__klub-ime {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Prazna celica nosi posevnico (nizi se vpisejo levo in desno od nje). */
+.krizna__crta {
+  font: 400 9pt / 1 var(--pisava-telo);
+}
+
+.krizna__celica--sam {
+  background: #c4c4c4;
+}
+
+.krizna__celica--izid {
+  flex-direction: column;
+  gap: 0.4mm;
+}
+
+.krizna__izid {
+  font: 500 9pt / 1 var(--pisava-mono);
+}
+
+.krizna__celica--zmaga .krizna__izid {
+  font-weight: 700;
+}
+
+.krizna__oznaka {
+  font: 500 5.5pt / 1 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.krizna__vsota {
+  font: 500 9pt / 1 var(--pisava-mono);
+}
+
+.krizna__vsota--mesto {
+  font: 800 11pt / 1 var(--pisava-display);
+}
+
+/* --- Razpored z nizi ---
+   Vrstica tekme: kolo (cez vse tekme kola), par po stevilkah, imeni z
+   dvopicjem na sredini, okence za vsak niz in rezultat. Kolo konca debelejsa
+   crta. */
+
+.krizna + .seznam-skupine,
+.krizna + .razpored-parov {
+  margin-top: var(--razmik);
+}
+
+.seznam-skupine {
   display: grid;
-  grid-template-columns: 15mm minmax(0, 1fr);
-  gap: 0 2mm;
-  align-items: baseline;
-  padding: 1.2mm 0;
-  border-top: 1px solid #000;
-  break-inside: avoid;
+  grid-template-columns: var(--seznam-stolpci);
+  grid-template-rows: var(--seznam-glava);
+  grid-auto-rows: var(--seznam-vrstica);
 }
 
-.zreb-kolo:first-child {
+.seznam-skupine__vrsta {
+  display: contents;
+}
+
+.seznam-skupine__vrsta > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  border-bottom: 0.2mm solid #000;
+}
+
+.seznam-skupine__vrsta--glava > * {
+  align-items: flex-end;
+  padding-bottom: 0.9mm;
+  border-bottom: 0.35mm solid #000;
+  font: 500 6.3pt / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.seznam-skupine__vrsta--glava > :first-child {
+  justify-content: flex-start;
+}
+
+.seznam-skupine__vrsta--konec-kola > *,
+.seznam-skupine__kolo {
+  border-bottom-width: 0.35mm;
+}
+
+.seznam-skupine__glava-niza {
+  font-size: 7.5pt !important;
+  font-weight: 700 !important;
+}
+
+.seznam-skupine__glava-niza,
+.seznam-skupine__niz {
+  border-left: 0.2mm solid #000;
+}
+
+.seznam-skupine__glava-niza--prva,
+.seznam-skupine__niz--prvi,
+.seznam-skupine__glava-izida,
+.seznam-skupine__izid {
+  border-left: 0.35mm solid #000;
+}
+
+.seznam-skupine__kolo {
+  flex-direction: column;
+  align-items: flex-start !important;
+  justify-content: center;
+  gap: 0.6mm;
+  font: 600 7pt / 1 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.seznam-skupine__prost {
+  font: 500 6pt / 1 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.seznam-skupine__par {
+  font: 500 8pt / 1 var(--pisava-mono);
+  white-space: nowrap;
+}
+
+/* Imeni: prvo desno od dvopicja, drugo levo, kot »Ana Novak : Eva Kos«. */
+.seznam-skupine__imena {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 1.5mm;
+  align-items: center;
+  padding: 0 2mm;
+  font: 500 8.5pt / 1.1 var(--pisava-telo);
+}
+
+.seznam-skupine__ime {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seznam-skupine__ime--levo {
+  text-align: right;
+}
+
+.seznam-skupine__ime--zmaga {
+  font-weight: 800;
+}
+
+.seznam-skupine__dvopicje {
+  font-weight: 700;
+}
+
+.seznam-skupine__niz {
+  font: 500 8pt / 1 var(--pisava-mono);
+  white-space: nowrap;
+}
+
+/* Prazno okence nosi dvopicje (tocke), rezultat posevnico (nizi). */
+.seznam-skupine__crta {
+  font: 400 8.5pt / 1 var(--pisava-telo);
+}
+
+.seznam-skupine__izid {
+  flex-direction: column;
+  gap: 0.3mm;
+  font: 700 9pt / 1 var(--pisava-mono);
+}
+
+.seznam-skupine__oznaka {
+  font: 500 5.5pt / 1 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* --- Razpored parov ---
+   Kola v stolpcih (najvec 11 v pasu), pari po stevilkah iz tabele. Crte pasu
+   so v njegovi izracunani visini; kar zaradi njih pade cez rob, je prazen
+   spodnji rob zadnje vrstice. */
+
+.razpored-parov__pas {
+  display: grid;
+  grid-template-columns: repeat(var(--kol), minmax(0, 1fr));
+  height: calc(var(--razpored-glava) + var(--vrstic) * var(--razpored-vrstica));
+  overflow: hidden;
+  border-top: 0.35mm solid #000;
+  border-bottom: 0.35mm solid #000;
+}
+
+.razpored-parov__pas + .razpored-parov__pas {
   border-top: 0;
 }
 
-.zreb-kolo__naslov {
-  margin: 0;
-  font: 600 8pt / 1.3 var(--pisava-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #000;
+.razpored-parov__kolo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-left: 0.2mm solid #000;
 }
 
-.zreb-tekme {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.razpored-parov__kolo:first-child {
+  border-left: 0;
 }
 
-/* Prvi igralec desno, drugi levo od crtice: crtice tvorijo ravno os, po kateri
-   se pari berejo kot na razpisni tabli. Zadnji stolpec je izid, ko je tekma
-   odigrana; stolpec mize obstaja samo, ko je kakšna miza dodeljena. */
-.zreb-tekma {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 13mm;
-  gap: 2mm;
-  align-items: baseline;
-  padding: 0.8mm 0;
-  font: 500 11pt / 1.25 var(--pisava-telo);
-}
-
-.zreb-skupina--mize .zreb-tekma {
-  grid-template-columns: 13mm minmax(0, 1fr) auto minmax(0, 1fr) 13mm;
-}
-
-.zreb-tekma__ime {
-  overflow-wrap: anywhere;
-}
-
-.zreb-tekma__ime--levo {
-  text-align: right;
-}
-
-.zreb-tekma__crtica {
-  text-align: center;
-}
-
-.zreb-tekma__miza {
-  font: 500 7.5pt / 1.3 var(--pisava-mono);
+.razpored-parov__naslov {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--razpored-glava);
+  border-bottom: 0.2mm solid #000;
+  font: 600 6.5pt / 1 var(--pisava-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.zreb-tekma__izid {
-  font: 600 10pt / 1.25 var(--pisava-mono);
-  text-align: right;
+.razpored-parov__par,
+.razpored-parov__prost {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5mm;
+  height: var(--razpored-vrstica);
   white-space: nowrap;
 }
 
-/* »b. b.« in »predaja« pod nizi, da izidni stolpec ostane ozek. */
-.zreb-tekma__oznaka {
-  display: block;
-  font: 500 6.5pt / 1.2 var(--pisava-mono);
+/* Par na sredini stolpca, nizi odigrane tekme desno od njega, da pari kola
+   ostanejo poravnani. */
+.razpored-parov__par {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  font: 500 8.5pt / 1 var(--pisava-mono);
+}
+
+.razpored-parov__stevilki {
+  grid-column: 2;
+}
+
+.razpored-parov__izid {
+  grid-column: 3;
+  justify-self: start;
+  font-size: 6.5pt;
+  font-weight: 700;
+}
+
+.razpored-parov__prost {
+  font: 500 6.3pt / 1 var(--pisava-mono);
   letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* Kdor v kolu ne igra (liho stevilo clanov): oznaka v mono, ime ostane ime. */
-.zreb-prost {
-  padding: 0.9mm 0;
-  font: 400 9.5pt / 1.3 var(--pisava-telo);
-}
-
-.zreb-prost__oznaka {
-  margin-right: 1.5mm;
-  font: 500 7.5pt / 1.3 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 /* ---------- Zreb izlocilnega dela za vrata dvorane ----------
@@ -14772,6 +15102,12 @@ a.ekipa-okno__srecanje:hover {
   margin: 0;
 }
 
+/* Listki skupin: isto - listek je sirok kot list, rezi gredo do roba lista. */
+@page zreb-skupin {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -14834,9 +15170,19 @@ a.ekipa-okno__srecanje:hover {
     break-before: page;
   }
 
-  /* Vsak dogodek zreba skupin na svoj list. */
-  .zreb-dogodek + .zreb-dogodek {
-    margin-top: 0;
+  /* Listki skupin: vsak list A4 na svojo stran; pomanjsanje za ozek zaslon
+     se pri tisku izklopi, sicer listek ne bi bil cez vso sirino lista. */
+  .listki-skupin {
+    display: block;
+  }
+
+  .listki-skupin__list {
+    zoom: 1 !important;
+    outline: none;
+    break-inside: avoid;
+  }
+
+  .listki-skupin__list + .listki-skupin__list {
     break-before: page;
   }
 
@@ -14873,41 +15219,6 @@ a.ekipa-okno__srecanje:hover {
 }
 
 @media (max-width: 640px) {
-  /* Zreb skupin: na ozkem zaslonu igralci nad tekmami (A4 je pri tisku vedno
-     dovolj sirok za dva stolpca). */
-  .zreb-skupina__telo {
-    grid-template-columns: 1fr;
-  }
-
-  .zreb-clani {
-    border-right: 0;
-    border-bottom: 1px solid #000;
-  }
-
-  /* Oznaka kola nad tekmami, izid ob imenu: na 390 px bi levi taz in stolpec
-     izida pojedla vec kot pol sirine in imena bi se lomila sredi besede. */
-  .zreb-kolo {
-    grid-template-columns: 1fr;
-    row-gap: 0.5mm;
-  }
-
-  .zreb-tekma,
-  .zreb-skupina--mize .zreb-tekma {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
-  }
-
-  .zreb-tekma__izid {
-    min-width: 11mm;
-  }
-
-  .zreb-skupina--mize .zreb-tekma__miza {
-    grid-column: 1 / -1;
-  }
-
-  .zreb-tekma__ime {
-    overflow-wrap: break-word;
-  }
-
   .listki-stran {
     padding-left: var(--r3);
     padding-right: var(--r3);

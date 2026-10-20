@@ -23,11 +23,11 @@ import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { dogodkiApi, turnirjiApi } from '../api/zahteve'
-import type { DogodekDto, FazaTekme, MrezaDto, TekmaDto } from '../api/tipi'
+import type { FazaTekme, MrezaDto, TekmaDto } from '../api/tipi'
 import { OZNAKE_SPOL_KATEGORIJA, imeUdelezenca } from '../api/tipi'
-import { zaIskanje } from '../pomozno/iskanje'
 import { imeKola, sklonListkov } from '../pomozno/oblikovanje'
 import { imeTekmeZreba } from '../pomozno/svRegija'
+import { oznakaKategorije } from '../pomozno/zrebSkupin'
 import { Listek } from '../komponente/Listek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { ZapisnikiEkipnegaDogodka } from '../komponente/ZapisnikiEkipnegaDogodka'
@@ -191,19 +191,6 @@ function razdeliNaListe(listki: PripravljenListek[]): PripravljenListek[][] {
     listi.push(listki.slice(i, i + LISTKOV_NA_LIST))
   }
   return listi
-}
-
-/* Kategorija na listku: ime dogodka, ki mu spol in starost dodamo le, kadar ju
-   ime še ne pove (uvoz ju včasih zapiše kar v ime: »Dečki U-13«). Odprta
-   kategorija (»Kdorkoli«) na papirju ne pove ničesar, zato jo izpustimo. */
-function oznakaKategorije(dogodek: DogodekDto): string {
-  const primerjava = (besedilo: string) => zaIskanje(besedilo).replace(/[^\p{L}\p{N}]/gu, '')
-  const ime = primerjava(dogodek.ime)
-  const dodatki = [
-    dogodek.spolKategorija === 'KDORKOLI' ? null : OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija],
-    dogodek.starostnaKategorija,
-  ].filter((dodatek): dodatek is string => !!dodatek && !ime.includes(primerjava(dodatek)))
-  return [dogodek.ime, ...dodatki].join(' · ')
 }
 
 /* Pripravi in razvrsti pripravljene tekme, vsaki doda človeku berljivo

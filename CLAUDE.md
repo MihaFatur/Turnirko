@@ -2310,33 +2310,78 @@
   - Listki so **črno-beli ne glede na temo** (fiksni `#000/#fff`, ne temo
     odvisne spremenljivke); sloge in `@media print` (`@page` A4,
     `break-inside: avoid`, `print-color-adjust: exact`) drži `slog.css`.
-- **Žreb skupin za vrata dvorane** (okt 2026): natisljiva objava vseh skupin in
-  njihovih tekem po kolih, da organizator žreb obesi tudi na papirju. Isti
-  zasnovi kot listki — stran zunaj `Postavitve`, tiska brskalnik, **brez
+- **Listki skupin (žreb skupin za tisk)** (okt 2026; 20. 10. prenovljeno po
+  papirnati predlogi lastnika — list skupin državnega prvenstva in TOP-a):
+  vsaka skupina je **listek s križno tabelo** (vsak z vsakim: številka, ime,
+  klub, celica za vsakega člana s poševnico za nize, siva diagonala, nato
+  Nizi · Zmage · Mesto) in pod njo **razporedom po kolih**. Isti zasnovi kot
+  sodniški listki — stran zunaj `Postavitve`, tiska brskalnik, **brez
   zaledja**: vse je že v `MrezaDto` (skupine, prijave, tekme).
   - Poti: `/dogodki/:id/zreb-skupin` (ena kategorija) in
     `/turnirji/:id/zreb-skupin` (vse kategorije turnirja z izžrebanimi
-    skupinami, vsaka na svoji strani). Strani `ZrebSkupinDogodkaStran` /
-    `ZrebSkupinTurnirjaStran` (`strani/ZrebSkupinStran`), izris
-    `komponente/ZrebSkupinTisk`, **sestava lista je čista logika** v
-    `pomozno/zrebSkupin.ts` (`sklopiZrebSkupin`).
-  - Gumb »Žreb skupin za tiskanje« se pokaže organizatorju (`smem`), ko
-    dogodek **teče** (`imaZrebanoSkupine`: skupinski sistem + dejanski status
-    `V_TEKU`) — pred žrebom skupin ni, zaključena kategorija z vrat odpade.
-    Na strani turnirja je gumb, ko ima skupine vsaj ena kategorija.
-  - Igralci predtekmovalne skupine so našteti **po jakosti** (`stNosilca`,
+    skupinami, ena za drugo — listek nosi kategorijo, zato si smejo deliti
+    list). Strani `ZrebSkupinDogodkaStran` / `ZrebSkupinTurnirjaStran`
+    (`strani/ZrebSkupinStran`), izris `komponente/ZrebSkupinTisk`
+    (`ListiSkupin`), **sestava, mere in zlaganje so čista logika** v
+    `pomozno/zrebSkupin.ts` (`sklopiZrebSkupin`, `deliListka`, `listkiSkupin`,
+    `zloziNaListe`). Gumb »Žreb skupin za tiskanje« ostaja, kjer je bil
+    (organizator, `imaZrebanoSkupine`: skupinski sistem + dejanski `V_TEKU`).
+  - **Dve obliki razporeda** (izbirnik »Pod tabelo« v orodni vrstici, ne
+    shranjuje se): **razpored z nizi** (vrstica tekme: kolo, par »1 – 4«,
+    imeni z dvopičjem na sredini, okence za vsak niz, Rezultat — skupina igra
+    sama za mizo) in **samo razpored parov** (kola v stolpcih, pari po
+    številkah — sodniki pišejo na svoje listke, kot pri TOP). **Samodejno**
+    (privzeto) ima vsaka kategorija svojo: do 6 igralcev z nizi, večja samo
+    pare (`privzetNacin`). Ekipni dogodek nima okenc za nize (samo Rezultat),
+    stolpec vsote je »Tekme«.
+  - **List A4 = 210 × 297 mm brez robov** (`@page zreb-skupin { margin: 0 }`,
+    `page` na `.zreb-stran--skupine`). **Listek je širok kot list in visok
+    2, 3, 4 ali 6 šestin** (99 / 148,5 / 198 / 297 mm; 5 šestin ne — odpadek
+    sredi lista), zato se list reže **samo vodoravno**, po črtkani črti pod
+    vsakim listkom, ki ne sega do dna lista. Listki se zlagajo po vrsti, nov
+    list, ko naslednji ne gre več (`zloziNaListe`). Vsebina je 8 mm od strani
+    in 5 mm od zgornjega/spodnjega roba listka.
+  - **Višina se izračuna, ne izmeri**: vse vrstice imajo stalno višino v mm
+    (`MERE`), besedilo se ne lomi (dolgo ime se zmanjša, nato odreže, klub v
+    največ dveh vrsticah), zato je višina listka vsota vrstic. Listek dobi
+    najmanjši del lista, na katerega gre z vrsticami, **stisnjenimi največ na
+    0,9**, nato vrstice raztegne do polnega listka (**največ 1,35**). Izris iste
+    številke postavi v spremenljivke sloga na `.listek-skupine` (`--kriz-vrstica`
+    …) — slog drugih višin nima, zato se izračun in izris ne moreta raziti.
+    Izmerjeno: skupine po 3–4 (z nizi) in do 8 (pari) gredo **tri na list**,
+    5–6 z nizi dve na list, 7 z nizi dve tretjini, 8–9 z nizi cel list, 10 in
+    12 s pari pol lista.
+  - **Velika skupina se nadaljuje**: razpored, ki tudi stisnjen ne gre na cel
+    list (10+ igralcev z nizi), gre na naslednji listek (»nadaljevanje
+    razporeda · 2. del od 2«); kolo se ne razdeli.
+  - Vsak listek nosi **kategorijo** (`oznakaKategorije`, skupna s sodniškim
+    listkom), **turnir** (`vrsticaTurnirja`), **skupino** (in sklop:
+    Predtekmovanje / Finalne skupine / Nivo N) ter **znamko Turnirko**
+    (`ZnakTurnirko` + napis).
+  - Člani predtekmovalne skupine so oštevilčeni **po jakosti** (`stNosilca`,
     kakor jih je žreb razporedil), ne po lestvici — ta bi jih med turnirjem
-    premetavala po izidih. Pri skupinah za mesta ostane vrstni red lestvice.
-  - Pri **lihem številu članov** vsako kolo pove, kdo je prost (izpeljano iz
-    tega, kdo v kolu ne nastopa — tekme za prostega ni). Odigrana tekma pokaže
-    izid, zato je list ob ponovnem tisku tudi pregled stanja; stolpec mize je
-    samo, ko je kakšna miza dodeljena.
-  - Vsak okvir skupine nosi ime kategorije (list ostane berljiv, ko ga kdo
-    odlepi) in se ne zlomi čez stran; sloge drži razdelek 16 v `slog.css`.
+    premetavala in številke v razporedu bi ob ponovnem tisku pomenile druge
+    ljudi. Pri skupinah za mesta ostane vrstni red lestvice.
+  - **Odigrana tekma se izpiše** (v celici »3/1« z vidika vrstice, zmaga
+    odebeljena; v razporedu točke nizov in rezultat), zato je ponovni tisk tudi
+    pregled stanja. **Nizi, zmage in mesto pa šele, ko je odigrana vsa
+    skupina** — delni seštevek bi se bral kot končni. Stolpec je »Zmage« in ne
+    »Točke« s predloge: uvrstitev v skupini je po zmagah (PST 20. člen,
+    `RazvrstitevStoritev`). Pri lihem številu članov kolo pove, kdo je prost
+    (»prost 5«). Diagonala je 25 % siva kot na predlogi (DESIGN.md dovoli
+    sivine nad 10 %).
+  - Okvir strani (orodna vrstica, izbirnik, navodilo za tisk, pomanjšanje
+    lista na ožjem zaslonu — pokončni in ležeči) je `komponente/ZrebOkvir`,
+    skupen listu izločilne mreže.
+  - Izmerjeno z brezglavim Chromom (`Page.printToPDF`, PDF → mupdf) na testni
+    bazi s skupinami 3, 4, 5, 6, 7, 8, 10, 12 in ekipnim dogodkom: vsak list je
+    210 × 297 mm, noben listek ne prelije, vsebina konča ≥ 5,5 mm nad rezom.
+    Ob spremembi `MERE` ali slogov razdelka »Listki skupin« ponovi. Ni
+    preverjeno na pravem tiskalniku.
 - **Žreb izločilnega dela za vrata dvorane** (okt 2026): ista zasnova za
   izločilno mrežo — stran zunaj `Postavitve`, tiska brskalnik, brez zaledja
   (vse je v `MrezaDto`). Okvir strani (orodna vrstica, števec, »Natisni«,
-  pomanjšanje na ožjem zaslonu) je skupen listu skupin: `komponente/ZrebOkvir`.
+  pomanjšanje na ožjem zaslonu) je skupen listkom skupin: `komponente/ZrebOkvir`.
   - Poti: `/dogodki/:id/zreb-mreze` in `/turnirji/:id/zreb-mreze` (vse
     kategorije turnirja z mrežo, vsaka na svojem listu). Strani
     `ZrebMrezeDogodkaStran` / `ZrebMrezeTurnirjaStran` (`strani/ZrebMrezeStran`),
