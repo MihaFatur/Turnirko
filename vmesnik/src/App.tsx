@@ -1,7 +1,7 @@
 /* Usmerjanje med stranmi. Vse strani so ogrnjene v skupno postavitev
    (glava z navigacijo + vsebina). Strani za urejanje (igralci, šifranti)
    so dostopne samo prijavljenemu administratorju; gost je preusmerjen. */
-import type { ReactElement } from 'react'
+import { lazy, Suspense, type ReactElement } from 'react'
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
 
 import { Postavitev } from './komponente/Postavitev'
@@ -139,9 +139,17 @@ function StranNeObstaja() {
   )
 }
 
+/* Prikazni harness za posnetke prenove (samo razvoj). Konstanta DEV je v produkciji
+   false, zato se ta uvoz v paket sploh ne vključi. */
+const PosnetkiOkna = import.meta.env.DEV ? lazy(() => import('./dev/PosnetkiOkna')) : null
+
 export function App() {
   return (
     <Routes>
+      {PosnetkiOkna && (
+        <Route path="/dev/posnetki"
+          element={<Suspense fallback={null}><PosnetkiOkna /></Suspense>} />
+      )}
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}
       <Route path="/dogodki/:id/listki" element={<ListkiStran />} />

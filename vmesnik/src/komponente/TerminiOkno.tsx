@@ -27,7 +27,10 @@
    Prestavitve imajo svoj razdelek z enim urejevalnikom in ne gumba pri vsakem
    srečanju: liga brez ur ima kolo v eni vrstici, 70 srečanj v seznamu pa bi
    pomenilo 70 gumbov, ki jih organizator v letu uporabi trikrat. Dan
-   prestavljenega srečanja sledi dnevu kola, dokler organizator ne vpiše svojega. */
+   prestavljenega srečanja sledi dnevu kola, dokler organizator ne vpiše svojega.
+
+   Prikaz (prenova, design_handoff_termini_prehodi, 2a) zamenja samo postavitev:
+   vse poti podatkov — napolni, pobriši, premakni, vrni, sestaviVnos — ostanejo. */
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
@@ -35,6 +38,16 @@ import { ligeApi } from '../api/zahteve'
 import type { LigaDto, SrecanjeDto, TerminiVnos } from '../api/tipi'
 import { oblikujDanMesec } from '../pomozno/oblikovanje'
 import { terminKola } from '../pomozno/prestavitve'
+import {
+  danKratica,
+  kolTekst,
+  kratkoDatum,
+  najpogostejsa,
+  prestavitevTekst,
+  prestej,
+  razlikaDni,
+} from '../pomozno/terminiKola'
+import { IskalniIzbirnik, type MoznostIzbirnika } from './IskalniIzbirnik'
 import { ModalnoOkno } from './ModalnoOkno'
 import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
@@ -78,6 +91,7 @@ interface VnosKola {
 
 const PRIVZET_RAZMIK = 7
 const NAJVEC_ZNAKOV_RAZLOGA = 200
+const NAJVEC_DNI = 365
 /* Vrednost izbirnika za srečanje brez termina; kolo je številka. */
 const CAKA = 'caka'
 
@@ -105,6 +119,13 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
     () => liga.ureSrecanj?.map((u) => vpisanaUra(`T${u}`)) ?? [],
   )
   const [razmik, nastaviRazmik] = useState(liga.razmikDni ?? PRIVZET_RAZMIK)
+  /* Razmik po meri je vse razen 7 in 14 dni; »Drugo« se izbere tudi ročno. */
+  const [razmikPoMeri, nastaviRazmikPoMeri] = useState(() => razmik !== 7 && razmik !== 14)
+  /* Odigrana kola so privzeto skrita: ob sezoni je jih večina že za nami, pogled
+     na načrt pa naj bo čist. Skrita se shranijo kot vsa druga. */
+  const [pokaziOdigrana, nastaviPokaziOdigrana] = useState(false)
+  /* Kola, pri katerih so srečanja razprta (liga z urami); samo za pregled. */
+  const [odprta, nastaviOdprta] = useState<Set<number>>(() => new Set())
 
   const prestavljena = vnosi.filter(jePrestavljeno)
   const urejanoSrecanje = vnosi.find((s) => s.id === urejano) ?? null
@@ -128,6 +149,21 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
 
   function urediSrecanje(id: number, popravek: Partial<VnosSrecanja>) {
     nastaviVnose((prej) => prej.map((s) => (s.id === id ? { ...s, ...popravek } : s)))
+  }
+
+  /* Ura kroga kola: zapiše se vsem neprestavljenim srečanjem tega kola in tega
+     kroga — kolo ima eno uro za vse svoje »prvo« srečanje, ki pa ni vedno
+     isto. Prestavljeno srečanje ima svojo uro in je ne prepiše. */
+  function urediKrog(kolo: number, krog: number, ura: string) {
+    nastaviVnose((prej) =>
+      prej.map((s) => (s.kolo === kolo && s.uraVKolu === krog && !jePrestavljeno(s) ? { ...s, ura } : s)),
+    )
+  }
+
+  /* Srečanje, ki v kolu nosi dani krog (neprestavljeno); po njem se bere ura
+     kroga. Brez njega je polje kroga prazno in onemogočeno. */
+  function srecanjeZaKrog(kolo: number, krog: number): VnosSrecanja | undefined {
+    return vnosi.find((s) => s.kolo === kolo && s.uraVKolu === krog && !jePrestavljeno(s))
   }
 
   /* Kolo, v katerem se srečanje igra. Dan spet sledi dnevu novega kola, ura
@@ -179,253 +215,357 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
     )
   }
 
-  /* Okno je namenoma navadne širine (brez "siroko"): vrstica nosi le oznako,
-     datum in uro - v širokem oknu bi se datumsko polje raztegnilo čez pol
-     zaslona in bi izgledalo kot pomota. */
+  function preklopiKolo(kolo: number) {
+    nastaviOdprta((prej) => {
+      const nova = new Set(prej)
+      if (nova.has(kolo)) nova.delete(kolo)
+      else nova.add(kolo)
+      return nova
+    })
+  }
+
+  /* Odigrano kolo: vsa njegova srečanja so odigrana (prazno kolo ni odigrano). */
+  const odigranoKolo = (kolo: number) => {
+    const vKolu = vnosi.filter((s) => s.kolo === kolo)
+    return vKolu.length > 0 && vKolu.every((s) => s.odigrano)
+  }
+  const odigranih = kola.filter((k) => odigranoKolo(k.kolo)).length
+  /* Prvo kolo, ki ni v celoti odigrano; po njem se oznaka »naslednje«. */
+  const naslednjeKolo = kola.find((k) => !odigranoKolo(k.kolo))?.kolo ?? null
+  const prikazana = pokaziOdigrana ? kola : kola.filter((k) => !odigranoKolo(k.kolo))
+
+  /* Modus dneva in razmika čez VSA kola, tudi skrita: rjavo pomeni odstopanje
+     od tistega, kar je v razporedu običajno. Datume računamo v UTC (kot prestej). */
+  const datumi = kola.filter((k) => k.datum)
+  const razmikPrej = new Map<number, number>()
+  datumi.forEach((k, i) => {
+    if (i > 0) razmikPrej.set(k.kolo, razlikaDni(datumi[i - 1].datum, k.datum))
+  })
+  const modusDan = najpogostejsa(datumi.map((k) => danKratica(k.datum)))
+  const modusRazmik = najpogostejsa([...razmikPrej.values()])
+  const odstopaDan = (k: VnosKola) =>
+    k.datum !== '' && modusDan !== null && danKratica(k.datum) !== modusDan
+  const odstopaRazmik = (kolo: number) =>
+    modusRazmik !== null && razmikPrej.has(kolo) && razmikPrej.get(kolo) !== modusRazmik
+  const rjavo = datumi.some((k) => odstopaDan(k) || odstopaRazmik(k.kolo))
+
+  /* Stanje za nogo: kaj je spremenjeno glede na to, kar je bilo shranjeno. */
+  const spremenjeno =
+    JSON.stringify({ kola, vnosi }) !== JSON.stringify({ kola: zacetno.kola, vnosi: zacetno.srecanja })
+  const kolaSpremenjena = kola.filter((k, i) =>
+    k.datum !== zacetno.kola[i]?.datum || k.ura !== zacetno.kola[i]?.ura).length
+  const prestavitveSpremenjene = vnosi.filter((s, i) => {
+    const z = zacetno.srecanja[i]
+    if (!z || !(jePrestavljeno(s) || jePrestavljeno(z))) return false
+    return s.kolo !== z.kolo || s.datum !== z.datum || s.ura !== z.ura || s.razlog !== z.razlog
+  }).length
+
+  function stanjeBesedilo(): string {
+    if (!spremenjeno) return 'Ni neshranjenih sprememb'
+    const deli: string[] = []
+    if (kolaSpremenjena > 0) deli.push(`${kolaSpremenjena} ${kolTekst(kolaSpremenjena)}`)
+    if (prestavitveSpremenjene > 0) deli.push(`${prestavitveSpremenjene} ${prestavitevTekst(prestavitveSpremenjene)}`)
+    return deli.length > 0 ? `Neshranjeno: ${deli.join(' · ')}` : 'Neshranjene spremembe'
+  }
+
+  /* Povzetek razdelka »Kola«: število, odigrana in prvi ter zadnji datum. */
+  const prviDatum = datumi[0]?.datum
+  const zadnjiDatum = datumi[datumi.length - 1]?.datum
+  const povzetek = !prviDatum || !zadnjiDatum
+    ? `${kola.length} ${kolTekst(kola.length)} · brez terminov`
+    : `${kola.length} ${kolTekst(kola.length)} · odigrano ${odigranih} · ${kratkoDatum(prviDatum)} – ${kratkoDatum(zadnjiDatum)} ${zadnjiDatum.slice(0, 4)}`
+
+  /* Srečanja, ki jih je mogoče prestaviti: neprestavljena, po kolu iz žreba. */
+  const zaIzbiro: MoznostIzbirnika[] = vnosi
+    .filter((s) => !jePrestavljeno(s))
+    .sort((a, b) => a.izvirnoKolo - b.izvirnoKolo || a.id - b.id)
+    .map((s) => ({
+      id: s.id,
+      ime: `${s.domaci} – ${s.gost}`,
+      podrobnost: `${s.izvirnoKolo}. kolo${s.odigrano ? ' · odigrano' : ''}`,
+      iskalno: `${s.domaci} ${s.gost} kolo ${s.izvirnoKolo}`,
+    }))
+
   return (
-    <ModalnoOkno naslov="Termini kol" onZapri={onZapri}>
+    <ModalnoOkno srednje naslov="Termini kol" podnaslov={`${liga.ime} · ${liga.sezona ?? ''}`.trim()} onZapri={onZapri}>
       <form className="obrazec" onSubmit={obOddaji}>
-        <p className="obvestilo">
+        <p className="termini__uvod">
           {zUrami
             ? 'Dan velja za vsa srečanja kola, ura pa za vsako srečanje posebej. Urejaš jih lahko tudi med sezono.'
             : 'Termin velja za vsa srečanja kola. Urejaš jih lahko tudi med sezono.'}
         </p>
 
-        <fieldset className="obrazec__skupina">
-          <legend>Napolni po razmiku</legend>
-          <div className="termini__polnilo">
-            <label className="obrazec__polje">
-              <span>Prvo kolo</span>
-              <input type="date" value={odDatuma}
-                onChange={(d) => nastaviOdDatuma(d.target.value)} />
+        <div className="termini__orodje">
+          <span className="termini__orodje-naslov">Napolni po razmiku</span>
+          <div className="termini__orodje-polja">
+            <label className="termini__orodje-polje">
+              <span className="oznaka-polja">Prvo kolo</span>
+              <input type="date" value={odDatuma} onChange={(d) => nastaviOdDatuma(d.target.value)} />
             </label>
-            {!zUrami && (
-              <label className="obrazec__polje">
-                <span>Ura</span>
-                <input type="time" value={odUre} onChange={(d) => nastaviOdUre(d.target.value)} />
-              </label>
-            )}
-            <label className="obrazec__polje">
-              <span>Na koliko dni</span>
-              <StevilskoPolje najvec={365} vrednost={String(razmik)}
-                naSpremembo={(v) => nastaviRazmik(Number(v))} />
-            </label>
-          </div>
-          {zUrami && (
-            <div className="obrazec__vrstica obrazec__vrstica--ure">
-              {odUr.map((ura, i) => (
-                <label key={i} className="obrazec__polje">
-                  <span>{i + 1}. srečanje</span>
+            {zUrami ? (
+              odUr.map((ura, i) => (
+                <label key={i} className="termini__orodje-polje termini__orodje-polje--krog">
+                  <span className="oznaka-polja">{i + 1}. krog</span>
                   <input type="time" value={ura}
                     onChange={(d) => nastaviOdUr((prej) => prej.map((u, j) => (j === i ? d.target.value : u)))} />
                 </label>
-              ))}
+              ))
+            ) : (
+              <label className="termini__orodje-polje termini__orodje-polje--ura">
+                <span className="oznaka-polja">Ura</span>
+                <input type="time" value={odUre} onChange={(d) => nastaviOdUre(d.target.value)} />
+              </label>
+            )}
+            <div className="termini__orodje-razmik">
+              <span className="oznaka-polja">Razmik</span>
+              <div className="izbirnik" role="group" aria-label="Razmik med kola">
+                <button type="button"
+                  className={izbirnikGumb(!razmikPoMeri && razmik === 7)}
+                  aria-pressed={!razmikPoMeri && razmik === 7}
+                  onClick={() => { nastaviRazmik(7); nastaviRazmikPoMeri(false) }}>
+                  7 dni
+                </button>
+                <button type="button"
+                  className={izbirnikGumb(!razmikPoMeri && razmik === 14)}
+                  aria-pressed={!razmikPoMeri && razmik === 14}
+                  onClick={() => { nastaviRazmik(14); nastaviRazmikPoMeri(false) }}>
+                  14 dni
+                </button>
+                <button type="button"
+                  className={izbirnikGumb(razmikPoMeri)}
+                  aria-pressed={razmikPoMeri}
+                  onClick={() => nastaviRazmikPoMeri(true)}>
+                  Drugo
+                </button>
+              </div>
             </div>
-          )}
-          <div className="termini__polnilo-gumbi">
-            <button type="button" className="gumb gumb--majhen" disabled={!odDatuma}
-              onClick={napolni}>
+            {razmikPoMeri && (
+              <label className="termini__orodje-polje termini__orodje-polje--dni">
+                <span className="oznaka-polja">Dni</span>
+                <StevilskoPolje najvec={NAJVEC_DNI} vrednost={String(razmik)}
+                  naSpremembo={(v) => nastaviRazmik(Number(v))} />
+              </label>
+            )}
+          </div>
+          <div className="termini__orodje-dejanja">
+            <button type="button" className="gumb" disabled={!odDatuma} onClick={napolni}>
               Napolni vsa kola
             </button>
             <button type="button" className="gumb gumb--majhen" onClick={pobrisi}>
               Zbriši vse
             </button>
+            {/* Opomba je v isti mreži kot gumba: pri tej širini se prelomi v svojo
+                vrstico, ne pa da bi za njo ostal dodaten odmik orodja. */}
+            <p className="termini__orodje-opomba">Prepiše datume vseh kol; prestavljena srečanja ostanejo.</p>
           </div>
-          <p className="namig">
-            Polnilo prepiše vse datume spodaj. Prestavitev enega kola ostalih ne premakne.
-          </p>
-        </fieldset>
-
-        <div className="termini">
-          {kola.map((k) => {
-            const vKolu = vnosi.filter((s) => s.kolo === k.kolo)
-            const odigrano = vKolu.length > 0 && vKolu.every((s) => s.odigrano)
-            return zUrami ? (
-              <div key={k.kolo} className="termini__vecer">
-                <div className="termini__vrstica termini__vrstica--vecer">
-                  <OznakaKola kolo={k.kolo} odigrano={odigrano} />
-                  <label className="termini__polje">
-                    <span className="samo-za-bralnik">Datum {k.kolo}. kola</span>
-                    <input type="date" value={k.datum}
-                      onChange={(d) => uredi(k.kolo, { datum: d.target.value })} />
-                  </label>
-                </div>
-                {vKolu.map((s) => (
-                  <div key={s.id} className="termini__srecanje">
-                    <label className="termini__polje termini__polje--ura">
-                      <span className="samo-za-bralnik">
-                        Ura srečanja {s.domaci} – {s.gost}, {k.kolo}. kolo
-                      </span>
-                      <input type="time" value={s.ura} disabled={!(s.datum ?? k.datum)}
-                        onChange={(d) => urediSrecanje(s.id, { ura: d.target.value })} />
-                    </label>
-                    <span className="termini__par">
-                      {s.domaci} – {s.gost}
-                      {s.kolo !== s.izvirnoKolo && (
-                        <span className="termini__oznaka-srecanja">iz {s.izvirnoKolo}. kola</span>
-                      )}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div key={k.kolo} className="termini__vrstica">
-                <OznakaKola kolo={k.kolo} odigrano={odigrano} />
-                <label className="termini__polje">
-                  <span className="samo-za-bralnik">Datum {k.kolo}. kola</span>
-                  <input type="date" value={k.datum}
-                    onChange={(d) => uredi(k.kolo, { datum: d.target.value })} />
-                </label>
-                <label className="termini__polje termini__polje--ura">
-                  <span className="samo-za-bralnik">Ura {k.kolo}. kola</span>
-                  <input type="time" value={k.ura} disabled={!k.datum}
-                    onChange={(d) => uredi(k.kolo, { ura: d.target.value })} />
-                </label>
-              </div>
-            )
-          })}
         </div>
 
-        <Prestavitve
-          kola={kola}
-          vnosi={vnosi}
-          prestavljena={prestavljena}
-          urejano={urejanoSrecanje}
-          zUrami={zUrami}
-          onIzberi={nastaviUrejano}
-          onSpremeni={urediSrecanje}
-          onPremakni={premakni}
-          onVrni={vrni}
-        />
+        <div className="termini__kola">
+          <div className="termini__razdelek">
+            <span>Kola</span>
+            <span className="termini__razdelek-povzetek">{povzetek}</span>
+          </div>
+          <div className="termini__tabela">
+            <div className="termini__glava">
+              <span>Kolo</span>
+              <span>Datum</span>
+              <span>Dan</span>
+              <span>{zUrami ? 'Ure krogov' : 'Ura'}</span>
+            </div>
+            {odigranih > 0 && (
+              <div className="termini__skrita">
+                <span>{pokaziOdigrana ? 'Odigrana kola prikazana' : skritoBesedilo(odigranih)}</span>
+                <button type="button" className="gumb gumb--majhen"
+                  onClick={() => nastaviPokaziOdigrana(!pokaziOdigrana)}>
+                  {pokaziOdigrana ? 'Skrij' : 'Pokaži'}
+                </button>
+              </div>
+            )}
+
+            {prikazana.map((k) => {
+              const vKolu = vnosi.filter((s) => s.kolo === k.kolo)
+              const odigrano = odigranoKolo(k.kolo)
+              const oznaka = odigrano ? 'odigrano' : k.kolo === naslednjeKolo ? 'naslednje' : null
+              const razsirjeno = odprta.has(k.kolo)
+              const razmikKola = razmikPrej.get(k.kolo)
+              const dan = k.datum ? danKratica(k.datum) : '—'
+              const danRazredi = 'termini__dan'
+                + (odstopaDan(k) ? ' termini__dan--odstopa' : '')
+                + (odstopaRazmik(k.kolo) ? ' termini__dan--razmik-odstopa' : '')
+              return (
+                <div key={k.kolo} className="termini__vrstica">
+                  <div className="termini__celice">
+                    <div className="termini__kolo-stolpec">
+                      <span className={'termini__kolo' + (odigrano ? ' termini__kolo--odigrano' : '')}>
+                        {k.kolo}. kolo
+                      </span>
+                      {oznaka && (
+                        <span className={'termini__oznaka' + (oznaka === 'naslednje' ? ' termini__oznaka--naslednje' : '')}>
+                          {oznaka}
+                        </span>
+                      )}
+                      {zUrami && (
+                        <button type="button" className="termini__srecanja-gumb"
+                          aria-expanded={razsirjeno} onClick={() => preklopiKolo(k.kolo)}>
+                          {razsirjeno ? 'Skrij ▴' : `${vKolu.length} srečanj ▾`}
+                        </button>
+                      )}
+                    </div>
+
+                    <input type="date" className="termini__vnos" aria-label={`Datum ${k.kolo}. kola`}
+                      value={k.datum} onChange={(d) => uredi(k.kolo, { datum: d.target.value })} />
+
+                    <div className={danRazredi}>
+                      <span className="termini__dan-ime">{dan}</span>
+                      <span className="termini__dan-razmik">
+                        {k.datum && razmikKola !== undefined ? formatRazmika(razmikKola) : ''}
+                      </span>
+                    </div>
+
+                    {zUrami ? (
+                      <div className="termini__ure">
+                        {odUr.map((_, krog) => {
+                          const s = srecanjeZaKrog(k.kolo, krog)
+                          return (
+                            <input key={krog} type="time"
+                              className="termini__vnos termini__vnos--krog"
+                              aria-label={`${krog + 1}. krog ${k.kolo}. kola`}
+                              value={s?.ura ?? ''} disabled={!s || !k.datum}
+                              onChange={(d) => urediKrog(k.kolo, krog, d.target.value)} />
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <input type="time" className="termini__vnos termini__vnos--ura"
+                        aria-label={`Ura ${k.kolo}. kola`}
+                        value={k.ura} disabled={!k.datum}
+                        onChange={(d) => uredi(k.kolo, { ura: d.target.value })} />
+                    )}
+                  </div>
+
+                  {zUrami && razsirjeno && (
+                    <div className="termini__srecanja">
+                      {[...vKolu].sort((a, b) => a.uraVKolu - b.uraVKolu || a.id - b.id).map((s) => (
+                        <div key={s.id} className="termini__srecanje">
+                          <input type="time" className="termini__vnos termini__vnos--krog"
+                            aria-label={`Ura srečanja ${s.domaci} – ${s.gost}, ${k.kolo}. kolo`}
+                            value={s.ura} disabled={!(s.datum ?? k.datum)}
+                            onChange={(d) => urediSrecanje(s.id, { ura: d.target.value })} />
+                          <span className="termini__srecanje-krog">{s.uraVKolu + 1}. krog</span>
+                          <span>
+                            {s.domaci} – {s.gost}
+                            {s.kolo !== s.izvirnoKolo && (
+                              <span className="termini__srecanje-iz">iz {s.izvirnoKolo}. kola</span>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        {rjavo && (
+          <p className="termini__legenda">
+            Rjavo: dan ali razmik odstopa od običajnega ({modusDan}
+            {modusRazmik !== null ? `, na ${modusRazmik} dni` : ''}).
+          </p>
+        )}
+        </div>
+
+        <div className="termini__prestavitve">
+          <div className="termini__razdelek">
+            <span>Prestavitve</span>
+            <span className="termini__razdelek-povzetek">
+              {prestavljena.length > 0 ? prestavljena.length : ''}
+            </span>
+          </div>
+          <p className="termini__prestavitve-opis">
+            Srečanje, ki se ne igra v svojem kolu, premakni v kolo, kjer se bo igralo; v razporedu stoji
+            samo tam. Če novi dan še ni znan, ga pusti brez termina.
+          </p>
+
+          <IskalniIzbirnik
+            vObrazcu
+            oznaka="Prestavi srečanje"
+            namig="Vpiši ekipo ali kolo, npr. »velenje« ali »7«"
+            moznosti={zaIzbiro}
+            naIzbiro={(id) => nastaviUrejano(id)}
+          />
+
+          {urejanoSrecanje && (
+            <UrejevalnikPrestavitve
+              s={urejanoSrecanje}
+              kola={kola}
+              zUrami={zUrami}
+              onSpremeni={(popravek) => urediSrecanje(urejanoSrecanje.id, popravek)}
+              onPremakni={(vrednost) => premakni(urejanoSrecanje, vrednost)}
+              onVrni={() => vrni(urejanoSrecanje)}
+              onZapri={() => nastaviUrejano(null)}
+            />
+          )}
+
+          {prestavljena.length > 0 ? (
+            <ul className="termini__prestavljena">
+              {prestavljena.map((s) => (
+                <li key={s.id} className="termini__prestavljeno">
+                  <div>
+                    <span className="termini__prestavljeno-ime">{s.domaci} – {s.gost}</span>
+                    <span className="termini__oznaka-srecanja">
+                      {s.kolo === null
+                        ? `iz ${s.izvirnoKolo}. kola · čaka na termin`
+                        : `iz ${s.izvirnoKolo}. v ${s.kolo}. kolo`}
+                    </span>
+                    {s.razlog && <div className="termini__prestavljeno-razlog">{s.razlog}</div>}
+                  </div>
+                  <button type="button" className="gumb gumb--majhen"
+                    aria-expanded={urejano === s.id}
+                    onClick={() => nastaviUrejano(urejano === s.id ? null : s.id)}>
+                    {urejano === s.id ? 'Zapri' : 'Uredi'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="termini__prazno">Ni prestavljenih srečanj.</p>
+          )}
+        </div>
 
         <SporociloNapake napaka={shranjevanje.error} />
-        <div className="obrazec__gumbi">
-          <button type="button" className="gumb" onClick={onZapri}>Prekliči</button>
-          <button type="submit" className="gumb gumb--glavni" disabled={shranjevanje.isPending}>
-            Shrani termine
-          </button>
+        <div className="obrazec__noga">
+          <span className={'obrazec__noga-stanje' + (spremenjeno ? ' obrazec__noga-stanje--spremembe' : '')}>
+            {stanjeBesedilo()}
+          </span>
+          <div className="obrazec__noga-gumbi">
+            <button type="button" className="gumb" onClick={onZapri}>Prekliči</button>
+            <button type="submit" className="gumb gumb--glavni"
+              disabled={!spremenjeno || shranjevanje.isPending}>
+              Shrani termine
+            </button>
+          </div>
         </div>
       </form>
     </ModalnoOkno>
   )
 }
 
-function OznakaKola({ kolo, odigrano }: { kolo: number; odigrano: boolean }) {
-  return (
-    <span className="termini__kolo">
-      {kolo}. kolo
-      {/* Odigrano kolo se sme popraviti (napačen vpis), a naj bo vidno, da gre
-          za preteklost in ne za načrt. */}
-      {odigrano && <span className="termini__oznaka">odigrano</span>}
-    </span>
-  )
+function izbirnikGumb(aktiven: boolean): string {
+  return 'izbirnik__gumb izbirnik__gumb--polje' + (aktiven ? ' izbirnik__gumb--aktiven' : '')
 }
 
-interface PrestavitveLastnosti {
-  kola: VnosKola[]
-  vnosi: VnosSrecanja[]
-  prestavljena: VnosSrecanja[]
-  urejano: VnosSrecanja | null
-  zUrami: boolean
-  onIzberi: (id: number | null) => void
-  onSpremeni: (id: number, popravek: Partial<VnosSrecanja>) => void
-  onPremakni: (s: VnosSrecanja, vrednost: string) => void
-  onVrni: (s: VnosSrecanja) => void
+/* Razmik v oknu: »+7 dni«, »+1 dan«; negativnega (kolo pred prejšnjim) z minusom. */
+function formatRazmika(n: number): string {
+  if (n === 1) return '+1 dan'
+  if (n < 0) return `−${Math.abs(n)} dni`
+  return `+${n} dni`
 }
 
-/* Razdelek »Prestavitve«: seznam že prestavljenih srečanj in izbira novega, pod
-   njima urejevalnik izbranega. Urejevalnik stoji na enem mestu, da se ob
-   spremembi kola ne premakne skupaj s srečanjem, ki ga ureja. */
-function Prestavitve({
-  kola,
-  vnosi,
-  prestavljena,
-  urejano,
-  zUrami,
-  onIzberi,
-  onSpremeni,
-  onPremakni,
-  onVrni,
-}: PrestavitveLastnosti) {
-  /* Srečanja za izbiro: tista, ki so še tam, kamor jih je uvrstil žreb —
-     prestavljena so v seznamu zgoraj. Razvrščena po kolu iz žreba, ker
-     organizator srečanje išče po tem, kje bi moralo biti. */
-  const zaIzbiro = useMemo(() => {
-    const poKolih = new Map<number, VnosSrecanja[]>()
-    for (const s of vnosi) {
-      if (jePrestavljeno(s)) continue
-      const v = poKolih.get(s.izvirnoKolo) ?? []
-      v.push(s)
-      poKolih.set(s.izvirnoKolo, v)
-    }
-    return [...poKolih.entries()].sort((a, b) => a[0] - b[0])
-  }, [vnosi])
-
-  return (
-    <fieldset className="obrazec__skupina">
-      <legend>Prestavitve{prestavljena.length > 0 ? ` (${prestavljena.length})` : ''}</legend>
-      <p className="namig">
-        Srečanje, ki se ne igra v svojem kolu, premakni v kolo, v katerem se bo igralo — v razporedu
-        stoji samo tam. Če novi dan še ni znan, ga pusti brez termina.
-      </p>
-
-      {prestavljena.length > 0 && (
-        <ul className="termini__prestavljena">
-          {prestavljena.map((s) => (
-            <li key={s.id} className="termini__prestavljeno">
-              <span className="termini__par">
-                {s.domaci} – {s.gost}
-                <span className="termini__oznaka-srecanja">
-                  {s.kolo === null
-                    ? `iz ${s.izvirnoKolo}. kola · čaka na termin`
-                    : `iz ${s.izvirnoKolo}. v ${s.kolo}. kolo`}
-                </span>
-              </span>
-              <button type="button" className="gumb gumb--majhen"
-                aria-expanded={urejano?.id === s.id}
-                onClick={() => onIzberi(urejano?.id === s.id ? null : s.id)}>
-                {urejano?.id === s.id ? 'Zapri' : 'Uredi'}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <label className="obrazec__polje">
-        <span>Prestavi srečanje</span>
-        <select
-          value=""
-          onChange={(d) => {
-            if (d.target.value) onIzberi(Number(d.target.value))
-          }}
-        >
-          <option value="">Izberi srečanje …</option>
-          {zaIzbiro.map(([kolo, srecanja]) => (
-            <optgroup key={kolo} label={`${kolo}. kolo`}>
-              {srecanja.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.domaci} – {s.gost}
-                  {s.odigrano ? ' (odigrano)' : ''}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </label>
-
-      {urejano && (
-        <UrejevalnikPrestavitve
-          s={urejano}
-          kola={kola}
-          zUrami={zUrami}
-          onSpremeni={(popravek) => onSpremeni(urejano.id, popravek)}
-          onPremakni={(vrednost) => onPremakni(urejano, vrednost)}
-          onVrni={() => onVrni(urejano)}
-          onZapri={() => onIzberi(null)}
-        />
-      )}
-    </fieldset>
-  )
+/* Opomba o skritih odigranih kolih; oblika se sklanja po številu. */
+function skritoBesedilo(n: number): string {
+  if (n === 1) return '1 odigrano kolo skrito'
+  if (n <= 4) return `${n} odigrana kola skrita`
+  return `${n} odigranih kol skritih`
 }
 
 interface UrejevalnikLastnosti {
@@ -501,24 +641,26 @@ function UrejevalnikPrestavitve({
 
       {prestavljeno && (
         <label className="obrazec__polje">
-          <span>Razlog (neobvezno)</span>
+          <span className="termini__razlog-oznaka">
+            <span>Razlog (neobvezno)</span>
+            <span>{s.razlog.length}/{NAJVEC_ZNAKOV_RAZLOGA}</span>
+          </span>
           <input type="text" value={s.razlog} maxLength={NAJVEC_ZNAKOV_RAZLOGA}
+            placeholder="npr. dvorana zasedena"
             onChange={(d) => onSpremeni({ razlog: d.target.value })} />
-          <span className="namig">
+          <span className="termini__razlog-pojasnilo">
             Razlog vidijo vsi obiskovalci. Brez osebnih podatkov (zdravje, naslovi).
           </span>
         </label>
       )}
 
-      <div className="termini__polnilo-gumbi">
+      <div className="termini__urejevalnik-dejanja">
         {prestavljeno && (
-          <button type="button" className="gumb gumb--majhen" onClick={onVrni}>
+          <button type="button" className="gumb gumb--majhen termini__vrni" onClick={onVrni}>
             Vrni v {s.izvirnoKolo}. kolo
           </button>
         )}
-        <button type="button" className="gumb gumb--majhen" onClick={onZapri}>
-          Zapri urejanje
-        </button>
+        <button type="button" className="gumb" onClick={onZapri}>Končano</button>
       </div>
     </div>
   )
@@ -614,14 +756,4 @@ function vpisanaUra(iso: string | null | undefined): string {
   const t = iso?.split('T')[1] ?? ''
   const ura = t.slice(0, 5)
   return ura === '00:00' ? '' : ura
-}
-
-/* Datum + n dni, oboje kot "YYYY-MM-DD". Računamo v UTC, ker bi lokalni čas ob
-   prehodu na poletni/zimski čas datum premaknil za dan. */
-function prestej(datum: string, dni: number): string {
-  const [leto, mesec, dan] = datum.split('-').map(Number)
-  if (!leto || !mesec || !dan) return datum
-  const cas = new Date(Date.UTC(leto, mesec - 1, dan))
-  cas.setUTCDate(cas.getUTCDate() + dni)
-  return cas.toISOString().slice(0, 10)
 }

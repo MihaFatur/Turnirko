@@ -229,6 +229,11 @@ export function SvPriprava({
             imajo 2.
           </p>
           <p className="namig">
+            Pri izbranem številu nivojev so vsi razen zadnjega polni, zadnji pa dobi vse preostale:
+            pri privzetih 16 so 3 nivoji za 75 prijavljenih 16 + 16 + 43, v zadnjem nivoju je le več
+            skupin.
+          </p>
+          <p className="namig">
             Vpisane velikosti nivojev nadomestijo samodejno razdelitev in se morajo ujemati s
             številom prijavljenih ({aktivnih}). Nepopolna skupina (3 igralci namesto 4) je dovoljena;
             nivo z eno samo skupino žreba nima.

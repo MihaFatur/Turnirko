@@ -11,7 +11,10 @@
    odpirati njen obrazec — in če ta ni več v pripravi, sploh ne bi šlo.
 
    Polja (PrehodiPolja) si deli z obrazcem NOVE lige: organizator Savinja lige B
-   ve, da je pod A in da 3. igra kvalifikacije, še preden ima liga ekipe. */
+   ve, da je pod A in da 3. igra kvalifikacije, še preden ima liga ekipe.
+
+   Diagram je prenova po design_handoff_termini_prehodi (2c): od zgoraj navzdol
+   višja liga → napredovanje → ta liga (pasovi lestvice) → izpad → nižje lige. */
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
@@ -19,8 +22,8 @@ import { ligeApi } from '../api/zahteve'
 import type { LigaDto, PrehodiVnos } from '../api/tipi'
 import { IskalniIzbirnik, type MoznostIzbirnika } from './IskalniIzbirnik'
 import { ModalnoOkno } from './ModalnoOkno'
-import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
+import { StevilskiKorak } from './StevilskiKorak'
 
 interface Lastnosti {
   liga: LigaDto
@@ -30,8 +33,15 @@ interface Lastnosti {
   onShranjeno: () => void
 }
 
+/* Število ekip, ki ga prikazuje primer lestvice pod diagramom. Ni podatek lige:
+   pasovi pokažejo, kje bi bila mesta, če bi bilo ekip toliko. */
+const PRIMER_EKIP = 10
+
 export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
+  const zacetni = useMemo(() => zacetniPrehodi(liga, vse), [liga, vse])
   const [stanje, nastaviStanje] = useState<PrehodiStanje>(() => zacetniPrehodi(liga, vse))
+  /* Shrani je onemogočen, dokler ni spremembe — isto kot pri terminih kol. */
+  const spremenjeno = JSON.stringify(stanje) !== JSON.stringify(zacetni)
 
   const shranjevanje = useMutation({
     mutationFn: () => ligeApi.prehodi(liga.id, vPrehodiVnos(stanje)),
@@ -47,11 +57,11 @@ export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
   }
 
   return (
-    <ModalnoOkno naslov="Prehodi in piramida" onZapri={onZapri}>
+    <ModalnoOkno srednje naslov="Prehodi in piramida"
+      podnaslov={`${liga.ime} · ${liga.sezona ?? ''}`.trim()} onZapri={onZapri}>
       <form className="obrazec" onSubmit={obOddaji}>
-        <p className="obvestilo">
-          Povezavo je dovolj vpisati z ene strani — nasprotna se uredi sama.
-          Prehode je mogoče urejati tudi, ko liga že teče.
+        <p className="prehodi__uvod">
+          Povezavo vpiši z ene strani, nasprotna se uredi sama. Prehode lahko urejaš tudi, ko liga že teče.
         </p>
 
         <PrehodiPolja
@@ -60,14 +70,21 @@ export function PrehodiOkno({ liga, vse, onZapri, onShranjeno }: Lastnosti) {
           vse={vse}
           idLige={liga.id}
           sezona={liga.sezona}
+          imeLige={liga.ime}
         />
 
         <SporociloNapake napaka={shranjevanje.error} />
-        <div className="obrazec__gumbi">
-          <button type="button" className="gumb" onClick={onZapri}>Prekliči</button>
-          <button type="submit" className="gumb gumb--glavni" disabled={shranjevanje.isPending}>
-            Shrani prehode
-          </button>
+        <div className="obrazec__noga">
+          <span className={'obrazec__noga-stanje' + (spremenjeno ? ' obrazec__noga-stanje--spremembe' : '')}>
+            {spremenjeno ? 'Neshranjene spremembe' : 'Ni neshranjenih sprememb'}
+          </span>
+          <div className="obrazec__noga-gumbi">
+            <button type="button" className="gumb" onClick={onZapri}>Prekliči</button>
+            <button type="submit" className="gumb gumb--glavni"
+              disabled={!spremenjeno || shranjevanje.isPending}>
+              Shrani prehode
+            </button>
+          </div>
         </div>
       </form>
     </ModalnoOkno>
@@ -121,6 +138,7 @@ export function PrehodiPolja({
   vse,
   idLige,
   sezona,
+  imeLige,
 }: {
   stanje: PrehodiStanje
   nastavi: (s: PrehodiStanje) => void
@@ -128,6 +146,8 @@ export function PrehodiPolja({
   /* null pri novi ligi (te v seznamu še ni). */
   idLige: number | null
   sezona: string | null
+  /* Ime »te« lige v črnem bloku diagrama; pri novi ligi ime iz obrazca. */
+  imeLige: string
 }) {
   const popravi = (sprememba: Partial<PrehodiStanje>) => nastavi({ ...stanje, ...sprememba })
   const { idVisja, nizje } = stanje
@@ -145,7 +165,7 @@ export function PrehodiPolja({
      strežnik zavrne, zato je iz ponudbe drugega polja raje ni. */
   const moznostiVisje = useMemo(
     () => druge.filter((l) => !nizje.includes(l.id)).map((l) => moznostLige(l, false, idLige)),
-    [druge, nizje],
+    [druge, nizje, idLige],
   )
   const moznostiNizje = useMemo(
     () =>
@@ -161,12 +181,12 @@ export function PrehodiPolja({
 
   /* Piramida veže lige ene sezone; drugačna sezona je skoraj vedno spregled
      (npr. »8. Sezona« proti »25/26«), zato nanjo opozorimo, a je ne prepovemo. */
-  const sezone = new Set(
+  const sezoneLig = new Set(
     [visja, ...izbraneNizje]
       .filter((l): l is LigaDto => l !== undefined)
       .map((l) => l.sezona ?? ''),
   )
-  const razhajanjeSezon = sezone.size > 0 && !(sezone.size === 1 && sezone.has(sezona ?? ''))
+  const razhajanjeSezon = sezoneLig.size > 0 && !(sezoneLig.size === 1 && sezoneLig.has(sezona ?? ''))
 
   /* Po parih (ena tekma, serija) se kvalifikacije igrajo le, če obe ligi dasta
      enako ekip — razhajanje ni napaka (mala liga ga prenese), a je skoraj
@@ -186,108 +206,188 @@ export function PrehodiPolja({
     }
   }
 
+  /* Vsa prehodna mesta skupaj; več kot ima primer ekip, pasovi se prekrivajo. */
+  const prehodnaMesta = stanje.napreduje + stanje.kvalGor + stanje.izpade + stanje.kvalDol
+
   return (
     <>
-      <IskalniIzbirnik
-        vObrazcu
-        oznaka="Višja liga (kamor se napreduje)"
-        namig="Brez (najvišja liga) · vpiši ime"
-        moznosti={moznostiVisje}
-        izbrano={idVisja}
-        naIzbiro={(id) => popravi({ idVisja: id })}
-        naPraznjenje={() => popravi({ idVisja: null })}
-      />
+      <div className="prehodi">
+        <div className="prehodi__sklop">
+          <span className="oznaka-polja">Višja liga · kamor se napreduje</span>
+          {visja ? (
+            <div className="prehodi__liga">
+              <div>
+                <span className="prehodi__liga-ime">{visja.ime}</span>
+                <span className="prehodi__liga-meta">{visja.sezona ?? ''}</span>
+              </div>
+              <button type="button" className="gumb gumb--majhen gumb--nevaren"
+                onClick={() => popravi({ idVisja: null })}>
+                Odstrani
+              </button>
+            </div>
+          ) : (
+            /* Oznaka je skrita: napis nad poljem (»Višja liga · kamor se napreduje«) to pove. */
+            <IskalniIzbirnik
+              oznaka="Višja liga"
+              namig="Brez (najvišja liga) · vpiši ime"
+              moznosti={moznostiVisje}
+              naIzbiro={(id) => popravi({ idVisja: id })}
+            />
+          )}
+        </div>
 
-      {/* Nižjih lig je lahko več, zato je polje dejanje: izbrana liga gre v
-          seznam pod njim, polje pa se izprazni za naslednjo. */}
-      <fieldset className="obrazec__skupina">
-        <legend>Nižje lige (od koder se napreduje sem)</legend>
-        {izbraneNizje.length > 0 && (
-          <ul className="izbrane-postavke">
-            {izbraneNizje.map((l) => (
-              <li key={l.id}>
-                <span>
-                  {opis(l)}
-                  {l.idVisjaLiga != null && l.idVisjaLiga !== idLige && (
-                    <span className="izbrane-postavke__podrobnost">
-                      zdaj pod: {l.visjaLigaIme} — ob shranitvi se premakne sem
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  className="gumb gumb--majhen gumb--nevaren"
-                  onClick={() => popravi({ nizje: nizje.filter((id) => id !== l.id) })}
-                >
-                  Odstrani
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {druge.length === 0 ? (
-          <p className="namig">Drugih lig ni.</p>
-        ) : (
-          <IskalniIzbirnik
-            oznaka="Dodaj nižjo ligo"
-            namig="Dodaj nižjo ligo · vpiši ime"
-            moznosti={moznostiNizje}
-            naIzbiro={(id) => popravi({ nizje: [...nizje, id] })}
-          />
-        )}
-      </fieldset>
+        <section className="prehodi__tok">
+          <div className="prehodi__tok-glava">
+            <span className="prehodi__tok-smer">↑ Napredovanje</span>
+            <span className="prehodi__tok-kam">{visja ? `v ${visja.ime}` : 'višje lige ni'}</span>
+          </div>
+          <div className="prehodi__tok-polja">
+            <div className="prehodi__polje">
+              <span className="prehodi__polje-oznaka">
+                <span className="prehodi__vzorec prehodi__vzorec--gor" aria-hidden="true" />
+                Napreduje
+              </span>
+              <StevilskiKorak vrednost={stanje.napreduje}
+                naSpremembo={(v) => popravi({ napreduje: v })}
+                oznaka="Napreduje (ekip)" oznakaManj="Manj"
+                oznakaVec="Več" />
+              <span className="prehodi__polje-pod">ekip gre neposredno v višjo</span>
+            </div>
+            <div className="prehodi__polje">
+              <span className="prehodi__polje-oznaka">
+                <span className="prehodi__vzorec prehodi__vzorec--kval-gor" aria-hidden="true" />
+                Kvalifikacije
+              </span>
+              <StevilskiKorak vrednost={stanje.kvalGor}
+                naSpremembo={(v) => popravi({ kvalGor: v })}
+                oznaka="Kvalifikacije za napredovanje (ekip)"
+                oznakaManj="Manj"
+                oznakaVec="Več" />
+              <span className="prehodi__polje-pod">ekip igra za mesto v višji</span>
+            </div>
+          </div>
+        </section>
 
-      {/* Neposredni prehod in kvalifikacije zanj stojita v isti vrsti: na
-          lestvici sta sosednja pasova (kvalifikacije tik pod napredovanjem
-          oz. tik nad izpadom). */}
-      <div className="obrazec__vrstica">
-        <label className="obrazec__polje">
-          <span>Napreduje (ekip)</span>
-          <StevilskoPolje vrednost={String(stanje.napreduje)}
-            naSpremembo={(v) => popravi({ napreduje: Number(v) })} />
-        </label>
-        <label className="obrazec__polje">
-          <span>Kvalifikacije za napredovanje</span>
-          <StevilskoPolje vrednost={String(stanje.kvalGor)}
-            naSpremembo={(v) => popravi({ kvalGor: Number(v) })} />
-        </label>
+        <section className="prehodi__ta">
+          <div className="prehodi__ta-glava">
+            <span className="prehodi__ta-ime">{imeLige}{sezona ? ` · ${sezona}` : ''}</span>
+            <span className="prehodi__ta-oznaka">ta liga</span>
+          </div>
+          <div className="prehodi__pasovi">
+            <div className="prehodi__pasovi-vrsta">
+              {Array.from({ length: PRIMER_EKIP }, (_, i) => (
+                <span key={i} className={'prehodi__pas' + razredPasu(i + 1, stanje)}>{i + 1}</span>
+              ))}
+            </div>
+            <span className="prehodi__pasovi-opis">Mesta na lestvici · primer za {PRIMER_EKIP} ekip</span>
+          </div>
+        </section>
+
+        <section className="prehodi__tok prehodi__tok--dol">
+          <div className="prehodi__tok-glava">
+            <span className="prehodi__tok-smer">↓ Izpad</span>
+            <span className="prehodi__tok-kam">
+              {izbraneNizje.length > 0
+                ? `v ${izbraneNizje.map((l) => l.ime).join(', ')}`
+                : 'nižjih lig ni'}
+            </span>
+          </div>
+          <div className="prehodi__tok-polja">
+            <div className="prehodi__polje">
+              <span className="prehodi__polje-oznaka">
+                <span className="prehodi__vzorec prehodi__vzorec--dol" aria-hidden="true" />
+                Izpade
+              </span>
+              <StevilskiKorak vrednost={stanje.izpade}
+                naSpremembo={(v) => popravi({ izpade: v })}
+                oznaka="Izpade (ekip)" oznakaManj="Manj"
+                oznakaVec="Več" />
+              <span className="prehodi__polje-pod">ekip gre neposredno v nižjo</span>
+            </div>
+            <div className="prehodi__polje">
+              <span className="prehodi__polje-oznaka">
+                <span className="prehodi__vzorec prehodi__vzorec--kval-dol" aria-hidden="true" />
+                Kvalifikacije
+              </span>
+              <StevilskiKorak vrednost={stanje.kvalDol}
+                naSpremembo={(v) => popravi({ kvalDol: v })}
+                oznaka="Kvalifikacije za obstanek (ekip)"
+                oznakaManj="Manj"
+                oznakaVec="Več" />
+              <span className="prehodi__polje-pod">ekip igra za obstanek</span>
+            </div>
+          </div>
+        </section>
+
+        <div className="prehodi__sklop">
+          <span className="oznaka-polja">Nižje lige · od koder se napreduje sem</span>
+          {izbraneNizje.map((l) => (
+            <div key={l.id} className="prehodi__liga">
+              <div>
+                <span className="prehodi__liga-ime">{l.ime}</span>
+                <span className="prehodi__liga-meta">{l.sezona ?? ''}</span>
+                {l.idVisjaLiga != null && l.idVisjaLiga !== idLige && (
+                  <span className="prehodi__liga-premik">
+                    zdaj pod: {l.visjaLigaIme}; ob shranitvi se premakne sem
+                  </span>
+                )}
+              </div>
+              <button type="button" className="gumb gumb--majhen gumb--nevaren"
+                onClick={() => popravi({ nizje: nizje.filter((id) => id !== l.id) })}>
+                Odstrani
+              </button>
+            </div>
+          ))}
+          {druge.length === 0 ? (
+            <p className="namig">Drugih lig ni.</p>
+          ) : (
+            /* Nižjih lig je lahko več, zato je polje dejanje: izbrana liga gre v
+               seznam nad njim, polje pa se izprazni za naslednjo. */
+            <IskalniIzbirnik
+              oznaka="Dodaj nižjo ligo"
+              namig="Dodaj nižjo ligo · vpiši ime"
+              moznosti={moznostiNizje}
+              naIzbiro={(id) => popravi({ nizje: [...nizje, id] })}
+            />
+          )}
+        </div>
       </div>
-      <div className="obrazec__vrstica">
-        <label className="obrazec__polje">
-          <span>Izpade (ekip)</span>
-          <StevilskoPolje vrednost={String(stanje.izpade)}
-            naSpremembo={(v) => popravi({ izpade: Number(v) })} />
-        </label>
-        <label className="obrazec__polje">
-          <span>Kvalifikacije za obstanek</span>
-          <StevilskoPolje vrednost={String(stanje.kvalDol)}
-            naSpremembo={(v) => popravi({ kvalDol: Number(v) })} />
-        </label>
-      </div>
-      <p className="namig">
-        Kvalifikacije igrajo ekipe tik pod mesti napredovanja oz. tik nad mesti
-        izpada — s sosednjo ligo, za mesto v višji (npr. 9. iz A proti 3. iz B).
-        Ko je redni del obeh lig odigran, jih organizator višje lige ustvari na
-        strani lige.
-      </p>
 
       {neujemanja.length > 0 && (
-        <p className="namig">
-          Število kvalifikacijskih mest se ne ujema ({neujemanja.join('; ')}). Ena
-          tekma ali serija zahteva enako ekip z obeh strani — sicer se
-          kvalifikacije lahko igrajo le kot mala liga (vsak z vsakim).
+        <p className="prehodi__opozorilo">
+          Število kvalifikacijskih mest se ne ujema ({neujemanja.join('; ')}). Ena tekma ali serija
+          zahteva enako ekip z obeh strani, sicer se kvalifikacije lahko igrajo le kot mala liga
+          (vsak z vsakim).
         </p>
       )}
-
       {razhajanjeSezon && (
-        <p className="namig">
-          Povezane lige nimajo iste sezone kot ta ({sezona || 'brez sezone'}).
-          Povezava bo delovala, piramida pa bo mešala sezone — če gre za isto
-          sezono, sezone poenoti.
+        <p className="prehodi__opozorilo">
+          Povezane lige nimajo iste sezone kot ta ({sezona || 'brez sezone'}). Povezava bo delovala,
+          piramida pa bo mešala sezone; če gre za isto sezono, jo poenoti.
         </p>
       )}
+      {prehodnaMesta > PRIMER_EKIP && (
+        <p className="prehodi__opozorilo">
+          Skupaj je več prehodnih mest, kot ima primer ekip ({PRIMER_EKIP}); pasovi se prekrivajo.
+        </p>
+      )}
+      <p className="prehodi__namig">
+        Kvalifikacije igrajo ekipe tik pod mesti napredovanja oz. tik nad mesti izpada, s sosednjo
+        ligo (npr. 9. iz A proti 3. iz B). Ko je redni del obeh lig odigran, jih organizator višje
+        lige ustvari na strani lige.
+      </p>
     </>
   )
+}
+
+/* Barva pasu lestvice po mestu r; prednost ima zgornje (napredovanje pred
+   kvalifikacijami, kvalifikacije pred izpadom). */
+function razredPasu(r: number, s: PrehodiStanje): string {
+  if (r <= s.napreduje) return ' prehodi__pas--gor'
+  if (r <= s.napreduje + s.kvalGor) return ' prehodi__pas--kval-gor'
+  if (r > PRIMER_EKIP - s.izpade) return ' prehodi__pas--dol'
+  if (r > PRIMER_EKIP - s.izpade - s.kvalDol) return ' prehodi__pas--kval-dol'
+  return ''
 }
 
 /* Sezona je del imena lige v izbirniku: brez nje sta »Savinja liga B« dveh

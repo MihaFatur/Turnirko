@@ -32,6 +32,7 @@ import {
   type PrehodiStanje,
 } from './PrehodiOkno'
 import { StevilskoPolje } from './StevilskoPolje'
+import { TerminiPolja } from './TerminiPolja'
 import { SporociloNapake } from './SporociloNapake'
 
 interface Lastnosti {
@@ -52,28 +53,6 @@ function vecina(format: FormatSrecanja): number {
 
 /* Liga se praviloma igra tedensko (isto privzeto kot v zaledju). */
 const PRIVZET_RAZMIK = 7
-
-/* Največ srečanj ekipe v kolu (ista meja kot LigaStoritev.NAJVEC_UR_V_KOLU). */
-const NAJVEC_UR_V_KOLU = 10
-
-/* Kaj pomeni izbrani večer: ob vsaki uri se odigra en krog krožnega sistema,
-   zato vsaka ekipa igra toliko srečanj, kolikor je ur, kol pa je toliko manj. */
-function namigUr(ure: string[]): string {
-  const n = ure.length
-  const vpisane = ure.filter(Boolean).map((u) => u.replace(':', '.'))
-  const kdaj = vpisane.length === n
-    ? ` — ob ${vpisane.slice(0, -1).join(', ')} in ${vpisane[n - 1]}`
-    : ''
-  const manj = n === 2 ? 'pol manj' : `${n}-krat manj`
-  return `V kolu vsaka ekipa odigra ${n} ${srecanjTekst(n)}${kdaj}. Ob vsaki uri igrajo vse ekipe hkrati, vsaka enkrat, zato je kol ${manj} kot pri eni uri. Pri lihem številu ekip ena ekipa ob vsaki uri počiva. Prazna ura pomeni, da ura ni določena.`
-}
-
-function srecanjTekst(n: number): string {
-  if (n === 1) return 'srečanje'
-  if (n === 2) return 'srečanji'
-  if (n === 3 || n === 4) return 'srečanja'
-  return 'srečanj'
-}
 
 /* Končnica po rednem delu: toliko ekip gre naprej (2 = samo finale). */
 const MOZNOSTI_KONCNICE: { ekip: number; oznaka: string }[] = [
@@ -115,6 +94,8 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
     liga?.zacetekPrvegaKola?.slice(11, 16) ?? '',
   )
   const [razmik, nastaviRazmik] = useState(liga?.razmikDni ?? PRIVZET_RAZMIK)
+  /* Razmik po meri (Drugo / Po meri): vse, kar ni 7 ali 14 dni. */
+  const [poMeri, nastaviPoMeri] = useState(() => ![7, 14].includes(liga?.razmikDni ?? PRIVZET_RAZMIK))
   /* Ure kola: null = vsaka ekipa v kolu igra enkrat (ena ura za vse), sicer
      ura vsakega kroga večera. Prazna ura je »ura ni določena« (00:00) — polje
      se zanjo ne izpolni, da ne kaže polnoči. */
@@ -298,62 +279,20 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             : `Ko ena ekipa doseže ${pragVeljaven} dobljenih tekem, se srečanje konča; preostale tekme ostanejo neodigrane.`}
         </p>
 
-        <fieldset className="obrazec__skupina">
-          <legend>Termini kol</legend>
-          <div className="obrazec__vrstica">
-            <label className="obrazec__polje">
-              <span>Prvo kolo</span>
-              <input type="date" value={datumPrvega}
-                onChange={(d) => nastaviDatumPrvega(d.target.value)} />
-            </label>
-            {/* Pri ligi z urami je ura prvega srečanja prva v seznamu spodaj —
-                drugo polje za isto uro bi se z njo lahko razšlo. */}
-            {!ure && (
-              <label className="obrazec__polje">
-                <span>Ura</span>
-                <input type="time" value={uraPrvega}
-                  onChange={(d) => nastaviUroPrvega(d.target.value)} />
-              </label>
-            )}
-            <label className="obrazec__polje">
-              <span>Na koliko dni</span>
-              <StevilskoPolje najvec={365} vrednost={String(razmik)}
-                disabled={!datumPrvega}
-                naSpremembo={(v) => nastaviRazmik(Number(v))} />
-            </label>
-          </div>
-          <p className="namig">
-            {datumPrvega
-              ? `Vsako kolo se odigra ${razmik === 7 ? 'teden' : `${razmik} dni`} za prejšnjim; datumi se zapišejo ob generiranju razporeda, ko je znano, koliko kol ima liga. Posamezno kolo je pozneje mogoče prestaviti, na strani lige pod »Termini«.`
-              : 'Brez datuma prvega kola razpored pri neodigranih kolih ne pokaže dneva, ampak samo oznako »razpored«. Datume je mogoče vpisati tudi pozneje — na strani lige pod »Termini«.'}
-          </p>
-
-          <label className="obrazec__polje">
-            <span>Število srečanj posamezne lige na kolo</span>
-            <select value={ure?.length ?? 1}
-              onChange={(d) => zamenjajSrecanjVKolu(Number(d.target.value))}>
-              <option value={1}>1 srečanje</option>
-              {Array.from({ length: NAJVEC_UR_V_KOLU - 1 }, (_, i) => i + 2).map((n) => (
-                <option key={n} value={n}>{n} {srecanjTekst(n)} — ob {n} urah</option>
-              ))}
-            </select>
-          </label>
-          {ure && (
-            <div className="obrazec__vrstica obrazec__vrstica--ure">
-              {ure.map((ura, i) => (
-                <label key={i} className="obrazec__polje">
-                  <span>{i + 1}. srečanje</span>
-                  <input type="time" value={ura} onChange={(d) => urediUro(i, d.target.value)} />
-                </label>
-              ))}
-            </div>
-          )}
-          <p className="namig">
-            {ure
-              ? namigUr(ure)
-              : 'V kolu vsaka ekipa odigra eno srečanje, vsa srečanja kola se začnejo ob isti uri.'}
-          </p>
-        </fieldset>
+        <TerminiPolja
+          datum={datumPrvega}
+          naDatum={nastaviDatumPrvega}
+          ura={uraPrvega}
+          naUro={nastaviUroPrvega}
+          razmik={razmik}
+          naRazmik={nastaviRazmik}
+          poMeri={poMeri}
+          naPoMeri={nastaviPoMeri}
+          srecanj={ure?.length ?? 1}
+          naSrecanj={zamenjajSrecanjVKolu}
+          ure={ure ?? []}
+          naUroSrecanja={urediUro}
+        />
 
         <fieldset className="obrazec__skupina">
           <legend>Končnica</legend>
@@ -455,19 +394,20 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             že zaklenjena.
           </p>
         ) : (
-          <fieldset className="obrazec__skupina">
-            <legend>Piramida in prehodi</legend>
+          <section>
+            <p className="podnaslov-sekcije">Piramida in prehodi</p>
             <PrehodiPolja
               stanje={prehodi}
               nastavi={nastaviPrehode}
               vse={lige.data ?? []}
               idLige={null}
               sezona={sezona.trim() || null}
+              imeLige={ime.trim() || 'Nova liga'}
             />
             <p className="namig">
               Neobvezno — prehode lahko vpišeš ali popraviš tudi pozneje na strani lige.
             </p>
-          </fieldset>
+          </section>
         )}
 
         <SporociloNapake napaka={shranjevanje.error} />

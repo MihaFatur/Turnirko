@@ -389,6 +389,36 @@ class SvRegijaTest extends IntegracijskiTest {
     }
 
     @Test
+    void petinsedemdesetIgralcevVTrehNivojihZadnjiDobiVseOstale() {
+        // 16 + 16 + 43: zadnji nivo je samo večji (11 skupin: 10 po 4 in ena s 3), igra se isto
+        List<NivoRazrez> razrez = SvRegijaStoritev.razrez(75, 4, 4, 3, null);
+        assertEquals(List.of(16, 16, 43), velikosti(razrez));
+        assertEquals(List.of(4, 4, 4, 4), razrez.get(0).velikostiSkupin());
+        assertEquals(11, razrez.get(2).velikostiSkupin().size());
+        assertEquals(List.of(22, 21), razrez.get(2).velikostiZrebov());
+        assertEquals(33, razrez.get(2).odMesta());
+        assertEquals(75, razrez.get(2).doMesta());
+
+        Dogodek dogodek = pripraviJakostniDogodek(75, SistemTekmovanja.SV_REGIJA);
+        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(3, null, null, null));
+        zrebStoritev.izvediZreb(dogodek.getId());
+
+        List<Skupina> skupine = skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId());
+        Map<Long, Integer> nivoPoSkupini = new HashMap<>();
+        skupine.forEach(s -> nivoPoSkupini.put(s.getId(), s.getNivo()));
+        Map<Integer, Long> poNivoju = prijavaRepozitorij.najdiZaDogodek(dogodek.getId()).stream()
+                .collect(Collectors.groupingBy(p -> nivoPoSkupini.get(p.getIdSkupina()),
+                        Collectors.counting()));
+        assertEquals(Map.of(1, 16L, 2, 16L, 3, 43L), poNivoju);
+
+        odigrajVse(dogodek.getId());
+
+        assertEquals(StatusTekmovanja.ZAKLJUCEN,
+                dogodekRepozitorij.findById(dogodek.getId()).orElseThrow().getStatus());
+        assertEquals(poln(75), koncnaMesta(dogodek.getId()), "mesta 1..75");
+    }
+
+    @Test
     void enRangVZrebuDaZrebePoRangih() {
         List<Integer> osemSkupin = SvRegijaStoritev.velikostiSkupin(31, 4); // 4 x7, 3
         assertEquals(List.of(16, 15), SvRegijaStoritev.velikostiZrebov(osemSkupin, 2));

@@ -16,6 +16,9 @@ interface Lastnosti {
   nevarno?: boolean
   /* Sirse okno za obrazce z vec stolpci. */
   siroko?: boolean
+  /* Vmes med navadnim (560) in širokim (720): 640 px, za okna s tabelo ali
+     več stolpci, ki pa niso obrazec za pregled vsega. */
+  srednje?: boolean
   /* Razdeljeno okno (registracija): temen stolpec korakov na levi, glava/
      noga/telo pa NISO standardni .modal__glava/.modal__telo, ampak jih v
      celoti izriše klicatelj (glej slog.css ".registracija" in README v
@@ -37,6 +40,7 @@ export function ModalnoOkno({
   podnaslov,
   nevarno,
   siroko,
+  srednje,
   razdeljeno,
   zapisnik,
   brezObrazca,
@@ -95,6 +99,7 @@ export function ModalnoOkno({
   const razredi =
     'modal'
     + (siroko ? ' modal--siroko' : '')
+    + (srednje ? ' modal--srednje' : '')
     + (nevarno ? ' modal--nevarno' : '')
     + (razdeljeno ? ' modal--razdeljeno' : '')
     + (zapisnik ? ' modal--zapisnik' : '')
