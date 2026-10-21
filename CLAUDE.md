@@ -1627,11 +1627,12 @@
 
 - **Cene Premium so na dveh mestih in nikjer drugje**: `CenikStoritev` (zaledje,
   zadnja beseda) in `CENA_PREMIUM_*` v `api/tipi.ts` (predogled); od 21. 10. 2026
-  0,99/1,99 € mesečno, 9,99/19,99 € letno. Vse strani, maskota in oglas jih berejo
-  od tam. **Oznaka prihranka letnega plačila (»−15 %«) je izpeljana**
-  (`PRIHRANEK_LETNO_ODSTOTKI`, zaokroženo navzdol za pas z manjšim prihrankom), ker
-  je vtipkana »−10 %« ob spremembi cenika obljubljala napačen popust; zaledje
-  spodnjo mejo drži v `CenikStoritevTest`.
+  1,99/2,99 € mesečno (U21/sicer), 9,99/19,99 € letno. Mesečna cena ne gre pod
+  1,99 €: Stripe vzame 2,2 % + 0,25 € na plačilo (pri 0,99 € ~27 %). Vse strani,
+  maskota in oglas cene berejo od tam. **Oznaka prihranka letnega plačila je
+  izpeljana iz PRIKAZANIH cen** (`prihranekLetnoOdstotki(mesecno, letno)`, zaokroženo
+  navzdol; zdaj »−58 %« U21, »−44 %« sicer), ker je vtipkana »−10 %« ob spremembi
+  cenika obljubljala napačen popust.
 
 - **Osebni podatki ne gredo v Stripe** (V48, `CakajocaRegistracija`, okt 2026).
   Stripove dogodke bere tudi Moj Račun (davčno potrjeni računi) in vsak skrbnik
@@ -1820,7 +1821,7 @@
   - **Napis se bere najmanj ~2 s** (dolg napis ~28 znakov), vsak prizor ostane
     pod 5 s. Ob novem prizoru to preveri po sličicah.
   - **Cena v napisu je `{cena}`**, izračunana iz `CENA_PREMIUM_MESECNO` po
-    gledalcu (`cenaPremium`): mlajši od 21 let nižja (0,99 €), sicer višja (1,99 €), gost višja.
+    gledalcu (`cenaPremium`): mlajši od 21 let nižja (1,99 €), sicer višja (2,99 €), gost višja.
     Nikoli vtipkana številka.
   - **Izbira je VREČA, ne kocka** (`vrecaMaskote.ts`): prizori in napisi so v
     dveh premešanih vrečah in se vlečejo brez vračanja, zato se vsak pokaže

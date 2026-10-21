@@ -22,14 +22,16 @@ public class CenikStoritev {
 
     /* Igralec Premium, mesecna cena po starosti ob registraciji (11. clen PST
        - starostni pas U21 ali mlajsi). Cene od 21. 10. 2026 (odlocitev
-       lastnika; prej 3,99/4,99 in letno 42,99/53,49). */
-    static final double PREMIUM_MESECNO_MLAJSI = 0.99;
-    static final double PREMIUM_MESECNO_STAREJSI = 1.99;
+       lastnika; prej 3,99/4,99 in letno 42,99/53,49). Mesecna cena mora
+       pokriti Stripovo fiksno provizijo 0,25 EUR na placilo - zato ne pod
+       1,99 (pri 0,99 je Stripe pobral ~27 %). */
+    static final double PREMIUM_MESECNO_MLAJSI = 1.99;
+    static final double PREMIUM_MESECNO_STAREJSI = 2.99;
 
-    /* Letna narocnina je FIKSNA cena (odlocitev lastnika), ne izracun: ~16 %
-       ceneje kot dvanajst mesecnih (11,88 -> 9,99; 23,88 -> 19,99). Vmesnik
-       oznako prihranka izpelje iz istih stevilk (api/tipi.ts) in jo zaokrozi
-       navzdol, da ne obljubi vec, kot kupec prihrani. */
+    /* Letna narocnina je FIKSNA cena (odlocitev lastnika), ne izracun: ~58 %
+       oz. ~44 % ceneje kot dvanajst mesecnih (23,88 -> 9,99; 35,88 -> 19,99).
+       Vmesnik oznako prihranka izpelje iz prikazanih cen (api/tipi.ts) in jo
+       zaokrozi navzdol, da ne obljubi vec, kot kupec prihrani. */
     static final double PREMIUM_LETNO_MLAJSI = 9.99;
     static final double PREMIUM_LETNO_STAREJSI = 19.99;
 

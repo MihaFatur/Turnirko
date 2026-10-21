@@ -21,7 +21,7 @@ import {
   CENA_PREMIUM_MESECNO,
   OMEJITVE_ORGANIZATORJA,
   OZNAKE_PAKET,
-  PRIHRANEK_LETNO_ODSTOTKI,
+  prihranekLetnoOdstotki,
   type CiklusPlacila,
   type Paket,
 } from '../api/tipi'
@@ -628,7 +628,7 @@ export function RegistracijaTok({
                   onClick={() => posodobi({ ciklus: 'LETNO' })}
                 >
                   Letno
-                  <span className="izbirnik__trak">−{PRIHRANEK_LETNO_ODSTOTKI}%</span>
+                  <span className="izbirnik__trak">−{prihranekLetnoOdstotki(cenaPremiumMesecno, cenaPremiumLetno)}%</span>
                 </button>
               </div>
               <div className="registracija__primerjava">

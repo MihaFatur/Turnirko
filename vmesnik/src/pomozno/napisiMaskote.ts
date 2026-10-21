@@ -24,7 +24,7 @@ export function cenaPremium(uporabnik: UporabnikDto | null): number {
   return uporabnik.starejsiOd21 ? CENA_PREMIUM_MESECNO.starejsi : CENA_PREMIUM_MESECNO.mlajsi
 }
 
-/* Zapis cene kot v napisu (»1,99 €«), enak kot drugod v vmesniku. */
+/* Zapis cene kot v napisu (»2,99 €«), enak kot drugod v vmesniku. */
 function zapisCene(cena: number): string {
   return cena.toLocaleString('sl-SI', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }

@@ -596,22 +596,20 @@ export const OZNAKE_PAKET: Record<Paket, string> = {
 /* Cene so odločitev lastnika (Premium od 21. 10. 2026); zrcalijo CenikStoritev
    na zaledju, ki je zadnja beseda - to tu je samo za takojšen predogled cene v
    obrazcu (isto načelo kot funkcija starost() v PrijavaOkno.tsx). Letna cena
-   Premium je FIKSNA številka, ne izračun: ~16 % ceneje kot dvanajst mesečnih
-   (11,88 → 9,99 €; 23,88 → 19,99 €). Organizatorski paketi so samo letni. */
-export const CENA_PREMIUM_MESECNO = { mlajsi: 0.99, starejsi: 1.99 } as const
+   Premium je FIKSNA številka, ne izračun: ~58 % oz. ~44 % ceneje kot dvanajst
+   mesečnih (23,88 → 9,99 €; 35,88 → 19,99 €). Organizatorski paketi so samo
+   letni. */
+export const CENA_PREMIUM_MESECNO = { mlajsi: 1.99, starejsi: 2.99 } as const
 export const CENA_PREMIUM_LETNO = { mlajsi: 9.99, starejsi: 19.99 } as const
 
-/* Oznaka prihranka letnega plačila (»−15 %«) ob izbiri plačevanja. Izpeljana
-   iz cen, da ob spremembi cenika ne ostane stara številka, in zaokrožena
-   NAVZDOL za pas z manjšim prihrankom: oznaka ne sme obljubiti več, kot kupec
-   prihrani (ZVPot-1, navidezni popust). Zaledje isto drži v CenikStoritevTest. */
-export const PRIHRANEK_LETNO_ODSTOTKI = Math.floor(
-  Math.min(
-    ...(['mlajsi', 'starejsi'] as const).map(
-      (pas) => (1 - CENA_PREMIUM_LETNO[pas] / (12 * CENA_PREMIUM_MESECNO[pas])) * 100,
-    ),
-  ),
-)
+/* Oznaka prihranka letnega plačila (»−44 %«) ob izbiri plačevanja, iz PRIKAZANIH
+   cen: vsak vidi odstotek za svoj pas (U21 prihrani več) in za ceno, ki stoji
+   ob oznaki. Zaokroženo NAVZDOL, da oznaka ne obljubi več, kot kupec prihrani
+   (ZVPot-1, navidezni popust). Nikoli vtipkana - prejšnja »−10 %« je ob
+   spremembi cenika obljubljala napačen popust. */
+export function prihranekLetnoOdstotki(mesecno: number, letno: number): number {
+  return Math.floor((1 - letno / (12 * mesecno)) * 100)
+}
 export const CENA_ORGANIZATOR_LETNO: Record<
   'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO',
   number

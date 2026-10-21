@@ -23,7 +23,7 @@ import {
   CENA_PREMIUM_LETNO,
   CENA_PREMIUM_MESECNO,
   OZNAKE_PAKET,
-  PRIHRANEK_LETNO_ODSTOTKI,
+  prihranekLetnoOdstotki,
   type CiklusPlacila,
   type NarocninaDto,
 } from '../api/tipi'
@@ -151,6 +151,7 @@ function PogledNarocnine({
   if (imaPremium && n.ciklus && n.cena !== null) cene[n.ciklus] = n.cena
   const dvanajstMesecno = cene.MESECNO * 12
   const prihranek = oblikujCeno(dvanajstMesecno - cene.LETNO)
+  const prihranekOdstotki = prihranekLetnoOdstotki(cene.MESECNO, cene.LETNO)
 
   // ---------- Obdobje ----------
 
@@ -326,11 +327,11 @@ function PogledNarocnine({
       : `Na mesec · ${oblikujCeno(dvanajstMesecno)} na leto`
 
   const plackaPojasnilo = jePreklicana
-    ? `Ob obnovi izberi plačevanje. Letno je ${PRIHRANEK_LETNO_ODSTOTKI} % ceneje: ${oblikujCeno(cene.LETNO)} namesto ${oblikujCeno(dvanajstMesecno)}.`
+    ? `Ob obnovi izberi plačevanje. Letno je ${prihranekOdstotki} % ceneje: ${oblikujCeno(cene.LETNO)} namesto ${oblikujCeno(dvanajstMesecno)}.`
     : preklopNa
       ? `Preklop je zabeležen. Do ${konec} ostaja ${imeCiklusa(ciklus).toLowerCase()} plačevanje.`
       : ciklus === 'MESECNO'
-        ? `Plačuješ mesečno. Letno je ${PRIHRANEK_LETNO_ODSTOTKI} % ceneje: ${oblikujCeno(cene.LETNO)} namesto ${oblikujCeno(dvanajstMesecno)}.`
+        ? `Plačuješ mesečno. Letno je ${prihranekOdstotki} % ceneje: ${oblikujCeno(cene.LETNO)} namesto ${oblikujCeno(dvanajstMesecno)}.`
         : `Plačuješ letno, ${prihranek} manj kot 12 mesečnih plačil.`
 
   const oznakaGumba = (c: CiklusPlacila) =>
@@ -519,7 +520,7 @@ function PogledNarocnine({
                     onClick={izberi('LETNO')}
                   >
                     Letno
-                    <span className="izbirnik__trak">−{PRIHRANEK_LETNO_ODSTOTKI}%</span>
+                    <span className="izbirnik__trak">−{prihranekOdstotki}%</span>
                   </button>
                 </div>
 
@@ -600,7 +601,7 @@ function PogledNarocnine({
                       onClick={izberi('LETNO')}
                     >
                       {oznakaGumba('LETNO')}
-                      <span className="izbirnik__trak">−{PRIHRANEK_LETNO_ODSTOTKI}%</span>
+                      <span className="izbirnik__trak">−{prihranekOdstotki}%</span>
                     </button>
                   </div>
 

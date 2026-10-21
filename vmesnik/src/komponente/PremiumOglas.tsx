@@ -36,7 +36,7 @@ import { Link } from 'react-router-dom'
 
 import { opisNapake } from '../api/odjemalec'
 import { placilaApi, premiumApi } from '../api/zahteve'
-import { PRIHRANEK_LETNO_ODSTOTKI, type CiklusPlacila, type PremiumDokazDto } from '../api/tipi'
+import type { CiklusPlacila, PremiumDokazDto } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   jeMirno,
@@ -133,7 +133,7 @@ function NeZdaj({ s }: { s: Stanje }) {
   )
 }
 
-/* Izbirnik Mesečno / Letno. Diagonalni trak (»−15 %«, PRIHRANEK_LETNO_ODSTOTKI)
+/* Izbirnik Mesečno / Letno. Diagonalni trak (»−44 %«, po izbranem pasu)
    na Letnem prikaže prihranek letnega plačila. `svetel`: izbira na modri
    podlagi (1b). */
 function Izbirnik({ s, svetel = false }: { s: Stanje; svetel?: boolean }) {
@@ -159,7 +159,7 @@ function Izbirnik({ s, svetel = false }: { s: Stanje; svetel?: boolean }) {
       >
         Letno
         <span className="premium-oglas__trak-popust" aria-hidden="true">
-          &minus;{PRIHRANEK_LETNO_ODSTOTKI}%
+          &minus;{s.c.prihranekOdstotki}%
         </span>
       </button>
     </div>

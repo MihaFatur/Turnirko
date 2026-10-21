@@ -4,7 +4,7 @@
    Besedila so prepisana dobesedno iz predaje (design_handoff_premium_popup,
    objekt KONTEKST in PRIMERJAVA v prototipu). Cene se NE vpisujejo: izračunajo
    se iz cenika v api/tipi.ts, ki zrcali CenikStoritev na zaledju. */
-import { CENA_PREMIUM_LETNO, CENA_PREMIUM_MESECNO, type CiklusPlacila } from '../api/tipi'
+import { CENA_PREMIUM_LETNO, CENA_PREMIUM_MESECNO, prihranekLetnoOdstotki, type CiklusPlacila } from '../api/tipi'
 import { sklonIgralcev } from './oblikovanje'
 
 /* Kaj je oglas sprožilo: klik na zaklenjeno funkcijo. */
@@ -122,6 +122,8 @@ export interface CeneOglasa {
   cenaOdMesecno: string
   /* Koliko prihrani letni paket (za povezavo pri mesečnem izboru). */
   prihranekLetni: string
+  /* Isto v odstotkih za trak »Letno −44 %« - po izbranem pasu. */
+  prihranekOdstotki: number
 }
 
 /* Pas se v ponudbi izbere s stikalom (`u21`), pri prijavljenem igralcu z znano
@@ -147,6 +149,7 @@ export function izracunajCene(cikel: CiklusPlacila, u21: boolean): CeneOglasa {
     drugaCena: eur(cenik.mlajsi),
     cenaOdMesecno: eur(CENA_PREMIUM_MESECNO.mlajsi),
     prihranekLetni: eur(sidroN - CENA_PREMIUM_LETNO[pas]),
+    prihranekOdstotki: prihranekLetnoOdstotki(CENA_PREMIUM_MESECNO[pas], CENA_PREMIUM_LETNO[pas]),
   }
 }
 
