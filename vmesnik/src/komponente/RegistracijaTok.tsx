@@ -21,6 +21,7 @@ import {
   CENA_PREMIUM_MESECNO,
   OMEJITVE_ORGANIZATORJA,
   OZNAKE_PAKET,
+  PRIHRANEK_LETNO_ODSTOTKI,
   type CiklusPlacila,
   type Paket,
 } from '../api/tipi'
@@ -586,7 +587,9 @@ export function RegistracijaTok({
                   <span className="registracija__vloga-opis">
                     Tvoj profil, rating in zgodovina tekem. Račun povežemo z zapisom med igralci.
                   </span>
-                  <span className="registracija__vloga-noga">Premium od 3,99 € / mesec</span>
+                  <span className="registracija__vloga-noga">
+                    Premium od {oblikujCeno(CENA_PREMIUM_MESECNO.mlajsi)} / mesec
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -625,7 +628,7 @@ export function RegistracijaTok({
                   onClick={() => posodobi({ ciklus: 'LETNO' })}
                 >
                   Letno
-                  <span className="izbirnik__trak">−10%</span>
+                  <span className="izbirnik__trak">−{PRIHRANEK_LETNO_ODSTOTKI}%</span>
                 </button>
               </div>
               <div className="registracija__primerjava">

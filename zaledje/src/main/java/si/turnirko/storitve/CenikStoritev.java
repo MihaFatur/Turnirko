@@ -21,15 +21,17 @@ import si.turnirko.modeli.StarostniPas;
 public class CenikStoritev {
 
     /* Igralec Premium, mesecna cena po starosti ob registraciji (11. clen PST
-       - starostni pas U21 ali mlajsi). */
-    static final double PREMIUM_MESECNO_MLAJSI = 3.99;
-    static final double PREMIUM_MESECNO_STAREJSI = 4.99;
+       - starostni pas U21 ali mlajsi). Cene od 21. 10. 2026 (odlocitev
+       lastnika; prej 3,99/4,99 in letno 42,99/53,49). */
+    static final double PREMIUM_MESECNO_MLAJSI = 0.99;
+    static final double PREMIUM_MESECNO_STAREJSI = 1.99;
 
-    /* Letna narocnina je FIKSNA cena (odlocitev lastnika, 24. 9. 2026), ne
-       izracun: ~10 % ceneje kot dvanajst mesecnih (47,88 -> 42,99; 59,88 ->
-       53,49). Vmesnik pokaze oznako "-10 %" in isti stevilki (api/tipi.ts). */
-    static final double PREMIUM_LETNO_MLAJSI = 42.99;
-    static final double PREMIUM_LETNO_STAREJSI = 53.49;
+    /* Letna narocnina je FIKSNA cena (odlocitev lastnika), ne izracun: ~16 %
+       ceneje kot dvanajst mesecnih (11,88 -> 9,99; 23,88 -> 19,99). Vmesnik
+       oznako prihranka izpelje iz istih stevilk (api/tipi.ts) in jo zaokrozi
+       navzdol, da ne obljubi vec, kot kupec prihrani. */
+    static final double PREMIUM_LETNO_MLAJSI = 9.99;
+    static final double PREMIUM_LETNO_STAREJSI = 19.99;
 
     /* Organizatorski paketi so SAMO letni. */
     static final double ORGANIZATOR_BASIC_LETNO = 89.99;

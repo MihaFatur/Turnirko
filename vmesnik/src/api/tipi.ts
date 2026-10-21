@@ -593,14 +593,25 @@ export const OZNAKE_PAKET: Record<Paket, string> = {
   ORGANIZATOR_PRO: 'Organizator Pro',
 }
 
-/* Cene so odločitev lastnika (17.–24. 9. 2026); zrcalijo CenikStoritev na
-   zaledju, ki je zadnja beseda - to tu je samo za takojšen predogled cene v
+/* Cene so odločitev lastnika (Premium od 21. 10. 2026); zrcalijo CenikStoritev
+   na zaledju, ki je zadnja beseda - to tu je samo za takojšen predogled cene v
    obrazcu (isto načelo kot funkcija starost() v PrijavaOkno.tsx). Letna cena
-   Premium je FIKSNA številka, ne izračun: ~10 % ceneje kot dvanajst mesečnih
-   (47,88 → 42,99 €; 59,88 → 53,49 €), zato oznaka »−10 %« pri izbiri
-   plačevanja. Organizatorski paketi so samo letni. */
-export const CENA_PREMIUM_MESECNO = { mlajsi: 3.99, starejsi: 4.99 } as const
-export const CENA_PREMIUM_LETNO = { mlajsi: 42.99, starejsi: 53.49 } as const
+   Premium je FIKSNA številka, ne izračun: ~16 % ceneje kot dvanajst mesečnih
+   (11,88 → 9,99 €; 23,88 → 19,99 €). Organizatorski paketi so samo letni. */
+export const CENA_PREMIUM_MESECNO = { mlajsi: 0.99, starejsi: 1.99 } as const
+export const CENA_PREMIUM_LETNO = { mlajsi: 9.99, starejsi: 19.99 } as const
+
+/* Oznaka prihranka letnega plačila (»−15 %«) ob izbiri plačevanja. Izpeljana
+   iz cen, da ob spremembi cenika ne ostane stara številka, in zaokrožena
+   NAVZDOL za pas z manjšim prihrankom: oznaka ne sme obljubiti več, kot kupec
+   prihrani (ZVPot-1, navidezni popust). Zaledje isto drži v CenikStoritevTest. */
+export const PRIHRANEK_LETNO_ODSTOTKI = Math.floor(
+  Math.min(
+    ...(['mlajsi', 'starejsi'] as const).map(
+      (pas) => (1 - CENA_PREMIUM_LETNO[pas] / (12 * CENA_PREMIUM_MESECNO[pas])) * 100,
+    ),
+  ),
+)
 export const CENA_ORGANIZATOR_LETNO: Record<
   'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO',
   number

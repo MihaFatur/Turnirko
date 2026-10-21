@@ -248,7 +248,7 @@ in zaledje z `TURNIRKO_STRIPE_TAJNI_KLJUC`, `TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST` 
       znova zažene). Preveri: `docker compose exec app printenv | grep STRIPE | sed 's/=.*/=…/'`.
       Sandboxov webhook lahko ostane – dogodki sandboxa gredo z drugo skrivnostjo in jih
       aplikacija zavrne.
-5. [ ] **Prvi pravi nakup** (Premium mesečno, ~4 €, s kartico lastnika). Preveri po vrsti:
+5. [ ] **Prvi pravi nakup** (Premium mesečno, 1,99 €, s kartico lastnika). Preveri po vrsti:
       naročnina v Turnirku AKTIVNA; Stripe webhook 2xx; v Moj Računu **natanko en** račun z ZOI,
       EOR in QR (dva pomenita, da se scenarija prekrivata);
       e-pošta z računom na naslov kupca; računovodkinja ga vidi; številka EOR se ujema na

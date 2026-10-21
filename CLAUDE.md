@@ -1625,6 +1625,14 @@
       do nove sezone ne ustvariš« (predaja je to trdila drugače; odločitev lastnika
       pri nadzorni plošči velja tudi tu).
 
+- **Cene Premium so na dveh mestih in nikjer drugje**: `CenikStoritev` (zaledje,
+  zadnja beseda) in `CENA_PREMIUM_*` v `api/tipi.ts` (predogled); od 21. 10. 2026
+  0,99/1,99 € mesečno, 9,99/19,99 € letno. Vse strani, maskota in oglas jih berejo
+  od tam. **Oznaka prihranka letnega plačila (»−15 %«) je izpeljana**
+  (`PRIHRANEK_LETNO_ODSTOTKI`, zaokroženo navzdol za pas z manjšim prihrankom), ker
+  je vtipkana »−10 %« ob spremembi cenika obljubljala napačen popust; zaledje
+  spodnjo mejo drži v `CenikStoritevTest`.
+
 - **Osebni podatki ne gredo v Stripe** (V48, `CakajocaRegistracija`, okt 2026).
   Stripove dogodke bere tudi Moj Račun (davčno potrjeni računi) in vsak skrbnik
   Stripovega računa, zato so v metapodatkih seje samo namen, naključen žeton
@@ -1812,7 +1820,7 @@
   - **Napis se bere najmanj ~2 s** (dolg napis ~28 znakov), vsak prizor ostane
     pod 5 s. Ob novem prizoru to preveri po sličicah.
   - **Cena v napisu je `{cena}`**, izračunana iz `CENA_PREMIUM_MESECNO` po
-    gledalcu (`cenaPremium`): mlajši od 21 let 3,99 €, sicer 4,99 €, gost višja.
+    gledalcu (`cenaPremium`): mlajši od 21 let nižja (0,99 €), sicer višja (1,99 €), gost višja.
     Nikoli vtipkana številka.
   - **Izbira je VREČA, ne kocka** (`vrecaMaskote.ts`): prizori in napisi so v
     dveh premešanih vrečah in se vlečejo brez vračanja, zato se vsak pokaže

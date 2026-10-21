@@ -1,7 +1,7 @@
 /* Cistega izracuna cene - brez baze in brez Springa (isti vzorec kot
-   TurnirkoRatingStoritevTest). Stevilke so odlocitev lastnika (17.-23. 9.
-   2026): Premium 3,99/4,99 EUR mesecno po starosti, letno fiksno 42,99/53,49
-   (24. 9.); organizatorski paketi so samo letni. */
+   TurnirkoRatingStoritevTest). Stevilke so odlocitev lastnika: Premium
+   0,99/1,99 EUR mesecno po starosti, letno fiksno 9,99/19,99 (21. 10. 2026);
+   organizatorski paketi so samo letni. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,21 +25,22 @@ class CenikStoritevTest {
 
     @Test
     void premiumMesecnoPoStarosti() {
-        assertEquals(3.99, cenik.cena(Paket.PREMIUM, CiklusPlacila.MESECNO, false));
-        assertEquals(4.99, cenik.cena(Paket.PREMIUM, CiklusPlacila.MESECNO, true));
+        assertEquals(0.99, cenik.cena(Paket.PREMIUM, CiklusPlacila.MESECNO, false));
+        assertEquals(1.99, cenik.cena(Paket.PREMIUM, CiklusPlacila.MESECNO, true));
     }
 
-    /* Letno je fiksna cena (odlocitev lastnika, 24. 9. 2026), ne izracun; ob
-       njej stoji v vmesniku oznaka "-10 %", zato mora biti res ceneje od
-       dvanajstih mesecnih - in ne vec kot ~11 %, sicer oznaka ne drzi. */
+    /* Letno je fiksna cena, ne izracun; vmesnik ob njej pokaze oznako
+       prihranka, izpeljano iz istih stevilk in zaokrozeno navzdol (zdaj
+       "-15 %"). Ta test drzi, da letno pri OBEH pasovih res prihrani vsaj
+       toliko - sicer bi oznaka obljubljala popust, ki ga ni (ZVPot-1). */
     @Test
-    void premiumLetnoJeFiksnaInPribliznoDesetOdstotkovCenejeOdMesecne() {
-        assertEquals(42.99, cenik.cena(Paket.PREMIUM, CiklusPlacila.LETNO, false));
-        assertEquals(53.49, cenik.cena(Paket.PREMIUM, CiklusPlacila.LETNO, true));
+    void premiumLetnoJeFiksnaInVsaj15OdstotkovCenejeOdMesecne() {
+        assertEquals(9.99, cenik.cena(Paket.PREMIUM, CiklusPlacila.LETNO, false));
+        assertEquals(19.99, cenik.cena(Paket.PREMIUM, CiklusPlacila.LETNO, true));
         for (boolean starejsi : new boolean[] {false, true}) {
             double dvanajstMesecnih = 12 * cenik.cena(Paket.PREMIUM, CiklusPlacila.MESECNO, starejsi);
             double prihranek = 1 - cenik.cena(Paket.PREMIUM, CiklusPlacila.LETNO, starejsi) / dvanajstMesecnih;
-            assertTrue(prihranek >= 0.10 && prihranek < 0.11, "prihranek " + prihranek);
+            assertTrue(prihranek >= 0.15, "prihranek " + prihranek);
         }
     }
 

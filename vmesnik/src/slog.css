@@ -1156,7 +1156,7 @@ a.gumb {
   color: var(--barva-papir);
 }
 
-/* Diagonalen trak v zgornjem desnem kotu gumba (»Letno −10%« pri izbiri
+/* Diagonalen trak v zgornjem desnem kotu gumba (»Letno −15%« pri izbiri
    plačevanja Premium). Gumb odreže trak na svoj rob (`overflow: hidden`), desni
    odmik pa je večji, da napis gumba ne zaide pod trak. Trak je pravokoten pas,
    samo zavrten za 45° (brez zaobljenih robov); sredina traku je 18 px od

@@ -224,7 +224,7 @@ class UpravljanjeNarocnineStoritevTest {
         Uporabnik u = igralec("obnova-letno@test");
         premium(u, CiklusPlacila.MESECNO, StatusNarocnine.PREKLICANA, true);
         prijava(u);
-        when(stripe.zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 53.49))
+        when(stripe.zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 19.99))
                 .thenReturn(stanje(CiklusPlacila.MESECNO, false, "sub_sched_1"));
 
         NarocninaDto dto = storitev.obnovi(CiklusPlacila.LETNO);
@@ -253,14 +253,14 @@ class UpravljanjeNarocnineStoritevTest {
         Uporabnik u = igralec("preklop-starejsi@test");
         premium(u, CiklusPlacila.MESECNO, StatusNarocnine.AKTIVNA, true);
         prijava(u);
-        when(stripe.zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 53.49))
+        when(stripe.zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 19.99))
                 .thenReturn(stanje(CiklusPlacila.MESECNO, false, "sub_sched_1"));
 
         NarocninaDto dto = storitev.preklopi(CiklusPlacila.LETNO);
 
         assertEquals(CiklusPlacila.LETNO, dto.naslednjiCiklus());
         assertEquals(CiklusPlacila.MESECNO, dto.ciklus(), "do konca obdobja ostane tekoci cikel");
-        verify(stripe).zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 53.49);
+        verify(stripe).zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 19.99);
     }
 
     @Test
@@ -268,12 +268,12 @@ class UpravljanjeNarocnineStoritevTest {
         Uporabnik u = igralec("preklop-mlajsi@test");
         premium(u, CiklusPlacila.MESECNO, StatusNarocnine.AKTIVNA, false);
         prijava(u);
-        when(stripe.zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 42.99))
+        when(stripe.zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 9.99))
                 .thenReturn(stanje(CiklusPlacila.MESECNO, false, "sub_sched_1"));
 
         storitev.preklopi(CiklusPlacila.LETNO);
 
-        verify(stripe).zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 42.99);
+        verify(stripe).zabeleziPreklop(STRIPE_ID, CiklusPlacila.LETNO, 9.99);
     }
 
     @Test
