@@ -14,6 +14,10 @@ export const PONUDNIK: {
   eposta: string | null
   /* Kje teče strežnik (ime ponudnika gostovanja) - obdelovalec podatkov. */
   gostovanje: string | null
+  /* Potrdila računovodkinja 21. 10. 2026: ni zavezanec za DDV ne atipični
+     zavezanec. Ob prestopu praga (60.000 € prometa na leto) se spremeni
+     skupaj z nastavitvijo v Moj Računu - od nje je odvisna klavzula na računih. */
+  zavezanecZaDdv: boolean
 } = {
   ime: 'Jaka Golavšek s.p.',
   naslov: 'Šešče pri Preboldu 6, 3312 Prebold',
@@ -21,7 +25,8 @@ export const PONUDNIK: {
   davcna: '19045301',
   eposta: 'info@turnirko-nt.si',
   gostovanje: 'Herznet',
+  zavezanecZaDdv: false,
 }
 
 /* Od kdaj veljajo objavljeni pogoji (ISO datum); null = se ne izpiše. */
-export const POGOJI_VELJAJO_OD: string | null = null
+export const POGOJI_VELJAJO_OD: string | null = '2026-10-21'

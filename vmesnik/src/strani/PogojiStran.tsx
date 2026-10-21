@@ -64,9 +64,12 @@ export function PogojiStran() {
           pogoji, lahko onemogočimo.
         </Odstavek>
         <Odstavek naslov="Naročnina Premium in paketi organizatorjev">
-          Naročnino prodaja {zPiko(PONUDNIK.ime)} Cena je izpisana pred nakupom. Plačilo obdela
-          Stripe, račun za vsako plačilo (tudi za vsako obnovo) prejmeš po e-pošti na naslov,
-          s katerim plačaš. Naročnina se ob koncu obdobja
+          Naročnino prodaja {zPiko(PONUDNIK.ime)} Cena je izpisana pred nakupom in je končna
+          {PONUDNIK.zavezanecZaDdv
+            ? ' (vključuje DDV).'
+            : ': prodajalec ni zavezanec za DDV, zato DDV ni obračunan (1. odstavek 94. člena ZDDV-1).'}{' '}
+          Plačilo obdela Stripe, račun za vsako plačilo (tudi za vsako obnovo) prejmeš po e-pošti na
+          naslov, s katerim plačaš. Naročnina se ob koncu obdobja
           (mesec ali leto) samodejno obnovi, dokler je ne prekličeš. Prekličeš jo kadar koli na
           strani <Link to="/narocnina">Naročnina</Link>; velja do konca že plačanega obdobja.
           Preklop med mesečnim in letnim plačilom velja ob naslednji obnovi. Kot potrošnik lahko

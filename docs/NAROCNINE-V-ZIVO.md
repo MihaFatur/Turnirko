@@ -14,7 +14,7 @@ za delovanje plačil `PlacilaStoritev`. Ta dokument ne podvaja številk.
 | Prodajalec naročnin | **Jaka Golavšek s.p.** (do 12. 10. je veljal NTK Žalec) | potrjeno 12. 10. 2026 |
 | Program za račune | **Moj Račun** + dodatek »Integracija Stripe« | potrjeno |
 | Stripe račun | **nov, na s.p.** (imetnik s.p., TRR s.p.); lastnik te kode je povabljen kot skrbnik | potrjeno |
-| Zavezanec za DDV? | najverjetneje **ne**: davčna 19045301 v VIES 20. 10. 2026 ni veljavna DDV številka | **odprto – potrdi računovodkinja** |
+| Zavezanec za DDV? | **ne**, tudi ne atipični zavezanec; cene so končne, na računih klavzula iz Moj Računa (1. odst. 94. čl. ZDDV-1) | potrdila računovodkinja 21. 10. 2026 |
 | Dogovor o 4 % prometa za davke (med lastnikom Turnirka in imetnikom s.p.) | ni znano, kako je urejen | **odprto – računovodkinja** (glej razdelek 6) |
 | Dostop med Stripovimi ponovnimi poskusi plačila | zdaj: izklop takoj ob prvem neuspehu | **odprto – odločitev lastnika** |
 
@@ -192,9 +192,9 @@ Opravljeno 20. 10. 2026:
 
 Odprto:
 
-- [ ] `PogojiStran.tsx`: **besedilo o DDV** (ali so cene končne, klavzula) – šele po potrditvi
-      DDV statusa. `POGOJI_VELJAJO_OD` v `pravno.ts` nastavi na dan objave. Besedilo naj pregleda
-      pravnik (ZVPot-1, ZVOP-2).
+- [x] `PogojiStran.tsx`: **besedilo o DDV** (21. 10. 2026): cene so končne, DDV ni obračunan
+      (`PONUDNIK.zavezanecZaDdv` v `pravno.ts`); `POGOJI_VELJAJO_OD` = 21. 10. 2026.
+- [ ] Besedilo pogojev naj pregleda pravnik (ZVPot-1, ZVOP-2).
 - [ ] Gumb za odstop od pogodbe (direktiva 2023/2673, od 19. 6. 2026): slovenska novela ZVPot-1
       je v pripravi; ob uveljavitvi dodati.
 
@@ -220,8 +220,15 @@ in zaledje z `TURNIRKO_STRIPE_TAJNI_KLJUC`, `TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST` 
 
 ### Faza 5 – preklop v živo (zaporedje je pomembno)
 
-1. [ ] Odločeno: DDV, dogovor o 4 %, računovodkinja potrdila pristop (razdelek 6).
-2. [ ] Faze 1 in 2 opravljeni; `pravno.ts` in pogoji izpolnjeni in objavljeni.
+1. [ ] Odločeno: DDV (opravljeno 21. 10.), dogovor o 4 %, računovodkinja potrdila pristop
+      (razdelek 6).
+2. [ ] Faze 1 in 2 opravljeni; `pravno.ts` in pogoji izpolnjeni in objavljeni. **Testne
+      naročnine iz sandboxa pospravljene**: v živem načinu njihovih Stripovih id-jev ni, zato bi
+      testni račun obdržal paket do konca obdobja (letni – leto dni) brez plačila. Seznam:
+      `sqlite3 -header -column podatki/turnirko.db "SELECT u.id, u.uporabnisko_ime, u.vloga,
+      n.paket, n.ciklus, n.status FROM narocnina n JOIN uporabnik u ON u.id = n.id_uporabnik
+      WHERE n.stripe_narocnina_id IS NOT NULL"`; testni račun izbriši (Dostopi → kartica
+      računa → »Izbriši račun«, naročnina gre z njim), pravemu računu zbriši samo vrstico naročnine.
 3. [ ] **Moj Račun ↔ Stripe (živi način)**: Dodatki → Integracija Stripe → naročilo (4,99 € na
       mesec) → *Poveži z Stripe* (prijava v Stripe in »Connect«; Moj Račun dobi samo branje
       dogodkov, plačil, računov in strank, gesla ne vidi). Scenariji
@@ -273,8 +280,9 @@ in zaledje z `TURNIRKO_STRIPE_TAJNI_KLJUC`, `TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST` 
 
 ## 6. Odprta vprašanja za računovodkinjo
 
-1. Je s.p. zavezanec za DDV in kakšna je oznaka na računih (prag 60.000 € na koledarsko leto;
-   ves promet Turnirka šteje v promet s.p.)?
+1. ~~Je s.p. zavezanec za DDV in kakšna je oznaka na računih?~~ **Ne, tudi ne atipični**
+   (21. 10. 2026). Prag 60.000 € na koledarsko leto spremljati: ves promet Turnirka šteje v
+   promet s.p.
 2. Vrsta poslovnega prostora za spletno prodajo in interni akt.
 3. Kako knjižiti Stripova izplačila in Stripove račune za provizije?
 4. **Dogovor o 4 % prometa**: ker so računi in izplačila na s.p., je ves promet davčno promet
