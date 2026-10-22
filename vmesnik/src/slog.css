@@ -15378,7 +15378,8 @@ a.ekipa-okno__srecanje:hover {
   color: var(--barva-crnilo);
 }
 
-.glava-telefon__gumb--preklop[aria-pressed='true'] {
+.glava-telefon__gumb--preklop[aria-pressed='true'],
+.glava-telefon__gumb--preklop[aria-expanded='true'] {
   background: var(--barva-crnilo);
   color: var(--barva-papir);
 }
@@ -15699,8 +15700,9 @@ a.ekipa-okno__srecanje:hover {
 }
 
 /* Naslov seznama z iskanjem: »Turnirji« levo, preklopnik »Išči« skrajno
-   desno v isti vrsti. */
-.naslov-mobi__vrsta--iskanje {
+   desno v isti vrsti. Isto ima znacka turnirja s preklopnikom »Podrobnosti«. */
+.naslov-mobi__vrsta--iskanje,
+.naslov-mobi__vrsta--preklop {
   justify-content: space-between;
 }
 

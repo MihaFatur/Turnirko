@@ -2826,6 +2826,10 @@
   telefonu nosi letnico pod mesecem, obdobje v mono vrstici samo pri
   večdnevnem turnirju (»03 OKT« in »3. 10.« je bil isti podatek dvakrat), ime
   sme v dve vrstici (`.vrstica-mobi__ime`, tudi lige in kategorije).
+- **Stran turnirja na telefonu ima kolofon zaprt** (Prijavljenih, Odigranih,
+  Dogodki, Raven; odločitev lastnika, okt 2026): odpre ga preklopnik
+  »Podrobnosti ▾« desno ob znački statusa (`aria-expanded`, isti gumb kot
+  »Išči«). Beseda in ne ikona »i« — DESIGN.md, točka 9. Na namizju ostane odprt.
 - **Profil: »Odigrane tekme« so po tekmovanjih** (`TekmePoTekmovanjih`,
   `ProfilDto.tekmovanja`, `TekmaProfila.tekmovanjeKljuc`): kategorija turnirja
   (ključ `d<idDogodek>`, tudi ekipni dogodek) oz. liga (`l<idLiga>`) je vrstica z
