@@ -1208,7 +1208,10 @@
     profilu), številke so dejanska mesta, njegov položaj v oknu je naključen
     ob vsakem prihodu na stran (enkrat prvi, drugič peti …), ob vrhu ali dnu
     se okno poravna. Trimestna mesta dobijo na telefonu širši stolpec
-    (`.domov__lestvica--siroka`).
+    (`.domov__lestvica--siroka`). Filtri sklopa (Okoli mene / Vsi igralci,
+    Moje lige, Moj klub) so na namizju segmentirani izbirnik, na telefonu
+    nativni spustni izbor (`krmilo-izbor`, okt 2026) — trije gumbi so se pod
+    ~375 px lomili v dve vrsti.
   - Regresije: `IzborTurnirjevTest` (pravila izbora, razpis, okno) in
     `DomovPremiumTest` (paket, račun, ekipa, prazno za druge).
 - **Potek lige je ENO pravilo za vse poglede** (`PotekLige`, oktober 2026):

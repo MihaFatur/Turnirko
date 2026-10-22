@@ -13082,29 +13082,22 @@ a.ekipa-okno__srecanje:hover {
     gap: 2px;
   }
 
-  /* Filtri in povezava dobijo svojo vrsto pod naslovom; povezava se skrci na
-     "Cela →", da gre vse skupaj v eno vrstico. Pogoj je, da so filtri sploh
-     tam: gost jih nima (oba zozena izbora govorita o njegovem racunu) in
-     povezava sama v svoji vrsti bi bila samotna leva vrstica - zanj ostane v
-     naslovni vrstici ob "Lestvica", kot povezave vseh drugih sklopov. */
-  .domov__sklop .naslovna-vrstica__desno:has(.izbirnik) {
+  /* Filter lestvice (spustni izbor) in povezava dobita svojo vrsto pod
+     naslovom: izbor levo, povezava ob desnem robu. Trije gumbi izbirnika so
+     bili tu preozki in napisi so se lomili v dve vrsti, zato je na telefonu
+     izbor. Pogoj je, da je filter sploh tam: gost ga nima (zozena izbora
+     govorita o njegovem racunu) in povezava sama v svoji vrsti bi bila
+     samotna leva vrstica - zanj ostane v naslovni vrstici ob "Lestvica", kot
+     povezave vseh drugih sklopov. */
+  .domov__sklop .naslovna-vrstica__desno:has(.krmilo-izbor) {
     width: 100%;
     justify-content: space-between;
     flex-wrap: nowrap;
-  }
-
-  .domov__sklop .izbirnik__gumb {
-    padding: var(--r1);
-    letter-spacing: 0.06em;
+    gap: var(--r2);
   }
 
   .domov__cela {
     margin-left: 0;
-  }
-
-  /* Beseda odpade samo takrat, kadar si vrsto deli s tremi filtri. */
-  .naslovna-vrstica__desno:has(.izbirnik) .domov__cela-dolgo {
-    display: none;
   }
 
   /* Lestvica na stiri stolpce: mesto, premik, igralec s klubom v drugi
