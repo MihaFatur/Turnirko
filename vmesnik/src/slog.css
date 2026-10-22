@@ -7260,7 +7260,10 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
-.koledar__celica--izbran .koledar__stevilka {
+/* Danasnja znacka je izvzeta: pravilo je mocnejse od .koledar__stevilka--danes
+   in bi ji dalo crnilo na crnilu - izbran danasnji dan je bil crn kvadrat brez
+   stevilke. */
+.koledar__celica--izbran .koledar__stevilka:not(.koledar__stevilka--danes) {
   color: var(--barva-crnilo);
 }
 
@@ -13094,29 +13097,22 @@ a.ekipa-okno__srecanje:hover {
     gap: 2px;
   }
 
-  /* Filtri in povezava dobijo svojo vrsto pod naslovom; povezava se skrci na
-     "Cela →", da gre vse skupaj v eno vrstico. Pogoj je, da so filtri sploh
-     tam: gost jih nima (oba zozena izbora govorita o njegovem racunu) in
-     povezava sama v svoji vrsti bi bila samotna leva vrstica - zanj ostane v
-     naslovni vrstici ob "Lestvica", kot povezave vseh drugih sklopov. */
-  .domov__sklop .naslovna-vrstica__desno:has(.izbirnik) {
+  /* Filter lestvice (spustni izbor) in povezava dobita svojo vrsto pod
+     naslovom: izbor levo, povezava ob desnem robu. Trije gumbi izbirnika so
+     bili tu preozki in napisi so se lomili v dve vrsti, zato je na telefonu
+     izbor. Pogoj je, da je filter sploh tam: gost ga nima (zozena izbora
+     govorita o njegovem racunu) in povezava sama v svoji vrsti bi bila
+     samotna leva vrstica - zanj ostane v naslovni vrstici ob "Lestvica", kot
+     povezave vseh drugih sklopov. */
+  .domov__sklop .naslovna-vrstica__desno:has(.krmilo-izbor) {
     width: 100%;
     justify-content: space-between;
     flex-wrap: nowrap;
-  }
-
-  .domov__sklop .izbirnik__gumb {
-    padding: var(--r1);
-    letter-spacing: 0.06em;
+    gap: var(--r2);
   }
 
   .domov__cela {
     margin-left: 0;
-  }
-
-  /* Beseda odpade samo takrat, kadar si vrsto deli s tremi filtri. */
-  .naslovna-vrstica__desno:has(.izbirnik) .domov__cela-dolgo {
-    display: none;
   }
 
   /* Lestvica na stiri stolpce: mesto, premik, igralec s klubom v drugi
@@ -15383,7 +15379,8 @@ a.ekipa-okno__srecanje:hover {
   color: var(--barva-crnilo);
 }
 
-.glava-telefon__gumb--preklop[aria-pressed='true'] {
+.glava-telefon__gumb--preklop[aria-pressed='true'],
+.glava-telefon__gumb--preklop[aria-expanded='true'] {
   background: var(--barva-crnilo);
   color: var(--barva-papir);
 }
@@ -15704,8 +15701,9 @@ a.ekipa-okno__srecanje:hover {
 }
 
 /* Naslov seznama z iskanjem: »Turnirji« levo, preklopnik »Išči« skrajno
-   desno v isti vrsti. */
-.naslov-mobi__vrsta--iskanje {
+   desno v isti vrsti. Isto ima znacka turnirja s preklopnikom »Podrobnosti«. */
+.naslov-mobi__vrsta--iskanje,
+.naslov-mobi__vrsta--preklop {
   justify-content: space-between;
 }
 
@@ -15837,6 +15835,11 @@ a.ekipa-okno__srecanje:hover {
 
 .lestvica-mobi > * {
   contain-intrinsic-size: auto 62px;
+}
+
+/* Lestvica igralcev ima ime in klub v eni vrsti (glej .lestvica-mobi__igralec). */
+.lestvica-mobi--globalna > * {
+  contain-intrinsic-size: auto 49px;
 }
 
 /* Seznam, ki mu naslovna vrstica stoji tik nad njim (kategorije turnirja). */
@@ -16169,8 +16172,51 @@ a.ekipa-okno__srecanje:hover {
   }
 }
 
-/* "NTK Savinja · 41–12 · ↑2" - klub, izkupicek in gibanje v eni mono vrstici.
-   Stolpec "Δ 30 dni" na telefonu odpade: gibanje pove isto v manj znakih. */
+/* Lestvica igralcev (/lestvica): ime in klub v ISTI vrsti, brez druge mono
+   vrstice - izkupicek in premik na telefonu odpadeta (odlocitev lastnika,
+   okt 2026), vrstica je visoka 49 px namesto 62.
+
+   Kadar ne gre vse v eno vrsto, popusti klub in nikoli ime (polno ime je
+   tisto, kar gledalec isce):
+   - klub, ki ne gre ves, odreze tropicje - a ostane v vrsti samo, ce mu ime
+     pusti vsaj 10 znakov; krajsi odrez kluba ni prepoznaven ("NTD K…"),
+   - kadar imenu ostane manj, gre klub v drugo vrsto pod ime, cel,
+   - ime, ki ne gre v vrsto niti samo, se prelomi (kot imena ekip v
+     razporedu) in se ne odreze.
+   Prag je osnova kluba (flex-basis): ostane v vrsti, ce mu ime pusti vsaj
+   toliko, in nato zasede ostanek vrste. Vrstni red prelomov odloci flex-wrap
+   sam, brez merjenja v JS. */
+.lestvica-mobi__igralec {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 2px;
+  min-width: 0;
+}
+
+.lestvica-mobi__igralec > .lestvica-mobi__ime {
+  flex: 0 1 auto;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.lestvica-mobi__klub {
+  flex: 1 1 10ch;
+  min-width: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  color: var(--barva-crnilo-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lestvici lige (posamezniki, dvojice): "Ekipa · 6 tekem · 67 %" v mono
+   vrstici pod imenom. */
 .lestvica-mobi__meta {
   grid-column: 2;
   grid-row: 2;
@@ -16182,14 +16228,6 @@ a.ekipa-okno__srecanje:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.lestvica-mobi__gib--gor {
-  color: var(--barva-poudarek-tekst);
-}
-
-.lestvica-mobi__gib--dol {
-  color: var(--barva-negativna-tekst);
 }
 
 .lestvica-mobi__rating {

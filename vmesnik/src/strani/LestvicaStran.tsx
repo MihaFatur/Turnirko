@@ -525,7 +525,7 @@ export function LestvicaStran() {
           {stanje}
 
           {prikazani.length > 0 && (
-            <div className="lestvica-mobi">
+            <div className="lestvica-mobi lestvica-mobi--globalna">
               {prikazani.map(({ igralec, mesto }) => (
                 <VrsticaLestviceMobi
                   key={igralec.idIgralca}
@@ -665,11 +665,11 @@ export function LestvicaStran() {
   )
 }
 
-/* Vrstica lestvice na telefonu: mesto, ime, mono "klub · Z–P · gibanje" in
-   rating kot največja številka ob desnem robu.
-
-   Puščica ni edini nosilec pomena - barvo in smer podvoji opis iz gibanje(),
-   ki ga prebere bralnik zaslona. */
+/* Vrstica lestvice na telefonu: mesto, ime s klubom v isti vrsti in rating
+   kot največja številka ob desnem robu. Izkupička in premika ni (odločitev
+   lastnika, okt 2026): druga mono vrstica je vsako vrstico podvojila po
+   višini, gledalec pa na lestvici išče ime in rating — oboje je na namizju
+   in v profilu. */
 function VrsticaLestviceMobi({
   igralec,
   mesto,
@@ -679,8 +679,6 @@ function VrsticaLestviceMobi({
   mesto: number
   jaz: boolean
 }) {
-  const gib = gibanje(igralec.premik)
-
   return (
     <div
       className={
@@ -694,18 +692,17 @@ function VrsticaLestviceMobi({
       >
         {mesto}
       </span>
-      <Link to={`/igralci/${igralec.idIgralca}/profil`} className="lestvica-mobi__ime">
-        {igralec.polnoIme}
-      </Link>
-      {/* Izkupiček in premik spredaj, klub zadnji: vrstica se pri 375 px odreže
-          na koncu, in prej je odpadel prav »449–43 · ↑2«, ne dolgo ime kluba. */}
-      <span className="lestvica-mobi__meta">
-        {igralec.zmage}–{igralec.porazi} ·{' '}
-        <span className={`lestvica-mobi__gib--${gib.smer}`} aria-label={gib.opis}>
-          {gib.zapis}
-        </span>
-        {' · '}
-        {igralec.klub ? kratekKlub(igralec.klub) : '—'}
+      {/* Ime se nikoli ne odreže, klub pa: kadar ne gre ves, ga odreže
+          tropičje, kadar imenu ostane premalo prostora, gre pod ime (pravilo
+          je v slog.css). Igralec brez kluba ima samo ime - samotna »—« ob
+          imenu bi se brala kot del imena. */}
+      <span className="lestvica-mobi__igralec">
+        <Link to={`/igralci/${igralec.idIgralca}/profil`} className="lestvica-mobi__ime">
+          {igralec.polnoIme}
+        </Link>
+        {igralec.klub && (
+          <span className="lestvica-mobi__klub">{kratekKlub(igralec.klub)}</span>
+        )}
       </span>
       <span className="lestvica-mobi__rating">{igralec.rating ?? '—'}</span>
     </div>

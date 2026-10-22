@@ -566,6 +566,19 @@ function SklopLestvica({
     }
   }, [mojaVrstica, vrstice, odmik])
 
+  /* Igralec s Premium ima namesto vrha sebe in okolico; vrh je en klik stran
+     (»Cela lestvica«). */
+  const filtri: { vrednost: FilterLestvice; oznaka: string }[] = [
+    okolica ? { vrednost: 'okoli', oznaka: 'Okoli mene' } : { vrednost: 'vsi', oznaka: 'Vsi igralci' },
+    { vrednost: 'mojeLige', oznaka: 'Moje lige' },
+    { vrednost: 'mojKlub', oznaka: 'Moj klub' },
+  ]
+  const izbraniFilter = filtri.find((f) => f.vrednost === filter) ?? filtri[0]
+
+  /* Na telefonu so filtri spustni izbor: trije gumbi in povezava se v 375 px
+     ne zložijo v eno vrsto, napisi gumbov pa so se lomili v dve. */
+  const telefon = useTelefon()
+
   /* Mesto je vedno mesto na CELI lestvici izbranega spola in skupine — filter
      zoži prikaz, ne razvrstitve. Zato ga pripnemo pred filtriranjem. */
   const prikazane = useMemo(() => {
@@ -586,17 +599,37 @@ function SklopLestvica({
       <div className="naslovna-vrstica" data-uvod={uvod}>
         <h2>Lestvica</h2>
         <div className="naslovna-vrstica__desno">
-          {jePrijavljen && (
+          {jePrijavljen && telefon && (
+            <label className="krmilo-izbor">
+              <span className="samo-za-bralnik">Filter lestvice</span>
+              <span className="krmilo-izbor__oznaka" aria-hidden="true">
+                {izbraniFilter.oznaka}
+                <span className="krmilo-izbor__puscica">▾</span>
+              </span>
+              <select
+                className="krmilo-izbor__polje"
+                value={izbraniFilter.vrednost}
+                onChange={(dogodek) => naFilter(dogodek.target.value as FilterLestvice)}
+              >
+                {filtri.map((f) => (
+                  <option key={f.vrednost} value={f.vrednost}>
+                    {f.oznaka}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {jePrijavljen && !telefon && (
             <div className="izbirnik">
-              {/* Igralec s Premium ima namesto vrha sebe in okolico; vrh je
-                  en klik stran (»Cela lestvica«). */}
-              {okolica ? (
-                <Filter oznaka="Okoli mene" vrednost="okoli" izbrani={filter} naFilter={naFilter} />
-              ) : (
-                <Filter oznaka="Vsi igralci" vrednost="vsi" izbrani={filter} naFilter={naFilter} />
-              )}
-              <Filter oznaka="Moje lige" vrednost="mojeLige" izbrani={filter} naFilter={naFilter} />
-              <Filter oznaka="Moj klub" vrednost="mojKlub" izbrani={filter} naFilter={naFilter} />
+              {filtri.map((f) => (
+                <Filter
+                  oznaka={f.oznaka}
+                  vrednost={f.vrednost}
+                  izbrani={filter}
+                  naFilter={naFilter}
+                  key={f.vrednost}
+                />
+              ))}
             </div>
           )}
           {/* Vsak del je svoj element in razmik dela gap: povezava je
@@ -604,7 +637,7 @@ function SklopLestvica({
              lestvica →« se je brez tega bralo kot »Celalestvica→«. */}
           <Link to="/lestvica" className="sekcija__meta domov__cela">
             <span>Cela</span>
-            <span className="domov__cela-dolgo">lestvica</span>
+            <span>lestvica</span>
             <span aria-hidden="true">→</span>
           </Link>
         </div>

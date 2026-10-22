@@ -1208,7 +1208,10 @@
     profilu), številke so dejanska mesta, njegov položaj v oknu je naključen
     ob vsakem prihodu na stran (enkrat prvi, drugič peti …), ob vrhu ali dnu
     se okno poravna. Trimestna mesta dobijo na telefonu širši stolpec
-    (`.domov__lestvica--siroka`).
+    (`.domov__lestvica--siroka`). Filtri sklopa (Okoli mene / Vsi igralci,
+    Moje lige, Moj klub) so na namizju segmentirani izbirnik, na telefonu
+    nativni spustni izbor (`krmilo-izbor`, okt 2026) — trije gumbi so se pod
+    ~375 px lomili v dve vrsti.
   - Regresije: `IzborTurnirjevTest` (pravila izbora, razpis, okno) in
     `DomovPremiumTest` (paket, račun, ekipa, prazno za druge).
 - **Potek lige je ENO pravilo za vse poglede** (`PotekLige`, oktober 2026):
@@ -2473,6 +2476,14 @@
   - Izmerjeno z brezglavim Chromom (PDF → mupdf): 12, 32 in 64 igralcev, 6 po
     skupinah; vsak list je ležeči A4 (842 × 595 pt), mreža 32 igralcev ob robu
     (150 mm visoka). Ob spremembi mer ponovi.
+- **Zavihki dogodka na telefonu tečejo po vrsti tekmovanja** (`pogledi` v
+  `DogodekStran`, odločitev lastnika, okt 2026): Skupine (privzeto) ·
+  Izločilni del · Razvrstitev · Udeleženci. Zavihek »Razvrstitev« (končna
+  razvrstitev) obstaja samo pri zaključenem dogodku, a tudi takrat ni prvi —
+  privzeti pogled je prvi del tekmovanja. Izjema je krožni sistem: tam končna
+  razvrstitev zamenja živo lestvico in stoji na njenem mestu (Razvrstitev ·
+  Tekme · Udeleženci); SV regija ima Nivoji · Razvrstitev · Udeleženci. Na
+  namizju končna razvrstitev ostane blok nad pasom pogledov.
 - **Kaj pomeni klik na tekmo, odloči stran** (`KlikTekme` v `TekmaKartica`:
   `klikljiva`, `naKlik`, `namig`) — kartica mreže in vrstica seznama ne ugibata
   po stanju tekme. Posamično tekmovanje: organizatorju vnos rezultata.
@@ -2860,6 +2871,10 @@
   telefonu nosi letnico pod mesecem, obdobje v mono vrstici samo pri
   večdnevnem turnirju (»03 OKT« in »3. 10.« je bil isti podatek dvakrat), ime
   sme v dve vrstici (`.vrstica-mobi__ime`, tudi lige in kategorije).
+- **Stran turnirja na telefonu ima kolofon zaprt** (Prijavljenih, Odigranih,
+  Dogodki, Raven; odločitev lastnika, okt 2026): odpre ga preklopnik
+  »Podrobnosti ▾« desno ob znački statusa (`aria-expanded`, isti gumb kot
+  »Išči«). Beseda in ne ikona »i« — DESIGN.md, točka 9. Na namizju ostane odprt.
 - **Profil: »Odigrane tekme« so po tekmovanjih** (`TekmePoTekmovanjih`,
   `ProfilDto.tekmovanja`, `TekmaProfila.tekmovanjeKljuc`): kategorija turnirja
   (ključ `d<idDogodek>`, tudi ekipni dogodek) oz. liga (`l<idLiga>`) je vrstica z
@@ -2876,8 +2891,15 @@
   prijavljen igralec svojo (spol in skupina), gost naključno moško ali žensko
   lestvico članov ob vsakem prihodu; napis pod naslovom pove, katera je. Prej je
   mešal spola in mesta se niso ujemala s stranjo Lestvica.
-- **Lestvica na telefonu**: v mono vrstici je izkupiček in premik pred klubom
-  (klub se pri 375 px odreže, prej je odpadel »449–43 · ↑2«).
+- **Lestvica na telefonu: ime in klub v isti vrsti, izkupička in premika ni**
+  (`VrsticaLestviceMobi`, `.lestvica-mobi__igralec`; odločitev lastnika, okt
+  2026 — prej sta stala »449–43 · ↑2« v drugi mono vrstici pred klubom). Ko
+  vse ne gre v vrsto, popusti klub, **ime se nikoli ne odreže**: klub odreže
+  tropičje, dokler mu ostane vsaj 10 znakov (`flex-basis: 10ch`), sicer gre cel
+  pod ime; ime, daljše od vrste, se prelomi. Igralec brez kluba ima samo ime.
+  Vrstica je visoka 49 px (`contain-intrinsic-size` na
+  `.lestvica-mobi--globalna`). Lestvici lige posameznikov in dvojic ostaneta z
+  mono vrstico pod imenom.
 - **Napaka 404 nima gumba »Poskusi znova«** (`NapakaPoizvedbe`): pove, da
   zapisa ni, in ponudi domačo stran; tehničnega sporočila zaledja (»Igralec z id
   … ne obstaja«) ne izpiše. Tudi 401/403 gumba nimata.

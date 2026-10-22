@@ -2,9 +2,10 @@
    in dodajanje novega dogodka. Turnir se lahko zakljuci sele, ko so
    zakljuceni vsi njegovi dogodki - to pravilo preverja zaledje.
 
-   Na telefonu je glava kompaktna (naslov 32 px namesto 80), stiri vrstice
-   kolofona so mreza 2 x 2, dejanja urejevalca pa so v lepljivi glavi: gost in
-   igralec (uporabnik st. 1) pridemo po kategorije, ne po gumbe. Pogoj za
+   Na telefonu je glava kompaktna (naslov 32 px namesto 80), kolofon (mreza
+   2 x 2) je skrit za preklopnikom »Podrobnosti«, dejanja urejevalca pa so v
+   lepljivi glavi: gost in igralec (uporabnik st. 1) pridemo po kategorije, ne
+   po gumbe in ne po vsote. Pogoj za
    zakljucek turnirja je tam onemogocena postavka s pojasnilom in ne posebna
    vrstica v verzalkah pred vsebino. */
 import { useState } from 'react'
@@ -73,6 +74,7 @@ export function TurnirStran() {
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
   const [potrjujemZakljucek, nastaviPotrjujemZakljucek] = useState(false)
   const [pogled, nastaviPogled] = useState<PogledTurnirja>('DOGODKI')
+  const [podrobnosti, nastaviPodrobnosti] = useState(false)
 
   /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
      nekaj skupinskih sestevkov čez vse tekme turnirja in vstopne strani ne
@@ -293,8 +295,19 @@ export function TurnirStran() {
         )}
 
         <div>
-          <div className="naslov-mobi__vrsta">
+          {/* Preklopnik je beseda in ne ikona »i« (DESIGN.md: ikona ne
+              nadomesti besede); isti gumb kot »Išči« ob naslovu seznamov. */}
+          <div className="naslov-mobi__vrsta naslov-mobi__vrsta--preklop">
             <ZnackaVNaslovu status={podatki.status} />
+            <button
+              type="button"
+              className="glava-telefon__gumb glava-telefon__gumb--preklop"
+              aria-expanded={podrobnosti}
+              aria-controls={podrobnosti ? 'podrobnosti-turnirja' : undefined}
+              onClick={() => nastaviPodrobnosti((prej) => !prej)}
+            >
+              Podrobnosti&nbsp;<span aria-hidden="true">{podrobnosti ? '▴' : '▾'}</span>
+            </button>
           </div>
           <h1 className="naslov-mobi naslov-mobi--podstran">{podatki.ime}</h1>
           <p className="naslov-mobi__meta">
@@ -305,28 +318,32 @@ export function TurnirStran() {
           {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
         </div>
 
-        {/* Kolofon 2 x 2: stiri vrstice oznaka <-> vrednost so na telefonu
-            zasedle pol zaslona, mreza pove isto v polovici visine. */}
-        <div className="kolofon kolofon--mreza">
-          <div className="kolofon__vrstica">
-            <span className="kolofon__oznaka">Prijavljenih</span>
-            <span className="kolofon__vrednost">{podatki.prijavljenihSkupaj}</span>
+        {/* Kolofon 2 x 2 je na telefonu zaprt (odlocitev lastnika, okt 2026):
+            vsote cez kategorije so pred seznamom kategorij vzele ~120 px, po
+            kategorije pa gledalec pride. Stevilo kategorij in napredek po
+            kategorijah stojita ze v seznamu spodaj. */}
+        {podrobnosti && (
+          <div id="podrobnosti-turnirja" className="kolofon kolofon--mreza">
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">Prijavljenih</span>
+              <span className="kolofon__vrednost">{podatki.prijavljenihSkupaj}</span>
+            </div>
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">Odigranih</span>
+              <span className="kolofon__vrednost">
+                {podatki.odigranihTekem} / {podatki.vsehTekem}
+              </span>
+            </div>
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">Dogodki</span>
+              <span className="kolofon__vrednost">{podatki.steviloDogodkov}</span>
+            </div>
+            <div className="kolofon__vrstica">
+              <span className="kolofon__oznaka">Raven</span>
+              <span className="kolofon__vrednost">{OZNAKE_RAVEN[podatki.raven]}</span>
+            </div>
           </div>
-          <div className="kolofon__vrstica">
-            <span className="kolofon__oznaka">Odigranih</span>
-            <span className="kolofon__vrednost">
-              {podatki.odigranihTekem} / {podatki.vsehTekem}
-            </span>
-          </div>
-          <div className="kolofon__vrstica">
-            <span className="kolofon__oznaka">Dogodki</span>
-            <span className="kolofon__vrednost">{podatki.steviloDogodkov}</span>
-          </div>
-          <div className="kolofon__vrstica">
-            <span className="kolofon__oznaka">Raven</span>
-            <span className="kolofon__vrednost">{OZNAKE_RAVEN[podatki.raven]}</span>
-          </div>
-        </div>
+        )}
 
         <SporociloNapake napaka={zakljucevanje.error} />
 
