@@ -7252,7 +7252,10 @@ a.domov__lestvica-vrstica--jaz {
   color: var(--barva-crnilo-3);
 }
 
-.koledar__celica--izbran .koledar__stevilka {
+/* Danasnja znacka je izvzeta: pravilo je mocnejse od .koledar__stevilka--danes
+   in bi ji dalo crnilo na crnilu - izbran danasnji dan je bil crn kvadrat brez
+   stevilke. */
+.koledar__celica--izbran .koledar__stevilka:not(.koledar__stevilka--danes) {
   color: var(--barva-crnilo);
 }
 
