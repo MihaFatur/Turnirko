@@ -2849,8 +2849,15 @@
   prijavljen igralec svojo (spol in skupina), gost naključno moško ali žensko
   lestvico članov ob vsakem prihodu; napis pod naslovom pove, katera je. Prej je
   mešal spola in mesta se niso ujemala s stranjo Lestvica.
-- **Lestvica na telefonu**: v mono vrstici je izkupiček in premik pred klubom
-  (klub se pri 375 px odreže, prej je odpadel »449–43 · ↑2«).
+- **Lestvica na telefonu: ime in klub v isti vrsti, izkupička in premika ni**
+  (`VrsticaLestviceMobi`, `.lestvica-mobi__igralec`; odločitev lastnika, okt
+  2026 — prej sta stala »449–43 · ↑2« v drugi mono vrstici pred klubom). Ko
+  vse ne gre v vrsto, popusti klub, **ime se nikoli ne odreže**: klub odreže
+  tropičje, dokler mu ostane vsaj 10 znakov (`flex-basis: 10ch`), sicer gre cel
+  pod ime; ime, daljše od vrste, se prelomi. Igralec brez kluba ima samo ime.
+  Vrstica je visoka 49 px (`contain-intrinsic-size` na
+  `.lestvica-mobi--globalna`). Lestvici lige posameznikov in dvojic ostaneta z
+  mono vrstico pod imenom.
 - **Napaka 404 nima gumba »Poskusi znova«** (`NapakaPoizvedbe`): pove, da
   zapisa ni, in ponudi domačo stran; tehničnega sporočila zaledja (»Igralec z id
   … ne obstaja«) ne izpiše. Tudi 401/403 gumba nimata.
