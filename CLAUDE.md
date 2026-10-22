@@ -2431,6 +2431,14 @@
   - Izmerjeno z brezglavim Chromom (PDF → mupdf): 12, 32 in 64 igralcev, 6 po
     skupinah; vsak list je ležeči A4 (842 × 595 pt), mreža 32 igralcev ob robu
     (150 mm visoka). Ob spremembi mer ponovi.
+- **Zavihki dogodka na telefonu tečejo po vrsti tekmovanja** (`pogledi` v
+  `DogodekStran`, odločitev lastnika, okt 2026): Skupine (privzeto) ·
+  Izločilni del · Razvrstitev · Udeleženci. Zavihek »Razvrstitev« (končna
+  razvrstitev) obstaja samo pri zaključenem dogodku, a tudi takrat ni prvi —
+  privzeti pogled je prvi del tekmovanja. Izjema je krožni sistem: tam končna
+  razvrstitev zamenja živo lestvico in stoji na njenem mestu (Razvrstitev ·
+  Tekme · Udeleženci); SV regija ima Nivoji · Razvrstitev · Udeleženci. Na
+  namizju končna razvrstitev ostane blok nad pasom pogledov.
 - **Kaj pomeni klik na tekmo, odloči stran** (`KlikTekme` v `TekmaKartica`:
   `klikljiva`, `naKlik`, `namig`) — kartica mreže in vrstica seznama ne ugibata
   po stanju tekme. Posamično tekmovanje: organizatorju vnos rezultata.

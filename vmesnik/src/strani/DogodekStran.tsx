@@ -17,7 +17,8 @@
 
    Na telefonu se naslov in pas pogledov preselita v lepljivo glavo, končna
    razvrstitev pa je zavihek in ne blok nad pasom - sicer bi moral gledalec
-   prevoziti cel seznam, preden bi prišel do zavihkov.
+   prevoziti cel seznam, preden bi prišel do zavihkov. Zavihki tečejo po vrsti
+   tekmovanja: Skupine (privzeto), Izločilni del, Razvrstitev, Udeleženci.
 
    Ekipni dogodek (V28) ima namesto igralcev ekipe s kadri (EkipeDogodka).
    Tekma v mreži ali skupini je tam srečanje: klik vodi v zapisnik (postava in
@@ -1704,9 +1705,7 @@ function Tekmovanje({
      napake in pokaze samo obstojece poglede. */
   const pogledi = useMemo<PogledGumb[]>(() => {
     const seznam: PogledGumb[] = []
-    if (zakljucekVZavihku) {
-      seznam.push({ kljuc: 'zakljucek', oznaka: 'Razvrstitev' })
-    }
+    const razvrstitev: PogledGumb = { kljuc: 'zakljucek', oznaka: 'Razvrstitev' }
     if (sistem === 'SV_REGIJA') {
       /* SV regija ima en pogled »Nivoji«: skupine in žrebi vsakega nivoja stojijo
          skupaj, ker so nivoji med seboj neodvisni tekmovanja in jih bralec
@@ -1715,10 +1714,11 @@ function Tekmovanje({
         seznam.push({ kljuc: 'nivoji', oznaka: 'Nivoji', stevec: podatki.svRegija?.nivoji.length })
       }
     } else {
-      if (
-        (podatki.skupine.length > 0 || podatki.lestvica.length > 0) &&
-        !(zakljucekVZavihku && sistem === 'KROZNI')
-      ) {
+      if (zakljucekVZavihku && sistem === 'KROZNI') {
+        /* Pri kroznem sistemu koncna razvrstitev zamenja zivo lestvico, zato
+           stoji na njenem mestu - lestvica je tam glavni pogled, tekme dodatek. */
+        seznam.push(razvrstitev)
+      } else if (podatki.skupine.length > 0 || podatki.lestvica.length > 0) {
         seznam.push({
           kljuc: 'skupine',
           oznaka: sistem === 'KROZNI' ? 'Razvrstitev' : 'Skupine',
@@ -1735,6 +1735,12 @@ function Tekmovanje({
       ) {
         seznam.push({ kljuc: 'mreza', oznaka: 'Izločilni del' })
       }
+    }
+    /* Zavihki sledijo poteku tekmovanja - skupine, izlocilni del, razvrstitev,
+       udelezenci (odlocitev lastnika, okt 2026) -, zato je tudi pri zakljucenem
+       dogodku privzeti pogled prvi del tekmovanja in ne razvrstitev. */
+    if (zakljucekVZavihku && sistem !== 'KROZNI') {
+      seznam.push(razvrstitev)
     }
     if (podatki.prijave.length > 0) {
       seznam.push({ kljuc: 'udelezenci', oznaka: 'Udeleženci', stevec: aktivnih })
