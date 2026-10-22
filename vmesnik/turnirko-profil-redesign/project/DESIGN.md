@@ -377,7 +377,8 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
     točka že dovoljuje; viden je samo zato, ker je pot dolga cel stolpec.
     *Druga izjema: maskota »Igralec Premium«, razdelek 5b. Tretja: celozaslonski
     oglas »Igralec Premium«, razdelek 5c. Četrta: animirani grafi in lik na
-    strani »Kako deluje«, razdelek 5d.*
+    strani »Kako deluje«, razdelek 5d. Peta: uvodna animacija ob prvem
+    nalaganju, razdelek 5e.*
 
 ### 5b. Izjema: maskota »Igralec Premium«
 
@@ -550,6 +551,21 @@ razdelku »Javna razlaga ratinga« v `slog.css`):
 Merilo ujemanja z maketo je prototip `*.dc.html` v istem brezglavem Chromu (ob
 postrežbi prek HTTP, ker se `dc-import` prek `file://` ne naloži), ne PNG iz
 predaje; podrobnosti in pasti so v `CLAUDE.md`.
+
+### 5e. Izjema: uvodna animacija
+
+Odločitev lastnika, 22. 10. 2026 (predaja `design_handoff_uvodna_animacija`,
+različica »1a · Poteze«, tempo »Srednje«; `komponente/UvodnaAnimacija.tsx`,
+stanje v `pomozno/uvod.ts`, slogi v razdelku »Uvodna animacija« v `slog.css`).
+Ob prvem nalaganju aplikacije v zavihku (enkrat na sejo, `sessionStorage`)
+papir čez celo okno pokaže znak Turnirka: poteze se naložijo od leve proti
+desni, prižge se zelena, izpiše se »Turnirko«, logotip odleti na svoje mesto v
+glavi, črti glave se narišeta, vsebina se dvigne. Trajanje je stalno: logo
+pristane ob 1,7 s, konec je pod 3 s (WCAG 2.2.2). Animirata se samo
+`transform` in `opacity`; barve, pisave in oblike so hišne (radij 0, brez senc
+in gradientov). Predvaja se tudi ob `prefers-reduced-motion` (odločitev
+lastnika, kot pri 5b). Uvod je `aria-hidden`, ne prevzame fokusa in ne zakasni
+nalaganja podatkov. Drugih uvodnih ali prehodnih animacij ni.
 
 ---
 

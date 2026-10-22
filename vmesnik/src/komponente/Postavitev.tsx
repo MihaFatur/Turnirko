@@ -4,7 +4,7 @@
 
    Masthead je nosilni vzorec sistema: logotip 24 px display 800 levo,
    navigacija 15 px na sredini, kontekst v mono desno; pod vsem tanka 1 px in
-   nato polna 3 px črta (nosi ju .glava__crta).
+   nato polna 3 px črta (nosi ju .glava__crta, vsako svoj element).
 
    Zakaj mreža in ne vrsta: navigacija ostane en sam element - podvojena bi jo
    bralnik zaslona bral dvakrat.
@@ -46,6 +46,7 @@ import {
 } from './IkoneNavigacije'
 import { Maskota } from './Maskota'
 import { UporabniskiMeni } from './UporabniskiMeni'
+import { UvodnaAnimacija } from './UvodnaAnimacija'
 
 interface Povezava {
   pot: string
@@ -237,9 +238,9 @@ export function Postavitev() {
               </div>
             </div>
 
-            <div className="glava-telefon__crta" />
-            <div ref={nastaviCiljNaslova} />
-            <div ref={nastaviCiljZavihkov} />
+            <CrtiGlave razred="glava-telefon__crta" />
+            <div className="glava-telefon__vlozek" ref={nastaviCiljNaslova} />
+            <div className="glava-telefon__vlozek" ref={nastaviCiljZavihkov} />
 
             {/* Platno čez celo glavo (absolutno, zato višine ne spremeni); med
                 nastopom oznaka uporabnika izgine. */}
@@ -258,7 +259,7 @@ export function Postavitev() {
                 ko se pojavi. */}
             <Maskota />
 
-            <div className="glava__crta" />
+            <CrtiGlave razred="glava__crta" />
 
             <nav className="glava__navigacija">
               {vidne.map((povezava) => (
@@ -355,6 +356,10 @@ export function Postavitev() {
         {jeTelefon && odprtVec && (
           <PredalVec jeAdmin={jeAdmin} onZapri={() => nastaviOdprtVec(false)} />
         )}
+
+        {/* Enkrat na sejo zavihka, ob prvem nalaganju; zadnji otrok, da glavo
+            in vsebino izmeri, ko že stojita. */}
+        <UvodnaAnimacija />
       </div>
     </GlavaTelefonaKontekst.Provider>
   )
@@ -478,6 +483,17 @@ function PredalVec({ jeAdmin, onZapri }: { jeAdmin: boolean; onZapri: () => void
       </div>
     </>,
     document.body,
+  )
+}
+
+/* Tanka in debela črta pod glavo. Sta dva elementa (ne obroba in ::after), da
+   ju uvodna animacija nariše vsako posebej. */
+function CrtiGlave({ razred }: { razred: string }) {
+  return (
+    <div className={razred}>
+      <div className="glava__crta-tanka" />
+      <div className="glava__crta-debela" />
+    </div>
   )
 }
 

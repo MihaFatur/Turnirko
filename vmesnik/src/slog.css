@@ -299,20 +299,28 @@ textarea:focus-visible,
 }
 
 /* Tanka in za njo debela crta pod mastheadom — nosilni element "zapisnika".
-   Odmik 8 px nad njo je nekdanji padding-bottom vrstice. */
+   Odmik 8 px nad njo je nekdanji padding-bottom vrstice. Crti sta dva
+   elementa (ne obroba in ::after), da ju uvodna animacija narise vsako
+   posebej od leve proti desni; isti par nosi tudi .glava-telefon__crta. */
 .glava__crta {
   grid-area: crta;
   align-self: stretch;
   margin-top: var(--r1);
-  padding-top: 2px;
-  border-top: 1px solid var(--barva-crnilo);
 }
 
-.glava__crta::after {
-  content: '';
-  display: block;
-  height: 3px;
+.glava__crta-tanka,
+.glava__crta-debela {
   background: var(--barva-crnilo);
+  transform-origin: 0 50%;
+}
+
+.glava__crta-tanka {
+  height: 1px;
+}
+
+.glava__crta-debela {
+  height: 3px;
+  margin-top: 2px;
 }
 
 /* Trak brez povezave. Wi-Fi v dvorani pade in podatki obtice; brez tega
@@ -13063,6 +13071,13 @@ a.ekipa-okno__srecanje:hover {
     gap: var(--r4);
   }
 
+  /* Prvi sklop stoji 20 px pod črto glave kot vsaka stran na telefonu
+     (.vsebina--telefon). Namizno pravilo .vsebina:has(.domov) je s :has bolj
+     določeno in ga je povozilo na 40 px. */
+  .vsebina:has(.domov) {
+    padding-top: 20px;
+  }
+
   .domov__vrh {
     gap: var(--r4);
   }
@@ -15324,18 +15339,8 @@ a.ekipa-okno__srecanje:hover {
   display: none;
 }
 
-/* Tanka in za njo debela crta - isti nosilni element kot na namizju. */
-.glava-telefon__crta {
-  border-top: 1px solid var(--barva-crnilo);
-  padding-top: 2px;
-}
-
-.glava-telefon__crta::after {
-  content: '';
-  display: block;
-  height: 3px;
-  background: var(--barva-crnilo);
-}
+/* Tanka in za njo debela crta - isti nosilni element kot na namizju
+   (.glava__crta-tanka in .glava__crta-debela); ovoj sam nima sloga. */
 
 /* Glavno dejanje strani v glavi ("+ Turnir", "+ Dogodek", "Zreb"). Vidna
    visina je 36 px, da pas ostane 56 px; prst dobi svojih 44 px prek
@@ -21897,64 +21902,491 @@ html:has(.razlaga) {
   }
 }
 
-/* Pogoji in zasebnost: ozek stolpec za branje, kazalo kot vrstica povezav in
-   sekcije s črto. Do oktobra 2026 je isti slog nosila razlaga ratinga
-   (.razlaga); odkar je ta stran v desetih korakih, ima Pogoji svoja razreda. */
-.pogoji {
-  max-width: 760px;
+/* Pogoji in zasebnost (/pogoji; predaja design_handoff_pogoji_in_zasebnost,
+   okt 2026): na vrhu kolofon ponudnika in povzetek »Na kratko«, točke so
+   oštevilčene (številka in naslov levo, besedilo desno), ob strani lepljivo
+   kazalo, pod 1100 px pa vrstica zavihkov. Do oktobra 2026 je bila stran ozek
+   stolpec s kazalom v vrstici povezav. */
+
+/* Prelomi vrstic so del predloge: globalna balance (naslovi) in pretty
+   (odstavki) bi jih premaknila. */
+.pogoji :where(h1, h2, h3, p) {
+  text-wrap: wrap;
 }
 
-/* :where - brez dodatne specifičnosti, da posebni odstavki obdržijo svojo
-   velikost. */
-.pogoji :where(p, li) {
-  font-size: var(--tip-telo);
-  line-height: 1.55;
+/* Razmik črk naslova je -0.035em od 34 px (kot v predlogi), ne od 40 px
+   globalnega h1 - span ga podeduje kot dolžino. */
+.pogoji .naslov-strani {
+  font-size: 34px;
+}
+
+/* Cilji skoka (kazalo, zavihki, sidro v naslovu): vrh pristane 26 px pod
+   lepljivo glavo (scroll-padding-top na <html>). Iz istega odmika PogojiStran
+   izpelje črto, po kateri kazalo ve, kaj se bere. */
+.pogoji__vrh,
+.pogoji__razdelek,
+.pogoji__tocka {
+  scroll-margin-top: 26px;
+}
+
+.pogoji__vrh {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r7);
+}
+
+.pogoji__kolofon {
+  padding-top: 12px;
+}
+
+.pogoji__kolofon .kolofon__vrednost {
+  font-size: 15px;
+}
+
+/* Mono oznaka: celica povzetka, desno ob naslovu razdelka, nad kazalom in
+   nad okvirjem točke. */
+.pogoji__oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.pogoji__glava-razdelka {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r3);
+  padding: var(--r2) 0 var(--r1);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+/* --- Na kratko --- */
+
+.pogoji__kratko {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r3);
+}
+
+.pogoji__kratko .pogoji__glava-razdelka {
+  padding-bottom: 0;
+}
+
+.pogoji__kratko-mreza {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.pogoji__kratko-celica {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 20px;
+  border-left: 1px solid var(--barva-crnilo);
+}
+
+.pogoji__kratko-vrednost {
+  font: 800 26px / 1.05 var(--pisava-display);
+  letter-spacing: -0.03em;
+  color: var(--barva-crnilo);
+}
+
+.pogoji__kratko-pojasnilo {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--barva-crnilo-2);
+}
+
+/* --- Telo: kazalo ob strani in razdelki --- */
+
+.pogoji__telo {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--r7);
+  align-items: start;
 }
 
 .pogoji__kazalo {
+  position: sticky;
+  top: calc(var(--visina-glave, 0px) + 30px);
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 20px;
-  margin-top: var(--r3);
-  padding: 12px 0;
-  border-top: 1px solid var(--barva-crta);
-  border-bottom: 1px solid var(--barva-crta);
+  flex-direction: column;
+  gap: 12px;
 }
 
-.pogoji__kazalo a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--barva-glavna-tekst);
+.pogoji__kazalo-glava {
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
+}
+
+.pogoji__kazalo nav {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Postavka kazala. Podčrtaja ob prehodu miške ni: kje je bralec, pove rob in
+   podlaga aktivne postavke. */
+.pogoji__postavka {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-left: 4px solid transparent;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--barva-crnilo-3);
+}
+
+.pogoji__postavka:hover {
   text-decoration: none;
 }
 
-.pogoji__sekcija {
-  margin-top: var(--r6);
+.pogoji__postavka--tocka {
+  padding: 4px 12px 4px 20px;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-2);
 }
 
-@media (max-width: 640px) {
-  .pogoji__sekcija {
-    margin-top: var(--r5);
-    /* Lepljiva glava telefona (56 px in črta) bi pokrila naslov sekcije, do
-       katere vodi sidro (#zasebnost). */
-    scroll-margin-top: 72px;
-  }
-}
-
-
-.pogoji__naslov {
-  margin: var(--r3) 0 var(--r1);
-  font-size: var(--tip-vrstica);
+/* Razdelek, v katerem je bralec: njegove točke so razprte pod njim. */
+.pogoji__postavka--odprta {
+  color: var(--barva-crnilo);
   font-weight: 700;
 }
 
-.pogoji__odstavek {
+.pogoji__postavka--aktivna {
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  color: var(--barva-glavna-tekst);
+  font-weight: 700;
+}
+
+.pogoji__postavka-st {
+  min-width: 26px;
+  font: 500 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  color: var(--barva-crnilo-3);
+}
+
+/* Zavihki stojijo pod 1100 px namesto kazala (na telefonu v lepljivi glavi).
+   Aktiven je razdelek, v katerem je bralec, ne točka. */
+.pogoji__zavihki {
+  display: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+  background: var(--barva-papir);
+}
+
+.pogoji__zavihki::-webkit-scrollbar {
+  display: none;
+}
+
+.pogoji__zavihek {
+  flex: none;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-bottom: 3px solid transparent;
+  font: 600 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.pogoji__zavihek:hover {
+  text-decoration: none;
+}
+
+.pogoji__zavihek--aktiven {
+  border-bottom-color: var(--barva-glavna);
+  color: var(--barva-crnilo);
+}
+
+.pogoji__razdelki {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r7);
+  min-width: 0;
+}
+
+.pogoji__razdelek {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Točka: številka in naslov levo, besedilo (s povzetkom) desno. Številka je
+   vrstična, zato je njena vrstica visoka kot vrstica telesa (17 × 1,5). */
+.pogoji__tocka {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--r4);
+  padding: var(--r3) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.pogoji__tocka-st {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  color: var(--barva-crnilo-3);
+}
+
+.pogoji__tocka h3 {
+  margin-top: var(--r1);
+  font-size: 20px;
+  line-height: 1.15;
+  color: var(--barva-crnilo);
+}
+
+.pogoji__tocka-besedilo {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.pogoji__tocka-besedilo > p {
   margin: 0;
+  max-width: 62ch;
+  line-height: 1.55;
   color: var(--barva-crnilo-2);
+}
+
+/* Povzetek nad besedilom točke (1.3 »V kratkem«, 2.7 »V številkah«). */
+.pogoji__okvir {
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.pogoji__okvir-naslov {
+  padding: 10px 0 4px;
+}
+
+.pogoji__okvir-vrstica {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: var(--r2);
+  padding: 10px 0;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.pogoji__okvir-kljuc {
+  font: 500 var(--tip-mono) / 1.6 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.pogoji__okvir-vrednost {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--barva-crnilo);
+}
+
+/* »V številkah«: ključ je rok (»48 ur«), zato display in ne oznaka. */
+.pogoji__okvir--stevilke .pogoji__okvir-vrstica {
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.pogoji__okvir--stevilke .pogoji__okvir-kljuc {
+  font: 800 24px / 1.1 var(--pisava-display);
+  letter-spacing: -0.03em;
+  text-transform: none;
+  color: var(--barva-crnilo);
+}
+
+.pogoji__okvir--stevilke .pogoji__okvir-vrednost {
+  line-height: 1.45;
+}
+
+.pogoji__kontakt {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--r4);
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.pogoji__kontakt-oznaka {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Pod 1100 px kazalo zamenja vrstica zavihkov, prilepljena pod glavo; skok
+   pristane 5 px pod njo (44 px zavihek + 1 px črta). Povzetek se zloži v
+   toliko stolpcev, kolikor jih gre. */
+@media (max-width: 1099px) {
+  .pogoji__kazalo {
+    display: none;
+  }
+
+  .pogoji__telo {
+    display: block;
+  }
+
+  .pogoji__zavihki {
+    display: flex;
+    position: sticky;
+    top: var(--visina-glave, 0px);
+    z-index: 5;
+    margin: calc(-1 * var(--r6)) calc(-1 * var(--r5)) 0;
+  }
+
+  .pogoji__kratko-mreza {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    row-gap: var(--r3);
+  }
+
+  .pogoji__vrh,
+  .pogoji__razdelek,
+  .pogoji__tocka {
+    scroll-margin-top: 50px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Zgoraj 32 px pod zavihki, spodaj 40 px nad spodnjo vrstico (56 + 3 px). */
+  .vsebina--telefon:has(> .pogoji) {
+    padding-top: var(--r4);
+    padding-bottom: calc(40px + 59px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .vsebina--telefon > .pogoji,
+  .pogoji__vrh,
+  .pogoji__razdelki {
+    gap: var(--r5);
+  }
+
+  /* Zavihki so v lepljivi glavi telefona (GlavaZavihki) in ne lepijo sami.
+     Glava z njimi je visoka 56 + 6 + 45 px, skok pristane 5 px niže. */
+  .pogoji__zavihki {
+    position: static;
+    margin: 0;
+  }
+
+  .pogoji__vrh,
+  .pogoji__razdelek,
+  .pogoji__tocka {
+    scroll-margin-top: 112px;
+  }
+
+  .pogoji .stran-glava {
+    gap: var(--r2);
+  }
+
+  .pogoji .uvod {
+    margin-top: var(--r2);
+    font-size: var(--tip-telo);
+    max-width: none;
+  }
+
+  .pogoji__kolofon {
+    padding-top: 0;
+  }
+
+  .pogoji__kolofon .kolofon__oznaka {
+    font-size: 11px;
+  }
+
+  .pogoji__kolofon .kolofon__vrednost {
+    font-size: 13px;
+  }
+
+  .pogoji__kratko {
+    gap: var(--r1);
+  }
+
+  .pogoji__kratko-mreza {
+    display: flex;
+    flex-direction: column;
+    gap: var(--r1);
+  }
+
+  /* Brez oznake ob strani je naslov blok čez vso širino. */
+  .pogoji__kratko .pogoji__glava-razdelka,
+  .pogoji__razdelek--kontakt .pogoji__glava-razdelka {
+    display: block;
+  }
+
+  .pogoji__kratko-celica {
+    gap: 6px;
+    padding: var(--r2) 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--barva-crta);
+  }
+
+  .pogoji__glava-razdelka {
+    gap: var(--r2);
+    padding-bottom: 0;
+  }
+
+  .pogoji__razdelek--kontakt .pogoji__glava-razdelka {
+    padding-bottom: var(--r1);
+  }
+
+  .pogoji__tocka {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pogoji__tocka-glava {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .pogoji__tocka h3 {
+    margin-top: 0;
+  }
+
+  .pogoji__tocka-besedilo {
+    gap: 12px;
+  }
+
+  .pogoji__tocka-besedilo > p {
+    max-width: none;
+  }
+
+  .pogoji__okvir-vrstica {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .pogoji__okvir-kljuc {
+    font-size: 11px;
+    line-height: 1.7;
+    letter-spacing: 0.06em;
+  }
+
+  .pogoji__okvir-vrednost {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .pogoji__okvir--stevilke .pogoji__okvir-vrstica {
+    grid-template-columns: 116px minmax(0, 1fr);
+  }
+
+  .pogoji__okvir--stevilke .pogoji__okvir-kljuc {
+    font-size: 20px;
+  }
+
+  .pogoji__kontakt {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pogoji__kontakt-oznaka {
+    font-size: 11px;
+  }
 }
 
 /* Povezava na pogoje na dnu okna prijave - drobna, ker ni dejanje okna. */
@@ -23251,3 +23683,124 @@ button.kartoteka__meta {
   }
 }
 /* <<< KARTOTEKA IGRALCEV (konec) */
+
+/* ============================================================
+   Uvodna animacija (komponente/UvodnaAnimacija.tsx, DESIGN.md 5e)
+   ============================================================
+   Papir čez celo okno z znakom v sredini; ob prvem nalaganju aplikacije v
+   zavihku. Tu so samo statični slogi, mere in gibanje postavi komponenta.
+   Koren je .uvod-zaslon in ne .uvod (predaja), ker .uvod že nosi uvodni
+   odstavek pod naslovom strani. Nad vsem drugim (maskota, predal, okna). */
+
+/* Med uvodom stran ne drsi. Prostor za drsnik ostane, da se ob koncu, ko se
+   drsnik vrne, nič ne premakne (logotip je pristal na izmerjenem mestu). */
+html.uvod-tece {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+.uvod-zaslon {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.uvod__podlaga {
+  position: absolute;
+  inset: 0;
+  background: var(--barva-papir);
+}
+
+.uvod__sredina {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Povečan logotip iz glave: ista postavitev, velikost, razmik in optično
+   velikost (opsz) postavi komponenta po izmeri logotipa. Skrit, dokler ni
+   izmerjen. */
+.uvod__znamka {
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.5;
+  color: var(--barva-crnilo);
+  white-space: nowrap;
+  transform-origin: 0 0;
+  visibility: hidden;
+}
+
+.uvod__vrsta {
+  display: flex;
+  align-items: center;
+}
+
+.uvod__znak {
+  position: relative;
+  flex: none;
+}
+
+.uvod__znak-notranji {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+/* Štiri poteze v odstotkih mreže 28 iz ZnakTurnirko (x 1,5 / 8,5 / 15,5 /
+   22,5, y 4, 3 × 20). */
+.uvod__poteza {
+  position: absolute;
+  top: 14.286%;
+  width: 10.714%;
+  height: 71.429%;
+}
+
+.uvod__poteza:nth-child(1) { left: 5.357%; }
+.uvod__poteza:nth-child(2) { left: 30.357%; }
+.uvod__poteza:nth-child(3) { left: 55.357%; }
+.uvod__poteza:nth-child(4) { left: 80.357%; }
+
+/* Duh: kje bo poteza, preden se naloži; zelena ima črtkan obris. */
+.uvod__duh {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: var(--barva-polnilo);
+}
+
+.uvod__poteza:nth-child(4) .uvod__duh {
+  background: none;
+  border: 1px dashed var(--barva-poudarek);
+}
+
+.uvod__polnilo {
+  position: absolute;
+  inset: 0;
+  background: var(--barva-crnilo);
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+}
+
+.uvod__poteza:nth-child(3) .uvod__polnilo { background: var(--barva-glavna); }
+.uvod__poteza:nth-child(4) .uvod__polnilo { background: var(--barva-poudarek); }
+
+/* Rez spodaj: črke se dvignejo izpod osnovnice napisa. */
+.uvod__napis {
+  position: relative;
+  clip-path: inset(-50% -20% 0 -20%);
+}
+
+.uvod__merilo {
+  visibility: hidden;
+}
+
+.uvod__crka {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+}

@@ -36,13 +36,30 @@ import { ZnackaStatusa } from '../komponente/Znacka'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { oblikujDanKratekMesec, oblikujDatum, potekKol, sklonIgralcev } from '../pomozno/oblikovanje'
 import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
+import { useMedij, useTelefon } from '../pomozno/telefon'
 
 /* Koliko vrstic nosi posamezen sklop. Domača stran je povzetek: kdor hoče
    več, gre po povezavi v glavi sklopa. */
 const TURNIRJEV = 4
 const IGRALCEV = 8
 
+/* Kdaj Turnirji in Lige stojita drug ob drugem (slog.css: .domov__vrh pod
+   1100 px pade na en stolpec). */
+const POIZVEDBA_VRH_V_DVEH = '(min-width: 1101px)'
+
 type FilterLestvice = 'vsi' | 'okoli' | 'mojeLige' | 'mojKlub'
+
+/* Vrste, v katerih se vrstice strani dvignejo ob uvodni animaciji
+   (UvodnaAnimacija, atribut data-uvod; štejejo od prve vrste vsebine, glavo
+   prišteje uvod). Sklopa Turnirji in Lige se dvigata vzporedno, kadar stojita
+   drug ob drugem, sicer drug za drugim; lestvica pride za daljšim. Prazen ali
+   nalagajoč se seznam šteje za eno vrsto. */
+function vrsteUvoda(vzporedno: boolean, turnirjev: number, lig: number) {
+  const t = Math.max(turnirjev, 1)
+  const l = Math.max(lig, 1)
+  const lige = vzporedno ? 0 : t + 1
+  return { turnirji: 0, lige, lestvica: vzporedno ? Math.max(t, l) + 1 : lige + l + 1 }
+}
 
 export function DomacaStran() {
   const { uporabnik, mojIdIgralec, jeAdmin, jePremium } = useAvtentikacija()
@@ -147,13 +164,22 @@ export function DomacaStran() {
     (l) => l.status === 'V_TEKU' && !prikazaneLige.includes(l.id),
   ).length
 
+  const jeTelefon = useTelefon()
+  const vzporedno = useMedij(POIZVEDBA_VRH_V_DVEH)
+  const pokazanihTurnirjev = nalagamTurnirje ? 0 : (turnirjiPoMeri ?? prikazaniTurnirji).length
+  const dodajLigo = jePrijavljen && nespremljanihVTeku > 0
+  const uvod = vrsteUvoda(vzporedno, pokazanihTurnirjev, prikazaneLige.length + (dodajLigo ? 1 : 0))
+
   return (
     <section className="domov">
       {/* Naslova prve vrste sta brez črte: nad njima ni vsebine, od katere bi ju
           ločila — stran se z njima šele začne. Sklopi niže ločnico obdržijo. */}
       <div className="domov__vrh">
         <div className="domov__sklop">
-          <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
+          <div
+            className="naslovna-vrstica naslovna-vrstica--brez-crte"
+            data-uvod={uvod.turnirji}
+          >
             {/* »Zate« samo takrat, ko izbor res je njegov - kot »Moje lige«. */}
             <h2>{turnirjiPoMeri ? 'Turnirji zate' : 'Turnirji'}</h2>
             <Link to="/turnirji" className="sekcija__meta">
@@ -161,23 +187,32 @@ export function DomacaStran() {
             </Link>
           </div>
           <NapakaPoizvedbe poizvedba={turnirji} kaj="turnirjev" />
-          {nalagamTurnirje && <Skelet vrstic={3} />}
+          {nalagamTurnirje && <Skelet vrstic={3} uvod={uvod.turnirji + 1} />}
           {!nalagamTurnirje && turnirji.data && prikazaniTurnirji.length === 0 && (
-            <p className="domov__prazno">Ni turnirjev.</p>
+            <p className="domov__prazno" data-uvod={uvod.turnirji + 1}>
+              Ni turnirjev.
+            </p>
           )}
           {!nalagamTurnirje && (
             <div className="domov__seznam">
               {turnirjiPoMeri
-                ? turnirjiPoMeri.map(({ turnir, razlog }) => (
-                    <VrsticaTurnirja turnir={turnir} razlog={razlog} key={turnir.id} />
+                ? turnirjiPoMeri.map(({ turnir, razlog }, i) => (
+                    <VrsticaTurnirja
+                      turnir={turnir}
+                      razlog={razlog}
+                      uvod={uvod.turnirji + 1 + i}
+                      key={turnir.id}
+                    />
                   ))
-                : prikazaniTurnirji.map((t) => <VrsticaTurnirja turnir={t} key={t.id} />)}
+                : prikazaniTurnirji.map((t, i) => (
+                    <VrsticaTurnirja turnir={t} uvod={uvod.turnirji + 1 + i} key={t.id} />
+                  ))}
             </div>
           )}
         </div>
 
         <div className="domov__sklop">
-          <div className="naslovna-vrstica naslovna-vrstica--brez-crte">
+          <div className="naslovna-vrstica naslovna-vrstica--brez-crte" data-uvod={uvod.lige}>
             {/* »Moje lige« samo takrat, ko sklop res kaže moje: lasten izbor ali
                 lige, v katerih igram. Kdor ni ne eno ne drugo, tu vidi lige, ki
                 jih je postavil admin — in naslov, ki bi jim rekel »moje«, bi
@@ -214,16 +249,17 @@ export function DomacaStran() {
             </div>
           </div>
           <NapakaPoizvedbe poizvedba={povzetkiLig} kaj="lig" />
-          {povzetkiLig.isPending && <Skelet vrstic={3} />}
+          {povzetkiLig.isPending && <Skelet vrstic={3} uvod={uvod.lige + 1} />}
           {povzetkiLig.data && povzetkiLig.data.length === 0 && (
-            <p className="domov__prazno">
+            <p className="domov__prazno" data-uvod={uvod.lige + 1}>
               {lastenIzbor ? 'Ne spremljaš še nobene lige.' : 'Nobena liga ne teče.'}
             </p>
           )}
           <div className="domov__seznam">
-            {(povzetkiLig.data ?? []).map((liga) => (
+            {(povzetkiLig.data ?? []).map((liga, i) => (
               <KarticaLige
                 liga={liga}
+                uvod={uvod.lige + 1 + i}
                 key={liga.id}
                 /* Kvadratek je preklop računa; gost ga nima, zato ga tudi ne
                    vidi — vrstica lige mu ostane sama povezava. */
@@ -234,8 +270,8 @@ export function DomacaStran() {
             {/* Vabilo k prijavi je odšlo: gostu je sklop bralen tak, kot je, in
                 poziv pod seznamom je bil edina vrstica, ki od njega nekaj
                 terja. Pot do prijave nosi glava. */}
-            {jePrijavljen && nespremljanihVTeku > 0 && (
-              <div className="domov__liga-dodaj">
+            {dodajLigo && (
+              <div className="domov__liga-dodaj" data-uvod={uvod.lige + 1 + prikazaneLige.length}>
                 <span className="domov__namig">
                   Ne spremljaš {nespremljanihVTeku} {sklonLig(nespremljanihVTeku)}, ki
                   {nespremljanihVTeku === 1 ? ' je' : ' so'} v teku.
@@ -264,6 +300,10 @@ export function DomacaStran() {
         mojIdKluba={mojIdKluba}
         spremljane={idjiMojihLig}
         jePrijavljen={jePrijavljen}
+        uvod={uvod.lestvica}
+        /* Na telefonu glave razpredelnice ni (slog.css), vrstice pridejo takoj
+           za opisom. */
+        uvodPrveVrstice={uvod.lestvica + (jeTelefon ? 2 : 3)}
       />
 
       <KoledarSklop />
@@ -296,7 +336,15 @@ function razvrstiTurnirje(turnirji: TurnirDto[] | undefined): TurnirDto[] {
     .slice(0, TURNIRJEV)
 }
 
-function VrsticaTurnirja({ turnir, razlog }: { turnir: TurnirDto; razlog?: RazlogTurnirja }) {
+function VrsticaTurnirja({
+  turnir,
+  razlog,
+  uvod,
+}: {
+  turnir: TurnirDto
+  razlog?: RazlogTurnirja
+  uvod: number
+}) {
   const vTeku = turnir.status === 'V_TEKU'
   const spalica = vTeku && turnir.vsehTekem > 0
   const odstotek = turnir.vsehTekem > 0
@@ -307,7 +355,7 @@ function VrsticaTurnirja({ turnir, razlog }: { turnir: TurnirDto; razlog?: Razlo
   const opis = opisTurnirja(turnir)
 
   return (
-    <Link to={`/turnirji/${turnir.id}`} className="domov__turnir">
+    <Link to={`/turnirji/${turnir.id}`} className="domov__turnir" data-uvod={uvod}>
       {/* Zakaj je turnir tu - brez tega bi bil izbor po meri videti naključen. */}
       {razlog && <span className="domov__turnir-razlog">{napisRazloga(razlog, turnir)}</span>}
       <span className="domov__turnir-glava">
@@ -380,14 +428,16 @@ function KarticaLige({
   liga,
   spremljam,
   naPreklop,
+  uvod,
 }: {
   liga: DomovLigaDto
   /* null = gost; izbor je last računa, zato kvadratka sploh ne izrišemo. */
   spremljam: boolean | null
   naPreklop: () => void
+  uvod: number
 }) {
   return (
-    <div className="domov__liga">
+    <div className="domov__liga" data-uvod={uvod}>
       <div className="domov__liga-glava">
         <span className="domov__liga-naslov">
           {spremljam !== null && (
@@ -467,6 +517,8 @@ function SklopLestvica({
   jePrijavljen,
   mojaVrstica,
   lestvicaSklopa,
+  uvod,
+  uvodPrveVrstice,
 }: {
   vrstice: LestvicaIgralcaDto[] | undefined
   poizvedba: { error: unknown; isFetching: boolean; refetch: () => unknown; isPending: boolean }
@@ -482,6 +534,9 @@ function SklopLestvica({
   mojaVrstica: LestvicaIgralcaDto | null
   /* Katero lestvico sklop kaže (spol in skupina). */
   lestvicaSklopa: { spol: Spol; rekreativci: boolean }
+  /* Vrsti naslova sklopa in prve vrstice ob uvodni animaciji. */
+  uvod: number
+  uvodPrveVrstice: number
 }) {
   /* Na katerem mestu okna stoji igralec (0 = prvi napisan). Naključno ob
      vsakem prihodu na stran - enkrat je prvi in pod njim sedem, drugič peti -,
@@ -528,7 +583,7 @@ function SklopLestvica({
 
   return (
     <div className="domov__sklop">
-      <div className="naslovna-vrstica">
+      <div className="naslovna-vrstica" data-uvod={uvod}>
         <h2>Lestvica</h2>
         <div className="naslovna-vrstica__desno">
           {jePrijavljen && (
@@ -557,17 +612,19 @@ function SklopLestvica({
 
       {/* Katera lestvica je to: brez napisa bi gledalec ne vedel, da ženske
           niso izpuščene, ampak na drugi lestvici. */}
-      <p className="domov__lestvica-opis">
+      <p className="domov__lestvica-opis" data-uvod={uvod + 1}>
         {filter === 'okoli' && okolica
           ? okolica.opis
           : `${lestvicaSklopa.spol === 'ZENSKI' ? 'Ženske' : 'Moški'} · ${lestvicaSklopa.rekreativci ? 'Rekreativci' : 'Člani'}`}
       </p>
 
       <NapakaPoizvedbe poizvedba={poizvedba} kaj="lestvice" />
-      {poizvedba.isPending && <Skelet vrstic={5} />}
+      {poizvedba.isPending && <Skelet vrstic={5} uvod={uvodPrveVrstice} />}
 
       {vrstice && prikazane.length === 0 && (
-        <p className="domov__prazno">{praznoZaFilter(filter, mojIdKluba, spremljane)}</p>
+        <p className="domov__prazno" data-uvod={uvodPrveVrstice}>
+          {praznoZaFilter(filter, mojIdKluba, spremljane)}
+        </p>
       )}
 
       {prikazane.length > 0 && (
@@ -578,7 +635,7 @@ function SklopLestvica({
             'domov__lestvica' + (prikazane.some((p) => p.mesto >= 100) ? ' domov__lestvica--siroka' : '')
           }
         >
-          <div className="domov__lestvica-vrstica domov__lestvica-vrstica--glava">
+          <div className="domov__lestvica-vrstica domov__lestvica-vrstica--glava" data-uvod={uvod + 2}>
             <span>Mesto</span>
             <span>Premik</span>
             <span>Igralec</span>
@@ -586,11 +643,12 @@ function SklopLestvica({
             <span className="domov__rating-glava">Rating 12 mesecev</span>
             <span className="domov__desno">Rating</span>
           </div>
-          {prikazane.map(({ igralec, mesto }) => (
+          {prikazane.map(({ igralec, mesto }, i) => (
             <VrsticaLestvice
               igralec={igralec}
               mesto={mesto}
               jaz={igralec.idIgralca === mojIdIgralec}
+              uvod={uvodPrveVrstice + i}
               key={igralec.idIgralca}
             />
           ))}
@@ -641,15 +699,18 @@ function VrsticaLestvice({
   igralec,
   mesto,
   jaz,
+  uvod,
 }: {
   igralec: LestvicaIgralcaDto
   mesto: number
   jaz: boolean
+  uvod: number
 }) {
   return (
     <Link
       to={`/igralci/${igralec.idIgralca}/profil`}
       className={'domov__lestvica-vrstica' + (jaz ? ' domov__lestvica-vrstica--jaz' : '')}
+      data-uvod={uvod}
     >
       {/* Prva tri mesta so modra - edini poudarek v stolpcu mest. */}
       <span
@@ -734,9 +795,9 @@ function CrtaRatinga({ tocke }: { tocke: number[] }) {
 
 /* Nalaganje: vrstice v višini pravih, brez vrtavk — stran naj se ob prihodu
    podatkov ne premakne. */
-function Skelet({ vrstic }: { vrstic: number }) {
+function Skelet({ vrstic, uvod }: { vrstic: number; uvod: number }) {
   return (
-    <div className="domov__skelet" aria-hidden="true">
+    <div className="domov__skelet" aria-hidden="true" data-uvod={uvod}>
       {Array.from({ length: vrstic }, (_, i) => (
         <span className="domov__skelet-vrstica" key={i} />
       ))}

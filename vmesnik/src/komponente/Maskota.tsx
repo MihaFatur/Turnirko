@@ -40,6 +40,7 @@ import {
   zabeleziNastop,
 } from '../pomozno/urnikMaskote'
 import { izmeriGlavo, sestaviNastop, type Nastop } from '../pomozno/umestitevMaskote'
+import { useUvodKoncan } from '../pomozno/uvod'
 import { izberiPar } from '../pomozno/vrecaMaskote'
 import { PlatnoMaskote } from './MaskotaPrizori'
 import { PrijavaOkno } from './PrijavaOkno'
@@ -51,8 +52,10 @@ import { PrijavaOkno } from './PrijavaOkno'
 function useSmeVideti(): boolean {
   const { uporabnik, jePremium, nalaganje } = useAvtentikacija()
   const { pathname } = useLocation()
+  /* Med uvodno animacijo maskote ni; urnik začne šteti po njenem koncu. */
+  const uvodKoncan = useUvodKoncan()
 
-  if (nalaganje) return false
+  if (nalaganje || !uvodKoncan) return false
   if (pathname.startsWith('/narocnina')) return false
   return uporabnik === null || (uporabnik.vloga === 'IGRALEC' && !jePremium)
 }

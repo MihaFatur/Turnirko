@@ -28,6 +28,7 @@ import {
   type KontekstOglasa,
   type RazlicicaOglasa,
 } from '../pomozno/premiumOglas'
+import { useUvodKoncan } from '../pomozno/uvod'
 import { PremiumOglas } from './PremiumOglas'
 import { PrijavaOkno } from './PrijavaOkno'
 
@@ -65,6 +66,9 @@ function predogledIzNaslova(): OdprtOglas | null {
 
 export function PremiumOglasPonudnik({ children }: { children: ReactNode }) {
   const { nalaganje } = useAvtentikacija()
+  /* Med uvodno animacijo se oglas ne pokaže; odprt (predogled ali klik po
+     pristanku logotipa) počaka na njen konec. */
+  const uvodKoncan = useUvodKoncan()
   const [oglas, nastaviOglas] = useState<OdprtOglas | null>(null)
   const [oknoGosta, nastaviOknoGosta] = useState<OknoGosta | null>(null)
   const predogledPokazan = useRef(false)
@@ -90,7 +94,7 @@ export function PremiumOglasPonudnik({ children }: { children: ReactNode }) {
   return (
     <PremiumOglasKontekst.Provider value={vrednost}>
       {children}
-      {oglas && (
+      {oglas && uvodKoncan && (
         <PremiumOglas
           kontekst={oglas.kontekst}
           razlicica={oglas.razlicica}

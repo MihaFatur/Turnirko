@@ -11,19 +11,25 @@ import { useEffect, useState } from 'react'
 export const POIZVEDBA_TELEFON = '(max-width: 640px)'
 
 export function useTelefon(): boolean {
-  const [telefon, nastavi] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(POIZVEDBA_TELEFON).matches,
+  return useMedij(POIZVEDBA_TELEFON)
+}
+
+/* Ista prelomna tocka za poljubno medijsko poizvedbo - spet samo za izbiro,
+   ne za mere (npr. ali domaca stran postavi sklopa drug ob drugega). */
+export function useMedij(izraz: string): boolean {
+  const [ujema, nastavi] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(izraz).matches,
   )
 
   useEffect(() => {
-    const poizvedba = window.matchMedia(POIZVEDBA_TELEFON)
+    const poizvedba = window.matchMedia(izraz)
     const obSpremembi = (dogodek: MediaQueryListEvent) => nastavi(dogodek.matches)
     /* Sirina se je lahko spremenila med prvim izrisom in ucinkom (zasuk
        naprave, odprta razvijalska orodja) - zato tudi tu enkrat preberemo. */
     nastavi(poizvedba.matches)
     poizvedba.addEventListener('change', obSpremembi)
     return () => poizvedba.removeEventListener('change', obSpremembi)
-  }, [])
+  }, [izraz])
 
-  return telefon
+  return ujema
 }

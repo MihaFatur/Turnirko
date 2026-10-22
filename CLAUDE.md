@@ -1916,6 +1916,48 @@
     maskota in ključavnica zaženeta svoje učinke v otroku pred njim.
   - **Predogled**: `/?oglas=1a|1b|1c&kontekst=lige|statistika`; `&dokaz=412` nadomesti
     število samo v `npm run dev`.
+- **Uvodna animacija ob prvem nalaganju** (DESIGN.md 5e, predaja
+  `design_handoff_uvodna_animacija`, 1a · Poteze, 22. 10. 2026):
+  `komponente/UvodnaAnimacija.tsx` (zadnji otrok `Postavitev`, portal v `body`),
+  stanje v `pomozno/uvod.ts`, slogi v razdelku »Uvodna animacija« na koncu
+  `slog.css`. Pravila, ki jih ne razbij:
+  - **Enkrat na sejo zavihka** (`sessionStorage['turnirko-uvod-predvajan']`,
+    zapisan ob začetku predvajanja) in samo ob prvem nalaganju aplikacije
+    (`history.state.idx === 0`), nikoli ob premiku med stranmi; odločitev pade
+    pred prvim izrisom, zato se pri zapisanem ključu ne pokaže niti en okvir.
+    Predogled brez nove seje: `/?uvod`.
+  - **Znamka je logotip glave, povečan k-krat**: izmeri se `.glava__logotip`
+    (pisava, `column-gap`, širina znaka), `k = clamp(1.5, 5, W × 0,56 (telefon
+    0,82) / širina logotipa)`, `font-variation-settings: 'opsz' <pisava glave>`
+    (brez tega Bricolage pri veliki pisavi izbere drugo optično velikost) in
+    črke na legah iz `Range` čez cel napis (spodsekavanje). Le tako se ob
+    pristanku (1700 ms) pokrije z logotipom do piksla. Telefonska podstran s
+    puščico nazaj logotipa nima: znamka namesto poleta zbledi.
+  - **Konec je vezan na `finished` vseh animacij, ne na uro** (zajem posnetkov
+    jih ustavi). Dve pasti Chroma: animacija elementa, ki ga React med uvodom
+    odstrani (okostje, ko pridejo podatki), se ne konča nikoli, in preklicana
+    (`idle`) dobi nov `finished`, ki ne pride nikoli — zato opazovalec
+    odstranjenim animacijo prekliče, čakanje pa preklicanih ne čaka.
+  - **Vrstni red vsebine**: glava (navigacija, uporabnik; telefon: puščica,
+    dejanja, uporabnik), nato vsebina. Domača stran ga pove sama (`data-uvod` =
+    vrsta od začetka vsebine; Turnirji in Lige vzporedno, ko stojita drug ob
+    drugem, sicer zaporedno — `vrsteUvoda`). Drugje neposredni otroci
+    `.vsebina > section` in vrstice seznamov v prvem zaslonu po navpični legi
+    (`vrsteVPrvemZaslonu`), največ 30 vrst. Vrstica, ki pride med uvodom,
+    dobi animacijo z uro, usklajeno s sidrom.
+  - Črti glave sta dva elementa (`.glava__crta-tanka`, `.glava__crta-debela`, na
+    namizju in telefonu), ne obroba in `::after`. Koren prekrivala je
+    `.uvod-zaslon`, ker `.uvod` že nosi uvodni odstavek strani. Med uvodom
+    `html.uvod-tece` (brez drsenja, `scrollbar-gutter: stable`, da se ob vrnitvi
+    drsnika nič ne premakne), ozadje `#koren` je `inert` do pristanka.
+  - Maskota (urnik šteje od konca uvoda) in oglas Premium (odprt počaka) se med
+    uvodom ne pokažeta (`useUvodKoncan`).
+  - **Merilo ujemanja je prototip v istem brezglavem Chromu** (Playwright s
+    sistemskim Chromom, podatki prototipa prek `page.route`, `Math.random`
+    fiksiran za spol lestvice): vseh 28 sličic ≤ 0,011 % proti prototipu.
+    Ostanek so črtice zelenega duha in oznake spodnje vrstice (lokalna
+    `fontsource` pisava proti Google Fonts). Prototip ima domačo stran pri
+    924 px v dveh stolpcih, aplikacija pod 1100 px v enem.
 
 - **V lepljivo glavo telefona vlagajo strani svoje skozi `GlavaTelefona`**
   (`useNazaj` za puščico nazaj, portali `GlavaDejanja` / `GlavaNaslov` /
