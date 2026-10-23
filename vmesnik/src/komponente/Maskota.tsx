@@ -205,7 +205,12 @@ export function Maskota() {
       {/* Okno živi v gostitelju in ne v nastopu: nastop izgine, ko ga gost
           klikne, okno pa mora ostati. */}
       {registracija && (
-        <PrijavaOkno zacetniNacin="registracija" naPaketu onZapri={() => nastaviRegistracijo(false)} />
+        <PrijavaOkno
+          zacetniNacin="registracija"
+          naPaketu
+          izvor="maskota"
+          onZapri={() => nastaviRegistracijo(false)}
+        />
       )}
     </>
   )

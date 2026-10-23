@@ -53,6 +53,7 @@ public class RacuniStoritev {
     private final KodeStoritev kode;
     private final RacunDnevnikStoritev dnevnik;
     private final NarocninaStoritev narocninaStoritev;
+    private final PreizkusPremiumStoritev preizkus;
 
     public RacuniStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                           IgralecRepozitorij igralecRepozitorij,
@@ -62,7 +63,8 @@ public class RacuniStoritev {
                           PasswordEncoder kodirnik,
                           KodeStoritev kode,
                           RacunDnevnikStoritev dnevnik,
-                          NarocninaStoritev narocninaStoritev) {
+                          NarocninaStoritev narocninaStoritev,
+                          PreizkusPremiumStoritev preizkus) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -72,6 +74,7 @@ public class RacuniStoritev {
         this.kode = kode;
         this.dnevnik = dnevnik;
         this.narocninaStoritev = narocninaStoritev;
+        this.preizkus = preizkus;
     }
 
     // ---------- Lastni racun ----------
@@ -135,7 +138,8 @@ public class RacuniStoritev {
     }
 
     /* Potrditev igralca: racun se poveze z igralcem in s tem dobi dostop do
-       svoje statistike. Igralec, ki racun ze ima, se ne sme povezati se enkrat. */
+       svoje statistike. Igralec, ki racun ze ima, se ne sme povezati se enkrat.
+       Prva povezava zacne preizkus Premium (PreizkusPremiumStoritev). */
     @Transactional
     public RacunIgralcaDto potrdi(Long idRacuna, PotrditevRacunaVnos v) {
         Uporabnik u = najdiRacun(idRacuna);
@@ -158,6 +162,7 @@ public class RacuniStoritev {
         u.setPovezanOb(LocalDateTime.now());
         uporabnikRepozitorij.save(u);
         dnevnik.zabelezi(u.getId(), "Administrator povezal z igralcem " + igralec.polnoIme());
+        preizkus.zacni(u, LocalDateTime.now());
         return racunDto(u, List.of());
     }
 

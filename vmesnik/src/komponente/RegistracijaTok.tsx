@@ -7,7 +7,13 @@
    PrijavaOkno.tsx); ta komponenta jo samo razdeli na korake in doda vlogo,
    paket, klub/zapis, povzetek in zaključek, ki jih star obrazec ni imel.
    Prijava, koda ob nepotrjenem obstoječem računu in pozabljeno geslo ostanejo
-   v PrijavaOkno.tsx nespremenjeni - tja to okno ne posega. */
+   v PrijavaOkno.tsx nespremenjeni - tja to okno ne posega.
+
+   Kratka pot (`kratko`, oktober 2026): poziv k računu in »To si ti?« na profilu
+   vodita gosta, ki je očitno igralec in ne kupuje, zato koraka »Vloga« in
+   »Paket« odpadeta - igralec, brezplačno, s prvim mesecem Premium (preizkus
+   začne strežnik ob povezavi z zapisom). Ostanejo podatki, klub in zapis,
+   povzetek in koda. Vsak korak gre v statistiko (pomozno/statistika.ts). */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -27,6 +33,7 @@ import {
 } from '../api/tipi'
 import { jeStarejsiOd21ZaCeno, oblikujCeno, oblikujDatum } from '../pomozno/oblikovanje'
 import { shraniStanjePlacila, type ShranjenoStanjePlacila } from '../pomozno/registracijaSeja'
+import { zabelezi, type IzvorRegistracije } from '../pomozno/statistika'
 import { useTelefon } from '../pomozno/telefon'
 import { IskalniIzbirnik } from './IskalniIzbirnik'
 import { KodaVnos } from './KodaVnos'
@@ -58,14 +65,24 @@ const IME_KORAKA: Record<Korak, string> = {
   konec: 'Račun je pripravljen',
 }
 
+/* Igralec, s čigar profila je gost prišel (»To si ti?«): ime in klub se vpišeta
+   vnaprej. Klub je ime, kot ga kaže profil; id se poišče v šifrantu klubov. */
+export interface PredizbranIgralec {
+  ime: string
+  priimek: string
+  klub: string | null
+}
+
 /* Seznam korakov je odvisen od vloge (organizator klub-a med igralci nima) in
-   od tega, ali igralec potrebuje skrbnika - korak "skrbnik" se vstavi sproti. */
-function koraki(vloga: Vloga, potrebujeSkrbnika: boolean): Korak[] {
+   od tega, ali igralec potrebuje skrbnika - korak "skrbnik" se vstavi sproti.
+   Kratka pot nima vloge in paketa (vedno igralec, brezplačno). */
+function koraki(vloga: Vloga, potrebujeSkrbnika: boolean, kratko = false): Korak[] {
   if (vloga === 'organizator') {
     return ['vloga', 'paket', 'podatki', 'klub', 'povzetek', 'koda', 'konec']
   }
   return [
-    'vloga', 'paket', 'podatki', 'klub',
+    ...(kratko ? [] : (['vloga', 'paket'] as const)),
+    'podatki', 'klub',
     ...(potrebujeSkrbnika ? (['skrbnik'] as const) : []),
     'povzetek', 'koda', 'konec',
   ]
@@ -123,6 +140,8 @@ interface Stanje {
   kodaPoslano: string | null
   izidPovezan: boolean | null
   izidOrganizator: boolean
+  /* Zadnji dan preizkusa Premium, ki se je začel s povezavo (ISO). */
+  izidPreizkusDo: string | null
   placanoZnesek: number | null
 }
 
@@ -130,6 +149,7 @@ function zacetnoStanje(
   obnovljeno: ShranjenoStanjePlacila | null,
   naPaketu: boolean,
   zacetniCiklus: CiklusPlacila | undefined,
+  predizbran: PredizbranIgralec | undefined,
 ): Stanje {
   if (obnovljeno) {
     return {
@@ -155,6 +175,7 @@ function zacetnoStanje(
       kodaPoslano: null,
       izidPovezan: null,
       izidOrganizator: obnovljeno.vloga === 'organizator',
+      izidPreizkusDo: null,
       placanoZnesek: obnovljeno.cena,
     }
   }
@@ -165,8 +186,8 @@ function zacetnoStanje(
     korak: naPaketu ? koraki('igralec', false).indexOf('paket') : 0,
     paket: naPaketu ? 'PREMIUM' : 'BREZPLACNO',
     ciklus: naPaketu ? (zacetniCiklus ?? 'LETNO') : 'MESECNO',
-    ime: '',
-    priimek: '',
+    ime: predizbran?.ime ?? '',
+    priimek: predizbran?.priimek ?? '',
     datumRojstva: '',
     email: '',
     geslo: '',
@@ -183,6 +204,7 @@ function zacetnoStanje(
     kodaPoslano: null,
     izidPovezan: null,
     izidOrganizator: false,
+    izidPreizkusDo: null,
     placanoZnesek: null,
   }
 }
@@ -193,6 +215,9 @@ export function RegistracijaTok({
   obnovljenoStanje = null,
   naPaketu = false,
   zacetniCiklus,
+  kratko = false,
+  izvor = 'meni',
+  predizbran,
 }: {
   onZapri: () => void
   onNazajNaPrijavo: () => void
@@ -205,11 +230,17 @@ export function RegistracijaTok({
   /* Izbrano plačevanje ob začetku na koraku »paket« (oglas Igralec Premium);
      brez njega letno. */
   zacetniCiklus?: CiklusPlacila
+  /* Kratka pot brez korakov »Vloga« in »Paket« (glej glavo datoteke). */
+  kratko?: boolean
+  /* Od kod je okno odprto - lastnost vsakega dogodka za statistiko. */
+  izvor?: IzvorRegistracije
+  /* Igralec s profila (»To si ti?«): ime, priimek in klub so vpisani vnaprej. */
+  predizbran?: PredizbranIgralec
 }) {
   const telefon = useTelefon()
   const { prijava } = useAvtentikacija()
   const [s, nastavi] = useState<Stanje>(() =>
-    zacetnoStanje(obnovljenoStanje, naPaketu, zacetniCiklus),
+    zacetnoStanje(obnovljenoStanje, naPaketu, zacetniCiklus, predizbran),
   )
   /* Lik v tabeli paketov nastopi enkrat na odprto okno: ob vrnitvi na korak
      (Nazaj/Naprej) ga ne bi bilo treba spet gledati. */
@@ -246,12 +277,42 @@ export function RegistracijaTok({
   const danes = new Date().toISOString().slice(0, 10)
   const polnoIme = `${s.ime.trim()} ${s.priimek.trim()}`.trim()
 
-  const seznamKorakov = koraki(s.vloga, potrebujeSkrbnika)
+  const seznamKorakov = koraki(s.vloga, potrebujeSkrbnika, kratko)
   const k = Math.min(s.korak, seznamKorakov.length - 1)
   const trenutniKorak = seznamKorakov[k]
 
   const klubi = useQuery({ queryKey: ['klubi'], queryFn: klubiApi.seznam })
   const klubIzbran = klubi.data?.find((klub) => String(klub.id) === s.idKlub) ?? null
+
+  /* Klub s profila se izbere enkrat, ko je šifrant klubov naložen; »Zamenjaj«
+     ga potem lahko izprazni, ne da bi se vrnil. */
+  const klubPredizbran = useRef(false)
+  useEffect(() => {
+    if (klubPredizbran.current || !predizbran?.klub || !klubi.data) return
+    klubPredizbran.current = true
+    const ime = predizbran.klub.trim().toLowerCase()
+    const najden = klubi.data.find((klub) => klub.ime.trim().toLowerCase() === ime)
+    if (najden) nastavi((prejsnje) => (prejsnje.idKlub ? prejsnje : { ...prejsnje, idKlub: String(najden.id) }))
+  }, [predizbran, klubi.data])
+
+  /* Statistika poti do računa: začetek (ne po vrnitvi s Stripa - to je isti
+     poskus), vsak dosežen korak in opustitev, če se okno zapre pred koncem. */
+  const korakZaStatistiko = useRef<Korak>(trenutniKorak)
+  korakZaStatistiko.current = trenutniKorak
+  useEffect(() => {
+    if (obnovljenoStanje) return
+    zabelezi('registracija-zacetek', { izvor, kratko })
+    return () => {
+      if (korakZaStatistiko.current !== 'konec') {
+        zabelezi('registracija-opuscena', { izvor, korak: korakZaStatistiko.current })
+      }
+    }
+    // namerno enkrat na odprto okno
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    zabelezi('registracija-korak', { izvor, korak: trenutniKorak })
+  }, [izvor, trenutniKorak])
 
   /* Predogled zapisa (glej README design_handoff_onboarding, korak "Klub in
      zapis"): sme teči šele, ko polja z imenom/priimkom/datumom niso več
@@ -282,7 +343,7 @@ export function RegistracijaTok({
     : OZNAKE_PAKET[s.paket].replace('Organizator ', '')
 
   const obnovaBesedilo = (() => {
-    if (!placljiv) return 'Brez plačila'
+    if (!placljiv) return jeIgralec ? 'Prvi mesec s Premium' : 'Brez plačila'
     const d = new Date()
     if (s.paket === 'PREMIUM' && s.ciklus === 'MESECNO') d.setMonth(d.getMonth() + 1)
     else d.setFullYear(d.getFullYear() + 1)
@@ -359,6 +420,7 @@ export function RegistracijaTok({
         return
       }
       const ciklusPlacila = s.paket === 'PREMIUM' ? s.ciklus : 'LETNO'
+      zabelezi('registracija-placilo', { izvor, paket: s.paket })
       shraniStanjePlacila({
         vloga: s.vloga,
         paket: s.paket,
@@ -398,10 +460,16 @@ export function RegistracijaTok({
           /* konec vseeno pokaže rezultat, prijava ostane ročna */
         }
       }
+      zabelezi('registracija-potrjena', {
+        izvor,
+        povezan: odgovor.povezan,
+        preizkus: odgovor.preizkusDo !== null,
+      })
       posodobi({
         poteka: false,
         izidPovezan: odgovor.povezan,
         izidOrganizator: odgovor.organizator,
+        izidPreizkusDo: odgovor.preizkusDo,
         korak: seznamKorakov.indexOf('konec'),
       })
     } catch (e) {
@@ -449,8 +517,9 @@ export function RegistracijaTok({
     return 'Naprej'
   })()
 
-  const prikaziPrijava = trenutniKorak === 'vloga'
-  const prikaziNazaj = trenutniKorak !== 'vloga' && trenutniKorak !== 'koda' && trenutniKorak !== 'konec'
+  /* Prvi korak (vloga, pri kratki poti podatki) ponudi prijavo, ostali Nazaj. */
+  const prikaziPrijava = k === 0
+  const prikaziNazaj = k > 0 && trenutniKorak !== 'koda' && trenutniKorak !== 'konec'
 
   /* Cena v traku telefona: brezplačno je "0 €" brez enote (glej posnetek
      igralec-01-vloga-telefon), plačljivo dobi enoto glede na cikel - letni
@@ -462,7 +531,7 @@ export function RegistracijaTok({
 
   const povzetekVrstice: { oznaka: string; vrednost: ReactNode; korak: Korak }[] = jeIgralec
     ? [
-        { oznaka: 'Vloga', vrednost: 'Igralec', korak: 'vloga' },
+        ...(kratko ? [] : [{ oznaka: 'Vloga', vrednost: 'Igralec', korak: 'vloga' as Korak }]),
         { oznaka: 'Ime', vrednost: polnoIme || '—', korak: 'podatki' },
         { oznaka: 'E-pošta', vrednost: s.email || '—', korak: 'podatki' },
         { oznaka: 'Klub', vrednost: klubIzbran?.ime ?? 'Brez kluba', korak: 'klub' },
@@ -472,7 +541,9 @@ export function RegistracijaTok({
           : []),
         {
           oznaka: 'Paket',
-          vrednost: imePaketa + (s.paket === 'PREMIUM' ? (s.ciklus === 'MESECNO' ? ' · mesečno' : ' · letno') : ''),
+          vrednost: imePaketa + (s.paket === 'PREMIUM'
+            ? (s.ciklus === 'MESECNO' ? ' · mesečno' : ' · letno')
+            : ' · prvi mesec Premium'),
           korak: 'paket',
         },
       ]
@@ -587,9 +658,7 @@ export function RegistracijaTok({
                   <span className="registracija__vloga-opis">
                     Tvoj profil, rating in zgodovina tekem. Račun povežemo z zapisom med igralci.
                   </span>
-                  <span className="registracija__vloga-noga">
-                    Premium od {oblikujCeno(CENA_PREMIUM_MESECNO.mlajsi)} / mesec
-                  </span>
+                  <span className="registracija__vloga-noga">Prvi mesec Premium brez plačila</span>
                 </button>
                 <button
                   type="button"
@@ -641,7 +710,7 @@ export function RegistracijaTok({
                   >
                     <span className="registracija__stolp-ime">Brezplačno</span>
                     <span className="registracija__stolp-cena">0 €</span>
-                    <span className="registracija__stolp-enota">Vedno</span>
+                    <span className="registracija__stolp-enota">+ mesec Premium</span>
                     <span
                       className={
                         'registracija__stolp-oznaka'
@@ -714,6 +783,8 @@ export function RegistracijaTok({
                 )}
               </div>
               <p className="registracija__pojasnilo">
+                Brezplačen račun ima prvi mesec vse iz Premium, brez kartice; mesec začne teči, ko je račun
+                povezan s tvojim zapisom.{' '}
                 {starejsiOd21 === null
                   ? `Premium stane ${oblikujCeno(cenePremium.mlajsi)} ${enotaCene} do 21. leta in ${oblikujCeno(cenePremium.starejsi)} po njem.`
                   : `${starejsiOd21 ? `Cena od 21. leta naprej; mlajši plačajo ${oblikujCeno(cenePremium.mlajsi)} ${enotaCene}.` : 'Cena do 21. leta.'} Preklic kadarkoli.`}
@@ -761,6 +832,11 @@ export function RegistracijaTok({
           {trenutniKorak === 'podatki' && (
             <>
               {!jeIgralec && <p className="registracija__uvod">Kontaktna oseba organizatorja.</p>}
+              {kratko && (
+                <p className="registracija__uvod">
+                  Račun je brezplačen. Prvi mesec dobiš Premium brez plačila, kartica ni potrebna.
+                </p>
+              )}
               <div className="obrazec__vrstica obrazec__vrstica--par">
                 <label className="obrazec__polje">
                   <span>Ime</span>
@@ -995,9 +1071,14 @@ export function RegistracijaTok({
                   <div className="registracija__povzetek-vrstica" key={vrstica.oznaka}>
                     <span className="registracija__povzetek-oznaka">{vrstica.oznaka}</span>
                     <span className="registracija__povzetek-vrednost">{vrstica.vrednost}</span>
-                    <button type="button" className="povezava-gumb" onClick={() => pojdiNaKorak(vrstica.korak)}>
-                      Uredi
-                    </button>
+                    {/* Kratka pot nima koraka »Paket«: paket je tam dan, ne izbira. */}
+                    {seznamKorakov.includes(vrstica.korak) ? (
+                      <button type="button" className="povezava-gumb" onClick={() => pojdiNaKorak(vrstica.korak)}>
+                        Uredi
+                      </button>
+                    ) : (
+                      <span />
+                    )}
                   </div>
                 ))}
               </div>
@@ -1072,6 +1153,7 @@ export function RegistracijaTok({
               imePaketa={imePaketa}
               placljiv={placljiv}
               obnovaBesedilo={obnovaBesedilo}
+              preizkusDo={s.izidPreizkusDo}
               rating={predogled.data?.rating ?? null}
               org={org}
               onZapri={onZapri}
@@ -1221,6 +1303,7 @@ function KonecKoraka({
   imePaketa,
   placljiv,
   obnovaBesedilo,
+  preizkusDo,
   rating,
   org,
   onZapri,
@@ -1231,11 +1314,19 @@ function KonecKoraka({
   imePaketa: string
   placljiv: boolean
   obnovaBesedilo: string
+  /* Konec preizkusa Premium, ki se je začel s povezavo (ISO). */
+  preizkusDo: string | null
   rating: number | null
   org: { lig: number; turnirjev: number } | null
   onZapri: () => void
 }) {
-  const jePremium = jeIgralec && imePaketa === 'Premium'
+  /* Premium ima tudi brezplačen račun, ki se je pravkar povezal (preizkus). */
+  const jePremium = jeIgralec && (imePaketa === 'Premium' || preizkusDo !== null)
+  const paketNapis = !jeIgralec || placljiv
+    ? `${imePaketa}${placljiv ? ` · ${obnovaBesedilo.toLowerCase()}` : ''}`
+    : preizkusDo
+      ? `Premium do ${oblikujDatum(preizkusDo)} · brez plačila`
+      : 'Brezplačno · mesec Premium po povezavi'
   return (
     <>
       <p className="registracija__uvod">
@@ -1249,9 +1340,7 @@ function KonecKoraka({
       <div className="registracija__kolofon">
         <div className="registracija__kolofon-vrstica">
           <span className="registracija__kolofon-oznaka">Paket</span>
-          <span className="registracija__kolofon-vrednost">
-            {imePaketa}{placljiv ? ` · ${obnovaBesedilo.toLowerCase()}` : ''}
-          </span>
+          <span className="registracija__kolofon-vrednost">{paketNapis}</span>
         </div>
         <div className="registracija__kolofon-vrstica">
           <span className="registracija__kolofon-oznaka">E-pošta</span>
@@ -1280,7 +1369,9 @@ function KonecKoraka({
               <span className="registracija__korak-prvi-besedilo">
                 <span className="registracija__korak-prvi-naslov">Odpri svoj profil</span>
                 <span className="registracija__korak-prvi-opis">
-                  {povezan ? 'Rating, zgodovina tekem in forma.' : 'Profil se odpre, ko administrator poveže račun.'}
+                  {povezan
+                    ? 'Rating, zgodovina tekem in forma.'
+                    : 'Profil se odpre, ko administrator poveže račun. Takrat začne teči tudi mesec Premium.'}
                 </span>
               </span>
               {povezan ? (

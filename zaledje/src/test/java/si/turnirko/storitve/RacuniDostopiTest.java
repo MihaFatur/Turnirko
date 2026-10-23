@@ -103,10 +103,13 @@ class RacuniDostopiTest {
         racuniStoritev.nastaviAktiven(u.getId(), false);
 
         RacunIgralcaDto dto = vSeznamu("ana@test.si");
+        java.time.LocalDate konecPreizkusa = java.time.LocalDate.now().plusMonths(1);
 
         assertEquals(List.of(
                 "Administrator izklopil račun",
                 "Administrator nastavil geslo",
+                "Preizkus Premium do " + konecPreizkusa.getDayOfMonth() + ". "
+                        + konecPreizkusa.getMonthValue() + ". " + konecPreizkusa.getYear(),
                 "Administrator povezal z igralcem Ana Novak",
                 "Registracija (igralec)"), besedila(dto));
     }

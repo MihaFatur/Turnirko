@@ -111,6 +111,8 @@ export function stanjeNarocnine(n: NarocninaRacuna): string | null {
       return 'zapadla'
     case 'CAKA_PLACILO':
       return 'čaka plačilo'
+    case 'PREIZKUS':
+      return n.veljavna ? ['preizkus', datumDo].filter(Boolean).join(' ') : 'preizkus potekel'
   }
 }
 

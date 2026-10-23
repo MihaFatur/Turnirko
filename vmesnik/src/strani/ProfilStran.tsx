@@ -41,6 +41,7 @@ import { NapovedTekme } from '../komponente/NapovedTekme'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { oznakaPoti, useIzvor } from '../pomozno/izvor'
+import { zabelezi } from '../pomozno/statistika'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import {
   oznakaMeseca,
@@ -56,8 +57,8 @@ import {
 export function ProfilStran() {
   const { id } = useParams()
   const idIgralec = Number(id)
-  const { jeAdmin, mojIdIgralec, jePremium } = useAvtentikacija()
-  const { odpri: odpriPremiumOglas } = usePremiumOglas()
+  const { uporabnik, nalaganje, jeAdmin, mojIdIgralec, jePremium } = useAvtentikacija()
+  const { odpri: odpriPremiumOglas, odpriRegistracijo, odpriPrijavo } = usePremiumOglas()
   const odjemalec = useQueryClient()
   const navigiraj = useNavigate()
   /* Pot, s katere je gledalec prišel (liga, zapisnik, lestvica ...), ali null,
@@ -328,6 +329,30 @@ export function ProfilStran() {
             Nadgradi na Premium
           </button>
           , da jih vidiš.
+        </div>
+      )}
+      {/* Gost na profilu je najpogosteje igralec sam (ali starš): vrstica pove,
+          kaj mu račun da, in odpre kratko registracijo z že vpisanim imenom in
+          klubom. Ali ima igralec račun že, gost ne izve - vrstica je ista za
+          vse profile (glej DESIGN.md 5f). */}
+      {!nalaganje && uporabnik === null && (
+        <div className="obvestilo profil__to-si-ti">
+          <span className="profil__to-si-ti-naslov">To si ti?</span>{' '}
+          Z brezplačnim računom prvi mesec vidiš svojo formo, nasprotnike, napoved tekme ter nize in točke.{' '}
+          <button
+            type="button"
+            className="povezava-gumb povezava-gumb--vrstica"
+            onClick={() => {
+              zabelezi('to-si-ti-klik')
+              odpriRegistracijo({ izvor: 'profil', predizbran: { ime, priimek, klub: p.glava.klub } })
+            }}
+          >
+            Ustvari račun
+          </button>
+          {' · '}
+          <button type="button" className="povezava-gumb povezava-gumb--vrstica" onClick={odpriPrijavo}>
+            Prijava
+          </button>
         </div>
       )}
 

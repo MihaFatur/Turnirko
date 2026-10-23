@@ -2,9 +2,11 @@
    obnove, obdobje, preklop mesečno ↔ letno, preklic in obnova; brez Premium
    nadgradnja s primerjalno tabelo kot v koraku »Paket« registracije.
 
-   Stran ima tri stanja, ki jih določa zaledje (NarocninaDto): brez Premium,
-   aktivna in preklicana (Premium velja do konca plačanega obdobja). Vse tri
-   izrisujeta ISTO ploščo v istem jeziku kot razdeljeno okno registracije, zato
+   Stran ima štiri stanja, ki jih določa zaledje (NarocninaDto): brez Premium,
+   preizkus (prvi mesec Premium brez plačila in brez Stripa - stran je takrat
+   ponudba nakupa z dnevi preizkusa v glavi), aktivna in preklicana (Premium
+   velja do konca plačanega obdobja). Vsa izrisujejo ISTO ploščo v istem
+   jeziku kot razdeljeno okno registracije, zato
    so razredi `.registracija__*` (glej razdelek »Naročnina igralca« v
    slog.css). Organizatorski del strani je ostal v NarocninaStran.
 
@@ -29,6 +31,7 @@ import {
 } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { danesIso, dniMed, oblikujCeno, oblikujDatum, sklonDni } from '../pomozno/oblikovanje'
+import { zabelezi } from '../pomozno/statistika'
 import { useTelefon } from '../pomozno/telefon'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { ZnakTurnirko } from './Postavitev'
@@ -126,9 +129,12 @@ function PogledNarocnine({
   const [obvestiloRocno, nastaviObvestilo] = useState<Obvestilo | null>(null)
   const [napaka, nastaviNapako] = useState<string | null>(null)
 
-  const jePremium = n.aktivna && !n.preklicana
-  const jePreklicana = n.aktivna && n.preklicana
-  const imaPremium = n.aktivna
+  /* Preizkus: Premium velja, plačila pa ni - za nakup je stran enaka Free,
+     glava in trak pa kažeta, koliko preizkusa je še ostalo. */
+  const jePreizkus = n.aktivna && n.status === 'PREIZKUS'
+  const imaPremium = n.aktivna && !jePreizkus
+  const jePremium = imaPremium && !n.preklicana
+  const jePreklicana = imaPremium && n.preklicana
   const jeFree = !imaPremium
   /* Obnova ni uspela: Stripe plačilo še ponavlja, Premium pa je izklopljen. Stran
      ne sme pokazati ponudbe nakupa (nova naročnina ob stari, ki jo Stripe še
@@ -156,7 +162,7 @@ function PogledNarocnine({
   // ---------- Obdobje ----------
 
   const konec = oblikujDatum(n.obdobjeDo)
-  const imaObdobje = imaPremium && !!n.obdobjeOd && !!n.obdobjeDo
+  const imaObdobje = n.aktivna && !!n.obdobjeOd && !!n.obdobjeDo
   const dni = Math.max(0, dniMed(danesIso(), n.obdobjeDo) ?? 0)
   const dniObdobja = dniMed(n.obdobjeOd, n.obdobjeDo) ?? 0
   const pretecenih = imaObdobje && dniObdobja > 0
@@ -217,7 +223,10 @@ function PogledNarocnine({
   })
 
   const nadgradi = useMutation({
-    mutationFn: () => placilaApi.nadgradnja({ paket: 'PREMIUM', ciklus: izbran }),
+    mutationFn: () => {
+      zabelezi('premium-nakup-zacetek', { ciklus: izbran, preizkus: jePreizkus })
+      return placilaApi.nadgradnja({ paket: 'PREMIUM', ciklus: izbran })
+    },
     onSuccess: (seja) => {
       window.location.href = seja.url
     },
@@ -256,20 +265,33 @@ function PogledNarocnine({
               + 'ko se plačilo izvede, se Premium vklopi sam.',
             uspeh: false,
           }
-        : null)
+        : jePreizkus
+          ? {
+              besedilo:
+                `Preizkus Premium velja do ${konec}. Nato račun preide na Free; rating, zgodovina tekem in profil `
+                + 'ostanejo. Če Premium kupiš zdaj, plačano obdobje začne teči takoj.',
+              uspeh: false,
+            }
+          : null)
 
   const prikaziPreklop = jePremium && !preklopNa && izbran !== ciklus
 
   // ---------- Besedila ----------
 
-  const imePaketa = OZNAKE_PAKET[imaPremium ? 'PREMIUM' : 'BREZPLACNO']
-  const naslov = placiloNiUspelo ? 'Plačilo ni uspelo' : jeFree ? 'Nadgradi na Premium' : 'Igralec Premium'
+  const imePaketa = OZNAKE_PAKET[n.aktivna ? 'PREMIUM' : 'BREZPLACNO']
+  const naslov = placiloNiUspelo
+    ? 'Plačilo ni uspelo'
+    : jePreizkus ? 'Obdrži Premium' : jeFree ? 'Nadgradi na Premium' : 'Igralec Premium'
   const statusNapis = placiloNiUspelo
     ? 'Naročnina · plačilo ni uspelo'
-    : jeFree ? 'Paket · Free' : jePreklicana ? 'Naročnina · preklicana' : 'Naročnina · aktivna'
+    : jePreizkus
+      ? 'Preizkus · brez plačila'
+      : jeFree ? 'Paket · Free' : jePreklicana ? 'Naročnina · preklicana' : 'Naročnina · aktivna'
   const naslovDesno = placiloNiUspelo
     ? 'Posodobi kartico'
-    : jeFree ? 'Preklic kadarkoli' : jePreklicana ? `Velja do ${konec}` : `Obnova ${konec}`
+    : jePreizkus
+      ? `Preizkus do ${konec}`
+      : jeFree ? 'Preklic kadarkoli' : jePreklicana ? `Velja do ${konec}` : `Obnova ${konec}`
   const trakCena = placiloNiUspelo
     ? 'Neplačano'
     : jeFree
@@ -277,12 +299,12 @@ function PogledNarocnine({
     : jePreklicana
       ? 'Brez obnove'
       : oblikujCeno(cene[ciklus]) + enota(ciklus)
-  const dniNapis = `Še ${dni} ${sklonDni(dni)}${jePreklicana ? ', nato Free' : ''}`
-  const nazivStolpca = imaPremium ? 'Premium · vključeno' : 'Premium · kaj dobiš'
+  const dniNapis = `Še ${dni} ${sklonDni(dni)}${jePreklicana || jePreizkus ? ', nato Free' : ''}`
+  const nazivStolpca = n.aktivna ? 'Premium · vključeno' : 'Premium · kaj dobiš'
 
   const izbiraVrstice = jeFree
     ? [
-        { oznaka: 'Paket', vrednost: placiloNiUspelo ? 'Neplačano' : 'Free' },
+        { oznaka: 'Paket', vrednost: placiloNiUspelo ? 'Neplačano' : jePreizkus ? 'Preizkus' : 'Free' },
         { oznaka: 'Plačevanje', vrednost: imeCiklusa(izbran) },
         { oznaka: 'Cena', vrednost: oblikujCeno(cene[izbran]) },
       ]
@@ -357,21 +379,23 @@ function PogledNarocnine({
         </div>
 
         <div className="narocnina__glava-stanje">
-          {imaPremium && (
+          {n.aktivna && (
             <div className={'narocnina__blok' + (jePreklicana ? ' narocnina__blok--preklicano' : '')}>
               <div className="narocnina__blok-vrstica">
                 <span className="narocnina__blok-st">{imaObdobje ? dni : '—'}</span>
                 <span className="narocnina__blok-oznaka">
-                  {jePreklicana ? 'dni Premium še velja' : 'dni do obnove'}
+                  {jePreizkus ? 'dni preizkusa še velja' : jePreklicana ? 'dni Premium še velja' : 'dni do obnove'}
                 </span>
               </div>
               <div className="narocnina__blok-noga">
                 <span>{naslovDesno}</span>
-                <span>{jePreklicana ? 'Brez obnove' : oblikujCeno(cene[naslednjiCiklus])}</span>
+                <span>
+                  {jePreizkus ? 'Brez plačila' : jePreklicana ? 'Brez obnove' : oblikujCeno(cene[naslednjiCiklus])}
+                </span>
               </div>
             </div>
           )}
-          {jeFree && (
+          {jeFree && !jePreizkus && (
             <div className="registracija__kolofon narocnina__kolofon--crn">
               {[
                 { oznaka: 'Paket', vrednost: placiloNiUspelo ? 'Neplačano' : 'Free' },
@@ -427,10 +451,10 @@ function PogledNarocnine({
                     key={ime}
                     className={
                       'registracija__korak narocnina__korak'
-                      + (imaPremium ? ' registracija__korak--opravljen' : '')
+                      + (n.aktivna ? ' registracija__korak--opravljen' : '')
                     }
                   >
-                    <span className="registracija__korak-st">{imaPremium ? 'OK' : stevilka(i)}</span>
+                    <span className="registracija__korak-st">{n.aktivna ? 'OK' : stevilka(i)}</span>
                     <span className="registracija__korak-ime">{ime}</span>
                   </li>
                 ))}
@@ -531,7 +555,7 @@ function PogledNarocnine({
                       <span className="registracija__stolp-ime">Free</span>
                       <span className="registracija__stolp-cena">0 €</span>
                       <span className="registracija__stolp-enota">Vedno</span>
-                      <span className="registracija__stolp-oznaka">Trenutno</span>
+                      <span className="registracija__stolp-oznaka">{jePreizkus ? `Od ${konec}` : 'Trenutno'}</span>
                     </div>
                     <div className="registracija__stolp registracija__stolp--izbran narocnina__stolp">
                       <span className="registracija__stolp-ime">Premium</span>
@@ -728,7 +752,9 @@ function PogledNarocnine({
                 disabled={nadgradi.isPending}
                 onClick={() => nadgradi.mutate()}
               >
-                {nadgradi.isPending ? 'Preusmerjam na plačilo …' : `Nadgradi na Premium · ${oblikujCeno(cene[izbran])}`}
+                {nadgradi.isPending
+                  ? 'Preusmerjam na plačilo …'
+                  : `${jePreizkus ? 'Kupi Premium' : 'Nadgradi na Premium'} · ${oblikujCeno(cene[izbran])}`}
               </button>
             ) : (
               <button
@@ -750,20 +776,20 @@ function PogledNarocnine({
         <div className="narocnina__prednosti-glava">
           <h2 className="narocnina__prednosti-naslov">Kaj dobiš s Premium</h2>
           <span className="narocnina__prednosti-meta">
-            {imaPremium ? `${PREDNOSTI.length} od ${PREDNOSTI.length} vključeno` : `Od ${oblikujCeno(cene.MESECNO)} / mesec`}
+            {n.aktivna ? `${PREDNOSTI.length} od ${PREDNOSTI.length} vključeno` : `Od ${oblikujCeno(cene.MESECNO)} / mesec`}
           </span>
         </div>
         <div className="narocnina__prednosti-seznam">
           {PREDNOSTI.map((p, i) => (
             <div className="narocnina__prednost" key={p.ime}>
-              <span className={'narocnina__prednost-st' + (imaPremium ? ' narocnina__prednost-st--vkljuceno' : '')}>
+              <span className={'narocnina__prednost-st' + (n.aktivna ? ' narocnina__prednost-st--vkljuceno' : '')}>
                 {stevilka(i)}
               </span>
               <div className="narocnina__prednost-besedilo">
                 <span className="narocnina__prednost-ime">{p.ime}</span>
                 <span className="narocnina__prednost-opis">{p.opis}</span>
               </div>
-              {imaPremium ? (
+              {n.aktivna ? (
                 <Link to={p.pot} className="narocnina__prednost-povezava">
                   {p.cilj} →
                 </Link>

@@ -97,6 +97,11 @@ public class Narocnina {
     @Column(name = "naslednji_paket")
     private Paket naslednjiPaket;
 
+    /* Kdaj je slo obvestilo, da se preizkus izteka (samo PREIZKUS, enkrat). */
+    @Convert(converter = CasKotBesedilo.class)
+    @Column(name = "opomnik_poslan_ob")
+    private LocalDateTime opomnikPoslanOb;
+
     @Convert(converter = CasKotBesedilo.class)
     @Column(name = "ustvarjena_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenaOb;
@@ -165,6 +170,9 @@ public class Narocnina {
     public Paket getNaslednjiPaket() { return naslednjiPaket; }
     public void setNaslednjiPaket(Paket naslednjiPaket) { this.naslednjiPaket = naslednjiPaket; }
 
+    public LocalDateTime getOpomnikPoslanOb() { return opomnikPoslanOb; }
+    public void setOpomnikPoslanOb(LocalDateTime opomnikPoslanOb) { this.opomnikPoslanOb = opomnikPoslanOb; }
+
     /* Zacetek tekocega obdobja za prikaz. Vrstice izpred V35 ga nimajo
        zapisanega: izpelje se kot konec obdobja minus en cikel (Stripe obdobje
        je natanko mesec oz. leto), dokler ga prvi webhook ne zapise prav. */
@@ -186,12 +194,16 @@ public class Narocnina {
 
     /* Ali narocnina zdaj daje dostop do svojih ugodnosti: AKTIVNA vedno,
        PREKLICANA se do konca placanega obdobja (uporabnik je placal, samo
-       obnovitev je izklopil). */
+       obnovitev je izklopil), PREIZKUS do konca preizkusa. */
     public boolean jeVeljavna(LocalDateTime zdaj) {
         if (status == StatusNarocnine.AKTIVNA) {
             return true;
         }
-        return status == StatusNarocnine.PREKLICANA
+        return (status == StatusNarocnine.PREKLICANA || status == StatusNarocnine.PREIZKUS)
                 && trenutnoObdobjeDo != null && trenutnoObdobjeDo.isAfter(zdaj);
+    }
+
+    public boolean jePreizkus() {
+        return status == StatusNarocnine.PREIZKUS;
     }
 }

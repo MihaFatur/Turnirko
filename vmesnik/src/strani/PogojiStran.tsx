@@ -43,6 +43,7 @@ const V_KRATKEM: [string, string][] = [
       : 'Izpisana pred nakupom in končna. Prodajalec ni zavezanec za DDV, zato DDV ni obračunan.',
   ],
   ['Plačilo', 'Stripe. Račun za vsako plačilo (tudi za obnovo) prejmeš po e-pošti.'],
+  ['Preizkus', 'Prvi mesec Premium brez plačila in brez kartice; ne obnovi se sam.'],
   ['Obnova', 'Samodejna ob koncu obdobja (mesec ali leto), dokler je ne prekličeš.'],
   ['Preklic', 'Kadar koli na strani Naročnina; velja do konca že plačanega obdobja.'],
   [
@@ -108,7 +109,10 @@ const POGOJI: Tocka[] = [
         naslov, s katerim plačaš. Naročnina se ob koncu obdobja
         (mesec ali leto) samodejno obnovi, dokler je ne prekličeš. Prekličeš jo kadar koli na
         strani <Link to="/narocnina">Naročnina</Link>; velja do konca že plačanega obdobja.
-        Preklop med mesečnim in letnim plačilom velja ob naslednji obnovi. Kot potrošnik lahko
+        Preklop med mesečnim in letnim plačilom velja ob naslednji obnovi. Račun igralca dobi
+        enkrat prvi mesec Premium brez plačila (preizkus), ko je povezan s svojim zapisom med
+        igralci; preizkus ne zahteva kartice in se ne obnovi sam, po njem račun ostane
+        brezplačen. Kot potrošnik lahko
         od pogodbe odstopiš v 14 dneh od nakupa brez navedbe razloga — piši nam; vrnemo
         plačilo, zmanjšano za že porabljeni del obdobja.
       </>

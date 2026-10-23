@@ -14,9 +14,10 @@ import { opisNapake } from '../api/odjemalec'
 import { authApi } from '../api/zahteve'
 import type { CiklusPlacila, NamenKode, PotrditevOdgovorDto } from '../api/tipi'
 import type { ShranjenoStanjePlacila } from '../pomozno/registracijaSeja'
+import type { IzvorRegistracije } from '../pomozno/statistika'
 import { KodaVnos } from './KodaVnos'
 import { ModalnoOkno } from './ModalnoOkno'
-import { RegistracijaTok } from './RegistracijaTok'
+import { RegistracijaTok, type PredizbranIgralec } from './RegistracijaTok'
 
 type Nacin = 'prijava' | 'registracija' | 'koda' | 'pozabljeno'
 
@@ -50,6 +51,9 @@ export function PrijavaOkno({
   obnovljenoStanjePlacila = null,
   naPaketu = false,
   zacetniCiklus,
+  kratko = false,
+  izvor = 'meni',
+  predizbran,
 }: {
   onZapri: () => void
   /* Korak, na katerem se okno odpre (npr. "registracija" z domače strani ali
@@ -68,8 +72,18 @@ export function PrijavaOkno({
   /* Samo z `naPaketu`: izbrano plačevanje (mesečno/letno), npr. iz oglasa Igralec
      Premium; brez njega letno. */
   zacetniCiklus?: CiklusPlacila
+  /* Samo z načinom "registracija": kratka pot brez korakov »Vloga« in »Paket«
+     (poziv k računu, »To si ti?« na profilu - glej RegistracijaTok). */
+  kratko?: boolean
+  /* Od kod je okno odprto - za statistiko poti do računa. */
+  izvor?: IzvorRegistracije
+  /* Igralec s profila, s katerega je gost prišel (vpisano ime in klub). */
+  predizbran?: PredizbranIgralec
 }) {
   const [nacin, nastaviNacin] = useState<Nacin>(zacetniNacin)
+  /* Kdor iz prijave preklopi na registracijo, je prišel »iz prijave« - in to
+     po polni poti (z vlogo), ne po kratki. */
+  const [izPrijave, nastaviIzPrijave] = useState(false)
   const [koda, nastaviKodo] = useState<StanjeKode | null>(
     email ? { email, korak: kodaSkrbnika ? 'SKRBNIK' : 'EPOSTA', posljanaZdaj: false } : null,
   )
@@ -98,6 +112,9 @@ export function PrijavaOkno({
           obnovljenoStanje={obnovljenoStanjePlacila}
           naPaketu={naPaketu}
           zacetniCiklus={zacetniCiklus}
+          kratko={kratko && !izPrijave}
+          izvor={izPrijave ? 'prijava' : izvor}
+          predizbran={izPrijave ? undefined : predizbran}
         />
       </ModalnoOkno>
     )
@@ -111,7 +128,10 @@ export function PrijavaOkno({
           onZapri={onZapri}
           onKoda={naKodo}
           onPozabljeno={() => nastaviNacin('pozabljeno')}
-          onRegistracija={() => nastaviNacin('registracija')}
+          onRegistracija={() => {
+            nastaviIzPrijave(true)
+            nastaviNacin('registracija')
+          }}
         />
       )}
       {nacin === 'koda' && koda && (

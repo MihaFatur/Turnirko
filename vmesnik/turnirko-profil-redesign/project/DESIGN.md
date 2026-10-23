@@ -519,7 +519,8 @@ telefonu, nalepka in žig sta zasukana, zavesa in ključavnica se gibljeta do
    namerno drugače kot pri maskoti v glavi (5b, pogoj 3): tam je lik kratka
    dekoracija, tu je oglas čez cel zaslon.
 6. **Drugih oglasov ni.** Nova različica, nov sprožilec ali kaj podobnega na
-   drugem mestu je nova odločitev.
+   drugem mestu je nova odločitev. (Poziv k računu in »To si ti?« sta taka
+   odločitev, razdelek 5f.)
 
 ### 5d. Izjema: razlaga ratinga (`/o-ratingu`)
 
@@ -566,6 +567,40 @@ pristane ob 1,7 s, konec je pod 3 s (WCAG 2.2.2). Animirata se samo
 in gradientov). Predvaja se tudi ob `prefers-reduced-motion` (odločitev
 lastnika, kot pri 5b). Uvod je `aria-hidden`, ne prevzame fokusa in ne zakasni
 nalaganja podatkov. Drugih uvodnih ali prehodnih animacij ni.
+
+### 5f. Poziv k računu in »To si ti?«
+
+Odločitev lastnika, 23. 10. 2026. Gostje gledajo izide in odidejo, računa pa si
+ne ustvarijo, ker ga za ogled ne potrebujejo; brezplačen račun zato dobi prvi
+mesec Premium brez plačila (preizkus, zaledje `PreizkusPremiumStoritev`). To
+gostu povesta dve mesti, ki nista oglas Premium iz 5c (ta ostane sprožen samo s
+klikom na zaklenjeno funkcijo):
+
+1. **Poziv** (`komponente/PozivRacuna.tsx`, pravila v `pomozno/pozivRacuna.ts`):
+   navadno `ModalnoOkno` brez gibanja in brez risbe — naslov, en odstavek,
+   kolofon (Račun 0 € · Premium prvi mesec brez plačila · Kartica ni potrebna),
+   »Ustvari račun« (glavni), »Ne zdaj« in »Že imaš račun? Prijava«. Na telefonu
+   (≤ 640 px) je spodnji list čez širino zaslona (`ModalnoOkno spodaj`, 3 px
+   črta na vrhu), da zgornji del strani ostane viden.
+   - Samo gost, **po 30 s na strani in šele ob naslednjem prehodu na drugo
+     stran**, ko se ta izriše (~0,7 s). Okno nikoli ne ujame klika: kar je gost
+     kliknil, se izvede.
+   - Izhod je vedno mogoč (»Ne zdaj«, ✕, Escape, klik ob okno). Vsak izid
+     začne premor: po prvem 7 dni, potem 30 dni; največ enkrat na sejo. Po
+     pozivu maskota (5b) do konca seje ne nastopi.
+   - Nikoli na straneh nakupa, registracije, pogojev, upravnih straneh in
+     straneh za tisk, ne med uvodom (5e) in ne čez drugo okno, predal ali meni.
+   - Poskus: okno dobi polovica gostov (`DELEZ_Z_OKNOM` v
+     `pomozno/statistika.ts`), druga polovica je primerjava. Ko je odločeno,
+     delež postane 1 ali 0.
+2. **»To si ti?«** na profilu igralca: samo gost, obvestilo z modrim levim
+   robom pod grafom ratinga, »Ustvari račun« odpre kratko registracijo z že
+   vpisanim imenom in klubom, »Prijava« prijavo. Vrstica je ista na vsakem
+   profilu — gost ne izve, ali ima igralec račun.
+
+Obe poti odpreta **kratko registracijo** (brez korakov »Vloga« in »Paket«).
+Besedilo ostane zapisniško: brez vzklikov, številka pove (0 €, prvi mesec), in
+nikoli ne obljubi, kar brezplačen račun po preizkusu ne da.
 
 ---
 

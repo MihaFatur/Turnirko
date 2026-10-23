@@ -742,7 +742,9 @@ export interface NarocninaDto {
   upravljiva: boolean
 }
 
-export type StatusNarocnine = 'CAKA_PLACILO' | 'AKTIVNA' | 'PREKLICANA' | 'ZAPADLA'
+/* PREIZKUS = prvi mesec Premium brez plačila in brez Stripa (V49): velja do
+   obdobjeDo, nato račun preide na Free sam od sebe. */
+export type StatusNarocnine = 'CAKA_PLACILO' | 'AKTIVNA' | 'PREKLICANA' | 'ZAPADLA' | 'PREIZKUS'
 
 /* ---------- Organizatorski pregled (OrganizatorPregledDto na zaledju) ----------
    »Nadzorna plošča« organizatorja. Zaledje pošlje števila, datume in imena;
@@ -894,6 +896,9 @@ export interface PotrditevOdgovorDto {
   povezan: boolean
   potrebnaKodaSkrbnika: boolean
   organizator: boolean
+  /* Zadnji dan preizkusa Premium, ki se je začel s povezavo (ISO); null, če
+     preizkusa ni (račun ni povezan ali je naročnino že imel). */
+  preizkusDo: string | null
 }
 
 export type NamenKode = 'EPOSTA' | 'SKRBNIK' | 'GESLO'

@@ -23842,3 +23842,80 @@ html.uvod-tece {
   left: 0;
   opacity: 0;
 }
+
+/* ============================================================
+   Poziv k računu (komponente/PozivRacuna.tsx, DESIGN.md 5f)
+   ============================================================
+   Okno za gosta po 30 s na strani, ob naslednjem prehodu. Navadno ModalnoOkno
+   (glava, ✕, telo) v hišnem slogu, brez gibanja. Na telefonu spodnji list čez
+   širino zaslona: zgornji del strani, na katero je gost pravkar prišel, ostane
+   viden. Kolofon je isti kot v registraciji (.registracija__kolofon). */
+
+.modal.modal--spodaj {
+  max-width: 480px;
+}
+
+.poziv__besedilo {
+  margin: 0;
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--barva-crnilo-2);
+}
+
+.poziv__gumbi {
+  display: flex;
+  gap: 12px;
+}
+
+.poziv__gumbi .gumb {
+  flex: 1 1 0;
+}
+
+/* Povezava stoji na levem robu besedila (povezava-gumb ima sicer 8 px ob strani). */
+.poziv__prijava {
+  align-self: flex-start;
+  min-height: 44px;
+  padding-inline: 0;
+}
+
+@media (max-width: 640px) {
+  .modal__zastor.modal__zastor--spodaj {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal.modal--spodaj {
+    max-width: none;
+    border-width: 3px 0 0;
+    max-height: calc(100dvh - 56px);
+    overflow-y: auto;
+  }
+
+  .modal--spodaj .modal__glava {
+    padding: var(--r2);
+  }
+
+  .modal--spodaj .modal__glava h2 {
+    font-size: 24px;
+  }
+
+  .modal--spodaj .modal__telo {
+    padding: var(--r2) var(--r2) calc(var(--r2) + env(safe-area-inset-bottom, 0px));
+    gap: var(--r2);
+  }
+}
+
+/* »To si ti?« na profilu (gost): obvestilo z modrim robom - ponudba, ne
+   opozorilo (rjasta je v vmesniku »čaka na tvoje dejanje«). */
+.obvestilo.profil__to-si-ti {
+  padding: 12px 14px;
+  border-left: 4px solid var(--barva-glavna-polna);
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo-2);
+}
+
+.profil__to-si-ti-naslov {
+  font-weight: 700;
+  color: var(--barva-crnilo);
+}

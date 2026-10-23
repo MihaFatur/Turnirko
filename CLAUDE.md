@@ -1919,6 +1919,47 @@
     maskota in ključavnica zaženeta svoje učinke v otroku pred njim.
   - **Predogled**: `/?oglas=1a|1b|1c&kontekst=lige|statistika`; `&dokaz=412` nadomesti
     število samo v `npm run dev`.
+- **Preizkus Premium, poziv k računu in »To si ti?«** (odločitev lastnika 23. 10. 2026,
+  DESIGN.md 5f). Gostje si računa niso delali, ker brezplačen račun ni dal nič več kot
+  gostovanje; zdaj ima prvi mesec Premium brez plačila.
+  - **Preizkus je status naročnine `PREIZKUS`** (V49; prezidava tabele zaradi CHECK):
+    Premium brez Stripa, velja do `trenutno_obdobje_do` (`Narocnina.jeVeljavna`), potek
+    ne potrebuje opravila. **Začne se ob POVEZAVI računa z igralcem**
+    (`RegistracijaStoritev.poskusiSamodejnoPovezavo` in `RacuniStoritev.potrdi` →
+    `PreizkusPremiumStoritev.zacni`), ne ob registraciji: brez igralca Premium nima česa
+    pokazati in mesec bi tekel med čakanjem na admina. **Enkrat na račun** — kdor vrstico
+    v `narocnina` že ima (tudi potekel preizkus ali plačilo), ga ne dobi, tudi po
+    razvezavi. Nakup med preizkusom je dovoljen (zavora `zavrniCeJeNarocninaZiva` gleda
+    samo Stripove naročnine) in vrstico prepiše v AKTIVNA; plačano obdobje teče takoj.
+    **Stripovega `trial_end` namenoma ne uporabljamo**: Moj Račun iz vsakega Stripovega
+    plačila izda račun in ni preverjeno, kaj stori z 0 € računom ob začetku preizkusa.
+  - **Socialni dokaz preizkusov ne šteje** (`najdiPremiumIgralce` gleda AKTIVNA in
+    PREKLICANA): število pove, koliko jih plačuje.
+  - **Obvestilo o koncu** (`posljiOpomnike`, dnevno ob 10.00, `opomnik_poslan_ob`):
+    enkrat, ko so do konca ≤ 3 dnevi; račun z naslovom skrbnika (mlajši od 15 let) ga ne
+    dobi (sporočilo navaja ceno), zabeleži pa se, da se ne preverja vsak dan.
+  - **Testi, ki po povezavi ročno podelijo Premium**, vrstico preizkusa prepišejo
+    (`findByUporabnikId(...).orElseGet(...)`), ne ustvarijo druge — `id_uporabnik` je
+    UNIQUE. Regresije: `PreizkusPremiumTest`.
+  - **Poziv** (`komponente/PozivRacuna.tsx`, pravila `pomozno/pozivRacuna.ts`, živi v
+    `PremiumOglasPonudnik` skupaj z oglasom in okni gosta): gost, 30 s od nalaganja,
+    pokaže se ob NASLEDNJI spremembi `pathname` (ne iskalnih parametrov — filtri jih
+    spreminjajo) po ~0,7 s; nikoli ne ujame klika. Premor 7 dni po prvem zaprtju, nato
+    30; enkrat na sejo; ne na `/narocnina`, `/registracija`, `/pogoji`, upravnih in
+    tiskanih straneh. Po pozivu maskota do konca seje ne nastopi (`urnikMaskote`
+    `jePrimernTrenutek`). Predogled: `/?poziv`.
+  - **Poskus A/B**: `skupinaPoziva()` (`pomozno/statistika.ts`, `localStorage`) — okno
+    dobi `DELEZ_Z_OKNOM` (0,5) gostov. Seja v Umamiju nosi skupino (`identify`), vsak
+    dogodek lastnost `poziv`.
+  - **Kratka registracija** (`RegistracijaTok kratko`): brez »Vloga« in »Paket«; v
+    povzetku vrstica Paket nima »Uredi«. »To si ti?« (`ProfilStran`, samo gost) poda še
+    `predizbran` (ime, priimek, ime kluba → id iz šifranta, enkrat). Okno odpre
+    `usePremiumOglas().odpriRegistracijo({ izvor, predizbran })`.
+  - **Dogodki Umami** (`zabelezi`, brez osebnih podatkov; vrsta počaka na `defer`
+    skript do 10 s): `poziv-prikazan`, `poziv-izid`, `to-si-ti-klik`,
+    `registracija-zacetek|korak|placilo|potrjena|opuscena` (lastnost `izvor`: meni,
+    prijava, maskota, oglas, poziv, profil), `premium-nakup-zacetek`. Nakup sam je ogled
+    `/narocnina?stanje=uspeh`.
 - **Uvodna animacija ob prvem nalaganju** (DESIGN.md 5e, predaja
   `design_handoff_uvodna_animacija`, 1a · Poteze, 22. 10. 2026):
   `komponente/UvodnaAnimacija.tsx` (zadnji otrok `Postavitev`, portal v `body`),

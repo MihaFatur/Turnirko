@@ -30,6 +30,9 @@ interface Lastnosti {
      brez obrazca (potrditev, rating) ima telo zgoraj 8 px odmika. */
   zapisnik?: boolean
   brezObrazca?: boolean
+  /* Na telefonu (≤ 640 px) spodnji list čez širino zaslona namesto okna pod
+     vrhom - zgornji del strani ostane viden (poziv k računu, DESIGN.md 5f). */
+  spodaj?: boolean
   onZapri: () => void
   children: ReactNode
 }
@@ -44,6 +47,7 @@ export function ModalnoOkno({
   razdeljeno,
   zapisnik,
   brezObrazca,
+  spodaj,
   onZapri,
   children,
 }: Lastnosti) {
@@ -103,9 +107,10 @@ export function ModalnoOkno({
     + (nevarno ? ' modal--nevarno' : '')
     + (razdeljeno ? ' modal--razdeljeno' : '')
     + (zapisnik ? ' modal--zapisnik' : '')
+    + (spodaj ? ' modal--spodaj' : '')
 
   return createPortal(
-    <div className="modal__zastor" onClick={onZapri}>
+    <div className={'modal__zastor' + (spodaj ? ' modal__zastor--spodaj' : '')} onClick={onZapri}>
       <div
         ref={okvir}
         tabIndex={-1}

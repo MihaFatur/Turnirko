@@ -3,6 +3,7 @@
    Maskota je oglas, oglas pa ne sme postati šum: pojavi se redko, naključno in
    samo ob primernem trenutku. Pravila so zbrana tu, ločeno od izrisa, da se
    jih da brati (in spreminjati) na enem mestu. */
+import { pozivPokazan } from './pozivRacuna'
 
 /* Razpon [najmanj, največ] v ms (odločitev lastnika, 24. 9. 2026): prvi nastop
    10–25 s po nalaganju, nato v enakih razmakih 60–80 s do meje na nalaganje
@@ -58,6 +59,10 @@ export function jePrimernTrenutek(): boolean {
   /* Oznaka ima fokus (tipkovnica): prizor jo za nekaj sekund skrije in fokus
      bi zdrknil na telo strani. */
   if (document.querySelector('.glava__uporabnik:focus-within')) return false
+
+  /* Gost je v tej seji že dobil poziv k računu (PozivRacuna.tsx): drugi oglas
+     takoj za njim bi bil šum. */
+  if (pozivPokazan()) return false
 
   return true
 }

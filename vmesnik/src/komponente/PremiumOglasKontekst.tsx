@@ -8,7 +8,11 @@
    Zakaj en ponudnik in ne oglas v vsaki strani: sprožilcev je več (domača
    stran, stran lige, profil, kavelj `useSpremljanjeLig`), oglas pa je vedno
    isti, zato mora biti odprt največ enkrat naenkrat in izbira različice na
-   enem mestu. */
+   enem mestu.
+
+   Tu živi tudi poziv k računu (PozivRacuna.tsx) in pot do registracije za
+   druga mesta (vrstica »To si ti?« na profilu): vsa okna gosta so v enem
+   ponudniku, zato se nikoli ne odpreta dve naenkrat. */
 import {
   type ReactNode,
   createContext,
@@ -28,17 +32,34 @@ import {
   type KontekstOglasa,
   type RazlicicaOglasa,
 } from '../pomozno/premiumOglas'
+import type { IzvorRegistracije } from '../pomozno/statistika'
 import { useUvodKoncan } from '../pomozno/uvod'
+import { PozivRacuna } from './PozivRacuna'
 import { PremiumOglas } from './PremiumOglas'
 import { PrijavaOkno } from './PrijavaOkno'
+import type { PredizbranIgralec } from './RegistracijaTok'
+
+/* Registracija gosta z drugega mesta kot oglas: kratka pot (brez korakov
+   »Vloga« in »Paket«: igralec, brezplačno s preizkusom) in po želji igralec,
+   s katerega profila je gost prišel (vpisano ime in klub). */
+export interface MoznostiRegistracije {
+  izvor: IzvorRegistracije
+  predizbran?: PredizbranIgralec
+}
 
 interface Vrednost {
   /* Pokaže oglas za dano funkcijo; ob vsakem odprtju se naključno izbere ena od
      treh različic. */
   odpri: (kontekst: KontekstOglasa) => void
+  odpriRegistracijo: (moznosti: MoznostiRegistracije) => void
+  odpriPrijavo: () => void
 }
 
-const PremiumOglasKontekst = createContext<Vrednost>({ odpri: () => {} })
+const PremiumOglasKontekst = createContext<Vrednost>({
+  odpri: () => {},
+  odpriRegistracijo: () => {},
+  odpriPrijavo: () => {},
+})
 
 export function usePremiumOglas(): Vrednost {
   return useContext(PremiumOglasKontekst)
@@ -49,8 +70,12 @@ interface OdprtOglas {
   razlicica: RazlicicaOglasa
 }
 
-/* Okno za gosta: registracija na koraku »Paket« z izbranim ciklom, ali prijava. */
-type OknoGosta = { nacin: 'registracija'; ciklus: CiklusPlacila } | { nacin: 'prijava' }
+/* Okno za gosta: registracija na koraku »Paket« z izbranim ciklom (oglas),
+   kratka registracija (poziv, profil) ali prijava. */
+type OknoGosta =
+  | { nacin: 'registracija'; ciklus: CiklusPlacila }
+  | { nacin: 'kratka'; moznosti: MoznostiRegistracije }
+  | { nacin: 'prijava' }
 
 /* Razvojni pregled brez klika: `?oglas=1a` (ali 1b, 1c), po želji
    `&kontekst=lige`. Enkrat na nalaganje strani, kot `?maskota`. */
@@ -89,7 +114,15 @@ export function PremiumOglasPonudnik({ children }: { children: ReactNode }) {
 
   const zapri = useCallback(() => nastaviOglas(null), [])
 
-  const vrednost = useMemo<Vrednost>(() => ({ odpri }), [odpri])
+  const odpriRegistracijo = useCallback((moznosti: MoznostiRegistracije) => {
+    nastaviOknoGosta({ nacin: 'kratka', moznosti })
+  }, [])
+  const odpriPrijavo = useCallback(() => nastaviOknoGosta({ nacin: 'prijava' }), [])
+
+  const vrednost = useMemo<Vrednost>(
+    () => ({ odpri, odpriRegistracijo, odpriPrijavo }),
+    [odpri, odpriRegistracijo, odpriPrijavo],
+  )
 
   return (
     <PremiumOglasKontekst.Provider value={vrednost}>
@@ -111,12 +144,20 @@ export function PremiumOglasPonudnik({ children }: { children: ReactNode }) {
       )}
       {oknoGosta && (
         <PrijavaOkno
-          zacetniNacin={oknoGosta.nacin}
+          zacetniNacin={oknoGosta.nacin === 'prijava' ? 'prijava' : 'registracija'}
           naPaketu={oknoGosta.nacin === 'registracija'}
           zacetniCiklus={oknoGosta.nacin === 'registracija' ? oknoGosta.ciklus : undefined}
+          kratko={oknoGosta.nacin === 'kratka'}
+          izvor={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.izvor : 'oglas'}
+          predizbran={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.predizbran : undefined}
           onZapri={() => nastaviOknoGosta(null)}
         />
       )}
+      <PozivRacuna
+        zaseden={oglas !== null || oknoGosta !== null}
+        onRegistracija={() => odpriRegistracijo({ izvor: 'poziv' })}
+        onPrijava={odpriPrijavo}
+      />
     </PremiumOglasKontekst.Provider>
   )
 }

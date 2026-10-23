@@ -8,12 +8,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.StatusNarocnine;
 
 public interface NarocninaRepozitorij extends JpaRepository<Narocnina, Long> {
 
     Optional<Narocnina> findByUporabnikId(Long idUporabnik);
 
     Optional<Narocnina> findByStripeNarocninaId(String stripeNarocninaId);
+
+    /* Preizkusi, ki obvestila o koncu se niso dobili (PreizkusPremiumStoritev). */
+    List<Narocnina> findByStatusAndOpomnikPoslanObIsNull(StatusNarocnine status);
 
     /* Narocnine igralcev s Premium, ki lahko se veljajo (AKTIVNA ali PREKLICANA;
        ali je preklicana res se veljavna, presodi Narocnina.jeVeljavna - potek

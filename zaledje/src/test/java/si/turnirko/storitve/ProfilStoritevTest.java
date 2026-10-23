@@ -640,9 +640,13 @@ class ProfilStoritevTest extends IntegracijskiTest {
         return email;
     }
 
+    /* Placan Premium; povezava je ze zacela preizkus, ki ga vrstica prepise
+       (testi tu ne smejo biti odvisni od dolzine preizkusa). */
     private void podeliPremium(String email) {
         Uporabnik u = uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(email).orElseThrow();
-        Narocnina n = new Narocnina(u, Paket.PREMIUM);
+        Narocnina n = narocninaRepozitorij.findByUporabnikId(u.getId())
+                .orElseGet(() -> new Narocnina(u, Paket.PREMIUM));
+        n.setPaket(Paket.PREMIUM);
         n.setStatus(StatusNarocnine.AKTIVNA);
         narocninaRepozitorij.save(n);
     }

@@ -40,8 +40,6 @@ import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrevecZahtevIzjema;
 import si.turnirko.modeli.NamenKode;
-import si.turnirko.modeli.Narocnina;
-import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.PotrditvenaKoda;
 import si.turnirko.modeli.Spol;
 import si.turnirko.modeli.StatusNarocnine;
@@ -338,10 +336,9 @@ class RegistracijaTest {
         assertEquals(igralec.id(), u.getIgralec().getId());
         assertEquals(VirPovezave.SAMODEJNO, u.getVirPovezave());
         assertNotNull(u.getPovezanOb());
-        // s Premium paketom sme videti svoj zasebni profil (brez njega ne bi)
-        Narocnina n = new Narocnina(u, Paket.PREMIUM);
-        n.setStatus(StatusNarocnine.AKTIVNA);
-        narocninaRepozitorij.save(n);
+        // povezava zacne preizkus Premium, s katerim sme videti svoj zasebni profil
+        assertEquals(StatusNarocnine.PREIZKUS,
+                narocninaRepozitorij.findByUporabnikId(u.getId()).orElseThrow().getStatus());
         dostopDoProfila.preveriLastnistvo(igralec.id(), "ziga@test.si");
     }
 

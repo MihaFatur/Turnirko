@@ -579,7 +579,11 @@ function skupinePodatkov(r: RacunIgralcaDto): SkupinaPodatkov[] {
               ? 'zapadla'
               : n.status === 'CAKA_PLACILO'
                 ? 'čaka plačilo'
-                : '—'
+                : n.status === 'PREIZKUS'
+                  ? n.veljavna
+                    ? 'preizkus, brez plačila'
+                    : 'preizkus potekel'
+                  : '—'
       vrstice.push(
         { oznaka: 'Obračun', vrednost: n.ciklus === 'LETNO' ? 'letno' : n.ciklus === 'MESECNO' ? 'mesečno' : '—' },
         { oznaka: 'Stanje', vrednost: stanjeNarocnine, opozorilo: n.status === 'ZAPADLA' || !n.veljavna },

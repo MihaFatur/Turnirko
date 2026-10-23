@@ -1,7 +1,11 @@
 /* Besedila e-poste, ki jih Turnirko poslje. Ton kot v vmesniku: stvaren in
    kratek. Koda je v besedilu in ne v povezavi - vpise se v aplikacijo, zato
-   v e-posti ni ne povezav ne parametrov, ki bi jih bilo mogoce podtakniti. */
+   v e-posti ni ne povezav ne parametrov, ki bi jih bilo mogoce podtakniti.
+   Edini naslov je stalna stran brez parametrov (konec preizkusa: /narocnina),
+   ki ga bralec lahko vpise tudi sam. */
 package si.turnirko.posta;
+
+import java.util.Locale;
 
 public final class SporocilaPoste {
 
@@ -40,6 +44,27 @@ public final class SporocilaPoste {
                 + "naslovom že obstaja, zato nov ni nastal.\n\n"
                 + "Če si bil to ti, se prijavi z obstoječim geslom ali izberi »Pozabljeno "
                 + "geslo«. Če nisi bil ti, sporočilo prezri - nič se ni spremenilo.");
+    }
+
+    /* Nekaj dni pred koncem preizkusa Premium (PreizkusPremiumStoritev).
+       Obvestilo o stanju racuna, ne poziv: pove, kdaj se preizkus konca, kaj
+       ostane in kje se Premium obdrzi. */
+    public static Besedilo konecPreizkusa(String datumKonca, double cenaMesecno, double cenaLetno,
+                                          String naslovNarocnine) {
+        return new Besedilo(
+                "Turnirko: preizkus Premium se konča " + datumKonca,
+                "Tvoj mesec Igralca Premium v Turnirku se konča " + datumKonca + ".\n\n"
+                + "Potem račun ostane brezplačen: rating, zgodovina tekem in profil ostanejo, "
+                + "forma, nasprotniki, napoved tekme, nizi in točke ter spremljanje lig pa se "
+                + "zaklenejo. Ničesar ti ni treba narediti.\n\n"
+                + "Če želiš Premium obdržati, stane " + cena(cenaMesecno) + " na mesec ali "
+                + cena(cenaLetno) + " na leto. Vklopiš ga na strani Naročnina:\n\n"
+                + "    " + naslovNarocnine + "\n\n"
+                + "Preklic je mogoč kadarkoli.");
+    }
+
+    private static String cena(double znesek) {
+        return String.format(Locale.ROOT, "%.2f", znesek).replace('.', ',') + " €";
     }
 
     public static Besedilo pozabljenoGeslo(String koda) {

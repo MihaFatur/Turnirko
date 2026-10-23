@@ -13,6 +13,8 @@
    - Povezavo z zapisom v sifrantu naredi ADMIN ali SAMODEJNO: ce se ob
      potrjenem naslovu ime, priimek in datum rojstva ujemajo z natanko enim
      igralcem brez racuna. Dva zadetka ali nobeden pomenita cakanje na admina.
+   - Ob povezavi racun igralca dobi mesec Premium brez placila
+     (PreizkusPremiumStoritev; enkrat na racun).
    - Admin se ne registrira in gesla ne ponastavlja po posti: najmocnejsi
      racun ostane izven te poti. */
 package si.turnirko.storitve;
@@ -90,6 +92,7 @@ public class RegistracijaStoritev {
     private final OmejevalnikPoskusov omejevalnik;
     private final IgralciStoritev igralci;
     private final RacunDnevnikStoritev racunDnevnik;
+    private final PreizkusPremiumStoritev preizkus;
 
     public RegistracijaStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                                 IgralecRepozitorij igralecRepozitorij,
@@ -99,7 +102,8 @@ public class RegistracijaStoritev {
                                 PostaStoritev posta,
                                 OmejevalnikPoskusov omejevalnik,
                                 IgralciStoritev igralci,
-                                RacunDnevnikStoritev racunDnevnik) {
+                                RacunDnevnikStoritev racunDnevnik,
+                                PreizkusPremiumStoritev preizkus) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -109,6 +113,7 @@ public class RegistracijaStoritev {
         this.omejevalnik = omejevalnik;
         this.igralci = igralci;
         this.racunDnevnik = racunDnevnik;
+        this.preizkus = preizkus;
     }
 
     // ---------- Registracija ----------
@@ -396,6 +401,7 @@ public class RegistracijaStoritev {
         u.setPovezanOb(LocalDateTime.now());
         dnevnik.info("Racun {} samodejno povezan z igralcem {}.", u.getId(), igralec.getId());
         racunDnevnik.zabelezi(u.getId(), "Samodejno povezan z igralcem " + igralec.polnoIme());
+        preizkus.zacni(u, LocalDateTime.now());
         return true;
     }
 
@@ -413,8 +419,9 @@ public class RegistracijaStoritev {
         return uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(normalizirajEmail(email)).orElse(null);
     }
 
-    private static PotrditevOdgovorDto odgovor(Uporabnik u, boolean povezan) {
-        return new PotrditevOdgovorDto(povezan, u.cakaSkrbnika(), u.getVloga() == Vloga.ORGANIZATOR);
+    private PotrditevOdgovorDto odgovor(Uporabnik u, boolean povezan) {
+        return new PotrditevOdgovorDto(povezan, u.cakaSkrbnika(), u.getVloga() == Vloga.ORGANIZATOR,
+                povezan ? preizkus.veljaDo(u, LocalDateTime.now()) : null);
     }
 
     private void posljiKodo(Uporabnik u, NamenKode namen) {
