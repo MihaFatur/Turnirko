@@ -104,12 +104,13 @@ export function PozivRacuna({
   return (
     <ModalnoOkno nadnaslov="Turnirko" naslov="Račun igralca je brezplačen" spodaj onZapri={() => zapri('zaprto')}>
       <p className="poziv__besedilo">
-        Z računom je profil tvoj. Prvi mesec dobiš Premium brez plačila: formo, nasprotnike, napoved tekme ter
-        nize in točke. Vidiš jih samo ti.
+        Z računom spremljaš svoje lige in po vsakem kolu dobiš izide in lestvico po e-pošti. Prvi mesec dobiš
+        še Premium brez plačila: formo, nasprotnike, napoved tekme ter nize in točke.
       </p>
       <div className="registracija__kolofon registracija__kolofon--rob-zgoraj">
         {[
           { oznaka: 'Račun', vrednost: '0 €' },
+          { oznaka: 'Po kolu', vrednost: 'Izidi po e-pošti' },
           { oznaka: 'Premium', vrednost: 'Prvi mesec brez plačila' },
           { oznaka: 'Kartica', vrednost: 'Ni potrebna' },
         ].map((v) => (

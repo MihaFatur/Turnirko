@@ -167,6 +167,16 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
             """)
     List<Srecanje> cakajoNaZapisnik(List<Long> idjiLig, LocalDateTime pred);
 
+    /* Lige, v katerih je kako srecanje dobilo prvi izid od danega trenutka
+       naprej - kandidatke za obvestilo po kolu. Stara zgodovina (uvoz, brez
+       odigran_ob) sem ne pride. Izrecen stik na ligo: pot s.liga.id bi
+       ekipnim tekmam turnirja vrnila null. */
+    @Query("""
+            SELECT DISTINCT l.id FROM Srecanje s JOIN s.liga l
+            WHERE s.odigranOb IS NOT NULL AND s.odigranOb >= :od
+            """)
+    List<Long> ligeZVnosomOd(LocalDateTime od);
+
     /* Prihodnja srecanja rednega dela izbranih lig, ki se niso koncana:
        [idLiga, kolo, predvidenZacetek]. Skalarna projekcija, ker pregled
        kolo sestavi sam (kolo = en dan srecanj). Meja `od` je za dan siroka,

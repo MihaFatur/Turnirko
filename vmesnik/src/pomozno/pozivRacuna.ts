@@ -30,6 +30,7 @@ const IZKLJUCENE = [
   /^\/narocnina/,
   /^\/registracija/,
   /^\/pogoji/,
+  /^\/odjava-obvestil/,
   /^\/moj-profil/,
   /^\/racuni/,
   /^\/igralci$/,

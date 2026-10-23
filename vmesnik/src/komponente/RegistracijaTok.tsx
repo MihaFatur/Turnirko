@@ -16,11 +16,11 @@
    povzetek in koda. Vsak korak gre v statistiko (pomozno/statistika.ts). */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { opisNapake } from '../api/odjemalec'
-import { authApi, klubiApi, placilaApi } from '../api/zahteve'
+import { authApi, domovApi, klubiApi, placilaApi } from '../api/zahteve'
 import {
   CENA_ORGANIZATOR_LETNO,
   CENA_PREMIUM_LETNO,
@@ -31,7 +31,7 @@ import {
   type CiklusPlacila,
   type Paket,
 } from '../api/tipi'
-import { jeStarejsiOd21ZaCeno, oblikujCeno, oblikujDatum } from '../pomozno/oblikovanje'
+import { jeStarejsiOd21ZaCeno, ligaVTozilniku, oblikujCeno, oblikujDatum } from '../pomozno/oblikovanje'
 import { shraniStanjePlacila, type ShranjenoStanjePlacila } from '../pomozno/registracijaSeja'
 import { zabelezi, type IzvorRegistracije } from '../pomozno/statistika'
 import { useTelefon } from '../pomozno/telefon'
@@ -71,6 +71,12 @@ export interface PredizbranIgralec {
   ime: string
   priimek: string
   klub: string | null
+}
+
+/* Liga, ob kateri je gost začel registracijo z gumbom »Spremljaj«. */
+export interface LigaZaSpremljanje {
+  id: number
+  ime: string
 }
 
 /* Seznam korakov je odvisen od vloge (organizator klub-a med igralci nima) in
@@ -218,6 +224,7 @@ export function RegistracijaTok({
   kratko = false,
   izvor = 'meni',
   predizbran,
+  liga,
 }: {
   onZapri: () => void
   onNazajNaPrijavo: () => void
@@ -236,9 +243,15 @@ export function RegistracijaTok({
   izvor?: IzvorRegistracije
   /* Igralec s profila (»To si ti?«): ime, priimek in klub so vpisani vnaprej. */
   predizbran?: PredizbranIgralec
+  /* Liga, ob kateri je gost kliknil »Spremljaj«: po samodejni prijavi jo
+     račun začne spremljati (in z njo dobiva obvestila po kolu). */
+  liga?: LigaZaSpremljanje
 }) {
   const telefon = useTelefon()
   const { prijava } = useAvtentikacija()
+  const odjemalec = useQueryClient()
+  /* Ime lige, ki jo je račun ob registraciji začel spremljati (korak »konec«). */
+  const [ligaSpremljana, nastaviLigaSpremljana] = useState<string | null>(null)
   const [s, nastavi] = useState<Stanje>(() =>
     zacetnoStanje(obnovljenoStanje, naPaketu, zacetniCiklus, predizbran),
   )
@@ -456,6 +469,17 @@ export function RegistracijaTok({
       if (s.geslo) {
         try {
           await prijava(s.email, s.geslo)
+          /* Spremljanje lige, ob kateri je gost začel, je pomoč in ne pogoj:
+             če ne uspe, jo doda sam z istim gumbom. */
+          if (liga) {
+            try {
+              await domovApi.spremljaj(liga.id)
+              nastaviLigaSpremljana(liga.ime)
+              void odjemalec.invalidateQueries({ queryKey: ['moje-lige'] })
+            } catch {
+              /* ostane nespremljana */
+            }
+          }
         } catch {
           /* konec vseeno pokaže rezultat, prijava ostane ročna */
         }
@@ -747,11 +771,11 @@ export function RegistracijaTok({
                 {(
                   [
                     ['Rezultati, lestvice, koledar', true, true],
-                    ['Prijava z lastnim računom', true, true],
+                    ['Spremljanje lig in e-pošta po kolu', true, true],
                     ['Forma in nasprotniki', false, true],
                     ['Napoved tekme', false, true],
                     ['Nizi, točke in razrezi', false, true],
-                    ['Spremljanje lig na domači strani', false, true],
+                    ['Domača stran po meri', false, true],
                   ] as [string, boolean, boolean][]
                 ).map(([funkcija, brez, prem]) => (
                   <div className="registracija__primerjava-vrstica" key={funkcija}>
@@ -834,7 +858,10 @@ export function RegistracijaTok({
               {!jeIgralec && <p className="registracija__uvod">Kontaktna oseba organizatorja.</p>}
               {kratko && (
                 <p className="registracija__uvod">
-                  Račun je brezplačen. Prvi mesec dobiš Premium brez plačila, kartica ni potrebna.
+                  {liga
+                    ? `${liga.ime}: po vsakem kolu ti pošljemo izide in lestvico. `
+                    : 'Račun je brezplačen: spremljaš svoje lige in po vsakem kolu dobiš izide po e-pošti. '}
+                  Prvi mesec dobiš še Premium brez plačila, kartica ni potrebna.
                 </p>
               )}
               <div className="obrazec__vrstica obrazec__vrstica--par">
@@ -1156,6 +1183,7 @@ export function RegistracijaTok({
               preizkusDo={s.izidPreizkusDo}
               rating={predogled.data?.rating ?? null}
               org={org}
+              ligaSpremljana={ligaSpremljana}
               onZapri={onZapri}
             />
           )}
@@ -1306,6 +1334,7 @@ function KonecKoraka({
   preizkusDo,
   rating,
   org,
+  ligaSpremljana,
   onZapri,
 }: {
   jeIgralec: boolean
@@ -1318,10 +1347,10 @@ function KonecKoraka({
   preizkusDo: string | null
   rating: number | null
   org: { lig: number; turnirjev: number } | null
+  /* Liga, ki jo je račun začel spremljati ob registraciji (gumb »Spremljaj«). */
+  ligaSpremljana: string | null
   onZapri: () => void
 }) {
-  /* Premium ima tudi brezplačen račun, ki se je pravkar povezal (preizkus). */
-  const jePremium = jeIgralec && (imePaketa === 'Premium' || preizkusDo !== null)
   const paketNapis = !jeIgralec || placljiv
     ? `${imePaketa}${placljiv ? ` · ${obnovaBesedilo.toLowerCase()}` : ''}`
     : preizkusDo
@@ -1385,18 +1414,16 @@ function KonecKoraka({
             <div className="registracija__korak-prvi">
               <span className="registracija__korak-prvi-st">02</span>
               <span className="registracija__korak-prvi-besedilo">
-                <span className="registracija__korak-prvi-naslov">Izberi lige, ki jih spremljaš</span>
+                <span className="registracija__korak-prvi-naslov">
+                  {ligaSpremljana ? `Spremljaš ${ligaVTozilniku(ligaSpremljana)}` : 'Izberi lige, ki jih spremljaš'}
+                </span>
                 <span className="registracija__korak-prvi-opis">
-                  {jePremium ? 'Njihova kola se pokažejo na domači strani.' : 'Na voljo s paketom Premium.'}
+                  Njihova kola so na domači strani, izidi vsakega kola pridejo po e-pošti.
                 </span>
               </span>
-              {jePremium ? (
-                <Link to="/lige" className="registracija__korak-prvi-meta registracija__korak-prvi-meta--dejavno" onClick={onZapri}>
-                  Lige →
-                </Link>
-              ) : (
-                <span className="registracija__korak-prvi-meta">Premium</span>
-              )}
+              <Link to="/lige" className="registracija__korak-prvi-meta registracija__korak-prvi-meta--dejavno" onClick={onZapri}>
+                Lige →
+              </Link>
             </div>
             <div className="registracija__korak-prvi">
               <span className="registracija__korak-prvi-st">03</span>

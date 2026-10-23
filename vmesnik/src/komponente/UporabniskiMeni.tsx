@@ -3,7 +3,7 @@
    Gostu oznaka odpre okno za prijavo naravnost - spustni meni z dvema
    postavkama bi bil samo korak več, registracija pa je gumb v oknu samem.
    Prijavljen uporabnik dobi spustni meni s svojo identiteto, povezavo do
-   profila in odjavo. Račun, ki naslova (ali skrbnika) še ni potrdil, dobi
+   profila, obvestila po kolu in odjavo. Račun, ki naslova (ali skrbnika) še ni potrdil, dobi
    postavko »Vpiši kodo«. Meni se zapre ob kliku zunaj njega ali ob tipki
    Escape. */
 import { useEffect, useRef, useState } from 'react'
@@ -11,6 +11,7 @@ import { NavLink } from 'react-router-dom'
 
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { OZNAKE_VLOGA } from '../api/tipi'
+import { ObvestilaOkno } from './ObvestilaOkno'
 import { PrijavaOkno } from './PrijavaOkno'
 
 type PrijavaNacin = 'prijava' | 'koda'
@@ -19,6 +20,7 @@ export function UporabniskiMeni() {
   const { uporabnik, odjava } = useAvtentikacija()
   const [odprt, nastaviOdprt] = useState(false)
   const [prijavaNacin, nastaviPrijavaNacin] = useState<PrijavaNacin | null>(null)
+  const [obvestilaOdprta, nastaviObvestilaOdprta] = useState(false)
   const ovoj = useRef<HTMLDivElement>(null)
 
   /* Zapri odprt meni ob kliku zunaj njega ali ob tipki Escape. */
@@ -126,6 +128,18 @@ export function UporabniskiMeni() {
             </NavLink>
           )}
 
+          <button
+            type="button"
+            role="menuitem"
+            className="uporabnik-meni__postavka"
+            onClick={() => {
+              nastaviOdprt(false)
+              nastaviObvestilaOdprta(true)
+            }}
+          >
+            Obvestila
+          </button>
+
           {uporabnik.vloga !== 'ADMIN' && (
             <NavLink
               to="/narocnina"
@@ -150,6 +164,8 @@ export function UporabniskiMeni() {
           </button>
         </div>
       )}
+
+      {obvestilaOdprta && <ObvestilaOkno onZapri={() => nastaviObvestilaOdprta(false)} />}
 
       {prijavaNacin && (
         <PrijavaOkno

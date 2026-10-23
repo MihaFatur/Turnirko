@@ -1,15 +1,23 @@
 /* Besedila e-poste, ki jih Turnirko poslje. Ton kot v vmesniku: stvaren in
    kratek. Koda je v besedilu in ne v povezavi - vpise se v aplikacijo, zato
-   v e-posti ni ne povezav ne parametrov, ki bi jih bilo mogoce podtakniti.
-   Edini naslov je stalna stran brez parametrov (konec preizkusa: /narocnina),
-   ki ga bralec lahko vpise tudi sam. */
+   v sporocilih s kodo ni ne povezav ne parametrov, ki bi jih bilo mogoce
+   podtakniti. Povezave nosijo samo obvestila brez kode: stalne strani
+   (/narocnina, /lige/{id}) in odjava od obvestil po kolu, katere zeton ne
+   odpre nicesar razen izklopa obvestil (SporociloKola). */
 package si.turnirko.posta;
 
 import java.util.Locale;
+import java.util.Map;
 
 public final class SporocilaPoste {
 
-    public record Besedilo(String zadeva, String telo) {}
+    /* Telo je navadno besedilo; html in glave (List-Unsubscribe) ima samo
+       obvestilo po kolu - takrat gre sporocilo kot multipart z obema telesoma. */
+    public record Besedilo(String zadeva, String telo, String html, Map<String, String> glave) {
+        public Besedilo(String zadeva, String telo) {
+            this(zadeva, telo, null, Map.of());
+        }
+    }
 
     private SporocilaPoste() {}
 
@@ -54,16 +62,16 @@ public final class SporocilaPoste {
         return new Besedilo(
                 "Turnirko: preizkus Premium se konča " + datumKonca,
                 "Tvoj mesec Igralca Premium v Turnirku se konča " + datumKonca + ".\n\n"
-                + "Potem račun ostane brezplačen: rating, zgodovina tekem in profil ostanejo, "
-                + "forma, nasprotniki, napoved tekme, nizi in točke ter spremljanje lig pa se "
-                + "zaklenejo. Ničesar ti ni treba narediti.\n\n"
+                + "Potem račun ostane brezplačen: rating, zgodovina tekem, profil, spremljanje "
+                + "lig in obvestila po kolu ostanejo, forma, nasprotniki, napoved tekme ter nizi "
+                + "in točke pa se zaklenejo. Ničesar ti ni treba narediti.\n\n"
                 + "Če želiš Premium obdržati, stane " + cena(cenaMesecno) + " na mesec ali "
                 + cena(cenaLetno) + " na leto. Vklopiš ga na strani Naročnina:\n\n"
                 + "    " + naslovNarocnine + "\n\n"
                 + "Preklic je mogoč kadarkoli.");
     }
 
-    private static String cena(double znesek) {
+    static String cena(double znesek) {
         return String.format(Locale.ROOT, "%.2f", znesek).replace('.', ',') + " €";
     }
 

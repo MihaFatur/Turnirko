@@ -45,17 +45,17 @@ const FUNKCIJE = [
   'Forma in nasprotniki',
   'Napoved tekme',
   'Nizi, točke in razrezi',
-  'Spremljanje lig',
+  'Domača stran po meri',
   'Zasebna statistika',
 ]
 
 const PRIMERJAVA: [funkcija: string, brez: boolean][] = [
   ['Rezultati, lestvice, koledar', true],
-  ['Prijava z lastnim računom', true],
+  ['Spremljanje lig in e-pošta po kolu', true],
   ['Forma in nasprotniki', false],
   ['Napoved tekme', false],
   ['Nizi, točke in razrezi', false],
-  ['Spremljanje lig na domači strani', false],
+  ['Domača stran po meri', false],
 ]
 
 const PREDNOSTI: { ime: string; opis: string; pot: string; cilj: string }[] = [
@@ -78,10 +78,10 @@ const PREDNOSTI: { ime: string; opis: string; pot: string; cilj: string }[] = [
     cilj: 'Profil',
   },
   {
-    ime: 'Spremljanje lig',
-    opis: 'Kola izbranih lig se pokažejo na domači strani — brez iskanja po seznamu.',
-    pot: '/lige',
-    cilj: 'Lige',
+    ime: 'Domača stran po meri',
+    opis: 'V tabeli lige tvoja ekipa s sosedama namesto vrha, turnirji izbrani zate.',
+    pot: '/',
+    cilj: 'Domov',
   },
   {
     ime: 'Zasebna statistika',
@@ -692,7 +692,7 @@ function PogledNarocnine({
                           Prekličem Premium?
                         </span>
                         <span className="narocnina__potrditev-besedilo">
-                          Obnove {konec} ne bo. Statistiko profila in spremljanje lig izgubiš čez {dni}{' '}
+                          Obnove {konec} ne bo. Statistiko profila in domačo stran po meri izgubiš čez {dni}{' '}
                           {sklonDni(dni)}. Naročnino lahko do takrat obnoviš brez plačila.
                         </span>
                         <div className="narocnina__dejanja">

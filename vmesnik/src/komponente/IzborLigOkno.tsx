@@ -46,7 +46,7 @@ export function IzborLigOkno({ onZapri }: { onZapri: () => void }) {
     <OknoZOznacevanjemLig
       naslov="Moje lige"
       nadnaslov="Uredi izbor"
-      podnaslov="Označene lige so na tvoji domači strani. Izbor se shrani sproti."
+      podnaslov="Označene lige so na tvoji domači strani, po vsakem kolu pa dobiš njihove izide po e-pošti. Izbor se shrani sproti."
       imeSkupine="Spremljam"
       prazno="Lig še ni. Ko bo prva ustvarjena, jo boš lahko spremljal."
       izbrane={spremljane}

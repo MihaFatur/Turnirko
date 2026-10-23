@@ -26,7 +26,7 @@ declare global {
 }
 
 /* Od kod je gledalec odprl registracijo - lastnost vsakega dogodka registracije. */
-export type IzvorRegistracije = 'meni' | 'prijava' | 'maskota' | 'oglas' | 'poziv' | 'profil'
+export type IzvorRegistracije = 'meni' | 'prijava' | 'maskota' | 'oglas' | 'poziv' | 'profil' | 'spremljanje'
 
 const vrsta: ((u: Umami) => void)[] = []
 const NAJVEC_V_VRSTI = 30

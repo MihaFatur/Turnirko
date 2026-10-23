@@ -1,10 +1,10 @@
-/* Lige na domaci strani igralca s Premium: najprej tiste, v katerih igra
+/* Lige na domaci strani potrjenega igralca: najprej tiste, v katerih igra
    (kader ekipe), sele nato adminov izbor.
 
    Testiramo stopnjo "igralceve lige" v vrstnem redu odlocanja
    DomovStoritev.povzetkiLig: stoji za izborom racuna (ta ostane prvi) in pred
-   adminovim izborom, a samo za placnika - brez paketa in za gosta se nic ne
-   spremeni. Lige se pripravijo PRED prijavo: dodajanje ekip zahteva pravico
+   adminovim izborom. Od 23. 10. 2026 je del brezplacnega spremljanja lig
+   (prej samo Premium); za gosta se nic ne spremeni. Lige se pripravijo PRED prijavo: dodajanje ekip zahteva pravico
    urejanja lige, ta pa ne velja za igralca. */
 package si.turnirko.storitve;
 
@@ -84,15 +84,18 @@ class DomovLigeIgralcevihEkipTest extends IntegracijskiTest {
         assertFalse(povzetki.get(0).izEkipe(), "adminova liga ni 'moja' zato, ker jo je izbral admin");
     }
 
-    /* Funkcija je del Premium: brez paketa racun ostane pri adminovem izboru. */
+    /* Spremljanje lig je brezplacno: tudi brez paketa racun vidi lige, v
+       katerih igra, pred adminovim izborom. */
     @Test
-    void igralecBrezPaketaVidiAdminovIzbor() {
+    void igralecBrezPaketaVidiSvojeLige() {
         Igralec igralec = noviIgralec("Ana", "Novak");
-        ligaZIgralcem("Rekreativna liga", igralec);
-        Long izpostavljena = ligaNaDomaci("1. SNTL moski");
+        Long moja = ligaZIgralcem("Rekreativna liga", igralec);
+        ligaNaDomaci("1. SNTL moski");
         prijava(racun("brezplacno@test", igralec, false));
 
-        assertEquals(List.of(izpostavljena), idji(domovStoritev.povzetkiLig(List.of(), List.of())));
+        List<DomovLigaDto> povzetki = domovStoritev.povzetkiLig(List.of(), List.of());
+        assertEquals(List.of(moja), idji(povzetki));
+        assertTrue(povzetki.get(0).izEkipe());
     }
 
     @Test

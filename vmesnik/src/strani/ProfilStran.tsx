@@ -338,7 +338,8 @@ export function ProfilStran() {
       {!nalaganje && uporabnik === null && (
         <div className="obvestilo profil__to-si-ti">
           <span className="profil__to-si-ti-naslov">To si ti?</span>{' '}
-          Z brezplačnim računom prvi mesec vidiš svojo formo, nasprotnike, napoved tekme ter nize in točke.{' '}
+          Z brezplačnim računom dobiš izide svoje lige po vsakem kolu, prvi mesec pa še svojo formo,
+          nasprotnike, napoved tekme ter nize in točke.{' '}
           <button
             type="button"
             className="povezava-gumb povezava-gumb--vrstica"

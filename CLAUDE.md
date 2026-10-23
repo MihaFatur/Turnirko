@@ -1158,9 +1158,10 @@
   - **Igralčeve lige (`ligeIgralcevihEkip`) so drugi korak in ne izbor
     računa:** sledijo iz kadra (`najdiNezakljuceneZaIgralca`), zato jih
     igralec ne vpisuje, lasten izbor pa jih **v celoti** nadomesti (kot
-    adminov izbor). **Samo Premium** (isti pogoj kot `spremljaj`) **in samo
-    potrjen, z igralcem povezan račun**; gost in račun brez paketa vidita
-    adminov izbor kot prej. **Zaključene lige izpadejo** — uvožena zgodovina
+    adminov izbor). **Samo potrjen, z igralcem povezan račun** — od 23. 10.
+    2026 tudi brez paketa (spremljanje lig je brezplačno, kot `spremljaj`);
+    gost vidi adminov izbor kot prej. Okno »ekipa s sosedama« (spodaj) ostane
+    Premium. **Zaključene lige izpadejo** — uvožena zgodovina
     ima pri dolgoletnem igralcu ducat starih sezon in domača stran ni arhiv;
     lige v teku so pred tistimi v pripravi. Števila ne omejujemo (adminov izbor
     ima mejo dve, ker je izlog; tu gre za lige, kjer igralec res nastopa).
@@ -1881,17 +1882,16 @@
   (izjema od DESIGN.md, razdelek 5c, predaja `design_handoff_premium_popup`, 29. 9.
   2026): `komponente/PremiumOglas.tsx` (šest postavitev: 1a Zavesa, 1b Ključavnica,
   1c Končni izid × namizje/telefon pod 768 px), `PremiumOglasKontekst.tsx`
-  (ponudnik v `main.tsx`: `usePremiumOglas().odpri('lige' | 'statistika')`, izbira
+  (ponudnik v `main.tsx`: `usePremiumOglas().odpri('statistika')`, izbira
   različice z `Math.random()`, okno registracije/prijave za gosta živi tam),
   `PremiumOglasPrizori.tsx` (lik in prizor ključavnice), `pomozno/premiumOglas.ts`
   (besedila, cene), `pomozno/animacijaOglasa.ts` (gibanje), slogi v razdelku »Oglas
   Igralec Premium« na koncu `slog.css`. Pravila, ki jih ne razbij:
-  - **Sproži ga samo klik**, nikoli urnik. Sprožilci: `useSpremljanjeLig.preklopi`
-    (DODAJANJE lige igralcu brez Premium; odjava od že spremljane ostane mogoča, ker
-    jo strežnik dovoli vsakemu prijavljenemu), »Uredi izbor →« na domači strani (gost
-    in igralec brez Premium; ostali dobijo okno izbora) in obvestilo na lastnem profilu
-    (`lastnikBrezPremium`, kontekst »statistika«). `ponudiPremium` velja samo za vlogo
-    IGRALEC: organizator Premium igralca ne kupuje, zanj ostane stari odziv strežnika.
+  - **Sproži ga samo klik**, nikoli urnik. Sprožilec je obvestilo na lastnem profilu
+    (`lastnikBrezPremium`, kontekst »statistika« — edini, ki je ostal). Spremljanje
+    lig je od 23. 10. 2026 brezplačno, zato kontekst »lige« in `ponudiPremium` v
+    `useSpremljanjeLig` nista več; »Spremljaj« in »Uredi izbor →« gostu odpreta kratko
+    registracijo (glej »Obvestila po kolu«).
   - **Gost**: »Ustvari račun · Premium …« odpre registracijo na koraku »Paket« z
     izbranim ciklom (`PrijavaOkno zacetniCiklus` → `RegistracijaTok`); povezava odpre
     prijavo. **Igralec**: »Nadgradi na Premium · …« gre v Stripe Checkout
@@ -1917,7 +1917,7 @@
   - **Pri `prefers-reduced-motion: reduce` je takoj končno stanje** (drugače kot
     maskota v glavi). `predvajajOglas` prekliče samo svoje elemente (`data-anim`), ker
     maskota in ključavnica zaženeta svoje učinke v otroku pred njim.
-  - **Predogled**: `/?oglas=1a|1b|1c&kontekst=lige|statistika`; `&dokaz=412` nadomesti
+  - **Predogled**: `/?oglas=1a|1b|1c`; `&dokaz=412` nadomesti
     število samo v `npm run dev`.
 - **Preizkus Premium, poziv k računu in »To si ti?«** (odločitev lastnika 23. 10. 2026,
   DESIGN.md 5f). Gostje si računa niso delali, ker brezplačen račun ni dal nič več kot
@@ -1960,6 +1960,52 @@
     `registracija-zacetek|korak|placilo|potrjena|opuscena` (lastnost `izvor`: meni,
     prijava, maskota, oglas, poziv, profil), `premium-nakup-zacetek`. Nakup sam je ogled
     `/narocnina?stanje=uspeh`.
+- **Obvestila po kolu in brezplačno spremljanje lig** (V50, odločitev lastnika
+  23. 10. 2026; faza 2 za preizkusom Premium). Račun je moral dati nekaj, česar gost
+  nima, in ga pripeljati nazaj: spremljanje lig je zdaj **brezplačno** (prej Premium;
+  `DomovStoritev.spremljaj`, tudi lige iz kadra na domači strani), po vsakem kolu pa
+  pride **e-pošta** z izidi, lestvico in prejemnikovimi tekmami.
+  - **Kdaj** (`ObvestilaPoKoluStoritev.zrelo`): vsa srečanja kola (redni del, brez
+    čakajočih na termin) so končana ALI je končana vsaj polovica in je od dneva kola
+    minilo 4 dni; zadnji izid (`srecanje.odigran_ob`) je star vsaj 2 uri (popravki
+    med vnosom večera) in največ 7 dni (staro kolo ni novica — to izloči tudi uvoženo
+    zgodovino brez časa vnosa, torej **lige iz Stupe obvestil nimajo**). Opravilo teče
+    vsako uro ob :20 med 8. in 20. uro po slovenskem času
+    (`turnirko.obvestila.urnik`, nastavljiv samo za razvoj).
+  - **Vsako kolo enkrat** (`obvestilo_kola`, ključ liga + kolo): tudi po popravku ali
+    razveljavitvi zapisnika ne gre znova. Več zrelih kol hkrati → sporočilo samo za
+    najnovejše, starejša `preskoceno`; kolo, ki se dopolni za že obdelanim novejšim,
+    se preskoči.
+  - **Komu**: računi z igralcem v kadru lige (`najdiIgralceLige`, potrjeni) in računi,
+    ki ligo spremljajo, vsak enkrat; aktiven, potrjen naslov (in skrbnik),
+    `uporabnik.obvestila_po_kolu` = 1 (privzeto). Igralec dobi svoje tekme vseh
+    srečanj ekipe v kolu (liga z urami kola ima v kolu dve), spremembo ratinga v kolu
+    in naslednje srečanje (ki mu termin ni mimo). **Vrstica o Premium** gre samo
+    potrjenemu igralcu brez paketa (ponudba s ceno po pasu) ali v preizkusu (datum
+    konca); otrok (naslov skrbnika) in plačnik je ne dobita.
+  - **E-pošta** je multipart (besedilo + HTML, `posta/SporociloKola`, slog po
+    DESIGN.md 5f) z glavama `List-Unsubscribe` in `List-Unsubscribe-Post` (odjava z
+    enim klikom, RFC 8058). `PosiljateljPoste.poslji(prejemnik, Besedilo)` nosi HTML in
+    glave; `DnevniskiPosiljatelj` HTML zapiše v `turnirko.posta.mapa-predogleda`, če
+    je nastavljena (predogled v razvoju).
+  - **Odjava**: `uporabnik.zeton_odjave` (naključen, nastane ob prvem obvestilu,
+    UNIQUE) — `POST /api/v1/obvestila/odjava?z=` brez prijave (izklopi samo obvestila;
+    neznan žeton 404), stran `/odjava-obvestil` z gumbom (ne samodejno ob odprtju —
+    pregledovalniki pošte povezave odprejo sami). Nastavitev `GET/PUT
+    /api/v1/obvestila` (prijava; pravilo pred »GET je javen«), v vmesniku okno
+    »Obvestila« v meniju računa (`ObvestilaOkno`) s seznamom lig.
+  - **Transakcija mora biti na metodi, ki jo kliče urnik** (`@Transactional` na
+    `urnoPreverjanje` in `PreizkusPremiumStoritev.dnevniOpomniki`): klic transakcijske
+    metode iz istega razreda gre mimo Springovega posrednika in spremembe entitet
+    (žeton, `opomnik_poslan_ob`) se ne zapišejo. Testi tega ne ujamejo (so
+    `@Transactional`); izmerjeno v brskalniku na kopiji baze.
+  - **Gost**: »Spremljaj« na strani lige in »Uredi izbor →« na domači strani odpreta
+    kratko registracijo (`izvor: 'spremljanje'`, `MoznostiRegistracije.liga`); po
+    samodejni prijavi `RegistracijaTok` ligo spremlja sam. Primerjave paketov
+    (registracija, naročnina, oglas 1c) imajo »Spremljanje lig in e-pošta po kolu« pri
+    Free in »Domača stran po meri« pri Premium.
+  - Regresije: `ObvestilaPoKoluTest`, `ObvestilaDostopTest`, `DomovStoritevTest`,
+    `DomovLigeIgralcevihEkipTest`.
 - **Uvodna animacija ob prvem nalaganju** (DESIGN.md 5e, predaja
   `design_handoff_uvodna_animacija`, 1a · Poteze, 22. 10. 2026):
   `komponente/UvodnaAnimacija.tsx` (zadnji otrok `Postavitev`, portal v `body`),

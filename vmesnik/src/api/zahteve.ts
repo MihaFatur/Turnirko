@@ -15,6 +15,7 @@ import type {
   DogodekVnos,
   DomovLigaDto,
   DomovTurnirDto,
+  ObvestilaDto,
   DvobojDto,
   EkipaDto,
   EkipaImeVnos,
@@ -526,6 +527,15 @@ export const domovApi = {
   mojeLige: () => api.vrni<number[]>('/domov/moje-lige'),
   spremljaj: (idLiga: number) => api.posodobi<number[]>(`/domov/moje-lige/${idLiga}`, undefined),
   nehajSpremljati: (idLiga: number) => api.izbrisi(`/domov/moje-lige/${idLiga}`),
+}
+
+/* Obvestila po kolu: nastavitev računa (prijava) in odjava iz e-pošte z žetonom
+   (brez prijave). */
+export const obvestilaApi = {
+  nastavitve: () => api.vrni<ObvestilaDto>('/obvestila'),
+  nastavi: (poKolu: boolean) => api.posodobi<ObvestilaDto>('/obvestila', { poKolu }),
+  odjava: (zeton: string) =>
+    api.objavi<void>(`/obvestila/odjava?z=${encodeURIComponent(zeton)}`),
 }
 
 export const statistikaApi = {

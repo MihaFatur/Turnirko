@@ -20,20 +20,20 @@ public class PostaStoritev {
         this.posiljatelj = posiljatelj;
     }
 
-    public void poslji(String prejemnik, SporocilaPoste.Besedilo besedilo) {
-        poslji(prejemnik, besedilo.zadeva(), besedilo.telo());
+    public void poslji(String prejemnik, String zadeva, String besedilo) {
+        poslji(prejemnik, new SporocilaPoste.Besedilo(zadeva, besedilo));
     }
 
-    public void poslji(String prejemnik, String zadeva, String besedilo) {
+    public void poslji(String prejemnik, SporocilaPoste.Besedilo besedilo) {
         if (!posiljatelj.odloziDoPotrditve()
                 || !TransactionSynchronizationManager.isSynchronizationActive()) {
-            posiljatelj.poslji(prejemnik, zadeva, besedilo);
+            posiljatelj.poslji(prejemnik, besedilo);
             return;
         }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                posiljatelj.poslji(prejemnik, zadeva, besedilo);
+                posiljatelj.poslji(prejemnik, besedilo);
             }
         });
     }

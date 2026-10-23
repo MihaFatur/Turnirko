@@ -26,6 +26,7 @@ import {
 } from '../komponente/GlavaTelefona'
 import { EkipaLigeOkno, izidZaEkipo, type IzidEkipe } from '../komponente/EkipaLigeOkno'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
+import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
 import { IzbirnikIgralca } from '../komponente/IzbirnikIgralca'
 import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { KoncnicaLige } from '../komponente/KoncnicaLige'
@@ -119,9 +120,15 @@ export function LigaStran() {
   })
 
   /* Ligo se spremlja tam, kjer se jo najde — sicer bi moral gledalec izbor
-     sestavljati po spominu v oknu na domači strani. Gost izbora nima, zato
-     preklopa ne vidi (njegov brskalnik si to ligo tako ali tako zapomni). */
+     sestavljati po spominu v oknu na domači strani. Gost izbora nima: isti
+     gumb mu odpre kratko registracijo, po kateri račun to ligo spremlja in po
+     vsakem kolu dobi izide po e-pošti (to je razlog za račun). */
   const { jePrijavljen, spremljam, preklopi } = useSpremljanjeLig()
+  const { odpriRegistracijo } = usePremiumOglas()
+  const spremljajAliRacun = (ime: string) => {
+    if (jePrijavljen) preklopi(idLiga)
+    else odpriRegistracijo({ izvor: 'spremljanje', liga: { id: idLiga, ime } })
+  }
 
   const odjemalec = useQueryClient()
 
@@ -436,14 +443,12 @@ export function LigaStran() {
             spremljanja pa ni urejanje (sme ga vsak prijavljen) in je premalo
             globoko za meni — stoji ob njem. */}
         <GlavaDejanja>
-          {jePrijavljen && (
-            <GumbSpremljanja
-              ime={l.ime}
-              slog="glava"
-              spremljam={spremljam(idLiga)}
-              naPreklop={() => preklopi(idLiga)}
-            />
-          )}
+          <GumbSpremljanja
+            ime={l.ime}
+            slog="glava"
+            spremljam={jePrijavljen && spremljam(idLiga)}
+            naPreklop={() => spremljajAliRacun(l.ime)}
+          />
           {smem && (
             <MeniDejanj naslov="Dejanja lige">
               {(zapri) => (
@@ -731,16 +736,14 @@ export function LigaStran() {
             )}
 
             <div className="stran-glava__dejanja stran-glava__dejanja--vrsta">
-              {/* Spremljanje ni urejanje: sme ga vsak prijavljen, zato stoji
-                  pred urejevalskimi gumbi. Označena liga je nato na domači
-                  strani. */}
-              {jePrijavljen && (
-                <GumbSpremljanja
-                  ime={l.ime}
-                  spremljam={spremljam(idLiga)}
-                  naPreklop={() => preklopi(idLiga)}
-                />
-              )}
+              {/* Spremljanje ni urejanje: sme ga vsak prijavljen (gost dobi
+                  kratko registracijo), zato stoji pred urejevalskimi gumbi.
+                  Označena liga je nato na domači strani in v e-pošti po kolu. */}
+              <GumbSpremljanja
+                ime={l.ime}
+                spremljam={jePrijavljen && spremljam(idLiga)}
+                naPreklop={() => spremljajAliRacun(l.ime)}
+              />
               <button type="button" className="gumb" onClick={() => nastaviPravilaOdprta(true)}>
                 Pravila
               </button>

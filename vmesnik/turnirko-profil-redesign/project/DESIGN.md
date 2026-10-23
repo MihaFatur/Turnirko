@@ -498,8 +498,8 @@ drugje (»Zavesa gor.«, »KLIK!«, žig »Premium zmaga«), lik nastopi tudi na
 telefonu, nalepka in žig sta zasukana, zavesa in ključavnica se gibljeta do
 4,7 s. Izjema velja samo za ta oglas in samo, če veljajo **vsi** pogoji hkrati:
 
-1. **Sproži ga samo klik na zaklenjeno funkcijo** (spremljanje in urejanje lig,
-   zasebna statistika); nikoli sam od sebe, po urniku ali ob nalaganju strani.
+1. **Sproži ga samo klik na zaklenjeno funkcijo** (zasebna statistika; spremljanje
+   lig je od 23. 10. 2026 brezplačno, glej 5f); nikoli sam od sebe, po urniku ali ob nalaganju strani.
    Vidita ga samo gost in igralec brez Premium; organizator in admin ne.
 2. **Zapre ga gledalec**: »Ne zdaj ×« se pojavi po 2 s, prej ne deluje ne gumb
    ne Escape. Oglas je pravi modal: `role="dialog"`, `aria-modal`, fokus ob
@@ -601,6 +601,26 @@ klikom na zaklenjeno funkcijo):
 Obe poti odpreta **kratko registracijo** (brez korakov »Vloga« in »Paket«).
 Besedilo ostane zapisniško: brez vzklikov, številka pove (0 €, prvi mesec), in
 nikoli ne obljubi, kar brezplačen račun po preizkusu ne da.
+
+3. **»Spremljaj« za gosta** (stran lige, »Uredi izbor →« na domači strani):
+   od 23. 10. 2026 je spremljanje lig brezplačno, zato gost gumb vidi; klik
+   odpre kratko registracijo, ki na prvem koraku pove ligo (»Liga Savinja D:
+   po vsakem kolu ti pošljemo izide in lestvico«), po prijavi pa račun ligo
+   spremlja sam. Oglas 5c za spremljanje lig ni več (kontekst »lige« je odšel).
+
+**Obvestilo po kolu po e-pošti** (zaledje `ObvestilaPoKoluStoritev`,
+predloga `posta/SporociloKola`) je razlog, da se gost vrne: po vsakem
+odigranem kolu dobi izide, lestvico in — če je igral — svoje tekme s
+spremembo ratinga. E-pošta sledi temu dokumentu, kolikor odjemalci pošte
+dopuščajo: papir `#fbf9f5`, črte namesto kartic (3 px črna pod glavo, 1 px
+med vrsticami), mono oznake z velikimi črkami, radij 0, brez senc in slik,
+ena modra ploskev (`#0071ab`, »Odpri ligo →«), zelena/rjasta samo za zmago/
+poraz in spremembo ratinga, svetlomodra podlaga za vrstico prejemnikove
+ekipe. Pisave so sklad z zamenjavami (odjemalci jih ne nalagajo). Vrstica o
+Premium je ena poved z navadno povezavo — ne oglas. Nastavitev je okno
+»Obvestila« v meniju računa (isti kvadratek kot spremljanje), odjava
+`/odjava-obvestil` pa je gumb in ne samodejna (pregledovalniki pošte
+povezave odprejo sami).
 
 ---
 

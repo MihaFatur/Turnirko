@@ -15,8 +15,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 @Component
 @ConditionalOnProperty(name = "turnirko.posta.nacin", havingValue = "smtp")
@@ -64,10 +68,47 @@ public class SmtpPosiljatelj implements PosiljateljPoste {
         sporocilo.setTo(prejemnik);
         sporocilo.setSubject(zadeva);
         sporocilo.setText(besedilo);
+        posljiSPoskusi(prejemnik, zadeva, () -> posiljatelj.send(sporocilo));
+    }
 
+    /* Obvestilo po kolu: multipart z navadnim in HTML telesom ter glavami
+       (List-Unsubscribe). Sporocilo brez HTML gre po navadni poti. */
+    @Async("postaIzvajalec")
+    @Override
+    public void poslji(String prejemnik, SporocilaPoste.Besedilo b) {
+        if (b.html() == null && b.glave().isEmpty()) {
+            poslji(prejemnik, b.zadeva(), b.telo());
+            return;
+        }
+        MimeMessage sporocilo = posiljatelj.createMimeMessage();
+        try {
+            MimeMessageHelper pomocnik = new MimeMessageHelper(sporocilo, b.html() != null, "UTF-8");
+            pomocnik.setFrom(od);
+            if (!odgovor.isBlank()) {
+                pomocnik.setReplyTo(odgovor);
+            }
+            pomocnik.setTo(prejemnik);
+            pomocnik.setSubject(b.zadeva());
+            if (b.html() != null) {
+                pomocnik.setText(b.telo(), b.html());
+            } else {
+                pomocnik.setText(b.telo());
+            }
+            for (var glava : b.glave().entrySet()) {
+                sporocilo.addHeader(glava.getKey(), glava.getValue());
+            }
+        } catch (MessagingException napaka) {
+            dnevnik.warn("E-poste \"{}\" za {} ni bilo mogoce sestaviti: {}",
+                    b.zadeva(), zakrij(prejemnik), napaka.getMessage());
+            return;
+        }
+        posljiSPoskusi(prejemnik, b.zadeva(), () -> posiljatelj.send(sporocilo));
+    }
+
+    private void posljiSPoskusi(String prejemnik, String zadeva, Runnable poslji) {
         for (int poskus = 0; ; poskus++) {
             try {
-                posiljatelj.send(sporocilo);
+                poslji.run();
                 return;
             } catch (MailException napaka) {
                 if (poskus >= ODMIKI.length) {

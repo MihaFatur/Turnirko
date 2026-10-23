@@ -114,6 +114,16 @@ public class Uporabnik {
     @Column(name = "aktiven", nullable = false)
     private boolean aktiven = true;
 
+    /* Ali racun zeli e-posto po vsakem kolu lig, ki jih spremlja oz. v katerih
+       igra (V50, ObvestilaPoKoluStoritev). Privzeto da. */
+    @Column(name = "obvestila_po_kolu", nullable = false)
+    private boolean obvestilaPoKolu = true;
+
+    /* Nakljucen zeton za odjavo od obvestil brez prijave (povezava v e-posti);
+       nastane ob prvem obvestilu. */
+    @Column(name = "zeton_odjave")
+    private String zetonOdjave;
+
     /* Stari zapisi so brez ure ("2026-08-16"); pretvornik jih bere kot polnoc,
        ISO besedilo pa se leksikalno primerja pravilno tudi z njimi. */
     @Convert(converter = CasKotBesedilo.class)
@@ -203,6 +213,12 @@ public class Uporabnik {
 
     public boolean isAktiven() { return aktiven; }
     public void setAktiven(boolean aktiven) { this.aktiven = aktiven; }
+
+    public boolean isObvestilaPoKolu() { return obvestilaPoKolu; }
+    public void setObvestilaPoKolu(boolean obvestilaPoKolu) { this.obvestilaPoKolu = obvestilaPoKolu; }
+
+    public String getZetonOdjave() { return zetonOdjave; }
+    public void setZetonOdjave(String zetonOdjave) { this.zetonOdjave = zetonOdjave; }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
 }

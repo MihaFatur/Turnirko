@@ -23919,3 +23919,63 @@ html.uvod-tece {
   font-weight: 700;
   color: var(--barva-crnilo);
 }
+
+/* ==========================================================================
+   Obvestila po kolu (komponente/ObvestilaOkno.tsx, DESIGN.md 5f)
+   Preklop je isti kvadratek z oznako kot spremljanje lige; lige so vrstice s
+   črto (ime + mono oznaka razloga), kot vsak seznam v zapisniku.
+   ========================================================================== */
+.obvestila__uvod {
+  margin: 0 0 var(--r2);
+}
+
+.obvestila__preklop {
+  justify-content: flex-start;
+}
+
+.obvestila__opomba {
+  margin-top: var(--r2);
+}
+
+.obvestila__lige {
+  margin-top: var(--r3);
+}
+
+.obvestila__oznaka {
+  display: block;
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crnilo);
+  color: var(--barva-crnilo-3);
+  font: 400 12px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.obvestila__seznam {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.obvestila__liga {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px var(--r2);
+  min-height: 44px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.obvestila__razlog {
+  color: var(--barva-crnilo-3);
+  font: 400 12px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.obvestila__prazno {
+  margin: var(--r2) 0 0;
+}
+

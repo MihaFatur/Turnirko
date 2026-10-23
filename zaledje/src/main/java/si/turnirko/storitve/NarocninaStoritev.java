@@ -1,7 +1,7 @@
 /* Kaj sme racun glede na svoj placilni paket:
-   - igralec s Premium vidi zasebno statistiko in sme spremljati lige
-     (DostopDoProfila, DomovStoritev.spremljaj); brez Premium je kot gost,
-     le prijavljen;
+   - igralec s Premium vidi zasebno statistiko (DostopDoProfila) in domaco
+     stran po meri (DomovStoritev, DomaciTurnirjiStoritev); spremljanje lig in
+     obvestila po kolu ima od 23. 10. 2026 vsak racun;
    - organizator sme na sezono ustvariti toliko turnirjev/lig, kolikor
      dovoljuje njegov paket (TurnirjiStoritev.ustvari, LigaStoritev.ustvari).
 
@@ -62,7 +62,7 @@ public class NarocninaStoritev {
                 .filter(n -> n.jeVeljavna(LocalDateTime.now()));
     }
 
-    /* Ali igralec sme videti zasebno statistiko in spremljati lige. */
+    /* Ali igralec sme videti zasebno statistiko in domaco stran po meri. */
     public boolean imaPremium(Uporabnik u) {
         if (u == null || u.getVloga() != Vloga.IGRALEC) {
             return false;

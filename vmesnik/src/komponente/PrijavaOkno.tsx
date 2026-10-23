@@ -17,7 +17,7 @@ import type { ShranjenoStanjePlacila } from '../pomozno/registracijaSeja'
 import type { IzvorRegistracije } from '../pomozno/statistika'
 import { KodaVnos } from './KodaVnos'
 import { ModalnoOkno } from './ModalnoOkno'
-import { RegistracijaTok, type PredizbranIgralec } from './RegistracijaTok'
+import { RegistracijaTok, type LigaZaSpremljanje, type PredizbranIgralec } from './RegistracijaTok'
 
 type Nacin = 'prijava' | 'registracija' | 'koda' | 'pozabljeno'
 
@@ -54,6 +54,7 @@ export function PrijavaOkno({
   kratko = false,
   izvor = 'meni',
   predizbran,
+  liga,
 }: {
   onZapri: () => void
   /* Korak, na katerem se okno odpre (npr. "registracija" z domače strani ali
@@ -79,6 +80,8 @@ export function PrijavaOkno({
   izvor?: IzvorRegistracije
   /* Igralec s profila, s katerega je gost prišel (vpisano ime in klub). */
   predizbran?: PredizbranIgralec
+  /* Liga, ob kateri je gost kliknil »Spremljaj« (spremlja jo po registraciji). */
+  liga?: LigaZaSpremljanje
 }) {
   const [nacin, nastaviNacin] = useState<Nacin>(zacetniNacin)
   /* Kdor iz prijave preklopi na registracijo, je prišel »iz prijave« - in to
@@ -115,6 +118,7 @@ export function PrijavaOkno({
           kratko={kratko && !izPrijave}
           izvor={izPrijave ? 'prijava' : izvor}
           predizbran={izPrijave ? undefined : predizbran}
+          liga={izPrijave ? undefined : liga}
         />
       </ModalnoOkno>
     )

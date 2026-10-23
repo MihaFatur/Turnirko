@@ -89,8 +89,10 @@ const POGOJI: Tocka[] = [
       <>
         Za račun potrebuješ e-poštni naslov, ki ga potrdiš s kodo. Vpiši resnične podatke in
         gesla ne deli z drugimi. Mlajši od 15 let potrebujejo soglasje starša ali skrbnika, ki
-        ga ta da s kodo, poslano na svoj naslov. Račun, ki se uporablja v nasprotju s temi
-        pogoji, lahko onemogočimo.
+        ga ta da s kodo, poslano na svoj naslov. Po vsakem odigranem kolu lig, v katerih igraš
+        ali jih spremljaš, ti pošljemo e-pošto z izidi in lestvico; izklopiš jo v meniju računa
+        (»Obvestila«) ali s povezavo v vsakem sporočilu. Račun, ki se uporablja v nasprotju s
+        temi pogoji, lahko onemogočimo.
       </>
     ),
   },
@@ -196,8 +198,10 @@ const ZASEBNOST: Tocka[] = [
       <>
         Ob registraciji hranimo e-poštni naslov, geslo (samo kot zgostitev — prebrati ga ne
         more nihče), ime, priimek, klub in datum rojstva, ki služi povezavi računa z zapisom
-        igralca. Pri mlajših od 15 let hranimo še e-poštni naslov starša ali skrbnika. Podlaga
-        je pogodba (uporaba računa).
+        igralca. Pri mlajših od 15 let hranimo še e-poštni naslov starša ali skrbnika. Na
+        e-poštni naslov pošiljamo kode, obvestila o računu in — dokler jih ne izklopiš —
+        obvestila po kolu lig, ki jih spremljaš ali v katerih igraš. Podlaga je pogodba
+        (uporaba računa).
       </>
     ),
   },

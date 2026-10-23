@@ -1,6 +1,6 @@
-/* Spremljanje lig (DomovStoritev.spremljaj) je Premium funkcija - brez nje
-   je racun (tudi prijavljen) kot gost. Odjava spremljanja in branje izbora
-   ostaneta odprta vsakemu prijavljenemu, zato ju ta test ne omejuje. */
+/* Spremljanje lig (DomovStoritev.spremljaj) sme od 23. 10. 2026 vsak
+   prijavljen racun - tudi brezplacen in tisti, ki se caka na admina: spremljana
+   liga prinese obvestilo po kolu, ki je razlog za racun. Gost izbora nima. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -48,11 +48,17 @@ class DomovStoritevTest {
     }
 
     @Test
-    void brezplacenRacunNeSmeDodatiSpremljanja() {
+    void brezplacenRacunSmeDodatiSpremljanje() {
         Liga liga = liga();
         Uporabnik u = igralec("brezplacno@test");
 
         prijava(u.getUporabniskoIme());
+        assertTrue(domov.spremljaj(liga.getId()).contains(liga.getId()));
+    }
+
+    @Test
+    void gostNeSmeDodatiSpremljanja() {
+        Liga liga = liga();
         assertThrows(PrepovedanoIzjema.class, () -> domov.spremljaj(liga.getId()));
     }
 

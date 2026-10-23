@@ -121,6 +121,10 @@ public class VarnostneNastavitve {
                                 "/api/v1/auth/pozabljeno-geslo",
                                 "/api/v1/auth/novo-geslo",
                                 "/api/v1/auth/predogled-zapisa").permitAll()
+                        // odjava od obvestil po kolu iz e-poste (tudi odjava z enim klikom,
+                        // ki jo poslje odjemalec poste): dokaz je zeton iz sporocila, ki ne
+                        // odpre nicesar razen izklopa obvestil
+                        .requestMatchers(HttpMethod.POST, "/api/v1/obvestila/odjava").permitAll()
                         // /auth/me sluzi za preverbo poverilnic - zahteva veljavno prijavo
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         // placana registracija: racun se ustvari sele v webhooku, zato
@@ -168,6 +172,9 @@ public class VarnostneNastavitve {
                         // stati pred splosnim "GET je javen".
                         .requestMatchers("/api/v1/domov/moje-lige",
                                 "/api/v1/domov/moje-lige/**").authenticated()
+                        // nastavitev obvestil po kolu je osebna kot izbor lig (pred
+                        // splosnim "GET je javen")
+                        .requestMatchers("/api/v1/obvestila").authenticated()
                         // gost sme brati vse ostalo
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                         // --- od tu naprej samo mutacije (ne-GET) ---

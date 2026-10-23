@@ -5,6 +5,7 @@ package si.turnirko.posta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,13 +15,19 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "turnirko.posta.nacin", havingValue = "pomnilnik")
 public class PomnilniskiPosiljatelj implements PosiljateljPoste {
 
-    public record Sporocilo(String prejemnik, String zadeva, String besedilo) {}
+    public record Sporocilo(String prejemnik, String zadeva, String besedilo, String html,
+                            Map<String, String> glave) {}
 
     private final List<Sporocilo> poslana = new ArrayList<>();
 
     @Override
     public synchronized void poslji(String prejemnik, String zadeva, String besedilo) {
-        poslana.add(new Sporocilo(prejemnik, zadeva, besedilo));
+        poslana.add(new Sporocilo(prejemnik, zadeva, besedilo, null, Map.of()));
+    }
+
+    @Override
+    public synchronized void poslji(String prejemnik, SporocilaPoste.Besedilo b) {
+        poslana.add(new Sporocilo(prejemnik, b.zadeva(), b.telo(), b.html(), b.glave()));
     }
 
     /* Testna transakcija se ob koncu razveljavi, zato "po potrditvi" nikoli

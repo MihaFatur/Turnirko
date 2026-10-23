@@ -67,7 +67,7 @@ export function DomacaStran() {
   const [filter, nastaviFilter] = useState<FilterLestvice | null>(null)
   const [izborOdprt, nastaviIzborOdprt] = useState(false)
   const [domaceOdprt, nastaviDomaceOdprt] = useState(false)
-  const { odpri: odpriPremiumOglas } = usePremiumOglas()
+  const { odpriRegistracijo } = usePremiumOglas()
 
   const turnirji = useQuery({ queryKey: ['turnirji'], queryFn: turnirjiApi.seznam })
 
@@ -85,7 +85,7 @@ export function DomacaStran() {
 
   /* Izbor lig je last računa; gost ga nima, zato mu sklop pokaže lige, ki si
      jih je nazadnje ogledal (zapomni si jih njegov brskalnik). */
-  const { jePrijavljen, spremljane, preklopi, ponudiPremium } = useSpremljanjeLig()
+  const { jePrijavljen, spremljane, preklopi } = useSpremljanjeLig()
 
   /* Sklop ima več virov in strežnik med njimi razsodi sam (glej
      DomovStoritev.povzetkiLig), zato mu povemo, katere vrste je seznam, ki ga
@@ -221,16 +221,16 @@ export function DomacaStran() {
             <div className="naslovna-vrstica__desno">
               {/* Izbor je nastavitev domače strani, zato okno in ne pot na
                   /lige — tam vrstica lige vodi v ligo in preklopa ne nosi.
-                  Izbor je last računa, zato gost na istem mestu dobi okno za
-                  nov račun: napis mu pove, kaj račun prinese, namesto da bi
-                  gumb skrili in bi za možnost sploh ne vedel. */}
+                  Izbor je last računa, zato gost na istem mestu dobi kratko
+                  registracijo: račun je tisto, kar spremljanje (in e-pošto po
+                  kolu) prinese, namesto da bi gumb skrili. */}
               <button
                 type="button"
                 className="sekcija__meta"
                 onClick={() =>
-                  jePrijavljen && !ponudiPremium
+                  jePrijavljen
                     ? nastaviIzborOdprt(true)
-                    : odpriPremiumOglas('lige')
+                    : odpriRegistracijo({ izvor: 'spremljanje' })
                 }
               >
                 Uredi izbor →

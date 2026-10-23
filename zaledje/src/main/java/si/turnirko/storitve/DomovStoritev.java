@@ -23,7 +23,6 @@ import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.SpremljanaLiga;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Uporabnik;
-import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.SpremljanaLigaRepozitorij;
@@ -75,16 +74,12 @@ public class DomovStoritev {
     }
 
     /* Doda ligo v izbor; ponovni klic ne naredi nicesar (idempotentno, ker je
-       kvadratek preklop in ne stevec). Dodajanje je Premium funkcija - brez
-       nje racun ostane na kar mu je admin postavil oz. kar je gost ze videl
-       (glej NarocninaStoritev); ODJAVA spremljanja (nehajSpremljati) in BRANJE
-       (mojeLige) ostaneta odprta vsakemu prijavljenemu. */
+       kvadratek preklop in ne stevec). Od 23. 10. 2026 sme vsak prijavljen
+       (prej samo Premium): spremljana liga prinese obvestilo po kolu
+       (ObvestilaPoKoluStoritev), ki je razlog za brezplacen racun. */
     @Transactional
     public List<Long> spremljaj(Long idLiga) {
         Uporabnik jaz = zahtevajPrijavo();
-        if (jaz.getVloga() != Vloga.ADMIN && !narocnina.imaPremium(jaz)) {
-            throw new PrepovedanoIzjema("Spremljanje lig je Premium funkcija.");
-        }
         if (!ligaRepozitorij.existsById(idLiga)) {
             throw new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja.");
         }
@@ -119,10 +114,10 @@ public class DomovStoritev {
          1. "idji" - izbor prijavljenega racuna. Kdor si je sklop sestavil sam,
             ga vidi takega, kot ga je sestavil (dolzine ne omejujemo: to je
             njegova odlocitev in ne izlozba).
-         2. lige, v katerih igra igralec s Premium (kader ekipe, ne zakljucene)
+         2. lige, v katerih igra potrjen igralec (kader ekipe, ne zakljucene)
             - njegovo dejstvo, ne zvezina izlozba: kdor v ligi igra, jo pricakuje
-            na vhodni strani, prej kot ligo, ki jo je zveza izbrala za vse. Brez
-            Premium in za gosta te stopnje ni.
+            na vhodni strani, prej kot ligo, ki jo je zveza izbrala za vse. Za
+            gosta in racun brez igralca te stopnje ni.
          3. lige, ki jih je admin postavil na domaco stran (najvec dve) - to je
             privzeti pogled gosta in vsakega, ki svojega izbora nima.
          4. "ogledane" - lige, ki si jih je gost nazadnje ogledal (spomin
@@ -159,13 +154,13 @@ public class DomovStoritev {
         return lige.stream().map(l -> povzetek(l, izEkipe, mojIgralec)).toList();
     }
 
-    /* Lige, v katerih igra prijavljeni igralec s Premium. Samo s paketom, ker
-       je to del iste funkcije kot spremljanje lig (glej spremljaj): brez njega
-       racun ostane pri tem, kar mu je postavil admin. Lige v teku so pred
+    /* Lige, v katerih igra prijavljeni potrjen igralec - del spremljanja lig,
+       ki je od 23. 10. 2026 brezplacno (glej spremljaj). Lige v teku so pred
        tistimi v pripravi - tam se igra zdaj. Stevila ne omejujemo: to so lige,
        v katerih res nastopa, in ne izlozba. */
     private List<Liga> ligeIgralcevihEkip() {
-        Long jaz = premiumIgralec();
+        Uporabnik racun = lastnistvo.trenutni();
+        Long jaz = racun != null && racun.jePotrjenIgralec() ? racun.getIgralec().getId() : null;
         if (jaz == null) {
             return List.of();
         }

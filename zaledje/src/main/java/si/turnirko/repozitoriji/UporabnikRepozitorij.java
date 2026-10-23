@@ -97,4 +97,24 @@ public interface UporabnikRepozitorij extends JpaRepository<Uporabnik, Long> {
               AND u.ustvarjenOb < :meja
             """)
     List<Uporabnik> najdiBrezSoglasjaStarejseOd(LocalDateTime meja);
+
+    /* Racuni, povezani z igralci iz kadra katere koli ekipe lige - prejemniki
+       obvestila po kolu (ObvestilaPoKoluStoritev), poleg tistih, ki ligo
+       spremljajo. Igralec se nalozi vnaprej: obvestilo bere njegove tekme. */
+    @Query("""
+            SELECT DISTINCT u FROM Uporabnik u JOIN FETCH u.igralec i
+            WHERE i.id IN (
+                SELECT k.igralec.id FROM KaderEkipe k JOIN k.ekipa e JOIN e.liga l
+                WHERE l.id = :idLiga)
+            """)
+    List<Uporabnik> najdiIgralceLige(Long idLiga);
+
+    /* Racuni, ki ligo spremljajo (spremljana_liga), z igralcem, ce ga imajo. */
+    @Query("""
+            SELECT u FROM Uporabnik u LEFT JOIN FETCH u.igralec
+            WHERE u.id IN (SELECT s.idRacun FROM SpremljanaLiga s WHERE s.idLiga = :idLiga)
+            """)
+    List<Uporabnik> najdiSpremljevalceLige(Long idLiga);
+
+    Optional<Uporabnik> findByZetonOdjave(String zetonOdjave);
 }

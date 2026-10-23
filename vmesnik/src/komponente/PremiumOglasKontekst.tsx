@@ -1,17 +1,17 @@
 /* Ponudnik oglasa »Igralec Premium«: en sam oglas za celotno aplikacijo.
 
-   Oglas sproži klik na zaklenjeno funkcijo (spremljanje in urejanje lig, zasebna
-   statistika); klicatelj pokliče `odpri(kontekst)`, ponudnik izbere različico
+   Oglas sproži klik na zaklenjeno funkcijo (zasebna statistika; spremljanje lig
+   je od 23. 10. 2026 brezplačno); klicatelj pokliče `odpri(kontekst)`, ponudnik izbere različico
    in izriše oglas čez celo stran. Okno registracije in prijave živi TU in ne v
    oglasu: oglas ob kliku na »Ustvari račun« izgine, okno pa mora ostati.
 
-   Zakaj en ponudnik in ne oglas v vsaki strani: sprožilcev je več (domača
-   stran, stran lige, profil, kavelj `useSpremljanjeLig`), oglas pa je vedno
+   Zakaj en ponudnik in ne oglas v vsaki strani: sprožilcev je lahko več (zdaj
+   obvestilo na lastnem profilu), oglas pa je vedno
    isti, zato mora biti odprt največ enkrat naenkrat in izbira različice na
    enem mestu.
 
    Tu živi tudi poziv k računu (PozivRacuna.tsx) in pot do registracije za
-   druga mesta (vrstica »To si ti?« na profilu): vsa okna gosta so v enem
+   druga mesta (vrstica »To si ti?« na profilu, »Spremljaj« gosta na strani lige): vsa okna gosta so v enem
    ponudniku, zato se nikoli ne odpreta dve naenkrat. */
 import {
   type ReactNode,
@@ -37,7 +37,7 @@ import { useUvodKoncan } from '../pomozno/uvod'
 import { PozivRacuna } from './PozivRacuna'
 import { PremiumOglas } from './PremiumOglas'
 import { PrijavaOkno } from './PrijavaOkno'
-import type { PredizbranIgralec } from './RegistracijaTok'
+import type { LigaZaSpremljanje, PredizbranIgralec } from './RegistracijaTok'
 
 /* Registracija gosta z drugega mesta kot oglas: kratka pot (brez korakov
    »Vloga« in »Paket«: igralec, brezplačno s preizkusom) in po želji igralec,
@@ -45,6 +45,7 @@ import type { PredizbranIgralec } from './RegistracijaTok'
 export interface MoznostiRegistracije {
   izvor: IzvorRegistracije
   predizbran?: PredizbranIgralec
+  liga?: LigaZaSpremljanje
 }
 
 interface Vrednost {
@@ -77,8 +78,8 @@ type OknoGosta =
   | { nacin: 'kratka'; moznosti: MoznostiRegistracije }
   | { nacin: 'prijava' }
 
-/* Razvojni pregled brez klika: `?oglas=1a` (ali 1b, 1c), po želji
-   `&kontekst=lige`. Enkrat na nalaganje strani, kot `?maskota`. */
+/* Razvojni pregled brez klika: `?oglas=1a` (ali 1b, 1c). Enkrat na
+   nalaganje strani, kot `?maskota`. */
 function predogledIzNaslova(): OdprtOglas | null {
   if (typeof window === 'undefined') return null
   const parametri = new URLSearchParams(window.location.search)
@@ -86,7 +87,7 @@ function predogledIzNaslova(): OdprtOglas | null {
   if (!razlicica) return null
   const izbrana = RAZLICICE.find((r) => r === razlicica)
   if (!izbrana) return null
-  return { kontekst: parametri.get('kontekst') === 'lige' ? 'lige' : 'statistika', razlicica: izbrana }
+  return { kontekst: 'statistika', razlicica: izbrana }
 }
 
 export function PremiumOglasPonudnik({ children }: { children: ReactNode }) {
@@ -150,6 +151,7 @@ export function PremiumOglasPonudnik({ children }: { children: ReactNode }) {
           kratko={oknoGosta.nacin === 'kratka'}
           izvor={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.izvor : 'oglas'}
           predizbran={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.predizbran : undefined}
+          liga={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.liga : undefined}
           onZapri={() => nastaviOknoGosta(null)}
         />
       )}

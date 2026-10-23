@@ -8,7 +8,7 @@ import { CENA_PREMIUM_LETNO, CENA_PREMIUM_MESECNO, prihranekLetnoOdstotki, type 
 import { sklonIgralcev } from './oblikovanje'
 
 /* Kaj je oglas sprožilo: klik na zaklenjeno funkcijo. */
-export type KontekstOglasa = 'statistika' | 'lige'
+export type KontekstOglasa = 'statistika'
 
 /* Tri različice iste ponudbe: Zavesa, Ključavnica, Končni izid. */
 export type RazlicicaOglasa = '1a' | '1b' | '1c'
@@ -45,25 +45,6 @@ export interface BesedilaKonteksta {
 }
 
 export const KONTEKSTI: Record<KontekstOglasa, BesedilaKonteksta> = {
-  lige: {
-    oznaka: 'Zaklenjeno · Spremljanje lig',
-    kratko: 'Spremljanje lig',
-    vrstica: 'Spremljanje lig na domači strani',
-    aKratko: 'Tvoje lige. Prve.',
-    aNad: 'Zavesa gor —',
-    aGlavni: 'tvoje lige na prvi strani.',
-    znacke: ['Lige na domači', 'Forma', 'Napovedi'],
-    bNad: 'Odkleni',
-    bGlavni: 'spremljanje lig.',
-    uvod: 'Kola izbranih lig se pokažejo na domači strani — brez iskanja po seznamu. Uredi, katere lige spremljaš.',
-    naslov: 'Moje lige',
-    predogled: [
-      { a: '1. SNTL · moški', b: 'Kolo 6 · sob' },
-      { a: '2. liga vzhod', b: 'Kolo 6 · sob' },
-      { a: 'Ženska liga', b: 'Kolo 4 · ned' },
-      { a: 'Veteranska liga', b: 'Kolo 3 · sre' },
-    ],
-  },
   statistika: {
     oznaka: 'Zaklenjeno · Zasebna statistika',
     kratko: 'Zasebna statistika',
@@ -88,11 +69,11 @@ export const KONTEKSTI: Record<KontekstOglasa, BesedilaKonteksta> = {
 /* Primerjava paketov v »Končnem izidu« (1c): [ime, ali ga ima tudi Free]. */
 export const PRIMERJAVA: readonly [string, boolean][] = [
   ['Rezultati, lestvice, koledar', true],
-  ['Prijava z lastnim računom', true],
+  ['Spremljanje lig in e-pošta po kolu', true],
   ['Forma in nasprotniki', false],
   ['Napoved tekme', false],
   ['Nizi, točke in razrezi', false],
-  ['Spremljanje lig na domači strani', false],
+  ['Domača stran po meri', false],
 ]
 
 /* Izid tekme Free : Premium v 1c; števec šteje po točkah v tem vrstnem redu

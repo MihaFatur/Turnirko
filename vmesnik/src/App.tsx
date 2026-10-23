@@ -27,6 +27,7 @@ import { RacuniStran } from './strani/RacuniStran'
 import { RatingStran } from './strani/RatingStran'
 import { RazlagaRatingaStran } from './strani/RazlagaRatingaStran'
 import { PogojiStran } from './strani/PogojiStran'
+import { OdjavaObvestilStran } from './strani/OdjavaObvestilStran'
 import { UvozStran } from './strani/UvozStran'
 import { NarocninaStran } from './strani/NarocninaStran'
 import { OrganizatorskiPregledStran } from './strani/OrganizatorskiPregledStran'
@@ -173,6 +174,7 @@ export function App() {
         <Route path="/koledar" element={<KoledarStran />} />
         <Route path="/o-ratingu" element={<RazlagaRatingaStran />} />
         <Route path="/pogoji" element={<PogojiStran />} />
+        <Route path="/odjava-obvestil" element={<OdjavaObvestilStran />} />
         <Route path="/igralci/:id/profil" element={<ProfilStran />} />
         <Route path="/moj-profil" element={<MojProfil />} />
         <Route path="/narocnina" element={<NarocninaStran />} />

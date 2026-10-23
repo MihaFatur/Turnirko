@@ -128,7 +128,11 @@ public class PreizkusPremiumStoritev {
         return poslanih;
     }
 
-    /* Dnevno ob 10.00: obvestilo pride sredi dneva, ne ponoci. */
+    /* Dnevno ob 10.00: obvestilo pride sredi dneva, ne ponoci. Transakcija
+       mora biti TU: klic posljiOpomnike() iz istega razreda gre mimo
+       Springovega posrednika, zato se opomnik_poslan_ob brez nje ne bi zapisal
+       in bi obvestilo slo vsak dan znova. */
+    @Transactional
     @Scheduled(cron = "0 0 10 * * *")
     public void dnevniOpomniki() {
         posljiOpomnike(LocalDateTime.now());

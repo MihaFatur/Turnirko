@@ -1029,6 +1029,15 @@ export interface LestvicaIgralcaDto {
   rekreativec: boolean
 }
 
+/* Obvestila po kolu (GET/PUT /obvestila): ali jih račun želi, ali ima potrjen
+   naslov in za katere lige bi jih dobil (nezaključene: IGRA = v kadru ekipe,
+   SPREMLJA = izbor računa). */
+export interface ObvestilaDto {
+  poKolu: boolean
+  emailPotrjen: boolean
+  lige: { id: number; ime: string; sezona: string | null; razlog: 'IGRA' | 'SPREMLJA' }[]
+}
+
 /* Povzetek ene lige za sklop "Moje lige" na domači strani. */
 export interface DomovLigaDto {
   id: number
