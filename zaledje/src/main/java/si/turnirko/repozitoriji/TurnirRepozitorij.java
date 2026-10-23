@@ -14,6 +14,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Turnir;
 
 public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
@@ -21,6 +22,19 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
     /* Koliko turnirjev je ta organizator ustvaril od zacetka tekoce sezone -
        meja placilnega paketa (NarocninaStoritev). */
     long countByUstvarilIdAndUstvarjenObGreaterThanEqual(Long idUstvaril, LocalDateTime odSezone);
+
+    /* Prazni turnirji iz koledarja, ki jih sme prevzeti uvoz iz Stupe
+       (PrevzemKoledarja): brez vira, v danem stanju (PRIPRAVA), brez dogodkov,
+       z zacetkom v danem obdobju. */
+    @Query("""
+            SELECT t FROM Turnir t
+            LEFT JOIN FETCH t.kraj
+            WHERE t.vir IS NULL AND t.status = :status
+              AND t.datumZacetka BETWEEN :od AND :doKdaj
+              AND NOT EXISTS (SELECT d.id FROM Dogodek d WHERE d.turnir = t)
+            ORDER BY t.datumZacetka, t.id
+            """)
+    List<Turnir> prazniBrezVira(LocalDate od, LocalDate doKdaj, StatusTekmovanja status);
 
     /* Vsi turnirji s krajem in lastnistvom, najnovejsi najprej. */
     @Query("""

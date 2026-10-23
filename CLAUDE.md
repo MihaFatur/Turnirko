@@ -117,6 +117,13 @@
   `LigaDto` nosijo prikazni `status`; `dejanskiStatus` nosi dejanskega, po katerem
   vmesnik odloča o kontrolah. Storitve in prehodi berejo SAMO dejanski status
   (entiteta), nikoli `zaPrikaz`.
+- **Seznam turnirjev gostu in igralcu ne kaže turnirjev »V pripravi«, ki so
+  več kot 7 dni daleč** (`VidnostTurnirja`, `GET /turnirji`; odločitev lastnika,
+  23. 10. 2026 — koledar sezone prinese ~50 turnirjev za vse leto naprej in bi
+  seznam ter sklop na domači strani zapolnil s praznimi). Admin in organizator
+  vidita vse. Skrit ni zaklenjen: `GET /turnirji/{id}` in koledar ga kažeta.
+  »V pripravi« je prikazni status (tudi žreb pred datumom); turnir brez datuma
+  ostane. Varuje `VidnostTurnirjaTest`.
 - Rating se spreminja izključno prek `RatingStoritev` (dnevnik v `rating_zgodovina`).
 - **Vsako tekmovanje ima RAVEN, ta pa težo v ratingu** (`RavenTekmovanja`,
   `turnir.raven` in `liga.raven`, V20 — nadomešča prejšnjo zastavico
@@ -1459,6 +1466,19 @@
     uvoziti kot turnir v pripravi brez dogodkov — tekmovanja prinese ponovni
     uvoz z istim id-jem. Poročilo to pove z opozorilom, stran pa namesto
     »ujema se v vseh preverbah« izpiše, da preverb ni.
+  - **Prvi uvoz turnirja sme PREVZETI prazen turnir iz koledarja**
+    (`PrevzemKoledarja`, `UvozZahtevaDto.prevzemiTurnir`, okt 2026). Koledar
+    sezone vpiše uradne turnirje vnaprej, preden jih zveza objavi pri Stupi;
+    brez prevzema bi uvoz ustvaril drugega. Kandidat: brez vira, `PRIPRAVA`,
+    brez dogodkov, začetek ±3 dni od dni dogodka, še ni povezan. Predogled
+    vrne kandidate in predlog po imenu (ista kategorija U-xx in zaporedna
+    številka obvezni, vrsta OT/TOP/DP/ekipno/kvalifikacije/člani šteje; pri
+    neločljivih ga ni). **Odloči admin** — vmesnik ob kandidatih zahteva izbiro
+    (prevzemi ali »Ustvari nov turnir«), strežnik izbranega preveri po istem
+    merilu pred zagonom in še enkrat v transakciji zapisa. Prevzem ohrani id
+    in kraj iz koledarja, lastnika pobriše (uvoženo ni od nikogar in ne šteje
+    v mejo paketa), vse drugo zapiše preslikava iz vira. Uvožen dogodek
+    kandidatov nima več. Varujeta `PrevzemKoledarjaTest`, `UvozPrevzemKoledarjaTest`.
   - **Skupine za mesta pri viru so vsaka svoja stopnja** (»1.–4.« stopnja 2,
     »5.–8.« stopnja 3); `stopnja` ostane vrstni red vira (bere ga vrstni red
     ratinga v dnevu), vmesnik pa skupine s `prvoMesto` zbere pod en naslov

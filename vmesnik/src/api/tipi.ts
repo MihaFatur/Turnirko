@@ -2615,6 +2615,19 @@ export interface PredogledUvozaDto {
   idTurnir: number | null
   idLiga: number | null
   porocilo: PorociloUvozaDto
+  /* Prazni turnirji iz koledarja, ki jih sme PRVI uvoz turnirja prevzeti
+     namesto novega (najboljši prvi); prazno, ko jih ni ali je že uvoženo. */
+  kandidatiPrevzema: KandidatPrevzema[]
+  /* Predlagan kandidat; null, kadar ga po imenu ni mogoče izbrati brez dvoma. */
+  predlaganPrevzem: number | null
+}
+
+export interface KandidatPrevzema {
+  id: number
+  ime: string
+  zacetek: string | null
+  konec: string | null
+  kraj: string | null
 }
 
 /* Odločitev o istovetnosti: idIgralec = igralec v registru, null = nov igralec.
@@ -2633,6 +2646,8 @@ export interface UvozZahtevaDto {
   posnetek: string | null
   odlocitve: OdlocitevUvoza[]
   vsili: boolean
+  /* prazen turnir iz koledarja, ki ga uvoz prevzame; null = nov turnir */
+  prevzemiTurnir?: number | null
 }
 
 export interface IzidUvozaDto {

@@ -21,6 +21,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { uvozApi } from '../api/zahteve'
 import type {
   IzidUvozaDto,
+  KandidatPrevzema,
   NovIgralecUvoza,
   OdlocitevIstovetnosti,
   OdlocitevUvoza,
@@ -190,6 +191,9 @@ function DelUvoza({ dogodek }: { dogodek: UvozDogodekDto }) {
   const [kljucPredogleda, nastaviKljucPredogleda] = useState('')
   const [vsili, nastaviVsili] = useState(false)
   const [izid, nastaviIzid] = useState<IzidUvozaDto | null>(null)
+  /* Turnir iz koledarja, ki ga uvoz prevzame: id, 'NOV' ali null (še ni
+     izbrano - kadar strežnik ne zna predlagati, izbere admin sam). */
+  const [prevzem, nastaviPrevzem] = useState<number | 'NOV' | null>(null)
 
   const kljuc = kljucOdlocitev(odlocitve)
   const zastarel = predogled !== null && kljuc !== kljucPredogleda
@@ -201,11 +205,21 @@ function DelUvoza({ dogodek }: { dogodek: UvozDogodekDto }) {
       nastaviPredogled(p)
       nastaviKljucPredogleda(vnos.kljuc)
       nastaviIzid(null)
+      // izbira ostane, dokler je kandidat še med ponujenimi
+      nastaviPrevzem((prej) =>
+        prej === 'NOV' || (prej !== null && p.kandidatiPrevzema.some((k) => k.id === prej))
+          ? prej
+          : p.predlaganPrevzem)
     },
   })
   const uvozZahteva = useMutation({
     mutationFn: () =>
-      uvozApi.uvozi(dogodek.id, { posnetek: predogled!.posnetek, odlocitve: Object.values(odlocitve), vsili }),
+      uvozApi.uvozi(dogodek.id, {
+        posnetek: predogled!.posnetek,
+        odlocitve: Object.values(odlocitve),
+        vsili,
+        prevzemiTurnir: typeof prevzem === 'number' ? prevzem : null,
+      }),
     onSuccess: (r) => {
       nastaviIzid(r)
       // uvoz spremeni tekmovanja, igralce in rating - osveži se vse
@@ -239,8 +253,10 @@ function DelUvoza({ dogodek }: { dogodek: UvozDogodekDto }) {
 
   const porocilo = predogled?.porocilo
   const neodlocene = porocilo?.odlocitve.filter((o) => !odlocitevPopolna(o, odlocitve[o.idOsebe])) ?? []
+  const kandidati = predogled?.kandidatiPrevzema ?? []
   const lahkoUvozim = predogled !== null && predogled.dovoljuje && !zastarel
     && (!predogled.enakKotZadnjic || vsili) && !uvozZahteva.isPending && izid?.izid !== 'USPEH'
+    && (kandidati.length === 0 || prevzem !== null)
 
   return (
     <div className="uvoz__del">
@@ -255,6 +271,15 @@ function DelUvoza({ dogodek }: { dogodek: UvozDogodekDto }) {
       {predogled && porocilo && (
         <>
           <StanjePredogleda predogled={predogled} zastarel={zastarel} />
+
+          {kandidati.length > 0 && (
+            <PrevzemKoledarja
+              kandidati={kandidati}
+              predlagan={predogled.predlaganPrevzem}
+              izbran={prevzem}
+              onIzbira={nastaviPrevzem}
+            />
+          )}
 
           <Stevci stevci={porocilo.stevci} />
 
@@ -326,11 +351,58 @@ function DelUvoza({ dogodek }: { dogodek: UvozDogodekDto }) {
           {zastarel && (
             <p className="namig">Odločitve so se spremenile - pred uvozom ponovi predogled.</p>
           )}
+          {kandidati.length > 0 && prevzem === null && (
+            <p className="namig">Pred uvozom izberi, ali uvoz prevzame turnir iz koledarja ali ustvari novega.</p>
+          )}
           <SporociloNapake napaka={uvozZahteva.error} />
           {izid && <IzidUvoza izid={izid} />}
         </>
       )}
     </div>
+  )
+}
+
+/* Prvi uvoz turnirja: prazen turnir iz koledarja sezone, ki ga uvoz prevzame
+   (isti id, vse drugo iz vira), ali nov turnir. Brez tega bi ob vsakem
+   uradnem turnirju, vpisanem vnaprej iz koledarja, stala v seznamu dva. */
+function PrevzemKoledarja({
+  kandidati,
+  predlagan,
+  izbran,
+  onIzbira,
+}: {
+  kandidati: KandidatPrevzema[]
+  predlagan: number | null
+  izbran: number | 'NOV' | null
+  onIzbira: (v: number | 'NOV') => void
+}) {
+  const ime = 'prevzem-koledarja'
+  return (
+    <fieldset className={'uvoz__oseba' + (izbran !== null ? ' uvoz__oseba--odlocena' : '')}>
+      <legend className="uvoz__oseba-ime">Turnir iz koledarja</legend>
+      <p className="namig">
+        Ta turnir je v koledarju že vpisan vnaprej. Uvoz naj prevzame obstoječi prazni turnir
+        (povezava ostane ista, ime, datumi in tekmovanja pridejo iz vira) - sicer bosta v seznamu
+        dva.
+        {predlagan === null && ' Strežnik po imenu ne zna izbrati sam - izberi.'}
+      </p>
+      {kandidati.map((k) => (
+        <label key={k.id} className="uvoz__moznost">
+          <input type="radio" name={ime} checked={izbran === k.id} onChange={() => onIzbira(k.id)} />
+          <span>
+            Prevzemi <Link to={`/turnirji/${k.id}`}>{k.ime}</Link>
+            {k.id === predlagan && <>{' '}<span className="znacka znacka--uspeh">predlog</span></>}
+            <span className="uvoz__pod">
+              {[k.zacetek ? oblikujObdobje(k.zacetek, k.konec) : 'brez datuma', k.kraj].filter(Boolean).join(' · ')}
+            </span>
+          </span>
+        </label>
+      ))}
+      <label className="uvoz__moznost">
+        <input type="radio" name={ime} checked={izbran === 'NOV'} onChange={() => onIzbira('NOV')} />
+        <span>Ustvari nov turnir</span>
+      </label>
+    </fieldset>
   )
 }
 

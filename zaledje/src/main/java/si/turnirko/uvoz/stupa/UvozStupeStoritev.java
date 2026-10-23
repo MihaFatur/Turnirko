@@ -54,6 +54,8 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.StatusTekmovanja;
+import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.UvozZagon;
 import si.turnirko.modeli.VirTekmovanja;
 import si.turnirko.modeli.ZunanjaPovezava;
@@ -186,25 +188,73 @@ public class UvozStupeStoritev {
         Path mapa = posnemi(idDogodka, oznaka);
         PosnetekDogodka p = PosnetekDogodka.beri(mapa, null, null, datumPosnetka(oznaka));
         Map<Long, IdentitetaStupe.Odlocitev> odlocitve = odlocitve(zahteva);
+        Long prevzem = zahteva == null ? null : zahteva.prevzemiTurnir();
+        preveriPrevzem(p, prevzem);
+
+        List<PrevzemKoledarja.Kandidat> kandidati = kandidatiPrevzema(p);
+        List<PredogledUvozaDto.KandidatPrevzema> kandidatiDto = kandidati.stream()
+                .map(k -> new PredogledUvozaDto.KandidatPrevzema(k.turnir().getId(), k.turnir().getIme(),
+                        k.turnir().getDatumZacetka(), k.turnir().getDatumKonca(),
+                        k.turnir().getKraj() == null ? null : k.turnir().getKraj().getIme()))
+                .toList();
+        Turnir predlog = PrevzemKoledarja.predlog(kandidati);
+        Long predlagan = predlog == null ? null : predlog.getId();
 
         Izvedba izvedba;
         try {
             izvedba = transakcija.execute(stanje -> {
                 stanje.setRollbackOnly();
-                return izvedi(p, IdentitetaStupe.Nacin.STROGO, odlocitve);
+                return izvedi(p, IdentitetaStupe.Nacin.STROGO, odlocitve, Map.of(), prevzem);
             });
         } catch (RuntimeException e) {
             dnevnik.error("Predogled uvoza dogodka {} ni uspel", idDogodka, e);
             PorociloUvoza r = new PorociloUvoza();
             r.napaka("nepricakovana napaka pri preslikavi", e.getClass().getSimpleName() + ": " + e.getMessage());
-            return new PredogledUvozaDto(idDogodka, p.ime(), oznaka, p.zgostitev(), false, false, null, null, r.vDto());
+            return new PredogledUvozaDto(idDogodka, p.ime(), oznaka, p.zgostitev(), false, false, null, null, r.vDto(),
+                    kandidatiDto, predlagan);
         }
         boolean enak = zadnjiUspesen(idDogodka).map(z -> z.getZgostitev().equals(p.zgostitev())).orElse(false);
         return new PredogledUvozaDto(idDogodka, p.ime(), oznaka, p.zgostitev(), enak,
                 izvedba.porocilo().dovoljuje(),
                 p.jeLiga() ? null : obstojeci(ZunanjaPovezava.Vrsta.TURNIR, idDogodka),
                 p.jeLiga() ? obstojeci(ZunanjaPovezava.Vrsta.LIGA, idDogodka) : null,
-                izvedba.porocilo().vDto());
+                izvedba.porocilo().vDto(), kandidatiDto, predlagan);
+    }
+
+    /* Prazni turnirji iz koledarja, ki jih sme prvi uvoz tega turnirja prevzeti
+       (PrevzemKoledarja), najboljsi prvi. Uvozen dogodek in liga jih nimata. */
+    public List<PrevzemKoledarja.Kandidat> kandidatiPrevzema(PosnetekDogodka p) {
+        if (p.jeLiga() || p.zacetek() == null || obstojeci(ZunanjaPovezava.Vrsta.TURNIR, p.id()) != null) {
+            return List.of();
+        }
+        LocalDate konec = p.konec() != null ? p.konec() : p.zacetek();
+        List<Turnir> prazni = repo.turnirji().prazniBrezVira(
+                        p.zacetek().minusDays(PrevzemKoledarja.DNI_ODMIKA),
+                        konec.plusDays(PrevzemKoledarja.DNI_ODMIKA), StatusTekmovanja.PRIPRAVA).stream()
+                .filter(t -> !repo.povezave().existsByVirAndVrstaAndIdLokalni(
+                        VirTekmovanja.STUPA, ZunanjaPovezava.Vrsta.TURNIR, t.getId()))
+                .toList();
+        return PrevzemKoledarja.razvrsti(p.ime(), p.zacetek(), prazni);
+    }
+
+    /* Prevzeti se sme samo eden od kandidatov - kar strezniku pove admin, se
+       preveri po istem merilu, po katerem je predogled kandidate ponudil. */
+    private void preveriPrevzem(PosnetekDogodka p, Long idTurnir) {
+        if (idTurnir == null) {
+            return;
+        }
+        if (p.jeLiga()) {
+            throw new NeveljavenVnosIzjema("Prevzem turnirja iz koledarja je mogoč samo pri turnirju, ne pri ligi.");
+        }
+        Long uvozen = obstojeci(ZunanjaPovezava.Vrsta.TURNIR, p.id());
+        if (uvozen != null) {
+            throw new NeveljavenVnosIzjema("Dogodek je že uvožen v turnir " + uvozen
+                    + " - prevzem turnirja iz koledarja ni več mogoč.");
+        }
+        if (kandidatiPrevzema(p).stream().noneMatch(k -> k.turnir().getId().equals(idTurnir))) {
+            throw new NeveljavenVnosIzjema("Turnir " + idTurnir + " ni prazen turnir iz koledarja v dneh tega dogodka"
+                    + " (brez vira, v pripravi, brez tekmovanj) - prevzeti ga ni mogoče.");
+        }
     }
 
     public IzidUvozaDto uvozi(long idDogodka, UvozZahtevaDto zahteva) {
@@ -220,6 +270,7 @@ public class UvozStupeStoritev {
             throw new NiNajdenoIzjema("Posnetka " + zahteva.posnetek() + " ni vec - naredi predogled znova.");
         }
         PosnetekDogodka p = PosnetekDogodka.beri(mapa, null, null, datumPosnetka(zahteva.posnetek()));
+        preveriPrevzem(p, zahteva.prevzemiTurnir());
 
         UvozZagon zagon = dnevnikTransakcija.execute(s -> zagoni.save(new UvozZagon(VirTekmovanja.STUPA,
                 String.valueOf(idDogodka), UvozOblike.prirezi(p.ime(), 200), p.zgostitev(), uporabnik(),
@@ -236,7 +287,7 @@ public class UvozStupeStoritev {
         Izvedba izvedba;
         try {
             izvedba = transakcija.execute(stanje -> {
-                Izvedba x = izvedi(p, IdentitetaStupe.Nacin.STROGO, odlocitve);
+                Izvedba x = izvedi(p, IdentitetaStupe.Nacin.STROGO, odlocitve, Map.of(), zahteva.prevzemiTurnir());
                 if (!x.porocilo().dovoljuje()) {
                     stanje.setRollbackOnly();
                 }
@@ -283,6 +334,13 @@ public class UvozStupeStoritev {
        ZnaneOsebeStupe) - dopolnijo osebo, ki jih v tem dogodku nima. */
     public Izvedba izvedi(PosnetekDogodka p, IdentitetaStupe.Nacin nacin, Map<Long, IdentitetaStupe.Odlocitev> odlocitve,
                           Map<Long, IdentitetaStupe.Oseba> znaneOsebe) {
+        return izvedi(p, nacin, odlocitve, znaneOsebe, null);
+    }
+
+    /* prevzem: prazen turnir iz koledarja, ki ga prvi uvoz turnirja prevzame
+       namesto novega (PrevzemKoledarja; klicatelj ga je preveril). */
+    public Izvedba izvedi(PosnetekDogodka p, IdentitetaStupe.Nacin nacin, Map<Long, IdentitetaStupe.Odlocitev> odlocitve,
+                          Map<Long, IdentitetaStupe.Oseba> znaneOsebe, Long prevzem) {
         PorociloUvoza r = new PorociloUvoza();
         SledUvoza sled = new SledUvoza();
         if (p.osirotelihTekem() > 0) {
@@ -300,7 +358,10 @@ public class UvozStupeStoritev {
             }
         } else {
             Long idTurnir = PovezaveStupe.lokalni(repo.povezave(), ZunanjaPovezava.Vrsta.TURNIR, p.id()).orElse(null);
-            if (idTurnir != null) {
+            if (idTurnir == null && prevzem != null) {
+                prevzemi(p, prevzem);
+                r.prestej("turnirjev iz koledarja, ki jih je prevzel uvoz");
+            } else if (idTurnir != null) {
                 od = najzgodnejsi(od, repo.turnirji().findById(idTurnir).map(t -> t.getDatumZacetka()).orElse(null));
                 for (Dogodek d : repo.dogodki().findByTurnirIdOrderByIdAsc(idTurnir)) {
                     CiscenjeUvoza.vsebinaDogodka(repo.em(), d.getId());
@@ -341,6 +402,26 @@ public class UvozStupeStoritev {
     // ---------------------------------------------------------------------
     // Pomozno
     // ---------------------------------------------------------------------
+
+    /* Poveze prazen turnir iz koledarja z dogodkom vira; preslikava ga nato
+       najde po povezavi in mu zapise vse iz vira (ime, datume, prizorisce,
+       raven, vir). Lastnik gre: uvozeno tekmovanje ni od nikogar (samo za
+       branje) in organizatorju ne sme steti v mejo paketa. Kraj iz koledarja
+       ostane - vir ga v sifrantu nima. Pogoji se preverijo znova v transakciji
+       zapisa, ker je med predogledom in uvozom lahko kdo turnir spremenil. */
+    private void prevzemi(PosnetekDogodka p, long idTurnir) {
+        Turnir t = repo.turnirji().findById(idTurnir)
+                .orElseThrow(() -> new DomenskaIzjema("Turnirja " + idTurnir + " za prevzem ni več."));
+        if (t.getVir() != null || t.getStatus() != StatusTekmovanja.PRIPRAVA
+                || !repo.dogodki().findByTurnirIdOrderByIdAsc(idTurnir).isEmpty()) {
+            throw new DomenskaIzjema("Turnir " + idTurnir + " ni več prazen turnir iz koledarja - ponovi predogled.");
+        }
+        t.setUstvaril(null);
+        t.setKlubLastnik(null);
+        repo.turnirji().save(t);
+        PovezaveStupe.povezi(repo.povezave(), ZunanjaPovezava.Vrsta.TURNIR, p.id(), idTurnir);
+        repo.em().flush();
+    }
 
     private Path posnemi(long idDogodka, String oznaka) {
         try {

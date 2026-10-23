@@ -21,12 +21,15 @@ import si.turnirko.dto.StatistikaTekmovanjaDto;
 import si.turnirko.dto.TurnirDto;
 import si.turnirko.dto.TurnirVnos;
 import si.turnirko.izjeme.NiNajdenoIzjema;
+import si.turnirko.modeli.Uporabnik;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
+import si.turnirko.storitve.LastnistvoStoritev;
 import si.turnirko.storitve.PovzetkiStoritev;
 import si.turnirko.storitve.PovzetkiStoritev.StevciDogodka;
 import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
 import si.turnirko.storitve.TurnirjiStoritev;
+import si.turnirko.storitve.VidnostTurnirja;
 
 @RestController
 @RequestMapping("/api/v1/turnirji")
@@ -37,24 +40,31 @@ public class TurnirjiKontroler {
     private final DogodekRepozitorij dogodekRepozitorij;
     private final PovzetkiStoritev povzetkiStoritev;
     private final StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
+    private final LastnistvoStoritev lastnistvoStoritev;
 
     public TurnirjiKontroler(TurnirjiStoritev turnirjiStoritev,
                              TurnirRepozitorij turnirRepozitorij,
                              DogodekRepozitorij dogodekRepozitorij,
                              PovzetkiStoritev povzetkiStoritev,
-                             StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev) {
+                             StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev,
+                             LastnistvoStoritev lastnistvoStoritev) {
         this.turnirjiStoritev = turnirjiStoritev;
         this.turnirRepozitorij = turnirRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.povzetkiStoritev = povzetkiStoritev;
         this.statistikaTekmovanjaStoritev = statistikaTekmovanjaStoritev;
+        this.lastnistvoStoritev = lastnistvoStoritev;
     }
 
+    /* Gost in igralec ne dobita turnirjev v pripravi, ki so vec kot teden
+       dalec (VidnostTurnirja). Javen GET, racun iz glave Authorization. */
     @GetMapping
     public List<TurnirDto> seznam() {
         Map<Long, TurnirDto.Stevci> stevci = povzetkiStoritev.zaVseTurnirje();
         Map<Long, TurnirDto.Potek> poteki = povzetkiStoritev.potekiVsehTurnirjev();
+        Uporabnik jaz = lastnistvoStoritev.trenutni();
         return turnirRepozitorij.najdiVseSKrajem().stream()
+                .filter(t -> VidnostTurnirja.naSeznamu(t, jaz))
                 .map(t -> TurnirDto.iz(t,
                         stevci.getOrDefault(t.getId(), TurnirDto.Stevci.PRAZNI),
                         poteki.getOrDefault(t.getId(), TurnirDto.Potek.PRAZEN)))
