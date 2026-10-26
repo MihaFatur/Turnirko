@@ -12,6 +12,8 @@
      in mesec, ki bi tekel med cakanjem na admina, bi bil izgubljen.
    - Enkrat na racun: kdor vrstico v narocnina ze ima (preizkus, placilo,
      potekla narocnina), ga ne dobi znova - tudi po razvezavi ne.
+   - Preizkus traja mesec; koda popusta z meseci (V53, KodePopustaStoritev), ki jo
+     je racun vpisal ob registraciji, ga podaljsa na toliko mesecev.
    - Brez Stripa in brez kartice; konec je samo datum (Narocnina.jeVeljavna),
      zato potek ne potrebuje opravila. Nakup med preizkusom vrstico prepise
      (PlacilaStoritev.obdelajNadgradnjo) - placano obdobje zacne teci takoj.
@@ -33,10 +35,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.modeli.CiklusPlacila;
+import si.turnirko.modeli.KodaPopusta;
 import si.turnirko.modeli.Narocnina;
 import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.VrstaKodePopusta;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.posta.PostaStoritev;
 import si.turnirko.posta.SporocilaPoste;
@@ -58,17 +62,20 @@ public class PreizkusPremiumStoritev {
     private final CenikStoritev cenik;
     private final PostaStoritev posta;
     private final RacunDnevnikStoritev racunDnevnik;
+    private final KodePopustaStoritev kodePopusta;
     private final String koren;
 
     public PreizkusPremiumStoritev(NarocninaRepozitorij narocninaRepozitorij,
                                    CenikStoritev cenik,
                                    PostaStoritev posta,
                                    RacunDnevnikStoritev racunDnevnik,
+                                   KodePopustaStoritev kodePopusta,
                                    @Value("${turnirko.stripe.vrni-na}") String koren) {
         this.narocninaRepozitorij = narocninaRepozitorij;
         this.cenik = cenik;
         this.posta = posta;
         this.racunDnevnik = racunDnevnik;
+        this.kodePopusta = kodePopusta;
         this.koren = koren;
     }
 
@@ -83,13 +90,20 @@ public class PreizkusPremiumStoritev {
         if (narocninaRepozitorij.findByUporabnikId(u.getId()).isPresent()) {
             return Optional.empty();
         }
+        /* Koda popusta z meseci (V53) podaljsa preizkus: toliko mesecev namesto enega.
+           Kodo je racun vpisal ob registraciji; mesec se kljub temu steje sele od
+           povezave (glej glavo razreda). Koda drugih vrst na preizkus ne vpliva. */
+        Optional<KodaPopusta> koda = kodePopusta.kodaRacuna(u)
+                .filter(k -> k.getVrsta() == VrstaKodePopusta.PREMIUM_MESECI);
+        int meseci = koda.map(KodaPopusta::getMeseci).orElse(MESECEV_PREIZKUSA);
         Narocnina n = new Narocnina(u, Paket.PREMIUM);
         n.setStatus(StatusNarocnine.PREIZKUS);
         n.setZacetekOb(zdaj);
         n.setObdobjeOd(zdaj);
-        n.setTrenutnoObdobjeDo(zdaj.plusMonths(MESECEV_PREIZKUSA));
+        n.setTrenutnoObdobjeDo(zdaj.plusMonths(meseci));
         narocninaRepozitorij.save(n);
-        racunDnevnik.zabelezi(u.getId(), "Preizkus Premium do " + oblikuj(dan(n.getTrenutnoObdobjeDo())));
+        racunDnevnik.zabelezi(u.getId(), "Preizkus Premium do " + oblikuj(dan(n.getTrenutnoObdobjeDo()))
+                + koda.map(k -> " (koda " + k.getKoda() + ")").orElse(""));
         return Optional.of(n);
     }
 
@@ -104,6 +118,11 @@ public class PreizkusPremiumStoritev {
         int poslanih = 0;
         for (Narocnina n : preizkusi) {
             LocalDateTime konec = n.getTrenutnoObdobjeDo();
+            // organizatorski paket brez placila (koda popusta, V53) ima drugo sporocilo, ki ga se ni:
+            // sporocilo o koncu navaja ceno Premium
+            if (n.getPaket() != Paket.PREMIUM) {
+                continue;
+            }
             if (konec == null || !konec.isAfter(zdaj) || konec.isAfter(zdaj.plusDays(DNI_PRED_KONCEM))) {
                 continue;
             }

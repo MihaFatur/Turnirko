@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,7 +40,10 @@ import si.turnirko.dto.PredogledZapisaVnos;
 import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrevecZahtevIzjema;
+import si.turnirko.modeli.CiklusPlacila;
 import si.turnirko.modeli.NamenKode;
+import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.PotrditvenaKoda;
 import si.turnirko.modeli.Spol;
 import si.turnirko.modeli.StatusNarocnine;
@@ -47,6 +51,7 @@ import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.VirPovezave;
 import si.turnirko.posta.PomnilniskiPosiljatelj;
+import si.turnirko.posta.PostaStoritev;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.PotrditvenaKodaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
@@ -72,6 +77,7 @@ class RegistracijaTest {
     @Autowired OmejevalnikPoskusov omejevalnik;
     @Autowired PasswordEncoder kodirnik;
     @Autowired jakarta.persistence.EntityManager em;
+    @Value("${turnirko.posta.admin}") String naslovAdmina;
 
     @BeforeEach
     void pripravi() {
@@ -529,7 +535,151 @@ class RegistracijaTest {
                 .filter(u -> u.getUporabniskoIme().equals("zaseden@test.si")).count());
     }
 
+    // ---------- Obvestilo adminu ----------
+
+    @Test
+    void racunBrezPovezaveJavljaAdminuSeleKoJeNaslovPotrjen() {
+        registracija.registriraj(igralec("Ana", "Novak", "ana@test.si"), IP);
+        assertTrue(poslanoAdminu().isEmpty(), "nepotrjen naslov je le rezervacija - admina ne zadeva");
+
+        registracija.potrdiEposto(new PotrditevKodeVnos("ana@test.si", koda("ana@test.si")));
+
+        List<PomnilniskiPosiljatelj.Sporocilo> poslano = poslanoAdminu();
+        assertEquals(1, poslano.size());
+        PomnilniskiPosiljatelj.Sporocilo m = poslano.get(0);
+        assertEquals("Turnirko: račun čaka na potrditev · Ana Novak", m.zadeva());
+        assertTrue(m.besedilo().contains("ana@test.si"), m.besedilo());
+        assertTrue(m.besedilo().contains("Brezplačno"), m.besedilo());
+        assertTrue(m.besedilo().contains("ni igralca"), "razlog: v sifrantu ga ni - " + m.besedilo());
+        assertNotNull(m.html(), "sporocilo ima HTML z znamko Turnirko");
+    }
+
+    @Test
+    void samodejnoPovezanRacunAdminaNeZaposluje() {
+        igralecVSifrantu("Ana", "Novak", ODRASEL);
+        registracija.registriraj(igralec("Ana", "Novak", "ana@test.si"), IP);
+        assertTrue(registracija.potrdiEposto(new PotrditevKodeVnos("ana@test.si", koda("ana@test.si"))).povezan());
+
+        assertTrue(poslanoAdminu().isEmpty());
+    }
+
+    @Test
+    void razlogJeVecZadetkovAliZeZasedenZapis() {
+        igralecVSifrantu("Ana", "Kovač", ODRASEL);
+        igralecVSifrantu("Ana", "Kovač", ODRASEL); // soimenjakinja z istim datumom
+        registracija.registriraj(igralec("Ana", "Kovač", "dva@test.si"), IP);
+        registracija.potrdiEposto(new PotrditevKodeVnos("dva@test.si", koda("dva@test.si")));
+        assertTrue(poslanoAdminu().get(0).besedilo().contains("več igralcev"), poslanoAdminu().get(0).besedilo());
+
+        posta.pocisti();
+        IgralecJavniDto edina = igralecVSifrantu("Bor", "Kos", ODRASEL);
+        registracija.registriraj(igralec("Bor", "Kos", "prvi@test.si"), IP);
+        racuni.potrdi(racun("prvi@test.si").getId(), new PotrditevRacunaVnos(edina.id()));
+        registracija.registriraj(igralec("Bor", "Kos", "drugi@test.si"), IP);
+        registracija.potrdiEposto(new PotrditevKodeVnos("drugi@test.si", koda("drugi@test.si")));
+        assertTrue(poslanoAdminu().get(0).besedilo().contains("že ima drug račun"), poslanoAdminu().get(0).besedilo());
+    }
+
+    @Test
+    void placanPremiumJeVObvestiluSCikloInCeno() {
+        Uporabnik nov = registracija.registrirajPoPlacilu(igralec("Ana", "Novak", "premium@test.si"),
+                kodirnik.encode("geslo1234")).orElseThrow();
+        Narocnina n = new Narocnina(nov, Paket.PREMIUM);
+        n.setCiklus(CiklusPlacila.LETNO);
+        n.setCenaObSklenitvi(9.99);
+        n.setStarejsiOd21(true);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
+
+        registracija.potrdiEposto(new PotrditevKodeVnos("premium@test.si", koda("premium@test.si")));
+
+        PomnilniskiPosiljatelj.Sporocilo m = poslanoAdminu().get(0);
+        assertEquals("Turnirko: račun čaka na potrditev · Ana Novak · Premium", m.zadeva());
+        assertTrue(m.besedilo().contains("Igralec Premium · letno · 9,99 € · plačano"), m.besedilo());
+    }
+
+    @Test
+    void mlajsiOd15JavljaAdminuSeleKoImaObeKodi() {
+        LocalDate otrok = LocalDate.now().minusYears(12);
+        registracija.registriraj(new RegistracijaVnos("Tim", "Mali", null, "tim@test.si",
+                "geslo1234", false, otrok, "stars@test.si"), IP);
+        String kodaOtroka = koda("tim@test.si");
+        String kodaSkrbnika = koda("stars@test.si");
+
+        registracija.potrdiEposto(new PotrditevKodeVnos("tim@test.si", kodaOtroka));
+        assertTrue(poslanoAdminu().isEmpty(), "brez soglasja skrbnika racun se ne caka na admina");
+
+        registracija.potrdiSkrbnika(new PotrditevKodeVnos("tim@test.si", kodaSkrbnika));
+        assertEquals(1, poslanoAdminu().size());
+        assertTrue(poslanoAdminu().get(0).besedilo().contains("soglasje potrjeno"), poslanoAdminu().get(0).besedilo());
+        assertFalse(poslanoAdminu().get(0).besedilo().contains("stars@test.si"), "naslov skrbnika ne gre v posto");
+    }
+
+    @Test
+    void vrstniRedKodNeSpremeniStevilaObvestil() {
+        LocalDate otrok = LocalDate.now().minusYears(12);
+        registracija.registriraj(new RegistracijaVnos("Tim", "Mali", null, "tim@test.si",
+                "geslo1234", false, otrok, "stars@test.si"), IP);
+        String kodaOtroka = koda("tim@test.si");
+        String kodaSkrbnika = koda("stars@test.si");
+
+        registracija.potrdiSkrbnika(new PotrditevKodeVnos("tim@test.si", kodaSkrbnika));
+        assertTrue(poslanoAdminu().isEmpty(), "naslov otroka se ni potrjen");
+        registracija.potrdiEposto(new PotrditevKodeVnos("tim@test.si", kodaOtroka));
+        assertEquals(1, poslanoAdminu().size());
+    }
+
+    @Test
+    void organizatorJavljaAdminuSeleKoJeNaslovPotrjen() {
+        registracija.registriraj(new RegistracijaVnos("Org", "Test", null, "org@test.si",
+                "geslo1234", true, null, null), IP);
+        assertTrue(poslanoAdminu().isEmpty(), "nepotrjen naslov admina ne zadeva");
+
+        registracija.potrdiEposto(new PotrditevKodeVnos("org@test.si", koda("org@test.si")));
+
+        assertEquals(1, poslanoAdminu().size());
+        PomnilniskiPosiljatelj.Sporocilo m = poslanoAdminu().get(0);
+        assertEquals("Turnirko: organizator čaka na potrditev · Org Test", m.zadeva());
+        assertTrue(m.besedilo().contains("org@test.si"), m.besedilo());
+        assertTrue(m.besedilo().contains("Potrdi organizatorja"), m.besedilo());
+        assertFalse(m.besedilo().contains("ni igralca"), "razloga iskanja v sifrantu pri organizatorju ni");
+        assertNotNull(m.html());
+    }
+
+    @Test
+    void placanOrganizatorImaVObvestiluSvojPaket() {
+        Uporabnik nov = registracija.registrirajPoPlacilu(new RegistracijaVnos("Org", "Plus", null,
+                "plus@test.si", "geslo1234", true, null, null), kodirnik.encode("geslo1234")).orElseThrow();
+        Narocnina n = new Narocnina(nov, Paket.ORGANIZATOR_PLUS);
+        n.setCiklus(CiklusPlacila.LETNO);
+        n.setCenaObSklenitvi(169.99);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
+
+        registracija.potrdiEposto(new PotrditevKodeVnos("plus@test.si", koda("plus@test.si")));
+
+        PomnilniskiPosiljatelj.Sporocilo m = poslanoAdminu().get(0);
+        assertEquals("Turnirko: organizator čaka na potrditev · Org Plus · Plus", m.zadeva());
+        assertTrue(m.besedilo().contains("Organizator Plus · letno · 169,99 € · plačano"), m.besedilo());
+    }
+
+    @Test
+    void brezNaslovaAdminaObvestilaNi() {
+        registracija.registriraj(igralec("Ana", "Novak", "ana@test.si"), IP);
+        int poslanih = posta.vsa().size();
+        ObvestiloAdminuStoritev brez = new ObvestiloAdminuStoritev(new PostaStoritev(posta),
+                narocninaRepozitorij, "  ", "https://turnirko.test");
+
+        brez.zahtevaCaka(racun("ana@test.si"), ObvestiloAdminuStoritev.Razlog.NI_ZAPISA);
+
+        assertEquals(poslanih, posta.vsa().size());
+    }
+
     // ---------- Pomozno ----------
+
+    private List<PomnilniskiPosiljatelj.Sporocilo> poslanoAdminu() {
+        return posta.vsa().stream().filter(s -> s.prejemnik().equals(naslovAdmina)).toList();
+    }
 
     private static RegistracijaVnos igralec(String ime, String priimek, String email) {
         return new RegistracijaVnos(ime, priimek, null, email, "geslo1234", false, ODRASEL, null);

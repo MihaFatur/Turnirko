@@ -9,17 +9,16 @@
 
    Gre kot multipart: navadno besedilo za odjemalce brez HTML in HTML, ki sledi
    DESIGN.md (zapisnik na papirju: crte namesto kartic, radij 0, brez senc,
-   modra samo za dejanje in za poudarek prejemnikove ekipe in imena). Znak
-   Turnirko je narisan z razpredelnico (barvni stolpci kot na ikoni), ker
-   odjemalci slik pogosto ne nalozijo. Odjemalci pisav ne nalagajo, zato so
-   pisave sklad z zamenjavami; slogi so v vrstici, ker jih Gmail iz <style>
-   deloma pobere. Imena ekip in igralcev vpisujejo organizatorji - vse gre skozi
-   ubeg.
+   modra samo za dejanje in za poudarek prejemnikove ekipe in imena); okvir,
+   znak in slogi so v PostniOkvir. Imena ekip in igralcev vpisujejo
+   organizatorji - vse gre skozi ubeg.
 
    Povezave so stalne strani (liga, ekipa v ligi, narocnina) in odjava; zeton
    odjave ne odpre nicesar razen izklopa obvestil, zato ga ni mogoce zlorabiti
    za vstop v racun. */
 package si.turnirko.posta;
+
+import static si.turnirko.posta.PostniOkvir.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -29,24 +28,14 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.springframework.web.util.HtmlUtils;
-
 public final class SporociloKola {
 
     private static final DateTimeFormatter DATUM = DateTimeFormatter.ofPattern("d. M. yyyy");
 
-    // barve in pisave iz DESIGN.md (slog.css :root)
-    private static final String PAPIR = "#fbf9f5";
-    private static final String CRNILO = "#14110f";
-    private static final String CRNILO_3 = "#5b534d";
-    private static final String CRTA = "#ded7ce";
-    private static final String MODRA = "#0071ab";
-    private static final String MODRA_MEHKO = "#eaf3f9";
-    private static final String ZELENA = "#4a7500";
-    private static final String RJASTA = "#8c2b14";
-    private static final String TELO = "Karla, 'Helvetica Neue', Arial, sans-serif";
-    private static final String MONO = "'IBM Plex Mono', Consolas, 'Courier New', monospace";
-    private static final String NASLOV = "'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif";
+    /* Tekma v eni vrstici na sirokem zaslonu; na telefonu se ime sme prelomiti
+       (sicer bi vsebina zasla cez rob). Pravilo je v <style>, zato ga
+       odjemalec brez njega ne uveljavi. */
+    private static final String SLOGI = "@media (min-width:521px){.tekma-ime{white-space:nowrap;}}";
 
     /* Srecanje kola; domacih == null pomeni, da izida se ni (delno kolo). */
     public record Izid(String domaci, String gost, Integer domacih, Integer gostov, boolean brezBoja,
@@ -169,27 +158,9 @@ public final class SporociloKola {
     private static String html(Kolo k, Prejemnik p) {
         Osebno o = p.osebno();
         String moja = o == null ? null : o.ekipa();
-        StringBuilder h = new StringBuilder(14_000);
-        h.append("<!doctype html><html lang=\"sl\"><head><meta charset=\"utf-8\">")
-                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                .append("<meta name=\"color-scheme\" content=\"only light\">")
-                .append("<title>").append(e(zadeva(k))).append("</title>")
-                // tekma v eni vrstici na sirokem zaslonu; na telefonu se ime sme prelomiti (sicer
-                // bi vsebina zasla cez rob) - pravilo je v <style>, zato ga odjemalec brez njega ne uveljavi
-                .append("<style>@media (min-width:521px){.tekma-ime{white-space:nowrap;}}</style>")
-                .append("</head>")
-                .append("<body style=\"margin:0;padding:0;background:").append(PAPIR).append(";color:")
-                .append(CRNILO).append(";font-family:").append(TELO).append(";\">");
-        // predogled v seznamu sporocil (Gmail, Apple Mail) - ne izrise se
-        h.append("<div style=\"display:none;max-height:0;overflow:hidden;opacity:0;\">")
-                .append(e(predogled(k, o))).append("</div>");
-        h.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" ")
-                .append("style=\"background:").append(PAPIR).append(";\"><tr><td align=\"center\" ")
-                .append("style=\"padding:24px 16px;\">")
-                .append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" ")
-                .append("style=\"max-width:600px;\">");
+        StringBuilder h = zacetek(zadeva(k), SLOGI, predogled(k, o));
 
-        vrstica(h, glava(), "padding:0 0 26px;");
+        vrstica(h, glava("obvestilo po kolu"), "padding:0 0 26px;");
         vrstica(h, naslov(k), "padding:0 0 6px;");
         vrstica(h, lestvica(k), sklop());
         vrstica(h, izidi(k, moja), sklop());
@@ -202,44 +173,7 @@ public final class SporociloKola {
         }
         vrstica(h, dno(k, p), "padding:32px 0 0;");
 
-        h.append("</table></td></tr></table></body></html>");
-        return h.toString();
-    }
-
-    /* Glava: znak Turnirko (barvni stolpci kot na ikoni), ime in oznaka; pod njo
-       stiri barvne crte, ki so isti razpored kot stolpci znaka. */
-    private static String glava() {
-        return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
-                + "<td valign=\"middle\" style=\"width:31px;padding:0 14px 0 0;\">" + znak() + "</td>"
-                + "<td valign=\"middle\" style=\"font-family:" + NASLOV + ";font-size:22px;font-weight:700;"
-                + "letter-spacing:-0.3px;line-height:1;\">Turnirko</td>"
-                + "<td valign=\"middle\" align=\"right\" style=\"" + oznaka() + "\">obvestilo po kolu</td>"
-                + "</tr></table>" + pasek();
-    }
-
-    private static String znak() {
-        return "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse;\"><tr>"
-                + palica(CRNILO) + razmik() + palica(CRNILO) + razmik() + palica(MODRA) + razmik() + palica(ZELENA)
-                + "</tr></table>";
-    }
-
-    private static String palica(String barva) {
-        return "<td width=\"4\" height=\"26\" style=\"width:4px;height:26px;background:" + barva
-                + ";font-size:0;line-height:0;\">&nbsp;</td>";
-    }
-
-    private static String razmik() {
-        return "<td width=\"5\" style=\"width:5px;font-size:0;line-height:0;\">&nbsp;</td>";
-    }
-
-    private static String pasek() {
-        return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
-                + "style=\"margin-top:14px;border-collapse:collapse;\"><tr>"
-                + odsek(CRNILO) + odsek(CRNILO) + odsek(MODRA) + odsek(ZELENA) + "</tr></table>";
-    }
-
-    private static String odsek(String barva) {
-        return "<td height=\"4\" style=\"height:4px;background:" + barva + ";font-size:0;line-height:0;\">&nbsp;</td>";
+        return konec(h);
     }
 
     private static String naslov(Kolo k) {
@@ -371,53 +305,12 @@ public final class SporociloKola {
                 + CRNILO_3 + ";\">" + e(p.naslovOdjave()) + "</a></p>" + pasek();
     }
 
-    private static void vrstica(StringBuilder h, String vsebina, String slog) {
-        h.append("<tr><td style=\"").append(slog).append("\">").append(vsebina).append("</td></tr>");
-    }
-
-    /* Sklop konca zadnja vrstica njegove tabele (ta ima crto), zato sklop
-       spodnje crte nima - sicer bi bili dve. */
-    private static String sklop() {
-        return "padding:28px 0 0;";
-    }
-
-    private static String oznaka() {
-        return "font-family:" + MONO + ";font-size:12px;text-transform:uppercase;letter-spacing:0.08em;"
-                + "color:" + CRNILO_3 + ";";
-    }
-
-    private static String naslovSklopa(String besedilo) {
-        return "<div style=\"" + oznaka() + "margin-bottom:8px;\">" + besedilo + "</div>";
-    }
-
-    private static String tabela() {
-        return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
-                + "style=\"border-collapse:collapse;font-size:15px;line-height:1.4;\">";
-    }
-
-    private static String celica(String slog, String vsebina) {
-        return "<td style=\"padding:8px 6px 8px 0;border-bottom:1px solid " + CRTA + ";vertical-align:top;"
-                + slog + "\">" + vsebina + "</td>";
-    }
-
-    private static String glavaStolpca(String besedilo, String poravnava) {
-        return "<td style=\"padding:0 6px 6px 0;border-bottom:1px solid " + CRNILO + ";text-align:" + poravnava
-                + ";font-family:" + MONO + ";font-size:11px;text-transform:uppercase;letter-spacing:0.08em;"
-                + "color:" + CRNILO_3 + ";\">" + besedilo + "</td>";
-    }
-
     private static String barvaSpremembe(Integer sprememba) {
         if (sprememba == null || sprememba == 0) return CRNILO_3;
         return sprememba > 0 ? ZELENA : RJASTA;
     }
 
     // ---------- skupni deli ----------
-
-    /* Poudarek prejemnikove ekipe ali igralca: modro in krepko, enako v obeh
-       razlicicah sporocila (v besedilu z »). */
-    private static String poudari(String besedilo) {
-        return "<strong style=\"color:" + MODRA + ";\">" + e(besedilo) + "</strong>";
-    }
 
     private static String ime(String ime, String moja) {
         return ime != null && ime.equals(moja) ? poudari(ime) : e(ime);
@@ -482,10 +375,6 @@ public final class SporociloKola {
 
     private static String predznak(int n) {
         return n > 0 ? "+" + n : n < 0 ? "−" + (-n) : "±0";
-    }
-
-    private static String e(String besedilo) {
-        return besedilo == null ? "" : HtmlUtils.htmlEscape(besedilo, "UTF-8");
     }
 
     /* Sklanjanje po stevilu: posebna oblika samo za ostanek 1-4 pri 100

@@ -658,6 +658,82 @@ export interface RegistracijaVnos {
   datumRojstva: string | null
   /* Obvezna pri mlajših od 15 let: naslov starša oz. skrbnika. */
   emailSkrbnika: string | null
+  /* Neobvezna koda popusta (KodePopustaStoritev): ugodnost, ki jo je nastavil admin. */
+  kodaPopusta?: string | null
+}
+
+/* Kaj koda popusta prinese (V53). Vrsta pove, na kateri poti registracije velja:
+   PREMIUM_MESECI brezplačna registracija igralca (preizkus Premium traja `meseci`),
+   ODSTOTEK plačljiva registracija (popust na prvo plačilo),
+   ORGANIZATOR_MESECI registracija organizatorja brez plačila (`paket` za `meseci`). */
+export type VrstaKodePopusta = 'PREMIUM_MESECI' | 'ODSTOTEK' | 'ORGANIZATOR_MESECI'
+
+export interface PreveriKodoVnos {
+  koda: string
+  organizator: boolean
+  paket: Paket
+  /* Naslov, s katerim se oseba registrira (neobvezno). */
+  email: string | null
+}
+
+/* Predogled kode v povzetku registracije. `veljavna: false` je enak odgovor za
+   neznano, ugasnjeno, potekleo in izčrpano kodo (brez podrobnosti); `uporabna: false`
+   pomeni, da koda obstaja, a ne velja za izbrano vlogo oz. paket (`sporocilo` pove, zakaj). */
+export interface PreverjenaKodaDto {
+  veljavna: boolean
+  uporabna: boolean
+  sporocilo: string | null
+  koda: string | null
+  vrsta: VrstaKodePopusta | null
+  meseci: number | null
+  odstotek: number | null
+  paket: Paket | null
+}
+
+/* Koda popusta v administratorjevem seznamu (KodaPopustaDto). */
+export type StanjeKodePopusta = 'VELJA' | 'IZKLJUCENA' | 'POTEKLA' | 'IZCRPANA'
+
+export interface KodaPopustaDto {
+  id: number
+  koda: string
+  opis: string | null
+  vrsta: VrstaKodePopusta
+  meseci: number | null
+  odstotek: number | null
+  paket: Paket | null
+  /* Samo pri ODSTOTEK: koda velja samo za to vlogo; null = za oboje. */
+  zaVlogo: 'IGRALEC' | 'ORGANIZATOR' | null
+  /* Zadnji dan, ko se koda sprejme (ISO); null = brez roka. */
+  veljaDo: string | null
+  /* null = neomejeno. */
+  najvecUporab: number | null
+  aktivna: boolean
+  stanje: StanjeKodePopusta
+  /* Račun, ki so kodo uporabili, in placljive registracije, ki jo držijo do plačila. */
+  uporab: number
+  cakajocih: number
+  ustvarjena: string
+}
+
+export interface KodaPopustaVnos {
+  /* Prazno = strežnik ustvari naključno. */
+  koda: string | null
+  opis: string | null
+  vrsta: VrstaKodePopusta
+  meseci: number | null
+  odstotek: number | null
+  paket: Paket | null
+  zaVlogo: 'IGRALEC' | 'ORGANIZATOR' | null
+  veljaDo: string | null
+  najvecUporab: number | null
+}
+
+/* Popravek: ugodnost kode se po nastanku ne spreminja. */
+export interface KodaPopustaUrediVnos {
+  opis: string | null
+  veljaDo: string | null
+  najvecUporab: number | null
+  aktivna: boolean
 }
 
 export interface PredogledZapisaVnos {

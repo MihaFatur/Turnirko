@@ -14,7 +14,8 @@
    pregled. Računi, ki so se povezali samodejno, so označeni — admin jih lahko
    razveže, če je ujemanje zgrešilo soimenjaka. Naročnina je vidna pri vsakem
    računu (tudi pred potrditvijo: plačan paket se zabeleži še pred njo). Vidi jo
-   samo administrator. */
+   samo administrator. Iz kartoteke se odpre še okno »Kode za popust« (ugodnosti, ki jih
+   oseba vpiše ob registraciji). */
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -22,6 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { racuniApi } from '../api/zahteve'
 import type { RacunIgralcaDto } from '../api/tipi'
 import { DostopiKarton } from '../komponente/DostopiKarton'
+import { KodePopustaOkno } from '../komponente/KodePopustaOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import {
   CRKE_KAZALA,
@@ -67,6 +69,7 @@ export function RacuniStran() {
 
 function Dostopi({ vsi }: { vsi: RacunIgralcaDto[] }) {
   const telefon = useTelefon()
+  const [kodeOdprte, nastaviKodeOdprte] = useState(false)
 
   const cakajoci = useMemo(() => vsi.filter(jeCakajoca), [vsi])
   const igralciZRacunom = useMemo(
@@ -81,7 +84,13 @@ function Dostopi({ vsi }: { vsi: RacunIgralcaDto[] }) {
       ) : (
         <NabiralnikNamizje cakajoci={cakajoci} igralciZRacunom={igralciZRacunom} />
       )}
-      <Kartoteka vsi={vsi} telefon={telefon} igralciZRacunom={igralciZRacunom} />
+      <Kartoteka
+        vsi={vsi}
+        telefon={telefon}
+        igralciZRacunom={igralciZRacunom}
+        onKode={() => nastaviKodeOdprte(true)}
+      />
+      {kodeOdprte && <KodePopustaOkno onZapri={() => nastaviKodeOdprte(false)} />}
     </section>
   )
 }
@@ -265,10 +274,13 @@ function Kartoteka({
   vsi,
   telefon,
   igralciZRacunom,
+  onKode,
 }: {
   vsi: RacunIgralcaDto[]
   telefon: boolean
   igralciZRacunom: Set<number>
+  /* Odpre okno »Kode za popust« (ugodnosti ob registraciji). */
+  onKode: () => void
 }) {
   const [filtri, nastaviFiltre] = useState<FilterRacunov>(PRAZNI_FILTRI)
   const [razvrstitev, nastaviRazvrstitev] = useState<Razvrstitev>('ime')
@@ -373,8 +385,13 @@ function Kartoteka({
       <div className="dostopi-kartoteka" data-dostopi="kartoteka-seznam">
         <div className="dostopi-kartoteka__naslov">
           <h2>Kartoteka</h2>
-          <span className="dostopi-meta">
-            {ujemanje} od {vsi.length}
+          <span className="dostopi-kartoteka__naslov-desno">
+            <span className="dostopi-meta">
+              {ujemanje} od {vsi.length}
+            </span>
+            <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onKode}>
+              Kode za popust
+            </button>
           </span>
         </div>
         <div className="dostopi-kartoteka__iskanje-vrstica">
@@ -447,8 +464,13 @@ function Kartoteka({
     <div className="dostopi-kartoteka">
       <div className="dostopi-kartoteka__naslov">
         <h2>Kartoteka</h2>
-        <span className="dostopi-meta">
-          {ujemanje} od {vsi.length}
+        <span className="dostopi-kartoteka__naslov-desno">
+          <span className="dostopi-meta">
+            {ujemanje} od {vsi.length}
+          </span>
+          <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onKode}>
+            Kode za popust
+          </button>
         </span>
       </div>
 

@@ -12,7 +12,8 @@
      svojo kodo; brez nje racun ne pride do povezave z igralcem.
    - Povezavo z zapisom v sifrantu naredi ADMIN ali SAMODEJNO: ce se ob
      potrjenem naslovu ime, priimek in datum rojstva ujemajo z natanko enim
-     igralcem brez racuna. Dva zadetka ali nobeden pomenita cakanje na admina.
+     igralcem brez racuna. Dva zadetka ali nobeden pomenita cakanje na admina,
+     ki o tem dobi e-posto (ObvestiloAdminuStoritev).
    - Ob povezavi racun igralca dobi mesec Premium brez placila
      (PreizkusPremiumStoritev; enkrat na racun).
    - Admin se ne registrira in gesla ne ponastavlja po posti: najmocnejsi
@@ -46,6 +47,7 @@ import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.izjeme.PrevecZahtevIzjema;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.KodaPopusta;
 import si.turnirko.modeli.NamenKode;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Uporabnik;
@@ -93,6 +95,8 @@ public class RegistracijaStoritev {
     private final IgralciStoritev igralci;
     private final RacunDnevnikStoritev racunDnevnik;
     private final PreizkusPremiumStoritev preizkus;
+    private final ObvestiloAdminuStoritev obvestiloAdminu;
+    private final KodePopustaStoritev kodePopusta;
 
     public RegistracijaStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                                 IgralecRepozitorij igralecRepozitorij,
@@ -103,7 +107,9 @@ public class RegistracijaStoritev {
                                 OmejevalnikPoskusov omejevalnik,
                                 IgralciStoritev igralci,
                                 RacunDnevnikStoritev racunDnevnik,
-                                PreizkusPremiumStoritev preizkus) {
+                                PreizkusPremiumStoritev preizkus,
+                                ObvestiloAdminuStoritev obvestiloAdminu,
+                                KodePopustaStoritev kodePopusta) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -114,6 +120,8 @@ public class RegistracijaStoritev {
         this.igralci = igralci;
         this.racunDnevnik = racunDnevnik;
         this.preizkus = preizkus;
+        this.obvestiloAdminu = obvestiloAdminu;
+        this.kodePopusta = kodePopusta;
     }
 
     // ---------- Registracija ----------
@@ -144,6 +152,12 @@ public class RegistracijaStoritev {
     public RegistracijaOdgovorDto registriraj(RegistracijaVnos v, String naslovIp) {
         String email = normalizirajEmail(v.email());
         PreverjenVnos preverjen = preveriPolja(v);
+        /* Koda popusta se preveri PRED omejitvijo posiljanja: napacna koda ne sme
+           porabiti minute, ki jo oseba potem potrebuje za nov poskus. Odgovor je
+           odvisen samo od vnosa (ne od naslova), zato ne razkrije, ali racun obstaja;
+           ugibanje kod omejuje KodePopustaStoritev po naslovu IP. */
+        KodaPopusta koda = kodePopusta.zaBrezplacnoRegistracijo(
+                v.kodaPopusta(), Boolean.TRUE.equals(v.organizator()), naslovIp, email).orElse(null);
         preveriOmejitevPosiljanja(email, naslovIp);
 
         /* Zgostitev gesla se izracuna VEDNO, tudi ce racun ne bo nastal - BCrypt
@@ -151,7 +165,7 @@ public class RegistracijaStoritev {
            merljivo hitrejsi, torej bi cas razkril, kaj odgovor skriva. */
         String gesloHash = kodirnik.encode(v.geslo());
 
-        ustvariRacunInPosljiKodo(v, email, gesloHash, preverjen);
+        ustvariRacunInPosljiKodo(v, email, gesloHash, preverjen, koda);
         return new RegistracijaOdgovorDto(email, preverjen.emailSkrbnika() != null);
     }
 
@@ -170,13 +184,17 @@ public class RegistracijaStoritev {
     @Transactional
     public Optional<Uporabnik> registrirajPoPlacilu(RegistracijaVnos v, String gesloHash) {
         String email = normalizirajEmail(v.email());
-        return ustvariRacunInPosljiKodo(v, email, gesloHash, preveriPolja(v));
+        // koda popusta (ODSTOTEK) je bila ze uporabljena v Stripovem kuponu in jo zabelezi
+        // PlacilaStoritev iz cakajoce registracije - tu je nikoli ni
+        return ustvariRacunInPosljiKodo(v, email, gesloHash, preveriPolja(v), null);
     }
 
     /* Vrne novo ustvarjen racun, ali prazno, ce je naslov medtem postal
-       neuporaben za novo registracijo (glej komentar ob registrirajPoPlacilu). */
+       neuporaben za novo registracijo (glej komentar ob registrirajPoPlacilu).
+       `koda` je koda popusta, ki jo racun uporabi (prosta registracija), ali null. */
     private Optional<Uporabnik> ustvariRacunInPosljiKodo(RegistracijaVnos v, String email,
-                                                          String gesloHash, PreverjenVnos preverjen) {
+                                                          String gesloHash, PreverjenVnos preverjen,
+                                                          KodaPopusta koda) {
         boolean organizator = Boolean.TRUE.equals(v.organizator());
         LocalDate datumRojstva = preverjen.datumRojstva();
         String emailSkrbnika = preverjen.emailSkrbnika();
@@ -216,6 +234,9 @@ public class RegistracijaStoritev {
         u = uporabnikRepozitorij.save(u);
         racunDnevnik.zabelezi(u.getId(),
                 "Registracija (" + (organizator ? "organizator" : "igralec") + ")");
+        if (koda != null) {
+            kodePopusta.zabeleziUporabo(u, koda);
+        }
 
         posljiKodo(u, NamenKode.EPOSTA);
         if (emailSkrbnika != null) {
@@ -253,6 +274,9 @@ public class RegistracijaStoritev {
         u.setEmailPotrjenOb(LocalDateTime.now());
         racunDnevnik.zabelezi(u.getId(), "E-pošta potrjena s kodo");
         boolean povezan = poskusiSamodejnoPovezavo(u);
+        if (!povezan) {
+            obvestiAdminaCeCaka(u);
+        }
         uporabnikRepozitorij.save(u);
         return odgovor(u, povezan);
     }
@@ -274,6 +298,9 @@ public class RegistracijaStoritev {
         u.setSkrbnikPotrjenOb(LocalDateTime.now());
         racunDnevnik.zabelezi(u.getId(), "Skrbnik potrdil soglasje s kodo");
         boolean povezan = poskusiSamodejnoPovezavo(u);
+        if (!povezan) {
+            obvestiAdminaCeCaka(u);
+        }
         uporabnikRepozitorij.save(u);
         return odgovor(u, povezan);
     }
@@ -379,14 +406,7 @@ public class RegistracijaStoritev {
                 || u.getPrijavljeniDatumRojstva() == null) {
             return false;
         }
-        String ime = RacuniStoritev.normaliziraj(u.getPrijavljenoIme());
-        String priimek = RacuniStoritev.normaliziraj(u.getPrijavljeniPriimek());
-        List<Igralec> kandidati = igralecRepozitorij
-                .najdiPoDatumihRojstva(List.of(u.getPrijavljeniDatumRojstva())).stream()
-                .filter(i -> !i.isArhiviran())
-                .filter(i -> RacuniStoritev.normaliziraj(i.getIme()).equals(ime)
-                        && RacuniStoritev.normaliziraj(i.getPriimek()).equals(priimek))
-                .toList();
+        List<Igralec> kandidati = kandidatiZaRacun(u);
         if (kandidati.size() != 1) {
             return false;
         }
@@ -403,6 +423,40 @@ public class RegistracijaStoritev {
         racunDnevnik.zabelezi(u.getId(), "Samodejno povezan z igralcem " + igralec.polnoIme());
         preizkus.zacni(u, LocalDateTime.now());
         return true;
+    }
+
+    /* Aktivni igralci, ki jim ime, priimek in datum rojstva z racuna (brez
+       sumnikov in velikih crk) ustrezajo; datum rojstva mora biti znan. */
+    private List<Igralec> kandidatiZaRacun(Uporabnik u) {
+        String ime = RacuniStoritev.normaliziraj(u.getPrijavljenoIme());
+        String priimek = RacuniStoritev.normaliziraj(u.getPrijavljeniPriimek());
+        return igralecRepozitorij.najdiPoDatumihRojstva(List.of(u.getPrijavljeniDatumRojstva())).stream()
+                .filter(i -> !i.isArhiviran())
+                .filter(i -> RacuniStoritev.normaliziraj(i.getIme()).equals(ime)
+                        && RacuniStoritev.normaliziraj(i.getPriimek()).equals(priimek))
+                .toList();
+    }
+
+    /* Racun, ki po potrditvi naslova (in skrbnika) caka na admina - igralec brez
+       samodejne povezave ali organizator, ki ga potrdi vedno admin -, mu to
+       javi z e-posto. Ravno takrat in ne ze ob registraciji (nepotrjen naslov
+       je le rezervacija). Klic je na obeh mestih, kjer racun lahko pride do
+       tega stanja (koda naslova, koda skrbnika): pogoj postane resnicen
+       natanko enkrat, zato obvestilo ne gre dvakrat. Admin je vedno POTRJEN,
+       zato ga pogoj statusa izloci. */
+    private void obvestiAdminaCeCaka(Uporabnik u) {
+        if (u.getIgralec() != null || u.getStatus() != StatusRacuna.CAKA
+                || !u.jeEmailPotrjen() || u.cakaSkrbnika()) {
+            return;
+        }
+        if (u.getVloga() == Vloga.ORGANIZATOR) {
+            obvestiloAdminu.zahtevaCaka(u, ObvestiloAdminuStoritev.Razlog.ORGANIZATOR);
+            return;
+        }
+        List<Igralec> kandidati = u.getPrijavljeniDatumRojstva() == null ? List.of() : kandidatiZaRacun(u);
+        obvestiloAdminu.zahtevaCaka(u, kandidati.isEmpty() ? ObvestiloAdminuStoritev.Razlog.NI_ZAPISA
+                : kandidati.size() > 1 ? ObvestiloAdminuStoritev.Razlog.VEC_ZAPISOV
+                : ObvestiloAdminuStoritev.Razlog.ZAPIS_ZE_IMA_RACUN);
     }
 
     // ---------- Pomozno ----------

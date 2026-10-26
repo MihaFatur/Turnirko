@@ -4209,6 +4209,37 @@ td.nizi-okno__niz--dobljen {
   color: var(--barva-crnilo-3);
 }
 
+/* Koda za popust v povzetku: povezava »Imam kodo za popust«, odprta pa polje z
+   gumbom »Uporabi«. Koda je mono in velike črke (strežnik jo tako shrani), vpis pa
+   sprejme kakršnokoli obliko. */
+.registracija__koda-popusta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--r1);
+}
+
+.registracija__koda-popusta .obrazec__polje {
+  align-self: stretch;
+}
+
+.registracija__koda-popusta-vnos {
+  display: flex;
+  gap: var(--r1);
+}
+
+.registracija__koda-popusta-vnos input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.registracija__koda-popusta-vnos .gumb {
+  flex: none;
+}
+
 /* --- 7. Koda: .koda-polja je obstoječ razred (glej konec datoteke, razdelek
    "Uvoz NTZS/vzdrzevanje"); tu le prilagodi mere tej maketi (64 px celice,
    28 px stevke - obstoječa raba drugod v aplikaciji, npr. pozabljeno geslo,
@@ -24105,3 +24136,121 @@ html.uvod-tece {
   margin: var(--r2) 0 0;
 }
 
+
+/* ============================================================
+   Kode za popust (administrator, okno na strani Dostopi)
+   ============================================================ */
+
+/* Gumb v glavi kartoteke stoji ob številu računov; tudi na telefonu v isti vrstici. */
+.dostopi-kartoteka__naslov-desno {
+  display: flex;
+  align-items: center;
+  gap: var(--r2);
+}
+
+.dostopi-kartoteka__naslov-desno .dostopi-gumb {
+  min-height: 36px;
+  padding: 6px var(--r2);
+  font-size: var(--tip-drobno);
+}
+
+.kode__uvod,
+.kode__prazno {
+  margin: 0;
+  color: var(--barva-crnilo-2);
+}
+
+.kode__ustvarjena {
+  margin: 0;
+}
+
+.kode__seznam {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.kode__vrstica {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.kode__glava {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+}
+
+/* Koda je mono: oseba jo prepisuje, zato se mora dati ločiti 0 od O in 1 od l. */
+.kode__koda {
+  font: 600 18px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+}
+
+.kode__ugodnost {
+  font-weight: 600;
+}
+
+.kode__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--r2);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.kode__opis {
+  margin: 0;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-2);
+}
+
+.kode__dejanja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r1);
+  margin-top: var(--r1);
+}
+
+.kode__vprasanje {
+  font-weight: 600;
+}
+
+.kode__gumbi-nova {
+  justify-content: flex-start;
+}
+
+.kode__obrazec {
+  margin-top: var(--r1);
+}
+
+.kode__obrazec--nova {
+  padding-top: var(--r2);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.kode__naslov-obrazca {
+  margin: 0;
+  font-family: var(--pisava-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+/* Pojasnilo pod poljem: tiho, brez mono velikih črk (to je stavek, ne oznaka). */
+.obrazec__polje > .kode__pojasnilo {
+  font: 300 var(--tip-drobno) / 1.5 var(--pisava-telo);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--barva-crnilo-3);
+}

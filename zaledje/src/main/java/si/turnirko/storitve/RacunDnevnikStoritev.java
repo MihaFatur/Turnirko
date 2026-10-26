@@ -115,13 +115,7 @@ public class RacunDnevnikStoritev {
 
     /* »Placilo: Plus, letno« - ime paketa brez oznake vloge, kot ga kaze stran. */
     public static String opisPlacila(Paket paket, CiklusPlacila ciklus) {
-        String ime = switch (paket) {
-            case PREMIUM -> "Premium";
-            case ORGANIZATOR_BASIC -> "Basic";
-            case ORGANIZATOR_PLUS -> "Plus";
-            case ORGANIZATOR_PRO -> "Pro";
-            case BREZPLACNO -> "Brezplačno";
-        };
+        String ime = paket.kratekNaziv();
         String cikel = ciklus == null ? "" : ciklus == CiklusPlacila.LETNO ? ", letno" : ", mesečno";
         return "Plačilo: " + ime + cikel;
     }

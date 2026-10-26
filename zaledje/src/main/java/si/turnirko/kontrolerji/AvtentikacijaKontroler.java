@@ -33,10 +33,13 @@ import si.turnirko.dto.PotrditevOdgovorDto;
 import si.turnirko.dto.PozabljenoGesloVnos;
 import si.turnirko.dto.PredogledZapisaDto;
 import si.turnirko.dto.PredogledZapisaVnos;
+import si.turnirko.dto.PreveriKodoVnos;
+import si.turnirko.dto.PreverjenaKodaDto;
 import si.turnirko.dto.RegistracijaOdgovorDto;
 import si.turnirko.dto.RegistracijaVnos;
 import si.turnirko.dto.SpremembaGeslaVnos;
 import si.turnirko.dto.UporabnikDto;
+import si.turnirko.storitve.KodePopustaStoritev;
 import si.turnirko.storitve.RacuniStoritev;
 import si.turnirko.storitve.RegistracijaStoritev;
 
@@ -46,11 +49,14 @@ public class AvtentikacijaKontroler {
 
     private final RacuniStoritev racuniStoritev;
     private final RegistracijaStoritev registracijaStoritev;
+    private final KodePopustaStoritev kodePopusta;
 
     public AvtentikacijaKontroler(RacuniStoritev racuniStoritev,
-                                  RegistracijaStoritev registracijaStoritev) {
+                                  RegistracijaStoritev registracijaStoritev,
+                                  KodePopustaStoritev kodePopusta) {
         this.racuniStoritev = racuniStoritev;
         this.registracijaStoritev = registracijaStoritev;
+        this.kodePopusta = kodePopusta;
     }
 
     /* Profil trenutno prijavljenega uporabnika. Do sem pride samo zahteva z
@@ -82,6 +88,15 @@ public class AvtentikacijaKontroler {
     public PredogledZapisaDto predogledZapisa(@Valid @RequestBody PredogledZapisaVnos vnos,
                                               HttpServletRequest zahteva) {
         return registracijaStoritev.predogledZapisa(vnos, zahteva.getRemoteAddr());
+    }
+
+    /* Predogled kode popusta v povzetku registracije: ali velja in kaj prinese za
+       izbrano vlogo in paket. Brez posledic; ugibanje kod omejuje storitev po
+       naslovu IP. */
+    @PostMapping("/koda-popusta")
+    public PreverjenaKodaDto kodaPopusta(@Valid @RequestBody PreveriKodoVnos vnos,
+                                         HttpServletRequest zahteva) {
+        return kodePopusta.predogled(vnos, zahteva.getRemoteAddr());
     }
 
     @PostMapping("/ponovno-poslji")

@@ -38,5 +38,16 @@ public record RegistracijaVnos(
 
         /* Obvezna pri mlajsih od 15 let: naslov starsa oz. skrbnika, ki dobi
            svojo kodo. */
-        @Size(max = 120, message = "e-posta skrbnika je predolga") String emailSkrbnika
-) {}
+        @Size(max = 120, message = "e-posta skrbnika je predolga") String emailSkrbnika,
+
+        /* Neobvezna koda popusta (V53, KodePopustaStoritev): ugodnost, ki jo je
+           nastavil admin. Kaj prinese in na kateri poti velja, doloca koda sama. */
+        @Size(max = 40, message = "koda popusta je predolga") String kodaPopusta
+) {
+
+    /* Registracija brez kode popusta. */
+    public RegistracijaVnos(String ime, String priimek, Long idKlub, String email, String geslo,
+                            Boolean organizator, LocalDate datumRojstva, String emailSkrbnika) {
+        this(ime, priimek, idKlub, email, geslo, organizator, datumRojstva, emailSkrbnika, null);
+    }
+}

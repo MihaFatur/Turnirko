@@ -55,6 +55,7 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.CakajocaRegistracija;
 import si.turnirko.modeli.CiklusPlacila;
+import si.turnirko.modeli.KodaPopusta;
 import si.turnirko.modeli.Narocnina;
 import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.StatusNarocnine;
@@ -96,6 +97,7 @@ public class PlacilaStoritev {
     private final PasswordEncoder kodirnik;
     private final StripeNarocnine stripe;
     private final RacunDnevnikStoritev racunDnevnik;
+    private final KodePopustaStoritev kodePopusta;
 
     public PlacilaStoritev(
             @Value("${turnirko.stripe.tajni-kljuc:}") String tajniKljuc,
@@ -109,7 +111,8 @@ public class PlacilaStoritev {
             LastnistvoStoritev lastnistvo,
             PasswordEncoder kodirnik,
             StripeNarocnine stripe,
-            RacunDnevnikStoritev racunDnevnik) {
+            RacunDnevnikStoritev racunDnevnik,
+            KodePopustaStoritev kodePopusta) {
         Stripe.apiKey = tajniKljuc;
         this.webhookSkrivnost = webhookSkrivnost;
         this.vrniNaKoren = vrniNaKoren;
@@ -122,6 +125,7 @@ public class PlacilaStoritev {
         this.kodirnik = kodirnik;
         this.stripe = stripe;
         this.racunDnevnik = racunDnevnik;
+        this.kodePopusta = kodePopusta;
     }
 
     // ---------- Zacetek placila: nova registracija ----------
@@ -129,8 +133,8 @@ public class PlacilaStoritev {
     /* Preveri vnos (isti validatorji kot brezplacna registracija - da ne
        zaracuna vnosa, ki bi ga tako ali tako zavrnili) in vrne naslov Stripe
        Checkouta. Racun se ustvari sele v webhooku. */
-    public PlacilnaSejaDto zacniRegistracijskoPlacilo(PlacanaRegistracijaVnos vnos) {
-        PripravljenaRegistracija pripravljena = pripraviRegistracijo(vnos);
+    public PlacilnaSejaDto zacniRegistracijskoPlacilo(PlacanaRegistracijaVnos vnos, String naslovIp) {
+        PripravljenaRegistracija pripravljena = pripraviRegistracijo(vnos, naslovIp);
         try {
             return new PlacilnaSejaDto(ustvariSejo(pripravljena.seja()));
         } catch (DomenskaIzjema e) {
@@ -145,6 +149,10 @@ public class PlacilaStoritev {
     record PripravljenaRegistracija(CakajocaRegistracija cakajoca, SessionCreateParams seja) {}
 
     PripravljenaRegistracija pripraviRegistracijo(PlacanaRegistracijaVnos vnos) {
+        return pripraviRegistracijo(vnos, null);
+    }
+
+    PripravljenaRegistracija pripraviRegistracijo(PlacanaRegistracijaVnos vnos, String naslovIp) {
         if (vnos.paket() == Paket.BREZPLACNO) {
             throw new NeveljavenVnosIzjema("Brezplacna registracija ne gre prek placila.");
         }
@@ -167,12 +175,25 @@ public class PlacilaStoritev {
         boolean starejsiOd21 = paketJePremium && cenik.stariEnaindvajset(preverjen.datumRojstva());
         double cena = cenik.cena(vnos.paket(), vnos.ciklus(), starejsiOd21);
 
-        CakajocaRegistracija cakajoca = cakajoce.save(new CakajocaRegistracija(
+        /* Koda popusta (V53): preverba in kupon nastaneta PRED vrstico, ki kodo drzi -
+           ce Stripe kupona ne ustvari, ne ostane nic. Cakajoca vrstica rezervira mesto
+           pri najvec uporab do placila; kodo po placilu zapise webhook. V Stripe gre
+           samo kupon (njegovo ime je koda, ki jo kupec pozna), metapodatki ostanejo
+           enaki. */
+        KodaPopusta koda = kodePopusta.zaPlacljivoRegistracijo(racun.kodaPopusta(), organizator,
+                vnos.paket(), vnos.ciklus(), starejsiOd21, naslovIp, email).orElse(null);
+        String kupon = koda == null ? null : kodePopusta.stripeKupon(koda);
+
+        CakajocaRegistracija nova = new CakajocaRegistracija(
                 novZeton(), racun.ime().trim(), racun.priimek().trim(), racun.idKlub(), email,
                 kodirnik.encode(racun.geslo()), organizator, preverjen.datumRojstva(),
-                preverjen.emailSkrbnika(), LocalDateTime.now()));
+                preverjen.emailSkrbnika(), LocalDateTime.now());
+        if (koda != null) {
+            nova.setIdKoda(koda.getId());
+        }
+        CakajocaRegistracija cakajoca = cakajoce.save(nova);
 
-        SessionCreateParams params = osnovaSeje(vnos.paket(), vnos.ciklus())
+        SessionCreateParams.Builder seja = osnovaSeje(vnos.paket(), vnos.ciklus())
                 .setCustomerEmail(email)
                 .setSuccessUrl(vrniNaKoren + "/registracija/zakljucena?stanje=uspeh")
                 .setCancelUrl(vrniNaKoren + "/registracija/zakljucena?stanje=preklic")
@@ -181,9 +202,11 @@ public class PlacilaStoritev {
                 .putMetadata(M_ZETON, cakajoca.getZeton())
                 .putMetadata(M_PAKET, vnos.paket().name())
                 .putMetadata(M_CIKLUS, vnos.ciklus() == null ? "" : vnos.ciklus().name())
-                .putMetadata(M_STAREJSI_OD_21, String.valueOf(starejsiOd21))
-                .build();
-        return new PripravljenaRegistracija(cakajoca, params);
+                .putMetadata(M_STAREJSI_OD_21, String.valueOf(starejsiOd21));
+        if (kupon != null) {
+            seja.addDiscount(SessionCreateParams.Discount.builder().setCoupon(kupon).build());
+        }
+        return new PripravljenaRegistracija(cakajoca, seja.build());
     }
 
     /* 192 nakljucnih bitov: zeton sam ne odpre nicesar, a ga ne sme uganiti
@@ -330,6 +353,9 @@ public class PlacilaStoritev {
             dnevnik.warn("Placilo za {} je uspelo, a racun ni nastal (naslov je medtem "
                     + "postal neuporaben) - potrebna rocna obravnava.", c.getEmail());
             return;
+        }
+        if (c.getIdKoda() != null) {
+            kodePopusta.zabeleziUporaboPoPlacilu(nastal.get(), c.getIdKoda());
         }
         ustvariNarocnino(nastal.get(), session.getCustomer(), session.getSubscription(),
                 Paket.valueOf(meta.get(M_PAKET)),

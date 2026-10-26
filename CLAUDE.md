@@ -931,6 +931,24 @@
     Admin samodejno povezavo vidi in jo sme razvezati (`razvezi`), po tem
     račun spet čaka. Admina štejejo samo zahteve s potrjenim naslovom
     (`steviloCakajocihNaAdmina`).
+  - **Admin dobi e-pošto, ko račun začne čakati nanj**
+    (`ObvestiloAdminuStoritev`, `posta/SporociloAdminu`, okt 2026): kdo (ime,
+    naslov, želeni klub), kateri paket (plačan paket je v zadevi in na vrhu;
+    paket se bere iz `narocnina`, ki jo ob plačilu ustvari webhook: Premium
+    pri igralcu, Basic/Plus/Pro pri organizatorju, brez vrstice »Brezplačno«),
+    zakaj čaka (igralec: ni zapisa / več zapisov / zapis že ima račun;
+    organizator: vedno ga potrdi admin) in gumb v Dostope. **Ne ob
+    registraciji**, ampak ko je pogoj izpolnjen (`obvestiAdminaCeCaka`):
+    potrjen naslov IN soglasje skrbnika, če je potrebno — zato sta klica na
+    obeh poteh (`potrdiEposto`, `potrdiSkrbnika`) in pogoj postane resničen
+    natanko enkrat na račun. Igralec in organizator imata isto sporočilo, ki se
+    loči po vlogi (zadeva »račun« / »organizator«, poziv »Poveži račun z
+    igralcem« / »Potrdi organizatorja«). Datuma rojstva in naslova skrbnika
+    ni v pošti (admin ju vidi v Dostopih). Naslov je `turnirko.posta.admin`
+    (`TURNIRKO_POSTA_ADMIN`, privzeto info@turnirko-nt.si, prazno = brez
+    obvestil), pošiljatelj je običajni `turnirko.posta.od`. HTML sloga delita
+    obvestilo po kolu in ta pošta prek `PostniOkvir`. Varuje `RegistracijaTest`
+    (razdelek »Obvestilo adminu«) in `SporociloAdminuTest`.
   - **Admin se ne registrira in gesla ne ponastavlja po pošti**: najmočnejši
     račun ostane izven te poti (`Vloga.ADMIN` se v `RegistracijaStoritev`
     povsod izloči).
@@ -1980,6 +1998,59 @@
     `registracija-zacetek|korak|placilo|potrjena|opuscena` (lastnost `izvor`: meni,
     prijava, maskota, oglas, poziv, profil), `premium-nakup-zacetek`. Nakup sam je ogled
     `/narocnina?stanje=uspeh`.
+- **Kode popusta ob registraciji** (V53, okt 2026, `KodePopustaStoritev`, `koda_popusta`,
+  `uporaba_kode_popusta`). Admin nastavi kodo in ugodnost (stran Dostopi → »Kode za popust«,
+  `KodePopustaOkno`, `/api/v1/kode-popusta`, samo ADMIN); oseba jo vpiše v **povzetku**
+  registracije (`RegistracijaVnos.kodaPopusta`, predogled `POST /api/v1/auth/koda-popusta`).
+  Tri vrste, vsaka velja na SVOJI poti — koda na drugi poti se **zavrne z razlago**, ne tiho
+  prezre (`razlogNeuporabnosti`):
+  - `PREMIUM_MESECI`: brezplačna registracija igralca, preizkus Premium traja `meseci`
+    namesto enega (`PreizkusPremiumStoritev.zacni`; mesec še vedno teče od POVEZAVE računa).
+  - `ODSTOTEK` (1–75 %): plačljiva registracija (Premium ali organizator; neobvezno samo
+    za eno vlogo), Stripov kupon `duration once` = popust samo na PRVO plačilo, obnova je po
+    polni ceni (`StripeNarocnine.ustvariKupon`, kupon nastane ob prvem plačilu s kodo in se
+    hrani v `stripe_kupon_id`). Meja 75 % je izračunana: Stripe ne sprejme plačila pod
+    0,50 €, najcenejši paket je 1,99 € (`prvoPlacilo` zaokroži kot Stripe: popust se
+    zaokroži, ostanek je plačilo). V Stripovih metapodatkih kode NI (`vStripeGreSamoZeton`
+    ostane): kupon nosi samo ime kode; kodo po plačilu zapiše webhook iz čakajoče
+    registracije (`cakajoca_registracija.id_koda`).
+  - `ORGANIZATOR_MESECI`: organizator registracije brez plačila dobi `paket` za `meseci`;
+    **teče od potrditve organizatorja** (`RacuniStoritev.potrdiOrganizatorja` →
+    `uveljaviZaOrganizatorja`), ne od registracije. Vrstica `narocnina` je `PREIZKUS`
+    (V53 sprosti CHECK: preizkus je lahko vsak paket razen BREZPLACNO), potek je samo datum
+    (`Narocnina.jeVeljavna`). Organizator v tem času paketa ne more kupiti sam (stran
+    Naročnina ga kaže kot brezplačno leto Pro iz V34); po poteku dobi običajno ponudbo.
+  - **Ugodnost se po nastanku ne spreminja** (vrsta, meseci, odstotek, paket, za koga): kdor
+    se je registriral, je dobil, kar je koda takrat obljubljala. Spremeni se opis, rok
+    (`velja_do`, zadnji dan vključno), `najvec_uporab` in aktivnost. Izbriše se samo koda brez
+    porab in brez čakajočih plačil, sicer se izklopi.
+  - **Mesta pri `najvec_uporab`** drži račun (poraba) ali čakajoča plačljiva registracija
+    (4 dni); nepotrjen račun se po 48 urah izbriše in z njim poraba (`ON DELETE CASCADE`).
+    **Lasten ostanek istega naslova se ne šteje** (`zasedenihZ`), sicer bi kdor registracije ni
+    dokončal in jo ponovi ostal pred zaprtimi vrati.
+  - **Poraba kaže na račun samo s številko** (`UporabaKodePopusta.idUporabnik`), ne z
+    entiteto: Hibernate odpove (`TransientPropertyValueException`), če v isti enoti dela
+    izbrišeš račun, na katerega kaže naložena vrstica. Po tej poti `zasedenihZ` vrstice ne
+    naloži (`existsBy…`): SQLite izbrisanemu id-ju da isti id novi vrstici in naložena stara bi
+    se z njo ujela (`DuplicateKey`). Testi so v eni transakciji, zato morajo med dvema
+    zahtevama `flush()` + `clear()` (`ponovnaRegistracijaIsteOsebeNeZasedeMesta`).
+  - **Odgovor ne razkriva obstoječih kod**: neznana, ugasnjena, potekla in izčrpana koda
+    dobijo isto sporočilo (`NEVELJAVNA_KODA`), ugibanje je omejeno na 30 preverjanj na uro na
+    IP. Preverba kode je PRED omejitvijo pošiljanja e-pošte (napačna koda ne porabi minute
+    za nov poskus) in ni odvisna od tega, ali naslov že obstaja.
+  - Vmesnik: polje v povzetku (`RegistracijaTok`; »Imam kodo za popust« → Uporabi), cena in
+    paket v povzetku sta že po kodi; vpisana a neuporabljena koda **zadrži gumb**, da oseba ne
+    ustvari računa brez ugodnosti, ki jo pričakuje; sprememba vloge ali paketa kodo odstrani.
+    Hitra registracija (brez koraka Paket) odstotka ne more uporabiti in to pove. Umami:
+    `koda-popusta-uporabljena` (samo vrsta, kode same ne).
+  - **Ni preverjeno proti živemu Stripu** (v razvoju ni ključa): obseg zahtev (kupon na seji,
+    `toMap()`) je pod testom, ne pa Stripov odgovor ali kako Moj Račun izda račun za plačilo s
+    kuponom — preveri na sandboxu pred živim preklopom (`docs/NAROCNINE-V-ZIVO.md`). Če
+    kupon v Stripu izbrišeš, nastavi `koda_popusta.stripe_kupon_id` na NULL.
+  - Ni pokrito: vnos kode pri že prijavljenem računu (nadgradnja na strani Naročnina) in
+    opomnik ob koncu organizatorskega paketa brez plačila (obvestilo o koncu preizkusa
+    navaja ceno Premium, zato `posljiOpomnike` organizatorja preskoči). Testi:
+    `KodePopustaTest`, `KodePopustaDostopTest`.
 - **Obvestila po kolu in brezplačno spremljanje lig** (V50, odločitev lastnika
   23. 10. 2026; faza 2 za preizkusom Premium). Račun je moral dati nekaj, česar gost
   nima, in ga pripeljati nazaj: spremljanje lig je zdaj **brezplačno** (prej Premium;

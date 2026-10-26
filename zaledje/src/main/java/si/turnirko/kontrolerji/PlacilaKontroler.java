@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import si.turnirko.dto.NadgradnjaVnos;
@@ -30,8 +31,9 @@ public class PlacilaKontroler {
     }
 
     @PostMapping("/registracija")
-    public PlacilnaSejaDto registracija(@Valid @RequestBody PlacanaRegistracijaVnos vnos) {
-        return placila.zacniRegistracijskoPlacilo(vnos);
+    public PlacilnaSejaDto registracija(@Valid @RequestBody PlacanaRegistracijaVnos vnos,
+                                        HttpServletRequest zahteva) {
+        return placila.zacniRegistracijskoPlacilo(vnos, zahteva.getRemoteAddr());
     }
 
     @PostMapping("/nadgradnja")

@@ -28,6 +28,9 @@ import type {
   IzidUvozaDto,
   KaderIgralecDto,
   KaderVnos,
+  KodaPopustaDto,
+  KodaPopustaUrediVnos,
+  KodaPopustaVnos,
   KlubDto,
   KlubVnos,
   KoledarVnosDto,
@@ -61,6 +64,8 @@ import type {
   PodobenIgralecDto,
   PodobenIgralecPodrobenDto,
   PodobniVnos,
+  PreveriKodoVnos,
+  PreverjenaKodaDto,
   PreracunPorociloDto,
   PostavaVnos,
   PostavkaZanimivosti,
@@ -322,6 +327,9 @@ export const authApi = {
      brez prijave. Strežnik omejuje pogostost po IP. */
   predogledZapisa: (vnos: PredogledZapisaVnos) =>
     api.objavi<PredogledZapisaDto>('/auth/predogled-zapisa', vnos),
+  /* Predogled kode popusta v povzetku registracije, brez prijave; strežnik omejuje
+     ugibanje po IP. Brez posledic: nič se ne rezervira. */
+  kodaPopusta: (vnos: PreveriKodoVnos) => api.objavi<PreverjenaKodaDto>('/auth/koda-popusta', vnos),
   /* Pozabljeno geslo: koda gre na potrjen naslov; odgovor je vedno enak. */
   pozabljenoGeslo: (email: string) => api.objavi<void>('/auth/pozabljeno-geslo', { email }),
   novoGeslo: (vnos: NovoGesloVnos) => api.objavi<void>('/auth/novo-geslo', vnos),
@@ -380,6 +388,17 @@ export const profiliApi = {
      Zasebna kot ostale analize profila. */
   napoved: (idIgralec: number, idNasprotnika: number) =>
     api.vrni<NapovedTekmeDto>(`/igralci/${idIgralec}/profil/napoved?nasprotnik=${idNasprotnika}`),
+}
+
+/* Kode popusta ob registraciji (samo administrator): seznam s porabo, nova koda,
+   popravek (opis, rok, največ uporab, aktivnost; ugodnost se ne spreminja) in
+   izbris neuporabljene kode. */
+export const kodePopustaApi = {
+  seznam: () => api.vrni<KodaPopustaDto[]>('/kode-popusta'),
+  ustvari: (vnos: KodaPopustaVnos) => api.objavi<KodaPopustaDto>('/kode-popusta', vnos),
+  uredi: (id: number, vnos: KodaPopustaUrediVnos) =>
+    api.posodobi<KodaPopustaDto>(`/kode-popusta/${id}`, vnos),
+  izbrisi: (id: number) => api.izbrisi(`/kode-popusta/${id}`),
 }
 
 export const racuniApi = {

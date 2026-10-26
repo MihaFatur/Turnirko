@@ -171,6 +171,13 @@ registrirati**. Potrebujes troje:
    `TURNIRKO_SMTP_STREZNIK`, `TURNIRKO_SMTP_VRATA`, `TURNIRKO_SMTP_UPORABNIK`,
    `TURNIRKO_SMTP_GESLO`. Nato `docker compose up -d`.
 
+   Admin dobi e-posto tudi, ko se igralec registrira in se njegov racun ne
+   poveze sam z igralcem, in ko se registrira organizator (kdo, kateri paket,
+   zakaj caka). Gre na
+   `TURNIRKO_POSTA_ADMIN` (privzeto `info@turnirko-nt.si`; prazna vrednost
+   obvestila izklopi), od `TURNIRKO_POSTA_OD`. Ker je prejemnik na isti domeni
+   kot posiljatelj, ob prvem sporocilu preveri, da ni pristalo med nezeleno.
+
 **Preizkus se pred streznikom.** Posiljanja ni treba cakati do objave: v mapi
 `zaledje/config/` ustvari `application-posta.properties` z istimi nastavitvami
 (mapa je v `.gitignore`, ker vsebuje kljuc SMTP) in zazeni s profilom:

@@ -120,7 +120,9 @@ public class VarnostneNastavitve {
                                 "/api/v1/auth/ponovno-poslji",
                                 "/api/v1/auth/pozabljeno-geslo",
                                 "/api/v1/auth/novo-geslo",
-                                "/api/v1/auth/predogled-zapisa").permitAll()
+                                "/api/v1/auth/predogled-zapisa",
+                                // predogled kode popusta (pred registracijo; omejitev po IP v storitvi)
+                                "/api/v1/auth/koda-popusta").permitAll()
                         // odjava od obvestil po kolu iz e-poste (tudi odjava z enim klikom,
                         // ki jo poslje odjemalec poste): dokaz je zeton iz sporocila, ki ne
                         // odpre nicesar razen izklopa obvestil
@@ -157,6 +159,9 @@ public class VarnostneNastavitve {
                         // novih igralcev in kandidatov za istovetnost, zato je vsa pot
                         // samo administratorjeva - pravilo mora stati pred "GET je javen"
                         .requestMatchers("/api/v1/uvoz/**").hasRole("ADMIN")
+                        // kode popusta (seznam kaze, koliko je kdo uporabil): samo admin,
+                        // tudi branje - pred splosnim "GET je javen"
+                        .requestMatchers("/api/v1/kode-popusta", "/api/v1/kode-popusta/**").hasRole("ADMIN")
                         // sifrant igralcev z osebnimi podatki (datum rojstva, e-posta,
                         // telefon, naslov, licenca). Organizator jih namenoma NE vidi:
                         // za vodenje tekmovanja zadosca javni izpis, skupni sifrant pa

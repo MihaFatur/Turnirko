@@ -30,7 +30,9 @@ import {
   prihranekLetnoOdstotki,
   type CiklusPlacila,
   type Paket,
+  type PreverjenaKodaDto,
 } from '../api/tipi'
+import { mesecev, opisUgodnosti, prvoPlacilo } from '../pomozno/kodePopusta'
 import { jeStarejsiOd21ZaCeno, ligaVTozilniku, oblikujCeno, oblikujDatum } from '../pomozno/oblikovanje'
 import { shraniStanjePlacila, type ShranjenoStanjePlacila } from '../pomozno/registracijaSeja'
 import { zabelezi, type IzvorRegistracije } from '../pomozno/statistika'
@@ -149,6 +151,14 @@ interface Stanje {
   /* Zadnji dan preizkusa Premium, ki se je začel s povezavo (ISO). */
   izidPreizkusDo: string | null
   placanoZnesek: number | null
+  /* Koda popusta (V53), ki jo je strežnik v povzetku potrdil za izbrano vlogo in paket.
+     Ob spremembi vloge ali paketa odpade (posodobi). */
+  kodaPopusta: PreverjenaKodaDto | null
+  /* Polje za kodo je odprto; vpisano besedilo še ni uporabljeno, dokler ga strežnik ne potrdi. */
+  kodaOdprta: boolean
+  kodaVnos: string
+  kodaPreverja: boolean
+  kodaNapaka: string | null
 }
 
 function zacetnoStanje(
@@ -183,6 +193,11 @@ function zacetnoStanje(
       izidOrganizator: obnovljeno.vloga === 'organizator',
       izidPreizkusDo: null,
       placanoZnesek: obnovljeno.cena,
+      kodaPopusta: null,
+      kodaOdprta: false,
+      kodaVnos: '',
+      kodaPreverja: false,
+      kodaNapaka: null,
     }
   }
   return {
@@ -212,6 +227,11 @@ function zacetnoStanje(
     izidOrganizator: false,
     izidPreizkusDo: null,
     placanoZnesek: null,
+    kodaPopusta: null,
+    kodaOdprta: false,
+    kodaVnos: '',
+    kodaPreverja: false,
+    kodaNapaka: null,
   }
 }
 
@@ -260,8 +280,20 @@ export function RegistracijaTok({
   const [tabelaKoncana, nastaviTabelaKoncana] = useState(false)
   const odstevalnik = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  /* Koda popusta je preverjena za vlogo in paket, ki sta bila izbrana, ko jo je strežnik
+     potrdil: drug paket ali vloga pomeni drugo pot (koda z meseci velja za brezplačno
+     registracijo, odstotek za plačljivo), zato odpade in se vpiše znova. */
   function posodobi(delno: Partial<Stanje>) {
-    nastavi((prejsnje) => ({ ...prejsnje, ...delno }))
+    nastavi((prejsnje) => {
+      const drugaPot =
+        (delno.paket !== undefined && delno.paket !== prejsnje.paket)
+        || (delno.vloga !== undefined && delno.vloga !== prejsnje.vloga)
+      return {
+        ...prejsnje,
+        ...delno,
+        ...(drugaPot && delno.kodaPopusta === undefined ? { kodaPopusta: null, kodaNapaka: null } : {}),
+      }
+    })
   }
 
   /* Odštevanje do ponovnega pošiljanja (isto pravilo kot v PrijavaOkno.tsx -
@@ -341,8 +373,18 @@ export function RegistracijaTok({
     retry: false,
   })
 
-  const cena = izracunajCeno(s.paket, s.ciklus, s.datumRojstva)
+  /* Koda popusta spremeni, kaj oseba dobi in plača: odstotek zniža prvo plačilo, meseci
+     brez plačila nadomestijo plačilo (organizator dobi paket kode, ne izbranega). Cena v
+     povzetku in na gumbu je zato ta po popustu, polna pa je cena obnove. */
+  const koda = s.kodaPopusta
+  const cenaPolna = izracunajCeno(s.paket, s.ciklus, s.datumRojstva)
+  const cena = koda?.vrsta === 'ODSTOTEK' && koda.odstotek
+    ? prvoPlacilo(cenaPolna, koda.odstotek)
+    : koda?.vrsta === 'ORGANIZATOR_MESECI'
+      ? 0
+      : cenaPolna
   const placljiv = cena > 0
+  const paketUcinek: Paket = koda?.vrsta === 'ORGANIZATOR_MESECI' && koda.paket ? koda.paket : s.paket
   const starejsiOd21 = jeStarejsiOd21ZaCeno(s.datumRojstva)
   const cenaPremiumMesecno = (starejsiOd21 ?? false) ? CENA_PREMIUM_MESECNO.starejsi : CENA_PREMIUM_MESECNO.mlajsi
   const cenaPremiumLetno = (starejsiOd21 ?? false) ? CENA_PREMIUM_LETNO.starejsi : CENA_PREMIUM_LETNO.mlajsi
@@ -353,14 +395,20 @@ export function RegistracijaTok({
 
   const imePaketa = jeIgralec
     ? (s.paket === 'BREZPLACNO' ? 'Brezplačno' : 'Premium')
-    : OZNAKE_PAKET[s.paket].replace('Organizator ', '')
+    : OZNAKE_PAKET[paketUcinek].replace('Organizator ', '')
 
   const obnovaBesedilo = (() => {
-    if (!placljiv) return jeIgralec ? 'Prvi mesec s Premium' : 'Brez plačila'
+    if (!placljiv) {
+      if (koda?.vrsta === 'PREMIUM_MESECI' && koda.meseci) return `Premium: ${mesecev(koda.meseci)}`
+      if (koda?.vrsta === 'ORGANIZATOR_MESECI' && koda.meseci) return `Brez plačila: ${mesecev(koda.meseci)}`
+      return jeIgralec ? 'Prvi mesec s Premium' : 'Brez plačila'
+    }
     const d = new Date()
     if (s.paket === 'PREMIUM' && s.ciklus === 'MESECNO') d.setMonth(d.getMonth() + 1)
     else d.setFullYear(d.getFullYear() + 1)
+    /* Popust velja samo za prvo plačilo: obnova je po polni ceni, in to mora biti vidno. */
     return `Obnova ${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`
+      + (koda?.vrsta === 'ODSTOTEK' ? ` · ${oblikujCeno(cenaPolna)}` : '')
   })()
 
   const zapisVrednost = !jeIgralec
@@ -401,10 +449,48 @@ export function RegistracijaTok({
       )
     }
     if (trenutniKorak === 'skrbnik') return !s.emailSkrbnika.includes('@')
-    if (trenutniKorak === 'povzetek') return !s.pogoji || s.poteka
+    /* Vpisana koda, ki je strežnik še ni potrdil, bi tiho odpadla: oseba bi ustvarila račun
+       brez ugodnosti, ki jo pričakuje. Zato računa ne ustvari, dokler kode ne uporabi ali
+       izbriše. */
+    if (trenutniKorak === 'povzetek') {
+      return !s.pogoji || s.poteka || s.kodaPreverja || (!koda && s.kodaOdprta && !!s.kodaVnos.trim())
+    }
     if (trenutniKorak === 'koda') return s.koda.length !== 6 || s.poteka
     return false
   })()
+
+  /* Strežnik pove, ali koda velja in kaj prinese za izbrano vlogo in paket; ugibanje kod
+     omejuje po naslovu IP. Razlog zavrnitve je v odgovoru, da oseba ve, kaj popraviti. */
+  async function uporabiKodo() {
+    const vpisana = s.kodaVnos.trim()
+    if (!vpisana || s.kodaPreverja) return
+    posodobi({ kodaPreverja: true, kodaNapaka: null })
+    try {
+      const odgovor = await authApi.kodaPopusta({
+        koda: vpisana,
+        organizator: !jeIgralec,
+        paket: s.paket,
+        email: s.email.trim() || null,
+      })
+      if (!odgovor.veljavna || !odgovor.uporabna) {
+        /* Hitra registracija nima koraka »Paket«, zato odstotka ni kje uporabiti. */
+        const sporocilo = kratko && odgovor.vrsta === 'ODSTOTEK'
+          ? 'Ta koda zniža ceno plačljivega paketa. V tej hitri registraciji paketa ni mogoče izbrati: '
+            + 'odpri registracijo v meniju računa.'
+          : (odgovor.sporocilo ?? 'Koda ni veljavna ali je potekla.')
+        posodobi({ kodaPreverja: false, kodaNapaka: sporocilo })
+        return
+      }
+      zabelezi('koda-popusta-uporabljena', { izvor, vrsta: odgovor.vrsta ?? '' })
+      posodobi({ kodaPreverja: false, kodaPopusta: odgovor, kodaVnos: '', kodaOdprta: false })
+    } catch (e) {
+      posodobi({ kodaPreverja: false, kodaNapaka: opisNapake(e) })
+    }
+  }
+
+  function odstraniKodo() {
+    posodobi({ kodaPopusta: null, kodaNapaka: null })
+  }
 
   async function oddajPovzetek() {
     posodobi({ napaka: null, poteka: true })
@@ -417,9 +503,12 @@ export function RegistracijaTok({
       organizator: !jeIgralec,
       datumRojstva: jeIgralec ? s.datumRojstva : null,
       emailSkrbnika: potrebujeSkrbnika ? s.emailSkrbnika.trim() : null,
+      kodaPopusta: koda?.koda ?? null,
     }
     try {
-      if (s.paket === 'BREZPLACNO') {
+      /* Brez plačila gre po navadni poti: brezplačen igralec, pa tudi organizator s kodo
+         za paket brez plačila (paket nadomesti koda, ne izbira). */
+      if (!placljiv) {
         const odgovor = await authApi.registracija(racun)
         posodobi({
           email: odgovor.email,
@@ -551,7 +640,7 @@ export function RegistracijaTok({
   const cenaEnota = s.paket === 'PREMIUM' && s.ciklus === 'MESECNO' ? ' / mesec' : ' / leto'
   const cenaNapisTrak = cena === 0 ? '0 €' : oblikujCeno(cena) + cenaEnota
 
-  const org = !jeIgralec ? OMEJITVE_ORGANIZATORJA[s.paket as OrganizatorPaket] : null
+  const org = !jeIgralec ? OMEJITVE_ORGANIZATORJA[paketUcinek as OrganizatorPaket] : null
 
   const povzetekVrstice: { oznaka: string; vrednost: ReactNode; korak: Korak }[] = jeIgralec
     ? [
@@ -567,7 +656,9 @@ export function RegistracijaTok({
           oznaka: 'Paket',
           vrednost: imePaketa + (s.paket === 'PREMIUM'
             ? (s.ciklus === 'MESECNO' ? ' · mesečno' : ' · letno')
-            : ' · prvi mesec Premium'),
+            : koda?.vrsta === 'PREMIUM_MESECI' && koda.meseci
+              ? ` · Premium: ${mesecev(koda.meseci)}`
+              : ' · prvi mesec Premium'),
           korak: 'paket',
         },
       ]
@@ -580,6 +671,7 @@ export function RegistracijaTok({
           oznaka: 'Paket',
           vrednost: org
             ? `${imePaketa} · ${org.lig} ${org.lig === 1 ? 'liga' : 'lige'}, ${org.turnirjev} turnirjev`
+              + (koda?.vrsta === 'ORGANIZATOR_MESECI' && koda.meseci ? ` · brez plačila: ${mesecev(koda.meseci)}` : '')
             : imePaketa,
           korak: 'paket',
         },
@@ -1108,10 +1200,75 @@ export function RegistracijaTok({
                     )}
                   </div>
                 ))}
+                {koda && (
+                  <div className="registracija__povzetek-vrstica">
+                    <span className="registracija__povzetek-oznaka">Koda</span>
+                    <span className="registracija__povzetek-vrednost">
+                      {koda.koda} · {opisUgodnosti(koda)}
+                    </span>
+                    <button type="button" className="povezava-gumb" onClick={odstraniKodo}>
+                      Odstrani
+                    </button>
+                  </div>
+                )}
               </div>
+              {!koda && (
+                <div className="registracija__koda-popusta">
+                  {s.kodaOdprta ? (
+                    <div className="obrazec__polje">
+                      <span>Koda za popust</span>
+                      <div className="registracija__koda-popusta-vnos">
+                        <input
+                          aria-label="Koda za popust"
+                          value={s.kodaVnos}
+                          onChange={(d) => posodobi({ kodaVnos: d.target.value, kodaNapaka: null })}
+                          onKeyDown={(d) => {
+                            if (d.key === 'Enter') {
+                              d.preventDefault()
+                              void uporabiKodo()
+                            }
+                          }}
+                          autoComplete="off"
+                          autoCapitalize="characters"
+                          spellCheck={false}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          className="gumb"
+                          disabled={!s.kodaVnos.trim() || s.kodaPreverja}
+                          onClick={() => void uporabiKodo()}
+                        >
+                          {s.kodaPreverja ? 'Preverjam …' : 'Uporabi'}
+                        </button>
+                      </div>
+                      {s.kodaNapaka ? (
+                        <div className="napaka" role="alert">{s.kodaNapaka}</div>
+                      ) : (
+                        s.kodaVnos.trim() && (
+                          <span className="registracija__polje-pripis">
+                            Pritisni »Uporabi«, sicer koda ne velja.
+                          </span>
+                        )
+                      )}
+                      <button
+                        type="button"
+                        className="povezava-gumb"
+                        onClick={() => posodobi({ kodaOdprta: false, kodaVnos: '', kodaNapaka: null })}
+                      >
+                        Nimam kode
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="povezava-gumb" onClick={() => posodobi({ kodaOdprta: true })}>
+                      Imam kodo za popust
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="registracija__znesek">
                 <span className="registracija__znesek-oznake">
-                  <span className="registracija__znesek-oznaka">Za plačilo danes</span>
+                  <span className="registracija__znesek-oznaka">{koda?.vrsta === 'ODSTOTEK' ? 'Prvo plačilo' : 'Za plačilo danes'}</span>
                   <span className="registracija__znesek-oznaka">{obnovaBesedilo}</span>
                 </span>
                 <span className="registracija__znesek-st">{cenaNapis(cena)}</span>
@@ -1181,6 +1338,8 @@ export function RegistracijaTok({
               placljiv={placljiv}
               obnovaBesedilo={obnovaBesedilo}
               preizkusDo={s.izidPreizkusDo}
+              meseciKode={koda?.vrsta === 'PREMIUM_MESECI' ? koda.meseci : null}
+              brezPlacilaMeseci={koda?.vrsta === 'ORGANIZATOR_MESECI' ? koda.meseci : null}
               rating={predogled.data?.rating ?? null}
               org={org}
               ligaSpremljana={ligaSpremljana}
@@ -1332,6 +1491,8 @@ function KonecKoraka({
   placljiv,
   obnovaBesedilo,
   preizkusDo,
+  meseciKode,
+  brezPlacilaMeseci,
   rating,
   org,
   ligaSpremljana,
@@ -1345,6 +1506,10 @@ function KonecKoraka({
   obnovaBesedilo: string
   /* Konec preizkusa Premium, ki se je začel s povezavo (ISO). */
   preizkusDo: string | null
+  /* Meseci Premium, ki jih prinaša koda popusta (igralec; začnejo teči ob povezavi). */
+  meseciKode: number | null
+  /* Meseci organizatorskega paketa brez plačila iz kode (začnejo teči ob potrditvi). */
+  brezPlacilaMeseci: number | null
   rating: number | null
   org: { lig: number; turnirjev: number } | null
   /* Liga, ki jo je račun začel spremljati ob registraciji (gumb »Spremljaj«). */
@@ -1352,10 +1517,14 @@ function KonecKoraka({
   onZapri: () => void
 }) {
   const paketNapis = !jeIgralec || placljiv
-    ? `${imePaketa}${placljiv ? ` · ${obnovaBesedilo.toLowerCase()}` : ''}`
+    ? `${imePaketa}${placljiv
+        ? ` · ${obnovaBesedilo.toLowerCase()}`
+        : brezPlacilaMeseci ? ` · brez plačila: ${mesecev(brezPlacilaMeseci)}` : ''}`
     : preizkusDo
       ? `Premium do ${oblikujDatum(preizkusDo)} · brez plačila`
-      : 'Brezplačno · mesec Premium po povezavi'
+      : meseciKode
+        ? `Brezplačno · Premium po povezavi: ${mesecev(meseciKode)}`
+        : 'Brezplačno · mesec Premium po povezavi'
   return (
     <>
       <p className="registracija__uvod">
@@ -1363,7 +1532,8 @@ function KonecKoraka({
           ? (povezan
               ? 'E-pošta je potrjena in račun je povezan s tvojim zapisom med igralci.'
               : 'E-pošta je potrjena. Račun poveže administrator; do takrat si prijavljen kot gost.')
-          : 'E-pošta je potrjena. Račun čaka, da ti administrator dodeli vlogo organizatorja in klub.'}
+          : 'E-pošta je potrjena. Račun čaka, da ti administrator dodeli vlogo organizatorja in klub.'
+            + (brezPlacilaMeseci ? ' Paket brez plačila začne teči ob tej potrditvi.' : '')}
       </p>
       {organizator && <span className="znacka">Čaka potrditev administratorja</span>}
       <div className="registracija__kolofon">
@@ -1400,7 +1570,8 @@ function KonecKoraka({
                 <span className="registracija__korak-prvi-opis">
                   {povezan
                     ? 'Rating, zgodovina tekem in forma.'
-                    : 'Profil se odpre, ko administrator poveže račun. Takrat začne teči tudi mesec Premium.'}
+                    : `Profil se odpre, ko administrator poveže račun. Takrat začne teči tudi ${
+                        meseciKode ? `Premium brez plačila (${mesecev(meseciKode)})` : 'mesec Premium'}.`}
                 </span>
               </span>
               {povezan ? (

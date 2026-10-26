@@ -54,6 +54,7 @@ public class RacuniStoritev {
     private final RacunDnevnikStoritev dnevnik;
     private final NarocninaStoritev narocninaStoritev;
     private final PreizkusPremiumStoritev preizkus;
+    private final KodePopustaStoritev kodePopusta;
 
     public RacuniStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                           IgralecRepozitorij igralecRepozitorij,
@@ -64,7 +65,8 @@ public class RacuniStoritev {
                           KodeStoritev kode,
                           RacunDnevnikStoritev dnevnik,
                           NarocninaStoritev narocninaStoritev,
-                          PreizkusPremiumStoritev preizkus) {
+                          PreizkusPremiumStoritev preizkus,
+                          KodePopustaStoritev kodePopusta) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -75,6 +77,7 @@ public class RacuniStoritev {
         this.dnevnik = dnevnik;
         this.narocninaStoritev = narocninaStoritev;
         this.preizkus = preizkus;
+        this.kodePopusta = kodePopusta;
     }
 
     // ---------- Lastni racun ----------
@@ -186,7 +189,9 @@ public class RacuniStoritev {
 
     /* Potrditev organizatorja: racun dobi vlogo organizatorja in (neobvezno)
        pripadnost klubu, po katerem se doloci klubsko soupravljanje tekmovanj.
-       Za razliko od igralca se ne poveze z zapisom v sifrantu igralcev. */
+       Za razliko od igralca se ne poveze z zapisom v sifrantu igralcev.
+       Organizator s kodo popusta za paket brez placila (ORGANIZATOR_MESECI) ga
+       dobi ob tej potrditvi. */
     @Transactional
     public RacunIgralcaDto potrdiOrganizatorja(Long idRacuna, Long idKlub) {
         Uporabnik u = najdiRacun(idRacuna);
@@ -207,6 +212,8 @@ public class RacuniStoritev {
         uporabnikRepozitorij.save(u);
         dnevnik.zabelezi(u.getId(), "Administrator potrdil organizatorja"
                 + (u.getKlub() != null ? " (" + u.getKlub().getIme() + ")" : ""));
+        // paket brez placila iz kode popusta (V53) zacne teci sele zdaj, ne ze ob registraciji
+        kodePopusta.uveljaviZaOrganizatorja(u, LocalDateTime.now());
         return racunDto(u, List.of());
     }
 

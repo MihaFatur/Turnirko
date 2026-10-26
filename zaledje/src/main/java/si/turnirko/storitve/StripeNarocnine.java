@@ -13,6 +13,7 @@
    in obe poti se zbezita v isti vrednosti. */
 package si.turnirko.storitve;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -23,12 +24,14 @@ import org.springframework.stereotype.Component;
 
 import com.stripe.exception.CardException;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Coupon;
 import com.stripe.model.Invoice;
 import com.stripe.model.Product;
 import com.stripe.model.ProductSearchResult;
 import com.stripe.model.Subscription;
 import com.stripe.model.SubscriptionItem;
 import com.stripe.model.SubscriptionSchedule;
+import com.stripe.param.CouponCreateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductSearchParams;
 import com.stripe.param.SubscriptionScheduleCreateParams;
@@ -237,6 +240,25 @@ public class StripeNarocnine {
                 .setName(paket.imeIzdelka())
                 .putMetadata(METAPODATEK_PAKET, paket.name())
                 .build()).getId();
+    }
+
+    /* Kupon za kodo popusta (KodePopustaStoritev, V53): odstotek na PRVO placilo
+       (duration once), obnova je po polni ceni. Ime kupona je koda, ker ga
+       kupec vidi na Stripovi strani in na racunu. Kupon je eden na kodo (Stripe
+       ga ob uporabi ne porabi - najvec uporab steje nasa baza), zato se ustvari
+       enkrat in se hrani v koda_popusta.stripe_kupon_id. */
+    public String ustvariKupon(String ime, int odstotek) {
+        try {
+            return Coupon.create(CouponCreateParams.builder()
+                    .setName(ime)
+                    .setPercentOff(BigDecimal.valueOf(odstotek))
+                    .setDuration(CouponCreateParams.Duration.ONCE)
+                    .putMetadata("turnirko_koda", ime)
+                    .build()).getId();
+        } catch (StripeException e) {
+            dnevnik.error("Stripe (kupon za kodo {}) ni uspel: {}", ime, e.getMessage());
+            throw new DomenskaIzjema("Plačila s kodo popusta trenutno ni mogoče začeti. Poskusi kasneje.");
+        }
     }
 
     /* Umik zabelezenega preklopa: urnik se SPROSTI (release), narocnina pa

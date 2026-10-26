@@ -51,6 +51,11 @@ public class CakajocaRegistracija {
     @Column(name = "email_skrbnika")
     private String emailSkrbnika;
 
+    /* Koda popusta, ki jo registracija drzi do placila (V53): rezervira mesto pri
+       najvec uporab, po placilu jo prevzame uporaba_kode_popusta. */
+    @Column(name = "id_koda")
+    private Long idKoda;
+
     /* Ura steje (ciscenje po dneh od nastanka), zato pretvornik. */
     @Convert(converter = CasKotBesedilo.class)
     @Column(name = "ustvarjena_ob", nullable = false, updatable = false)
@@ -84,4 +89,7 @@ public class CakajocaRegistracija {
     public LocalDate getDatumRojstva() { return datumRojstva; }
     public String getEmailSkrbnika() { return emailSkrbnika; }
     public LocalDateTime getUstvarjenaOb() { return ustvarjenaOb; }
+
+    public Long getIdKoda() { return idKoda; }
+    public void setIdKoda(Long idKoda) { this.idKoda = idKoda; }
 }

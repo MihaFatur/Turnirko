@@ -30,6 +30,10 @@ services:
       TURNIRKO_POSTA_NACIN: ${TURNIRKO_POSTA_NACIN:-dnevnik}
       TURNIRKO_POSTA_OD: ${TURNIRKO_POSTA_OD:-Turnirko <posta@localhost>}
       TURNIRKO_POSTA_ODGOVOR: ${TURNIRKO_POSTA_ODGOVOR:-}
+      # Kam gre obvestilo, da racun igralca caka na potrditev (glej .env.primer).
+      # Brez dvopicja: privzeti naslov velja samo, ce spremenljivke ni; prazna
+      # vrednost v .env obvestila izklopi.
+      TURNIRKO_POSTA_ADMIN: ${TURNIRKO_POSTA_ADMIN-info@turnirko-nt.si}
       TURNIRKO_SMTP_STREZNIK: ${TURNIRKO_SMTP_STREZNIK:-}
       TURNIRKO_SMTP_VRATA: ${TURNIRKO_SMTP_VRATA:-587}
       TURNIRKO_SMTP_UPORABNIK: ${TURNIRKO_SMTP_UPORABNIK:-}
