@@ -4982,9 +4982,9 @@ td.nizi-okno__niz--dobljen {
   contain-intrinsic-size: auto 36px;
 }
 
-/* Gumb na dnu seznama turnirjev: razkrije (ali skrije) turnirje za nazaj. Čez
-   celo širino, kot drugi gumbi »Pokaži vse« pod seznami. */
-.turnirji-za-nazaj {
+/* Gumb na dnu seznama turnirjev in lig: razkrije (ali skrije) tekmovanja za
+   nazaj. Čez celo širino, kot drugi gumbi »Pokaži vse« pod seznami. */
+.seznam-za-nazaj {
   width: 100%;
   margin-top: var(--r3);
 }

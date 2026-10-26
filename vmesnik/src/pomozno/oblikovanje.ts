@@ -161,6 +161,25 @@ export function danesIso(): string {
   return `${d.getFullYear()}-${mesec}-${dan}`
 }
 
+/* Koliko mesecev nazaj seže »v zadnjih mesecih«: seznami turnirjev in lig
+   skrijejo, kar je starejše, za gumb »Pokaži starejše«. */
+export const MESECEV_SVEZINE = 3
+
+/* Datum (ISO) pred tremi meseci. Če prejšnji mesec nima tistega dne (31. 12. →
+   30. 9.), vzame njegov zadnji dan in ne prelije v naslednji mesec. */
+export function mejaSvezine(danes: string): string {
+  const [leto, mesec, dan] = danes.split('-').map(Number)
+  const konecMeseca = new Date(leto, mesec - MESECEV_SVEZINE, 0)
+  const d = new Date(
+    konecMeseca.getFullYear(),
+    konecMeseca.getMonth(),
+    Math.min(dan, konecMeseca.getDate()),
+  )
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dn = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mes}-${dn}`
+}
+
 /* Koledarskih dni od `od` do `dokler` (oba ISO "YYYY-MM-DD"), negativno, če je
    `dokler` pred `od`; null, če kateri datum ni berljiv. Računa v UTC, da
    prehod na poletni čas ne pomakne dneva (23 ali 25 ur bi dalo napačno

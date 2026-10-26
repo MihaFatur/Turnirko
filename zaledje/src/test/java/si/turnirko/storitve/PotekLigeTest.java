@@ -217,4 +217,38 @@ class PotekLigeTest {
 
         assertEquals(new PotekLige.Naslednje(1, DANES), PotekLige.izracunaj(s, DANES).naslednje());
     }
+
+    private static PotekLige.Aktivnost odigrano(LocalDate termin, LocalDateTime vpisan) {
+        return new PotekLige.Aktivnost(termin == null ? null : termin.atTime(18, 30), vpisan);
+    }
+
+    /* Zadnja aktivnost je najnovejsi datum tekme ali vpisa - tudi ce je vpis
+       popravljen za nazaj (tekma iz julija, vpisana v oktobru). */
+    @Test
+    void zadnjaAktivnostJeNajnovejsiDatumOdigraneAliVpisane() {
+        List<PotekLige.Aktivnost> s = List.of(
+                odigrano(LocalDate.of(2026, 7, 20), null),
+                odigrano(LocalDate.of(2026, 7, 20), LocalDate.of(2026, 10, 3).atTime(21, 15)),
+                odigrano(LocalDate.of(2026, 9, 1), null));
+
+        assertEquals(LocalDate.of(2026, 10, 3), PotekLige.zadnjaAktivnost(s, DANES));
+    }
+
+    /* Termin v prihodnosti ni aktivnost: razpored, ki se sele zacenja, ne sme
+       dati ligi lazne zadnje aktivnosti. Danasnji termin pa je. */
+    @Test
+    void terminVPrihodnostiNiAktivnostDanasnjiJe() {
+        assertNull(PotekLige.zadnjaAktivnost(
+                List.of(odigrano(DANES.plusDays(3), null)), DANES));
+        assertEquals(DANES, PotekLige.zadnjaAktivnost(
+                List.of(odigrano(DANES, null), odigrano(DANES.plusDays(3), null)), DANES));
+    }
+
+    /* Brez datumov (uvoz brez terminov, srecanje brez izida in termina) ni
+       aktivnosti - null, ne najzgodnejsi mogoci datum. */
+    @Test
+    void brezDatumovNiZadnjeAktivnosti() {
+        assertNull(PotekLige.zadnjaAktivnost(List.of(), DANES));
+        assertNull(PotekLige.zadnjaAktivnost(List.of(odigrano(null, null)), DANES));
+    }
 }

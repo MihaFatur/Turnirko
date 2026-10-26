@@ -120,9 +120,11 @@ public class LigaStoritev {
     @Transactional(readOnly = true)
     public List<LigaDto> vse() {
         Map<Long, PotekLige.Potek> poteki = potekPoLigah();
+        Map<Long, LocalDate> aktivnosti = zadnjaAktivnostPoLigah();
         return ligaRepozitorij.najdiVse().stream()
                 .map(l -> vDto(l, (int) ekipaRepozitorij.countByLigaId(l.getId()),
-                        poteki.getOrDefault(l.getId(), PotekLige.Potek.PRAZEN)))
+                        poteki.getOrDefault(l.getId(), PotekLige.Potek.PRAZEN),
+                        aktivnosti.get(l.getId())))
                 .toList();
     }
 
@@ -130,13 +132,46 @@ public class LigaStoritev {
     public LigaDto najdi(Long id) {
         Liga l = ligaRepozitorij.najdiZVisjo(id)
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
-        return vDto(l, (int) ekipaRepozitorij.countByLigaId(id), potek(id));
+        return vDto(l, (int) ekipaRepozitorij.countByLigaId(id), potek(id), zadnjaAktivnostLige(id));
     }
 
-    private static LigaDto vDto(Liga l, int steviloEkip, PotekLige.Potek potek) {
+    private static LigaDto vDto(Liga l, int steviloEkip, PotekLige.Potek potek, LocalDate zadnjaAktivnost) {
         PotekLige.Naslednje n = potek.naslednje();
         return LigaDto.iz(l, steviloEkip, potek.odigranaKola(), potek.vseh(),
-                n == null ? null : new LigaDto.Naslednje(n.kolo(), n.datum()));
+                n == null ? null : new LigaDto.Naslednje(n.kolo(), n.datum()), zadnjaAktivnost);
+    }
+
+    /* Zadnja aktivnost (glej PotekLige.zadnjaAktivnost) za vse lige naenkrat - seznam
+       lig jo potrebuje za vsako vrstico, poizvedba na ligo bi bila N+1. */
+    private Map<Long, LocalDate> zadnjaAktivnostPoLigah() {
+        Map<Long, List<PotekLige.Aktivnost>> poLigah = new HashMap<>();
+        for (Object[] r : srecanjeRepozitorij.datumiAktivnostiPoLigah()) {
+            poLigah.computeIfAbsent(((Number) r[0]).longValue(), k -> new ArrayList<>())
+                    .add(aktivnostIzVrstice(r, 1));
+        }
+        LocalDate danes = PotekLige.danes();
+        Map<Long, LocalDate> rezultat = new HashMap<>();
+        poLigah.forEach((idLiga, srecanja) -> {
+            LocalDate zadnja = PotekLige.zadnjaAktivnost(srecanja, danes);
+            if (zadnja != null) {
+                rezultat.put(idLiga, zadnja);
+            }
+        });
+        return rezultat;
+    }
+
+    private LocalDate zadnjaAktivnostLige(Long idLiga) {
+        List<PotekLige.Aktivnost> srecanja = new ArrayList<>();
+        for (Object[] r : srecanjeRepozitorij.datumiAktivnostiLige(idLiga)) {
+            srecanja.add(aktivnostIzVrstice(r, 0));
+        }
+        return PotekLige.zadnjaAktivnost(srecanja, PotekLige.danes());
+    }
+
+    /* Vrstica [.., predvidenZacetek, odigranOb]; "odmik" pove, kje se v vrstici
+       zacne srecanje (skupinska poizvedba ima spredaj se id lige). */
+    private static PotekLige.Aktivnost aktivnostIzVrstice(Object[] r, int odmik) {
+        return new PotekLige.Aktivnost((LocalDateTime) r[odmik], (LocalDateTime) r[odmik + 1]);
     }
 
     /* Potek rednega dela lige (odigrana kola, naslednje kolo) po istem pravilu
@@ -237,7 +272,7 @@ public class LigaStoritev {
         liga = ligaRepozitorij.save(liga);
         /* Zastavica se preklaplja sredi sezone, zato kol ne smemo zanemariti -
            odgovor je isti pogled kot pri najdi() (enako kot nastaviPrehode). */
-        return vDto(liga, (int) ekipaRepozitorij.countByLigaId(id), potek(id));
+        return vDto(liga, (int) ekipaRepozitorij.countByLigaId(id), potek(id), zadnjaAktivnostLige(id));
     }
 
     /* Mesto lige v piramidi (visja liga, nizje lige, koliko napreduje/izpade).
@@ -307,7 +342,7 @@ public class LigaStoritev {
         ligaRepozitorij.saveAll(spremenjene);
         /* Prehode je mogoce urejati tudi sredi sezone, zato tu kol ne smemo
            zanemariti - odgovor je isti pogled kot pri najdi(). */
-        return vDto(liga, (int) ekipaRepozitorij.countByLigaId(id), potek(id));
+        return vDto(liga, (int) ekipaRepozitorij.countByLigaId(id), potek(id), zadnjaAktivnostLige(id));
     }
 
     /* Rocni termini kol: termin kola dobijo vsa njegova srecanja, liga z urami

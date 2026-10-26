@@ -77,6 +77,11 @@ public record LigaDto(
         // nevpisanim izidom in starim datumom NI naslednje); null, ko takega
         // ni. Koncnica tu ne steje - glavo po rednem delu nosi ona sama.
         Naslednje naslednje,
+        // Zadnji dan, ko je liga nekaj naredila: srecanje se je odigralo (termin je
+        // ze ali danes mimo) ali je bil njegov izid vpisan (PotekLige.zadnjaAktivnost).
+        // Null, ce takega datuma ni. Javno: seznam lig po njem skrije zakljucene lige
+        // za nazaj, ki jih ne zanima.
+        LocalDate zadnjaAktivnost,
         // Ali liga stoji v sklopu "Lige" na domaci strani (najvec dve, izbere
         // admin). Javno polje, ker po njem vmesnik oznaci ligo v izboru in ve,
         // kaj naj domaca stran pokaze gostu.
@@ -108,11 +113,11 @@ public record LigaDto(
 
     /* Liga brez razporeda (nova, urejena, prehodi) - kol se ni. */
     public static LigaDto iz(Liga l, int steviloEkip) {
-        return iz(l, steviloEkip, List.of(), 0, null);
+        return iz(l, steviloEkip, List.of(), 0, null, null);
     }
 
     public static LigaDto iz(Liga l, int steviloEkip, List<Integer> odigranaKola, int steviloKol,
-                             Naslednje naslednje) {
+                             Naslednje naslednje, LocalDate zadnjaAktivnost) {
         return new LigaDto(
                 l.getId(), l.getIme(), l.getSezona(), l.getSpolKategorija(),
                 l.getFormatSrecanja(), l.getSteviloNizov(), l.getZmagZaSrecanje(),
@@ -128,7 +133,7 @@ public record LigaDto(
                 l.getStNapreduje(), l.getStIzpade(),
                 l.getStKvalifikacijeGor(), l.getStKvalifikacijeDol(),
                 StatusTekmovanja.zaPrikaz(l.getStatus(), l.zacetekDne()), l.getStatus(), steviloEkip,
-                odigranaKola.size(), steviloKol, odigranaKola, naslednje, l.isNaDomaci(),
+                odigranaKola.size(), steviloKol, odigranaKola, naslednje, zadnjaAktivnost, l.isNaDomaci(),
                 l.getUstvaril() != null ? l.getUstvaril().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getId() : null,
                 l.getKlubLastnik() != null ? l.getKlubLastnik().getIme() : null,

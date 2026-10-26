@@ -64,6 +64,10 @@ public final class PotekLige {
     /* Naslednje kolo: njegova stevilka in dan (null, ce termina ni). */
     public record Naslednje(int kolo, LocalDate datum) {}
 
+    /* Kar o srecanju potrebujemo za zadnjo aktivnost: kdaj se je ODIGRALO (termin)
+       in kdaj je bil VPISAN njegov izid (odigranOb). Oba sta lahko prazna. */
+    public record Aktivnost(LocalDateTime zacetek, LocalDateTime odigranOb) {}
+
     /* odigranaKola so stevilke odigranih kol rednega dela, narascajoce -
        razpored po njih oznaci trak kol, glava pa jih presteje. */
     public record Potek(List<Integer> odigranaKola, int vseh, Naslednje naslednje) {
@@ -78,6 +82,28 @@ public final class PotekLige {
 
     public static LocalDate danes() {
         return LocalDate.now(SLOVENIJA);
+    }
+
+    /* Zadnji dan, ko je liga za gledalca nekaj naredila: srecanje se je odigralo
+       (termin je ze ali danes mimo) ali je bil njegov izid vpisan. Vpis velja tudi
+       za nazaj - poznejsi zapisnik pokaze, da je liga se zivela, tudi ce je bila
+       tekma davno. Termin v prihodnosti ni aktivnost. Null, ce takega datuma ni.
+       Seznam lig (vmesnik) po tem skrije zakljucene lige za nazaj. */
+    public static LocalDate zadnjaAktivnost(List<Aktivnost> srecanja, LocalDate danes) {
+        LocalDate zadnja = null;
+        for (Aktivnost s : srecanja) {
+            if (s.odigranOb() != null) {
+                zadnja = najnovejsi(zadnja, s.odigranOb().toLocalDate());
+            }
+            if (s.zacetek() != null && !s.zacetek().toLocalDate().isAfter(danes)) {
+                zadnja = najnovejsi(zadnja, s.zacetek().toLocalDate());
+            }
+        }
+        return zadnja;
+    }
+
+    private static LocalDate najnovejsi(LocalDate trenutni, LocalDate kandidat) {
+        return trenutni == null || kandidat.isAfter(trenutni) ? kandidat : trenutni;
     }
 
     public static Potek izracunaj(List<Termin> srecanja, LocalDate danes) {

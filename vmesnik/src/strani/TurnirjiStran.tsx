@@ -48,6 +48,7 @@ import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import {
   danesIso,
   datumskiBlok,
+  mejaSvezine,
   oblikujObdobje,
   oblikujObdobjeKratko,
   sezonaIzDatuma,
@@ -176,23 +177,7 @@ function sklonTurnirjev(n: number): string {
    Seznam "Vsi turnirji" jih na začetku skrije za gumb »Pokaži starejše«: kdor
    spremlja tekoče, vidi pregled brez balasta, zgodovina pa je en klik stran.
    Turnir v teku ni za nazaj (ima svoj pas zgoraj), turnir brez datuma pa ne
-   vemo, da je star, zato ostane viden. */
-const MESECEV_SVEZINE = 3
-
-/* Datum (ISO) pred tremi meseci. Če prejšnji mesec nima tistega dne (31. 12. →
-   30. 9.), vzame njegov zadnji dan in ne prelije v naslednji mesec. */
-function mejaSvezine(danes: string): string {
-  const [leto, mesec, dan] = danes.split('-').map(Number)
-  const konecMeseca = new Date(leto, mesec - MESECEV_SVEZINE, 0)
-  const d = new Date(
-    konecMeseca.getFullYear(),
-    konecMeseca.getMonth(),
-    Math.min(dan, konecMeseca.getDate()),
-  )
-  const mes = String(d.getMonth() + 1).padStart(2, '0')
-  const dn = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${mes}-${dn}`
-}
+   vemo, da je star, zato ostane viden. Mejo (tri mesece) daje mejaSvezine. */
 
 /* Zadnji dan turnirja je konec, če ga ni, pa začetek. */
 function jeZaNazaj(t: TurnirDto, meja: string): boolean {
@@ -250,7 +235,7 @@ export function TurnirjiStran() {
       {brezFiltrov && zaNazaj.length > 0 && (
         <button
           type="button"
-          className="gumb gumb--majhen turnirji-za-nazaj"
+          className="gumb gumb--majhen seznam-za-nazaj"
           aria-expanded={pokaziStarejse}
           onClick={() => nastaviPokaziStarejse(!pokaziStarejse)}
         >

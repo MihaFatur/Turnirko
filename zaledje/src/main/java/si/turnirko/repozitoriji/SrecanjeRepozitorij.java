@@ -151,6 +151,25 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
             """)
     List<Object[]> terminiRednegaDela(Long idLiga);
 
+    /* Datumi aktivnosti vseh lig, ena vrstica na srecanje: [idLiga,
+       predvidenZacetek, odigranOb] (PotekLige.zadnjaAktivnost). Skupinsko zato,
+       ker seznam lig pokaze za vsako ligo, ali je bila v zadnjih mesecih zivahna.
+       Zajame tudi koncnico (serija) - ta je del lige. */
+    @Query("""
+            SELECT s.liga.id, s.predvidenZacetek, s.odigranOb
+            FROM Srecanje s
+            WHERE s.liga IS NOT NULL
+            """)
+    List<Object[]> datumiAktivnostiPoLigah();
+
+    /* Isto za eno ligo: [predvidenZacetek, odigranOb]. */
+    @Query("""
+            SELECT s.predvidenZacetek, s.odigranOb
+            FROM Srecanje s
+            WHERE s.liga.id = :idLiga
+            """)
+    List<Object[]> datumiAktivnostiLige(Long idLiga);
+
     /* Srecanja izbranih lig, ki se niso koncana in imajo termin PRED danim
        trenutkom - zapisnik jih caka. Zajame tudi koncnico (serija). Klicatelj
        meji po DNEVU (glej najdiVObdobju: zapisi brez ure so krajsi od

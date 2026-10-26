@@ -1517,6 +1517,10 @@ export interface LigaDto {
      nevpisanim izidom in starim datumom NI naslednje); null, ko ga ni.
      Končnica tu ne šteje — glavo po rednem delu nosi ona sama. */
   naslednje: { kolo: number; datum: string | null } | null
+  /* Zadnji dan, ko je liga nekaj naredila: srečanje se je odigralo ali je bil
+     njegov izid vpisan (ISO datum; null, ko takega datuma ni). Seznam lig po
+     njem skrije zaključene lige za nazaj. */
+  zadnjaAktivnost: string | null
   /* Ali liga stoji v sklopu »Lige« na domači strani (največ dve, izbere
      admin). Javno polje: po njem vmesnik ligo označi v izboru. */
   naDomaci: boolean

@@ -19,7 +19,13 @@
 
    Iskanje teče čez ime in sezono (isto kot v IzborLigOkno) in zoži seznam PRED
    filtri - glej komponente/IskanjeSeznama. Sistem srečanja se v seznamu izpiše
-   samo z imenom (»SNTL«); sestava v oklepaju je v pravilih lige. */
+   samo z imenom (»SNTL«); sestava v oklepaju je v pravilih lige.
+
+   Lige za nazaj so zaključene lige, v katerih se zadnje tri mesece ni odigrala
+   ali vpisala nobena tekma. Seznam jih na začetku skrije za gumb »Pokaži
+   starejše« (kot turnirje): kdor spremlja tekoče, vidi pregled brez balasta.
+   Liga v teku in liga v pripravi nista za nazaj. Iskanje in filtri pokažeta
+   vse zadetke, ker kdor išče, išče vse. */
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -49,7 +55,7 @@ import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PalicaMobi } from '../komponente/Napredek'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
-import { potekKol } from '../pomozno/oblikovanje'
+import { danesIso, mejaSvezine, potekKol } from '../pomozno/oblikovanje'
 import { intervalOsvezevanja, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
@@ -122,6 +128,7 @@ export function LigeStran() {
   })
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
   const [iskanje, nastaviIskanje] = useState('')
+  const [pokaziStarejse, nastaviPokaziStarejse] = useState(false)
 
   const vse = useMemo(() => lige.data ?? [], [lige.data])
   const najdene = useMemo(() => {
@@ -132,6 +139,14 @@ export function LigeStran() {
   }, [vse, iskanje])
   const filtri = useFiltri(najdene, SKUPINE, RAZVRSTITVE)
   const prikazane = filtri.prikazani
+  /* Okno za nazaj velja samo za pogled brez iskanja in filtrov: kdor išče ali
+     filtrira, dobi vse zadetke, ne le tistih, ki jih okno pusti (enako kot pri
+     turnirjih). */
+  const brezFiltrov = filtri.steviloIzbranih === 0 && besedeIskanja(iskanje).length === 0
+  const meja = useMemo(() => mejaSvezine(danesIso()), [])
+  const zaNazaj = prikazane.filter((l) => jeZaNazaj(l, meja))
+  const skrivamo = brezFiltrov && !pokaziStarejse
+  const vidne = skrivamo ? prikazane.filter((l) => !jeZaNazaj(l, meja)) : prikazane
   const vTeku = useMemo(() => vse.filter((l) => l.status === 'V_TEKU'), [vse])
   const osvezenoOb = uraOsvezitve(lige.dataUpdatedAt)
 
@@ -167,6 +182,29 @@ export function LigeStran() {
             </>
           )}
         </p>
+      )}
+    </>
+  )
+
+  /* Dno seznama: gumb razkrije lige za nazaj. Kadar okno ne pokaže ničesar
+     (vse vidne lige so starejše), to pove, sicer bi bil seznam prazen brez
+     razlage. Prazen seznam lig sploh ni tak primer, zato je pogoj `prikazane`. */
+  const dnoSeznama = (
+    <>
+      {skrivamo && prikazane.length > 0 && vidne.length === 0 && (
+        <p className="obvestilo">V zadnjih treh mesecih ni lig.</p>
+      )}
+      {brezFiltrov && zaNazaj.length > 0 && (
+        <button
+          type="button"
+          className="gumb gumb--majhen seznam-za-nazaj"
+          aria-expanded={pokaziStarejse}
+          onClick={() => nastaviPokaziStarejse(!pokaziStarejse)}
+        >
+          {pokaziStarejse
+            ? 'Skrij starejše ▴'
+            : `Pokaži starejše: ${zaNazaj.length} ${ligTekst(zaNazaj.length)} ▾`}
+        </button>
       )}
     </>
   )
@@ -232,17 +270,16 @@ export function LigeStran() {
           <div className="naslovna-mobi naslovna-mobi--brez-crte">
             <h2>Vse lige</h2>
             <span className="naslovna-mobi__stevec">
-              {prikazane.length === vse.length
-                ? vse.length
-                : `${prikazane.length} od ${vse.length}`}
+              {vidne.length === vse.length ? vse.length : `${vidne.length} od ${vse.length}`}
             </span>
           </div>
           {stanje}
           <div className="seznam-mobi seznam-mobi--odmik">
-            {prikazane.map((liga) => (
+            {vidne.map((liga) => (
               <VrsticaLigeMobi key={liga.id} liga={liga} />
             ))}
           </div>
+          {dnoSeznama}
         </div>
 
         {obrazec}
@@ -274,9 +311,9 @@ export function LigeStran() {
                   naIskanje={nastaviIskanje}
                   poCem={ISKANJE_PO}
                   stevec={
-                    prikazane.length === vse.length
+                    vidne.length === vse.length
                       ? `${vse.length} ${ligTekst(vse.length)}`
-                      : `Prikazanih ${prikazane.length} od ${vse.length}`
+                      : `Prikazanih ${vidne.length} od ${vse.length}`
                   }
                 />
               )}
@@ -288,9 +325,9 @@ export function LigeStran() {
 
         {stanje}
 
-        {prikazane.length > 0 && (
+        {vidne.length > 0 && (
           <div className="kartice">
-            {prikazane.map((liga) => (
+            {vidne.map((liga) => (
               <Link
                 to={`/lige/${liga.id}`}
                 className={`kartica kartica--liga kartica--${liga.status}`}
@@ -326,6 +363,7 @@ export function LigeStran() {
             ))}
           </div>
         )}
+        {dnoSeznama}
       </div>
 
       {obrazec}
@@ -376,6 +414,14 @@ function VrsticaLigeMobi({
       <StatusMobi status={liga.status} />
     </Link>
   )
+}
+
+/* Liga za nazaj: zaključena, brez tekme (odigrane ali vpisane) v zadnjih treh
+   mesecih. Liga v teku ima svoj pas in je tekoča; liga v pripravi še ni začela,
+   zato ni za nazaj. Datum je ISO, zato je primerjava z mejo po nizih pravilna. */
+function jeZaNazaj(liga: LigaDto, meja: string): boolean {
+  if (liga.status !== 'ZAKLJUCEN') return false
+  return liga.zadnjaAktivnost == null || liga.zadnjaAktivnost < meja
 }
 
 function ekipTekst(n: number): string {
