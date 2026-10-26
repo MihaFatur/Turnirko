@@ -98,7 +98,9 @@ public record LigaDto(
         Long idKvalifikacijeVisja,
         String kvalifikacijeVisjaIme,
         Long idKvalifikacijeNizja,
-        String kvalifikacijeNizjaIme
+        String kvalifikacijeNizjaIme,
+        // Opomba organizatorja (V52); prazno, ce je ni.
+        String opombe
 ) {
 
     /* Naslednje kolo: stevilka in dan (null, ce kolo termina nima). */
@@ -134,6 +136,7 @@ public record LigaDto(
                 l.getKvalifikacijeVisja() != null ? l.getKvalifikacijeVisja().getId() : null,
                 l.getKvalifikacijeVisja() != null ? l.getKvalifikacijeVisja().getIme() : null,
                 l.getKvalifikacijeNizja() != null ? l.getKvalifikacijeNizja().getId() : null,
-                l.getKvalifikacijeNizja() != null ? l.getKvalifikacijeNizja().getIme() : null);
+                l.getKvalifikacijeNizja() != null ? l.getKvalifikacijeNizja().getIme() : null,
+                l.getOpombe());
     }
 }

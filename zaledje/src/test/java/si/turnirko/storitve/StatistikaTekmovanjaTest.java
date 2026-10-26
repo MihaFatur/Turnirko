@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
@@ -46,10 +47,12 @@ import si.turnirko.dto.StatistikaTekmovanjaDto.Zid;
 import si.turnirko.dto.TekmaSrecanjaDto;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.dto.VnosRezultataSrecanja;
+import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
+import si.turnirko.modeli.PostavkaZanimivosti;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RavenTekmovanja;
@@ -63,6 +66,7 @@ import si.turnirko.repozitoriji.KlubRepozitorij;
 class StatistikaTekmovanjaTest extends IntegracijskiTest {
 
     @Autowired private StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
+    @Autowired private ZanimivostiNastavitveStoritev zanimivostiNastavitveStoritev;
     @Autowired private LigaStoritev ligaStoritev;
     @Autowired private SrecanjeStoritev srecanjeStoritev;
     @Autowired private KlubRepozitorij klubRepozitorij;
@@ -297,6 +301,85 @@ class StatistikaTekmovanjaTest extends IntegracijskiTest {
         assertNull(s.presenecenje());
         assertNotNull(s.zid(), "ostale postavke ratinga ne potrebujejo");
         assertEquals(15, s.stevilke().tekem());
+    }
+
+    /* ================= Skriti razdelki (V51) ================= */
+
+    /* Skrit razdelek ne pride v izpis, ostali pa ostanejo nedotaknjeni, in
+       podatki ostanejo v bazi: ko organizator razdelek spet vklopi, je isti. */
+    @Test
+    void turnirSkritiRazdelkiNiVIzpisu() {
+        Dogodek dogodek = kroznoSestih();
+        Long idTurnirja = dogodek.getTurnir().getId();
+        odigraj(dogodek, poJakosti(dogodek));
+        StatistikaTekmovanjaDto pred = statistikaTekmovanjaStoritev.zaTurnir(idTurnirja);
+
+        zanimivostiNastavitveStoritev.shraniZaTurnir(idTurnirja, List.of(
+                PostavkaZanimivosti.STEVILKE, PostavkaZanimivosti.PRESENECENJE,
+                PostavkaZanimivosti.KLUBI, PostavkaZanimivosti.ZID));
+
+        StatistikaTekmovanjaDto s = statistikaTekmovanjaStoritev.zaTurnir(idTurnirja);
+        assertNull(s.stevilke());
+        assertNull(s.presenecenje());
+        assertTrue(s.klubi().isEmpty());
+        assertTrue(s.zid().isEmpty());
+        assertEquals(pred.delavci(), s.delavci(), "nevidni razdelki ostalih ne spremenijo");
+        assertEquals(pred.obrati(), s.obrati());
+        assertEquals(pred.najdaljsaTekma(), s.najdaljsaTekma());
+        assertEquals(pred.vzponi(), s.vzponi());
+
+        zanimivostiNastavitveStoritev.shraniZaTurnir(idTurnirja, List.of());
+        StatistikaTekmovanjaDto vrnjen = statistikaTekmovanjaStoritev.zaTurnir(idTurnirja);
+        assertEquals(pred.stevilke(), vrnjen.stevilke());
+        assertEquals(pred.klubi(), vrnjen.klubi(), "skritje ni brisanje");
+        assertEquals(pred.zid(), vrnjen.zid());
+    }
+
+    /* Ligaske postavke pri turnirju niso - nastavitev jih zavrne, ne tiho izpusti. */
+    @Test
+    void turnirNeSprejmeLigaskegaRazdelka() {
+        Dogodek dogodek = kroznoSestih();
+        Long idTurnirja = dogodek.getTurnir().getId();
+
+        assertThrows(NeveljavenVnosIzjema.class, () -> zanimivostiNastavitveStoritev
+                .shraniZaTurnir(idTurnirja, List.of(PostavkaZanimivosti.NA_NOZ)));
+        assertTrue(zanimivostiNastavitveStoritev.zaTurnir(idTurnirja).skrite().isEmpty());
+    }
+
+    @Test
+    void ligaSkritiRazdelkiNiVIzpisu() {
+        Long idLige = ligaStirihEkip();
+        List<SrecanjeDto> srecanja = srecanjeStoritev.zaLigo(idLige);
+        for (SrecanjeDto s : srecanja) {
+            odigrajSrecanje(s.id(), true, false, true, false, true);
+        }
+        StatistikaTekmovanjaDto pred = statistikaTekmovanjaStoritev.zaLigo(idLige);
+        assertFalse(pred.nosilci().isEmpty(), "pred skritjem ima liga nosilce");
+
+        zanimivostiNastavitveStoritev.shraniZaLigo(idLige, List.of(
+                PostavkaZanimivosti.NOSILCI, PostavkaZanimivosti.GOSTJE,
+                PostavkaZanimivosti.STEVILKE));
+
+        StatistikaTekmovanjaDto s = statistikaTekmovanjaStoritev.zaLigo(idLige);
+        assertTrue(s.nosilci().isEmpty());
+        assertTrue(s.gostje().isEmpty());
+        assertNull(s.stevilke());
+        assertEquals(pred.delavci(), s.delavci());
+        assertEquals(pred.klubi(), s.klubi());
+    }
+
+    /* Liga ima svoje razdelke, turnir svoje - ponudbo ureja tekmovanje samo. */
+    @Test
+    void ponudbaRazdelkovJeZaVrstoTekmovanja() {
+        Long idLige = ligaStirihEkip();
+        Long idTurnirja = kroznoSestih().getTurnir().getId();
+
+        var liga = zanimivostiNastavitveStoritev.zaLigo(idLige).razdelki();
+        var turnir = zanimivostiNastavitveStoritev.zaTurnir(idTurnirja).razdelki();
+        assertTrue(liga.contains(PostavkaZanimivosti.NA_NOZ));
+        assertFalse(liga.contains(PostavkaZanimivosti.PRVI_NASLOVI));
+        assertTrue(turnir.contains(PostavkaZanimivosti.PRVI_NASLOVI));
+        assertFalse(turnir.contains(PostavkaZanimivosti.NOSILCI));
     }
 
     /* ================= Liga ================= */

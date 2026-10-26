@@ -96,8 +96,9 @@ class ObvestilaPoKoluTest extends IntegracijskiTest {
         assertEquals(2, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(3)));
 
         PomnilniskiPosiljatelj.Sporocilo zanj = posta.zadnje("ana@test.si").orElseThrow();
-        assertTrue(zanj.zadeva().startsWith("Savinja test, 1. kolo: "), zanj.zadeva());
+        assertEquals("Savinja test: 1. kolo", zanj.zadeva());
         assertTrue(zanj.besedilo().contains("Tvoje tekme"), zanj.besedilo());
+        assertTrue(zanj.besedilo().contains("IgA1 PriA1"), "igralec sam v svojih tekmah");
         assertTrue(zanj.besedilo().contains("Tvoj rating"), zanj.besedilo());
         assertTrue(zanj.besedilo().contains("S Premium"), "igralcu brez paketa vrstica o Premium");
         assertTrue(zanj.besedilo().contains("ker igraš v ligi Savinja test"));
@@ -107,7 +108,7 @@ class ObvestilaPoKoluTest extends IntegracijskiTest {
         assertEquals("List-Unsubscribe=One-Click", zanj.glave().get("List-Unsubscribe-Post"));
 
         PomnilniskiPosiljatelj.Sporocilo gledalcu = posta.zadnje("gledalec@test.si").orElseThrow();
-        assertEquals("Savinja test: izidi 1. kola", gledalcu.zadeva());
+        assertEquals("Savinja test: 1. kolo", gledalcu.zadeva());
         assertFalse(gledalcu.besedilo().contains("Tvoje tekme"));
         assertFalse(gledalcu.besedilo().contains("S Premium"));
         assertTrue(gledalcu.besedilo().contains("ker spremljaš ligo"));
@@ -131,7 +132,7 @@ class ObvestilaPoKoluTest extends IntegracijskiTest {
         assertEquals(1, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(3)));
 
         PomnilniskiPosiljatelj.Sporocilo zanj = posta.zadnje("ana@test.si").orElseThrow();
-        assertTrue(zanj.zadeva().matches("Savinja test, 1\\. kolo: Klub A[^·]* · \\d : \\d, \\d : \\d"), zanj.zadeva());
+        assertEquals("Savinja test: 1. kolo", zanj.zadeva());
         long tekem = zanj.besedilo().lines().filter(v -> v.startsWith("  zmaga ") || v.startsWith("  poraz ")).count();
         assertEquals(6, tekem, "dvojice in dve posamicni tekmi v vsakem od obeh srecanj");
     }

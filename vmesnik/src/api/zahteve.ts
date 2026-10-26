@@ -63,6 +63,7 @@ import type {
   PodobniVnos,
   PreracunPorociloDto,
   PostavaVnos,
+  PostavkaZanimivosti,
   PredogledUvozaDto,
   PredogledZapisaDto,
   PredogledZapisaVnos,
@@ -89,6 +90,7 @@ import type {
   SrecanjePodrobnoDto,
   StatistikaTekmovanjaDto,
   TekmaDto,
+  TekmaIgralcaLigeDto,
   TekmaSrecanjaDto,
   TerminiVnos,
   TurnirDto,
@@ -100,6 +102,7 @@ import type {
   VnosRezultata,
   VnosRezultataSrecanja,
   ZadnjaTekmaDto,
+  ZanimivostiNastavitveDto,
 } from './tipi'
 
 export const turnirjiApi = {
@@ -107,12 +110,20 @@ export const turnirjiApi = {
   najdi: (id: number) => api.vrni<TurnirDto>(`/turnirji/${id}`),
   dogodki: (id: number) => api.vrni<DogodekDto[]>(`/turnirji/${id}/dogodki`),
   ustvari: (vnos: TurnirVnos) => api.objavi<TurnirDto>('/turnirji', vnos),
+  /* Popravek v pripravi; strežnik ga zavrne, ko je zreb že narejen ali je turnir uvožen. */
+  uredi: (id: number, vnos: TurnirVnos) => api.posodobi<TurnirDto>(`/turnirji/${id}`, vnos),
   dodajDogodek: (id: number, vnos: DogodekVnos) =>
     api.objavi<DogodekDto>(`/turnirji/${id}/dogodki`, vnos),
   zakljuci: (id: number) => api.objavi<TurnirDto>(`/turnirji/${id}/zakljuci`),
   /* Zavihek »Zanimivosti« — čez vse dogodke turnirja skupaj. */
   statistika: (id: number) =>
     api.vrni<StatistikaTekmovanjaDto>(`/turnirji/${id}/statistika`),
+  /* Razdelki zavihka, ki jih organizator skrije gledalcem. Branje je javno, pisanje
+     samo lastniku in administratorju. Vnos je celoten seznam skritih. */
+  zanimivostiNastavitve: (id: number) =>
+    api.vrni<ZanimivostiNastavitveDto>(`/turnirji/${id}/zanimivosti/nastavitve`),
+  shraniZanimivostiNastavitve: (id: number, skrite: PostavkaZanimivosti[]) =>
+    api.posodobi<ZanimivostiNastavitveDto>(`/turnirji/${id}/zanimivosti/nastavitve`, { skrite }),
 }
 
 export const dogodkiApi = {
@@ -429,6 +440,9 @@ export const ligeApi = {
   dodajVKader: (idEkipa: number, vnos: KaderVnos) =>
     api.objavi<KaderIgralecDto>(`/lige/ekipe/${idEkipa}/kader`, vnos),
   odstraniIzKadra: (idKader: number) => api.izbrisi(`/lige/kader/${idKader}`),
+  /* Vse tekme igralca v tej ligi (razteg igralca v kadru ekipe). */
+  tekmeIgralca: (id: number, idIgralec: number) =>
+    api.vrni<TekmaIgralcaLigeDto[]>(`/lige/${id}/igralci/${idIgralec}/tekme`),
 
   generirajRazpored: (id: number) => api.objavi<SrecanjeDto[]>(`/lige/${id}/razpored`),
   /* Ročno vpisan razpored — druga pot do istega razporeda: pare je določil
@@ -453,6 +467,11 @@ export const ligeApi = {
     api.vrni<LestvicaDvojiceDto[]>(`/lige/${id}/lestvica-dvojic`),
   /* Zavihek »Zanimivosti« — ista oblika kot pri turnirju, druge postavke. */
   statistika: (id: number) => api.vrni<StatistikaTekmovanjaDto>(`/lige/${id}/statistika`),
+  /* Enako kot pri turnirju: kateri razdelki zavihka so gledalcem skriti. */
+  zanimivostiNastavitve: (id: number) =>
+    api.vrni<ZanimivostiNastavitveDto>(`/lige/${id}/zanimivosti/nastavitve`),
+  shraniZanimivostiNastavitve: (id: number, skrite: PostavkaZanimivosti[]) =>
+    api.posodobi<ZanimivostiNastavitveDto>(`/lige/${id}/zanimivosti/nastavitve`, { skrite }),
 
   /* Končnica: serije vseh krogov. Nastane iz končne lestvice rednega dela in
      se razveljavi, dokler se nobena njena tekma ni začela. */

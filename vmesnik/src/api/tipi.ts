@@ -169,6 +169,9 @@ export interface TurnirDto {
   datumZacetka: string | null
   datumKonca: string | null
   status: StatusTekmovanja
+  /* Dejanski status: po njem se odloca o urejanju (zreb pred datumom kaze "V pripravi",
+     a turnir je ze V_TEKU in je zaklenjen). */
+  dejanskiStatus: StatusTekmovanja
   opombe: string | null
   /* Raven tekmovanja doloci tezo tekem v Turnirko ratingu. */
   raven: RavenTekmovanja
@@ -1533,6 +1536,8 @@ export interface LigaDto {
   kvalifikacijeVisjaIme: string | null
   idKvalifikacijeNizja: number | null
   kvalifikacijeNizjaIme: string | null
+  /* Opomba organizatorja pod naslovom lige (V52). */
+  opombe: string | null
 }
 
 export interface LigaVnos {
@@ -1564,6 +1569,8 @@ export interface LigaVnos {
   /* Mesto v piramidi ob NASTANKU lige (neobvezno); urejanje pravil ga ne
      bere — pozneje ga ureja PrehodiOkno. */
   prehodi?: PrehodiVnos | null
+  /* Opomba organizatorja (V52); prazno = brez opombe. */
+  opombe?: string | null
 }
 
 /* Ročni termini kol. Ločeno od LigaVnos iz istega razloga kot PrehodiVnos:
@@ -1718,6 +1725,26 @@ export interface KaderIgralecDto {
   /* Bilanca posamičnih tekem igralca v tej ligi (dvojice ne štejejo). */
   zmage: number
   porazi: number
+}
+
+/* Tekma igralca v ligi z njegovega vidika (razteg v kadru). Srečanje - kolo,
+   termin, ekipi - vzame vmesnik iz seznama srečanj lige. */
+export interface TekmaIgralcaLigeDto {
+  id: number
+  idSrecanje: number
+  /* Ekipa, za katero je igralec nastopil v tem srečanju. */
+  idEkipa: number
+  ekipa: string
+  tip: TipTekmeSrecanja
+  domaci: boolean
+  /* Drugi igralec para pri dvojici, sicer null. */
+  soigralec: string | null
+  nasprotniki: string[]
+  niziIgralca: number
+  niziNasprotnika: number
+  izidTip: IzidTekme | null
+  /* null, dokler tekma ni odigrana. */
+  zmaga: boolean | null
 }
 
 export interface KaderVnos {
@@ -2498,6 +2525,32 @@ export interface StatistikaTekmovanjaDto {
   gostje: StatGostovanje[]
   nosilci: StatNosilec[]
   dvojica: StatDvojica | null
+}
+
+/* Razdelki zavihka »Zanimivosti«, ki jih organizator lahko skrije gledalcem.
+   Imena so ista kot v zaledju (PostavkaZanimivosti), v istem vrstnem redu kot
+   so prikazani. */
+export type PostavkaZanimivosti =
+  | 'STEVILKE'
+  | 'PRESENECENJE'
+  | 'OBRATI'
+  | 'NAJDALJSI_NIZ'
+  | 'NAJDALJSA_TEKMA'
+  | 'NA_NOZ'
+  | 'DVOJICA'
+  | 'PRVI_NASLOVI'
+  | 'VZPONI'
+  | 'ZID'
+  | 'DELAVCI'
+  | 'KLUBI'
+  | 'GOSTJE'
+  | 'NOSILCI'
+
+/* Razdelki, ki na tem tekmovanju sploh nastanejo (razdelki), in tisti, ki so
+   gledalcem skriti (skrite). Skritih, ki na tekmovanju ne nastanejo, ni. */
+export interface ZanimivostiNastavitveDto {
+  razdelki: PostavkaZanimivosti[]
+  skrite: PostavkaZanimivosti[]
 }
 
 /* ---------- Uvoz iz Stupe (samo admin) ---------- */

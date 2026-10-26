@@ -40,6 +40,7 @@ import { PreimenovanjeEkipe, PreimenujEkipoOkno } from '../komponente/Preimenova
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { RocniZrebOkno } from '../komponente/RocniZrebOkno'
+import { NastavitveZanimivosti } from '../komponente/NastavitveZanimivosti'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TerminiOkno } from '../komponente/TerminiOkno'
@@ -275,6 +276,8 @@ export function LigaStran() {
 
   const zanimivostiVsebina = (
     <>
+      {/* Kaj vidijo ostali - samo lastniku in adminu; gost ga ne dobi. */}
+      {smemPoLastnistvu && <NastavitveZanimivosti vrsta="liga" id={idLiga} />}
       <NapakaPoizvedbe poizvedba={zanimivosti} kaj="zanimivosti" />
       {zanimivosti.isPending && <p className="obvestilo">Nalaganje …</p>}
       {zanimivosti.data && <ZanimivostiTekmovanja podatki={zanimivosti.data} jeLiga />}
@@ -708,6 +711,7 @@ export function LigaStran() {
               <span className="naslov-strani__glavni">{l.ime}</span>
               {l.sezona && <span className="naslov-strani__pod">{l.sezona}</span>}
             </h1>
+            {l.opombe && <p className="opomba-bloka">{l.opombe}</p>}
           </div>
 
           <div className="liga__stanje-blok">

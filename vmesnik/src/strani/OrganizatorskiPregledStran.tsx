@@ -65,7 +65,7 @@ import {
   type OrganizatorPaket,
 } from '../pomozno/organizatorPregled'
 import { useNamizje } from '../pomozno/sirinaOkna'
-import { NovTurnirOkno } from './TurnirjiStran'
+import { TurnirObrazecOkno } from './TurnirjiStran'
 
 type Filter = 'VSE' | 'LIGE' | 'TURNIRJI'
 
@@ -362,7 +362,7 @@ function useUstvarjanje(pregled: OrganizatorPregledDto) {
   const okna = (
     <>
       {okno === 'liga' && <LigaObrazecOkno onZapri={zapri} onShranjeno={poShranjevanju} />}
-      {okno === 'turnir' && <NovTurnirOkno onZapri={zapri} onShranjeno={poShranjevanju} />}
+      {okno === 'turnir' && <TurnirObrazecOkno onZapri={zapri} onShranjeno={poShranjevanju} />}
       {(okno === 'polna-liga' || okno === 'polni-turnir' || okno === 'brez-paketa') && (
         <ObvestiloONadgradnji vrsta={okno} pregled={pregled} onZapri={zapri} />
       )}

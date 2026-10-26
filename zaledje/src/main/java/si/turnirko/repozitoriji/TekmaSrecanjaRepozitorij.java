@@ -260,6 +260,26 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
             """)
     List<TekmaSrecanja> najdiOdigraneZaLigo(@Param("idLiga") Long idLiga);
 
+    /* Vse tekme igralca v eni ligi - posamicne in dvojice, odigrane in se
+       neodigrane (postava je zapisana, izida se ni) - za razteg igralca v kadru
+       ekipe. Brez pogoja na ekipo: igralec je lahko v ligi v dveh kadrih, ekipo
+       tekme nosi srecanje. Vrstni red je vrstni red srecanj in zaporedje tekem v
+       njem; kolo in termin razvrsti vmesnik po seznamu srecanj lige. */
+    @Query("""
+            SELECT t FROM TekmaSrecanja t
+            JOIN FETCH t.srecanje s
+            JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
+            JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
+            LEFT JOIN FETCH t.igralecDomaci LEFT JOIN FETCH t.igralecDomaci2
+            LEFT JOIN FETCH t.igralecGost LEFT JOIN FETCH t.igralecGost2
+            WHERE s.liga.id = :idLiga
+              AND (t.igralecDomaci.id = :idIgralec OR t.igralecDomaci2.id = :idIgralec
+                OR t.igralecGost.id = :idIgralec OR t.igralecGost2.id = :idIgralec)
+            ORDER BY s.id, t.zaporedje
+            """)
+    List<TekmaSrecanja> najdiZaIgralcaVLigi(@Param("idLiga") Long idLiga,
+                                            @Param("idIgralec") Long idIgralec);
+
     /* Sestevek dobljenih nizov po srecanjih lige (samo koncane tekme) - za
        kriterij izenacenja "razlika nizov". Vrne [idSrecanja, niziDomaci, niziGost]. */
     @Query("""

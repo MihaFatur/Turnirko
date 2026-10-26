@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import jakarta.persistence.Column;
@@ -41,6 +43,11 @@ public class Liga {
 
     @Column(name = "sezona")
     private String sezona;
+
+    /* Opomba organizatorja, pod naslovom lige. Ne vpliva na pravila; ureja se z obrazcem
+       lige, zato se popravi samo v pripravi kot ostala pravila (V52). */
+    @Column(name = "opombe")
+    private String opombe;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "spol_kategorija", nullable = false)
@@ -130,6 +137,12 @@ public class Liga {
     @Column(name = "ure_srecanj")
     private String ureSrecanj;
 
+    /* Razdelki zavihka Zanimivosti, ki jih organizator skrije gledalcem (V51) -
+       enako kot pri turnirju: nastavitev prikaza, ne pravilo lige, zato jo sme
+       urejati tudi organizator uvoženih lig. */
+    @Column(name = "skrite_zanimivosti")
+    private String skriteZanimivosti;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_visja_liga")
     private Liga visjaLiga;
@@ -217,6 +230,9 @@ public class Liga {
     public String getSezona() { return sezona; }
     public void setSezona(String sezona) { this.sezona = sezona; }
 
+    public String getOpombe() { return opombe; }
+    public void setOpombe(String opombe) { this.opombe = opombe; }
+
     public SpolKategorija getSpolKategorija() { return spolKategorija; }
     public void setSpolKategorija(SpolKategorija spolKategorija) { this.spolKategorija = spolKategorija; }
 
@@ -289,6 +305,14 @@ public class Liga {
                 : ure.stream()
                         .map(u -> u.truncatedTo(ChronoUnit.MINUTES).toString())
                         .collect(Collectors.joining(","));
+    }
+
+    public Set<PostavkaZanimivosti> getSkriteZanimivosti() {
+        return PostavkaZanimivosti.izZapisa(skriteZanimivosti);
+    }
+
+    public void setSkriteZanimivosti(Collection<PostavkaZanimivosti> skrite) {
+        this.skriteZanimivosti = PostavkaZanimivosti.vZapis(skrite);
     }
 
     public Liga getVisjaLiga() { return visjaLiga; }

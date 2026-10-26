@@ -6,6 +6,7 @@ package si.turnirko.storitve;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,6 +39,7 @@ import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.SrecanjePodrobnoDto;
+import si.turnirko.dto.TekmaIgralcaLigeDto;
 import si.turnirko.dto.TekmaSrecanjaDto;
 import si.turnirko.dto.TerminiVnos;
 import si.turnirko.dto.VnosRezultataSrecanja;
@@ -54,6 +56,7 @@ import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmeSrecanja;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StranEkipe;
+import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.NizSrecanjaRepozitorij;
@@ -594,6 +597,64 @@ class LigaSrecanjeTest extends IntegracijskiTest {
         assertEquals(0, kaderB.get(kaderB.size() - 1).zmage(),
                 "zmaga pri drugi ekipi se ne sme pristeti");
         assertEquals(1, kaderB.get(kaderB.size() - 1).porazi());
+    }
+
+    /* Razteg igralca v kadru pokaze VSE njegove tekme v ligi, tudi se neodigrane,
+       z njegove strani: doma ali v gosteh, nasprotnik, soigralec pri dvojici in
+       izid. Tekme drugih igralcev pridejo samo, kadar igrajo v njegovi zasedbi. */
+    @Test
+    void tekmeIgralcaVLigiSoNjegoveTekmeZNjegoveStrani() {
+        Long liga = ustvariLigo(FormatSrecanja.SNTL, null, false);
+        dodajEkipoSKadrom(liga, "Klub A", 3);
+        dodajEkipoSKadrom(liga, "Klub B", 3);
+        ligaStoritev.generirajRazpored(liga);
+        SrecanjeDto srecanje = srecanjeStoritev.zaLigo(liga).get(0);
+        nastaviPostavo(srecanje.id());
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje.id());
+
+        TekmaSrecanjaDto posamicna = p.tekme().stream()
+                .filter(t -> t.tip() == TipTekmeSrecanja.POSAMICNA)
+                .findFirst().orElseThrow();
+        srecanjeStoritev.vnesiRezultat(posamicna.id(),
+                new VnosRezultataSrecanja(null, 3, 1, null, null));
+        Long idDomaci = posamicna.idDomaci();
+        Long idGost = posamicna.idGost();
+
+        List<TekmaIgralcaLigeDto> zDomace = ligaStoritev.tekmeIgralca(liga, idDomaci);
+        assertEquals(p.tekme().stream().filter(t -> igra(t, idDomaci)).count(), zDomace.size(),
+                "igralec vidi vse svoje tekme v srecanju, tudi se neodigrane");
+        TekmaIgralcaLigeDto domaca = najdi(zDomace, posamicna.id());
+        assertEquals(p.srecanje().idEkipaDomaci(), domaca.idEkipa());
+        assertTrue(domaca.domaci());
+        assertNull(domaca.soigralec(), "posamicna tekma nima soigralca");
+        assertEquals(List.of(posamicna.gost()), domaca.nasprotniki());
+        assertEquals(Boolean.TRUE, domaca.zmaga());
+        assertEquals(3, domaca.niziIgralca());
+        assertEquals(1, domaca.niziNasprotnika());
+
+        TekmaIgralcaLigeDto zGoste = najdi(ligaStoritev.tekmeIgralca(liga, idGost), posamicna.id());
+        assertFalse(zGoste.domaci());
+        assertEquals(Boolean.FALSE, zGoste.zmaga(), "zmaga domacih je poraz gostu");
+        assertEquals(1, zGoste.niziIgralca());
+        assertEquals(3, zGoste.niziNasprotnika());
+        assertEquals(List.of(posamicna.domaci()), zGoste.nasprotniki());
+
+        TekmaSrecanjaDto dvojica = p.tekme().stream()
+                .filter(t -> t.tip() == TipTekmeSrecanja.DVOJICE)
+                .findFirst().orElseThrow();
+        TekmaIgralcaLigeDto vDvojici = najdi(ligaStoritev.tekmeIgralca(liga, dvojica.idDomaci()), dvojica.id());
+        assertEquals(dvojica.domaci2(), vDvojici.soigralec());
+        assertEquals(List.of(dvojica.gost(), dvojica.gost2()), vDvojici.nasprotniki());
+        assertNull(vDvojici.zmaga(), "dvojica se ni igrala");
+    }
+
+    private static boolean igra(TekmaSrecanjaDto t, Long idIgralec) {
+        return idIgralec.equals(t.idDomaci()) || idIgralec.equals(t.idDomaci2())
+                || idIgralec.equals(t.idGost()) || idIgralec.equals(t.idGost2());
+    }
+
+    private static TekmaIgralcaLigeDto najdi(List<TekmaIgralcaLigeDto> tekme, Long idTekme) {
+        return tekme.stream().filter(t -> t.id().equals(idTekme)).findFirst().orElseThrow();
     }
 
     /* Lestvica posameznikov lige steje SAMO posamicne tekme te lige. Dvojice so

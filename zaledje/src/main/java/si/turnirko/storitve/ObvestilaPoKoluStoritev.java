@@ -56,8 +56,6 @@ import si.turnirko.dto.LestvicaEkipeDto;
 import si.turnirko.dto.ObvestilaDto;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
-import si.turnirko.modeli.CiklusPlacila;
-import si.turnirko.modeli.Ekipa;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.Narocnina;
@@ -115,7 +113,6 @@ public class ObvestilaPoKoluStoritev {
     private final KaderEkipeRepozitorij kaderRepozitorij;
     private final LestvicaLigeStoritev lestvicaLigeStoritev;
     private final NarocninaStoritev narocnina;
-    private final CenikStoritev cenik;
     private final LastnistvoStoritev lastnistvo;
     private final PostaStoritev posta;
     private final String koren;
@@ -131,7 +128,6 @@ public class ObvestilaPoKoluStoritev {
                                    KaderEkipeRepozitorij kaderRepozitorij,
                                    LestvicaLigeStoritev lestvicaLigeStoritev,
                                    NarocninaStoritev narocnina,
-                                   CenikStoritev cenik,
                                    LastnistvoStoritev lastnistvo,
                                    PostaStoritev posta,
                                    @Value("${turnirko.stripe.vrni-na}") String koren) {
@@ -146,7 +142,6 @@ public class ObvestilaPoKoluStoritev {
         this.kaderRepozitorij = kaderRepozitorij;
         this.lestvicaLigeStoritev = lestvicaLigeStoritev;
         this.narocnina = narocnina;
-        this.cenik = cenik;
         this.lastnistvo = lastnistvo;
         this.posta = posta;
         this.koren = koren;
@@ -262,11 +257,11 @@ public class ObvestilaPoKoluStoritev {
         Skupno skupno = skupno(liga, kolo, srecanja, redna);
         int poslanih = 0;
         for (Uporabnik u : igralci.values()) {
-            poslji(u, SporociloKola.Razlog.IGRA, skupno, srecanja, redna, kolo, zdaj);
+            poslji(u, SporociloKola.Razlog.IGRA, skupno, srecanja, kolo, zdaj);
             poslanih++;
         }
         for (Uporabnik u : spremljevalci.values()) {
-            poslji(u, SporociloKola.Razlog.SPREMLJA, skupno, srecanja, redna, kolo, zdaj);
+            poslji(u, SporociloKola.Razlog.SPREMLJA, skupno, srecanja, kolo, zdaj);
             poslanih++;
         }
         return poslanih;
@@ -291,7 +286,7 @@ public class ObvestilaPoKoluStoritev {
     }
 
     private void poslji(Uporabnik u, SporociloKola.Razlog razlog, Skupno s, List<Srecanje> srecanja,
-                        List<Srecanje> redna, int kolo, LocalDateTime zdaj) {
+                        int kolo, LocalDateTime zdaj) {
         if (u.getZetonOdjave() == null) {
             u.setZetonOdjave(novZeton());
         }
@@ -309,7 +304,7 @@ public class ObvestilaPoKoluStoritev {
 
         SporociloKola.Osebno osebno = mojeEkipe.isEmpty()
                 ? null
-                : osebno(u.getIgralec(), mojeEkipe, srecanja, redna, kolo, s.lestvica());
+                : osebno(u.getIgralec(), mojeEkipe, srecanja, s.lestvica());
         String odjava = koren + "/odjava-obvestil?z=" + u.getZetonOdjave();
         String odjavaApi = koren + "/api/v1/obvestila/odjava?z=" + u.getZetonOdjave();
         SporociloKola.Prejemnik p = new SporociloKola.Prejemnik(
@@ -352,7 +347,7 @@ public class ObvestilaPoKoluStoritev {
     }
 
     private SporociloKola.Osebno osebno(Igralec jaz, Set<Long> mojeEkipe, List<Srecanje> srecanja,
-                                        List<Srecanje> redna, int kolo, List<LestvicaEkipeDto> lestvica) {
+                                        List<LestvicaEkipeDto> lestvica) {
         // srecanja ekipe v kolu - pri ligi z urami kola (V31) jih je vec
         List<Srecanje> moja = srecanja.stream()
                 .filter(s -> mojeEkipe.contains(s.getEkipaDomaci().getId())
@@ -375,7 +370,7 @@ public class ObvestilaPoKoluStoritev {
             List<TekmaSrecanja> vse = tekmaSrecanjaRepozitorij.najdiZaSrecanje(s.getId());
             Map<Long, Integer> spremembe = spremembeIgralca(vse, jaz.getId());
             for (TekmaSrecanja t : vse) {
-                SporociloKola.Tekma tekma = tekma(t, jaz.getId(), spremembe.get(t.getId()));
+                SporociloKola.Tekma tekma = tekma(t, jaz, spremembe.get(t.getId()));
                 if (tekma != null) {
                     tekme.add(tekma);
                 }
@@ -388,26 +383,8 @@ public class ObvestilaPoKoluStoritev {
                 : ratingStanjeRepozitorij.findByIgralecIdAndSistem(jaz.getId(), RatingStanje.SISTEM_TURNIRKO)
                         .map(RatingStanje::getVrednost).orElse(null);
 
-        // naslednje srecanje ekipe: prvo neodigrano v poznejsem kolu, ki mu
-        // termin ni mimo (zamujen vpis ni "naslednje" - isto kot PotekLige)
-        LocalDate danes = PotekLige.danes();
-        Srecanje naslednje = redna.stream()
-                .filter(s -> !s.isCakaNaTermin() && s.getKolo() > kolo
-                        && s.getStatus() == StatusSrecanja.RAZPORED
-                        && (s.getPredvidenZacetek() == null || !s.getPredvidenZacetek().toLocalDate().isBefore(danes))
-                        && (s.getEkipaDomaci().getId().equals(idEkipa) || s.getEkipaGost().getId().equals(idEkipa)))
-                .findFirst().orElse(null);
-        String nasprotnik = null;
-        Boolean doma = null;
-        LocalDate datum = null;
-        if (naslednje != null) {
-            doma = naslednje.getEkipaDomaci().getId().equals(idEkipa);
-            Ekipa druga = doma ? naslednje.getEkipaGost() : naslednje.getEkipaDomaci();
-            nasprotnik = druga.prikazanoIme();
-            datum = naslednje.getPredvidenZacetek() == null ? null : naslednje.getPredvidenZacetek().toLocalDate();
-        }
         return new SporociloKola.Osebno(idEkipa, imeEkipe, moja.stream().map(s -> izid(s, mojeEkipe)).toList(),
-                tekme, rating, spremembaKola, nasprotnik, doma, datum);
+                tekme, rating, spremembaKola);
     }
 
     /* Spremembe ratinga igralca po tekmah srecanja (samo posamicne tekme jih
@@ -428,24 +405,38 @@ public class ObvestilaPoKoluStoritev {
         return spremembe;
     }
 
-    /* Tekma z vidika igralca; null, ce je ni igral ali ni odigrana. */
-    private static SporociloKola.Tekma tekma(TekmaSrecanja t, Long jaz, Integer sprememba) {
+    /* Tekma z vidika igralca; null, ce je ni igral ali ni odigrana. Pri dvojici
+       je njegov soigralec zapisan skupaj z njim (z istega para). */
+    private static SporociloKola.Tekma tekma(TekmaSrecanja t, Igralec jaz, Integer sprememba) {
         if (t.getStatus() != StatusTekmeSrecanja.KONCANA || t.getZmagovalecStran() == null) {
             return null;
         }
-        boolean doma = jaz.equals(id(t.getIgralecDomaci())) || jaz.equals(id(t.getIgralecDomaci2()));
-        boolean gost = jaz.equals(id(t.getIgralecGost())) || jaz.equals(id(t.getIgralecGost2()));
+        Long idJaz = jaz.getId();
+        boolean doma = idJaz.equals(id(t.getIgralecDomaci())) || idJaz.equals(id(t.getIgralecDomaci2()));
+        boolean gost = idJaz.equals(id(t.getIgralecGost())) || idJaz.equals(id(t.getIgralecGost2()));
         if (!doma && !gost) {
             return null;
         }
         boolean dvojice = t.getTip() == TipTekmeSrecanja.DVOJICE;
+        Igralec soigralec = null;
+        if (dvojice) {
+            soigralec = doma
+                    ? soigralecIz(t.getIgralecDomaci(), t.getIgralecDomaci2(), idJaz)
+                    : soigralecIz(t.getIgralecGost(), t.getIgralecGost2(), idJaz);
+        }
+        String moj = dvojice ? imena(jaz, soigralec) : jaz.polnoIme();
         String nasprotnik = doma
                 ? imena(t.getIgralecGost(), dvojice ? t.getIgralecGost2() : null)
                 : imena(t.getIgralecDomaci(), dvojice ? t.getIgralecDomaci2() : null);
         int moji = doma ? t.getDobljeniNiziDomaci() : t.getDobljeniNiziGost();
         int njegovi = doma ? t.getDobljeniNiziGost() : t.getDobljeniNiziDomaci();
         boolean zmaga = (t.getZmagovalecStran() == si.turnirko.modeli.StranEkipe.DOMACI) == doma;
-        return new SporociloKola.Tekma(nasprotnik, moji, njegovi, zmaga, dvojice, sprememba);
+        return new SporociloKola.Tekma(moj, nasprotnik, moji, njegovi, zmaga, sprememba);
+    }
+
+    /* Soigralec v paru: drugi igralec, ce je prvi jaz, sicer prvi. */
+    private static Igralec soigralecIz(Igralec prvi, Igralec drugi, Long idJaz) {
+        return idJaz.equals(id(prvi)) ? drugi : prvi;
     }
 
     private static Long id(Igralec i) {
@@ -457,9 +448,9 @@ public class ObvestilaPoKoluStoritev {
         return drugi == null ? ime : ime + " / " + drugi.polnoIme();
     }
 
-    /* Vrstica o Premium: igralcu brez paketa ponudba, v preizkusu datum
-       konca. Otrok (naslov skrbnika), placnik in racun brez igralca je ne
-       dobijo. */
+    /* Vrstica o Premium: igralcu brez paketa ponudba (brez cene - ta je na
+       strani naročnine), v preizkusu datum konca. Otrok (naslov skrbnika),
+       placnik in racun brez igralca je ne dobijo. */
     private String vrsticaPremium(Uporabnik u, LocalDateTime zdaj) {
         if (u.getVloga() != Vloga.IGRALEC || !u.jePotrjenIgralec() || u.getEmailSkrbnika() != null) {
             return null;
@@ -474,15 +465,7 @@ public class ObvestilaPoKoluStoritev {
                     + UpravljanjeNarocnineStoritev.dan(n.getTrenutnoObdobjeDo()).format(DATUM)
                     + ": na profilu vidiš svojo formo, nasprotnike in napoved naslednje tekme.";
         }
-        boolean starejsi = u.getPrijavljeniDatumRojstva() == null
-                || cenik.stariEnaindvajset(u.getPrijavljeniDatumRojstva());
-        return "S Premium na profilu vidiš še svojo formo, nasprotnike, napoved naslednje tekme ter "
-                + "nize in točke · " + cena(cenik.cena(Paket.PREMIUM, CiklusPlacila.MESECNO, starejsi))
-                + " na mesec.";
-    }
-
-    private static String cena(double znesek) {
-        return String.format(java.util.Locale.ROOT, "%.2f", znesek).replace('.', ',') + " €";
+        return "S Premium na profilu vidiš še svojo formo, nasprotnike, napoved naslednje tekme ter nize in točke";
     }
 
     private static String novZeton() {

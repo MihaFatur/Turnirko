@@ -62,18 +62,7 @@ public class TurnirjiStoritev {
     @Transactional
     public Turnir ustvari(TurnirVnos vnos) {
         Turnir turnir = new Turnir();
-        turnir.setIme(vnos.ime().trim());
-        if (vnos.postnaSt() != null) {
-            turnir.setKraj(krajRepozitorij.findById(vnos.postnaSt())
-                    .orElseThrow(() -> new NeveljavenVnosIzjema(
-                            "Kraj s postno stevilko " + vnos.postnaSt() + " ne obstaja.")));
-        }
-        turnir.setDvorana(vnos.dvorana());
-        turnir.setDatumZacetka(vnos.datumZacetka());
-        turnir.setDatumKonca(vnos.datumKonca());
-        turnir.setOpombe(vnos.opombe());
-        // null = privzeto (tekme stejejo v rating)
-        turnir.setRaven(vnos.raven() == null ? RavenTekmovanja.KLUBSKO : vnos.raven());
+        nastaviPodatke(turnir, vnos);
         // organizator sme ustvariti samo toliko turnirjev na sezono, kolikor
         // dovoljuje njegov paket; admin ni organizator in sem ne pride
         Uporabnik jaz = lastnistvo.trenutni();
@@ -84,6 +73,45 @@ public class TurnirjiStoritev {
         lastnistvo.oznaciLastnika(turnir);
         // status vedno doloci streznik (PRIPRAVA je privzeti)
         return turnirRepozitorij.save(turnir);
+    }
+
+    /* Popravek imena, kraja, datumov, opomb in ravni turnirja. Dokler je turnir v
+       pripravi, je to brez posledic: zreb tekme sele ustvari, raven pa tehta samo tekme.
+
+       Status je dejanski (entiteta), ne prikazni - zreb pred datumom turnir na zaslonu
+       se vedno kaze kot "V pripravi", a je ze V_TEKU in prijave so zaprte. */
+    @Transactional
+    public Turnir urediTurnir(Long idTurnirja, TurnirVnos vnos) {
+        lastnistvo.preveriTurnirPoId(idTurnirja);
+        Turnir turnir = najdiTurnir(idTurnirja);
+        if (turnir.getStatus() != StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Turnir je mogoce urejati samo, dokler je v pripravi.");
+        }
+        nastaviPodatke(turnir, vnos);
+        return turnir;
+    }
+
+    /* Podatki turnirja, ki jih prinesejo ustvarjanje in popravek. Prazen kraj se pri
+       popravku mora res izprazniti, zato ga nastavimo tudi na null. */
+    private void nastaviPodatke(Turnir turnir, TurnirVnos vnos) {
+        if (vnos.datumZacetka() != null && vnos.datumKonca() != null
+                && vnos.datumKonca().isBefore(vnos.datumZacetka())) {
+            throw new NeveljavenVnosIzjema("Datum konca ne sme biti pred datumom zacetka.");
+        }
+        turnir.setIme(vnos.ime().trim());
+        if (vnos.postnaSt() != null) {
+            turnir.setKraj(krajRepozitorij.findById(vnos.postnaSt())
+                    .orElseThrow(() -> new NeveljavenVnosIzjema(
+                            "Kraj s postno stevilko " + vnos.postnaSt() + " ne obstaja.")));
+        } else {
+            turnir.setKraj(null);
+        }
+        turnir.setDvorana(vnos.dvorana());
+        turnir.setDatumZacetka(vnos.datumZacetka());
+        turnir.setDatumKonca(vnos.datumKonca());
+        turnir.setOpombe(vnos.opombe());
+        // null = privzeto (tekme stejejo v rating)
+        turnir.setRaven(vnos.raven() == null ? RavenTekmovanja.KLUBSKO : vnos.raven());
     }
 
     @Transactional

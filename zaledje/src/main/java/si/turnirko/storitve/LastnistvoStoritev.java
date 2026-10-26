@@ -123,6 +123,14 @@ public class LastnistvoStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekma + " ne obstaja.")));
     }
 
+    /* Razdelki zavihka Zanimivosti so PRIKAZ, ne pravilo tekmovanja (kot prehodi
+       lige), zato jih sme urediti tudi organizator uvoženega turnirja. */
+    public void preveriTurnirZaPrikazPoId(Long idTurnir) {
+        Turnir turnir = turnirRepozitorij.najdiZLastnistvom(idTurnir)
+                .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + idTurnir + " ne obstaja."));
+        preveri(turnir.getUstvaril(), turnir.getKlubLastnik(), "turnirja");
+    }
+
     // ---------- Preverba: liga ----------
 
     public void preveriLiga(Liga liga) {
@@ -139,6 +147,13 @@ public class LastnistvoStoritev {
     /* Preverba za OPIS lige (mesto v piramidi), ki ni pravilo tekmovanja in ga
        vir ne pozna - zato je dovoljen tudi pri uvozeni ligi. */
     public void preveriLigaZaOpis(Long idLiga) {
+        Liga liga = najdiLigo(idLiga);
+        preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige");
+    }
+
+    /* Enako kot pri turnirju: prikaz zavihka, ne pravilo lige (uvožena liga ostane
+       brez urejanja pravil, razdelke pa sme organizator). */
+    public void preveriLigaZaPrikazPoId(Long idLiga) {
         Liga liga = najdiLigo(idLiga);
         preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige");
     }

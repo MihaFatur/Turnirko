@@ -5,6 +5,8 @@ package si.turnirko.modeli;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -79,6 +81,12 @@ public class Turnir {
     @JoinColumn(name = "id_klub_lastnik")
     private Klub klubLastnik;
 
+    /* Razdelki zavihka Zanimivosti, ki jih organizator skrije gledalcem (V51).
+       Besedilo in ne tabela: nastavitev je del tekmovanja in se nikoli ne bere brez
+       njega. Ne pravilo tekmovanja, zato se ureja tudi pri uvozenem turnirju. */
+    @Column(name = "skrite_zanimivosti")
+    private String skriteZanimivosti;
+
     /* Optimisticno zaklepanje - prepreci, da bi si dva socasna
        zapisa tiho prepisala podatke. */
     @Version
@@ -130,6 +138,14 @@ public class Turnir {
 
     public Klub getKlubLastnik() { return klubLastnik; }
     public void setKlubLastnik(Klub klubLastnik) { this.klubLastnik = klubLastnik; }
+
+    public Set<PostavkaZanimivosti> getSkriteZanimivosti() {
+        return PostavkaZanimivosti.izZapisa(skriteZanimivosti);
+    }
+
+    public void setSkriteZanimivosti(Collection<PostavkaZanimivosti> skrite) {
+        this.skriteZanimivosti = PostavkaZanimivosti.vZapis(skrite);
+    }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
 }

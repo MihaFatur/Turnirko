@@ -20,6 +20,7 @@ import type {
 } from '../api/tipi'
 import { OZNAKE_FORMAT, izidNizov, nizovZaZmago } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { EkipaLigeOkno } from '../komponente/EkipaLigeOkno'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { NiziTekmeOkno } from '../komponente/NiziTekmeOkno'
@@ -42,6 +43,11 @@ export function SrecanjeStran() {
   const { id } = useParams()
   const idSrecanje = Number(id)
   const { jeAdmin, jeOrganizator, smemUrejati } = useAvtentikacija()
+  /* Okno ekipe se odpre s klikom na ime ekipe v semaforu. Vezano je na srečanje,
+     na katerem je bilo odprto: klik na srečanje v oknu zamenja stran, okno pa
+     tedaj ne velja več in se zapre samo od sebe. */
+  const [oknoEkipe, nastaviOknoEkipe] = useState<{ srecanje: number; ekipa: number } | null>(null)
+  const odprtaEkipa = oknoEkipe?.srecanje === idSrecanje ? oknoEkipe.ekipa : null
   /* Med srečanjem se zapisnik osvežuje sam (gl. DogodekStran). */
   const podrobno = useQuery({
     queryKey: ['srecanje', idSrecanje],
@@ -63,6 +69,21 @@ export function SrecanjeStran() {
     queryKey: ['turnir', idTurnir],
     queryFn: () => turnirjiApi.najdi(idTurnir!),
     enabled: idTurnir != null && !uvozeno && jeOrganizator && !jeAdmin,
+  })
+
+  /* Okno ekipe potrebuje ligo in vsa njena srečanja, kakor stran lige. Naložita se
+     šele, ko se okno odpre; ključa sta enaka, zato sta pri prihodu s strani lige
+     že v predpomnilniku. */
+  const ligaOkna = useQuery({
+    queryKey: ['liga', idLiga],
+    queryFn: () => ligeApi.najdi(idLiga!),
+    enabled: idLiga != null && odprtaEkipa != null,
+  })
+  const srecanjaOkna = useQuery({
+    queryKey: ['srecanja', idLiga],
+    queryFn: () => ligeApi.srecanja(idLiga!),
+    enabled: idLiga != null && odprtaEkipa != null,
+    refetchInterval: intervalOsvezevanja(ligaOkna.data?.status),
   })
 
   /* Končano srečanje nosi izid že v naslovu - tako se tudi deli po večeru. */
@@ -111,6 +132,10 @@ export function SrecanjeStran() {
   const domVodi = odigrano && s.dobljeneDomaci > s.dobljeneGost
   const gostVodi = odigrano && s.dobljeneGost > s.dobljeneDomaci
   const { datum, ura } = razbijCas(s.predvidenZacetek)
+  /* Ime ekipe odpre okno ekipe le pri ligaškem srečanju; ekipna tekma turnirja
+     nima lige in lestvice, zato ostane samo besedilo. */
+  const ligaskoSrecanje = s.idLiga != null && s.idDogodek == null
+  const odpriEkipo = (idEkipa: number) => nastaviOknoEkipe({ srecanje: idSrecanje, ekipa: idEkipa })
 
   return (
     <section className="srecanje">
@@ -134,7 +159,10 @@ export function SrecanjeStran() {
         <div className="srecanje__glava">
           <div className="srecanje__ekipa srecanje__ekipa--desno">
             <span className="srecanje__stran-oznaka">Domači</span>
-            <span className="srecanje__ekipa-ime">{s.domaci}</span>
+            <ImeEkipe
+              ime={s.domaci}
+              onKlik={ligaskoSrecanje ? () => odpriEkipo(s.idEkipaDomaci) : null}
+            />
           </div>
           <div>
             <div className="srecanje__izid">
@@ -171,7 +199,10 @@ export function SrecanjeStran() {
           </div>
           <div className="srecanje__ekipa">
             <span className="srecanje__stran-oznaka">Gostje</span>
-            <span className="srecanje__ekipa-ime">{s.gost}</span>
+            <ImeEkipe
+              ime={s.gost}
+              onKlik={ligaskoSrecanje ? () => odpriEkipo(s.idEkipaGost) : null}
+            />
           </div>
         </div>
 
@@ -201,7 +232,32 @@ export function SrecanjeStran() {
       {lahkoUrejaPostavo && <PostavaUredi podrobno={p} />}
 
       {lahkoRazveljavi && <RazveljavitevZapisnika srecanje={s} />}
+
+      {odprtaEkipa != null && ligaOkna.data && srecanjaOkna.data && (
+        <EkipaLigeOkno
+          liga={ligaOkna.data}
+          idEkipa={odprtaEkipa}
+          srecanja={srecanjaOkna.data}
+          onZapri={() => nastaviOknoEkipe(null)}
+        />
+      )}
     </section>
+  )
+}
+
+/* Ime ekipe v semaforu. Kjer ima klik smisel (ligaško srečanje), je gumb, ki
+   odpre okno ekipe - kot ime ekipe na lestvici; sicer je samo besedilo. */
+function ImeEkipe({ ime, onKlik }: { ime: string; onKlik: (() => void) | null }) {
+  if (!onKlik) return <span className="srecanje__ekipa-ime">{ime}</span>
+  return (
+    <button
+      type="button"
+      className="srecanje__ekipa-ime srecanje__ekipa-ime--gumb"
+      aria-haspopup="dialog"
+      onClick={onKlik}
+    >
+      {ime}
+    </button>
   )
 }
 

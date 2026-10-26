@@ -23,10 +23,12 @@ import {
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { GlavaDejanja, GlavaZavihki, useNazaj } from '../komponente/GlavaTelefona'
 import { DogodekObrazecOkno } from '../komponente/DogodekObrazecOkno'
+import { TurnirObrazecOkno } from './TurnirjiStran'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
+import { NastavitveZanimivosti } from '../komponente/NastavitveZanimivosti'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { StatusMobi, ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
@@ -72,6 +74,7 @@ export function TurnirStran() {
   })
 
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
+  const [urejanjeTurnirja, nastaviUrejanjeTurnirja] = useState(false)
   const [potrjujemZakljucek, nastaviPotrjujemZakljucek] = useState(false)
   const [pogled, nastaviPogled] = useState<PogledTurnirja>('DOGODKI')
   const [podrobnosti, nastaviPodrobnosti] = useState(false)
@@ -171,6 +174,10 @@ export function TurnirStran() {
 
   const zanimivostiVsebina = (
     <>
+      {/* Kaj vidijo ostali - samo lastniku in adminu; gost ga ne dobi. */}
+      {smemUrejati(podatki.idLastnik, podatki.idKlubLastnik) && (
+        <NastavitveZanimivosti vrsta="turnir" id={idTurnirja} />
+      )}
       <NapakaPoizvedbe poizvedba={zanimivosti} kaj="zanimivosti" />
       {zanimivosti.isPending && <p className="obvestilo">Nalaganje …</p>}
       {zanimivosti.data && (
@@ -189,6 +196,17 @@ export function TurnirStran() {
           besedaPotrditve="Zaključi turnir"
           onPotrdi={() => zakljucevanje.mutate()}
           onZapri={() => nastaviPotrjujemZakljucek(false)}
+        />
+      )}
+
+      {urejanjeTurnirja && (
+        <TurnirObrazecOkno
+          turnir={podatki}
+          onZapri={() => nastaviUrejanjeTurnirja(false)}
+          onShranjeno={() => {
+            odjemalec.invalidateQueries({ queryKey: ['turnir', idTurnirja] })
+            odjemalec.invalidateQueries({ queryKey: ['turnirji'] })
+          }}
         />
       )}
 
@@ -397,6 +415,13 @@ export function TurnirStran() {
         <div>
           <div className="stran-glava__dejanja">
             <ZnackaStatusa status={podatki.status} />
+            {/* Popravek osnovnih podatkov samo v pripravi: po zrebu je turnir zaklenjen,
+                zato gleda dejanski status, ne prikaznega (zreb pred datumom je "V pripravi"). */}
+            {smem && podatki.dejanskiStatus === 'PRIPRAVA' && (
+              <button className="gumb" onClick={() => nastaviUrejanjeTurnirja(true)}>
+                Uredi turnir
+              </button>
+            )}
             {smem && podatki.status !== 'ZAKLJUCEN' && (
               <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
                 + Nov dogodek

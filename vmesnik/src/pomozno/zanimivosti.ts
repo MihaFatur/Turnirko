@@ -1,4 +1,4 @@
-import type { SrecanjeDto } from '../api/tipi'
+import type { PostavkaZanimivosti, SrecanjeDto } from '../api/tipi'
 
 /* Pod tem številom odigranih tekem zavihka »Zanimivosti« ne ponudimo — turnirju
    in ligi enako. Isti prag ima strežnik (StatistikaTekmovanjaStoritev.PRAG_TEKEM);
@@ -17,4 +17,24 @@ export function odigranihTekemLige(srecanja: SrecanjeDto[]): number {
   return srecanja
     .filter((s) => !s.brezBoja && !s.prenesen)
     .reduce((vsota, s) => vsota + s.dobljeneDomaci + s.dobljeneGost, 0)
+}
+
+/* Naslovi razdelkov za obrazec organizatorja »Kaj vidijo ostali«. Enaki so
+   naslovom v komponente/ZanimivostiTekmovanja.tsx - ko se en spremeni, spremeni
+   se tudi drugi. */
+export const NASLOVI_RAZDELKOV: Record<PostavkaZanimivosti, string> = {
+  STEVILKE: 'V številkah',
+  PRESENECENJE: 'Presenečenje',
+  OBRATI: 'Preobrat',
+  NAJDALJSI_NIZ: 'Najdaljši niz',
+  NAJDALJSA_TEKMA: 'Najdaljša tekma',
+  NA_NOZ: 'Srečanje na nož',
+  DVOJICA: 'Najuspešnejša dvojica',
+  PRVI_NASLOVI: 'Prvi naslov',
+  VZPONI: 'Največ pridobljenega ratinga',
+  ZID: 'Zid',
+  DELAVCI: 'Največji garač',
+  KLUBI: 'Klubi',
+  GOSTJE: 'Najboljši gost',
+  NOSILCI: 'Nosilci ekip',
 }

@@ -16,6 +16,9 @@ public record TurnirDto(
         LocalDate datumZacetka,
         LocalDate datumKonca,
         StatusTekmovanja status,
+        // Dejanski status (entiteta) po katerem vmesnik odloca o urejanju; prikazni je
+        // lahko drugacen (zreb pred datumom je "V pripravi", a dejansko ze V_TEKU).
+        StatusTekmovanja dejanskiStatus,
         String opombe,
         // raven tekmovanja doloci tezo tekem v Turnirko ratingu
         RavenTekmovanja raven,
@@ -82,6 +85,7 @@ public record TurnirDto(
                 turnir.getDatumZacetka(),
                 turnir.getDatumKonca(),
                 StatusTekmovanja.zaPrikaz(turnir.getStatus(), turnir.getDatumZacetka()),
+                turnir.getStatus(),
                 turnir.getOpombe(),
                 turnir.getRaven(),
                 turnir.getUstvaril() != null ? turnir.getUstvaril().getId() : null,

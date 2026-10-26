@@ -36,13 +36,17 @@ import si.turnirko.dto.PrehodiVnos;
 import si.turnirko.dto.RocniRazporedVnos;
 import si.turnirko.dto.SrecanjeDto;
 import si.turnirko.dto.StatistikaTekmovanjaDto;
+import si.turnirko.dto.TekmaIgralcaLigeDto;
 import si.turnirko.dto.TerminiVnos;
 import si.turnirko.dto.VrstniRedEkipVnos;
+import si.turnirko.dto.ZanimivostiNastavitveDto;
+import si.turnirko.dto.ZanimivostiNastavitveVnos;
 import si.turnirko.storitve.KoncnicaStoritev;
 import si.turnirko.storitve.KvalifikacijeStoritev;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.SrecanjeStoritev;
 import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
+import si.turnirko.storitve.ZanimivostiNastavitveStoritev;
 
 @RestController
 @RequestMapping("/api/v1/lige")
@@ -53,16 +57,19 @@ public class LigeKontroler {
     private final StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
     private final KoncnicaStoritev koncnicaStoritev;
     private final KvalifikacijeStoritev kvalifikacijeStoritev;
+    private final ZanimivostiNastavitveStoritev zanimivostiNastavitveStoritev;
 
     public LigeKontroler(LigaStoritev ligaStoritev, SrecanjeStoritev srecanjeStoritev,
                          StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev,
                          KoncnicaStoritev koncnicaStoritev,
-                         KvalifikacijeStoritev kvalifikacijeStoritev) {
+                         KvalifikacijeStoritev kvalifikacijeStoritev,
+                         ZanimivostiNastavitveStoritev zanimivostiNastavitveStoritev) {
         this.ligaStoritev = ligaStoritev;
         this.srecanjeStoritev = srecanjeStoritev;
         this.statistikaTekmovanjaStoritev = statistikaTekmovanjaStoritev;
         this.koncnicaStoritev = koncnicaStoritev;
         this.kvalifikacijeStoritev = kvalifikacijeStoritev;
+        this.zanimivostiNastavitveStoritev = zanimivostiNastavitveStoritev;
     }
 
     // ---------- Liga ----------
@@ -177,6 +184,12 @@ public class LigeKontroler {
         ligaStoritev.odstraniIzKadra(idKader);
     }
 
+    /* Vse tekme igralca v tej ligi (posamicne in dvojice), razteg v kadru ekipe. */
+    @GetMapping("/{id}/igralci/{idIgralec}/tekme")
+    public List<TekmaIgralcaLigeDto> tekmeIgralca(@PathVariable Long id, @PathVariable Long idIgralec) {
+        return ligaStoritev.tekmeIgralca(id, idIgralec);
+    }
+
     // ---------- Razpored, lestvica, srecanja ----------
 
     @PostMapping("/{id}/razpored")
@@ -238,6 +251,19 @@ public class LigeKontroler {
     @GetMapping("/{id}/statistika")
     public StatistikaTekmovanjaDto statistika(@PathVariable Long id) {
         return statistikaTekmovanjaStoritev.zaLigo(id);
+    }
+
+    /* Razdelki zavihka, ki jih organizator skrije gledalcu. Branje javno, pisanje
+       samo lastniku in administratorju (ZanimivostiNastavitveStoritev). */
+    @GetMapping("/{id}/zanimivosti/nastavitve")
+    public ZanimivostiNastavitveDto zanimivostiNastavitve(@PathVariable Long id) {
+        return zanimivostiNastavitveStoritev.zaLigo(id);
+    }
+
+    @PutMapping("/{id}/zanimivosti/nastavitve")
+    public ZanimivostiNastavitveDto shraniZanimivostiNastavitve(@PathVariable Long id,
+                                                                @RequestBody ZanimivostiNastavitveVnos vnos) {
+        return zanimivostiNastavitveStoritev.shraniZaLigo(id, vnos.skrite());
     }
 
     // ---------- Koncnica ----------

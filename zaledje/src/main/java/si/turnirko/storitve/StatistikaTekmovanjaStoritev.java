@@ -60,6 +60,7 @@ import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.PostavkaZanimivosti;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.SistemTekmovanja;
@@ -201,7 +202,8 @@ public class StatistikaTekmovanjaStoritev {
         return sestavi(nastopi, rating, turnir.getRaven().steje(),
                 turnir.getStatus() != StatusTekmovanja.ZAKLJUCEN,
                 dogodki.size(), null,
-                prviNaslovi(turnir), null, List.of(), List.of());
+                prviNaslovi(turnir), null, List.of(), List.of(),
+                turnir.getSkriteZanimivosti());
     }
 
     /* Turnirska tekma v vmesno obliko. Klub je posnetek OB PRIJAVI in ne
@@ -259,7 +261,8 @@ public class StatistikaTekmovanjaStoritev {
         return sestavi(nastopi, rating, liga.getRaven().steje(),
                 liga.getStatus() != StatusTekmovanja.ZAKLJUCEN,
                 null, ekipe.size(),
-                List.of(), naNoz(liga, tekme), gostje(tekme), nosilci(tekme));
+                List.of(), naNoz(liga, tekme), gostje(tekme), nosilci(tekme),
+                liga.getSkriteZanimivosti());
     }
 
     /* Ligaska tekma v vmesno obliko; null, kadar postava ni bila vpisana.
@@ -294,11 +297,15 @@ public class StatistikaTekmovanjaStoritev {
 
     /* ---------- Skupno sestavljanje ---------- */
 
+    /* Skriti razdelek (organizator ga je skril gledalcem, V51) izpusti ta
+       sestavljalec, ne vmesnik: odgovor ga ne sme nositi niti v prazni obliki,
+       zato je tu null oz. prazen seznam. Podatki ostanejo v bazi. */
     private StatistikaTekmovanjaDto sestavi(List<Nastop> nastopi, RatingTekmovanja rating,
                                             boolean stejeVElo, boolean vTeku,
                                             Integer dogodkov, Integer ekip,
                                             List<PrviNaslov> prviNaslovi, NaNoz naNoz,
-                                            List<Gostovanje> gostje, List<Nosilec> nosilci) {
+                                            List<Gostovanje> gostje, List<Nosilec> nosilci,
+                                            Set<PostavkaZanimivosti> skrite) {
         if (nastopi.size() < PRAG_TEKEM) {
             return new StatistikaTekmovanjaDto(false, vTeku, stejeVElo, null,
                     List.of(), null, List.of(), List.of(), List.of(), List.of(), null, null,
@@ -306,20 +313,25 @@ public class StatistikaTekmovanjaStoritev {
         }
         return new StatistikaTekmovanjaDto(
                 true, vTeku, stejeVElo,
-                stevilke(nastopi, dogodkov, ekip),
-                vzponi(nastopi, rating),
-                presenecenje(nastopi, rating),
-                zid(nastopi),
-                delavci(nastopi),
-                klubi(nastopi),
-                obrati(nastopi),
-                najdaljsiNiz(nastopi),
-                najdaljsaTekma(nastopi),
-                prviNaslovi,
-                naNoz,
-                gostje,
-                nosilci,
-                dvojica(nastopi));
+                skrite.contains(PostavkaZanimivosti.STEVILKE)
+                        ? null : stevilke(nastopi, dogodkov, ekip),
+                skrite.contains(PostavkaZanimivosti.VZPONI)
+                        ? List.of() : vzponi(nastopi, rating),
+                skrite.contains(PostavkaZanimivosti.PRESENECENJE)
+                        ? null : presenecenje(nastopi, rating),
+                skrite.contains(PostavkaZanimivosti.ZID) ? List.of() : zid(nastopi),
+                skrite.contains(PostavkaZanimivosti.DELAVCI) ? List.of() : delavci(nastopi),
+                skrite.contains(PostavkaZanimivosti.KLUBI) ? List.of() : klubi(nastopi),
+                skrite.contains(PostavkaZanimivosti.OBRATI) ? List.of() : obrati(nastopi),
+                skrite.contains(PostavkaZanimivosti.NAJDALJSI_NIZ)
+                        ? null : najdaljsiNiz(nastopi),
+                skrite.contains(PostavkaZanimivosti.NAJDALJSA_TEKMA)
+                        ? null : najdaljsaTekma(nastopi),
+                skrite.contains(PostavkaZanimivosti.PRVI_NASLOVI) ? List.of() : prviNaslovi,
+                skrite.contains(PostavkaZanimivosti.NA_NOZ) ? null : naNoz,
+                skrite.contains(PostavkaZanimivosti.GOSTJE) ? List.of() : gostje,
+                skrite.contains(PostavkaZanimivosti.NOSILCI) ? List.of() : nosilci,
+                skrite.contains(PostavkaZanimivosti.DVOJICA) ? null : dvojica(nastopi));
     }
 
     /* ---------- 6. V stevilkah ---------- */

@@ -172,6 +172,34 @@ function sklonTurnirjev(n: number): string {
   return 'turnirjev'
 }
 
+/* Turnirji "za nazaj" so tisti, ki so se končali pred več kot tremi meseci.
+   Seznam "Vsi turnirji" jih na začetku skrije za gumb »Pokaži starejše«: kdor
+   spremlja tekoče, vidi pregled brez balasta, zgodovina pa je en klik stran.
+   Turnir v teku ni za nazaj (ima svoj pas zgoraj), turnir brez datuma pa ne
+   vemo, da je star, zato ostane viden. */
+const MESECEV_SVEZINE = 3
+
+/* Datum (ISO) pred tremi meseci. Če prejšnji mesec nima tistega dne (31. 12. →
+   30. 9.), vzame njegov zadnji dan in ne prelije v naslednji mesec. */
+function mejaSvezine(danes: string): string {
+  const [leto, mesec, dan] = danes.split('-').map(Number)
+  const konecMeseca = new Date(leto, mesec - MESECEV_SVEZINE, 0)
+  const d = new Date(
+    konecMeseca.getFullYear(),
+    konecMeseca.getMonth(),
+    Math.min(dan, konecMeseca.getDate()),
+  )
+  const mes = String(d.getMonth() + 1).padStart(2, '0')
+  const dn = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mes}-${dn}`
+}
+
+/* Zadnji dan turnirja je konec, če ga ni, pa začetek. */
+function jeZaNazaj(t: TurnirDto, meja: string): boolean {
+  if (t.status === 'V_TEKU' || t.datumZacetka == null) return false
+  return (t.datumKonca ?? t.datumZacetka) < meja
+}
+
 export function TurnirjiStran() {
   useNaslovStrani('Turnirji')
   const odjemalec = useQueryClient()
@@ -189,6 +217,7 @@ export function TurnirjiStran() {
   })
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
   const [iskanje, nastaviIskanje] = useState('')
+  const [pokaziStarejse, nastaviPokaziStarejse] = useState(false)
 
   const vsi = useMemo(() => turnirji.data ?? [], [turnirji.data])
   const najdeni = useMemo(() => {
@@ -197,10 +226,41 @@ export function TurnirjiStran() {
   }, [vsi, iskanje])
   const filtri = useFiltri(najdeni, SKUPINE, RAZVRSTITVE)
   const prikazani = filtri.prikazani
+  /* Okno za nazaj velja samo za pogled brez iskanja in filtrov: kdor išče ali
+     filtrira, dobi vse zadetke, ne le tistih, ki jih okno pusti (enako kot
+     skrčen seznam v Filtri.tsx). */
+  const brezFiltrov = filtri.steviloIzbranih === 0 && besedeIskanja(iskanje).length === 0
+  const meja = useMemo(() => mejaSvezine(danesIso()), [])
+  const zaNazaj = prikazani.filter((t) => jeZaNazaj(t, meja))
+  const skrivamo = brezFiltrov && !pokaziStarejse
+  const vidni = skrivamo ? prikazani.filter((t) => !jeZaNazaj(t, meja)) : prikazani
   const vTeku = useMemo(() => vsi.filter((t) => t.status === 'V_TEKU'), [vsi])
   const prihajajoci = useMemo(() => prihajajociTurnirji(vsi), [vsi])
   const poDatumuUrejeno = filtri.razvrstitev !== 'ime'
   const osvezenoOb = uraOsvezitve(turnirji.dataUpdatedAt)
+
+  /* Dno seznama »Vsi turnirji«: gumb razkrije turnirje za nazaj. Kadar okno ne
+     pokaže ničesar (vsi turnirji so starejši), to pove, sicer bi bil seznam
+     prazen brez razlage. */
+  const dnoSeznama = (
+    <>
+      {skrivamo && vidni.length === 0 && (
+        <p className="obvestilo">V zadnjih treh mesecih ni turnirjev.</p>
+      )}
+      {brezFiltrov && zaNazaj.length > 0 && (
+        <button
+          type="button"
+          className="gumb gumb--majhen turnirji-za-nazaj"
+          aria-expanded={pokaziStarejse}
+          onClick={() => nastaviPokaziStarejse(!pokaziStarejse)}
+        >
+          {pokaziStarejse
+            ? 'Skrij starejše ▴'
+            : `Pokaži starejše: ${zaNazaj.length} ${sklonTurnirjev(zaNazaj.length)} ▾`}
+        </button>
+      )}
+    </>
+  )
 
   const krmila = (
     <KrmilaSeznama
@@ -306,15 +366,13 @@ export function TurnirjiStran() {
           <div className="naslovna-mobi naslovna-mobi--brez-crte">
             <h2>Vsi turnirji</h2>
             <span className="naslovna-mobi__stevec">
-              {prikazani.length === vsi.length
-                ? vsi.length
-                : `${prikazani.length} od ${vsi.length}`}
+              {vidni.length === vsi.length ? vsi.length : `${vidni.length} od ${vsi.length}`}
             </span>
           </div>
           {stanje}
           <div className="seznam-mobi">
             {zLocnicamiSezon(
-              prikazani,
+              vidni,
               poDatumuUrejeno,
               (turnir) => <VrsticaTurnirjaMobi key={turnir.id} turnir={turnir} />,
               (sezona, stevilo) => (
@@ -325,10 +383,11 @@ export function TurnirjiStran() {
               ),
             )}
           </div>
+          {dnoSeznama}
         </div>
 
         {odprtObrazec && (
-          <NovTurnirOkno
+          <TurnirObrazecOkno
             onZapri={() => nastaviOdprtObrazec(false)}
             onShranjeno={() => odjemalec.invalidateQueries({ queryKey: ['turnirji'] })}
           />
@@ -394,9 +453,9 @@ export function TurnirjiStran() {
                   naIskanje={nastaviIskanje}
                   poCem="po imenu"
                   stevec={
-                    prikazani.length === vsi.length
+                    vidni.length === vsi.length
                       ? `${vsi.length} ${sklonTurnirjev(vsi.length)}`
-                      : `Prikazanih ${prikazani.length} od ${vsi.length}`
+                      : `Prikazanih ${vidni.length} od ${vsi.length}`
                   }
                 />
               )}
@@ -408,7 +467,7 @@ export function TurnirjiStran() {
 
         {stanje}
 
-        {prikazani.length > 0 && (
+        {vidni.length > 0 && (
           <>
             <div className="seznam-glava seznam-glava--turnirji">
               <span>Začetek</span>
@@ -419,7 +478,7 @@ export function TurnirjiStran() {
             </div>
             <div className="kartice">
               {zLocnicamiSezon(
-                prikazani,
+                vidni,
                 poDatumuUrejeno,
                 (turnir) => <VrsticaTurnirja key={turnir.id} turnir={turnir} />,
                 (sezona, stevilo) => (
@@ -434,10 +493,11 @@ export function TurnirjiStran() {
             </div>
           </>
         )}
+        {dnoSeznama}
       </div>
 
       {odprtObrazec && (
-        <NovTurnirOkno
+        <TurnirObrazecOkno
           onZapri={() => nastaviOdprtObrazec(false)}
           onShranjeno={() => odjemalec.invalidateQueries({ queryKey: ['turnirji'] })}
         />
@@ -551,25 +611,31 @@ function stanjeDogodkov(turnir: TurnirDto): string {
   return deli.length > 0 ? ` · ${deli.join(', ')}` : ''
 }
 
-export function NovTurnirOkno({
+/* Obrazec turnirja: nov turnir in popravek turnirja v pripravi. Polja so ista, zato
+   je en obrazec za oba. Ob popravku prazen kraj ali datum strežnik izprazni. */
+export function TurnirObrazecOkno({
+  turnir,
   onZapri,
   onShranjeno,
 }: {
+  turnir?: TurnirDto
   onZapri: () => void
   onShranjeno: () => void
 }) {
+  const urejanje = turnir !== undefined
   const kraji = useQuery({ queryKey: ['kraji'], queryFn: krajiApi.seznam })
 
-  const [ime, nastaviIme] = useState('')
-  const [postnaSt, nastaviPostnaSt] = useState('')
-  const [dvorana, nastaviDvorano] = useState('')
-  const [datumZacetka, nastaviDatumZacetka] = useState('')
-  const [datumKonca, nastaviDatumKonca] = useState('')
-  const [opombe, nastaviOpombe] = useState('')
-  const [raven, nastaviRaven] = useState<RavenTekmovanja>('KLUBSKO')
+  const [ime, nastaviIme] = useState(turnir?.ime ?? '')
+  const [postnaSt, nastaviPostnaSt] = useState(turnir?.kraj ? String(turnir.kraj.postnaSt) : '')
+  const [dvorana, nastaviDvorano] = useState(turnir?.dvorana ?? '')
+  const [datumZacetka, nastaviDatumZacetka] = useState(turnir?.datumZacetka ?? '')
+  const [datumKonca, nastaviDatumKonca] = useState(turnir?.datumKonca ?? '')
+  const [opombe, nastaviOpombe] = useState(turnir?.opombe ?? '')
+  const [raven, nastaviRaven] = useState<RavenTekmovanja>(turnir?.raven ?? 'KLUBSKO')
 
   const shranjevanje = useMutation({
-    mutationFn: (vnos: TurnirVnos) => turnirjiApi.ustvari(vnos),
+    mutationFn: (vnos: TurnirVnos) =>
+      urejanje ? turnirjiApi.uredi(turnir.id, vnos) : turnirjiApi.ustvari(vnos),
     onSuccess: () => {
       onShranjeno()
       onZapri()
@@ -590,7 +656,7 @@ export function NovTurnirOkno({
   }
 
   return (
-    <ModalnoOkno naslov="Nov turnir" onZapri={onZapri}>
+    <ModalnoOkno naslov={urejanje ? 'Uredi turnir' : 'Nov turnir'} onZapri={onZapri}>
       <form className="obrazec" onSubmit={obOddaji}>
         <label className="obrazec__polje">
           <span>Ime turnirja *</span>
@@ -669,7 +735,7 @@ export function NovTurnirOkno({
             Prekliči
           </button>
           <button type="submit" className="gumb gumb--glavni" disabled={shranjevanje.isPending}>
-            Ustvari turnir
+            {urejanje ? 'Shrani' : 'Ustvari turnir'}
           </button>
         </div>
       </form>

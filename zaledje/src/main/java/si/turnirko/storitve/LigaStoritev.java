@@ -39,6 +39,7 @@ import si.turnirko.dto.ParRazporedaDto;
 import si.turnirko.dto.PrehodiVnos;
 import si.turnirko.dto.RocniRazporedVnos;
 import si.turnirko.dto.SrecanjeDto;
+import si.turnirko.dto.TekmaIgralcaLigeDto;
 import si.turnirko.dto.TerminiVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
@@ -53,6 +54,8 @@ import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmovanja;
+import si.turnirko.modeli.StranEkipe;
+import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
@@ -744,6 +747,64 @@ public class LigaStoritev {
                 .toList();
     }
 
+    /* Tekme igralca v tej ligi, na katerih je nastopil: posamicne in dvojice, doma
+       in v gostih, tudi se neodigrane. Razteg igralca v kadru jih pokaze vse na
+       enem mestu, vmesnik ne sestavlja postave vsakega srecanja posebej. Igralec
+       z eno ekipo v ligi dobi samo njene tekme. */
+    @Transactional(readOnly = true)
+    public List<TekmaIgralcaLigeDto> tekmeIgralca(Long idLiga, Long idIgralec) {
+        return tekmaSrecanjaRepozitorij.najdiZaIgralcaVLigi(idLiga, idIgralec).stream()
+                .map(t -> tekmaIgralcaZaLigo(t, idIgralec))
+                .toList();
+    }
+
+    /* Tekma z vidika igralca: stran, na kateri igra, soigralec pri dvojici in
+       nasprotniki. Zmaga je "zmagala je njegova stran", zato jo primerjamo s
+       stranjo igralca, ne z oznako doma/gost. */
+    private static TekmaIgralcaLigeDto tekmaIgralcaZaLigo(TekmaSrecanja t, Long idIgralec) {
+        Srecanje s = t.getSrecanje();
+        boolean domaci = je(t.getIgralecDomaci(), idIgralec) || je(t.getIgralecDomaci2(), idIgralec);
+        List<Igralec> mojaStran = domaci
+                ? stran(t.getIgralecDomaci(), t.getIgralecDomaci2())
+                : stran(t.getIgralecGost(), t.getIgralecGost2());
+        List<Igralec> tujaStran = domaci
+                ? stran(t.getIgralecGost(), t.getIgralecGost2())
+                : stran(t.getIgralecDomaci(), t.getIgralecDomaci2());
+        String soigralec = mojaStran.stream()
+                .filter(i -> !je(i, idIgralec))
+                .map(Igralec::polnoIme)
+                .findFirst()
+                .orElse(null);
+        Ekipa ekipa = domaci ? s.getEkipaDomaci() : s.getEkipaGost();
+        Boolean zmaga = t.getZmagovalecStran() == null
+                ? null
+                : (t.getZmagovalecStran() == StranEkipe.DOMACI) == domaci;
+        return new TekmaIgralcaLigeDto(
+                t.getId(),
+                s.getId(),
+                ekipa.getId(),
+                ekipa.prikazanoIme(),
+                t.getTip(),
+                domaci,
+                soigralec,
+                tujaStran.stream().map(Igralec::polnoIme).toList(),
+                domaci ? t.getDobljeniNiziDomaci() : t.getDobljeniNiziGost(),
+                domaci ? t.getDobljeniNiziGost() : t.getDobljeniNiziDomaci(),
+                t.getIzidTip(),
+                zmaga);
+    }
+
+    private static boolean je(Igralec igralec, Long id) {
+        return igralec != null && igralec.getId().equals(id);
+    }
+
+    private static List<Igralec> stran(Igralec prvi, Igralec drugi) {
+        List<Igralec> stran = new ArrayList<>();
+        if (prvi != null) stran.add(prvi);
+        if (drugi != null) stran.add(drugi);
+        return stran;
+    }
+
     /* Kader se sme dopolnjevati v vsakem stanju lige, tudi ko ta ze tece: ekipa
        sredi sezone pripelje novega igralca, razpored pa je razpored EKIP in ga
        nov clan kadra ne spremeni. Brez tega bi organizator igralca, ki je prisel
@@ -1070,6 +1131,7 @@ public class LigaStoritev {
         preveriUreSrecanj(v.ureSrecanj());
         liga.setIme(zVelikoZacetnico(v.ime().trim()));
         liga.setSezona(v.sezona() != null && !v.sezona().isBlank() ? v.sezona().trim() : null);
+        liga.setOpombe(v.opombe() != null && !v.opombe().isBlank() ? v.opombe().trim() : null);
         liga.setSpolKategorija(v.spolKategorija());
         liga.setFormatSrecanja(v.formatSrecanja());
         liga.setSteviloNizov(v.steviloNizov());

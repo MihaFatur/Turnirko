@@ -9,12 +9,12 @@
    Srečanj okno ne nalaga samo: dobi jih od strani lige (redni del in končnica),
    ki jih ima že naložene in jih med večerom osvežuje. Strežnik vpraša samo po
    kadru. */
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
-import type { LigaDto, SrecanjeDto } from '../api/tipi'
+import type { LigaDto, SrecanjeDto, TekmaIgralcaLigeDto } from '../api/tipi'
 import { danesIso, imeKola, oblikujTermin } from '../pomozno/oblikovanje'
 import { opisPrestavitve, terminKola, vKolih } from '../pomozno/prestavitve'
 import { ModalnoOkno } from './ModalnoOkno'
@@ -200,7 +200,7 @@ export function EkipaLigeOkno({ liga, idEkipa, srecanja, onZapri }: Lastnosti) {
       onZapri={onZapri}
     >
       <div className="ekipa-okno">
-        <KaderEkipe idEkipa={idEkipa} />
+        <KaderEkipe liga={liga} idEkipa={idEkipa} srecanja={srecanja} steviloKrogov={steviloKrogov} />
 
         <section className="ekipa-okno__sklop">
           <div className="liga__kader-glava">
@@ -310,34 +310,182 @@ function VrsticaSrecanja({
 /* Kader ekipe. Vrstni red je strežnikov (LigaStoritev.kader): največ zmag za
    to ekipo v tej ligi na vrhu, zato je številka pred imenom mesto po
    izkupičku in ne organizatorjev vrstni red. */
-function KaderEkipe({ idEkipa }: { idEkipa: number }) {
+function KaderEkipe({
+  liga,
+  idEkipa,
+  srecanja,
+  steviloKrogov,
+}: {
+  liga: LigaDto
+  idEkipa: number
+  srecanja: SrecanjeDto[]
+  steviloKrogov: number
+}) {
   const kader = useQuery({ queryKey: ['kader', idEkipa], queryFn: () => ligeApi.kader(idEkipa) })
+  /* Odprti igralci po idIgralec: puščica razpre vse njegove tekme v tej ligi, ob
+     vsakem odprtju pa se tekme naložijo šele tedaj. Odprtih je lahko več hkrati. */
+  const [odprti, setOdprti] = useState<Set<number>>(() => new Set())
+
+  function preklopi(idIgralec: number) {
+    setOdprti((prej) => {
+      const nov = new Set(prej)
+      if (nov.has(idIgralec)) nov.delete(idIgralec)
+      else nov.add(idIgralec)
+      return nov
+    })
+  }
 
   return (
     <section className="ekipa-okno__sklop">
       {/* Glava je mreža istih stolpcev kot vrstice, zato oznaka stoji nad
-          svojimi številkami. */}
+          svojimi številkami. Zadnji stolpec ima samo skrit naslov: puščica je
+          sama dovolj jasna. */}
       <div className="liga__kader-glava ekipa-okno__kader-glava">
         <h3 className="liga__kader-naslov">Kader</h3>
         <span className="sekcija__meta">Rating</span>
         {/* Zmage : porazi za to ekipo v tej ligi. Prej je pisalo angleško
             »Score«. */}
         <span className="sekcija__meta">Izkupiček</span>
+        <span className="samo-za-bralnik">Tekme igralca</span>
       </div>
       {kader.isPending && <p className="obvestilo">Nalaganje kadra …</p>}
       <NapakaPoizvedbe poizvedba={kader} kaj="kadra" />
       {kader.data && kader.data.length === 0 && <p className="obvestilo">Kader je prazen.</p>}
-      {kader.data?.map((k, i) => (
-        <div key={k.id} className="liga__kader-vrstica">
-          <span className="liga__kader-mesto">{i + 1}.</span>
-          <span className="liga__kader-ime">{k.polnoIme}</span>
-          <span className="liga__kader-rating">{k.rating ?? '—'}</span>
-          <span className="liga__kader-bilanca">
-            {k.zmage} : {k.porazi}
-          </span>
-        </div>
-      ))}
+      {kader.data?.map((k, i) => {
+        const odprt = odprti.has(k.idIgralec)
+        return (
+          <div key={k.id}>
+            <div className="liga__kader-vrstica liga__kader-vrstica--tekme">
+              <span className="liga__kader-mesto">{i + 1}.</span>
+              <span className="liga__kader-ime">{k.polnoIme}</span>
+              <span className="liga__kader-rating">{k.rating ?? '—'}</span>
+              <span className="liga__kader-bilanca">
+                {k.zmage} : {k.porazi}
+              </span>
+              <button
+                type="button"
+                className="liga__kader-tekme-gumb"
+                aria-expanded={odprt}
+                aria-label={`${odprt ? 'Skrij' : 'Pokaži'} tekme: ${k.polnoIme}`}
+                onClick={() => preklopi(k.idIgralec)}
+              >
+                <span aria-hidden="true" className="liga__kader-puscica">
+                  ▾
+                </span>
+              </button>
+            </div>
+            {odprt && (
+              <TekmeIgralca
+                idLiga={liga.id}
+                idIgralec={k.idIgralec}
+                idEkipa={idEkipa}
+                srecanja={srecanja}
+                steviloKrogov={steviloKrogov}
+              />
+            )}
+          </div>
+        )
+      })}
     </section>
+  )
+}
+
+/* Vse tekme igralca v ligi, po vrsti srečanj (kolo, nato termin - kot v oknu
+   ekipe). Srečanje, ki ga seznam srečanj lige nima, tekme ne pokaže. */
+function TekmeIgralca({
+  idLiga,
+  idIgralec,
+  idEkipa,
+  srecanja,
+  steviloKrogov,
+}: {
+  idLiga: number
+  idIgralec: number
+  idEkipa: number
+  srecanja: SrecanjeDto[]
+  steviloKrogov: number
+}) {
+  const tekme = useQuery({
+    queryKey: ['tekme-igralca', idLiga, idIgralec],
+    queryFn: () => ligeApi.tekmeIgralca(idLiga, idIgralec),
+  })
+  const poSrecanju = new Map(srecanja.map((s, i) => [s.id, { s, i }]))
+  /* Tekme enega srečanja ostanejo med sabo v vrstnem redu zapisa, ker je
+     sortiranje stabilno; srečanja pridejo v vrstnem redu lige. */
+  const urejene = tekme.data
+    ?.flatMap((t) => {
+      const zadetek = poSrecanju.get(t.idSrecanje)
+      return zadetek ? [{ t, s: zadetek.s, i: zadetek.i }] : []
+    })
+    .sort((a, b) => a.i - b.i)
+
+  return (
+    <div className="ekipa-okno__tekme-igralca">
+      {tekme.isPending && <p className="obvestilo">Nalaganje tekem …</p>}
+      <NapakaPoizvedbe poizvedba={tekme} kaj="tekem" />
+      {urejene && urejene.length === 0 && <p className="obvestilo">Igralec v tej ligi še nima tekem.</p>}
+      {urejene && urejene.length > 0 && (
+        <ul className="ekipa-okno__seznam">
+          {urejene.map(({ t, s }) => (
+            <li key={t.id}>
+              <VrsticaTekmeIgralca t={t} s={s} idEkipa={idEkipa} steviloKrogov={steviloKrogov} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/* Tekma igralca z njegove strani: kje in s kom igra, njegovi nizi proti nasprotniku
+   in znak zmage. Zgradba je ista kot pri srečanju ekipe, da se bere enako. Če je
+   igralec v tej ligi za drugo ekipo, vrstica pove, za katero. */
+function VrsticaTekmeIgralca({
+  t,
+  s,
+  idEkipa,
+  steviloKrogov,
+}: {
+  t: TekmaIgralcaLigeDto
+  s: SrecanjeDto
+  idEkipa: number
+  steviloKrogov: number
+}) {
+  const izid: IzidEkipe | null = t.zmaga === null ? null : t.zmaga ? 'Z' : 'P'
+  const opomba = [
+    t.soigralec ? `v paru z ${t.soigralec}` : null,
+    t.idEkipa !== idEkipa ? `za ${t.ekipa}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <Link to={`/srecanja/${s.id}`} className="ekipa-okno__srecanje">
+      <Kdaj deli={kdajSrecanja(s, steviloKrogov)} />
+      <span className="ekipa-okno__nasprotnik">
+        <span className="ekipa-okno__stran">{t.domaci ? 'doma' : 'v gosteh'}</span>
+        <span className="ekipa-okno__ime">
+          {t.nasprotniki.join(' in ')}
+          {opomba && <span className="ekipa-okno__par">{opomba}</span>}
+        </span>
+      </span>
+      <span className={'ekipa-okno__izid' + (t.zmaga === null ? ' ekipa-okno__izid--caka' : '')}>
+        {t.zmaga === null ? 'vs' : `${t.niziIgralca} : ${t.niziNasprotnika}`}
+        {t.izidTip === 'BREZ_BOJA' && (
+          <span className="liga__brez-borbe" title="brez borbe">
+            b. b.
+          </span>
+        )}
+      </span>
+      <span className="ekipa-okno__znak-celica">
+        {izid && (
+          <span className={`ekipa-okno__znak ekipa-okno__znak--${izid}`}>
+            <span aria-hidden="true">{izid}</span>
+            <span className="samo-za-bralnik">{OZNAKE_IZIDA[izid]}</span>
+          </span>
+        )}
+      </span>
+    </Link>
   )
 }
 

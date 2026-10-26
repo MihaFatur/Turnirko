@@ -66,6 +66,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
 
   const [ime, nastaviIme] = useState(liga?.ime ?? '')
   const [sezona, nastaviSezono] = useState(liga?.sezona ?? '')
+  const [opombe, nastaviOpombe] = useState(liga?.opombe ?? '')
   const [spol, nastaviSpol] = useState<SpolKategorija>(liga?.spolKategorija ?? 'MOSKI')
   const [format, nastaviFormat] = useState<FormatSrecanja>(liga?.formatSrecanja ?? 'SNTL')
   const [steviloNizov, nastaviSteviloNizov] = useState(liga?.steviloNizov ?? 5)
@@ -171,6 +172,7 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
     shranjevanje.mutate({
       ime: prvaCrkaVelika(ime.trim()),
       sezona: sezona.trim() || null,
+      opombe: opombe.trim() || null,
       spolKategorija: spol,
       formatSrecanja: format,
       steviloNizov,
@@ -227,6 +229,11 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
             </select>
           </label>
         </div>
+
+        <label className="obrazec__polje">
+          <span>Opombe</span>
+          <textarea value={opombe} onChange={(d) => nastaviOpombe(d.target.value)} rows={2} />
+        </label>
 
         <div className="obrazec__vrstica">
           <label className="obrazec__polje">

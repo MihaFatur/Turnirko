@@ -4982,6 +4982,13 @@ td.nizi-okno__niz--dobljen {
   contain-intrinsic-size: auto 36px;
 }
 
+/* Gumb na dnu seznama turnirjev: razkrije (ali skrije) turnirje za nazaj. Čez
+   celo širino, kot drugi gumbi »Pokaži vse« pod seznami. */
+.turnirji-za-nazaj {
+  width: 100%;
+  margin-top: var(--r3);
+}
+
 /* "Kartica" v novem sistemu ni kartica, ampak vrstica s crtami. */
 .kartica {
   display: grid;
@@ -9423,12 +9430,58 @@ a.domov__lestvica-vrstica--jaz {
    stoji desno poravnan nad ratingi, "Score" nad bilancami. */
 .ekipa-okno__kader-glava {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 88px 88px;
+  grid-template-columns: 32px minmax(0, 1fr) 88px 88px 44px;
   gap: var(--r2);
 }
 
 .ekipa-okno__kader-glava .liga__kader-naslov {
   grid-column: 1 / 3;
+}
+
+/* Vrstica igralca z gumbom za njegove tekme: peti stolpec je dotik 44 px, a
+   gumb z negativnim odmikom ne podaljša vrstice. Modifikator je v .ekipa-okno,
+   ker kader te vrste ima samo okno ekipe (druga mesta imajo svoje stolpce). */
+.ekipa-okno .liga__kader-vrstica--tekme {
+  grid-template-columns: 32px minmax(0, 1fr) 88px 88px 44px;
+}
+
+.liga__kader-tekme-gumb {
+  align-self: center;
+  width: 44px;
+  height: 44px;
+  margin: -12px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 16px / 1 var(--pisava-mono);
+  color: var(--barva-glavna-tekst);
+  cursor: pointer;
+}
+
+.liga__kader-tekme-gumb:hover {
+  background: var(--barva-glavna-mehko);
+}
+
+.liga__kader-puscica {
+  display: inline-block;
+  transition: transform 120ms ease;
+}
+
+.liga__kader-tekme-gumb[aria-expanded='true'] .liga__kader-puscica {
+  transform: rotate(180deg);
+}
+
+/* Tekme igralca pod vrstico kadra: zamik za imenom, da je jasno, komu pripadajo. */
+.ekipa-okno__tekme-igralca {
+  margin: 0 0 var(--r2) calc(32px + var(--r2));
+}
+
+/* Drugotni podatek v vrstici tekme (soigralec pri dvojici, ekipa igralca). */
+.ekipa-okno__par {
+  display: block;
+  margin-top: 2px;
+  font: 400 var(--tip-drobno) / 1.35 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
 }
 
 .ekipa-okno__seznam {
@@ -9610,8 +9663,16 @@ a.ekipa-okno__srecanje:hover {
   }
 
   .ekipa-okno__kader-glava {
-    grid-template-columns: 28px minmax(0, 1fr) 56px 72px;
+    grid-template-columns: 28px minmax(0, 1fr) 56px 72px 44px;
     gap: var(--r1);
+  }
+
+  .ekipa-okno .liga__kader-vrstica--tekme {
+    grid-template-columns: 28px minmax(0, 1fr) 56px 72px 44px;
+  }
+
+  .ekipa-okno__tekme-igralca {
+    margin-left: calc(28px + var(--r1));
   }
 
   .ekipa-okno__kader-glava .sekcija__meta {
@@ -10316,6 +10377,23 @@ a.ekipa-okno__srecanje:hover {
   line-height: 0.95;
   letter-spacing: -0.03em;
   color: var(--barva-crnilo);
+}
+
+/* Ime ekipe v semaforu kot gumb: videti mora ostati ime (isti tisk in barva),
+   delati pa kot dejanje - okno ekipe. */
+.srecanje__ekipa-ime--gumb {
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.srecanje__ekipa-ime--gumb:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .srecanje__ekipa-pod {
@@ -13487,6 +13565,54 @@ a.ekipa-okno__srecanje:hover {
   font: 400 var(--tip-mono) / 1.5 var(--pisava-mono);
   font-variant-numeric: tabular-nums;
   color: var(--barva-crnilo-3);
+}
+
+/* Organizatorjev obrazec »Kaj vidijo ostali« na vrhu zavihka. Zložen, da ne odriva
+   zanimivosti; odprt pokaže kljukico pri vsakem razdelku (na telefonu v enem
+   stolpcu, na namizju v mreži). */
+.zanimivosti-nastavitve {
+  margin: 0;
+  padding-bottom: var(--r3);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.zanimivosti-nastavitve__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.zanimivosti-nastavitve__glava::-webkit-details-marker {
+  display: none;
+}
+
+.zanimivosti-nastavitve__naslov {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
+.zanimivosti-nastavitve__meta {
+  font: 400 var(--tip-mono) / 1.5 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.zanimivosti-nastavitve__pojasnilo {
+  margin: var(--r2) 0 var(--r3);
+  color: var(--barva-crnilo-3);
+  font-size: 14px;
+}
+
+.zanimivosti-nastavitve__seznam {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  column-gap: var(--r3);
 }
 
 /* --- Lestvicka --- */

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -20,7 +21,10 @@ import si.turnirko.dto.DogodekVnos;
 import si.turnirko.dto.StatistikaTekmovanjaDto;
 import si.turnirko.dto.TurnirDto;
 import si.turnirko.dto.TurnirVnos;
+import si.turnirko.dto.ZanimivostiNastavitveDto;
+import si.turnirko.dto.ZanimivostiNastavitveVnos;
 import si.turnirko.izjeme.NiNajdenoIzjema;
+import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
@@ -30,6 +34,7 @@ import si.turnirko.storitve.PovzetkiStoritev.StevciDogodka;
 import si.turnirko.storitve.StatistikaTekmovanjaStoritev;
 import si.turnirko.storitve.TurnirjiStoritev;
 import si.turnirko.storitve.VidnostTurnirja;
+import si.turnirko.storitve.ZanimivostiNastavitveStoritev;
 
 @RestController
 @RequestMapping("/api/v1/turnirji")
@@ -41,19 +46,22 @@ public class TurnirjiKontroler {
     private final PovzetkiStoritev povzetkiStoritev;
     private final StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev;
     private final LastnistvoStoritev lastnistvoStoritev;
+    private final ZanimivostiNastavitveStoritev zanimivostiNastavitveStoritev;
 
     public TurnirjiKontroler(TurnirjiStoritev turnirjiStoritev,
                              TurnirRepozitorij turnirRepozitorij,
                              DogodekRepozitorij dogodekRepozitorij,
                              PovzetkiStoritev povzetkiStoritev,
                              StatistikaTekmovanjaStoritev statistikaTekmovanjaStoritev,
-                             LastnistvoStoritev lastnistvoStoritev) {
+                             LastnistvoStoritev lastnistvoStoritev,
+                             ZanimivostiNastavitveStoritev zanimivostiNastavitveStoritev) {
         this.turnirjiStoritev = turnirjiStoritev;
         this.turnirRepozitorij = turnirRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.povzetkiStoritev = povzetkiStoritev;
         this.statistikaTekmovanjaStoritev = statistikaTekmovanjaStoritev;
         this.lastnistvoStoritev = lastnistvoStoritev;
+        this.zanimivostiNastavitveStoritev = zanimivostiNastavitveStoritev;
     }
 
     /* Gost in igralec ne dobita turnirjev v pripravi, ki so vec kot teden
@@ -89,6 +97,20 @@ public class TurnirjiKontroler {
         return statistikaTekmovanjaStoritev.zaTurnir(id);
     }
 
+    /* Razdelki zavihka, ki jih organizator skrije gledalcu. Branje je javno (v
+       njem ni osebnih podatkov), pisanje pa samo lastniku in administratorju -
+       preverba je v ZanimivostiNastavitveStoritev. */
+    @GetMapping("/{id}/zanimivosti/nastavitve")
+    public ZanimivostiNastavitveDto zanimivostiNastavitve(@PathVariable Long id) {
+        return zanimivostiNastavitveStoritev.zaTurnir(id);
+    }
+
+    @PutMapping("/{id}/zanimivosti/nastavitve")
+    public ZanimivostiNastavitveDto shraniZanimivostiNastavitve(@PathVariable Long id,
+                                                                @RequestBody ZanimivostiNastavitveVnos vnos) {
+        return zanimivostiNastavitveStoritev.shraniZaTurnir(id, vnos.skrite());
+    }
+
     @GetMapping("/{id}/dogodki")
     public List<DogodekDto> dogodki(@PathVariable Long id) {
         Map<Long, StevciDogodka> stevci = povzetkiStoritev.zaDogodkeTurnirja(id);
@@ -104,6 +126,15 @@ public class TurnirjiKontroler {
     @ResponseStatus(HttpStatus.CREATED)
     public TurnirDto ustvari(@Valid @RequestBody TurnirVnos vnos) {
         return TurnirDto.iz(turnirjiStoritev.ustvari(vnos));
+    }
+
+    /* Popravek turnirja v pripravi; lastnistvo in zaklep po zrebu preveri storitev. */
+    @PutMapping("/{id}")
+    public TurnirDto uredi(@PathVariable Long id, @Valid @RequestBody TurnirVnos vnos) {
+        Turnir turnir = turnirjiStoritev.urediTurnir(id, vnos);
+        Map<Long, TurnirDto.Potek> poteki = povzetkiStoritev.potekiVsehTurnirjev();
+        return TurnirDto.iz(turnir, povzetkiStoritev.zaTurnir(id),
+                poteki.getOrDefault(id, TurnirDto.Potek.PRAZEN));
     }
 
     @PostMapping("/{id}/dogodki")

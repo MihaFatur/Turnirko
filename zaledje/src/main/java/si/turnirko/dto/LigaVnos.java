@@ -61,8 +61,27 @@ public record LigaVnos(
         // sistema (vsaka ekipa enkrat, vsa srecanja ob uri iz semena)
         List<LocalTime> ureSrecanj,
         // prehodi ob nastanku lige; null = brez (urejanje pravil jih ne bere)
-        PrehodiVnos prehodi
+        PrehodiVnos prehodi,
+        // opomba organizatorja pod naslovom lige; null = brez (V52)
+        String opombe
 ) {
+
+    /* Vnos lige brez opombe (kot pred V52). */
+    public LigaVnos(String ime, String sezona, SpolKategorija spolKategorija,
+                    FormatSrecanja formatSrecanja, Integer steviloNizov, Integer zmagZaSrecanje,
+                    Boolean dvokrozno, Integer tockeZmaga, Integer tockeNeodloceno,
+                    Integer tockePoraz, Boolean dovoljenoNeodloceno,
+                    Boolean prepovedDvojneRegistracije, RavenTekmovanja raven,
+                    Boolean enakomernaRazvrstitev, PredlogaLige predlogaListka,
+                    LocalDateTime zacetekPrvegaKola, Integer razmikDni,
+                    Integer koncnicaEkip, Integer koncnicaZmag, List<LocalTime> ureSrecanj,
+                    PrehodiVnos prehodi) {
+        this(ime, sezona, spolKategorija, formatSrecanja, steviloNizov, zmagZaSrecanje,
+                dvokrozno, tockeZmaga, tockeNeodloceno, tockePoraz, dovoljenoNeodloceno,
+                prepovedDvojneRegistracije, raven, enakomernaRazvrstitev, predlogaListka,
+                zacetekPrvegaKola, razmikDni, koncnicaEkip, koncnicaZmag, ureSrecanj, prehodi,
+                null);
+    }
 
     /* Vnos lige brez prehodov (kot pred V41). */
     public LigaVnos(String ime, String sezona, SpolKategorija spolKategorija,
