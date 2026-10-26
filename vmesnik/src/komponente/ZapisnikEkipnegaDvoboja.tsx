@@ -14,29 +14,12 @@
    vrstice za delegata NTZS (imajo jo tekme 1. SNTL). Ekipna tekma turnirja
    variante nima (null): v glavi stoji ime dogodka, delegata ni. Zapisnik je
    crno-bel ne glede na temo (natis na papir). */
-import type { LigaDto, NizVnos, PredlogaLige, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
-import { RAZPORED_FORMATA, izidNizov } from '../api/tipi'
-
-/* Papirnati obrazec ima pet stolpcev za nize (SNTL igra na 5), zato je to
-   privzetek; liga na 7 nizov jih dobi sedem, da natis ne odreze vpisanih
-   tock. */
-const PRIVZETO_NIZOV = 5
+import type { LigaDto, PredlogaLige, SrecanjePodrobnoDto } from '../api/tipi'
+import { razbijCas, sestaviPodatkeZapisnika } from '../pomozno/zapisnikPodatki'
 
 const OZNAKA_VARIANTE: Record<PredlogaLige, string> = {
   SNTL_1: '1. SNTL',
   SNTL_23: '2. in 3. SNTL',
-}
-
-/* Ena vrstica mreze: bodisi odigrana/napovedana tekma srecanja bodisi prazno
-   mesto iz formata (pred postavo). */
-interface VrsticaTekme {
-  kljuc: number
-  zaporedje: number
-  oznaka: string
-  domaci: string
-  gost: string
-  nizi: NizVnos[]
-  igre: string
 }
 
 export function ZapisnikEkipnegaDvoboja({
@@ -54,36 +37,7 @@ export function ZapisnikEkipnegaDvoboja({
   gosto?: boolean
 }) {
   const s = podrobno.srecanje
-  const tekme = [...podrobno.tekme].sort((a, b) => a.zaporedje - b.zaporedje)
-  /* Brez tekem postave se ni: obrazec ostane prazen in ga izpolni roka. */
-  const prazen = tekme.length === 0
-  const NIZI = Array.from(
-    { length: Math.max(PRIVZETO_NIZOV, podrobno.steviloNizov, ...tekme.map((t) => t.steviloNizov)) },
-    (_, i) => i + 1,
-  )
-
-  const vrstice: VrsticaTekme[] = prazen
-    ? RAZPORED_FORMATA[podrobno.format].map((oznaka, i) => ({
-        kljuc: i,
-        zaporedje: i + 1,
-        oznaka,
-        domaci: '',
-        gost: '',
-        nizi: [],
-        igre: '',
-      }))
-    : tekme.map((t) => ({
-        kljuc: t.id,
-        zaporedje: t.zaporedje,
-        oznaka: t.oznaka,
-        domaci: [t.domaci, t.domaci2].filter(Boolean).join(' / ') || '—',
-        gost: [t.gost, t.gost2].filter(Boolean).join(' / ') || '—',
-        nizi: t.nizi,
-        igre: t.status === 'KONCANA' ? izidNizov(t.dobljeniNiziDomaci, t.dobljeniNiziGost, t.izidTip) : '',
-      }))
-
-  const imeNa = (stran: StranEkipe, poz: string) =>
-    podrobno.postave.find((p) => p.stran === stran && p.pozicija === poz)?.polnoIme ?? ''
+  const { prazen, nizi: NIZI, vrstice, imeNa } = sestaviPodatkeZapisnika(podrobno)
 
   const { datum, ura } = razbijCas(s.predvidenZacetek)
   const jeLiga = s.idLiga != null
@@ -243,17 +197,4 @@ function PodpisnoPolje({ naslov }: { naslov: string }) {
       <span className="zapisnik__podpis-naslov">{naslov}</span>
     </div>
   )
-}
-
-/* Iz ISO datuma-casa (npr. "2026-07-28T18:00") loci datum (dd.mm.llll) in uro
-   (hh:mm). Kadar casa ni, vrne prazna niza (obrazec izpise prazno crto). Ura
-   00:00 pomeni »ura ni dolocena« (turnirsko srecanje pozna samo dan) - tam
-   mora ostati polje prazno za rocni vpis, ne pa lagati o polnoci. */
-function razbijCas(iso: string | null): { datum: string; ura: string } {
-  if (!iso) return { datum: '', ura: '' }
-  const [d, t] = iso.split('T')
-  const deli = d.split('-')
-  const datum = deli.length === 3 ? `${deli[2]}.${deli[1]}.${deli[0]}` : ''
-  const ura = t && t.slice(0, 5) !== '00:00' ? t.slice(0, 5) : ''
-  return { datum, ura }
 }

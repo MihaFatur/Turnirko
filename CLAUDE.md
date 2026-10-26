@@ -2551,6 +2551,51 @@
       igralcev (razdelek 21)** — obrazec NTZS zato uporablja `__vrh` in `__par`;
       pri istem imenu je glava dobila odmik, stolpec »Par« pa se je razširil čez
       vso tabelo in stisnil imeni igralcev.
+    - **Turnirkov ekipni zapisnik** (okt 2026, `komponente/EkipniZapisnikTurnirko`,
+      slog razdelek »Turnirkov ekipni zapisnik«, razredi `.ekipni-zapisnik__*`):
+      druga OBLIKA istega zapisnika, po papirnatem zapisniku lige Savinja —
+      **ležeči A4**, glava z znamko Turnirka (`ZnakTurnirko` v barvah + »Turnirko«)
+      in logotipom lige, obe ekipi s postavo (dvojica, igralci, rezerva; vrstice
+      za vpis so visoke 8 mm, `--ez-postava`), mreža tekem (Par, A-X … + nizi,
+      Rezultat, Stanje dvoboja) in noga: rezultat dvoboja ter lokacija / datum /
+      ura / kolo v isti vrstici na dnu lista (podpisov, sodnika in pripomb ni;
+      lokacija, datum, ura in kolo so spodaj, ne zgoraj, da imata postavi več
+      prostora — odločitev lastnika, 27. 10.). **Ime ekipe je v svoji vrstici
+      čim večje** (do 28 pt, 22 pt pri formatih z 8+ vrsticami), oznaka »Ekipa
+      A/X« je nad njim brez »domači/gostje«; velikost se zmanjša po dolžini imena
+      (`velikostImenaPt`, ocena širine znaka, ne meritev), vrstica pa ima stalno
+      višino, da postavi obeh ekip stojita v isti višini. Ponujen je **pri
+      ligi in pri ekipnem dogodku turnirja** (izbirnik »Obrazec«,
+      `IzbirnikObrazca`), uradni obrazec NTZS ostaja.
+      - **Oblika ni pravilo tekmovanja** (`pomozno/oblikaZapisnika`): shema in
+        zaledje je ne poznata, izbere jo tisk. Zadnja izbira ostane v
+        `localStorage['turnirko-oblika-zapisnika']`; brez nje format **Savinja**
+        (2 igralca, dvojice prve) dobi Turnirkov zapisnik, vsi ostali uradnega.
+        Predloga lige (1. SNTL / 2./3. SNTL) velja samo za uradni obrazec.
+      - **Sestava vrstic je skupna obema oblikama** (`pomozno/zapisnikPodatki`:
+        `sestaviPodatkeZapisnika`, `razbijCas`) — kar je vpisano, se izpiše, ostalo
+        je prazno za roko, in tudi ta obrazec se natisne pred postavo (vrstice iz
+        formata). Stanje dvoboja se izpiše iz končanih tekem po vrstnem redu
+        obrazca (`stanjaDvoboja`). **Lokacije in rezerve ne hranimo** — ostaneta črti.
+      - **Logotip lige** je po imenu lige (`pomozno/logotipiLig`, zdaj samo
+        Savinja; slika `src/assets/liga-savinja.png`, obrezana na 480 px) in
+        **samo pri ligi** — klub »Savinja« bi sicer dal logotip vsakemu turnirju.
+        Liga brez logotipa ima v glavi le znamko Turnirka. Nov logotip = zapis v
+        `LOGOTIPI`.
+      - **List je natanko ena ležeča stran A4** (`@page ekipni-zapisnik`, rob
+        10 mm; 188 mm vsebine, ker tisk v zaokroževanju sicer prelije na prazen
+        list). Višino vrstic mreže razdeli CSS grid po tem, kar ostane (dvojica
+        1,6 × vrstica, najmanj 6,4 mm), nič se ne meri v JS: Savinja 11 mm,
+        SNTL z desetimi tekmami 9 mm (od 8 vrstic se glava in noga zgostita,
+        `ekipni-zapisnik--gosto`). Na ekipnem dogodku je **en zapisnik na list**
+        (izbira »Na list« velja le za NTZS). Ožji zaslon list pomanjša
+        (`pomozno/meriloLista`, CSS `zoom`; pri tisku se izključi).
+      - Barvna sta samo znamka in logotip; besedilo in črte so `#000`. Razredi
+        `zapisnik__*` so zasedeni (obrazec NTZS, okna igralcev), zato `ekipni-zapisnik__*`.
+      - Izmerjeno z brezglavim Chromom (CDP, lažen API, PDF → mupdf): Savinja
+        (prazen, izpolnjen, 7 nizov), SNTL (10 tekem), DŠI in ekipni dogodek
+        s tremi tekmami — vsak je ena ležeča stran 842 × 595 pt. **Ni preverjeno
+        na pravem tiskalniku.**
   - Listki so **črno-beli ne glede na temo** (fiksni `#000/#fff`, ne temo
     odvisne spremenljivke); sloge in `@media print` (`@page` A4,
     `break-inside: avoid`, `print-color-adjust: exact`) drži `slog.css`.

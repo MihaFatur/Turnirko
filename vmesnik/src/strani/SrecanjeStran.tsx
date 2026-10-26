@@ -31,7 +31,10 @@ import { SpremembaRatinga } from '../komponente/SpremembaRatinga'
 import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import {
   TockeNizov,
+  dopolniDrugi,
+  fokusiraj,
   preveriNize,
+  useSkliciNizov,
   vrsticeZaIzid,
   type VrsticaNiza,
 } from '../komponente/TockeNizov'
@@ -897,19 +900,31 @@ function RezultatOkno({
       : [],
   )
   const [napakaVnosa, nastaviNapakoVnosa] = useState<string | null>(null)
+  /* Sklici za premik s puščicami in samodejni fokus na točke (glej useSkliciNizov). */
+  const sklici = useSkliciNizov()
 
   /* Koliko nizov je bilo odigranih — po tem se ravna število vrstic za točke;
      dokler izid ni v celoti vpisan, vrstic ni. */
   const odigranihNizov =
     niziDomaci !== '' && niziGost !== '' ? Number(niziDomaci) + Number(niziGost) : 0
 
+  /* Enako kot pri vnosu rezultata (VnosRezultataOkno): drugi igralec dobi ostanek
+     samodejno, po vpisu obeh nizov pa fokus skoči na točke. */
   function obSpremembiNizov(stran: 'domaci' | 'gost', vrednost: string) {
-    const dom = stran === 'domaci' ? vrednost : niziDomaci
-    const gost = stran === 'gost' ? vrednost : niziGost
-    if (stran === 'domaci') nastaviNiziDomaci(vrednost)
-    else nastaviNiziGost(vrednost)
+    const samodejni = dopolniDrugi(vrednost, stran === 'domaci' ? niziGost : niziDomaci, zaZmago)
+    const dom = stran === 'domaci' ? vrednost : samodejni
+    const gost = stran === 'gost' ? vrednost : samodejni
+    nastaviNiziDomaci(dom)
+    nastaviNiziGost(gost)
     const skupaj = dom !== '' && gost !== '' ? Number(dom) + Number(gost) : 0
     nastaviTockeNizov((prejsnje) => vrsticeZaIzid(prejsnje, skupaj))
+
+    if (dom !== '' && gost !== '') {
+      if (vnasamTocke) sklici.naFokusTock.current = true
+    } else if (vrednost !== '') {
+      const sosednje = stran === 'domaci' ? sklici.sklicDrugi.current : sklici.sklicPrvi.current
+      if (sosednje) fokusiraj(sosednje)
+    }
   }
 
   const shrani = useMutation({
@@ -1020,13 +1035,15 @@ function RezultatOkno({
             <div className="obrazec__vrstica">
               <label className="obrazec__polje">
                 <span>Dobljeni nizi — {priimekStrani(tekma, 'DOMACI')}</span>
-                <StevilskoPolje najvec={zaZmago} vrednost={niziDomaci}
-                  naSpremembo={(v) => obSpremembiNizov('domaci', v)} required />
+                <StevilskoPolje ref={sklici.sklicPrvi} najvec={zaZmago} vrednost={niziDomaci}
+                  naSpremembo={(v) => obSpremembiNizov('domaci', v)}
+                  onKeyDown={(d) => sklici.obTipkiNizov(d, 0)} required />
               </label>
               <label className="obrazec__polje">
                 <span>Dobljeni nizi — {priimekStrani(tekma, 'GOST')}</span>
-                <StevilskoPolje najvec={zaZmago} vrednost={niziGost}
-                  naSpremembo={(v) => obSpremembiNizov('gost', v)} required />
+                <StevilskoPolje ref={sklici.sklicDrugi} najvec={zaZmago} vrednost={niziGost}
+                  naSpremembo={(v) => obSpremembiNizov('gost', v)}
+                  onKeyDown={(d) => sklici.obTipkiNizov(d, 1)} required />
               </label>
             </div>
 
@@ -1045,6 +1062,8 @@ function RezultatOkno({
                 nastaviVrstice={nastaviTockeNizov}
                 priimek1={priimekStrani(tekma, 'DOMACI')}
                 priimek2={priimekStrani(tekma, 'GOST')}
+                sklicPolj={sklici.sklicTock}
+                naVrh={sklici.naVrh}
               />
             )}
           </>

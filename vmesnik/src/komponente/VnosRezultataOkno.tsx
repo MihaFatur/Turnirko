@@ -26,7 +26,15 @@ import type { IzidTekme, NizVnos, TekmaDto, VnosRezultata } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 import { StevilskoPolje } from './StevilskoPolje'
-import { TockeNizov, preveriNize, vrsticeZaIzid, type VrsticaNiza } from './TockeNizov'
+import {
+  TockeNizov,
+  dopolniDrugi,
+  fokusiraj,
+  preveriNize,
+  useSkliciNizov,
+  vrsticeZaIzid,
+  type VrsticaNiza,
+} from './TockeNizov'
 
 interface Lastnosti {
   tekma: TekmaDto
@@ -119,6 +127,9 @@ export function VnosRezultataOkno({
   )
   const [napakaVnosa, nastaviNapakoVnosa] = useState<string | null>(null)
 
+  /* Sklici za premik s puščicami in samodejni fokus na točke (glej useSkliciNizov). */
+  const sklici = useSkliciNizov()
+
   const shranjevanje = useMutation({
     mutationFn: (vnos: VnosRezultata) =>
       popravek ? tekmeApi.popraviRezultat(tekma.id, vnos) : tekmeApi.vnesiRezultat(tekma.id, vnos),
@@ -133,14 +144,24 @@ export function VnosRezultataOkno({
   const odigranihNizov =
     niziPrvi !== '' && niziDrugi !== '' ? Number(niziPrvi) + Number(niziDrugi) : 0
 
-  /* Ob vpisu nizov prilagodi stevilo vrstic za tocke nizov. */
+  /* Ob vpisu nizov prilagodi stevilo vrstic za tocke nizov. Drugi igralec dobi
+     ostanek samodejno (glej dopolniDrugi), zato je vpis enega dovolj za izid: ko
+     sta oba vpisana, fokus skoči na točke, sicer na prazno polje drugega. */
   function obSpremembiNizov(stran: 'prvi' | 'drugi', vrednost: string) {
-    const prvi = stran === 'prvi' ? vrednost : niziPrvi
-    const drugi = stran === 'drugi' ? vrednost : niziDrugi
-    if (stran === 'prvi') nastaviNiziPrvi(vrednost)
-    else nastaviNiziDrugi(vrednost)
+    const samodejni = dopolniDrugi(vrednost, stran === 'prvi' ? niziDrugi : niziPrvi, zaZmago)
+    const prvi = stran === 'prvi' ? vrednost : samodejni
+    const drugi = stran === 'drugi' ? vrednost : samodejni
+    nastaviNiziPrvi(prvi)
+    nastaviNiziDrugi(drugi)
     const skupaj = prvi !== '' && drugi !== '' ? Number(prvi) + Number(drugi) : 0
     nastaviTockeNizov((prejsnje) => vrsticeZaIzid(prejsnje, skupaj))
+
+    if (prvi !== '' && drugi !== '') {
+      if (vnasamTocke) sklici.naFokusTock.current = true
+    } else if (vrednost !== '') {
+      const sosednje = stran === 'prvi' ? sklici.sklicDrugi.current : sklici.sklicPrvi.current
+      if (sosednje) fokusiraj(sosednje)
+    }
   }
 
   /* Nova meja spremeni, koliko nizov se igra, zato vpisani nizi in točke pri stari
@@ -273,18 +294,22 @@ export function VnosRezultataOkno({
               <label className="obrazec__polje">
                 <span>Dobljeni nizi — {priimek1}</span>
                 <StevilskoPolje
+                  ref={sklici.sklicPrvi}
                   najvec={zaZmago}
                   vrednost={niziPrvi}
                   naSpremembo={(vrednost) => obSpremembiNizov('prvi', vrednost)}
+                  onKeyDown={(dogodek) => sklici.obTipkiNizov(dogodek, 0)}
                   required
                 />
               </label>
               <label className="obrazec__polje">
                 <span>Dobljeni nizi — {priimek2}</span>
                 <StevilskoPolje
+                  ref={sklici.sklicDrugi}
                   najvec={zaZmago}
                   vrednost={niziDrugi}
                   naSpremembo={(vrednost) => obSpremembiNizov('drugi', vrednost)}
+                  onKeyDown={(dogodek) => sklici.obTipkiNizov(dogodek, 1)}
                   required
                 />
               </label>
@@ -305,6 +330,8 @@ export function VnosRezultataOkno({
                 nastaviVrstice={nastaviTockeNizov}
                 priimek1={priimek1}
                 priimek2={priimek2}
+                sklicPolj={sklici.sklicTock}
+                naVrh={sklici.naVrh}
               />
             )}
           </>

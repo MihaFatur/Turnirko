@@ -6,10 +6,11 @@
    ve, iz katerega izida izhaja njihovo število.
 
    Vpis je narejen za prepis papirnatega zapisnika z eno roko na številčnici:
-   polje se ob dokončani številki samo premakne naprej, po mreži pa se da
-   hoditi s puščicami. Priimka v glavi povesta, čigav je stolpec — brez njiju
-   je »11 : 7« brez pomena, dokler se vnašalec ne spomni, kdo je bil prvi. */
-import { useRef, type KeyboardEvent } from 'react'
+   drugi stolpec se napolni sam (zmagovalec ima 11, pri 10 pa 12), vrstica pa se
+   po zaključenem nizu premakne naprej. Po mreži se da hoditi s puščicami, tudi
+   ko je polje samodejno napolnjeno. Priimka v glavi povesta, čigav je stolpec —
+   brez njiju je »11 : 7« brez pomena, dokler se vnašalec ne spomni, kdo je bil prvi. */
+import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react'
 
 import type { NizVnos } from '../api/tipi'
 import { StevilskoPolje } from './StevilskoPolje'
@@ -67,17 +68,81 @@ export function preveriNize(
   return null
 }
 
-/* Ali vpisana številka ne more več zrasti in se sme premakniti v naslednje
-   okence. Dvomestna ne more (niz nad 99 točk ne obstaja), enomestna pa samo
-   tedaj, kadar se z njo ne more začeti dvomestna: to je vse razen ena
-   (10–19). Ničla je enako varna — noben rezultat se ne piše »05«.
+/* Drugi stolpec niza, ko je vpisan prvi, kadar je izid edini mogoč:
+   - 2–9 (ali 0) pomeni, da je nasprotnik zmagal z 11;
+   - 10 pomeni zmago z 12, ker zmaga šele z dvema točkama razlike;
+   - 1 je lahko začetek 10, zato se 11 zapiše samo v prazen stolpec; prejšnja
+     vrednost ostane, da brisanje 11 v 1 ne prepiše drugega stolpca;
+   - dvomestni vpis 11 in več pomeni, da je zmagal ta stolpec, zato se ostanek 11
+     iz prejšnjega samodejnega vpisa izbriše (drugi ne more imeti 11). */
+function drugaTocka(vpis: string, drugo: string): string {
+  if (vpis === '') return drugo
+  if (vpis === '1') return drugo === '' ? '11' : drugo
+  if (vpis === '10') return '12'
+  if (vpis.length === 1) return '11'
+  return drugo === '11' ? '' : drugo
+}
 
-   Dvomestni rezultati se z 2–9 sicer začnejo (22:20 je veljaven podaljšek), a
-   so tako redki, da je premik naprej pri stotih vpisih prihranek, pri enem pa
-   klik nazaj oz. puščica levo. */
-function dokoncana(vrednost: string): boolean {
-  if (vrednost.length >= 2) return true
-  return vrednost.length === 1 && vrednost !== '1'
+/* Drugi igralec ima samodejno preostanek nizov, ko je vpisan prvi (in obratno):
+   zmagovalec ima vedno toliko nizov, kolikor jih je treba za zmago, izgubivši manj.
+   Če je vpisan zmagovalec (zaZmago), drugi ne more imeti istega; če ga ima, je to
+   ostanek prejšnjega samodejnega vpisa in se izbriše. */
+export function dopolniDrugi(vpisan: string, drugi: string, zaZmago: number): string {
+  if (vpisan === '') return drugi
+  if (Number(vpisan) < zaZmago) return String(zaZmago)
+  return drugi === String(zaZmago) ? '' : drugi
+}
+
+/* Fokus na polje z označeno vrednostjo, da nova številka prepiše staro. */
+export function fokusiraj(polje: HTMLInputElement) {
+  polje.focus()
+  polje.select()
+}
+
+/* Sklici polj nizov in točk za premik s puščicami ter samodejni fokus. Vrstice točk
+   se pojavijo šele v prikazu, ki ga sproži vpis nizov, zato fokusa po vpisu ni mogoče
+   dati kar v obravnavalniku: obrazec označi `naFokusTock`, učinek pa ga po prikazu
+   pobere in fokusira prvo točko. */
+export function useSkliciNizov() {
+  const sklicPrvi = useRef<HTMLInputElement>(null)
+  const sklicDrugi = useRef<HTMLInputElement>(null)
+  const sklicTock = useRef<(HTMLInputElement | null)[]>([])
+  const naFokusTock = useRef(false)
+  useEffect(() => {
+    if (!naFokusTock.current) return
+    naFokusTock.current = false
+    const prvo = sklicTock.current[0]
+    if (prvo) fokusiraj(prvo)
+  })
+
+  /* Puščice med nizoma levo/desno, dol pa na točke nad istim stolpcem. Vpisano ostane. */
+  function obTipkiNizov(dogodek: KeyboardEvent<HTMLInputElement>, stolpec: 0 | 1) {
+    let cilj: HTMLInputElement | null = null
+    switch (dogodek.key) {
+      case 'ArrowLeft':
+        if (stolpec === 1) cilj = sklicPrvi.current
+        break
+      case 'ArrowRight':
+        if (stolpec === 0) cilj = sklicDrugi.current
+        break
+      case 'ArrowDown':
+        cilj = sklicTock.current[stolpec] ?? null
+        break
+      default:
+        break
+    }
+    if (!cilj) return
+    dogodek.preventDefault()
+    fokusiraj(cilj)
+  }
+
+  /* Puščica gor z zgornje vrstice točk se vrne na nize nad istim stolpcem. */
+  function naVrh(stolpec: 0 | 1) {
+    const cilj = stolpec === 0 ? sklicPrvi.current : sklicDrugi.current
+    if (cilj) fokusiraj(cilj)
+  }
+
+  return { sklicPrvi, sklicDrugi, sklicTock, naFokusTock, obTipkiNizov, naVrh }
 }
 
 export function TockeNizov({
@@ -85,43 +150,61 @@ export function TockeNizov({
   nastaviVrstice,
   priimek1,
   priimek2,
+  sklicPolj,
+  naVrh,
 }: {
   vrstice: VrsticaNiza[]
   nastaviVrstice: (posodobi: (prejsnje: VrsticaNiza[]) => VrsticaNiza[]) => void
   /* Čigav je stolpec — priimek, ker je glava ozka kot polje pod njo. */
   priimek1: string
   priimek2: string
+  /* Obrazec lahko drži sklic na polja, če mora nanje fokusirati od zunaj (puščica
+     dol iz polj nizov, samodejni prehod po vpisu nizov). */
+  sklicPolj?: RefObject<(HTMLInputElement | null)[]>
+  /* Puščica gor z zgornje vrstice gre v obrazcu na polje nad istim stolpcem. */
+  naVrh?: (stolpec: 0 | 1) => void
 }) {
   /* Polja v enem samem seznamu (niz × stran), da je premik »naprej« povsod
      isti korak: konec vrstice se nadaljuje v naslednji vrstici. */
-  const polja = useRef<(HTMLInputElement | null)[]>([])
+  const notranjaPolja = useRef<(HTMLInputElement | null)[]>([])
+  const polja = sklicPolj ?? notranjaPolja
 
   const naMesto = (mesto: number) => {
     const polje = polja.current[mesto]
     if (!polje) return false
-    polje.focus()
-    polje.select()
+    fokusiraj(polje)
     return true
   }
 
-  const spremeni = (mesto: number, vrednost: string) => {
+  /* Vpis ene številke: drugi stolpec se napolni po pravilu (glej drugaTocka), nato
+     fokus. Vpis 1 ostane v polju, ker lahko sledi še ena števka; dvomestni vpis 11
+     in več skoči v drugi stolpec, enomestni konec niza pa v naslednjo vrstico. */
+  const spremeni = (mesto: number, vpis: string) => {
     const indeks = Math.floor(mesto / 2)
     const stran = mesto % 2 === 0 ? 'tocke1' : 'tocke2'
+    const drugaStran = mesto % 2 === 0 ? 'tocke2' : 'tocke1'
     nastaviVrstice((prejsnje) =>
-      prejsnje.map((vrstica, i) => (i === indeks ? { ...vrstica, [stran]: vrednost } : vrstica)),
+      prejsnje.map((vrstica, i) =>
+        i === indeks
+          ? { ...vrstica, [stran]: vpis, [drugaStran]: drugaTocka(vpis, vrstica[drugaStran]) }
+          : vrstica,
+      ),
     )
-    if (dokoncana(vrednost)) naMesto(mesto + 1)
+    if (vpis === '' || vpis === '1') return
+    if (vpis.length >= 2 && vpis !== '10') naMesto(mesto + 1)
+    // konec niza: levi stolpec naslednje vrstice; pri zadnji vrstici fokus ostane
+    else naMesto((indeks + 1) * 2)
   }
 
   /* Puščice hodijo po mreži: levo/desno med stranema (in čez konec vrstice),
-     gor/dol po istem stolpcu. Levo in desno skočita samo z ROBA vpisa, da
-     ostane mogoče postaviti kazalec sredi dvomestne številke; pri označeni
-     celi vrednosti (tako pride polje ob samodejnem premiku) sta oba roba
-     hkrati, zato skok stopi takoj in ne šele po razveljavitvi izbire. */
+     gor/dol po istem stolpcu. Enomestna številka (tudi samodejno vpisana) nima
+     kazalca sredi besede, zato puščica takoj gre; pri dvomestni se levo in desno
+     skočita samo z roba vpisa, da ostane mogoče postaviti kazalec sredi številke. */
   const obTipki = (dogodek: KeyboardEvent<HTMLInputElement>, mesto: number) => {
     const polje = dogodek.currentTarget
-    const naZacetku = polje.selectionStart === 0
-    const naKoncu = polje.selectionEnd === polje.value.length
+    const enomestno = polje.value.length <= 1
+    const naZacetku = enomestno || polje.selectionStart === 0
+    const naKoncu = enomestno || polje.selectionEnd === polje.value.length
 
     switch (dogodek.key) {
       case 'ArrowRight':
@@ -134,7 +217,12 @@ export function TockeNizov({
         if (naMesto(mesto + 2)) dogodek.preventDefault()
         break
       case 'ArrowUp':
-        if (naMesto(mesto - 2)) dogodek.preventDefault()
+        if (mesto < 2 && naVrh) {
+          naVrh(mesto % 2 === 0 ? 0 : 1)
+          dogodek.preventDefault()
+        } else if (naMesto(mesto - 2)) {
+          dogodek.preventDefault()
+        }
         break
       case 'Backspace':
         // prazno polje nima česa brisati - vrzi nazaj v prejšnje

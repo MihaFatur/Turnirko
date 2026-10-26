@@ -18,7 +18,17 @@ import { useQueries } from '@tanstack/react-query'
 import { srecanjaApi } from '../api/zahteve'
 import type { DogodekDto, SrecanjePodrobnoDto } from '../api/tipi'
 import { OZNAKE_SPOL_KATEGORIJA } from '../api/tipi'
+import { SIRINA_LEZECEGA_LISTA_PX, useMeriloLista } from '../pomozno/meriloLista'
+import {
+  type IzbiraObrazca,
+  type OblikaZapisnika,
+  preberiOblikoZapisnika,
+  privzetaOblika,
+  shraniOblikoZapisnika,
+} from '../pomozno/oblikaZapisnika'
 import { sklonZapisnikov } from '../pomozno/oblikovanje'
+import { EkipniZapisnikTurnirko } from './EkipniZapisnikTurnirko'
+import { IzbirnikObrazca } from './IzbirnikObrazca'
 import { SporociloNapake } from './SporociloNapake'
 import { ZapisnikEkipnegaDvoboja } from './ZapisnikEkipnegaDvoboja'
 
@@ -73,6 +83,18 @@ export function ZapisnikiEkipnegaDogodka({
     }
   }
 
+  /* Turnirkov zapisnik je ležeči A4 in ga je en na list (list je že cel
+     zapisnik), zato izbira »Na list« velja samo za uradni obrazec NTZS. */
+  const [izbranaOblika, nastaviObliko] = useState<OblikaZapisnika | null>(preberiOblikoZapisnika)
+  const oblika: OblikaZapisnika = izbranaOblika ?? privzetaOblika(dogodek.formatSrecanja)
+  const lezeci = oblika === 'TURNIRKO'
+  const izberiObliko = (izbira: IzbiraObrazca) => {
+    const nova: OblikaZapisnika = izbira === 'TURNIRKO' ? 'TURNIRKO' : 'NTZS'
+    nastaviObliko(nova)
+    shraniOblikoZapisnika(nova)
+  }
+  const merilo = useMeriloLista(SIRINA_LEZECEGA_LISTA_PX)
+
   /* Merilo vsake reze po id-ju srecanja; najmanjse pove, ali je obrazec ze
      tako majhen, da ga ni vec prijetno izpolnjevati z roko. */
   const [merila, nastaviMerila] = useState<Record<number, number>>({})
@@ -93,14 +115,22 @@ export function ZapisnikiEkipnegaDogodka({
         <span className="listki-orodja__stevec">
           {idjiSrecanj.length} {sklonZapisnikov(idjiSrecanj.length)}
         </span>
-        <label className="listki-orodja__izbira listki-orodja__izbira--zraven">
-          Na list:
-          <select value={naList} onChange={(d) => izberi(Number(d.target.value) as NaList)}>
-            <option value={1}>1 zapisnik</option>
-            <option value={2}>2 zapisnika</option>
-            <option value={3}>3 zapisniki</option>
-          </select>
-        </label>
+        <IzbirnikObrazca
+          oblika={oblika}
+          predloga={null}
+          onIzbira={izberiObliko}
+          razred="listki-orodja__izbira listki-orodja__izbira--zraven"
+        />
+        {!lezeci && (
+          <label className="listki-orodja__izbira listki-orodja__izbira--zraven">
+            Na list:
+            <select value={naList} onChange={(d) => izberi(Number(d.target.value) as NaList)}>
+              <option value={1}>1 zapisnik</option>
+              <option value={2}>2 zapisnika</option>
+              <option value={3}>3 zapisniki</option>
+            </select>
+          </label>
+        )}
         <button
           className="gumb gumb--glavni"
           disabled={idjiSrecanj.length === 0 || !nalozeno}
@@ -110,7 +140,11 @@ export function ZapisnikiEkipnegaDogodka({
         </button>
       </div>
 
-      <div className="listki-stran listki-stran--zapisnik">
+      <div
+        className={'listki-stran listki-stran--zapisnik' + (lezeci ? ' listki-stran--ekipni' : '')}
+        ref={merilo.okvir}
+        style={lezeci ? merilo.slog : undefined}
+      >
         {/* Naslov je samo za zaslon: vsak list ima svojo glavo obrazca. */}
         <header className="listki-naslov zaslon-samo">
           <h1>
@@ -121,7 +155,7 @@ export function ZapisnikiEkipnegaDogodka({
             {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
             {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
           </p>
-          {naList > 1 && nalozeno && (
+          {!lezeci && naList > 1 && nalozeno && (
             <p className={najmanjse < 0.7 ? 'listki-naslov__opozorilo' : undefined}>
               {najmanjse > 0.995
                 ? 'Obrazec je v naravni velikosti.'
@@ -140,6 +174,8 @@ export function ZapisnikiEkipnegaDogodka({
           </p>
         ) : !nalozeno ? (
           <p className="obvestilo zaslon-samo">Nalaganje …</p>
+        ) : lezeci ? (
+          podatki.map((p) => <EkipniZapisnikTurnirko key={p.srecanje.id} podrobno={p} liga={undefined} />)
         ) : naList === 1 ? (
           podatki.map((p) => (
             <div key={p.srecanje.id} className="zapisnik-stran">

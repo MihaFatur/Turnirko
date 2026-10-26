@@ -1,22 +1,33 @@
-/* Natisljivi uraden ekipni zapisnik (NTZS) za eno srecanje lige ali ekipno
-   tekmo turnirja.
+/* Natisljivi ekipni zapisnik za eno srecanje lige ali ekipno tekmo turnirja.
 
    En list na srecanje: mreza vseh posamicnih tekem, sodnik ga izpolni z roko
    za mizo. Pred postavo so imena ekip ze natisnjena, postavo in igralce
    tekem vpise ekipa sama (glej ZapisnikEkipnegaDvoboja). Pot je zunaj skupne
    postavitve (brez navigacije), tiska brskalnik (window.print), brez zaledja
-   in nove sheme. Predlogo (1. SNTL oz. 2./3. SNTL) doloca liga, na tej strani
-   pa jo je mogoce zacasno preklopiti za ta natis; ekipna tekma turnirja
-   predloge nima. */
+   in nove sheme.
+
+   Obliki sta dve: uraden obrazec NTZS (pokoncni A4; predlogo 1. SNTL oz.
+   2./3. SNTL doloca liga, na tej strani pa jo je mogoce zacasno preklopiti za
+   ta natis; ekipna tekma turnirja predloge nima) in Turnirkov zapisnik (lezeci
+   A4, EkipniZapisnikTurnirko). Izbrano obliko si brskalnik zapomni. */
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { ligeApi, srecanjaApi } from '../api/zahteve'
 import type { PredlogaLige } from '../api/tipi'
-import { OZNAKE_PREDLOGA_LIGE } from '../api/tipi'
+import { EkipniZapisnikTurnirko } from '../komponente/EkipniZapisnikTurnirko'
+import { IzbirnikObrazca } from '../komponente/IzbirnikObrazca'
 import { ZapisnikEkipnegaDvoboja } from '../komponente/ZapisnikEkipnegaDvoboja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { SIRINA_LEZECEGA_LISTA_PX, useMeriloLista } from '../pomozno/meriloLista'
+import {
+  type IzbiraObrazca,
+  type OblikaZapisnika,
+  preberiOblikoZapisnika,
+  privzetaOblika,
+  shraniOblikoZapisnika,
+} from '../pomozno/oblikaZapisnika'
 
 export function ListkiSrecanjaStran() {
   const { id } = useParams()
@@ -37,6 +48,9 @@ export function ListkiSrecanjaStran() {
 
   /* null = uporabi privzeto predlogo lige; sicer zacasna izbira za ta natis. */
   const [varianta, nastaviVarianto] = useState<PredlogaLige | null>(null)
+  /* null = zadnje izbire ni: velja privzetek formata. */
+  const [izbranaOblika, nastaviObliko] = useState<OblikaZapisnika | null>(preberiOblikoZapisnika)
+  const merilo = useMeriloLista(SIRINA_LEZECEGA_LISTA_PX)
 
   if (podrobno.isPending) return <p className="obvestilo">Nalaganje …</p>
   if (podrobno.error || !podrobno.data) return <SporociloNapake napaka={podrobno.error} />
@@ -45,6 +59,15 @@ export function ListkiSrecanjaStran() {
   /* Ekipna tekma turnirja nima lige in zato ne predloge (null). */
   const izbrana: PredlogaLige | null =
     srecanje.idLiga == null ? null : (varianta ?? liga.data?.predlogaListka ?? 'SNTL_23')
+  const oblika: OblikaZapisnika = izbranaOblika ?? privzetaOblika(podrobno.data.format)
+  const lezeci = oblika === 'TURNIRKO'
+
+  const izberi = (izbira: IzbiraObrazca) => {
+    const nova: OblikaZapisnika = izbira === 'TURNIRKO' ? 'TURNIRKO' : 'NTZS'
+    nastaviObliko(nova)
+    shraniOblikoZapisnika(nova)
+    if (izbira !== 'TURNIRKO' && izbira !== 'NTZS') nastaviVarianto(izbira)
+  }
 
   return (
     <>
@@ -52,28 +75,19 @@ export function ListkiSrecanjaStran() {
         <Link to={`/srecanja/${idSrecanje}`} className="povezava-nazaj">
           ← Nazaj na srečanje
         </Link>
-        {izbrana && (
-          <label className="listki-orodja__izbira">
-            Predloga:
-            <select value={izbrana} onChange={(d) => nastaviVarianto(d.target.value as PredlogaLige)}>
-              {(Object.keys(OZNAKE_PREDLOGA_LIGE) as PredlogaLige[]).map((p) => (
-                <option key={p} value={p}>{OZNAKE_PREDLOGA_LIGE[p]}</option>
-              ))}
-            </select>
-          </label>
-        )}
-        {/* Brez izbirnika predloge gumb sam zaseda desni rob vrstice. */}
-        <button
-          className={izbrana ? 'gumb gumb--glavni' : 'gumb gumb--glavni listki-orodja__desno'}
-          onClick={() => window.print()}
-        >
+        <IzbirnikObrazca oblika={oblika} predloga={izbrana} onIzbira={izberi} />
+        <button className="gumb gumb--glavni" onClick={() => window.print()}>
           Natisni
         </button>
       </div>
 
-      <div className="listki-stran listki-stran--zapisnik">
-        {/* Naslov je samo za zaslon: natisne se uraden obrazec, ki ima svojo
-            glavo in ne prenese dodatkov nad njo. */}
+      <div
+        className={'listki-stran listki-stran--zapisnik' + (lezeci ? ' listki-stran--ekipni' : '')}
+        ref={merilo.okvir}
+        style={lezeci ? merilo.slog : undefined}
+      >
+        {/* Naslov je samo za zaslon: natisne se obrazec, ki ima svojo glavo in
+            ne prenese dodatkov nad njo. */}
         <header className="listki-naslov zaslon-samo">
           <h1>
             {srecanje.domaci} : {srecanje.gost}
@@ -84,7 +98,11 @@ export function ListkiSrecanjaStran() {
           </p>
         </header>
 
-        <ZapisnikEkipnegaDvoboja podrobno={podrobno.data} liga={liga.data} varianta={izbrana} />
+        {lezeci ? (
+          <EkipniZapisnikTurnirko podrobno={podrobno.data} liga={liga.data} />
+        ) : (
+          <ZapisnikEkipnegaDvoboja podrobno={podrobno.data} liga={liga.data} varianta={izbrana} />
+        )}
       </div>
     </>
   )
