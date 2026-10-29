@@ -166,7 +166,7 @@ function ListkiZreba({
         </>
       }
     >
-      <ListiSkupin listi={listi} />
+      <ListiSkupin listi={listi} logotip={turnir?.logotip ?? null} />
     </ZrebOkvir>
   )
 }

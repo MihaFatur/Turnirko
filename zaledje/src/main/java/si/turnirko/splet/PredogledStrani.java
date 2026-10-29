@@ -24,10 +24,24 @@ public final class PredogledStrani {
        og:site_name). Isti zapis kot useNaslovStrani v vmesniku. */
     public static final String PRIPONA = " – Turnirko";
 
+    /* Splosna slika predogleda (1200 x 630, skripte/ikone). */
+    static final String SPLOSNA_SLIKA = "/predogled.png";
+
     /* Kaj o strani pove predogled. "pot" je pot z ?parametri, kakrsno je
        gledalec delil (og:url), "kanonicnaPot" pa pot brez njih (iskalnik naj
-       okno ekipe steje kot isto stran lige). */
-    public record Predogled(String naslov, String opis, String pot, String kanonicnaPot) {}
+       okno ekipe steje kot isto stran lige). "logotip" je zgostitev logotipa
+       tekmovanja (V54) - predogled lige z logotipom pokaze njega na papirni
+       podlagi (razlicica DELJENJE, ista mera kot splosna slika); null = splosna. */
+    public record Predogled(String naslov, String opis, String pot, String kanonicnaPot, String logotip) {
+
+        public Predogled(String naslov, String opis, String pot, String kanonicnaPot) {
+            this(naslov, opis, pot, kanonicnaPot, null);
+        }
+
+        public Predogled zLogotipom(String zgostitev) {
+            return new Predogled(naslov, opis, pot, kanonicnaPot, zgostitev);
+        }
+    }
 
     private PredogledStrani() {}
 
@@ -42,6 +56,13 @@ public final class PredogledStrani {
                 : javniNaslov;
         String naslov = ubezi(predogled.naslov());
         String opis = ubezi(predogled.opis());
+        // zgostitev je samo sestnajstiska (pot slike jo zahteva), a ubezimo vseeno
+        String slika = predogled.logotip() != null
+                ? osnova + "/api/v1/slike/" + predogled.logotip() + "?velikost=DELJENJE"
+                : osnova + SPLOSNA_SLIKA;
+        String opisSlike = predogled.logotip() != null
+                ? naslov
+                : ubezi("Turnirko – namizni tenis: turnirji, lige in lestvica");
         String blok = ZACETEK + "\n"
                 + "    <title>" + naslov + ubezi(PRIPONA) + "</title>\n"
                 + "    <meta name=\"description\" content=\"" + opis + "\" />\n"
@@ -49,6 +70,10 @@ public final class PredogledStrani {
                 + "    <meta property=\"og:title\" content=\"" + naslov + "\" />\n"
                 + "    <meta property=\"og:description\" content=\"" + opis + "\" />\n"
                 + "    <meta property=\"og:url\" content=\"" + ubezi(osnova + predogled.pot()) + "\" />\n"
+                + "    <meta property=\"og:image\" content=\"" + ubezi(slika) + "\" />\n"
+                + "    <meta property=\"og:image:width\" content=\"1200\" />\n"
+                + "    <meta property=\"og:image:height\" content=\"630\" />\n"
+                + "    <meta property=\"og:image:alt\" content=\"" + opisSlike + "\" />\n"
                 + "    ";
         return html.substring(0, zacetek) + blok + html.substring(konec);
     }

@@ -24,6 +24,8 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { GlavaDejanja, GlavaZavihki, useNazaj } from '../komponente/GlavaTelefona'
 import { DogodekObrazecOkno } from '../komponente/DogodekObrazecOkno'
 import { TurnirObrazecOkno } from './TurnirjiStran'
+import { LogotipOkno } from '../komponente/LogotipOkno'
+import { LogotipTekmovanja } from '../komponente/LogotipTekmovanja'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
@@ -76,6 +78,7 @@ export function TurnirStran() {
   const [odprtObrazec, nastaviOdprtObrazec] = useState(false)
   const [urejanjeTurnirja, nastaviUrejanjeTurnirja] = useState(false)
   const [potrjujemZakljucek, nastaviPotrjujemZakljucek] = useState(false)
+  const [logotipOdprt, nastaviLogotipOdprt] = useState(false)
   const [pogled, nastaviPogled] = useState<PogledTurnirja>('DOGODKI')
   const [podrobnosti, nastaviPodrobnosti] = useState(false)
 
@@ -186,9 +189,23 @@ export function TurnirStran() {
     </>
   )
 
+  /* Logotip je prikaz, ne pravilo: lastnik ga sme tudi po zaključku in pri
+     uvoženem turnirju (kot skrite razdelke Zanimivosti). */
+  const smemLogotip = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik)
+
   /* Okni (nov dogodek, potrditev zakljucka) sta na obeh sirinah isti. */
   const okna = (
     <>
+      {logotipOdprt && (
+        <LogotipOkno
+          vrsta="turnir"
+          id={idTurnirja}
+          ime={podatki.ime}
+          logotip={podatki.logotip}
+          onZapri={() => nastaviLogotipOdprt(false)}
+        />
+      )}
+
       {potrjujemZakljucek && (
         <PotrditvenoOkno
           naslov="Zaključek turnirja"
@@ -235,7 +252,7 @@ export function TurnirStran() {
               + Dogodek
             </button>
           )}
-          {seUreja && (
+          {smemLogotip && (
             <MeniDejanj naslov="Dejanja turnirja">
               {(zapri) => (
                 <>
@@ -263,19 +280,32 @@ export function TurnirStran() {
                     type="button"
                     role="menuitem"
                     className="uporabnik-meni__postavka"
-                    disabled={zakljucevanje.isPending || !vsiDogodkiZakljuceni}
                     onClick={() => {
                       zapri()
-                      nastaviPotrjujemZakljucek(true)
+                      nastaviLogotipOdprt(true)
                     }}
                   >
-                    Zaključi turnir
-                    {!vsiDogodkiZakljuceni && (
-                      <span className="uporabnik-meni__pojasnilo">
-                        Mogoče šele, ko so zaključeni vsi dogodki
-                      </span>
-                    )}
+                    Logotip
                   </button>
+                  {seUreja && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      disabled={zakljucevanje.isPending || !vsiDogodkiZakljuceni}
+                      onClick={() => {
+                        zapri()
+                        nastaviPotrjujemZakljucek(true)
+                      }}
+                    >
+                      Zaključi turnir
+                      {!vsiDogodkiZakljuceni && (
+                        <span className="uporabnik-meni__pojasnilo">
+                          Mogoče šele, ko so zaključeni vsi dogodki
+                        </span>
+                      )}
+                    </button>
+                  )}
                 </>
               )}
             </MeniDejanj>
@@ -327,12 +357,17 @@ export function TurnirStran() {
               Podrobnosti&nbsp;<span aria-hidden="true">{podrobnosti ? '▴' : '▾'}</span>
             </button>
           </div>
-          <h1 className="naslov-mobi naslov-mobi--podstran">{podatki.ime}</h1>
-          <p className="naslov-mobi__meta">
-            {[oblikujObdobjeKratko(podatki.datumZacetka, podatki.datumKonca, true), kraj]
-              .filter(Boolean)
-              .join(' · ') || 'kraj in datum še nista določena'}
-          </p>
+          <div className="naslov-z-logotipom naslov-z-logotipom--telefon">
+            <LogotipTekmovanja logotip={podatki.logotip} mesto="telefon" />
+            <div>
+              <h1 className="naslov-mobi naslov-mobi--podstran">{podatki.ime}</h1>
+              <p className="naslov-mobi__meta">
+                {[oblikujObdobjeKratko(podatki.datumZacetka, podatki.datumKonca, true), kraj]
+                  .filter(Boolean)
+                  .join(' · ') || 'kraj in datum še nista določena'}
+              </p>
+            </div>
+          </div>
           {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
         </div>
 
@@ -401,16 +436,19 @@ export function TurnirStran() {
       <Link to="/turnirji" className="povezava-nazaj">← Vsi turnirji</Link>
 
       <div className="stran-glava">
-        <div>
-          <h1 className="naslov-strani naslov-strani--podstran">
-            <span className="naslov-strani__glavni">{podatki.ime}</span>
-          </h1>
-          <p className="uvod">
-            {[kraj, oblikujObdobje(podatki.datumZacetka, podatki.datumKonca)]
-              .filter(Boolean)
-              .join(' · ') || 'kraj in datum še nista določena'}
-          </p>
-          {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
+        <div className="naslov-z-logotipom">
+          <LogotipTekmovanja logotip={podatki.logotip} mesto="glava" />
+          <div>
+            <h1 className="naslov-strani naslov-strani--podstran">
+              <span className="naslov-strani__glavni">{podatki.ime}</span>
+            </h1>
+            <p className="uvod">
+              {[kraj, oblikujObdobje(podatki.datumZacetka, podatki.datumKonca)]
+                .filter(Boolean)
+                .join(' · ') || 'kraj in datum še nista določena'}
+            </p>
+            {podatki.opombe && !podatki.vir && <p className="opomba-bloka">{podatki.opombe}</p>}
+          </div>
         </div>
         <div>
           <div className="stran-glava__dejanja">
@@ -436,6 +474,11 @@ export function TurnirStran() {
               <Link to={`/turnirji/${idTurnirja}/zreb-mreze`} className="gumb">
                 Izločilni žreb za tiskanje
               </Link>
+            )}
+            {smemLogotip && (
+              <button className="gumb" onClick={() => nastaviLogotipOdprt(true)}>
+                Logotip
+              </button>
             )}
             {smem && podatki.status !== 'ZAKLJUCEN' && (
               <button

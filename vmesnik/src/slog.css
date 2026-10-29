@@ -14589,6 +14589,10 @@ a.ekipa-okno__srecanje:hover {
   font: 600 8pt / 1.2 var(--pisava-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  /* Logotip je naložen (V54) in je lahko širok napis - glava ga ne sme
+     raztegniti čez stolpec; contain ohrani razmerje stranic. */
+  max-width: 64mm;
+  object-fit: contain;
   white-space: nowrap;
 }
 
@@ -24664,4 +24668,261 @@ html.uvod-tece {
   letter-spacing: 0;
   text-transform: none;
   color: var(--barva-crnilo-3);
+}
+
+/* ==========================================================================
+   Logotip tekmovanja (V54)
+   Logotip lige ali turnirja stoji ob naslovu strani - ni ikona namesto
+   besede (DESIGN.md 9), ime tekmovanja je tik ob njem. Mere nosi element
+   (meraLogotipa: enaka ploščina), CSS jih le ne pusti čez stolpec. Okno
+   »Logotip« (LogotipOkno) kaže isti logotip na papirju strani in na belem
+   listu v sivinah - tako kot ga natisne črno-beli tiskalnik.
+   ========================================================================== */
+
+.logotip-tekmovanja {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Logotip levo od naslova; naslov se ob dolgem imenu krči, logotip ne. */
+.naslov-z-logotipom {
+  display: flex;
+  align-items: center;
+  gap: var(--r3);
+  min-width: 0;
+}
+
+.naslov-z-logotipom > :last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Telefon: manjši logotip ob imenu v lepljivi glavi. */
+.naslov-z-logotipom--telefon {
+  gap: 12px;
+}
+
+.logotip-okno {
+  display: grid;
+  gap: var(--r3);
+}
+
+.logotip-okno__uvod {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 15px;
+  color: var(--barva-crnilo-2);
+}
+
+.logotip-okno__predogled {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--r2);
+}
+
+.logotip-okno__okvir {
+  display: grid;
+  gap: var(--r1);
+  min-width: 0;
+}
+
+.logotip-okno__papir {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 152px;
+  padding: var(--r2);
+  background: var(--barva-papir);
+  border: 1px solid var(--barva-crta);
+}
+
+/* List za tisk je bel, tiskalnik črno-bel. */
+.logotip-okno__papir--tisk {
+  background: var(--barva-bela);
+}
+
+.logotip-okno__papir--tisk img {
+  filter: grayscale(1);
+}
+
+.logotip-okno__papir img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.logotip-okno__prazno {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-4);
+}
+
+.logotip-okno__priprava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r1) var(--r3);
+}
+
+.logotip-okno__priprava .obvestilo {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.logotip-okno__mera {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.logotip-okno__dejanja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r1) var(--r2);
+}
+
+/* Izbira datoteke je gumb; polje samo je skrito, a ostane v zaporedju
+   tabulatorja (fokus nariše oznaka okoli gumba). */
+.logotip-okno__izberi {
+  position: relative;
+  cursor: pointer;
+}
+
+.logotip-okno .logotip-okno__izberi input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+}
+
+.logotip-okno__izberi:focus-within {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: 2px;
+}
+
+.logotip-okno__namig {
+  max-width: 46ch;
+  font-size: 14px;
+  color: var(--barva-crnilo-3);
+}
+
+.logotip-okno__knjiznica {
+  display: grid;
+  gap: var(--r1);
+  padding-top: var(--r2);
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.logotip-okno__ploscice {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--r1);
+}
+
+.logotip-okno__ploscica {
+  display: grid;
+  min-width: 0;
+}
+
+/* Ploščica je bela (kot kartica mreže), da je vsak logotip na isti podlagi
+   ne glede na svoje ozadje. */
+.logotip-okno__slika {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88px;
+  padding: var(--r1);
+  background: var(--barva-bela);
+  border: 1px solid var(--barva-crta);
+  cursor: pointer;
+  transition: border-color 120ms;
+}
+
+.logotip-okno__slika:hover {
+  border-color: var(--barva-crnilo-3);
+}
+
+.logotip-okno__slika--izbrana,
+.logotip-okno__slika--izbrana:hover {
+  padding: 7px;
+  border: 2px solid var(--barva-glavna);
+}
+
+.logotip-okno__slika img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.logotip-okno__izbrisi {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-negativna-tekst);
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .logotip-okno__predogled {
+    grid-template-columns: 1fr;
+  }
+
+  .logotip-okno__papir {
+    min-height: 120px;
+  }
+}
+
+/* Logotip turnirja na tisku (V54): desno v glavi lista mreže, v glavi listka
+   skupin pred znamko Turnirka. Višine glav se ne spremenijo - listek skupin
+   ima višino izračunano v mm (zrebSkupin.MERE), logotip je v njeni vrstici. */
+.zreb-glava--z-logotipom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6mm;
+}
+
+.zreb-glava--z-logotipom > div {
+  min-width: 0;
+}
+
+.zreb-glava__logotip {
+  display: block;
+  flex: none;
+  height: 16mm;
+  width: auto;
+  max-width: 60mm;
+  object-fit: contain;
+}
+
+.listek-skupine__logotip {
+  flex: none;
+  align-self: center;
+  height: calc(var(--glava) - 2.5mm);
+  width: auto;
+  max-width: 22mm;
+  margin-left: auto;
+  object-fit: contain;
+}
+
+.listek-skupine__znamka--ob-logotipu {
+  margin-left: 0;
 }

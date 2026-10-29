@@ -87,6 +87,14 @@ public class Turnir {
     @Column(name = "skrite_zanimivosti")
     private String skriteZanimivosti;
 
+    /* Logotip (V54): prikaz, ne pravilo tekmovanja - ureja se v vsakem stanju
+       in tudi pri uvozenem turnirju (SlikeStoritev). EAGER namenoma: TurnirDto
+       nastane v kontrolerju IZVEN transakcije in logotip nosi; Slika je samo
+       opis brez bajtov, turnirjev z logotipom pa je malo. */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_logotip")
+    private Slika logotip;
+
     /* Optimisticno zaklepanje - prepreci, da bi si dva socasna
        zapisa tiho prepisala podatke. */
     @Version
@@ -146,6 +154,9 @@ public class Turnir {
     public void setSkriteZanimivosti(Collection<PostavkaZanimivosti> skrite) {
         this.skriteZanimivosti = PostavkaZanimivosti.vZapis(skrite);
     }
+
+    public Slika getLogotip() { return logotip; }
+    public void setLogotip(Slika logotip) { this.logotip = logotip; }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
 }

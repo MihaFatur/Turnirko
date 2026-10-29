@@ -195,6 +195,18 @@ export interface TurnirDto {
   zmagovalec: string | null
   zadnjiIzid: string | null
   vir: VirTekmovanja | null
+  /* Logotip turnirja (V54): glava strani in žreb za tisk. */
+  logotip: SlikaDto | null
+}
+
+/* Naložena slika (V54). Javni naslov je /api/v1/slike/{zgostitev} (urlSlike
+   v pomozno/slike); sirina in visina sta meri različice TISK - iz njiju stran
+   ve razmerje stranic, preden se slika naloži. */
+export interface SlikaDto {
+  id: number
+  zgostitev: string
+  sirina: number
+  visina: number
 }
 
 export interface DogodekDto {
@@ -1624,6 +1636,8 @@ export interface LigaVnos {
   ime: string
   sezona: string | null
   spolKategorija: SpolKategorija
+  /* Logotip lige (V54): glava strani, Turnirkov zapisnik, predogled povezave. */
+  logotip: SlikaDto | null
   formatSrecanja: FormatSrecanja
   steviloNizov: number
   zmagZaSrecanje: number | null

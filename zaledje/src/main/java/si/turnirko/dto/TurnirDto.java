@@ -46,7 +46,9 @@ public record TurnirDto(
         String zadnjiIzid,
         // Vir (V27): uvozen turnir je samo za branje - vmesnik urejanja ne
         // ponudi in pod naslovom pove, od kod so podatki.
-        VirTekmovanja vir
+        VirTekmovanja vir,
+        // Logotip turnirja (V54); prazno, ce ga ni. Javno: glava strani, zreb za tisk.
+        SlikaDto logotip
 ) {
 
     /* Stevci enega turnirja; PRAZNI so odgovor mutacije, kjer jih se ni. */
@@ -100,7 +102,8 @@ public record TurnirDto(
                 potek.faza(),
                 potek.zmagovalec(),
                 potek.zadnjiIzid(),
-                turnir.getVir()
+                turnir.getVir(),
+                SlikaDto.iz(turnir.getLogotip())
         );
     }
 }

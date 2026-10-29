@@ -67,6 +67,24 @@ class PredogledStraniTest {
         assertFalse(izid.contains("<b>"));
     }
 
+    /* Slika predogleda (V54): logotip tekmovanja v razlicici za deljenje, sicer
+       splosna slika - obe 1200 x 630. */
+    @Test
+    void slikaJeLogotipAliSplosna() {
+        String zgostitev = "ab".repeat(32);
+        String zLogotipom = PredogledStrani.vstavi(HTML,
+                new Predogled("Liga Savinja A", "Lestvica", "/lige/386", "/lige/386").zLogotipom(zgostitev),
+                "https://turnirko-nt.si");
+        String brez = PredogledStrani.vstavi(HTML,
+                new Predogled("Liga X", "Lestvica", "/lige/1", "/lige/1"), "https://turnirko-nt.si");
+
+        assertTrue(zLogotipom.contains("<meta property=\"og:image\" content=\"https://turnirko-nt.si/api/v1/slike/"
+                + zgostitev + "?velikost=DELJENJE\" />"), zLogotipom);
+        assertTrue(zLogotipom.contains("<meta property=\"og:image:alt\" content=\"Liga Savinja A\" />"));
+        assertTrue(brez.contains("<meta property=\"og:image\" content=\"https://turnirko-nt.si/predogled.png\" />"));
+        assertTrue(brez.contains("<meta property=\"og:image:width\" content=\"1200\" />"));
+    }
+
     @Test
     void brezOznakOstaneNespremenjen() {
         String brez = "<head><title>Turnirko</title></head>";

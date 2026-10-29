@@ -22,6 +22,7 @@ import si.turnirko.modeli.Ekipa;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.RatingStanje;
+import si.turnirko.modeli.Slika;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmovanja;
@@ -74,6 +75,7 @@ public class PredogledStoritev {
         }
         String pot = "/lige/" + id;
         String imeLige = imeLige(liga.ime(), liga.sezona());
+        String logotip = liga.logotip() != null ? liga.logotip().zgostitev() : null;
         if (idEkipa != null) {
             Optional<Ekipa> ekipa = ekipaRepozitorij.findById(idEkipa)
                     .filter(e -> e.getLiga() != null && id.equals(e.getLiga().getId()));
@@ -81,7 +83,7 @@ public class PredogledStoritev {
                 return Optional.of(new Predogled(
                         ekipa.get().prikazanoIme() + " · " + liga.ime(),
                         "Kader, naslednje srečanje in vsi izidi ekipe · " + imeLige,
-                        pot + "?ekipa=" + idEkipa, pot));
+                        pot + "?ekipa=" + idEkipa, pot).zLogotipom(logotip));
             }
         }
         List<String> deli = new ArrayList<>();
@@ -98,7 +100,8 @@ public class PredogledStoritev {
                 deli.add("naslednje kolo " + datum(liga.naslednje().datum()));
             }
         }
-        return Optional.of(new Predogled(imeLige, String.join(" · ", deli), pot, pot));
+        return Optional.of(new Predogled(imeLige, String.join(" · ", deli), pot, pot)
+                .zLogotipom(logotip));
     }
 
     @Transactional(readOnly = true)
@@ -106,7 +109,8 @@ public class PredogledStoritev {
         return turnirRepozitorij.findById(id).map(t -> {
             String pot = "/turnirji/" + id;
             return new Predogled(t.getIme(),
-                    zDeli(obdobjeInKraj(t), "izidi, skupine, mreže in uvrstitve"), pot, pot);
+                    zDeli(obdobjeInKraj(t), "izidi, skupine, mreže in uvrstitve"), pot, pot)
+                    .zLogotipom(zgostitev(t.getLogotip()));
         });
     }
 
@@ -118,7 +122,8 @@ public class PredogledStoritev {
             String pot = "/dogodki/" + id;
             Turnir t = d.getTurnir();
             return new Predogled(d.getIme() + " · " + t.getIme(),
-                    zDeli(obdobjeInKraj(t), "izidi, mreža in uvrstitve kategorije"), pot, pot);
+                    zDeli(obdobjeInKraj(t), "izidi, mreža in uvrstitve kategorije"), pot, pot)
+                    .zLogotipom(zgostitev(t.getLogotip()));
         });
     }
 
@@ -144,7 +149,8 @@ public class PredogledStoritev {
                 deli.add(termin(s.getPredvidenZacetek()));
             }
             deli.add(koncano ? "zapisnik srečanja" : "postavi in izidi");
-            return new Predogled(naslov, String.join(" · ", deli), pot, pot);
+            return new Predogled(naslov, String.join(" · ", deli), pot, pot)
+                    .zLogotipom(liga != null ? zgostitev(liga.getLogotip()) : null);
         });
     }
 
@@ -220,6 +226,10 @@ public class PredogledStoritev {
 
     private static String zDeli(String prvi, String drugi) {
         return prvi.isEmpty() ? zVelikoZacetnico(drugi) : prvi + " · " + drugi;
+    }
+
+    private static String zgostitev(Slika logotip) {
+        return logotip != null ? logotip.getZgostitev() : null;
     }
 
     private static String zVelikoZacetnico(String s) {

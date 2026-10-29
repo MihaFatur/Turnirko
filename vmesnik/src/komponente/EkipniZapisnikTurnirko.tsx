@@ -2,22 +2,22 @@
    zapisnika, kot ga drži liga Savinja na papirju - glava, obe ekipi s postavo
    (dvojica, igralci, rezerva), mreža tekem z nizi in stanjem dvoboja, noga z
    rezultatom, lokacijo, datumom, uro in kolom. Glava nosi znamko Turnirka,
-   liga z logotipom (Savinja) pa še njega.
+   tekmovanje z logotipom (V54: liga ali turnir ekipnega dogodka) pa še njega.
 
    Podatke bere kot uradni obrazec NTZS (ZapisnikEkipnegaDvoboja): kar je
    vpisano, izpiše, ostalo ostane prazno za ročni vpis, obrazec pa se natisne
    tudi pred postavo. Polja, ki jih ne hranimo (lokacija, rezerva), ostanejo
    črte. Zapisnik je črnilo na papirju ne glede na temo; barvna sta samo
-   znamka in logotip lige.
+   znamka in logotip tekmovanja.
 
    List je natanko ena ležeča stran A4 znotraj robov 10 mm: višina vrstic mreže
    se razdeli po višini, ki ostane (CSS grid), zato je zapisnik s petimi
    vrsticami (Savinja) zračen, s sedmimi in več (SNTL) pa se stisne. */
 import { Fragment, type CSSProperties } from 'react'
 
-import type { LigaDto, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
+import type { LigaDto, SlikaDto, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
 import { RAZPORED_FORMATA } from '../api/tipi'
-import { logotipLige } from '../pomozno/logotipiLig'
+import { urlSlike } from '../pomozno/slike'
 import { razbijCas, sestaviPodatkeZapisnika, stanjaDvoboja } from '../pomozno/zapisnikPodatki'
 import { ZnakTurnirko } from './Postavitev'
 
@@ -43,9 +43,12 @@ function velikostImenaPt(ime: string, najvec: number): number {
 export function EkipniZapisnikTurnirko({
   podrobno,
   liga,
+  logotip,
 }: {
   podrobno: SrecanjePodrobnoDto
   liga: LigaDto | undefined
+  /* Logotip lige oz. turnirja ekipnega dogodka (V54); stran ga ima pri roki. */
+  logotip: SlikaDto | null
 }) {
   const s = podrobno.srecanje
   const { prazen, nizi, vrstice, imeNa } = sestaviPodatkeZapisnika(podrobno)
@@ -54,7 +57,6 @@ export function EkipniZapisnikTurnirko({
 
   const jeLiga = s.idLiga != null
   const tekmovanje = liga?.ime ?? podrobno.kontekst.tekmovanje
-  const logotip = jeLiga ? logotipLige(tekmovanje) : null
   /* Pod naslovom: sezona lige oz. kategorija turnirja. */
   const podnaslov = jeLiga ? (liga?.sezona ?? podrobno.kontekst.sezona) : podrobno.kontekst.dogodek
   const rednoKolo = jeLiga && s.idSerija == null
@@ -84,7 +86,13 @@ export function EkipniZapisnikTurnirko({
           {podnaslov && <p className="ekipni-zapisnik__podnaslov">{podnaslov}</p>}
         </div>
         {logotip ? (
-          <img className="ekipni-zapisnik__logotip" src={logotip.slika} alt={logotip.ime} />
+          <img
+            className="ekipni-zapisnik__logotip"
+            src={urlSlike(logotip, 'TISK')}
+            width={logotip.sirina}
+            height={logotip.visina}
+            alt={`Logotip: ${tekmovanje}`}
+          />
         ) : (
           <span />
         )}

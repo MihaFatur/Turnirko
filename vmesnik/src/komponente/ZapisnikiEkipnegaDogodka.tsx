@@ -16,7 +16,7 @@ import { Link } from 'react-router-dom'
 import { useQueries } from '@tanstack/react-query'
 
 import { srecanjaApi } from '../api/zahteve'
-import type { DogodekDto, SrecanjePodrobnoDto } from '../api/tipi'
+import type { DogodekDto, SlikaDto, SrecanjePodrobnoDto } from '../api/tipi'
 import { OZNAKE_SPOL_KATEGORIJA } from '../api/tipi'
 import { SIRINA_LEZECEGA_LISTA_PX, useMeriloLista } from '../pomozno/meriloLista'
 import {
@@ -58,10 +58,13 @@ function preberiIzbiro(): NaList {
 export function ZapisnikiEkipnegaDogodka({
   dogodek,
   imeTurnirja,
+  logotipTurnirja,
   idjiSrecanj,
 }: {
   dogodek: DogodekDto
   imeTurnirja: string | null
+  /* Logotip turnirja (V54) za glavo Turnirkovega zapisnika. */
+  logotipTurnirja: SlikaDto | null
   /* Srecanja tekem, za katere ima smisel natisniti zapisnik, v vrstnem redu
      tiska. */
   idjiSrecanj: number[]
@@ -175,7 +178,9 @@ export function ZapisnikiEkipnegaDogodka({
         ) : !nalozeno ? (
           <p className="obvestilo zaslon-samo">Nalaganje …</p>
         ) : lezeci ? (
-          podatki.map((p) => <EkipniZapisnikTurnirko key={p.srecanje.id} podrobno={p} liga={undefined} />)
+          podatki.map((p) => (
+            <EkipniZapisnikTurnirko key={p.srecanje.id} podrobno={p} liga={undefined} logotip={logotipTurnirja} />
+          ))
         ) : naList === 1 ? (
           podatki.map((p) => (
             <div key={p.srecanje.id} className="zapisnik-stran">

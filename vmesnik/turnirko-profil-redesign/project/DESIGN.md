@@ -332,6 +332,29 @@ Razredi so `.kartoteka__*` (stran) in `.zapisnik__*` (okna), zadnji razdelek
   »Filtri«. Masthead in spodnjo vrstico nosi aplikacija; »+ Nov igralec« je
   lepljiv nad spodnjo vrstico.
 
+### 4c. Logotip tekmovanja (oktober 2026)
+
+Liga in turnir imata lahko naložen logotip (`LogotipTekmovanja`, okno
+`LogotipOkno`, razdelek »Logotip tekmovanja« na koncu `slog.css`). To ni ikona
+namesto besede (točka 9): ime tekmovanja stoji vedno tik ob njem, zato je slika
+`alt=""`.
+
+- **Kje**: levo od naslova strani lige in turnirja (namizje ob 80 px naslovu,
+  telefon ob imenu v glavi), Turnirkov ekipni zapisnik (24 mm, desno), žreb
+  mreže (16 mm, desno v glavi) in listki skupin (v višini glave, pred znamko
+  Turnirka). **Ne** na uradnem obrazcu NTZS, sodniških listkih, seznamih lig in
+  turnirjev ali v koledarju — večina tekmovanj logotipa nima in seznam bi bil
+  lisast.
+- **Velikost je po enaki ploščini, ne po višini** (`meraLogotipa`): širok
+  napis in kvadraten grb na strani tehtata enako. Logotip ne dobi okvirja,
+  sence ne podlage; belo ozadje okno ob nalaganju ponudi odstraniti, ker bel
+  pravokotnik na papirju izstopa.
+- **Okno pokaže dva predogleda**: na papirju strani in v sivinah na belem
+  (tako ga natisne črno-beli tiskalnik). Ploščice knjižnice so bele z
+  `--barva-crta`, izbrana ima 2 px modro obrobo.
+- Logotip **ne nosi barve vmesnika**: barve so samo v sliki, glava in gumbi
+  ostanejo hišni (razdelek 2).
+
 ## 5. Prepovedano
 
 Trdo prepovedano; nič od tega ne sme priti v vmesnik.

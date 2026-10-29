@@ -1597,6 +1597,52 @@
     vrstic; stolpca ratinga ni, kadar ga noben igralec nima. `kratekKlub` (`pomozno/oblikovanje.ts`)
     odstrani splošne predpone (»Namiznoteniški klub«) v lestvici, kartici tekme in razvrstitvi.
 
+- **Slike in logotip tekmovanja** (V54, okt 2026; `SlikeStoritev`, `SlikeKontroler`,
+  `pomozno/ObdelavaSlik`). Organizator ligi in turnirju doda logotip, ki stoji v glavi
+  strani, na Turnirkovem ekipnem zapisniku, na žrebu skupin in mreže za tisk in v
+  predogledu povezave. Pravila, ki jih ne razbij:
+  - **Dva koraka: knjižnica, nato izbira.** `POST /slike` (multipart, polje `datoteka`)
+    sliko shrani, `PUT /lige|turnirji/{id}/logotip {idSlika}` jo izbere, `DELETE` na isti
+    poti odstrani. Liga je vsako sezono nov zapis — Savinja A–D logotip naloži enkrat.
+    Knjižnica (`GET /slike`, ni javna: pravilo pred »GET je javen«) je adminu vse,
+    organizatorju njegove slike in logotipi tekmovanj, ki jih sme urejati (tudi klubskega
+    kolege). Izbris (`DELETE /slike/{id}`) samo svoje in samo, dokler je ne nosi nobeno
+    tekmovanje.
+  - **Logotip je prikaz, ne pravilo** (kot skriti razdelki Zanimivosti): lastnik in admin,
+    v vsakem stanju in tudi pri uvoženem tekmovanju (`preveri…ZaPrikazPoId`). Kvalifikacije
+    dobijo logotip višje lige ob nastanku.
+  - **Tujo sliko sme organizator uporabiti samo, če je že javna** (nosi jo kakšno
+    tekmovanje) — id-ji so zaporedni, ugibanje ne sme odpreti neobjavljene slike. Ista
+    datoteka, naložena znova, je ista slika (zgostitev je UNIQUE) in gre v knjižnico
+    zadnjega, ki jo je naložil.
+  - **Strežnik vsako sliko prebere in zapiše znova** (`ObdelavaSlik`): vrsto določi
+    vsebina (samo PNG in JPEG — SVG pretvori brskalnik, ker lahko nosi skript), meri se
+    preverijo iz glave PRED dekodiranjem (bomba), metapodatki (EXIF, GPS) ne pridejo v
+    bazo. Tri različice v `slika_razlicica`: TISK (≤ 1200 px), ZASLON (≤ 480 px),
+    DELJENJE (1200 × 630 na papirju — prosojen PNG bi WhatsApp v temnem načinu pokazal na
+    črnem). Neprosojna velika slika gre v JPEG.
+  - **Bajti so v bazi, v ločeni tabeli** (`slika` je opis, `slika_razlicica` bajti):
+    nočna kopija kopira samo `turnirko.db`, zato so slike v njej brez nove nastavitve na
+    strežniku. Liga in turnir nosita `logotip` kot **EAGER** `Slika` (samo opis):
+    `TurnirDto` nastane v kontrolerju izven transakcije. Ob prenovi na PostgreSQL gre
+    `vsebina` v `bytea`.
+  - **Javna pot je `/api/v1/slike/{zgostitev}?velikost=`** z `Cache-Control: immutable`
+    za leto dni in ETag — ista zgostitev je vedno ista vsebina, zamenjava logotipa je nov
+    naslov. Odgovor nosi `Content-Security-Policy: default-src 'none'; sandbox`. Ko bo
+    stran dobila CSP (V12), mora `img-src` dovoliti `blob:` (predogled v oknu).
+  - **Pripravo pred pošiljanjem dela brskalnik** (`pomozno/slike.ts`): obrez praznega
+    roba (prosojnega ali skoraj belega), po izbiri odstranitev belega ozadja, povezanega z
+    robom (bela v grbu ostane; mehki robovi dobijo delno prosojnost), pomanjšanje v
+    korakih na 1200 px, PNG. Okno `LogotipOkno` pokaže logotip na papirju in v sivinah na
+    belem (črno-beli tiskalnik) in opozori, ko bi bil na zapisniku pod 200 dpi
+    (`dpiNaTisku`).
+  - **Velikost na strani je po enaki ploščini** (`meraLogotipa`, `LogotipTekmovanja`):
+    pri enaki višini bi bil širok napis trikrat večji od kvadratnega grba. Logotip je
+    okras (`alt=""`), ime tekmovanja stoji ob njem.
+  - Omejitev: 30 nalaganj na račun na uro, 8 MB na datoteko (413 s slovenskim
+    sporočilom). Testi: `ObdelavaSlikTest`, `SlikeStoritevTest`, `SlikeDostopTest`,
+    `PredogledStraniTest`, `PredogledStoritevTest`.
+
 - **Upravljanje obstoječe naročnine** (V35, `UpravljanjeNarocnineStoritev`,
   `StripeNarocnine`, `/api/v1/narocnina`): pregled (obdobje, cikel, cena, zabeležen
   preklop), preklic ob koncu obdobja, obnova preklicane in preklop mesečno ↔ letno
@@ -2577,11 +2623,10 @@
         je prazno za roko, in tudi ta obrazec se natisne pred postavo (vrstice iz
         formata). Stanje dvoboja se izpiše iz končanih tekem po vrstnem redu
         obrazca (`stanjaDvoboja`). **Lokacije in rezerve ne hranimo** — ostaneta črti.
-      - **Logotip lige** je po imenu lige (`pomozno/logotipiLig`, zdaj samo
-        Savinja; slika `src/assets/liga-savinja.png`, obrezana na 480 px) in
-        **samo pri ligi** — klub »Savinja« bi sicer dal logotip vsakemu turnirju.
-        Liga brez logotipa ima v glavi le znamko Turnirka. Nov logotip = zapis v
-        `LOGOTIPI`.
+      - **Logotip** je naložen logotip tekmovanja (V54, glej »Slike in logotip
+        tekmovanja«): pri ligi njen, pri ekipnem dogodku logotip turnirja (stran ga
+        poda kot `logotip`, različica TISK). Brez logotipa ima glava le znamko
+        Turnirka. Do V54 je bil vgrajen in izbran po imenu lige (samo Savinja).
       - **List je natanko ena ležeča stran A4** (`@page ekipni-zapisnik`, rob
         10 mm; 188 mm vsebine, ker tisk v zaokroževanju sicer prelije na prazen
         list). Višino vrstic mreže razdeli CSS grid po tem, kar ostane (dvojica
@@ -3172,8 +3217,11 @@
     »<naslov> – Turnirko« = `PredogledStrani.PRIPONA`); stran, ki jo odpre
     WhatsApp, in zavihek se imenujeta enako.
   - og:url in kanonični naslov gradi `turnirko.javni-naslov`
-    (`TURNIRKO_JAVNI_NASLOV`, privzeto https://turnirko-nt.si); slika
-    `predogled.png` (1200 × 630) je ena za vse strani.
+    (`TURNIRKO_JAVNI_NASLOV`, privzeto https://turnirko-nt.si); slika je
+    `predogled.png` (1200 × 630), razen pri ligi, turnirju, kategoriji in
+    srečanju lige, ki imajo logotip (V54): takrat je og:image njegova različica
+    DELJENJE (`Predogled.logotip`). Zato so oznake og:image v bloku med
+    `<!--predogled-->` in `<!--/predogled-->`.
 - **Ikone za bližnjico na začetnem zaslonu** (`apple-touch-icon.png`,
   `ikona-192/512.png`, `manifest.json` z `display: minimal-ui`,
   `theme-color` = papir) in `predogled.png` so izrisani iz

@@ -11,8 +11,9 @@
    (pomozno/zrebMreze). */
 import type { CSSProperties } from 'react'
 
-import type { MrezaDto, TurnirDto } from '../api/tipi'
+import type { MrezaDto, SlikaDto, TurnirDto } from '../api/tipi'
 import { sklonEkip, sklonIgralcev } from '../pomozno/oblikovanje'
+import { urlSlike } from '../pomozno/slike'
 import {
   type MrezaStran,
   type MrezaTekmaTisk,
@@ -37,6 +38,7 @@ export function ZrebMrezeDogodka({ mreza, turnir }: { mreza: MrezaDto; turnir?: 
           list={list}
           ime={dogodek.ime}
           nadNaslovom={nadNaslovom}
+          logotip={turnir?.logotip ?? null}
           podNaslovom={[
             'Izločilni del',
             `${sklop.steviloUdelezencev} ${ekipno ? sklonEkip(sklop.steviloUdelezencev) : sklonIgralcev(sklop.steviloUdelezencev)}`,
@@ -54,11 +56,14 @@ function ListMreze({
   list,
   ime,
   nadNaslovom,
+  logotip,
   podNaslovom,
 }: {
   list: ZrebMrezeList
   ime: string
   nadNaslovom: string | null
+  /* Logotip turnirja (V54) desno v glavi lista; prazno, ce ga ni. */
+  logotip: SlikaDto | null
   podNaslovom: string
 }) {
   /* Stolpcev: kola lista in stolpec zmagovalca. */
@@ -70,10 +75,21 @@ function ListMreze({
 
   return (
     <section className={'zreb-mreza' + (gosto ? ' zreb-mreza--gosto' : '')} style={merila}>
-      <header className="zreb-glava zreb-glava--mreza">
-        {nadNaslovom && <p className="zreb-glava__nad">{nadNaslovom}</p>}
-        <h1 className="zreb-glava__ime">{ime}</h1>
-        <p className="zreb-glava__pod">{podNaslovom}</p>
+      <header className={'zreb-glava zreb-glava--mreza' + (logotip ? ' zreb-glava--z-logotipom' : '')}>
+        <div>
+          {nadNaslovom && <p className="zreb-glava__nad">{nadNaslovom}</p>}
+          <h1 className="zreb-glava__ime">{ime}</h1>
+          <p className="zreb-glava__pod">{podNaslovom}</p>
+        </div>
+        {logotip && (
+          <img
+            className="zreb-glava__logotip"
+            src={urlSlike(logotip, 'TISK')}
+            width={logotip.sirina}
+            height={logotip.visina}
+            alt=""
+          />
+        )}
       </header>
 
       <div className="zreb-mreza__naslovi">

@@ -42,6 +42,7 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             LEFT JOIN FETCH t.kraj
             LEFT JOIN FETCH t.klubLastnik
             LEFT JOIN FETCH t.ustvaril
+            LEFT JOIN FETCH t.logotip
             ORDER BY t.ustvarjenOb DESC
             """)
     List<Turnir> najdiVseSKrajem();
@@ -51,6 +52,7 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             LEFT JOIN FETCH t.kraj
             LEFT JOIN FETCH t.klubLastnik
             LEFT JOIN FETCH t.ustvaril
+            LEFT JOIN FETCH t.logotip
             WHERE t.id = :id
             """)
     Optional<Turnir> najdiSKrajem(Long id);
@@ -161,4 +163,7 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             WHERE t.ustvaril.id = :idUstvaril
             """)
     List<Turnir> najdiZaUstvarjalca(Long idUstvaril);
+
+    /* Koliko turnirjev nosi sliko kot logotip (V54; glej LigaRepozitorij). */
+    long countByLogotipId(Long idSlika);
 }

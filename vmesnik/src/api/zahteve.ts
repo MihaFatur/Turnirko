@@ -89,6 +89,7 @@ import type {
   RegistracijaOdgovorDto,
   RegistracijaVnos,
   RocniRazporedVnos,
+  SlikaDto,
   SpremembaGeslaVnos,
   SpremembaPaketaDto,
   SrecanjeDto,
@@ -129,6 +130,22 @@ export const turnirjiApi = {
     api.vrni<ZanimivostiNastavitveDto>(`/turnirji/${id}/zanimivosti/nastavitve`),
   shraniZanimivostiNastavitve: (id: number, skrite: PostavkaZanimivosti[]) =>
     api.posodobi<ZanimivostiNastavitveDto>(`/turnirji/${id}/zanimivosti/nastavitve`, { skrite }),
+  /* Logotip (V54) - slika iz knjižnice; lastnik in admin, tudi pri uvoženem turnirju. */
+  nastaviLogotip: (id: number, idSlika: number) =>
+    api.posodobi<SlikaDto>(`/turnirji/${id}/logotip`, { idSlika }),
+  odstraniLogotip: (id: number) => api.izbrisi(`/turnirji/${id}/logotip`),
+}
+
+/* Slike (V54): knjižnica logotipov urejevalca. Sliko samo gledalec dobi po
+   zgostitvi (urlSlike v pomozno/slike) - ta pot ni v tem viru. */
+export const slikeApi = {
+  knjiznica: () => api.vrni<SlikaDto[]>('/slike'),
+  nalozi: (png: Blob) => {
+    const obrazec = new FormData()
+    obrazec.append('datoteka', png, 'logotip.png')
+    return api.objavi<SlikaDto>('/slike', obrazec)
+  },
+  izbrisi: (id: number) => api.izbrisi(`/slike/${id}`),
 }
 
 export const dogodkiApi = {
@@ -491,6 +508,10 @@ export const ligeApi = {
     api.vrni<ZanimivostiNastavitveDto>(`/lige/${id}/zanimivosti/nastavitve`),
   shraniZanimivostiNastavitve: (id: number, skrite: PostavkaZanimivosti[]) =>
     api.posodobi<ZanimivostiNastavitveDto>(`/lige/${id}/zanimivosti/nastavitve`, { skrite }),
+  /* Logotip (V54) - kot pri turnirju: prikaz, ureja se v vsakem stanju lige. */
+  nastaviLogotip: (id: number, idSlika: number) =>
+    api.posodobi<SlikaDto>(`/lige/${id}/logotip`, { idSlika }),
+  odstraniLogotip: (id: number) => api.izbrisi(`/lige/${id}/logotip`),
 
   /* Končnica: serije vseh krogov. Nastane iz končne lestvice rednega dela in
      se razveljavi, dokler se nobena njena tekma ni začela. */

@@ -210,6 +210,13 @@ public class Liga {
     @JoinColumn(name = "id_klub_lastnik")
     private Klub klubLastnik;
 
+    /* Logotip (V54): prikaz, ne pravilo tekmovanja - ureja se v vsakem stanju
+       in tudi pri uvozeni ligi (SlikeStoritev). EAGER iz istega razloga kot pri
+       turnirju: LigaDto ga nosi, Slika pa je samo opis brez bajtov. */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_logotip")
+    private Slika logotip;
+
     @Version
     @Column(name = "verzija", nullable = false)
     private long verzija;
@@ -367,6 +374,9 @@ public class Liga {
 
     public Klub getKlubLastnik() { return klubLastnik; }
     public void setKlubLastnik(Klub klubLastnik) { this.klubLastnik = klubLastnik; }
+
+    public Slika getLogotip() { return logotip; }
+    public void setLogotip(Slika logotip) { this.logotip = logotip; }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
 }

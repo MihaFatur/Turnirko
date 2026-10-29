@@ -183,6 +183,10 @@ public class VarnostneNastavitve {
                         // gost sme brati vse ostalo
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                         // --- od tu naprej samo mutacije (ne-GET) ---
+                        // knjiznica logotipov (V54) je urejevalceva: nalozene slike, ki
+                        // se niso na nobenem tekmovanju, niso javne. Samo koren - slika
+                        // sama (/api/v1/slike/{zgostitev}) ostane javen GET spodaj.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/slike").hasAnyRole("ADMIN", "ORGANIZATOR")
                         // izbor lig za domaco stran je urednistvo in ne
                         // upravljanje tekmovanja: organizator sme svojo ligo,
                         // vhodna stran zveze pa ni njegova. Pravilo mora stati
@@ -196,6 +200,10 @@ public class VarnostneNastavitve {
                         // organizator sme dodati NOVEGA igralca v skupni sifrant
                         // (samo POST na koren); urejanje/brisanje/rating ostane adminu.
                         // Isti vpis vprasa, ali podoben igralec ze obstaja (/podobni):
+                        // nalaganje in brisanje slik (logotip tekmovanja, V54); kdo sme
+                        // katero sliko izbrisati, preveri SlikeStoritev
+                        .requestMatchers("/api/v1/slike", "/api/v1/slike/**")
+                                .hasAnyRole("ADMIN", "ORGANIZATOR")
                         // javni izpis brez datumov rojstva. Razlicica z datumi
                         // (/podobni/podrobno) tu ni omenjena in pade v splosno pravilo
                         // "/api/**" za ADMIN - kot GET /igralci/podrobno.
