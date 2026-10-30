@@ -41,6 +41,7 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { IzbirnikKluba } from '../komponente/IzbirnikKluba'
 import { IzbirnikKraja } from '../komponente/IzbirnikKraja'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
+import { PregledProfilnihSlik } from '../komponente/PregledProfilnihSlik'
 import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { letnica, oblikujDatum, sklonTekem, zVelikoZacetnico } from '../pomozno/oblikovanje'
@@ -355,6 +356,8 @@ export function IgralciStran() {
       {/* Glave strani (nadnaslov, naslov) ni: kje smo, pove navigacija
           (odločitev lastnika, 11. 10. 2026). Ostane kolofon s števci. */}
       {!telefon && kolofon}
+
+      {jeAdmin && pogled === 'seznam' && <PregledProfilnihSlik />}
 
       <div className="kartoteka__sekcija">
         {pogled === 'cistka' && jeAdmin ? (

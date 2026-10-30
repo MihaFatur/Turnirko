@@ -17,8 +17,10 @@ import { Fragment, type CSSProperties } from 'react'
 
 import type { LigaDto, SlikaDto, SrecanjePodrobnoDto, StranEkipe } from '../api/tipi'
 import { RAZPORED_FORMATA } from '../api/tipi'
+import { usePokrovitelje } from '../pomozno/pokrovitelji'
 import { urlSlike } from '../pomozno/slike'
 import { razbijCas, sestaviPodatkeZapisnika, stanjaDvoboja } from '../pomozno/zapisnikPodatki'
+import { PokroviteljiTisk } from './PokroviteljiTisk'
 import { ZnakTurnirko } from './Postavitev'
 
 /* Od te vrstice naprej (SNTL z desetimi tekmami) se glava in noga zgostita,
@@ -56,6 +58,8 @@ export function EkipniZapisnikTurnirko({
   const { datum, ura } = razbijCas(s.predvidenZacetek)
 
   const jeLiga = s.idLiga != null
+  /* Pokrovitelji lige oz. turnirja ekipnega dogodka (V56) v vrstici pod nogo. */
+  const pokrovitelji = usePokrovitelje(jeLiga ? 'liga' : 'turnir', jeLiga ? s.idLiga : s.idTurnir)
   const tekmovanje = liga?.ime ?? podrobno.kontekst.tekmovanje
   /* Pod naslovom: sezona lige oz. kategorija turnirja. */
   const podnaslov = jeLiga ? (liga?.sezona ?? podrobno.kontekst.sezona) : podrobno.kontekst.dogodek
@@ -172,6 +176,8 @@ export function EkipniZapisnikTurnirko({
         <Polje oznaka="Ura" vrednost={ura} razred="ekipni-zapisnik__polje--ura" />
         <Polje oznaka={rednoKolo ? 'Kolo' : 'Faza'} vrednost={kolo} razred="ekipni-zapisnik__polje--kolo" />
       </footer>
+
+      <PokroviteljiTisk pokrovitelji={pokrovitelji} razred="ekipni-zapisnik__pokrovitelji" />
     </article>
   )
 }

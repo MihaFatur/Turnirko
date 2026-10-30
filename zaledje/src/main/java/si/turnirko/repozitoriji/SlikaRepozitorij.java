@@ -19,8 +19,9 @@ public interface SlikaRepozitorij extends JpaRepository<Slika, Long> {
 
     /* Organizatorjeva knjiznica: kar je nalozil sam, in logotipi tekmovanj, ki
        jih sme urejati (svoja in od svojega kluba - isto merilo kot
-       LastnistvoStoritev). Logotip, ki ga je nalozil klubski kolega, je tako na
-       voljo tudi njemu, ko ureja ligo istega kluba. */
+       LastnistvoStoritev), ter logotipi njihovih pokroviteljev (V56). Logotip,
+       ki ga je nalozil klubski kolega, je tako na voljo tudi njemu, ko ureja
+       ligo istega kluba. */
     @Query("""
             SELECT s FROM Slika s
             WHERE s.namen = :namen AND (
@@ -30,7 +31,11 @@ public interface SlikaRepozitorij extends JpaRepository<Slika, Long> {
                                OR (:idKlub IS NOT NULL AND l.klubLastnik.id = :idKlub))
                 OR s.id IN (SELECT t.logotip.id FROM Turnir t
                             WHERE t.ustvaril.id = :idUporabnik
-                               OR (:idKlub IS NOT NULL AND t.klubLastnik.id = :idKlub)))
+                               OR (:idKlub IS NOT NULL AND t.klubLastnik.id = :idKlub))
+                OR s.id IN (SELECT p.slika.id FROM Pokrovitelj p LEFT JOIN p.liga l LEFT JOIN p.turnir t
+                            WHERE l.ustvaril.id = :idUporabnik OR t.ustvaril.id = :idUporabnik
+                               OR (:idKlub IS NOT NULL
+                                   AND (l.klubLastnik.id = :idKlub OR t.klubLastnik.id = :idKlub))))
             ORDER BY s.id DESC
             """)
     List<Slika> knjiznicaOrganizatorja(NamenSlike namen, Long idUporabnik, Long idKlub);

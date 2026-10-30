@@ -6,6 +6,7 @@
 package si.turnirko.kontrolerji;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -33,15 +34,23 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Liga;
+import si.turnirko.modeli.Narocnina;
+import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.RavenTekmovanja;
+import si.turnirko.modeli.Spol;
 import si.turnirko.modeli.SpolKategorija;
+import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.VirPovezave;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.pomozno.TestneSlike;
+import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
+import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 import si.turnirko.storitve.OmejevalnikPoskusov;
@@ -58,6 +67,8 @@ class SlikeDostopTest {
     @Autowired LigaRepozitorij ligaRepozitorij;
     @Autowired TurnirRepozitorij turnirRepozitorij;
     @Autowired UporabnikRepozitorij uporabnikRepozitorij;
+    @Autowired IgralecRepozitorij igralecRepozitorij;
+    @Autowired NarocninaRepozitorij narocninaRepozitorij;
     @Autowired PasswordEncoder kodirnik;
     @Autowired OmejevalnikPoskusov omejevalnik;
 
@@ -175,6 +186,82 @@ class SlikeDostopTest {
                 .andExpect(status().isNoContent());
         mockMvc.perform(get("/api/v1/lige/" + liga))
                 .andExpect(jsonPath("$.logotip").doesNotExist());
+    }
+
+    // ---------- Profilna slika (V56) ----------
+
+    /* Svoja slika ni javna (nosi tudi čakajočo), pregled je adminov; javne slike
+       igralcev in bajti so javni. */
+    @Test
+    void profilnaSlikaVlogeInPredpomnjenje() throws Exception {
+        racun("igralec-brez", Vloga.IGRALEC);
+        mockMvc.perform(get("/api/v1/moj-profil/slika")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/profilne-slike").header("Authorization", basic("igralec-brez")))
+                .andExpect(status().isForbidden());
+
+        Igralec igralec = new Igralec();
+        igralec.setIme("Lea");
+        igralec.setPriimek("Fotografska");
+        igralec.setSpol(Spol.ZENSKI);
+        igralec.setDatumRojstva(LocalDate.of(1994, 5, 5));
+        igralecRepozitorij.save(igralec);
+        Uporabnik u = new Uporabnik("lea-slika", kodirnik.encode(GESLO), Vloga.IGRALEC);
+        u.setStatus(StatusRacuna.POTRJEN);
+        u.setIgralec(igralec);
+        u.setVirPovezave(VirPovezave.ADMIN);
+        uporabnikRepozitorij.save(u);
+        Narocnina n = new Narocnina(u, Paket.PREMIUM);
+        n.setStatus(StatusNarocnine.AKTIVNA);
+        narocninaRepozitorij.save(n);
+
+        String odgovor = mockMvc.perform(multipart("/api/v1/moj-profil/slika")
+                        .file(new MockMultipartFile("datoteka", "jaz.jpg", "image/jpeg", TestneSlike.png(500, 500)))
+                        .header("Authorization", basic("lea-slika")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stanje").value("OBJAVLJENA"))
+                .andReturn().getResponse().getContentAsString();
+        String zgostitev = json.readTree(odgovor).get("zgostitev").asText();
+
+        mockMvc.perform(get("/api/v1/igralci/slike?idji=" + igralec.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].zgostitev").value(zgostitev));
+        mockMvc.perform(get("/api/v1/slike/profil/" + zgostitev + "?velikost=MALA"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/jpeg"))
+                .andExpect(header().string("Cache-Control", containsString("max-age=86400")))
+                .andExpect(header().string("Cache-Control", not(containsString("immutable"))));
+        mockMvc.perform(get("/api/v1/slike/profil/" + zgostitev + "?velikost=OGROMNA"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ---------- Pokrovitelji (V56) ----------
+
+    @Test
+    void pokroviteljiBranjeJavnoPisanjeLastnik() throws Exception {
+        Uporabnik lastnik = racun("lastnik-pokrovitelji", Vloga.ORGANIZATOR);
+        racun("tuj-pokrovitelji", Vloga.ORGANIZATOR);
+        Long liga = liga(lastnik);
+        long idSlika = idSlike("lastnik-pokrovitelji", nalozi("lastnik-pokrovitelji", 420));
+        String vnos = "{\"pokrovitelji\":[{\"idSlika\":" + idSlika
+                + ",\"ime\":\"Petrol\",\"povezava\":\"https://petrol.si\",\"glavni\":true}]}";
+
+        mockMvc.perform(put("/api/v1/lige/" + liga + "/pokrovitelji")
+                        .contentType(MediaType.APPLICATION_JSON).content(vnos))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/api/v1/lige/" + liga + "/pokrovitelji")
+                        .header("Authorization", basic("tuj-pokrovitelji"))
+                        .contentType(MediaType.APPLICATION_JSON).content(vnos))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/v1/lige/" + liga + "/pokrovitelji")
+                        .header("Authorization", basic("lastnik-pokrovitelji"))
+                        .contentType(MediaType.APPLICATION_JSON).content(vnos))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/lige/" + liga + "/pokrovitelji"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ime").value("Petrol"))
+                .andExpect(jsonPath("$[0].glavni").value(true))
+                .andExpect(jsonPath("$[0].slika.id").value(idSlika));
     }
 
     // ---------- Pomozno ----------

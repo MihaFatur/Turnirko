@@ -41,6 +41,7 @@ import si.turnirko.modeli.Vloga;
 import si.turnirko.pomozno.ObdelavaSlik;
 import si.turnirko.pomozno.ObdelavaSlik.Zapis;
 import si.turnirko.repozitoriji.LigaRepozitorij;
+import si.turnirko.repozitoriji.PokroviteljRepozitorij;
 import si.turnirko.repozitoriji.SlikaRazlicicaRepozitorij;
 import si.turnirko.repozitoriji.SlikaRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
@@ -56,6 +57,7 @@ public class SlikeStoritev {
     private final SlikaRazlicicaRepozitorij razlicicaRepozitorij;
     private final LigaRepozitorij ligaRepozitorij;
     private final TurnirRepozitorij turnirRepozitorij;
+    private final PokroviteljRepozitorij pokroviteljRepozitorij;
     private final LastnistvoStoritev lastnistvoStoritev;
     private final OmejevalnikPoskusov omejevalnik;
 
@@ -63,12 +65,14 @@ public class SlikeStoritev {
                          SlikaRazlicicaRepozitorij razlicicaRepozitorij,
                          LigaRepozitorij ligaRepozitorij,
                          TurnirRepozitorij turnirRepozitorij,
+                         PokroviteljRepozitorij pokroviteljRepozitorij,
                          LastnistvoStoritev lastnistvoStoritev,
                          OmejevalnikPoskusov omejevalnik) {
         this.slikaRepozitorij = slikaRepozitorij;
         this.razlicicaRepozitorij = razlicicaRepozitorij;
         this.ligaRepozitorij = ligaRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
+        this.pokroviteljRepozitorij = pokroviteljRepozitorij;
         this.lastnistvoStoritev = lastnistvoStoritev;
         this.omejevalnik = omejevalnik;
     }
@@ -181,10 +185,11 @@ public class SlikeStoritev {
 
     // ---------- Pomozno ----------
 
-    /* Slika, ki jo sme prijavljeni dati na tekmovanje: svojo, ze javno (nosi jo
-       kaksno tekmovanje) ali - admin - katerokoli. Brez varnostnega konteksta
-       (interni klic, test) kot drugod ne omejuje. */
-    private Slika zaUporabo(Long idSlika) {
+    /* Slika, ki jo sme prijavljeni dati na tekmovanje (logotip ali pokrovitelj,
+       PokroviteljiStoritev): svojo, ze javno (nosi jo kaksno tekmovanje) ali -
+       admin - katerokoli. Brez varnostnega konteksta (interni klic, test) kot
+       drugod ne omejuje. */
+    Slika zaUporabo(Long idSlika) {
         Slika slika = najdi(idSlika);
         if (slika.getNamen() != NamenSlike.LOGOTIP) {
             throw new NeveljavenVnosIzjema("Ta slika ni logotip.");
@@ -197,8 +202,10 @@ public class SlikeStoritev {
         throw new PrepovedanoIzjema("Tega logotipa nisi naložil ti. Naloži ga sam.");
     }
 
+    /* Logotip tekmovanja ali logotip pokrovitelja (V56) - oboje je javna raba. */
     private long steviloUporab(Long idSlika) {
-        return ligaRepozitorij.countByLogotipId(idSlika) + turnirRepozitorij.countByLogotipId(idSlika);
+        return ligaRepozitorij.countByLogotipId(idSlika) + turnirRepozitorij.countByLogotipId(idSlika)
+                + pokroviteljRepozitorij.countBySlikaId(idSlika);
     }
 
     private void shrani(Slika slika, VelikostSlike velikost, Zapis zapis) {

@@ -16,7 +16,9 @@ import { igralciApi, statistikaApi } from '../api/zahteve'
 import type { DvobojDto, IgralecDto } from '../api/tipi'
 import { OZNAKE_IZID, izidNizov } from '../api/tipi'
 import { oblikujDanKratekMesec, sklonTekem } from '../pomozno/oblikovanje'
+import { useSlikeIgralcev } from '../pomozno/profilneSlike'
 import { IzbirnikIgralca } from './IzbirnikIgralca'
+import { SlikaIgralca } from './SlikaIgralca'
 import { SporociloNapake } from './SporociloNapake'
 import { SpremembaRatinga } from './SpremembaRatinga'
 
@@ -45,6 +47,10 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
   const [drugi, nastaviDrugega] = useState<number | ''>(() =>
     steviloIzParametra(iskalniParametri.get('drugi')),
   )
+  /* Profilni sliki (V56): okvir dobita obe strani, kakor hitro ga ima ena -
+     sicer bi se imeni zamaknili in semafor ne bi bil več simetričen. */
+  const slike = useSlikeIgralcev([prvi === '' ? null : prvi, drugi === '' ? null : drugi])
+  const zSlikama = slike.size > 0
 
   /* Naključni par izbere strežnik, ker samo ta ve, kdo je s kom že igral -
      par brez medsebojne tekme pokaže 0 : 0 in o igralcih ne pove ničesar.
@@ -119,6 +125,7 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
           vrednost={prvi}
           izkljuci={drugi}
           mesto={prvi === '' ? undefined : mesta.get(Number(prvi))}
+          slika={zSlikama ? (slike.get(Number(prvi)) ?? null) : undefined}
           naSpremembo={nastaviPrvega}
         />
 
@@ -211,6 +218,7 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
           vrednost={drugi}
           izkljuci={prvi}
           mesto={drugi === '' ? undefined : mesta.get(Number(drugi))}
+          slika={zSlikama ? (slike.get(Number(drugi)) ?? null) : undefined}
           naSpremembo={nastaviDrugega}
         />
       </div>
@@ -244,6 +252,7 @@ function StranIgralca({
   vrednost,
   izkljuci,
   mesto,
+  slika,
   naSpremembo,
 }: {
   polozaj: string
@@ -256,6 +265,9 @@ function StranIgralca({
   vrednost: number | ''
   izkljuci: number | ''
   mesto: number | undefined
+  /* Profilna slika (V56): undefined = okvirja ni (nobeden nima slike) in stoji
+     znak; null = okvir brez slike, ker jo ima nasprotnik. */
+  slika?: string | null
   naSpremembo: (id: number) => void
 }) {
   const igralec = vrednost === '' ? undefined : igralci.find((i) => i.id === vrednost)
@@ -263,7 +275,11 @@ function StranIgralca({
 
   return (
     <div className={'enanaena__stran ' + polozaj}>
-      <ZnakIgralca />
+      {slika === undefined ? (
+        <ZnakIgralca />
+      ) : (
+        <SlikaIgralca zgostitev={slika} velikost="MALA" mera={72} razred="enanaena__slika" />
+      )}
       <Ime className="enanaena__ime">
         {igralec ? (
           <Link to={`/igralci/${igralec.id}/profil`}>

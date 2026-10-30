@@ -180,13 +180,18 @@ public class VarnostneNastavitve {
                         // nastavitev obvestil po kolu je osebna kot izbor lig (pred
                         // splosnim "GET je javen")
                         .requestMatchers("/api/v1/obvestila").authenticated()
-                        // gost sme brati vse ostalo
-                        .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-                        // --- od tu naprej samo mutacije (ne-GET) ---
                         // knjiznica logotipov (V54) je urejevalceva: nalozene slike, ki
                         // se niso na nobenem tekmovanju, niso javne. Samo koren - slika
                         // sama (/api/v1/slike/{zgostitev}) ostane javen GET spodaj.
                         .requestMatchers(HttpMethod.GET, "/api/v1/slike").hasAnyRole("ADMIN", "ORGANIZATOR")
+                        // profilna slika (V56): svojo bere in nalaga vsak prijavljen (kdo
+                        // sme, pove storitev - igralec s Premium); branje nosi tudi sliko,
+                        // ki caka na admina, zato ni javno. Pregled cakajocih je adminov.
+                        .requestMatchers("/api/v1/moj-profil/**").authenticated()
+                        .requestMatchers("/api/v1/profilne-slike", "/api/v1/profilne-slike/**").hasRole("ADMIN")
+                        // gost sme brati vse ostalo
+                        .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                        // --- od tu naprej samo mutacije (ne-GET) ---
                         // izbor lig za domaco stran je urednistvo in ne
                         // upravljanje tekmovanja: organizator sme svojo ligo,
                         // vhodna stran zveze pa ni njegova. Pravilo mora stati
@@ -197,13 +202,13 @@ public class VarnostneNastavitve {
                         .requestMatchers("/api/v1/turnirji/**", "/api/v1/dogodki/**",
                                 "/api/v1/tekme/**", "/api/v1/lige/**", "/api/v1/srecanja/**")
                                 .hasAnyRole("ADMIN", "ORGANIZATOR")
-                        // organizator sme dodati NOVEGA igralca v skupni sifrant
-                        // (samo POST na koren); urejanje/brisanje/rating ostane adminu.
-                        // Isti vpis vprasa, ali podoben igralec ze obstaja (/podobni):
                         // nalaganje in brisanje slik (logotip tekmovanja, V54); kdo sme
                         // katero sliko izbrisati, preveri SlikeStoritev
                         .requestMatchers("/api/v1/slike", "/api/v1/slike/**")
                                 .hasAnyRole("ADMIN", "ORGANIZATOR")
+                        // organizator sme dodati NOVEGA igralca v skupni sifrant
+                        // (samo POST na koren); urejanje/brisanje/rating ostane adminu.
+                        // Isti vpis vprasa, ali podoben igralec ze obstaja (/podobni):
                         // javni izpis brez datumov rojstva. Razlicica z datumi
                         // (/podobni/podrobno) tu ni omenjena in pade v splosno pravilo
                         // "/api/**" za ADMIN - kot GET /igralci/podrobno.

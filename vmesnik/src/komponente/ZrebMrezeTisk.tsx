@@ -11,9 +11,11 @@
    (pomozno/zrebMreze). */
 import type { CSSProperties } from 'react'
 
-import type { MrezaDto, SlikaDto, TurnirDto } from '../api/tipi'
+import type { MrezaDto, PokroviteljDto, SlikaDto, TurnirDto } from '../api/tipi'
 import { sklonEkip, sklonIgralcev } from '../pomozno/oblikovanje'
+import { usePokrovitelje } from '../pomozno/pokrovitelji'
 import { urlSlike } from '../pomozno/slike'
+import { PokroviteljiTisk } from './PokroviteljiTisk'
 import {
   type MrezaStran,
   type MrezaTekmaTisk,
@@ -23,6 +25,7 @@ import {
 import { vrsticaTurnirja } from '../pomozno/zrebSkupin'
 
 export function ZrebMrezeDogodka({ mreza, turnir }: { mreza: MrezaDto; turnir?: TurnirDto }) {
+  const pokrovitelji = usePokrovitelje('turnir', turnir?.id)
   const sklop = sklopiZrebMreze(mreza)
   if (sklop === null) return null
 
@@ -39,6 +42,7 @@ export function ZrebMrezeDogodka({ mreza, turnir }: { mreza: MrezaDto; turnir?: 
           ime={dogodek.ime}
           nadNaslovom={nadNaslovom}
           logotip={turnir?.logotip ?? null}
+          pokrovitelji={pokrovitelji}
           podNaslovom={[
             'Izločilni del',
             `${sklop.steviloUdelezencev} ${ekipno ? sklonEkip(sklop.steviloUdelezencev) : sklonIgralcev(sklop.steviloUdelezencev)}`,
@@ -57,6 +61,7 @@ function ListMreze({
   ime,
   nadNaslovom,
   logotip,
+  pokrovitelji,
   podNaslovom,
 }: {
   list: ZrebMrezeList
@@ -64,6 +69,8 @@ function ListMreze({
   nadNaslovom: string | null
   /* Logotip turnirja (V54) desno v glavi lista; prazno, ce ga ni. */
   logotip: SlikaDto | null
+  /* Pokrovitelji turnirja (V56) v vrstici pod mrežo. */
+  pokrovitelji: PokroviteljDto[]
   podNaslovom: string
 }) {
   /* Stolpcev: kola lista in stolpec zmagovalca. */
@@ -74,7 +81,10 @@ function ListMreze({
   const merila = { '--vrstic': list.vrstic, '--stolpcev': stolpcev } as CSSProperties
 
   return (
-    <section className={'zreb-mreza' + (gosto ? ' zreb-mreza--gosto' : '')} style={merila}>
+    <section
+      className={'zreb-mreza' + (gosto ? ' zreb-mreza--gosto' : '') + (pokrovitelji.length > 0 ? ' zreb-mreza--s-pokrovitelji' : '')}
+      style={merila}
+    >
       <header className={'zreb-glava zreb-glava--mreza' + (logotip ? ' zreb-glava--z-logotipom' : '')}>
         <div>
           {nadNaslovom && <p className="zreb-glava__nad">{nadNaslovom}</p>}
@@ -137,6 +147,8 @@ function ListMreze({
           )}
         </div>
       </div>
+
+      <PokroviteljiTisk pokrovitelji={pokrovitelji} razred="zreb-mreza__pokrovitelji" />
     </section>
   )
 }

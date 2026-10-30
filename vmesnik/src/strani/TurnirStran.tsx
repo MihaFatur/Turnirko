@@ -26,6 +26,8 @@ import { DogodekObrazecOkno } from '../komponente/DogodekObrazecOkno'
 import { TurnirObrazecOkno } from './TurnirjiStran'
 import { LogotipOkno } from '../komponente/LogotipOkno'
 import { LogotipTekmovanja } from '../komponente/LogotipTekmovanja'
+import { PokroviteljiOkno } from '../komponente/PokroviteljiOkno'
+import { PokroviteljiTrak } from '../komponente/PokroviteljiTrak'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
@@ -79,6 +81,7 @@ export function TurnirStran() {
   const [urejanjeTurnirja, nastaviUrejanjeTurnirja] = useState(false)
   const [potrjujemZakljucek, nastaviPotrjujemZakljucek] = useState(false)
   const [logotipOdprt, nastaviLogotipOdprt] = useState(false)
+  const [pokroviteljiOdprti, nastaviPokrovitelje] = useState(false)
   const [pogled, nastaviPogled] = useState<PogledTurnirja>('DOGODKI')
   const [podrobnosti, nastaviPodrobnosti] = useState(false)
 
@@ -206,6 +209,15 @@ export function TurnirStran() {
         />
       )}
 
+      {pokroviteljiOdprti && (
+        <PokroviteljiOkno
+          vrsta="turnir"
+          id={idTurnirja}
+          ime={podatki.ime}
+          onZapri={() => nastaviPokrovitelje(false)}
+        />
+      )}
+
       {potrjujemZakljucek && (
         <PotrditvenoOkno
           naslov="Zaključek turnirja"
@@ -286,6 +298,17 @@ export function TurnirStran() {
                     }}
                   >
                     Logotip
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    onClick={() => {
+                      zapri()
+                      nastaviPokrovitelje(true)
+                    }}
+                  >
+                    Pokrovitelji
                   </button>
                   {seUreja && (
                     <button
@@ -426,6 +449,8 @@ export function TurnirStran() {
           </div>
         )}
 
+        <PokroviteljiTrak vrsta="turnir" id={idTurnirja} />
+
         {okna}
       </section>
     )
@@ -478,6 +503,11 @@ export function TurnirStran() {
             {smemLogotip && (
               <button className="gumb" onClick={() => nastaviLogotipOdprt(true)}>
                 Logotip
+              </button>
+            )}
+            {smemLogotip && (
+              <button className="gumb" onClick={() => nastaviPokrovitelje(true)}>
+                Pokrovitelji
               </button>
             )}
             {smem && podatki.status !== 'ZAKLJUCEN' && (
@@ -587,6 +617,8 @@ export function TurnirStran() {
           </>
         )}
       </div>
+
+      <PokroviteljiTrak vrsta="turnir" id={idTurnirja} />
 
       {okna}
     </section>

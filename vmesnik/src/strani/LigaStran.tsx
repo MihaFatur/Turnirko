@@ -35,6 +35,8 @@ import { LestviceLige } from '../komponente/LestviceLige'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { LogotipOkno } from '../komponente/LogotipOkno'
 import { LogotipTekmovanja } from '../komponente/LogotipTekmovanja'
+import { PokroviteljiOkno } from '../komponente/PokroviteljiOkno'
+import { PokroviteljiTrak } from '../komponente/PokroviteljiTrak'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
@@ -111,6 +113,7 @@ export function LigaStran() {
   const [kvalifikacijeZa, nastaviKvalifikacijeZa] = useState<MejaKvalifikacij | null>(null)
   const [razveljavitevKvalOdprta, nastaviRazveljavitevKval] = useState(false)
   const [logotipOdprt, nastaviLogotipOdprt] = useState(false)
+  const [pokroviteljiOdprti, nastaviPokrovitelje] = useState(false)
 
   /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
      nekaj skupinskih seštevkov čez vse tekme lige in strani z lestvico ne sme
@@ -337,6 +340,15 @@ export function LigaStran() {
         />
       )}
 
+      {pokroviteljiOdprti && (
+        <PokroviteljiOkno
+          vrsta="liga"
+          id={idLiga}
+          ime={l.sezona ? `${l.ime} · ${l.sezona}` : l.ime}
+          onZapri={() => nastaviPokrovitelje(false)}
+        />
+      )}
+
       {pravilaOdprta && (
         <PravilaOkno
           liga={l}
@@ -536,6 +548,17 @@ export function LigaStran() {
                   >
                     Logotip
                   </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    onClick={() => {
+                      zapri()
+                      nastaviPokrovitelje(true)
+                    }}
+                  >
+                    Pokrovitelji
+                  </button>
                   {/* Razveljavitev se ponudi samo v oknu, ko je še mogoča —
                       trajno ugasnjena postavka bi bila sredi sezone samo šum. */}
                   {nobenoOdigrano && (
@@ -721,6 +744,8 @@ export function LigaStran() {
 
         {imaRazpored && mobilniPogled === 'ZANIMIVOSTI' && zanimivostiVsebina}
 
+        <PokroviteljiTrak vrsta="liga" id={idLiga} />
+
         {okna}
       </section>
     )
@@ -815,6 +840,15 @@ export function LigaStran() {
                   onClick={() => nastaviLogotipOdprt(true)}
                 >
                   Logotip
+                </button>
+              )}
+              {smemPoLastnistvu && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => nastaviPokrovitelje(true)}
+                >
+                  Pokrovitelji
                 </button>
               )}
               {/* Razveljavitev stoji ob ostalih dejanjih samo v oknu, ko je še
@@ -1024,6 +1058,8 @@ export function LigaStran() {
           )}
         </>
       )}
+
+      <PokroviteljiTrak vrsta="liga" id={idLiga} />
 
       {okna}
     </section>

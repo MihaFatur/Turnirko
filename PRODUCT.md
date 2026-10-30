@@ -106,7 +106,10 @@ Trdne omejitve, ki jih prihodnje delo ne sme razbiti:
 
 - shemo baze spreminja izključno nova Flyway migracija (`ddl-auto=none`);
 - navzven gredo samo DTO-ji; **osebni podatki (e-pošta, telefon, naslov, datum
-  rojstva) nikoli v javne poglede** — javno je ime, priimek in klub;
+  rojstva) nikoli v javne poglede** — javno je ime, priimek in klub. Edina
+  izjema je fotografija, ki jo igralec **sam** naloži kot profilno sliko (V56,
+  samo Igralec Premium, mlajši od 15 let in račun, ki ga ni povezal admin, šele
+  po potrditvi admina); njena zgostitev ne sme v nobeno drugo javno polje;
 - statuse in pravice določa strežnik, vmesnik dejanja le skrije; gost sme samo
   `GET`; gesla samo kot BCrypt zgostitev, brati jih ni mogoče;
 - igralca se ne briše, samo arhivira — tekmovalna zgodovina ostane;

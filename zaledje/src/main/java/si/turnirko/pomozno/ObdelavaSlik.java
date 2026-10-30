@@ -162,6 +162,28 @@ public final class ObdelavaSlik {
         return ploskev;
     }
 
+    /* Profilna slika (V56): kvadrat za glavo profila in za 1 na 1 / stopničke. */
+    public static final int STRANICA_PROFIL = 480;
+    public static final int STRANICA_PROFIL_MALA = 160;
+
+    /* Kvadrat iz sredine. Brskalnik fotografijo izreže sam (igralec izbere
+       izsek), a strežnik tudi tu ne zaupa: nekvadratna slika bi na strani stala
+       raztegnjena. */
+    public static BufferedImage kvadrat(BufferedImage vir) {
+        int stranica = Math.min(vir.getWidth(), vir.getHeight());
+        if (vir.getWidth() == vir.getHeight()) {
+            return vir;
+        }
+        return vArgb(vir.getSubimage((vir.getWidth() - stranica) / 2,
+                (vir.getHeight() - stranica) / 2, stranica, stranica));
+    }
+
+    /* Fotografija gre vedno v JPEG (na belem, če je imela prosojnost): PNG je
+       za fotografijo nekajkrat večji, prosojnost pa v okvirju nima pomena. */
+    public static Zapis zapisiFotografijo(BufferedImage slika) {
+        return new Zapis(zapisiJpeg(slika), JPEG, slika.getWidth(), slika.getHeight());
+    }
+
     /* Zapise PNG; neprosojno sliko, ki bi bila v PNG velika, pa JPEG. */
     public static Zapis zapisi(BufferedImage slika) {
         byte[] png = zapisiPng(slika);
@@ -199,10 +221,12 @@ public final class ObdelavaSlik {
     }
 
     private static byte[] zapisiJpeg(BufferedImage slika) {
-        // JPEG nima prosojnosti: pike prepisemo na RGB (neprosojno ze je)
+        // JPEG nima prosojnosti: pike prepisemo na RGB, prosojne na belo
         BufferedImage rgb = new BufferedImage(slika.getWidth(), slika.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g = rgb.createGraphics();
         try {
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, slika.getWidth(), slika.getHeight());
             g.drawImage(slika, 0, 0, null);
         } finally {
             g.dispose();

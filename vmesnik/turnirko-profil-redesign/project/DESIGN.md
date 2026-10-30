@@ -355,6 +355,31 @@ namesto besede (točka 9): ime tekmovanja stoji vedno tik ob njem, zato je slika
 - Logotip **ne nosi barve vmesnika**: barve so samo v sliki, glava in gumbi
   ostanejo hišni (razdelek 2).
 
+### 4d. Profilna slika igralca in pokrovitelji (oktober 2026)
+
+**Profilna slika** (`SlikaIgralca`, okno `ProfilnaSlikaOkno`, razdelek »Profilna
+slika igralca« v `slog.css`) je kvadrat z 1 px črto črnila in radijem 0, kot
+fotografija na licenci. Stoji na treh mestih in nikjer drugje: glava profila
+(136 px), 1 na 1 (72 px) in stopničke dogodka (72 px, na telefonu 44 px).
+Lestvica, seznami, mreža in tisk je ne nosijo — pri nekaj odstotkih igralcev bi
+bil vsak seznam lisast.
+
+- **Kjer stoji več igralcev hkrati (1 na 1, stopničke), okvir dobijo vsi**, kakor
+  hitro ga ima eden: igralec brez slike ima v istem okvirju obris glave in ramen
+  (črta `--barva-crnilo-3`, brez polnila), da se imena ne zamaknejo.
+- Slika je okras (`alt=""`), ime stoji ob njej. Brez medalj, okvirjev v barvi
+  mesta in brez filtrov: odličje na stopničkah nosi še naprej številka in črta.
+- Okno izreza: kvadrat 280 px, premik z vlečenjem ali puščicami, povečava z
+  drsnikom; brez krožnega izreza (radij 0).
+
+**Pokrovitelji** (`PokroviteljiTrak`, `PokroviteljiOkno`, `PokroviteljiTisk`)
+so **kolofon in ne oglas**: trak na dnu strani lige in turnirja, pod vsebino, ločen
+z 1 px črto, brez gibanja, brez ozadja in okvirjev, oznaka »Pokrovitelji« v mono
+pisavi. Velikost je po enaki ploščini kot logotip (glavni 80 × 80, ostali
+56 × 56 px). Na tisku so v nogi Turnirkovega ekipnega zapisnika in žreba mreže
+(največ 12 mm visoko, slika v barvi — logotip je znamka); ne na uradnem obrazcu
+NTZS, sodniških listkih in listkih skupin.
+
 ## 5. Prepovedano
 
 Trdo prepovedano; nič od tega ne sme priti v vmesnik.

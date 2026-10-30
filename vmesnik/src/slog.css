@@ -14583,16 +14583,16 @@ a.ekipa-okno__srecanje:hover {
   display: block;
   height: 24mm;
   width: auto;
+  /* Logotip je naložen (V54) in je lahko širok napis - glava ga ne sme
+     raztegniti čez stolpec; contain ohrani razmerje stranic. */
+  max-width: 64mm;
+  object-fit: contain;
 }
 
 .ekipni-zapisnik__oznaka {
   font: 600 8pt / 1.2 var(--pisava-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  /* Logotip je naložen (V54) in je lahko širok napis - glava ga ne sme
-     raztegniti čez stolpec; contain ohrani razmerje stranic. */
-  max-width: 64mm;
-  object-fit: contain;
   white-space: nowrap;
 }
 
@@ -24925,4 +24925,361 @@ html.uvod-tece {
 
 .listek-skupine__znamka--ob-logotipu {
   margin-left: 0;
+}
+
+/* ==========================================================================
+   Profilna slika igralca (V56): kvadrat z 1 px črto kot fotografija na
+   licenci (radij 0). Brez slike isti okvir nosi obris glave in ramen.
+   ========================================================================== */
+.slika-igralca {
+  display: block;
+  flex: none;
+  object-fit: cover;
+  background: var(--barva-bela);
+  border: 1px solid var(--barva-crnilo);
+}
+
+.slika-igralca--prazna {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slika-igralca--prazna svg {
+  fill: none;
+  stroke: var(--barva-crnilo-3);
+  stroke-width: 2;
+}
+
+@media (max-width: 640px) {
+  .profil__slika {
+    width: 88px;
+    height: 88px;
+  }
+
+  .enanaena__slika {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.profilna-okno {
+  display: grid;
+  gap: var(--r3);
+}
+
+.profilna-okno__uvod,
+.profilna-okno__pojasnilo {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 15px;
+  color: var(--barva-crnilo-2);
+}
+
+.profilna-okno__trenutna {
+  display: flex;
+  align-items: center;
+  gap: var(--r3);
+}
+
+.profilna-okno__stanje {
+  display: grid;
+  gap: var(--r1);
+}
+
+.profilna-okno__izrez {
+  display: grid;
+  gap: var(--r2);
+  justify-items: start;
+}
+
+.profilna-okno__okno {
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--barva-crnilo);
+  cursor: grab;
+  touch-action: none;
+}
+
+.profilna-okno__okno:focus-visible {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: 2px;
+}
+
+.profilna-okno__platno {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.profilna-okno__povecava {
+  width: min(280px, 100%);
+}
+
+.profilna-okno .logotip-okno__izberi input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+}
+
+/* Stopničke s profilnimi slikami: slika stoji v prvi vrstici ob številki mesta,
+   ime in izid pod njima čez celo širino stopničke. */
+.razvrstitev__vrh--slike .razvrstitev__mesto {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.razvrstitev__vrh--slike .razvrstitev__slika {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.razvrstitev__vrh--slike .razvrstitev__oseba,
+.razvrstitev__vrh--slike .razvrstitev__izid {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .razvrstitev__vrh--slike .razvrstitev__mesto {
+    grid-template-columns: 34px 44px minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .razvrstitev__vrh--slike.razvrstitev__vrh--stiri .razvrstitev__mesto {
+    grid-template-columns: 48px 44px minmax(0, 1fr) auto;
+  }
+
+  .razvrstitev__vrh--slike .razvrstitev__slika {
+    grid-column: 2;
+    grid-row: auto;
+  }
+
+  .razvrstitev__vrh--slike .razvrstitev__oseba,
+  .razvrstitev__vrh--slike .razvrstitev__izid {
+    grid-column: auto;
+  }
+}
+
+/* Adminov pregled profilnih slik (V56), nad seznamom igralcev. */
+.slike-pregled {
+  margin-bottom: var(--r4);
+  border-top: 3px solid var(--barva-crnilo);
+  padding-top: var(--r2);
+}
+
+.slike-pregled__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r3);
+  margin-bottom: var(--r2);
+}
+
+.slike-pregled__naslov {
+  margin: 0;
+}
+
+.slike-pregled__vrstica {
+  display: flex;
+  align-items: center;
+  gap: var(--r3);
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.slike-pregled__besedilo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.slike-pregled__ime {
+  font-weight: 700;
+}
+
+.slike-pregled__meta,
+.slike-pregled__razlog {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.slike-pregled__razlog {
+  color: var(--barva-crnilo);
+}
+
+.slike-pregled__dejanja {
+  display: flex;
+  gap: var(--r2);
+}
+
+.slike-pregled__preklop {
+  display: block;
+  margin-top: var(--r2);
+  padding: var(--r2) 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--barva-glavna-tekst);
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .slike-pregled__vrstica {
+    flex-wrap: wrap;
+  }
+
+  .slike-pregled__dejanja {
+    flex-basis: 100%;
+  }
+}
+
+/* Pokrovitelji (V56): trak na dnu strani in urejevalnik v oknu. */
+.pokrovitelji-trak {
+  display: grid;
+  gap: var(--r2);
+  margin-top: 48px;
+  padding-top: var(--r3);
+  border-top: 1px solid var(--barva-crta);
+}
+
+.pokrovitelji-trak__seznam {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r3) 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pokrovitelji-trak__pokrovitelj {
+  display: flex;
+  align-items: center;
+}
+
+.pokrovitelji-trak__pokrovitelj img {
+  display: block;
+  object-fit: contain;
+}
+
+.pokrovitelji-trak__pokrovitelj a {
+  display: block;
+  min-height: 44px;
+}
+
+.pokrovitelji-okno__seznam {
+  display: grid;
+  gap: var(--r2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pokrovitelji-okno__prazno {
+  margin: 0;
+  color: var(--barva-crnilo-3);
+}
+
+.pokrovitelji-okno__vrstica {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--r3);
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.pokrovitelji-okno__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  padding: var(--r1);
+  background: var(--barva-bela);
+  border: 1px solid var(--barva-crta);
+}
+
+.pokrovitelji-okno__logo img {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.pokrovitelji-okno__polja {
+  display: grid;
+  gap: var(--r2);
+  min-width: 0;
+}
+
+.pokrovitelji-okno__dejanja {
+  display: grid;
+  gap: var(--r1);
+}
+
+.gumb--onemogocen {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .pokrovitelji-okno__vrstica {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .pokrovitelji-okno__dejanja {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Pokrovitelji v nogi tiskanega lista (V56). Vrstica je v nogi lista, nad
+   robom; list ostane ena ležeča stran A4. */
+.pokrovitelji-tisk {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6mm;
+  color: #000;
+}
+
+.pokrovitelji-tisk__oznaka {
+  flex: none;
+  font: 600 8pt / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pokrovitelji-tisk__slika {
+  display: block;
+  flex: none;
+  object-fit: contain;
+}
+
+/* Zapisnik: zadnja vrstica lista; mreža tekem dobi prostor, ki ostane. */
+.ekipni-zapisnik__pokrovitelji {
+  padding-top: 1.5mm;
+  border-top: 1px solid #000;
+}
+
+/* Mreža: višina vrstice se skrči za vrstico pokroviteljev (največ 12 mm +
+   razmik), da list ostane en. */
+.zreb-mreza--s-pokrovitelji {
+  --mreza-vrstica: min(16mm, calc(134mm / var(--vrstic)));
+}
+
+.zreb-mreza__pokrovitelji {
+  margin-top: 4mm;
+  padding-top: 1.5mm;
+  border-top: 1px solid #000;
 }

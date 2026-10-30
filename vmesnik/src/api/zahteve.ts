@@ -89,7 +89,12 @@ import type {
   RegistracijaOdgovorDto,
   RegistracijaVnos,
   RocniRazporedVnos,
+  MojaProfilnaSlikaDto,
+  PokroviteljDto,
+  PokroviteljVnos,
+  ProfilnaSlikaPregledDto,
   SlikaDto,
+  SlikaIgralcaDto,
   SpremembaGeslaVnos,
   SpremembaPaketaDto,
   SrecanjeDto,
@@ -134,6 +139,10 @@ export const turnirjiApi = {
   nastaviLogotip: (id: number, idSlika: number) =>
     api.posodobi<SlikaDto>(`/turnirji/${id}/logotip`, { idSlika }),
   odstraniLogotip: (id: number) => api.izbrisi(`/turnirji/${id}/logotip`),
+  /* Pokrovitelji (V56) - branje javno, shrani se celoten seznam. */
+  pokrovitelji: (id: number) => api.vrni<PokroviteljDto[]>(`/turnirji/${id}/pokrovitelji`),
+  shraniPokrovitelje: (id: number, pokrovitelji: PokroviteljVnos[]) =>
+    api.posodobi<PokroviteljDto[]>(`/turnirji/${id}/pokrovitelji`, { pokrovitelji }),
 }
 
 /* Slike (V54): knjižnica logotipov urejevalca. Sliko samo gledalec dobi po
@@ -146,6 +155,25 @@ export const slikeApi = {
     return api.objavi<SlikaDto>('/slike', obrazec)
   },
   izbrisi: (id: number) => api.izbrisi(`/slike/${id}`),
+}
+
+/* Profilna slika igralca (V56). Bajti so na /slike/profil/{zgostitev}
+   (urlProfilneSlike v pomozno/slike). */
+export const profilneSlikeApi = {
+  moja: () => api.vrni<MojaProfilnaSlikaDto>('/moj-profil/slika'),
+  nalozi: (jpeg: Blob) => {
+    const obrazec = new FormData()
+    obrazec.append('datoteka', jpeg, 'profilna.jpg')
+    return api.objavi<MojaProfilnaSlikaDto>('/moj-profil/slika', obrazec)
+  },
+  izbrisi: () => api.izbrisi('/moj-profil/slika'),
+  /* Javne slike danih igralcev (stopničke, 1 na 1); brez slike jih ni. */
+  vidne: (idji: number[]) =>
+    api.vrni<SlikaIgralcaDto[]>(`/igralci/slike?idji=${idji.join(',')}`),
+  /* Admin: čakajoče in nedavno objavljene. */
+  pregled: () => api.vrni<ProfilnaSlikaPregledDto[]>('/profilne-slike'),
+  objavi: (id: number) => api.objavi<ProfilnaSlikaPregledDto>(`/profilne-slike/${id}/objavi`),
+  odstrani: (id: number) => api.izbrisi(`/profilne-slike/${id}`),
 }
 
 export const dogodkiApi = {
@@ -512,6 +540,9 @@ export const ligeApi = {
   nastaviLogotip: (id: number, idSlika: number) =>
     api.posodobi<SlikaDto>(`/lige/${id}/logotip`, { idSlika }),
   odstraniLogotip: (id: number) => api.izbrisi(`/lige/${id}/logotip`),
+  pokrovitelji: (id: number) => api.vrni<PokroviteljDto[]>(`/lige/${id}/pokrovitelji`),
+  shraniPokrovitelje: (id: number, pokrovitelji: PokroviteljVnos[]) =>
+    api.posodobi<PokroviteljDto[]>(`/lige/${id}/pokrovitelji`, { pokrovitelji }),
 
   /* Končnica: serije vseh krogov. Nastane iz končne lestvice rednega dela in
      se razveljavi, dokler se nobena njena tekma ni začela. */

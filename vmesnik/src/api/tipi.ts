@@ -209,6 +209,53 @@ export interface SlikaDto {
   visina: number
 }
 
+/* Profilna slika (V56). Javna je samo pri igralcu z veljavnim Premium; čaka na
+   admina, ko je igralec mlajši od 15 let ali ko računa ni povezal admin. */
+export type StanjeProfilneSlike = 'CAKA' | 'OBJAVLJENA'
+
+/* Javna slika igralca: naslov /api/v1/slike/profil/{zgostitev}. Igralca brez
+   javne slike v odgovoru ni. */
+export interface SlikaIgralcaDto {
+  idIgralec: number
+  zgostitev: string
+}
+
+/* Slika prijavljenega igralca, kot jo vidi sam (tudi čakajoča). */
+export interface MojaProfilnaSlikaDto {
+  zgostitev: string | null
+  stanje: StanjeProfilneSlike | null
+  smeNalagati: boolean
+  /* Zakaj ne sme ali zakaj slika čaka; null, ko ni kaj povedati. */
+  pojasnilo: string | null
+}
+
+/* Adminov pregled profilnih slik: čakajoče in objavljene zadnjih 30 dni. */
+export interface ProfilnaSlikaPregledDto {
+  id: number
+  idIgralec: number | null
+  ime: string
+  zgostitev: string
+  stanje: StanjeProfilneSlike
+  nalozenaOb: string
+  razlogCakanja: string | null
+  javna: boolean
+}
+
+/* Pokrovitelj lige ali turnirja (V56): trak na dnu strani in noga tiska. */
+export interface PokroviteljDto {
+  ime: string
+  povezava: string | null
+  glavni: boolean
+  slika: SlikaDto
+}
+
+export interface PokroviteljVnos {
+  idSlika: number
+  ime: string
+  povezava: string | null
+  glavni: boolean
+}
+
 export interface DogodekDto {
   id: number
   idTurnir: number
@@ -1630,14 +1677,14 @@ export interface LigaDto {
   kvalifikacijeNizjaIme: string | null
   /* Opomba organizatorja pod naslovom lige (V52). */
   opombe: string | null
+  /* Logotip lige (V54): glava strani, Turnirkov zapisnik, predogled povezave. */
+  logotip: SlikaDto | null
 }
 
 export interface LigaVnos {
   ime: string
   sezona: string | null
   spolKategorija: SpolKategorija
-  /* Logotip lige (V54): glava strani, Turnirkov zapisnik, predogled povezave. */
-  logotip: SlikaDto | null
   formatSrecanja: FormatSrecanja
   steviloNizov: number
   zmagZaSrecanje: number | null

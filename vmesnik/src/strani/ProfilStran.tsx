@@ -39,7 +39,10 @@ import { GrafRatinga } from '../komponente/GrafRatinga'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { NapovedTekme } from '../komponente/NapovedTekme'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
+import { ProfilnaSlikaOkno } from '../komponente/ProfilnaSlikaOkno'
+import { SlikaIgralca } from '../komponente/SlikaIgralca'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { useSlikeIgralcev } from '../pomozno/profilneSlike'
 import { oznakaPoti, useIzvor } from '../pomozno/izvor'
 import { zabelezi } from '../pomozno/statistika'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
@@ -84,6 +87,11 @@ export function ProfilStran() {
   })
 
   const lestvica = useQuery({ queryKey: ['lestvica'], queryFn: statistikaApi.lestvica })
+
+  /* Profilna slika (V56) je javna samo pri igralcu s Premium; lastnik jo ureja
+     v oknu (tam vidi tudi sliko, ki čaka na admina). */
+  const slikaProfila = useSlikeIgralcev([idIgralec]).get(idIgralec) ?? null
+  const [slikaOdprta, nastaviSlikaOdprta] = useState(false)
 
   /* Skok s točke grafa ratinga na vrstico iste tekme v seznamu spodaj. Seznam je
      izrisan v celoti (brez straničenja), zato zadošča iskanje po id-ju vrstice.
@@ -199,15 +207,31 @@ export function ProfilStran() {
               </div>
             )}
 
-            <h1 className="naslov-strani">
-              <span className="naslov-strani__nad">{ime}</span>
-              <span className="naslov-strani__glavni">{priimek}</span>
-            </h1>
+            <div className={slikaProfila ? 'naslov-z-logotipom' : undefined}>
+              {slikaProfila && (
+                <SlikaIgralca zgostitev={slikaProfila} velikost="VELIKA" mera={136} razred="profil__slika" />
+              )}
+              <h1 className="naslov-strani">
+                <span className="naslov-strani__nad">{ime}</span>
+                <span className="naslov-strani__glavni">{priimek}</span>
+              </h1>
+            </div>
 
             <div className="profil__meta">
               <span>{p.glava.klub ?? 'brez kluba'}</span>
               {p.glava.igralnaRoka && (
                 <span>{p.glava.igralnaRoka === 'LEVA' ? 'Levičar' : 'Desničar'}</span>
+              )}
+              {/* Lastnik vidi vstop v okno vedno: brez Premium mu okno pove, da
+                  je slika del paketa (oglas 5c ima samo en sprožilec). */}
+              {jeMoj && (
+                <button
+                  type="button"
+                  className="povezava-gumb povezava-gumb--vrstica"
+                  onClick={() => nastaviSlikaOdprta(true)}
+                >
+                  {slikaProfila ? 'Uredi sliko' : 'Dodaj sliko'}
+                </button>
               )}
               {jeMoj && <span className="profil__moj">Tvoj profil</span>}
             </div>
@@ -318,6 +342,8 @@ export function ProfilStran() {
         </>
       )}
       {smemZasebno && zasebno.error && <SporociloNapake napaka={zasebno.error} />}
+      {slikaOdprta && <ProfilnaSlikaOkno onZapri={() => nastaviSlikaOdprta(false)} />}
+
       {lastnikBrezPremium && (
         <div className="obvestilo">
           Forma, nasprotniki, napoved tekme, nizi in točke ter razrezi so Premium funkcija.{' '}
