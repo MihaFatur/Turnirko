@@ -182,9 +182,13 @@ class NapovedTekmeTest extends IntegracijskiTest {
         // svojo napoved sme videti
         assertEquals(3, napovedStoritev.napoved(prvi.getId(), drugi.getId(), prijavaPrvega)
                 .ravni().size());
-        // tuje ne
+        // Premium (kot Navijac) sme napoved za kateri koli par: rating in medsebojne tekme so javni
+        assertEquals(3, napovedStoritev.napoved(drugi.getId(), prvi.getId(), prijavaPrvega)
+                .ravni().size());
+        // brez paketa pa samo svoj profil
+        String brezPaketa = racunBrezPaketa(drugi, "napoved-free@test.si");
         assertThrows(PrepovedanoIzjema.class,
-                () -> napovedStoritev.napoved(drugi.getId(), prvi.getId(), prijavaPrvega));
+                () -> napovedStoritev.napoved(prvi.getId(), drugi.getId(), brezPaketa));
         // sam s sabo se nihce ne primerja
         assertThrows(NeveljavenVnosIzjema.class,
                 () -> napovedStoritev.napoved(prvi.getId(), prvi.getId(), prijavaPrvega));
@@ -213,16 +217,31 @@ class NapovedTekmeTest extends IntegracijskiTest {
                 .orElseThrow().getVrednost();
     }
 
-    /* Napoved (kot zasebne analize profila) je Premium funkcija - racun tu
-       dobi placan Premium takoj, ker ta test meri NAPOVED, ne placilni paket
-       (povezava je zacela preizkus, ki ga vrstica tu prepise). */
-    private String racunZa(Igralec igralec, String email) {
+    /* Potrjen racun, povezan z igralcem. Povezava zacne preizkus Premium. */
+    private String povezanRacun(Igralec igralec, String email) {
         registracijaStoritev.registriraj(new RegistracijaVnos(
                 igralec.getIme(), igralec.getPriimek(), null, email, "geslo123", false,
                 igralec.getDatumRojstva(), null), "127.0.0.1");
         Long idRacuna = racuniStoritev.racuni().stream()
                 .filter(r -> r.email().equals(email)).findFirst().orElseThrow().id();
         racuniStoritev.potrdi(idRacuna, new PotrditevRacunaVnos(igralec.getId()));
+        return email;
+    }
+
+    /* Racun brez kakrsnega koli paketa: preizkus, ki ga zacne povezava, se zbrise. */
+    private String racunBrezPaketa(Igralec igralec, String email) {
+        povezanRacun(igralec, email);
+        Uporabnik u = uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(email).orElseThrow();
+        narocninaRepozitorij.findByUporabnikId(u.getId()).ifPresent(narocninaRepozitorij::delete);
+        narocninaRepozitorij.flush();
+        return email;
+    }
+
+    /* Napoved (kot zasebne analize profila) je Premium funkcija - racun tu
+       dobi placan Premium takoj, ker ta test meri NAPOVED, ne placilni paket
+       (povezava je zacela preizkus, ki ga vrstica tu prepise). */
+    private String racunZa(Igralec igralec, String email) {
+        povezanRacun(igralec, email);
         Uporabnik u = uporabnikRepozitorij.findByUporabniskoImeIgnoreCase(email).orElseThrow();
         Narocnina n = narocninaRepozitorij.findByUporabnikId(u.getId())
                 .orElseGet(() -> new Narocnina(u, Paket.PREMIUM));

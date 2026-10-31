@@ -29,6 +29,7 @@ import type { DomovLigaDto, LestvicaIgralcaDto, RazlogTurnirja, Spol, TurnirDto 
 import { EnaNaEna } from '../komponente/EnaNaEna'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { KoledarSklop } from '../komponente/KoledarSklop'
+import { MojIgralecSklop } from '../komponente/MojIgralecSklop'
 import { DomaceLigeOkno, IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
@@ -288,6 +289,10 @@ export function DomacaStran() {
           </div>
         </div>
       </div>
+
+      {/* Igralec, ki ga račun spremlja (V57): samo prijavljen, samo če kdo je ali če je
+          navijač (njemu sklop pove, kako se igralec doda). */}
+      <MojIgralecSklop />
 
       <SklopLestvica
         vrstice={lestvica.data}

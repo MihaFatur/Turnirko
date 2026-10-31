@@ -48,6 +48,13 @@ public record UporabnikDto(
         Boolean starejsiOd21
 ) {
 
+    /* Racun igralca, ki ima Premium prek druzine (V59): paket je za vmesnik Premium in
+       velja, cikla pa ni (placuje ga navijac, ne ta racun). */
+    public UporabnikDto zDruzinskimPremiumom() {
+        return new UporabnikDto(id, uporabniskoIme, vloga, status, idIgralec, imeIgralca, polnoIme, idKlub,
+                klub, emailPotrjen, potrebnaKodaSkrbnika, Paket.PREMIUM, true, null, starejsiOd21);
+    }
+
     public static UporabnikDto iz(Uporabnik uporabnik, Narocnina narocnina, Boolean starejsiOd21) {
         return new UporabnikDto(
                 uporabnik.getId(),

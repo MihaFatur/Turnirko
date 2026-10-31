@@ -36,6 +36,8 @@ import type {
 import { OZNAKE_IZID, izidNizov } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { GrafRatinga } from '../komponente/GrafRatinga'
+import { DruzinaGumb } from '../komponente/DruzinaGumb'
+import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { NapovedTekme } from '../komponente/NapovedTekme'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
@@ -43,10 +45,13 @@ import { ProfilnaSlikaOkno } from '../komponente/ProfilnaSlikaOkno'
 import { SlikaIgralca } from '../komponente/SlikaIgralca'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { useSlikeIgralcev } from '../pomozno/profilneSlike'
+import { useDruzina } from '../pomozno/druzina'
+import { useSpremljanjeIgralcev } from '../pomozno/spremljaniIgralci'
 import { oznakaPoti, useIzvor } from '../pomozno/izvor'
 import { zabelezi } from '../pomozno/statistika'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import {
+  imeLestvice,
   oznakaMeseca,
   sezonaIzDatuma,
   sklonMesecih,
@@ -60,13 +65,16 @@ import {
 export function ProfilStran() {
   const { id } = useParams()
   const idIgralec = Number(id)
-  const { uporabnik, nalaganje, jeAdmin, mojIdIgralec, jePremium } = useAvtentikacija()
+  const { uporabnik, nalaganje, jeAdmin, mojIdIgralec, jePremium, imaSirokoSpremljanje } = useAvtentikacija()
   const { odpri: odpriPremiumOglas, odpriRegistracijo, odpriPrijavo } = usePremiumOglas()
   const odjemalec = useQueryClient()
   const navigiraj = useNavigate()
   /* Pot, s katere je gledalec prišel (liga, zapisnik, lestvica ...), ali null,
      če je prišel od zunaj - takrat povezava nazaj pelje na lestvico. */
   const izvor = useIzvor()
+
+  /* Družina (V59): navijač s paketom Navijač vidi zasebno statistiko potrjenih igralcev do 21 let. */
+  const druzina = useDruzina()
 
   const profil = useQuery({
     queryKey: ['profil', idIgralec],
@@ -76,7 +84,7 @@ export function ProfilStran() {
   /* Zasebni del zahtevamo samo, kadar imamo pravico — da uporabnik ne dobi
      nepotrebne napake 403 v konzoli. Lastnik brez Premium pravice nima -
      zanj je profil enak gostovemu (glej DostopDoProfila na zaledju). */
-  const smemZasebno = jeAdmin || (mojIdIgralec === idIgralec && jePremium)
+  const smemZasebno = jeAdmin || (mojIdIgralec === idIgralec && jePremium) || druzina.jeClan(idIgralec)
   /* Lastnik profila, ki bi zasebni del videl, ko bi imel Premium - tu dobi
      jasno povabilo k nadgradnji namesto tihega izpusta razdelkov. */
   const lastnikBrezPremium = !jeAdmin && mojIdIgralec === idIgralec && !jePremium
@@ -92,6 +100,15 @@ export function ProfilStran() {
      v oknu (tam vidi tudi sliko, ki čaka na admina). */
   const slikaProfila = useSlikeIgralcev([idIgralec]).get(idIgralec) ?? null
   const [slikaOdprta, nastaviSlikaOdprta] = useState(false)
+
+  /* Spremljanje igralca (V57): prijavljen preklopi, gost dobi kratko registracijo. Napaka
+     zadnjega preklopa (dosežena meja) velja za igralca, ob katerem je nastala - pri drugem
+     profilu (isti element strani, drug id) jo odstranimo. */
+  const spremljanjeIgralcev = useSpremljanjeIgralcev()
+  const ponastaviNapakoSpremljanja = spremljanjeIgralcev.ponastaviNapako
+  useEffect(() => {
+    ponastaviNapakoSpremljanja()
+  }, [idIgralec, ponastaviNapakoSpremljanja])
 
   /* Skok s točke grafa ratinga na vrstico iste tekme v seznamu spodaj. Seznam je
      izrisan v celoti (brez straničenja), zato zadošča iskanje po id-ju vrstice.
@@ -235,6 +252,44 @@ export function ProfilStran() {
               )}
               {jeMoj && <span className="profil__moj">Tvoj profil</span>}
             </div>
+
+            {/* Sebe ni treba spremljati. Gost po kliku dobi registracijo (izvor »spremljanje«: ponudi
+                tudi račun navijača), po njej račun igralca začne spremljati sam. */}
+            {!jeMoj && !nalaganje && (
+              <div className="profil__spremljanje">
+                <GumbSpremljanja
+                  ime={p.glava.polnoIme}
+                  spremljam={spremljanjeIgralcev.spremljam(idIgralec)}
+                  naPreklop={() => {
+                    if (!spremljanjeIgralcev.preklopi(idIgralec)) {
+                      odpriRegistracijo({
+                        izvor: 'spremljanje',
+                        igralec: { id: idIgralec, ime: p.glava.polnoIme },
+                      })
+                    }
+                  }}
+                />
+                <DruzinaGumb
+                  idIgralec={idIgralec}
+                  pas={lestvica.data?.find((v) => v.idIgralca === idIgralec)?.starostniPas}
+                />
+                <SporociloNapake napaka={spremljanjeIgralcev.napaka} />
+                {spremljanjeIgralcev.napaka != null && (
+                  <Link to="/narocnina" className="profil__spremljanje-paket">
+                    Naročnina →
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* Sezonski zapisnik za tisk (paket Navijač in Premium): isti podatki kot profil, en list na sezono. */}
+            {imaSirokoSpremljanje && !nalaganje && (
+              <div className="profil__spremljanje">
+                <Link to={`/igralci/${idIgralec}/sezona`} className="povezava-gumb povezava-gumb--vrstica">
+                  Sezonski zapisnik za tisk →
+                </Link>
+              </div>
+            )}
 
             {/* Tri velike številke nadomeščajo štiri vrstice kolofona: mesto,
                 odigrane, izkupiček in uspešnost so podatki, ki jih gledalec
@@ -1581,10 +1636,3 @@ function mestoVPasu(
   return { pas: jaz.starostniPas, mesto: boljsih + 1, skupaj: vPasu.length }
 }
 
-/* Ime lestvice, na kateri je mesto - z istimi besedami kot izbira na strani
-   Lestvica (spol · Člani oz. Rekreativci), da ju gledalec poveže. */
-function imeLestvice(u: ProfilDto['uvrstitev']): string {
-  const spol = u.spol === 'ZENSKI' ? 'Ženske' : u.spol === 'MOSKI' ? 'Moški' : null
-  const skupina = u.rekreativec ? 'Rekreativci' : 'Člani'
-  return ['Lestvica', [spol, skupina].filter(Boolean).join(' · ')].join(' ')
-}

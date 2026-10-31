@@ -42,8 +42,8 @@ public class VarnostneNastavitve {
         return new BCryptPasswordEncoder();
     }
 
-    /* Uporabnike bere iz baze; vloga postane pravica ROLE_ADMIN, ROLE_ORGANIZATOR
-       oz. ROLE_IGRALEC.
+    /* Uporabnike bere iz baze; vloga postane pravica ROLE_ADMIN, ROLE_ORGANIZATOR,
+       ROLE_IGRALEC oz. ROLE_NAVIJAC.
 
        Racun, ki ga administrator se ni potrdil (ali ga je zavrnil) - naj bo
        igralec ali organizator -, se sme prijaviti, da izve, v kaksnem stanju
@@ -68,6 +68,9 @@ public class VarnostneNastavitve {
         }
         if (u.getVloga() == Vloga.ORGANIZATOR) {
             return u.jePotrjenOrganizator() ? Vloga.ORGANIZATOR.name() : "CAKAJOCI";
+        }
+        if (u.getVloga() == Vloga.NAVIJAC) {
+            return u.jePotrjenNavijac() ? Vloga.NAVIJAC.name() : "CAKAJOCI";
         }
         return u.jePotrjenIgralec() ? Vloga.IGRALEC.name() : "CAKAJOCI";
     }
@@ -177,9 +180,27 @@ public class VarnostneNastavitve {
                         // stati pred splosnim "GET je javen".
                         .requestMatchers("/api/v1/domov/moje-lige",
                                 "/api/v1/domov/moje-lige/**").authenticated()
+                        // isto velja za spremljane igralce (V57): osebna nastavitev racuna
+                        .requestMatchers("/api/v1/domov/moji-igralci",
+                                "/api/v1/domov/moji-igralci/**",
+                                "/api/v1/domov/moji-igralci-povzetki").authenticated()
                         // nastavitev obvestil po kolu je osebna kot izbor lig (pred
                         // splosnim "GET je javen")
                         .requestMatchers("/api/v1/obvestila").authenticated()
+                        // podpora klubu (V61): izbira kluba in popust organizatorja sta osebna
+                        .requestMatchers("/api/v1/podpora-kluba", "/api/v1/podpora-kluba/**").authenticated()
+                        // potisna obvestila (V60): vpis naprave, izpis in preizkus so osebni (paket
+                        // preveri storitev); javni kljuc VAPID (GET /push/kljuc) je javen GET spodaj
+                        .requestMatchers("/api/v1/push/naprava", "/api/v1/push/izpis",
+                                "/api/v1/push/preizkus").authenticated()
+                        // druzina (V59): odlocitve in seznam zahtev samo admin, zahteva in pregled
+                        // vsak prijavljen (paket navijaca preveri storitev). Admin pred splosnim.
+                        .requestMatchers("/api/v1/druzina/admin", "/api/v1/druzina/*/potrdi",
+                                "/api/v1/druzina/*/zavrni", "/api/v1/druzina/*/razveze").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/druzina", "/api/v1/druzina/*").authenticated()
+                        // povezava osebnega koledarja .ics (V58) je osebna; sam koledar
+                        // (/koledar-ics/{zeton}) je javen GET, varuje ga zeton
+                        .requestMatchers("/api/v1/moj-koledar", "/api/v1/moj-koledar/**").authenticated()
                         // knjiznica logotipov (V54) je urejevalceva: nalozene slike, ki
                         // se niso na nobenem tekmovanju, niso javne. Samo koren - slika
                         // sama (/api/v1/slike/{zgostitev}) ostane javen GET spodaj.

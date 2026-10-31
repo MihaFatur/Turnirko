@@ -98,6 +98,7 @@ public class PlacilaStoritev {
     private final StripeNarocnine stripe;
     private final RacunDnevnikStoritev racunDnevnik;
     private final KodePopustaStoritev kodePopusta;
+    private final PodporaKlubaStoritev podporaKluba;
 
     public PlacilaStoritev(
             @Value("${turnirko.stripe.tajni-kljuc:}") String tajniKljuc,
@@ -112,7 +113,8 @@ public class PlacilaStoritev {
             PasswordEncoder kodirnik,
             StripeNarocnine stripe,
             RacunDnevnikStoritev racunDnevnik,
-            KodePopustaStoritev kodePopusta) {
+            KodePopustaStoritev kodePopusta,
+            PodporaKlubaStoritev podporaKluba) {
         Stripe.apiKey = tajniKljuc;
         this.webhookSkrivnost = webhookSkrivnost;
         this.vrniNaKoren = vrniNaKoren;
@@ -126,6 +128,7 @@ public class PlacilaStoritev {
         this.stripe = stripe;
         this.racunDnevnik = racunDnevnik;
         this.kodePopusta = kodePopusta;
+        this.podporaKluba = podporaKluba;
     }
 
     // ---------- Zacetek placila: nova registracija ----------
@@ -164,11 +167,18 @@ public class PlacilaStoritev {
         }
 
         boolean organizator = Boolean.TRUE.equals(racun.organizator());
+        boolean navijac = racun.jeNavijac();
         boolean paketJePremium = vnos.paket() == Paket.PREMIUM;
+        // navijac placuje samo svoj paket (V58), nihce drug ga ne more kupiti
+        if (navijac != (vnos.paket() == Paket.NAVIJAC)) {
+            throw new NeveljavenVnosIzjema(navijac
+                    ? "Navijač lahko izbere samo paket Navijač."
+                    : "Paket Navijač je za račun navijača.");
+        }
         if (organizator && paketJePremium) {
             throw new NeveljavenVnosIzjema("Organizator ne more izbrati paketa Premium.");
         }
-        if (!organizator && !paketJePremium) {
+        if (!organizator && !navijac && !paketJePremium) {
             throw new NeveljavenVnosIzjema("Igralec lahko izbere samo paket Premium.");
         }
 
@@ -180,7 +190,8 @@ public class PlacilaStoritev {
            pri najvec uporab do placila; kodo po placilu zapise webhook. V Stripe gre
            samo kupon (njegovo ime je koda, ki jo kupec pozna), metapodatki ostanejo
            enaki. */
-        KodaPopusta koda = kodePopusta.zaPlacljivoRegistracijo(racun.kodaPopusta(), organizator,
+        KodaPopusta koda = kodePopusta.zaPlacljivoRegistracijo(racun.kodaPopusta(),
+                KodePopustaStoritev.vlogaRegistracije(organizator, navijac),
                 vnos.paket(), vnos.ciklus(), starejsiOd21, naslovIp, email).orElse(null);
         String kupon = koda == null ? null : kodePopusta.stripeKupon(koda);
 
@@ -191,6 +202,7 @@ public class PlacilaStoritev {
         if (koda != null) {
             nova.setIdKoda(koda.getId());
         }
+        nova.setNavijac(navijac);
         CakajocaRegistracija cakajoca = cakajoce.save(nova);
 
         SessionCreateParams.Builder seja = osnovaSeje(vnos.paket(), vnos.ciklus())
@@ -240,15 +252,24 @@ public class PlacilaStoritev {
     }
 
     public PlacilnaSejaDto zacniNadgradnjo(NadgradnjaVnos vnos) {
-        Uporabnik jaz = zahtevajPrijavo();
+        return new PlacilnaSejaDto(ustvariSejo(pripraviNadgradnjo(zahtevajPrijavo(), vnos)));
+    }
+
+    /* Parametri Stripe seje nadgradnje, preden gre karkoli v Stripe - locen korak, da test
+       prebere, kaj bi Stripe dobil (toMap()), kot pri registraciji. */
+    SessionCreateParams pripraviNadgradnjo(Uporabnik jaz, NadgradnjaVnos vnos) {
         if (vnos.paket() == Paket.BREZPLACNO) {
             throw new NeveljavenVnosIzjema("Za prehod na brezplacno ne potrebujes placila.");
         }
         boolean paketJePremium = vnos.paket() == Paket.PREMIUM;
+        boolean paketJeNavijac = vnos.paket() == Paket.NAVIJAC;
         if (paketJePremium && jaz.getVloga() != Vloga.IGRALEC) {
             throw new NeveljavenVnosIzjema("Premium je paket za igralca.");
         }
-        if (!paketJePremium && jaz.getVloga() != Vloga.ORGANIZATOR) {
+        if (paketJeNavijac && jaz.getVloga() != Vloga.NAVIJAC) {
+            throw new NeveljavenVnosIzjema("Paket Navijač je za račun navijača.");
+        }
+        if (!paketJePremium && !paketJeNavijac && jaz.getVloga() != Vloga.ORGANIZATOR) {
             throw new NeveljavenVnosIzjema("Ta paket je za organizatorja.");
         }
 
@@ -260,7 +281,7 @@ public class PlacilaStoritev {
                 && cenik.stariEnaindvajset(jaz.getPrijavljeniDatumRojstva());
         double cena = cenik.cena(vnos.paket(), vnos.ciklus(), starejsiOd21);
 
-        SessionCreateParams params = osnovaSeje(vnos.paket(), vnos.ciklus())
+        SessionCreateParams.Builder seja = osnovaSeje(vnos.paket(), vnos.ciklus())
                 .setCustomerEmail(jaz.getUporabniskoIme())
                 .setSuccessUrl(vrniNaKoren + "/narocnina?stanje=uspeh")
                 .setCancelUrl(vrniNaKoren + "/narocnina?stanje=preklic")
@@ -269,9 +290,15 @@ public class PlacilaStoritev {
                 .putMetadata(M_ID_UPORABNIK, String.valueOf(jaz.getId()))
                 .putMetadata(M_PAKET, vnos.paket().name())
                 .putMetadata(M_CIKLUS, vnos.ciklus() == null ? "" : vnos.ciklus().name())
-                .putMetadata(M_STAREJSI_OD_21, String.valueOf(starejsiOd21))
-                .build();
-        return new PlacilnaSejaDto(ustvariSejo(params));
+                .putMetadata(M_STAREJSI_OD_21, String.valueOf(starejsiOd21));
+        /* Popust kluba (V61): organizator kluba, ki ima dovolj podpornikov s paketom Navijac, dobi
+           odstotek na prvo placilo (Stripov kupon once, kot koda popusta). Obnova je po polni ceni. */
+        int popustKluba = vnos.paket().jeOrganizatorski() ? podporaKluba.popustZaOrganizatorja(jaz) : 0;
+        if (popustKluba > 0) {
+            seja.addDiscount(SessionCreateParams.Discount.builder()
+                    .setCoupon(podporaKluba.stripeKupon(popustKluba)).build());
+        }
+        return seja.build();
     }
 
     // ---------- Stripe Billing Portal (upravljanje/preklic) ----------
@@ -344,7 +371,7 @@ public class PlacilaStoritev {
         CakajocaRegistracija c = najdena.get();
         RegistracijaVnos racun = new RegistracijaVnos(
                 c.getIme(), c.getPriimek(), c.getIdKlub(), c.getEmail(), "placano-preko-stripe",
-                c.isOrganizator(), c.getDatumRojstva(), c.getEmailSkrbnika());
+                c.isOrganizator(), c.getDatumRojstva(), c.getEmailSkrbnika(), null, c.isNavijac());
 
         Optional<Uporabnik> nastal = registracija.registrirajPoPlacilu(racun, c.getGesloHash());
         // podatki so zdaj v racunu ali pa racuna ne bo - kopija ne ostane

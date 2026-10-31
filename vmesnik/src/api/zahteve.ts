@@ -13,6 +13,12 @@ import type {
   CiklusPlacila,
   DogodekDto,
   DogodekVnos,
+  DomovIgralecDto,
+  DruzinaAdmin,
+  DruzinaPregled,
+  DruzinskaPovezava,
+  KoledarPovezavaDto,
+  PodporaKlubaDto,
   DomovLigaDto,
   DomovTurnirDto,
   ObvestilaDto,
@@ -394,6 +400,41 @@ export const placilaApi = {
 
 /* Upravljanje obstoječe naročnine (stran »Naročnina«). Vsaka mutacija vrne
    posodobljeno naročnino, zato stran ne bere znova. */
+/* Osebni koledar .ics (paket Navijač ali Premium): povezava računa in njena zamenjava. */
+export const osebniKoledarApi = {
+  moj: () => api.vrni<KoledarPovezavaDto>('/moj-koledar'),
+  zamenjaj: () => api.objavi<KoledarPovezavaDto>('/moj-koledar/zamenjaj'),
+}
+
+/* Podpora klubu (V61): izbira kluba (navijač s paketom) in popust kluba organizatorja. */
+export const podporaKlubaApi = {
+  moja: () => api.vrni<PodporaKlubaDto>('/podpora-kluba'),
+  izberi: (idKlub: number) => api.posodobi<PodporaKlubaDto>(`/podpora-kluba/${idKlub}`, undefined),
+  umakni: () => api.izbrisi<PodporaKlubaDto>('/podpora-kluba'),
+  mojKlub: () => api.vrni<PodporaKlubaDto>('/podpora-kluba/moj-klub'),
+}
+
+/* Potisna obvestila (V60): javni ključ VAPID (prazen = funkcija ni vklopljena), vpis naprave,
+   izpis in preizkusno obvestilo. */
+export const potisnaApi = {
+  kljuc: () => api.vrni<{ kljuc: string }>('/push/kljuc'),
+  vpisi: (narocnina: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    api.objavi<void>('/push/naprava', narocnina),
+  izpis: (endpoint: string) => api.objavi<void>('/push/izpis', { endpoint }),
+  preizkus: () => api.objavi<{ poslanih: number }>('/push/preizkus'),
+}
+
+/* Družina (V59): pregled in zahteva sta osebna, seznam zahtev in odločitve samo admin. */
+export const druzinaApi = {
+  pregled: () => api.vrni<DruzinaPregled>('/druzina'),
+  zahtevaj: (idIgralec: number) => api.objavi<DruzinskaPovezava>('/druzina', { idIgralec }),
+  umakni: (id: number) => api.izbrisi(`/druzina/${id}`),
+  admin: () => api.vrni<DruzinaAdmin[]>('/druzina/admin'),
+  potrdi: (id: number) => api.objavi<DruzinaAdmin>(`/druzina/${id}/potrdi`),
+  zavrni: (id: number) => api.objavi<DruzinaAdmin>(`/druzina/${id}/zavrni`),
+  razveze: (id: number) => api.objavi<void>(`/druzina/${id}/razveze`),
+}
+
 export const narocninaApi = {
   pregled: () => api.vrni<NarocninaDto>('/narocnina'),
   /* Preklic ob koncu obdobja: Premium velja do konca plačanega časa. */
@@ -617,6 +658,13 @@ export const domovApi = {
   mojeLige: () => api.vrni<number[]>('/domov/moje-lige'),
   spremljaj: (idLiga: number) => api.posodobi<number[]>(`/domov/moje-lige/${idLiga}`, undefined),
   nehajSpremljati: (idLiga: number) => api.izbrisi(`/domov/moje-lige/${idLiga}`),
+  /* Spremljani igralci (V57): isto kot lige - last računa, gost dobi 401. Ob
+     doseženi meji PUT vrne 409 s sporočilom, koga račun že spremlja. */
+  mojiIgralci: () => api.vrni<number[]>('/domov/moji-igralci'),
+  spremljajIgralca: (idIgralec: number) =>
+    api.posodobi<number[]>(`/domov/moji-igralci/${idIgralec}`, undefined),
+  nehajSpremljatiIgralca: (idIgralec: number) => api.izbrisi(`/domov/moji-igralci/${idIgralec}`),
+  povzetkiIgralcev: () => api.vrni<DomovIgralecDto[]>('/domov/moji-igralci-povzetki'),
 }
 
 /* Obvestila po kolu: nastavitev računa (prijava) in odjava iz e-pošte z žetonom

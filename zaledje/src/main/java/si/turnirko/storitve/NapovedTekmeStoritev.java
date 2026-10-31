@@ -76,7 +76,7 @@ public class NapovedTekmeStoritev {
        zasebnih analizah profila. */
     @Transactional(readOnly = true)
     public NapovedTekmeDto napoved(Long idIgralec, Long idNasprotnika, String prijavnoIme) {
-        dostop.preveriLastnistvo(idIgralec, prijavnoIme);
+        dostop.preveriNapoved(idIgralec, prijavnoIme);
         if (idNasprotnika == null || idNasprotnika.equals(idIgralec)) {
             throw new NeveljavenVnosIzjema("Za napoved izberi drugega igralca.");
         }

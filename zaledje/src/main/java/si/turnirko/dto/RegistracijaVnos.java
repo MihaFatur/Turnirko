@@ -1,4 +1,4 @@
-/* Registracija osebe (igralca ali organizatorja). Ime, priimek in klub
+/* Registracija osebe (igralca, navijaca ali organizatorja). Ime, priimek in klub
    sluzijo administratorju pri potrjevanju (igralca poveze z zapisom v
    sifrantu, organizatorju potrdi klub); e-posta je hkrati prijavno ime in jo
    je treba potrditi s kodo. Datum rojstva (samo igralec) je podlaga za
@@ -42,12 +42,32 @@ public record RegistracijaVnos(
 
         /* Neobvezna koda popusta (V53, KodePopustaStoritev): ugodnost, ki jo je
            nastavil admin. Kaj prinese in na kateri poti velja, doloca koda sama. */
-        @Size(max = 40, message = "koda popusta je predolga") String kodaPopusta
+        @Size(max = 40, message = "koda popusta je predolga") String kodaPopusta,
+
+        /* true = registracija navijaca (oseba, ki ne igra; V55). Datum rojstva je
+           obvezen kot pri igralcu - po njem velja pravilo o skrbniku -, z zapisom
+           med igralci pa se ne primerja. Izkljucuje se z `organizator`. */
+        Boolean navijac
 ) {
 
     /* Registracija brez kode popusta. */
     public RegistracijaVnos(String ime, String priimek, Long idKlub, String email, String geslo,
                             Boolean organizator, LocalDate datumRojstva, String emailSkrbnika) {
-        this(ime, priimek, idKlub, email, geslo, organizator, datumRojstva, emailSkrbnika, null);
+        this(ime, priimek, idKlub, email, geslo, organizator, datumRojstva, emailSkrbnika, null, null);
+    }
+
+    /* Registracija igralca ali organizatorja s kodo popusta. */
+    public RegistracijaVnos(String ime, String priimek, Long idKlub, String email, String geslo,
+                            Boolean organizator, LocalDate datumRojstva, String emailSkrbnika,
+                            String kodaPopusta) {
+        this(ime, priimek, idKlub, email, geslo, organizator, datumRojstva, emailSkrbnika, kodaPopusta, null);
+    }
+
+    public boolean jeOrganizator() {
+        return Boolean.TRUE.equals(organizator);
+    }
+
+    public boolean jeNavijac() {
+        return Boolean.TRUE.equals(navijac);
     }
 }

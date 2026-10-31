@@ -267,7 +267,7 @@ public class ObvestilaPoKoluStoritev {
         return poslanih;
     }
 
-    private static boolean primeren(Uporabnik u) {
+    static boolean primeren(Uporabnik u) {
         return u.isAktiven() && u.isObvestilaPoKolu() && u.jeEmailPotrjen() && !u.cakaSkrbnika()
                 && u.getStatus() != StatusRacuna.ZAVRNJEN
                 && u.getUporabniskoIme() != null && u.getUporabniskoIme().contains("@");

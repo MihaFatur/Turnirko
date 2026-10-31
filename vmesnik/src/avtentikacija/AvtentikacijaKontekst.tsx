@@ -27,6 +27,10 @@ interface Avtentikacija {
   /* Ali ima prijavljeni igralec Premium (zasebna statistika, spremljanje
      lig) - brez tega je (tudi lastniku) na voljo enako kot gostu. */
   jePremium: boolean
+  /* Ugodnosti, ki jih imata paket Navijač in Igralec Premium skupaj (V58): neomejeno
+     spremljanih igralcev, koledar v telefonu, napoved dvoboja za kateri koli par. Strežnik
+     je zadnja beseda (NarocninaStoritev.imaSirokoSpremljanje); admin ima vse. */
+  imaSirokoSpremljanje: boolean
   /* Sme ustvarjati turnirje in lige (administrator ali organizator). */
   smeUstvarjati: boolean
   /* Id igralca, čigar profil je "moj"; null za admina in nepotrjene račune. */
@@ -118,6 +122,8 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
   const jeAdmin = uporabnik?.vloga === 'ADMIN'
   const jeOrganizator = uporabnik?.vloga === 'ORGANIZATOR' && uporabnik.status === 'POTRJEN'
   const jePremium = uporabnik?.paket === 'PREMIUM' && uporabnik.paketAktiven
+  const imaSirokoSpremljanje = jeAdmin
+    || ((uporabnik?.paket === 'PREMIUM' || uporabnik?.paket === 'NAVIJAC') && !!uporabnik.paketAktiven)
 
   /* Ali sme prijavljeni urejati turnir/ligo z danim lastništvom. */
   function smemUrejati(idLastnik: number | null, idKlubLastnik: number | null): boolean {
@@ -136,6 +142,7 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     jeOrganizator,
     jeIgralec,
     jePremium,
+    imaSirokoSpremljanje,
     smeUstvarjati: jeAdmin || jeOrganizator,
     mojIdIgralec: jeIgralec ? uporabnik!.idIgralec : null,
     smemUrejati,

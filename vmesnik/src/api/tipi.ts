@@ -67,7 +67,7 @@ export type StatusPrijave =
   | 'DISKVALIFICIRAN'
   | 'REZERVA'
   | 'ODSTOPIL'
-export type Vloga = 'ADMIN' | 'ORGANIZATOR' | 'IGRALEC'
+export type Vloga = 'ADMIN' | 'ORGANIZATOR' | 'IGRALEC' | 'NAVIJAC'
 
 /* ---------- Izpisni DTO-ji ---------- */
 
@@ -643,13 +643,20 @@ export interface UporabnikDto {
    starostnem pasu ob registraciji), organizator med tremi obsegovnimi
    paketi. Glej CenikStoritev na zaledju za cene in NarocninaStoritev za
    kaj kateri paket dovoli. */
-export type Paket = 'BREZPLACNO' | 'PREMIUM' | 'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO'
+export type Paket =
+  | 'BREZPLACNO'
+  | 'PREMIUM'
+  | 'NAVIJAC'
+  | 'ORGANIZATOR_BASIC'
+  | 'ORGANIZATOR_PLUS'
+  | 'ORGANIZATOR_PRO'
 
 export type CiklusPlacila = 'MESECNO' | 'LETNO'
 
 export const OZNAKE_PAKET: Record<Paket, string> = {
   BREZPLACNO: 'Igralec Free',
   PREMIUM: 'Igralec Premium',
+  NAVIJAC: 'Navijač',
   ORGANIZATOR_BASIC: 'Organizator Basic',
   ORGANIZATOR_PLUS: 'Organizator Plus',
   ORGANIZATOR_PRO: 'Organizator Pro',
@@ -663,6 +670,8 @@ export const OZNAKE_PAKET: Record<Paket, string> = {
    letni. */
 export const CENA_PREMIUM_MESECNO = { mlajsi: 1.99, starejsi: 2.99 } as const
 export const CENA_PREMIUM_LETNO = { mlajsi: 9.99, starejsi: 19.99 } as const
+/* Paket Navijač (V58): ena cena za vse in samo letno (CenikStoritev.NAVIJAC_LETNO). */
+export const CENA_NAVIJAC_LETNO = 19.99
 
 /* Oznaka prihranka letnega plačila (»−44 %«) ob izbiri plačevanja, iz PRIKAZANIH
    cen: vsak vidi odstotek za svoj pas (U21 prihrani več) in za ceno, ki stoji
@@ -702,6 +711,7 @@ export const OZNAKE_VLOGA: Record<Vloga, string> = {
   ADMIN: 'Administrator',
   ORGANIZATOR: 'Organizator',
   IGRALEC: 'Igralec',
+  NAVIJAC: 'Navijač',
 }
 
 export interface RegistracijaVnos {
@@ -712,8 +722,11 @@ export interface RegistracijaVnos {
   geslo: string
   /* true = registracija organizatorja; sicer (false/undefined) igralec. */
   organizator?: boolean
-  /* Obvezen pri igralcu (ISO datum); podlaga za samodejno povezavo z zapisom
-     v šifrantu in za pravilo o skrbniku. Javno nikoli. */
+  /* true = registracija navijača (oseba, ki ne igra; V55): datum rojstva je obvezen
+     (pravilo o skrbniku), z zapisom med igralci se ne primerja. */
+  navijac?: boolean
+  /* Obvezen pri igralcu in navijaču (ISO datum); podlaga za samodejno povezavo
+     z zapisom v šifrantu (samo igralec) in za pravilo o skrbniku. Javno nikoli. */
   datumRojstva: string | null
   /* Obvezna pri mlajših od 15 let: naslov starša oz. skrbnika. */
   emailSkrbnika: string | null
@@ -724,12 +737,15 @@ export interface RegistracijaVnos {
 /* Kaj koda popusta prinese (V53). Vrsta pove, na kateri poti registracije velja:
    PREMIUM_MESECI brezplačna registracija igralca (preizkus Premium traja `meseci`),
    ODSTOTEK plačljiva registracija (popust na prvo plačilo),
-   ORGANIZATOR_MESECI registracija organizatorja brez plačila (`paket` za `meseci`). */
-export type VrstaKodePopusta = 'PREMIUM_MESECI' | 'ODSTOTEK' | 'ORGANIZATOR_MESECI'
+   ORGANIZATOR_MESECI registracija organizatorja brez plačila (`paket` za `meseci`),
+   NAVIJAC_MESECI brezplačna registracija navijača (paket Navijač za `meseci`, od potrditve računa). */
+export type VrstaKodePopusta = 'PREMIUM_MESECI' | 'ODSTOTEK' | 'ORGANIZATOR_MESECI' | 'NAVIJAC_MESECI'
 
 export interface PreveriKodoVnos {
   koda: string
   organizator: boolean
+  /* Registracija navijača (V58); izključuje se z organizatorjem. */
+  navijac?: boolean
   paket: Paket
   /* Naslov, s katerim se oseba registrira (neobvezno). */
   email: string | null
@@ -761,7 +777,7 @@ export interface KodaPopustaDto {
   odstotek: number | null
   paket: Paket | null
   /* Samo pri ODSTOTEK: koda velja samo za to vlogo; null = za oboje. */
-  zaVlogo: 'IGRALEC' | 'ORGANIZATOR' | null
+  zaVlogo: 'IGRALEC' | 'ORGANIZATOR' | 'NAVIJAC' | null
   /* Zadnji dan, ko se koda sprejme (ISO); null = brez roka. */
   veljaDo: string | null
   /* null = neomejeno. */
@@ -782,7 +798,7 @@ export interface KodaPopustaVnos {
   meseci: number | null
   odstotek: number | null
   paket: Paket | null
-  zaVlogo: 'IGRALEC' | 'ORGANIZATOR' | null
+  zaVlogo: 'IGRALEC' | 'ORGANIZATOR' | 'NAVIJAC' | null
   veljaDo: string | null
   najvecUporab: number | null
 }
@@ -834,6 +850,68 @@ export interface PlacanaRegistracijaVnos {
 export interface NadgradnjaVnos {
   paket: Paket
   ciklus: CiklusPlacila | null
+}
+
+/* Družina (V59, paket Navijač): navijač poveže do dva igralca do 21 let in vidi njuno zasebno
+   statistiko; povezavo potrdi admin. »veljavna« = povezava zdaj res odpira zasebno statistiko
+   (potrjena, paket velja, igralec še ni prerasel obdobja); »status« je odločitev admina. */
+export type StatusDruzine = 'CAKA' | 'POTRJENA' | 'ZAVRNJENA'
+
+export interface DruzinskaPovezava {
+  id: number
+  idIgralec: number
+  igralec: string
+  klub: string | null
+  status: StatusDruzine
+  veljavna: boolean
+  veljaDo: string | null
+}
+
+export interface DruzinaPregled {
+  /* Račun ima veljaven paket Navijač, torej sme zahtevati povezavo. */
+  smemZahtevati: boolean
+  najvec: number
+  povezave: DruzinskaPovezava[]
+  /* Račun igralca ima Premium prek družine (plačuje ga navijač). */
+  premiumPrekDruzine: boolean
+}
+
+/* Zahteva v adminovem pogledu: nosi datum rojstva, po katerem admin odloča. */
+export interface DruzinaAdmin {
+  id: number
+  idRacun: number
+  racun: string
+  email: string | null
+  idIgralec: number
+  igralec: string
+  klub: string | null
+  datumRojstva: string | null
+  pas: StarostniPas | null
+  status: StatusDruzine
+  zahtevanaOb: string
+  veljaDo: string | null
+  placnikImaPaket: boolean
+}
+
+/* Podpora klubu (V61): navijač s paketom izbere klub; klub z dovolj podporniki dobi popust za
+   organizatorja. Število je zbirno, imen ni. */
+export interface PodporaKlubaDto {
+  /* Račun podpira klub (pogled navijača). */
+  izbran: boolean
+  smemIzbrati: boolean
+  idKlub: number | null
+  klub: string | null
+  popust: {
+    podpornikov: number
+    odstotek: number
+    naslednjaMeja: number | null
+    naslednjiOdstotek: number | null
+  } | null
+}
+
+/* Osebni koledar .ics (V58): zeton, iz katerega vmesnik sestavi naslov povezave. */
+export interface KoledarPovezavaDto {
+  zeton: string
 }
 
 export interface PlacilnaSejaDto {
@@ -1037,6 +1115,8 @@ export interface PotrditevOdgovorDto {
   /* Zadnji dan preizkusa Premium, ki se je začel s povezavo (ISO); null, če
      preizkusa ni (račun ni povezan ali je naročnino že imel). */
   preizkusDo: string | null
+  /* Račun navijača je potrjen in pripravljen (administratorja ne čaka). */
+  navijac: boolean
 }
 
 export type NamenKode = 'EPOSTA' | 'SKRBNIK' | 'GESLO'
@@ -1203,6 +1283,44 @@ export interface VrhLigeDto {
   tocke: number
   /* V kadru te ekipe je prijavljeni igralec s Premium. */
   moja: boolean
+}
+
+/* Igralec, ki ga račun spremlja (sklop »Moj igralec« na domači strani, V57).
+   Vse to je že javno na profilu igralca; zasebnih analiz (forma, nasprotniki,
+   napoved) v povzetku ni. */
+export interface DomovIgralecDto {
+  idIgralec: number
+  polnoIme: string
+  klub: string | null
+  rating: number | null
+  /* Isti zapis kot v glavi profila, da se mesti ne moreta razhajati. */
+  uvrstitev: ProfilUvrstitev
+  /* Zadnje tri odigrane tekme, najnovejša prva. */
+  zadnje: TekmaProfila[]
+  naslednjeSrecanje: NaslednjeSrecanjeIgralca | null
+  prihajajociTurnir: PrihajajociTurnirIgralca | null
+  /* Igralec je v družini računa (V59): vmesnik ponudi zasebno statistiko na profilu. */
+  druzina: boolean
+}
+
+/* Srečanje ekipe igralca (igralec v njem ne igra nujno: kader je lahko širši
+   od postave). »zacetek« je lahko prazen. */
+export interface NaslednjeSrecanjeIgralca {
+  idSrecanje: number
+  idLiga: number
+  liga: string
+  kolo: number
+  zacetek: string | null
+  ekipa: string
+  nasprotnik: string
+  doma: boolean
+}
+
+export interface PrihajajociTurnirIgralca {
+  idTurnir: number
+  ime: string
+  datum: string
+  status: StatusTekmovanja
 }
 
 /* Zakaj turnir stoji v sklopu »Turnirji« domače strani igralca s Premium

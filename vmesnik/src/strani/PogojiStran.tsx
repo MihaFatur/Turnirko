@@ -22,7 +22,8 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { GlavaZavihki } from '../komponente/GlavaTelefona'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
-import { oblikujDatum } from '../pomozno/oblikovanje'
+import { CENA_NAVIJAC_LETNO } from '../api/tipi'
+import { oblikujCeno, oblikujDatum } from '../pomozno/oblikovanje'
 import { PONUDNIK, POGOJI_VELJAJO_OD } from '../pomozno/pravno'
 import { useTelefon } from '../pomozno/telefon'
 
@@ -99,7 +100,7 @@ const POGOJI: Tocka[] = [
   {
     id: 'pogoji-narocnina',
     st: '1.3',
-    naslov: 'Naročnina Premium in paketi organizatorjev',
+    naslov: 'Naročnina Premium, Navijač in paketi organizatorjev',
     okvir: <Okvir naslov="V kratkem" vrstice={V_KRATKEM} />,
     vsebina: (
       <>
@@ -117,6 +118,19 @@ const POGOJI: Tocka[] = [
         brezplačen. Kot potrošnik lahko
         od pogodbe odstopiš v 14 dneh od nakupa brez navedbe razloga — piši nam; vrnemo
         plačilo, zmanjšano za že porabljeni del obdobja.
+        <br />
+        <strong>Paket Navijač</strong> je za osebo, ki sama ne igra (starš, soigralec, klubski
+        človek). Stane {oblikujCeno(CENA_NAVIJAC_LETNO)} na leto in se plača samo letno; za
+        obnovo, preklic in odstop veljajo ista pravila kot zgoraj. Brezplačen račun navijača
+        spremlja enega igralca; paket odpre spremljanje poljubnega števila igralcev, e-pošto po
+        vsakem turnirju, osebni koledar tekem (.ics), obvestila v telefon ali računalnik med
+        turnirjem, sezonski zapisnik za tisk, napoved izida poljubnega para in izbiro kluba, ki
+        ga podpiraš. Pri podpori klubu ni izplačil: ko ima klub dovolj podpornikov s paketom
+        (10, 20, 30), njegov organizator dobi 10, 20 oziroma 30 % popusta na prvo plačilo
+        organizatorskega paketa. <strong>Družina</strong>: račun navijača s paketom lahko
+        zaprosi za povezavo z največ dvema igralcema, mlajšima od 21 let; povezavo vedno potrdi
+        administrator. Potrjena povezava odpre zasebno statistiko igralca v računu navijača,
+        igralec z lastnim računom pa dobi Premium, dokler paket navijača velja.
       </>
     ),
   },
@@ -200,8 +214,13 @@ const ZASEBNOST: Tocka[] = [
         more nihče), ime, priimek, klub in datum rojstva, ki služi povezavi računa z zapisom
         igralca. Pri mlajših od 15 let hranimo še e-poštni naslov starša ali skrbnika. Na
         e-poštni naslov pošiljamo kode, obvestila o računu in — dokler jih ne izklopiš —
-        obvestila po kolu lig, ki jih spremljaš ali v katerih igraš. Podlaga je pogodba
-        (uporaba računa).
+        obvestila po kolu lig, ki jih spremljaš ali v katerih igraš. Račun navijača hrani še
+        izbor spremljanih igralcev in lig, po izbiri klub, ki ga podpira (število podpornikov
+        kluba je zbirno, imen podpornikov ne vidi nihče), in zahteve za družino. Račun s
+        paketom lahko vklopi obvestila v napravo: hranimo naslov potisne storitve brskalnika in
+        ključa za šifriranje (ne vsebine) in ju izbrišemo ob izpisu naprave ali ko storitev
+        pove, da naprave ni več. Osebni koledar (.ics) se bere prek skrite povezave z
+        žetonom; povezavo lahko kadar koli zamenjaš. Podlaga je pogodba (uporaba računa).
       </>
     ),
   },
@@ -213,7 +232,8 @@ const ZASEBNOST: Tocka[] = [
       <>
         Plačilo s kartico obdela Stripe; številke kartice Turnirko ne vidi in ne hrani. Hranimo
         stanje naročnine (paket, obdobje, cena). Račun izda in pri finančni upravi davčno
-        potrdi program Moj Račun, ki od Stripa dobi znesek, izdelek in e-poštni naslov kupca,
+        potrdi program Moj Račun, ki od Stripa dobi znesek, izdelek (tudi paket Navijač) in
+        e-poštni naslov kupca,
         pri paketih organizatorjev še naslov in davčno številko, če ju vpišeš. Podlaga je
         zakonska obveznost izdaje računa.
       </>

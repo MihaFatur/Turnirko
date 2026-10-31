@@ -16,6 +16,9 @@
      ki o tem dobi e-posto (ObvestiloAdminuStoritev).
    - Ob povezavi racun igralca dobi mesec Premium brez placila
      (PreizkusPremiumStoritev; enkrat na racun).
+   - Navijac (oseba, ki ne igra; V55) se z zapisom ne primerja in admina ne
+     caka: potrjen naslov (in skrbnik) racun potrdi. Placljivega paketa in
+     kod popusta zanj ni.
    - Admin se ne registrira in gesla ne ponastavlja po posti: najmocnejsi
      racun ostane izven te poti. */
 package si.turnirko.storitve;
@@ -134,7 +137,10 @@ public class RegistracijaStoritev {
 
     /* Isti validatorji kot registriraj(), locen od ustvarjanja racuna. */
     PreverjenVnos preveriPolja(RegistracijaVnos v) {
-        if (Boolean.TRUE.equals(v.organizator())) {
+        if (v.jeOrganizator() && v.jeNavijac()) {
+            throw new NeveljavenVnosIzjema("Račun je lahko organizatorski ali navijaški, ne oboje.");
+        }
+        if (v.jeOrganizator()) {
             return new PreverjenVnos(null, null);
         }
         LocalDate datumRojstva = preverjenDatumRojstva(v.datumRojstva());
@@ -157,7 +163,8 @@ public class RegistracijaStoritev {
            odvisen samo od vnosa (ne od naslova), zato ne razkrije, ali racun obstaja;
            ugibanje kod omejuje KodePopustaStoritev po naslovu IP. */
         KodaPopusta koda = kodePopusta.zaBrezplacnoRegistracijo(
-                v.kodaPopusta(), Boolean.TRUE.equals(v.organizator()), naslovIp, email).orElse(null);
+                v.kodaPopusta(), KodePopustaStoritev.vlogaRegistracije(v.jeOrganizator(), v.jeNavijac()),
+                naslovIp, email).orElse(null);
         preveriOmejitevPosiljanja(email, naslovIp);
 
         /* Zgostitev gesla se izracuna VEDNO, tudi ce racun ne bo nastal - BCrypt
@@ -195,7 +202,7 @@ public class RegistracijaStoritev {
     private Optional<Uporabnik> ustvariRacunInPosljiKodo(RegistracijaVnos v, String email,
                                                           String gesloHash, PreverjenVnos preverjen,
                                                           KodaPopusta koda) {
-        boolean organizator = Boolean.TRUE.equals(v.organizator());
+        Vloga vloga = v.jeOrganizator() ? Vloga.ORGANIZATOR : v.jeNavijac() ? Vloga.NAVIJAC : Vloga.IGRALEC;
         LocalDate datumRojstva = preverjen.datumRojstva();
         String emailSkrbnika = preverjen.emailSkrbnika();
 
@@ -219,8 +226,7 @@ public class RegistracijaStoritev {
             uporabnikRepozitorij.flush();
         }
 
-        Uporabnik u = new Uporabnik(email, gesloHash,
-                organizator ? Vloga.ORGANIZATOR : Vloga.IGRALEC);
+        Uporabnik u = new Uporabnik(email, gesloHash, vloga);
         u.setStatus(StatusRacuna.CAKA);
         u.setPrijavljenoIme(v.ime().trim());
         u.setPrijavljeniPriimek(v.priimek().trim());
@@ -232,8 +238,11 @@ public class RegistracijaStoritev {
             u.setKlubZelja(klub);
         }
         u = uporabnikRepozitorij.save(u);
-        racunDnevnik.zabelezi(u.getId(),
-                "Registracija (" + (organizator ? "organizator" : "igralec") + ")");
+        racunDnevnik.zabelezi(u.getId(), "Registracija (" + switch (vloga) {
+            case ORGANIZATOR -> "organizator";
+            case NAVIJAC -> "navijač";
+            default -> "igralec";
+        } + ")");
         if (koda != null) {
             kodePopusta.zabeleziUporabo(u, koda);
         }
@@ -274,7 +283,7 @@ public class RegistracijaStoritev {
         u.setEmailPotrjenOb(LocalDateTime.now());
         racunDnevnik.zabelezi(u.getId(), "E-pošta potrjena s kodo");
         boolean povezan = poskusiSamodejnoPovezavo(u);
-        if (!povezan) {
+        if (!povezan && !potrdiNavijaca(u)) {
             obvestiAdminaCeCaka(u);
         }
         uporabnikRepozitorij.save(u);
@@ -298,7 +307,7 @@ public class RegistracijaStoritev {
         u.setSkrbnikPotrjenOb(LocalDateTime.now());
         racunDnevnik.zabelezi(u.getId(), "Skrbnik potrdil soglasje s kodo");
         boolean povezan = poskusiSamodejnoPovezavo(u);
-        if (!povezan) {
+        if (!povezan && !potrdiNavijaca(u)) {
             obvestiAdminaCeCaka(u);
         }
         uporabnikRepozitorij.save(u);
@@ -425,6 +434,23 @@ public class RegistracijaStoritev {
         return true;
     }
 
+    /* Navijac nima zapisa, s katerim bi ga admin povezal, in nicesar, kar bi
+       admin presojal: racun je potrjen, ko je dokazano lastnistvo naslova (in
+       soglasje skrbnika pri mlajsih od 15 let). Vrne true, ce je ravno zdaj
+       postal potrjen. */
+    boolean potrdiNavijaca(Uporabnik u) {
+        if (u.getVloga() != Vloga.NAVIJAC || u.getStatus() != StatusRacuna.CAKA
+                || !u.jeEmailPotrjen() || u.cakaSkrbnika()) {
+            return false;
+        }
+        u.setStatus(StatusRacuna.POTRJEN);
+        u.setAktiven(true);
+        racunDnevnik.zabelezi(u.getId(), "Račun navijača potrjen (brez administratorja)");
+        // koda NAVIJAC_MESECI: paket Navijač brez plačila teče od tu, ne od registracije
+        kodePopusta.uveljaviZaNavijaca(u, LocalDateTime.now());
+        return true;
+    }
+
     /* Aktivni igralci, ki jim ime, priimek in datum rojstva z racuna (brez
        sumnikov in velikih crk) ustrezajo; datum rojstva mora biti znan. */
     private List<Igralec> kandidatiZaRacun(Uporabnik u) {
@@ -445,8 +471,9 @@ public class RegistracijaStoritev {
        natanko enkrat, zato obvestilo ne gre dvakrat. Admin je vedno POTRJEN,
        zato ga pogoj statusa izloci. */
     private void obvestiAdminaCeCaka(Uporabnik u) {
+        // navijac admina ne caka nikoli (potrdiNavijaca)
         if (u.getIgralec() != null || u.getStatus() != StatusRacuna.CAKA
-                || !u.jeEmailPotrjen() || u.cakaSkrbnika()) {
+                || !u.jeEmailPotrjen() || u.cakaSkrbnika() || u.getVloga() == Vloga.NAVIJAC) {
             return;
         }
         if (u.getVloga() == Vloga.ORGANIZATOR) {
@@ -475,7 +502,7 @@ public class RegistracijaStoritev {
 
     private PotrditevOdgovorDto odgovor(Uporabnik u, boolean povezan) {
         return new PotrditevOdgovorDto(povezan, u.cakaSkrbnika(), u.getVloga() == Vloga.ORGANIZATOR,
-                povezan ? preizkus.veljaDo(u, LocalDateTime.now()) : null);
+                povezan ? preizkus.veljaDo(u, LocalDateTime.now()) : null, u.jePotrjenNavijac());
     }
 
     private void posljiKodo(Uporabnik u, NamenKode namen) {

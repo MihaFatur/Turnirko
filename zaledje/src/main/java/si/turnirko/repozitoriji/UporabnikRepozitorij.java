@@ -117,4 +117,7 @@ public interface UporabnikRepozitorij extends JpaRepository<Uporabnik, Long> {
     List<Uporabnik> najdiSpremljevalceLige(Long idLiga);
 
     Optional<Uporabnik> findByZetonOdjave(String zetonOdjave);
+
+    /* Racun osebnega koledarja .ics po zetonu v naslovu (V58). */
+    Optional<Uporabnik> findByZetonKoledarja(String zetonKoledarja);
 }

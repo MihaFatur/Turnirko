@@ -414,3 +414,12 @@ export function ligaVTozilniku(ime: string): string {
 export function ligaVMestniku(ime: string): string {
   return ime.replace(/(^|[^\p{L}])([Ll])iga(?![\p{L}])/gu, (_, pred: string, l: string) => `${pred}${l}igi`)
 }
+
+/* Ime lestvice, na kateri je mesto igralca — z istimi besedami kot izbira na
+   strani Lestvica (spol · Člani oz. Rekreativci), da ju gledalec poveže. Rabita
+   ga glava profila in sklop »Moj igralec« na domači strani. */
+export function imeLestvice(u: { spol: 'MOSKI' | 'ZENSKI' | null; rekreativec: boolean }): string {
+  const spol = u.spol === 'ZENSKI' ? 'Ženske' : u.spol === 'MOSKI' ? 'Moški' : null
+  const skupina = u.rekreativec ? 'Rekreativci' : 'Člani'
+  return ['Lestvica', [spol, skupina].filter(Boolean).join(' · ')].join(' ')
+}

@@ -148,7 +148,7 @@ public class KodePopustaStoritev {
         KodaPopusta k = new KodaPopusta(koda, v.vrsta(), LocalDateTime.now());
         k.setOpis(prazno(v.opis()) ? null : v.opis().trim());
         switch (v.vrsta()) {
-            case PREMIUM_MESECI -> k.setMeseci(preverjeniMeseci(v.meseci()));
+            case PREMIUM_MESECI, NAVIJAC_MESECI -> k.setMeseci(preverjeniMeseci(v.meseci()));
             case ORGANIZATOR_MESECI -> {
                 k.setMeseci(preverjeniMeseci(v.meseci()));
                 if (v.paket() == null || !v.paket().jeOrganizatorski()) {
@@ -161,8 +161,9 @@ public class KodePopustaStoritev {
                     throw new NeveljavenVnosIzjema("Popust je lahko od 1 do " + NAJVEC_ODSTOTEK
                             + " %. Za več uporabi kodo z meseci brez plačila.");
                 }
-                if (v.zaVlogo() != null && v.zaVlogo() != Vloga.IGRALEC && v.zaVlogo() != Vloga.ORGANIZATOR) {
-                    throw new NeveljavenVnosIzjema("Koda lahko velja za igralce ali za organizatorje.");
+                if (v.zaVlogo() != null && v.zaVlogo() != Vloga.IGRALEC && v.zaVlogo() != Vloga.ORGANIZATOR
+                        && v.zaVlogo() != Vloga.NAVIJAC) {
+                    throw new NeveljavenVnosIzjema("Koda lahko velja za igralce, navijače ali organizatorje.");
                 }
                 k.setOdstotek(v.odstotek());
                 k.setZaVlogo(v.zaVlogo());
@@ -214,10 +215,11 @@ public class KodePopustaStoritev {
         KodaPopusta k = najdena.get();
         // organizator, ki vpise kodo z meseci brez placila, gre po brezplacni poti
         // (paket je izbran vnaprej in ga koda nadomesti)
-        Pot pot = v.organizator()
+        Vloga vloga = vlogaRegistracije(v.organizator(), v.navijac());
+        Pot pot = vloga == Vloga.ORGANIZATOR
                 ? (k.getVrsta() == VrstaKodePopusta.ORGANIZATOR_MESECI ? Pot.BREZPLACNA : Pot.PLACLJIVA)
                 : (v.paket() == Paket.BREZPLACNO ? Pot.BREZPLACNA : Pot.PLACLJIVA);
-        return PreverjenaKodaDto.iz(k, razlogNeuporabnosti(k, v.organizator(), pot));
+        return PreverjenaKodaDto.iz(k, razlogNeuporabnosti(k, vloga, pot));
     }
 
     /* Brezplacna registracija (RegistracijaStoritev.registriraj). Prazno, ce kode
@@ -225,10 +227,22 @@ public class KodePopustaStoritev {
     @Transactional(readOnly = true)
     public Optional<KodaPopusta> zaBrezplacnoRegistracijo(String vnos, boolean organizator, String naslovIp,
                                                           String email) {
+        return zaBrezplacnoRegistracijo(vnos, vlogaRegistracije(organizator, false), naslovIp, email);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<KodaPopusta> zaBrezplacnoRegistracijo(String vnos, Vloga vloga, String naslovIp,
+                                                          String email) {
         if (prazno(vnos)) {
             return Optional.empty();
         }
-        return Optional.of(zahtevajUporabno(vnos, organizator, Pot.BREZPLACNA, naslovIp, email));
+        return Optional.of(zahtevajUporabno(vnos, vloga, Pot.BREZPLACNA, naslovIp, email));
+    }
+
+    /* Vloga, za katero se registrira oseba: navijac in organizator se izkljucujeta
+       (RegistracijaStoritev.preveriPolja), igralec je privzetek. */
+    public static Vloga vlogaRegistracije(boolean organizator, boolean navijac) {
+        return organizator ? Vloga.ORGANIZATOR : navijac ? Vloga.NAVIJAC : Vloga.IGRALEC;
     }
 
     /* Placljiva registracija (PlacilaStoritev): poleg poti se preveri, da prvo
@@ -237,10 +251,18 @@ public class KodePopustaStoritev {
     public Optional<KodaPopusta> zaPlacljivoRegistracijo(String vnos, boolean organizator, Paket paket,
                                                          CiklusPlacila ciklus, boolean starejsiOd21,
                                                          String naslovIp, String email) {
+        return zaPlacljivoRegistracijo(vnos, vlogaRegistracije(organizator, false), paket, ciklus,
+                starejsiOd21, naslovIp, email);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<KodaPopusta> zaPlacljivoRegistracijo(String vnos, Vloga vloga, Paket paket,
+                                                         CiklusPlacila ciklus, boolean starejsiOd21,
+                                                         String naslovIp, String email) {
         if (prazno(vnos)) {
             return Optional.empty();
         }
-        KodaPopusta k = zahtevajUporabno(vnos, organizator, Pot.PLACLJIVA, naslovIp, email);
+        KodaPopusta k = zahtevajUporabno(vnos, vloga, Pot.PLACLJIVA, naslovIp, email);
         if (k.getVrsta() == VrstaKodePopusta.ODSTOTEK
                 && prvoPlacilo(cenik.cena(paket, ciklus, starejsiOd21), k.getOdstotek()) < NAJMANJSE_PLACILO_CENTOV) {
             throw new NeveljavenVnosIzjema("S to kodo bi bil znesek prenizek: plačila pod 0,50 € ni mogoče "
@@ -256,12 +278,12 @@ public class KodePopustaStoritev {
         return centi - Math.round(centi * odstotek / 100.0);
     }
 
-    private KodaPopusta zahtevajUporabno(String vnos, boolean organizator, Pot pot, String naslovIp,
+    private KodaPopusta zahtevajUporabno(String vnos, Vloga vloga, Pot pot, String naslovIp,
                                          String email) {
         omeji(naslovIp);
         KodaPopusta k = najdiSprejeto(vnos, normalizirajEmail(email))
                 .orElseThrow(() -> new NeveljavenVnosIzjema(NEVELJAVNA_KODA));
-        String razlog = razlogNeuporabnosti(k, organizator, pot);
+        String razlog = razlogNeuporabnosti(k, vloga, pot);
         if (razlog != null) {
             throw new NeveljavenVnosIzjema(razlog);
         }
@@ -269,27 +291,36 @@ public class KodePopustaStoritev {
     }
 
     /* Zakaj koda na tej poti ne velja; null, ce velja. Besedilo vidi oseba. */
-    private static String razlogNeuporabnosti(KodaPopusta k, boolean organizator, Pot pot) {
+    private static String razlogNeuporabnosti(KodaPopusta k, Vloga vloga, Pot pot) {
         return switch (k.getVrsta()) {
-            case PREMIUM_MESECI -> organizator
+            case PREMIUM_MESECI -> vloga != Vloga.IGRALEC
                     ? "Ta koda je za registracijo igralca."
                     : pot == Pot.PLACLJIVA
                             ? "Ta koda je za brezplačno registracijo: izberi brezplačen paket."
                             : null;
-            case ORGANIZATOR_MESECI -> !organizator
+            case NAVIJAC_MESECI -> vloga != Vloga.NAVIJAC
+                    ? "Ta koda je za registracijo navijača."
+                    : pot == Pot.PLACLJIVA
+                            ? "Ta koda da paket Navijač brez plačila in se ne združuje s plačilom."
+                            : null;
+            case ORGANIZATOR_MESECI -> vloga != Vloga.ORGANIZATOR
                     ? "Ta koda je za registracijo organizatorja."
                     : pot == Pot.PLACLJIVA
                             ? "Ta koda da paket brez plačila in se ne združuje s plačilom."
                             : null;
             case ODSTOTEK -> pot == Pot.BREZPLACNA
-                    ? (organizator
+                    ? (vloga == Vloga.ORGANIZATOR
                             ? "Ta koda zniža ceno paketa: izberi paket s plačilom, da jo uporabiš."
-                            : "Ta koda zniža ceno Premium: izberi Premium, da jo uporabiš.")
-                    : k.getZaVlogo() == null || k.getZaVlogo() == (organizator ? Vloga.ORGANIZATOR : Vloga.IGRALEC)
+                            : vloga == Vloga.NAVIJAC
+                                    ? "Ta koda zniža ceno paketa Navijač: izberi paket Navijač, da jo uporabiš."
+                                    : "Ta koda zniža ceno Premium: izberi Premium, da jo uporabiš.")
+                    : k.getZaVlogo() == null || k.getZaVlogo() == vloga
                             ? null
-                            : k.getZaVlogo() == Vloga.ORGANIZATOR
-                                    ? "Ta koda je za organizatorje."
-                                    : "Ta koda je za igralce.";
+                            : switch (k.getZaVlogo()) {
+                                case ORGANIZATOR -> "Ta koda je za organizatorje.";
+                                case NAVIJAC -> "Ta koda je za navijače.";
+                                default -> "Ta koda je za igralce.";
+                            };
         };
     }
 
@@ -346,6 +377,33 @@ public class KodePopustaStoritev {
         return Optional.of(n);
     }
 
+    /* Paket Navijac brez placila (NAVIJAC_MESECI): zacne se, ko racun postane
+       potrjen (dokaz lastnistva naslova in soglasje skrbnika) - mesec ne sme teci
+       med cakanjem na kodo. Enkrat na racun: kdor vrstico v narocnina ze ima, je ne
+       dobi. Vrne novo narocnino. */
+    @Transactional
+    public Optional<Narocnina> uveljaviZaNavijaca(Uporabnik u, LocalDateTime zdaj) {
+        if (u == null || u.getId() == null || u.getVloga() != Vloga.NAVIJAC) {
+            return Optional.empty();
+        }
+        Optional<KodaPopusta> koda = kodaRacuna(u).filter(k -> k.getVrsta() == VrstaKodePopusta.NAVIJAC_MESECI);
+        if (koda.isEmpty() || narocnine.findByUporabnikId(u.getId()).isPresent()) {
+            return Optional.empty();
+        }
+        KodaPopusta k = koda.get();
+        Narocnina n = new Narocnina(u, Paket.NAVIJAC);
+        n.setStatus(StatusNarocnine.PREIZKUS);
+        n.setCiklus(CiklusPlacila.LETNO);
+        n.setCenaObSklenitvi(0.0);
+        n.setZacetekOb(zdaj);
+        n.setObdobjeOd(zdaj);
+        n.setTrenutnoObdobjeDo(zdaj.plusMonths(k.getMeseci()));
+        narocnine.save(n);
+        racunDnevnik.zabelezi(u.getId(), "Navijač brez plačila do "
+                + oblikuj(UpravljanjeNarocnineStoritev.dan(n.getTrenutnoObdobjeDo())) + " (koda " + k.getKoda() + ")");
+        return Optional.of(n);
+    }
+
     /* Stripov kupon kode (ODSTOTEK); nastane ob prvem placilu in se uporabi znova.
        Brez @Transactional: klic Stripa ne sme drzati transakcije (en sam pisalec v
        SQLite). */
@@ -366,6 +424,7 @@ public class KodePopustaStoritev {
     static String opisUgodnosti(KodaPopusta k) {
         return switch (k.getVrsta()) {
             case PREMIUM_MESECI -> "Premium brez plačila: " + mesecev(k.getMeseci());
+            case NAVIJAC_MESECI -> "Navijač brez plačila: " + mesecev(k.getMeseci());
             case ORGANIZATOR_MESECI -> k.getPaket().kratekNaziv() + " brez plačila: " + mesecev(k.getMeseci());
             case ODSTOTEK -> "−" + k.getOdstotek() + " % na prvo plačilo";
         };

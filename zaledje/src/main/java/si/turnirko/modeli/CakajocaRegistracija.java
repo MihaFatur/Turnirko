@@ -45,6 +45,10 @@ public class CakajocaRegistracija {
     @Column(name = "organizator", nullable = false)
     private boolean organizator;
 
+    /* Placljiva registracija navijaca (V58): webhook racun ustvari z vlogo NAVIJAC. */
+    @Column(name = "navijac", nullable = false)
+    private boolean navijac;
+
     @Column(name = "datum_rojstva")
     private LocalDate datumRojstva;
 
@@ -86,6 +90,8 @@ public class CakajocaRegistracija {
     public String getEmail() { return email; }
     public String getGesloHash() { return gesloHash; }
     public boolean isOrganizator() { return organizator; }
+    public boolean isNavijac() { return navijac; }
+    public void setNavijac(boolean navijac) { this.navijac = navijac; }
     public LocalDate getDatumRojstva() { return datumRojstva; }
     public String getEmailSkrbnika() { return emailSkrbnika; }
     public LocalDateTime getUstvarjenaOb() { return ustvarjenaOb; }

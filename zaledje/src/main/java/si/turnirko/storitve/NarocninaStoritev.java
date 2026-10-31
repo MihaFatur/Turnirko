@@ -17,14 +17,17 @@ import org.springframework.stereotype.Service;
 
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
+import si.turnirko.modeli.DruzinaPovezava;
 import si.turnirko.modeli.Narocnina;
 import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.Sezona;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.DruzinaPovezavaRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
+import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 @Service
 public class NarocninaStoritev {
@@ -43,13 +46,19 @@ public class NarocninaStoritev {
     private final NarocninaRepozitorij narocninaRepozitorij;
     private final TurnirRepozitorij turnirRepozitorij;
     private final LigaRepozitorij ligaRepozitorij;
+    private final DruzinaPovezavaRepozitorij druzinaRepozitorij;
+    private final UporabnikRepozitorij uporabnikRepozitorij;
 
     public NarocninaStoritev(NarocninaRepozitorij narocninaRepozitorij,
                              TurnirRepozitorij turnirRepozitorij,
-                             LigaRepozitorij ligaRepozitorij) {
+                             LigaRepozitorij ligaRepozitorij,
+                             DruzinaPovezavaRepozitorij druzinaRepozitorij,
+                             UporabnikRepozitorij uporabnikRepozitorij) {
         this.narocninaRepozitorij = narocninaRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
         this.ligaRepozitorij = ligaRepozitorij;
+        this.druzinaRepozitorij = druzinaRepozitorij;
+        this.uporabnikRepozitorij = uporabnikRepozitorij;
     }
 
     /* Veljavna narocnina racuna (AKTIVNA, ali PREKLICANA do konca placanega
@@ -62,12 +71,50 @@ public class NarocninaStoritev {
                 .filter(n -> n.jeVeljavna(LocalDateTime.now()));
     }
 
-    /* Ali igralec sme videti zasebno statistiko in domaco stran po meri. */
+    /* Ali igralec sme videti zasebno statistiko in domaco stran po meri: z lastnim
+       paketom ali (V59) prek druzine. */
     public boolean imaPremium(Uporabnik u) {
         if (u == null || u.getVloga() != Vloga.IGRALEC) {
             return false;
         }
-        return veljavna(u).map(n -> n.getPaket() == Paket.PREMIUM).orElse(false);
+        return veljavna(u).map(n -> n.getPaket() == Paket.PREMIUM).orElse(false)
+                || imaDruzinskiPremium(u);
+    }
+
+    /* Premium prek druzine (V59): igralec s potrjenim racunom, ki ga ima v druzini
+       navijac s paketom Navijac. Potrjena povezava, ki veljaOb, in placnik s paketom;
+       sicer paket ni nikomur placan, zato tudi Premium ne. Vrstice ne ustvarja - igralec
+       ne dobi lastne narocnine, Premium samo velja. */
+    public boolean imaDruzinskiPremium(Uporabnik u) {
+        if (u == null || u.getVloga() != Vloga.IGRALEC || !u.jePotrjenIgralec()) {
+            return false;
+        }
+        LocalDateTime zdaj = LocalDateTime.now();
+        return druzinaRepozitorij.findByIdIgralecAndStatus(u.getIgralec().getId(), DruzinaPovezava.Status.POTRJENA)
+                .stream()
+                .filter(p -> p.veljaOb(zdaj))
+                .map(p -> uporabnikRepozitorij.findById(p.getIdRacun()).orElse(null))
+                .anyMatch(placnik -> placnik != null && imaNavijaca(placnik));
+    }
+
+    /* Ali ima navijac placljiv paket Navijac (V58): aktiven, preklican do konca
+       placanega obdobja ali preizkus s kodo NAVIJAC_MESECI. */
+    public boolean imaNavijaca(Uporabnik u) {
+        if (u == null || u.getVloga() != Vloga.NAVIJAC) {
+            return false;
+        }
+        return veljavna(u).map(n -> n.getPaket() == Paket.NAVIJAC).orElse(false);
+    }
+
+    /* Ugodnosti, ki jih imata paket Navijac in Igralec Premium skupaj: neomejeno
+       spremljanih igralcev, e-posta po turnirju, osebni koledar .ics in napoved
+       dvoboja za kateri koli par. Brezplacen racun jih nima; admin je vedno brez
+       omejitev (kot povsod, kjer paket kaj omejuje). */
+    public boolean imaSirokoSpremljanje(Uporabnik u) {
+        if (u != null && u.getVloga() == Vloga.ADMIN) {
+            return true;
+        }
+        return imaNavijaca(u) || imaPremium(u);
     }
 
     /* Organizatorjev paket, ce ga (se) placuje. */

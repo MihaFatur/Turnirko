@@ -37,7 +37,7 @@ import { useUvodKoncan } from '../pomozno/uvod'
 import { PozivRacuna } from './PozivRacuna'
 import { PremiumOglas } from './PremiumOglas'
 import { PrijavaOkno } from './PrijavaOkno'
-import type { LigaZaSpremljanje, PredizbranIgralec } from './RegistracijaTok'
+import type { IgralecZaSpremljanje, LigaZaSpremljanje, PredizbranIgralec } from './RegistracijaTok'
 
 /* Registracija gosta z drugega mesta kot oglas: kratka pot (brez korakov
    »Vloga« in »Paket«: igralec, brezplačno s preizkusom) in po želji igralec,
@@ -46,6 +46,8 @@ export interface MoznostiRegistracije {
   izvor: IzvorRegistracije
   predizbran?: PredizbranIgralec
   liga?: LigaZaSpremljanje
+  /* Igralec, ob katerem je gost kliknil »Spremljaj« (profil); po prijavi ga račun spremlja. */
+  igralec?: IgralecZaSpremljanje
 }
 
 interface Vrednost {
@@ -152,6 +154,7 @@ export function PremiumOglasPonudnik({ children }: { children: ReactNode }) {
           izvor={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.izvor : 'oglas'}
           predizbran={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.predizbran : undefined}
           liga={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.liga : undefined}
+          igralec={oknoGosta.nacin === 'kratka' ? oknoGosta.moznosti.igralec : undefined}
           onZapri={() => nastaviOknoGosta(null)}
         />
       )}

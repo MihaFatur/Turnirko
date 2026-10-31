@@ -25,6 +25,8 @@ export function opisUgodnosti(u: Ugodnost): string {
   switch (u.vrsta) {
     case 'PREMIUM_MESECI':
       return `Premium brez plačila: ${mesecev(u.meseci ?? 1)}`
+    case 'NAVIJAC_MESECI':
+      return `Navijač brez plačila: ${mesecev(u.meseci ?? 1)}`
     case 'ORGANIZATOR_MESECI':
       return `${u.paket ? OZNAKE_PAKET[u.paket] : 'Organizator'} brez plačila: ${mesecev(u.meseci ?? 1)}`
     case 'ODSTOTEK':

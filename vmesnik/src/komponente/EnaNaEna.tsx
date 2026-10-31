@@ -18,6 +18,7 @@ import { OZNAKE_IZID, izidNizov } from '../api/tipi'
 import { oblikujDanKratekMesec, sklonTekem } from '../pomozno/oblikovanje'
 import { useSlikeIgralcev } from '../pomozno/profilneSlike'
 import { IzbirnikIgralca } from './IzbirnikIgralca'
+import { NapovedPara } from './NapovedPara'
 import { SlikaIgralca } from './SlikaIgralca'
 import { SporociloNapake } from './SporociloNapake'
 import { SpremembaRatinga } from './SpremembaRatinga'
@@ -229,6 +230,11 @@ export function EnaNaEna({ pokaziZgodovino = false }: Lastnosti) {
 
       {igralci.data && premalo && (
         <p className="obvestilo">Za primerjavo sta potrebna vsaj dva igralca.</p>
+      )}
+
+      {/* Napoved za kateri koli par je ugodnost paketa (V58); stoji tudi, kadar par se ni igral. */}
+      {pokaziZgodovino && prvi !== '' && drugi !== '' && prvi !== drugi && (
+        <NapovedPara prvi={prvi} drugi={drugi} />
       )}
 
       {pokaziZgodovino && d && d.tekme.length > 0 && (

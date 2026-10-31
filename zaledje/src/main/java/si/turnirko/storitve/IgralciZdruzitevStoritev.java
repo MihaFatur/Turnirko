@@ -100,6 +100,13 @@ public class IgralciZdruzitevStoritev {
                     odvec, obdrzan);
         }
         posodobi("UPDATE uporabnik SET id_igralec = ?2 WHERE id_igralec = ?1", odvec, obdrzan);
+        // racun, ki je spremljal oba zapisa, obdrzi enega (primarni kljuc je racun + igralec)
+        posodobi("DELETE FROM spremljan_igralec WHERE id_igralec = ?1 AND id_racun IN"
+                + " (SELECT id_racun FROM spremljan_igralec WHERE id_igralec = ?2)", odvec, obdrzan);
+        posodobi("UPDATE spremljan_igralec SET id_igralec = ?2 WHERE id_igralec = ?1", odvec, obdrzan);
+        // racun, ki je sam obdrzani igralec, sebe ne spremlja (uporabnik je bil preusmerjen zgoraj)
+        posodobi("DELETE FROM spremljan_igralec WHERE id_igralec = ?1 AND id_racun IN"
+                + " (SELECT id FROM uporabnik WHERE id_igralec = ?1)", obdrzan);
         // uvoz po povezavi najde obdrzanega in odvecnega ne ustvari znova
         posodobi("UPDATE zunanja_povezava SET id_lokalni = ?2 WHERE vrsta = 'IGRALEC' AND id_lokalni = ?1",
                 odvec, obdrzan);

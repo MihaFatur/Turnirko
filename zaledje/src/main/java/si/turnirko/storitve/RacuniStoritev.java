@@ -89,8 +89,13 @@ public class RacuniStoritev {
         Boolean starejsiOd21 = u.getVloga() == Vloga.IGRALEC && u.getPrijavljeniDatumRojstva() != null
                 ? cenik.stariEnaindvajset(u.getPrijavljeniDatumRojstva())
                 : null;
-        return UporabnikDto.iz(u, narocninaRepozitorij.findByUporabnikId(u.getId()).orElse(null),
+        UporabnikDto dto = UporabnikDto.iz(u, narocninaRepozitorij.findByUporabnikId(u.getId()).orElse(null),
                 starejsiOd21);
+        // Premium prek druzine (V59): vmesnik ga bere iz paketa racuna, zato ga vidi kot lastnega
+        if (!(dto.paket() == Paket.PREMIUM && dto.paketAktiven()) && narocninaStoritev.imaDruzinskiPremium(u)) {
+            return dto.zDruzinskimPremiumom();
+        }
+        return dto;
     }
 
     /* Zamenjava lastnega gesla; staro geslo se mora ujemati. */
@@ -308,12 +313,14 @@ public class RacuniStoritev {
                 .orElse(null);
     }
 
-    /* Igralec brez zapisa je Free; organizator brez zapisa nima paketa. Datum
-       konca obdobja gre skozi isti rez kot pri naročnini igralca. */
+    /* Igralec in navijac brez zapisa sta Free; organizator brez zapisa nima
+       paketa, admin pa ga nima nikoli. Datum konca obdobja gre skozi isti rez kot
+       pri naročnini igralca. */
     private static RacunIgralcaDto.NarocninaRacuna narocnina(Uporabnik u, Narocnina n) {
         if (n == null) {
+            boolean free = u.getVloga() == Vloga.IGRALEC || u.getVloga() == Vloga.NAVIJAC;
             return new RacunIgralcaDto.NarocninaRacuna(
-                    u.getVloga() == Vloga.IGRALEC ? Paket.BREZPLACNO : null, null, null, null, false);
+                    free ? Paket.BREZPLACNO : null, null, null, null, false);
         }
         return new RacunIgralcaDto.NarocninaRacuna(n.getPaket(), n.getStatus(), n.getCiklus(),
                 UpravljanjeNarocnineStoritev.dan(n.getTrenutnoObdobjeDo()),
