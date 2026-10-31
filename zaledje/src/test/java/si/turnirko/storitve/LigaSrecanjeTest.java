@@ -225,6 +225,43 @@ class LigaSrecanjeTest extends IntegracijskiTest {
                 p.tekme().stream().map(TekmaSrecanjaDto::oznaka).toList());
     }
 
+    /* 2. in 3. SNTL igrata brez dvojic. Vmesnik iz podrobnosti srecanja
+       (izbiraDvojice = false IN stVDvojici = 0) sklepa, da nihce ni v dvojici;
+       ko je vsem poslal vDvojici = true (kot pri Corbillonu, kjer oba igralca
+       igrata par), je streznik zavrnil »Ta format nima dvojic« in postave
+       3. SNTL ni bilo mogoce shraniti. */
+    @Test
+    void formatBrezDvojicPostaveNeSprejmeZDvojicamiInJoSprejmeBrezNjih() {
+        Long srecanje = pripraviEnoSrecanje(FormatSrecanja.SNTL_BREZ_DVOJIC, null);
+        SrecanjePodrobnoDto p = srecanjeStoritev.podrobno(srecanje);
+        assertFalse(p.izbiraDvojice());
+        assertEquals(0, p.stVDvojici());
+
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> srecanjeStoritev.nastaviPostavo(srecanje, postavaBrezDvojic(p, 0)));
+
+        srecanjeStoritev.nastaviPostavo(srecanje, postavaBrezDvojic(p, -1));
+        SrecanjePodrobnoDto po = srecanjeStoritev.podrobno(srecanje);
+        assertEquals(9, po.tekme().size());
+        assertTrue(po.tekme().stream().allMatch(t -> t.tip() == TipTekmeSrecanja.POSAMICNA));
+        assertTrue(po.postave().stream().noneMatch(m -> m.vDvojici()));
+    }
+
+    /* Postava po mestih; `vDvojici` je indeks mesta na strani, ki ga oznaci
+       za dvojice (-1 = nobenega). */
+    private PostavaVnos postavaBrezDvojic(SrecanjePodrobnoDto p, int vDvojici) {
+        List<PostavaVnos.MestoVnos> mesta = new ArrayList<>();
+        for (int i = 0; i < p.pozicijeDomaci().size(); i++) {
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.DOMACI, p.pozicijeDomaci().get(i),
+                    p.kaderDomaci().get(i).idIgralec(), i == vDvojici));
+        }
+        for (int i = 0; i < p.pozicijeGost().size(); i++) {
+            mesta.add(new PostavaVnos.MestoVnos(StranEkipe.GOST, p.pozicijeGost().get(i),
+                    p.kaderGost().get(i).idIgralec(), i == vDvojici));
+        }
+        return new PostavaVnos(mesta);
+    }
+
     /* Prag zmag se meri na formatu: pri Savinji (5 tekem) je 6 nemogoc. */
     @Test
     void previsokPragZmagJavi() {

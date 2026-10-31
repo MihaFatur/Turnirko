@@ -1125,7 +1125,9 @@ function PostavaUredi({ podrobno }: { podrobno: SrecanjePodrobnoDto }) {
   })
 
   function jeVDvojici(stran: StranEkipe, poz: string): boolean {
-    if (!podrobno.izbiraDvojice) return true // vsi igrajo dvojice (npr. Corbillon)
+    /* Brez izbire dvojice igrajo vsi (npr. Corbillon), format brez dvojic (npr. 2. in
+       3. SNTL) pa ne označi nikogar - strežnik bi sicer zavrnil »Ta format nima dvojic«. */
+    if (!podrobno.izbiraDvojice) return podrobno.stVDvojici > 0
     return (stran === 'DOMACI' ? dvojiceD : dvojiceG).has(poz)
   }
 

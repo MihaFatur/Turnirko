@@ -452,7 +452,16 @@ public class SrecanjeStoritev {
             posodobiSrecanje(s, s.pravila().zmagZaSrecanje());
         }
 
-        preracunRatinga.preracunajPoPopravku(RatingStoritev.casLigaskeTekme(t));
+        /* Rating premakne samo posamicna tekma tekmovanja, ki steje. Dvojice v
+           rating ne gredo nikoli (popravek njihovih tock nima kaj preracunati),
+           preracun pa bi pobrisal in znova zgradil dnevnik od dneva tekme. */
+        if (t.getTip() == TipTekmeSrecanja.POSAMICNA && s.pravila().raven().steje()) {
+            preracunRatinga.preracunajPoPopravku(RatingStoritev.casLigaskeTekme(t));
+            // preracun izprazni sejo, drugega igralca para pa najdiZaObracun ne
+            // nalozi - tekmo za odgovor preberemo znova (kot ob vnosu)
+            t = tekmaRepozitorij.najdiZaSrecanje(s.getId()).stream()
+                    .filter(x -> x.getId().equals(idTekma)).findFirst().orElseThrow();
+        }
 
         Map<Long, Map<Long, Integer>> delte = delteRatinga(List.of(t.getId()));
         return tekmaDto(t, delte, vneseniNizi, postavaRepozitorij.najdiZaSrecanje(s.getId()));
