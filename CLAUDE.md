@@ -360,7 +360,11 @@
     ure.
 - **Prestavitev srečanja** (V47, okt 2026; `TerminiVnos.TerminSrecanja`,
   `Srecanje.prestaviVKolo` / `zacniCakatiNaTermin`). Organizator jo vpiše **samo v
-  oknu »Termini kol«** (razdelek »Prestavitve« z enim urejevalnikom) — odločitev
+  oknu »Termini kol«** (zavihek »Srečanja po kolih«, komponenta `SrecanjaPoKolih`:
+  vsa kola s svojimi srečanji, filter ekipe, izberi srečanje → klikni kolo ali ga
+  povleci; opozorilo, ne prepoved, ko ekipa v kolu igra več srečanj, kot jih ima
+  običajno; do 31. 10. 2026 je bil razdelek »Prestavitve« z iskalnikom po
+  srečanjih, ki je kazal osem zadetkov) — odločitev
   lastnika; gumba pri vrstici razporeda ni. Gre v istem `PUT /lige/{id}/termini`
   kot termini kol: najprej prestavitve, nato termini kol, nazadnje izrecni začetki.
   - **`kolo` je kolo, v katerem se srečanje IGRA**, ne kolo iz žreba: prestavljeno
@@ -2152,7 +2156,7 @@
   - **Sproži ga samo klik**, nikoli urnik. Sprožilec je obvestilo na lastnem profilu
     (`lastnikBrezPremium`, kontekst »statistika« — edini, ki je ostal). Spremljanje
     lig je od 23. 10. 2026 brezplačno, zato kontekst »lige« in `ponudiPremium` v
-    `useSpremljanjeLig` nista več; »Spremljaj« in »Uredi izbor →« gostu odpreta kratko
+    `useSpremljanjeLig` nista več; »Spremljaj« in »Sledi ligi →« gostu odpreta kratko
     registracijo (glej »Obvestila po kolu«).
   - **Gost**: »Ustvari račun · Premium …« odpre registracijo na koraku »Paket« z
     izbranim ciklom (`PrijavaOkno zacetniCiklus` → `RegistracijaTok`); povezava odpre
@@ -2318,7 +2322,7 @@
     metode iz istega razreda gre mimo Springovega posrednika in spremembe entitet
     (žeton, `opomnik_poslan_ob`) se ne zapišejo. Testi tega ne ujamejo (so
     `@Transactional`); izmerjeno v brskalniku na kopiji baze.
-  - **Gost**: »Spremljaj« na strani lige in »Uredi izbor →« na domači strani odpreta
+  - **Gost**: »Spremljaj« na strani lige in »Sledi ligi →« na domači strani odpreta
     kratko registracijo (`izvor: 'spremljanje'`, `MoznostiRegistracije.liga`); po
     samodejni prijavi `RegistracijaTok` ligo spremlja sam. Primerjave paketov
     (registracija, naročnina, oglas 1c) imajo »Spremljanje lig in e-pošta po kolu« pri
@@ -2570,7 +2574,7 @@
     lestvici. Pari kola se izpišejo **samo pri izbranem dnevu**: cel mesec z
     devetimi ligami bi jih naštel nekaj sto.
 - **Izbor spremljanih lig ureja `IzborLigOkno`, ne stran `/lige`.** Izbor je
-  nastavitev domače strani in ne pot v ligo, zato »Uredi izbor« odpre okno —
+  nastavitev domače strani in ne pot v ligo, zato »Sledi ligi« odpre okno —
   gledalec ostane, kjer je, in takoj vidi, kaj se je spremenilo (gost izbora
   nima, zato mu isti napis odpre `PrijavaOkno` naravnost na registraciji); na `/lige` je
   vsaka vrstica povezava v ligo in preklopa ne more nositi. Okno mora zdržati

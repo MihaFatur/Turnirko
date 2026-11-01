@@ -24,10 +24,12 @@
    Premakne se lahko tudi odigrano srečanje (poznega kola, odigrano že zdaj) in
    neodigrano, ki bi moralo biti že odigrano.
 
-   Prestavitve imajo svoj razdelek z enim urejevalnikom in ne gumba pri vsakem
-   srečanju: liga brez ur ima kolo v eni vrstici, 70 srečanj v seznamu pa bi
-   pomenilo 70 gumbov, ki jih organizator v letu uporabi trikrat. Dan
-   prestavljenega srečanja sledi dnevu kola, dokler organizator ne vpiše svojega.
+   Okno ima dva zavihka: »Datumi kol« (polnilo in datum vsakega kola) in
+   »Srečanja po kolih« (prestavitve, `SrecanjaPoKolih`). Prestavitve so imele do
+   okt 2026 razdelek pod tabelo kol z iskalnikom po srečanjih; ta je kazal osem
+   zadetkov in izpuščal že prestavljena, razdelek pa je stal na dnu okna, ~1000 px
+   pod vrhom. Stanje obeh zavihkov je eno (`kola`, `vnosi`), nogo z »Shrani« delita.
+   Dan prestavljenega srečanja sledi dnevu kola, dokler organizator ne vpiše svojega.
 
    Prikaz (prenova, design_handoff_termini_prehodi, 2a) zamenja samo postavitev:
    vse poti podatkov — napolni, pobriši, premakni, vrni, sestaviVnos — ostanejo. */
@@ -36,8 +38,13 @@ import { useMutation } from '@tanstack/react-query'
 
 import { ligeApi } from '../api/zahteve'
 import type { LigaDto, SrecanjeDto, TerminiVnos } from '../api/tipi'
-import { oblikujDanMesec } from '../pomozno/oblikovanje'
 import { terminKola } from '../pomozno/prestavitve'
+import {
+  CAKA,
+  jePrestavljeno,
+  type VnosKola,
+  type VnosSrecanja,
+} from '../pomozno/srecanjaPoKolih'
 import {
   danKratica,
   kolTekst,
@@ -47,8 +54,8 @@ import {
   prestej,
   razlikaDni,
 } from '../pomozno/terminiKola'
-import { IskalniIzbirnik, type MoznostIzbirnika } from './IskalniIzbirnik'
 import { ModalnoOkno } from './ModalnoOkno'
+import { SrecanjaPoKolih } from './SrecanjaPoKolih'
 import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -61,51 +68,21 @@ interface Lastnosti {
   onShranjeno: () => void
 }
 
-interface VnosSrecanja {
-  id: number
-  domaci: string
-  gost: string
-  /* Kolo iz žreba — vanj se srečanje vrne in po njem je prestavljeno. */
-  izvirnoKolo: number
-  /* Kolo, v katerem se igra po vnosu; null = čaka na termin. */
-  kolo: number | null
-  /* Lasten dan prestavljenega srečanja; null = sledi dnevu kola. */
-  datum: string | null
-  ura: string
-  /* Ura kola, ob kateri srečanje igra po razporedu — po njej polnilo vrne
-     srečanju uro lige, tudi ko je bilo prestavljeno ali ure še nima. */
-  uraVKolu: number
-  razlog: string
-  /* Stanje na strežniku: po njem se vidi, kaj je vnos spremenil. */
-  prej: { kolo: number | null; razlog: string }
-  odigrano: boolean
-  /* Odigrano ali začeto srečanje ima dan, zato ne more čakati na termin. */
-  smeCakati: boolean
-}
-
-interface VnosKola {
-  kolo: number
-  datum: string
-  ura: string
-}
+type Zavihek = 'datumi' | 'srecanja'
 
 const PRIVZET_RAZMIK = 7
-const NAJVEC_ZNAKOV_RAZLOGA = 200
 const NAJVEC_DNI = 365
-/* Vrednost izbirnika za srečanje brez termina; kolo je številka. */
-const CAKA = 'caka'
-
-function jePrestavljeno(s: VnosSrecanja): boolean {
-  return s.kolo === null || s.kolo !== s.izvirnoKolo
-}
 
 export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti) {
   const zUrami = liga.ureSrecanj != null
   const zacetno = useMemo(() => zacetnoStanje(srecanja), [srecanja])
   const [kola, nastaviKola] = useState<VnosKola[]>(zacetno.kola)
   const [vnosi, nastaviVnose] = useState<VnosSrecanja[]>(zacetno.srecanja)
-  /* Srečanje, katerega prestavitev se ureja; eno naenkrat. */
-  const [urejano, nastaviUrejano] = useState<number | null>(null)
+  /* Sredi sezone (kaj je že odigrano) je glavno opravilo prestavljanje; pred
+     prvim kolom pa polnjenje datumov. */
+  const [zavihek, nastaviZavihek] = useState<Zavihek>(() =>
+    zacetno.srecanja.some((s) => s.odigrano) ? 'srecanja' : 'datumi',
+  )
   /* Polnilo po razmiku: privzetka sta termin prvega kola oz. seme lige, da
      najpogostejši popravek (»vse skupaj teden naprej«) ne zahteva vpisa. */
   const [odDatuma, nastaviOdDatuma] = useState(
@@ -128,7 +105,8 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
   const [odprta, nastaviOdprta] = useState<Set<number>>(() => new Set())
 
   const prestavljena = vnosi.filter(jePrestavljeno)
-  const urejanoSrecanje = vnosi.find((s) => s.id === urejano) ?? null
+  /* Koliko srečanj ekipa v kolu običajno igra: eno, pri ligi z urami po eno ob vsaki uri. */
+  const dovoljenoVKolu = liga.ureSrecanj?.length ?? 1
 
   const shranjevanje = useMutation({
     mutationFn: () => ligeApi.termini(liga.id, sestaviVnos(kola, vnosi, zUrami)),
@@ -275,20 +253,33 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
     ? `${kola.length} ${kolTekst(kola.length)} · brez terminov`
     : `${kola.length} ${kolTekst(kola.length)} · odigrano ${odigranih} · ${kratkoDatum(prviDatum)} – ${kratkoDatum(zadnjiDatum)} ${zadnjiDatum.slice(0, 4)}`
 
-  /* Srečanja, ki jih je mogoče prestaviti: neprestavljena, po kolu iz žreba. */
-  const zaIzbiro: MoznostIzbirnika[] = vnosi
-    .filter((s) => !jePrestavljeno(s))
-    .sort((a, b) => a.izvirnoKolo - b.izvirnoKolo || a.id - b.id)
-    .map((s) => ({
-      id: s.id,
-      ime: `${s.domaci} – ${s.gost}`,
-      podrobnost: `${s.izvirnoKolo}. kolo${s.odigrano ? ' · odigrano' : ''}`,
-      iskalno: `${s.domaci} ${s.gost} kolo ${s.izvirnoKolo}`,
-    }))
-
   return (
     <ModalnoOkno srednje naslov="Termini kol" podnaslov={`${liga.ime} · ${liga.sezona ?? ''}`.trim()} onZapri={onZapri}>
       <form className="obrazec" onSubmit={obOddaji}>
+        <div className="izbirnik termini__zavihki" role="tablist" aria-label="Prikaz terminov">
+          <button type="button" role="tab" id="termini-zavihek-datumi"
+            aria-selected={zavihek === 'datumi'} aria-controls="termini-plosca-datumi"
+            className={'izbirnik__gumb izbirnik__gumb--polje' + (zavihek === 'datumi' ? ' izbirnik__gumb--aktiven' : '')}
+            onClick={() => nastaviZavihek('datumi')}>
+            Datumi kol
+          </button>
+          <button type="button" role="tab" id="termini-zavihek-srecanja"
+            aria-selected={zavihek === 'srecanja'} aria-controls="termini-plosca-srecanja"
+            className={'izbirnik__gumb izbirnik__gumb--polje' + (zavihek === 'srecanja' ? ' izbirnik__gumb--aktiven' : '')}
+            onClick={() => nastaviZavihek('srecanja')}>
+            Srečanja po kolih{prestavljena.length > 0 ? ` (${prestavljena.length})` : ''}
+          </button>
+        </div>
+
+        <div role="tabpanel" id="termini-plosca-srecanja" aria-labelledby="termini-zavihek-srecanja"
+          className="termini__plosca" hidden={zavihek !== 'srecanja'}>
+          <SrecanjaPoKolih kola={kola} vnosi={vnosi} zUrami={zUrami} dovoljeno={dovoljenoVKolu}
+            naslednjeKolo={naslednjeKolo} odigranoKolo={odigranoKolo}
+            onPremakni={premakni} onVrni={vrni} onSpremeni={urediSrecanje} />
+        </div>
+
+        <div role="tabpanel" id="termini-plosca-datumi" aria-labelledby="termini-zavihek-datumi"
+          className="termini__plosca" hidden={zavihek !== 'datumi'}>
         <p className="termini__uvod">
           {zUrami
             ? 'Dan velja za vsa srečanja kola, ura pa za vsako srečanje posebej. Urejaš jih lahko tudi med sezono.'
@@ -473,63 +464,6 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
           </p>
         )}
         </div>
-
-        <div className="termini__prestavitve">
-          <div className="termini__razdelek">
-            <span>Prestavitve</span>
-            <span className="termini__razdelek-povzetek">
-              {prestavljena.length > 0 ? prestavljena.length : ''}
-            </span>
-          </div>
-          <p className="termini__prestavitve-opis">
-            Srečanje, ki se ne igra v svojem kolu, premakni v kolo, kjer se bo igralo; v razporedu stoji
-            samo tam. Če novi dan še ni znan, ga pusti brez termina.
-          </p>
-
-          <IskalniIzbirnik
-            vObrazcu
-            oznaka="Prestavi srečanje"
-            namig="Vpiši ekipo ali kolo, npr. »velenje« ali »7«"
-            moznosti={zaIzbiro}
-            naIzbiro={(id) => nastaviUrejano(id)}
-          />
-
-          {urejanoSrecanje && (
-            <UrejevalnikPrestavitve
-              s={urejanoSrecanje}
-              kola={kola}
-              zUrami={zUrami}
-              onSpremeni={(popravek) => urediSrecanje(urejanoSrecanje.id, popravek)}
-              onPremakni={(vrednost) => premakni(urejanoSrecanje, vrednost)}
-              onVrni={() => vrni(urejanoSrecanje)}
-              onZapri={() => nastaviUrejano(null)}
-            />
-          )}
-
-          {prestavljena.length > 0 ? (
-            <ul className="termini__prestavljena">
-              {prestavljena.map((s) => (
-                <li key={s.id} className="termini__prestavljeno">
-                  <div>
-                    <span className="termini__prestavljeno-ime">{s.domaci} – {s.gost}</span>
-                    <span className="termini__oznaka-srecanja">
-                      {s.kolo === null
-                        ? `iz ${s.izvirnoKolo}. kola · čaka na termin`
-                        : `iz ${s.izvirnoKolo}. v ${s.kolo}. kolo`}
-                    </span>
-                    {s.razlog && <div className="termini__prestavljeno-razlog">{s.razlog}</div>}
-                  </div>
-                  <button type="button" className="gumb gumb--majhen"
-                    aria-expanded={urejano === s.id}
-                    onClick={() => nastaviUrejano(urejano === s.id ? null : s.id)}>
-                    {urejano === s.id ? 'Zapri' : 'Uredi'}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="termini__prazno">Ni prestavljenih srečanj.</p>
-          )}
         </div>
 
         <SporociloNapake napaka={shranjevanje.error} />
@@ -566,104 +500,6 @@ function skritoBesedilo(n: number): string {
   if (n === 1) return '1 odigrano kolo skrito'
   if (n <= 4) return `${n} odigrana kola skrita`
   return `${n} odigranih kol skritih`
-}
-
-interface UrejevalnikLastnosti {
-  s: VnosSrecanja
-  kola: VnosKola[]
-  zUrami: boolean
-  onSpremeni: (popravek: Partial<VnosSrecanja>) => void
-  onPremakni: (vrednost: string) => void
-  onVrni: () => void
-  onZapri: () => void
-}
-
-function UrejevalnikPrestavitve({
-  s,
-  kola,
-  zUrami,
-  onSpremeni,
-  onPremakni,
-  onVrni,
-  onZapri,
-}: UrejevalnikLastnosti) {
-  const caka = s.kolo === null
-  const prestavljeno = jePrestavljeno(s)
-  const dnevKola = kola.find((k) => k.kolo === s.kolo)?.datum ?? ''
-  const dan = s.datum ?? dnevKola
-
-  return (
-    <div className="termini__prestavitev">
-      <p className="termini__prestavitev-naslov">
-        {s.domaci} – {s.gost}
-        <span className="termini__oznaka-srecanja">po žrebu {s.izvirnoKolo}. kolo</span>
-      </p>
-
-      <label className="obrazec__polje">
-        <span>Igra se v</span>
-        <select value={caka ? CAKA : String(s.kolo)} onChange={(d) => onPremakni(d.target.value)}>
-          {kola.map((k) => (
-            <option key={k.kolo} value={k.kolo}>
-              {k.kolo}. kolo{k.datum ? ` · ${oblikujDanMesec(k.datum)}` : ''}
-              {k.kolo === s.izvirnoKolo ? ' (po žrebu)' : ''}
-            </option>
-          ))}
-          {/* Odigrano ali začeto srečanje ima dan; brez njega bi izid ostal
-              nikjer v razporedu. */}
-          {(s.smeCakati || caka) && <option value={CAKA}>Termin še ni znan</option>}
-        </select>
-      </label>
-
-      {!caka && (
-        <div className="termini__prestavitev-cas">
-          <label className="obrazec__polje">
-            <span>Dan</span>
-            <input type="date" value={dan}
-              onChange={(d) => onSpremeni({ datum: d.target.value })} />
-          </label>
-          <label className="obrazec__polje">
-            <span>Ura</span>
-            <input type="time" value={s.ura} disabled={!dan}
-              onChange={(d) => onSpremeni({ ura: d.target.value })} />
-          </label>
-        </div>
-      )}
-
-      {!caka && !s.ura && prestavljeno && (
-        <p className="namig">
-          Brez ure se srečanje igra ob nedoločeni uri tistega dne. Če ekipa v tem kolu že igra,
-          vpiši uro, da ne bosta imeli dveh srečanj hkrati.
-        </p>
-      )}
-      {zUrami && !caka && !prestavljeno && (
-        <p className="namig">Ura tega srečanja je v seznamu kola zgoraj.</p>
-      )}
-
-      {prestavljeno && (
-        <label className="obrazec__polje">
-          <span className="termini__razlog-oznaka">
-            <span>Razlog (neobvezno)</span>
-            <span>{s.razlog.length}/{NAJVEC_ZNAKOV_RAZLOGA}</span>
-          </span>
-          <input type="text" value={s.razlog} maxLength={NAJVEC_ZNAKOV_RAZLOGA}
-            placeholder="npr. dvorana zasedena"
-            onChange={(d) => onSpremeni({ razlog: d.target.value })} />
-          <span className="termini__razlog-pojasnilo">
-            Razlog vidijo vsi obiskovalci. Brez osebnih podatkov (zdravje, naslovi).
-          </span>
-        </label>
-      )}
-
-      <div className="termini__urejevalnik-dejanja">
-        {prestavljeno && (
-          <button type="button" className="gumb gumb--majhen termini__vrni" onClick={onVrni}>
-            Vrni v {s.izvirnoKolo}. kolo
-          </button>
-        )}
-        <button type="button" className="gumb" onClick={onZapri}>Končano</button>
-      </div>
-    </div>
-  )
 }
 
 /* Vnos, kakršnega pričakuje strežnik.

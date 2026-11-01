@@ -815,7 +815,7 @@ a.sekcija__meta {
   color: var(--barva-glavna-tekst);
 }
 
-/* Meta, ki ni pot naprej, ampak dejanje ("Uredi izbor →" odpre okno). Videz
+/* Meta, ki ni pot naprej, ampak dejanje ("Sledi ligi →" odpre okno). Videz
    je isti kot pri povezavi - gledalcu je vseeno, kaj se zgodi pod pokrovom -
    zato gumb odvrzemo do besedila. */
 button.sekcija__meta {
@@ -2066,26 +2066,206 @@ input[type='radio'] {
   color: var(--barva-glavna-tekst);
 }
 
-/* Prestavitve */
-.termini__prestavitve { display: flex; flex-direction: column; gap: var(--r2); }
-.termini__prestavitve-opis { margin: 0; max-width: 74ch; font-size: 15px; font-weight: 300; line-height: 1.6; color: var(--barva-crnilo-3); }
-.termini__prazno { margin: 0; font-size: 15px; color: var(--barva-crnilo-4); }
 .termini__orodje-opomba { margin: 0; }
-.termini__prestavljena { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.termini__prestavljeno {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--r2);
-  align-items: center;
-  padding: var(--r1) 0;
-  border-bottom: 1px solid var(--barva-crta);
-}
-.termini__prestavljeno-ime { font-size: 16px; font-weight: 600; }
-.termini__oznaka-srecanja { /* obstoječe pravilo ostane (mono 12 px, margin-left 8 px) */ }
-.termini__prestavljeno-razlog { font-size: var(--tip-drobno); font-weight: 300; color: var(--barva-crnilo-3); }
-/* Urejevalnik: obstoječi .termini__prestavitev (modra črta + modra mehka podlaga) ostane,
-   razmik med polji 16 px, razlog ima števec znakov desno od oznake. */
+/* Razlog ima števec znakov desno od oznake. */
 .termini__razlog-oznaka { display: flex; justify-content: space-between; gap: var(--r2); }
+
+/* Zavihka okna: »Datumi kol« | »Srečanja po kolih« (isti segmentirani izbirnik kot razmik). */
+.termini__zavihki .izbirnik__gumb { flex: 1 1 0; }
+.termini__plosca { display: flex; flex-direction: column; gap: var(--r3); }
+.termini__plosca[hidden] { display: none; }
+
+/* ============ Termini kol – srečanja po kolih (prestavljanje srečanj) ============ */
+
+.po-kolih { display: flex; flex-direction: column; gap: var(--r2); }
+
+/* Orodna vrstica: filter ekipe (iskalnik) in preklop »Prestavljena«. */
+.po-kolih__orodje { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--r1) var(--r2); }
+.po-kolih__orodje .iskalni-izbirnik { flex: 1 1 220px; max-width: 320px; }
+.po-kolih__povzetek {
+  margin: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+.po-kolih__namig { margin: 0; font-size: var(--tip-drobno); color: var(--barva-crnilo-4); }
+
+/* Izbrano srečanje + vrsta kol: lepljivo, da je kolo na dosegu, ne glede na to,
+   kako daleč v seznamu srečanje stoji. Modra črta in mehka modra podlaga sta isti
+   vzorec kot pri urejevalniku pod srečanjem: »to urejaš zdaj«. */
+.po-kolih__izbira {
+  position: sticky;
+  /* Zastor oken ima zgoraj 64 px odmika, sticky pa meri od roba vsebine: z negativnim
+     zamikom se vrstica prilepi na rob zaslona in nad njo ne vidno drsi seznam. */
+  top: calc(var(--r8) * -1);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+  padding: 12px var(--r2);
+  border-left: 4px solid var(--barva-glavna);
+  border-bottom: 1px solid var(--barva-glavna-crta);
+  background: var(--barva-glavna-mehko);
+}
+.po-kolih__izbira-glava { display: flex; align-items: center; justify-content: space-between; gap: var(--r1) var(--r2); }
+.po-kolih__izbira-besedilo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.po-kolih__izbira-ime { font-size: var(--tip-telo); font-weight: 600; }
+.po-kolih__izbira-pod {
+  font: 500 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+.po-kolih__izbira .gumb--majhen { background: var(--barva-bela); }
+
+/* Vrsta kol: oznaka je številka, datum in stanje za izbrano srečanje. */
+.po-kolih__kola { display: flex; flex-wrap: wrap; gap: 4px; }
+.po-kolih__kolo-gumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  flex: none;
+  width: 62px;
+  min-height: 52px;
+  padding: 4px 0;
+  border: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  cursor: pointer;
+}
+.po-kolih__kolo-gumb:hover:not(:disabled) { border-color: var(--barva-crnilo); }
+.po-kolih__kolo-gumb:disabled { cursor: default; }
+.po-kolih__kolo-stevilka { font: 600 15px / 1.2 var(--pisava-mono); }
+.po-kolih__kolo-datum { font: 500 11px / 1.2 var(--pisava-mono); color: var(--barva-crnilo-3); }
+.po-kolih__kolo-stanje {
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 10px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-4);
+}
+/* Kolo, v katerem srečanje stoji zdaj. */
+.po-kolih__kolo-gumb--tu,
+.po-kolih__kolo-gumb--tu:disabled {
+  border-color: var(--barva-crnilo);
+  background: var(--barva-crnilo);
+  color: var(--barva-papir);
+}
+.po-kolih__kolo-gumb--tu .po-kolih__kolo-datum,
+.po-kolih__kolo-gumb--tu .po-kolih__kolo-stanje { color: var(--barva-na-crnilu-2); }
+/* Kolo iz žreba: vanj se srečanje vrne. */
+.po-kolih__kolo-gumb--zreb { border-color: var(--barva-glavna); }
+.po-kolih__kolo-gumb--zreb .po-kolih__kolo-stanje { color: var(--barva-glavna-tekst); }
+/* Obe ekipi tam še ne igrata. */
+.po-kolih__kolo-gumb--prosto { border-color: var(--barva-poudarek); background: var(--barva-poudarek-mehko); }
+.po-kolih__kolo-gumb--prosto .po-kolih__kolo-stanje { color: var(--barva-poudarek-tekst); }
+.po-kolih__kolo-gumb--caka { border-style: dashed; }
+
+.po-kolih__legenda {
+  margin: 0;
+  font: 500 11px / 1.5 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+}
+.po-kolih__legenda-prosto { font-weight: 600; color: var(--barva-poudarek-tekst); }
+.po-kolih__legenda-zasedeno { font-weight: 600; color: var(--barva-crnilo-2); }
+
+/* Seznam kol. Kolo je en odsek s svojimi srečanji; ob povleku je ciljno kolo obrobljeno. */
+.po-kolih__seznam { display: flex; flex-direction: column; }
+.po-kolih__kolo { border-bottom: 1px solid var(--barva-crta); }
+.po-kolih__kolo--cilj {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: -2px;
+  background: var(--barva-glavna-mehko);
+}
+.po-kolih__glava { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--r2); min-height: 44px; padding: var(--r1) 0; }
+.po-kolih__stevilka {
+  font: 600 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.po-kolih__kolo--odigrano .po-kolih__stevilka { color: var(--barva-crnilo-4); }
+.po-kolih__datum {
+  font: 500 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+}
+.po-kolih__stevilo,
+.po-kolih__razpri {
+  margin-left: auto;
+  font: 500 11px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  color: var(--barva-crnilo-3);
+}
+.po-kolih__razpri { color: var(--barva-glavna-tekst); }
+.po-kolih__srecanja { display: flex; flex-direction: column; padding-bottom: var(--r1); }
+
+.po-kolih__srecanje { border-left: 2px solid var(--barva-crta); }
+.po-kolih__srecanje + .po-kolih__srecanje { border-top: 1px solid var(--barva-polnilo); }
+.po-kolih__vrstica {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px var(--r2);
+  min-height: 44px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.po-kolih__vrstica[draggable='true'] { cursor: grab; }
+.po-kolih__vrstica:hover { background: var(--barva-vrstica-hover); }
+.po-kolih__ime { font-size: 16px; font-weight: 600; }
+.po-kolih__oznake { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.po-kolih__ura { font: 600 var(--tip-mono) / 1.3 var(--pisava-mono); color: var(--barva-crnilo-2); }
+.po-kolih__oznaka {
+  padding: 3px 6px;
+  background: var(--barva-polnilo);
+  color: var(--barva-crnilo-3);
+  font: 600 10px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.po-kolih__oznaka--prestavljeno {
+  background: var(--barva-bela);
+  border: 1px solid var(--barva-glavna-crta);
+  color: var(--barva-glavna-tekst);
+}
+.po-kolih__srecanje--odigrano .po-kolih__ime { font-weight: 500; color: var(--barva-crnilo-4); }
+.po-kolih__srecanje--vlecem { opacity: 0.5; }
+
+/* Izbrano srečanje: modra črta in mehka modra podlaga, skupaj z urejevalnikom pod njim. */
+.po-kolih__srecanje--izbrano {
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+.po-kolih__srecanje--izbrano .po-kolih__vrstica { padding-left: 10px; }
+.po-kolih__srecanje--izbrano .po-kolih__vrstica:hover { background: none; }
+
+/* Stanje po vnosu: ekipa igra v kolu več srečanj, kot jih ima običajno. Opozorilo, ne napaka. */
+.po-kolih__opomba { margin: 0; padding: 0 12px 8px; font-size: var(--tip-drobno); line-height: 1.4; color: var(--barva-negativna-tekst); }
+.po-kolih__razlog { margin: 0; padding: 0 12px 8px; font-size: var(--tip-drobno); font-weight: 300; line-height: 1.4; color: var(--barva-crnilo-3); }
+.po-kolih__prosto { margin: 0; padding: 6px 12px 10px; font-size: var(--tip-drobno); color: var(--barva-crnilo-4); }
+/* Dvojni razred: .termini__prestavitev (modra črta + podlaga) stoji v datoteki pozneje. */
+.po-kolih .po-kolih__podrobnosti { margin: 0; padding: var(--r1) 12px var(--r2) 10px; border-left: 0; background: none; }
+
+@media (max-width: 640px) {
+  .po-kolih__orodje .iskalni-izbirnik { flex-basis: 100%; max-width: none; }
+  /* Vrsta kol je ena vrstica, ki drsi: osemnajst oznak v štirih vrsticah bi pojedlo zaslon. */
+  .po-kolih__kola { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .po-kolih__izbira { padding: 8px 12px; }
+}
+@media (max-width: 480px) {
+  /* Datum (»21. 11. 2026« + znak koledarja) ne gre v polovico širine. */
+  .po-kolih__podrobnosti .termini__prestavitev-cas { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* ============ Termini kol – polje v obrazcu »Nova liga« ============ */
 
@@ -2259,15 +2439,6 @@ input[type='radio'] {
    so stara pravila za urejevalnik prestavitve, ker predloga njihovega videza
    ne spreminja (modra črta, mehka modra podlaga). */
 .prehodi__uvod { margin: 0; font-weight: 300; color: var(--barva-crnilo-3); }
-.termini__oznaka-srecanja {
-  display: inline-block;
-  margin-left: 8px;
-  font: 500 var(--tip-mono) / 1.3 var(--pisava-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--barva-crnilo-3);
-  white-space: nowrap;
-}
 .termini__prestavitev {
   display: flex;
   flex-direction: column;
@@ -2276,12 +2447,10 @@ input[type='radio'] {
   border-left: 4px solid var(--barva-glavna);
   background: var(--barva-glavna-mehko);
 }
-.termini__prestavitev-naslov { margin: 0; font-size: var(--tip-telo); font-weight: 600; }
 .termini__prestavitev-cas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .termini__urejevalnik-dejanja { display: flex; flex-wrap: wrap; gap: var(--r1); }
 /* »Vrni v N. kolo« je bel gumb z svetlo obrobo, kot kažeta predaja in posnetek. */
 .termini__vrni { background: var(--barva-bela); border-color: var(--barva-crta); }
-.termini__prazno { margin: 0; font-size: 15px; color: var(--barva-crnilo-4); }
 .termini__predogled-konec {
   margin: 0;
   padding-top: 6px;
@@ -2313,14 +2482,14 @@ input[type='radio'] {
 .termini__orodje input,
 .termini__obrazec input:not(.korak__vnos),
 .termini__vnos,
-.termini__prestavitve input,
+.po-kolih input,
 .prehodi input:not(.korak__vnos),
 .prehodi .iskalni-izbirnik__vnos { line-height: 1.3; }
 
 /* Iskalnik v novih razdelkih ne dobi splošnega odmika 16 px: razmik ustvarja
-   mreža razdelka (prehodi: 8 px, prestavitve: 16 px), kot v predaji. */
+   mreža razdelka (prehodi: 8 px, orodna vrstica srečanj po kolih: 16 px). */
 .prehodi .iskalni-izbirnik,
-.termini__prestavitve .iskalni-izbirnik { margin-top: 0; }
+.po-kolih__orodje .iskalni-izbirnik { margin-top: 0; }
 /* Pojasnilo je neposredni otrok polja, zato ga pravilo za oznake (.obrazec__polje > span)
    ne sme zajeti: ostane navadno besedilo, 14 px v eni vrstici. */
 .obrazec__polje > .termini__razlog-pojasnilo { margin: 0; font: 300 var(--tip-drobno) / 1.5 var(--pisava-telo); letter-spacing: 0; text-transform: none; color: var(--barva-crnilo-3); }
@@ -2619,8 +2788,8 @@ input[type='radio'] {
   letter-spacing: -0.03em;
 }
 
-/* Mono nadnaslov nad naslovom okna ("Uredi izbor" nad "Moje lige"). Sloga ni
-   imel in se je izpisal v isti vrsti kot naslov ("Uredi izborMoje lige"); iste
+/* Mono nadnaslov nad naslovom okna ("Sledi ligi" nad "Moje lige"). Sloga ni
+   imel in se je izpisal v isti vrsti kot naslov ("Sledi ligiMoje lige"); iste
    mere kot nadnaslov strani, le da je tu tudi vrstica sama. */
 .modal__nad {
   display: block;
@@ -2805,7 +2974,7 @@ td.nizi-okno__niz--dobljen {
   }
 }
 
-/* --- Okno "Uredi izbor lig" --- */
+/* --- Okno "Sledi ligi" --- */
 
 /* Okno izbora je edino, ki mora stati v zaslonu v celoti: seznam lahko naraste
    na vse uvozene sezone (stotine lig). Zato je prav TO okno stolpec z zgornjo

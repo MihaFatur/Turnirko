@@ -1,6 +1,6 @@
 /* Okno za odkljukanje lig — v dveh vlogah, ki si delita eno telo:
 
-   - IzborLigOkno (»Uredi izbor«): tu si prijavljeni sestavi sklop »Moje lige«.
+   - IzborLigOkno (»Sledi ligi«): tu si prijavljeni sestavi sklop »Moje lige«.
    - DomaceLigeOkno (»Uredi domačo stran«): tu administrator postavi (največ
      dve) ligi, ki ju vidijo gostje in vsi, ki svojega izbora nimajo.
 
@@ -45,7 +45,7 @@ export function IzborLigOkno({ onZapri }: { onZapri: () => void }) {
   return (
     <OknoZOznacevanjemLig
       naslov="Moje lige"
-      nadnaslov="Uredi izbor"
+      nadnaslov="Sledi ligi"
       podnaslov="Označene lige so na tvoji domači strani, po vsakem kolu pa dobiš njihove izide po e-pošti. Izbor se shrani sproti."
       imeSkupine="Spremljam"
       prazno="Lig še ni. Ko bo prva ustvarjena, jo boš lahko spremljal."

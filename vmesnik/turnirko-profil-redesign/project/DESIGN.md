@@ -650,7 +650,7 @@ Obe poti odpreta **kratko registracijo** (brez korakov »Vloga« in »Paket«).
 Besedilo ostane zapisniško: brez vzklikov, številka pove (0 €, prvi mesec), in
 nikoli ne obljubi, kar brezplačen račun po preizkusu ne da.
 
-3. **»Spremljaj« za gosta** (stran lige, »Uredi izbor →« na domači strani):
+3. **»Spremljaj« za gosta** (stran lige, »Sledi ligi →« na domači strani):
    od 23. 10. 2026 je spremljanje lig brezplačno, zato gost gumb vidi; klik
    odpre kratko registracijo, ki na prvem koraku pove ligo (»Liga Savinja D:
    po vsakem kolu ti pošljemo izide in lestvico«), po prijavi pa račun ligo

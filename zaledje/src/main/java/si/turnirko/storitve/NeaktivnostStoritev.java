@@ -98,7 +98,12 @@ public class NeaktivnostStoritev {
     }
 
     /* Dnevno ob 3.15 zjutraj: takrat nihce ne vnasa rezultatov, odbitki pa so
-       vezani na datum in ne na uro, zato tocna ura ni pomembna. */
+       vezani na datum in ne na uro, zato tocna ura ni pomembna. Transakcija
+       mora biti TU: klic uveljaviVse() iz istega razreda gre mimo Springovega
+       posrednika. Brez nje zapis zgodovine in stanja nista skupaj: padec med
+       njima pusti odbitek v dnevniku, ne pa v ratingu, naslednji tek pa ga
+       steje za ze uveljavljenega, zato se ne uveljavi nikoli. */
+    @Transactional
     @Scheduled(cron = "0 15 3 * * *")
     public void dnevnoOpravilo() {
         uveljaviVse(LocalDateTime.now());
