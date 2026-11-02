@@ -72,6 +72,7 @@ import { Lestvica } from '../komponente/Lestvica'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { Mreza, kolaMreze } from '../komponente/Mreza'
+import { SlikaIgralca } from '../komponente/SlikaIgralca'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import {
   PodnavigacijaDogodka,
@@ -92,6 +93,7 @@ import { TekmeSeznam } from '../komponente/TekmeSeznam'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
+import { useSlikeIgralcev } from '../pomozno/profilneSlike'
 import { opisRazpona } from '../pomozno/svRegija'
 import {
   imeKolaKratko,
@@ -2275,6 +2277,14 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
     [podatki.prijave],
   )
   const bilance = useMemo(() => bilancePrijav(podatki.tekme), [podatki.tekme])
+  /* Profilne slike (V56) samo na stopničkah in samo pri posameznikih: ekipa in
+     par nimata ene fotografije. Kdor slike nima, dobi v okvirju obris, da se
+     imena ne zamaknejo. */
+  const posamicno = !ekipno && razvrscene.every((p) => p.idIgralca2 === null)
+  const slikeVrha = useSlikeIgralcev(
+    posamicno ? razvrscene.filter((p) => p.koncnoMesto! <= 3).map((p) => p.idIgralca) : [],
+  )
+  const zSlikami = slikeVrha.size > 0
 
   if (razvrscene.length === 0) return null
 
@@ -2311,6 +2321,7 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
         className={
           'razvrstitev__vrh'
           + (vrh.length === 2 ? ' razvrstitev__vrh--dve' : vrh.length >= 4 ? ' razvrstitev__vrh--stiri' : '')
+          + (zSlikami ? ' razvrstitev__vrh--slike' : '')
         }
       >
         {vrh.map((prijava) => {
@@ -2324,6 +2335,14 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
               <span className="razvrstitev__stevilka">
                 {oznakaMesta(prijava.koncnoMesto!, deljena, jeTelefon)}
               </span>
+              {zSlikami && (
+                <SlikaIgralca
+                  zgostitev={slikeVrha.get(prijava.idIgralca ?? -1)}
+                  velikost="MALA"
+                  mera={jeTelefon ? 44 : 72}
+                  razred="razvrstitev__slika"
+                />
+              )}
               <span className="razvrstitev__oseba">
                 <span className="razvrstitev__ime">{prijava.polnoIme}</span>
                 <span className="razvrstitev__klub">

@@ -33,6 +33,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 import si.turnirko.dto.RegistracijaVnos;
@@ -76,6 +79,7 @@ class SocasnostTest {
     @Autowired RegistracijaStoritev registracija;
     @Autowired PreracunRatingaStoritev preracun;
     @Autowired Zaklepi zaklepi;
+    @Autowired SpremljaniIgralciStoritev spremljani;
     @Autowired OmejevalnikPoskusov omejevalnik;
     @Autowired JdbcTemplate jdbc;
 
@@ -212,6 +216,43 @@ class SocasnostTest {
                         .map(RatingStanje::getVrednost).orElse(null))
                 .sorted(java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder()))
                 .toList();
+    }
+
+    /* Brezplacen racun sme spremljati enega igralca (SpremljaniIgralciStoritev.
+       NAJVEC_BREZPLACNO). Dva hkratna zahtevka istega racuna za RAZLICNA igralca
+       sta oba prebrala stetje 0 in oba shranila - zaklep racuna (Zaklepi.Vrsta.RACUN)
+       ju spravi v vrsto, drugi vidi prvega in je zavrnjen. */
+    @Test
+    void dvaHkratnaSpremljanjaIstegaRacunaSprejmetaEnega() throws Exception {
+        String ime = "socasnost-navijac-" + System.nanoTime();
+        Long idRacun = jdbc.queryForObject("INSERT INTO uporabnik (uporabnisko_ime, geslo_hash, vloga, status, ustvarjen_ob)"
+                + " VALUES (?, 'x', 'NAVIJAC', 'POTRJEN', now()) RETURNING id", Long.class, ime);
+        List<Long> idjiIgralcev = new ArrayList<>();
+        for (String priimek : List.of("Prvi", "Drugi")) {
+            idjiIgralcev.add(jdbc.queryForObject("INSERT INTO igralec (ime, priimek, spol, datum_rojstva, ustvarjen_ob)"
+                    + " VALUES ('Socasni', ?, 'MOSKI', '2000-01-01', now()) RETURNING id", Long.class, priimek));
+        }
+        try {
+            List<Object> izidi = hkrati(idjiIgralcev.stream().<Callable<Object>>map(idIgralca -> () -> {
+                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                        ime, null, List.of(new SimpleGrantedAuthority("ROLE_NAVIJAC"))));
+                try {
+                    return spremljani.spremljaj(idIgralca);
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            }).toList());
+
+            assertEquals(1, izidi.stream().filter(DomenskaIzjema.class::isInstance).count(),
+                    "drugi igralec je zavrnjen, ker je meja ze dosezena: " + izidi);
+            assertEquals(1, stevilo("SELECT count(*) FROM spremljan_igralec WHERE id_racun = ?", idRacun));
+        } finally {
+            jdbc.update("DELETE FROM spremljan_igralec WHERE id_racun = ?", idRacun);
+            jdbc.update("DELETE FROM uporabnik WHERE id = ?", idRacun);
+            for (Long id : idjiIgralcev) {
+                jdbc.update("DELETE FROM igralec WHERE id = ?", id);
+            }
+        }
     }
 
     @SafeVarargs

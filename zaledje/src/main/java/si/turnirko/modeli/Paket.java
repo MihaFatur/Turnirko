@@ -1,12 +1,14 @@
 /* Placilni paket racuna. Igralec izbira med BREZPLACNO in PREMIUM (cena po
-   starostnem pasu ob registraciji - glej CenikStoritev), organizator med
-   tremi obsegovnimi paketi. En racun ima vedno tocno enega izmed teh petih -
+   starostnem pasu ob registraciji - glej CenikStoritev), navijac med
+   BREZPLACNO in NAVIJAC (19,99 EUR na leto, V58), organizator med tremi
+   obsegovnimi paketi. En racun ima vedno tocno enega izmed teh sestih -
    kateri nabor je zanj veljaven, doloca Uporabnik.vloga. */
 package si.turnirko.modeli;
 
 public enum Paket {
     BREZPLACNO,
     PREMIUM,
+    NAVIJAC,
     // organizatorski paketi so razvrsceni od najmanjsega do najvecjega (jeVisji)
     ORGANIZATOR_BASIC,
     ORGANIZATOR_PLUS,
@@ -27,6 +29,7 @@ public enum Paket {
     public String kratekNaziv() {
         return switch (this) {
             case PREMIUM -> "Premium";
+            case NAVIJAC -> "Navijač";
             case ORGANIZATOR_BASIC -> "Basic";
             case ORGANIZATOR_PLUS -> "Plus";
             case ORGANIZATOR_PRO -> "Pro";
@@ -38,6 +41,7 @@ public enum Paket {
     public String imeIzdelka() {
         return switch (this) {
             case PREMIUM -> "Turnirko Premium";
+            case NAVIJAC -> "Turnirko Navijač";
             case ORGANIZATOR_BASIC -> "Turnirko Organizator Basic";
             case ORGANIZATOR_PLUS -> "Turnirko Organizator Plus";
             case ORGANIZATOR_PRO -> "Turnirko Organizator Pro";

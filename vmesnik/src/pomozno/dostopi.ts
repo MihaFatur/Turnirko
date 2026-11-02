@@ -183,6 +183,7 @@ export const MOZNOSTI_RAZVRSTITVE: [Razvrstitev, string][] = [
 export const MOZNOSTI_VLOGE: [FilterVloge, string][] = [
   ['vsi', 'Vsi'],
   ['IGRALEC', 'Igralci'],
+  ['NAVIJAC', 'Navijači'],
   ['ORGANIZATOR', 'Organizatorji'],
   ['ADMIN', 'Admin'],
 ]
@@ -318,6 +319,7 @@ export function pregledStanja(vsi: RacunIgralcaDto[]): SkupinaPregleda[] {
       naslov: 'Vloge',
       vrstice: [
         vrstica('Igralci', (r) => r.vloga === 'IGRALEC'),
+        vrstica('Navijači', (r) => r.vloga === 'NAVIJAC'),
         vrstica('Organizatorji', (r) => r.vloga === 'ORGANIZATOR'),
         vrstica('Administratorji', (r) => r.vloga === 'ADMIN'),
       ],

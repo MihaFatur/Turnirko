@@ -8,7 +8,7 @@ import type { CiklusPlacila, Paket } from '../api/tipi'
 const KLJUC = 'turnirko-registracija-placilo'
 
 export interface ShranjenoStanjePlacila {
-  vloga: 'igralec' | 'organizator'
+  vloga: 'igralec' | 'organizator' | 'navijac'
   paket: Paket
   ciklus: CiklusPlacila | null
   cena: number

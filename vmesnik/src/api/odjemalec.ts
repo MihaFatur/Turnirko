@@ -37,14 +37,17 @@ export function opisNapake(napaka: unknown): string {
 }
 
 async function zahteva<T>(pot: string, metoda: string, telo?: unknown): Promise<T> {
+  /* Obrazec z datoteko (nalaganje slike) gre kot multipart: mejo med deli
+     zapiše brskalnik sam v Content-Type, zato glave ne smemo postaviti. */
+  const obrazec = telo instanceof FormData
   const glave: Record<string, string> = {}
-  if (telo !== undefined) glave['Content-Type'] = 'application/json'
+  if (telo !== undefined && !obrazec) glave['Content-Type'] = 'application/json'
   if (poverilnice) glave['Authorization'] = `Basic ${poverilnice}`
 
   const odgovor = await fetch(OSNOVNA_POT + pot, {
     method: metoda,
     headers: Object.keys(glave).length > 0 ? glave : undefined,
-    body: telo !== undefined ? JSON.stringify(telo) : undefined,
+    body: obrazec ? telo : telo !== undefined ? JSON.stringify(telo) : undefined,
   })
 
   if (!odgovor.ok) {

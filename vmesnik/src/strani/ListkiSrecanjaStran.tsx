@@ -14,7 +14,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
-import { ligeApi, srecanjaApi } from '../api/zahteve'
+import { ligeApi, srecanjaApi, turnirjiApi } from '../api/zahteve'
 import type { PredlogaLige } from '../api/tipi'
 import { EkipniZapisnikTurnirko } from '../komponente/EkipniZapisnikTurnirko'
 import { IzbirnikObrazca } from '../komponente/IzbirnikObrazca'
@@ -45,6 +45,14 @@ export function ListkiSrecanjaStran() {
     queryFn: () => ligeApi.najdi(idLiga!),
     enabled: idLiga != null,
   })
+  /* Ekipna tekma turnirja nosi logotip turnirja (V54), liga svojega. */
+  const idTurnir = idLiga == null ? podrobno.data?.srecanje.idTurnir : null
+  const turnir = useQuery({
+    queryKey: ['turnir', idTurnir],
+    queryFn: () => turnirjiApi.najdi(idTurnir!),
+    enabled: idTurnir != null,
+  })
+  const logotip = (idLiga != null ? liga.data?.logotip : turnir.data?.logotip) ?? null
 
   /* null = uporabi privzeto predlogo lige; sicer zacasna izbira za ta natis. */
   const [varianta, nastaviVarianto] = useState<PredlogaLige | null>(null)
@@ -99,7 +107,7 @@ export function ListkiSrecanjaStran() {
         </header>
 
         {lezeci ? (
-          <EkipniZapisnikTurnirko podrobno={podrobno.data} liga={liga.data} />
+          <EkipniZapisnikTurnirko podrobno={podrobno.data} liga={liga.data} logotip={logotip} />
         ) : (
           <ZapisnikEkipnegaDvoboja podrobno={podrobno.data} liga={liga.data} varianta={izbrana} />
         )}

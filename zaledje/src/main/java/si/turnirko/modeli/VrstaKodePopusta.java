@@ -5,11 +5,14 @@
    - ODSTOTEK: placljiva registracija (Premium ali organizator); popust na
      prvo placilo;
    - ORGANIZATOR_MESECI: registracija organizatorja brez placila; paket `paket`
-     za `meseci`, od potrditve organizatorja. */
+     za `meseci`, od potrditve organizatorja;
+   - NAVIJAC_MESECI: brezplacna registracija navijaca; paket Navijac za `meseci`
+     brez placila, od potrditve racuna (V58). */
 package si.turnirko.modeli;
 
 public enum VrstaKodePopusta {
     PREMIUM_MESECI,
     ODSTOTEK,
-    ORGANIZATOR_MESECI
+    ORGANIZATOR_MESECI,
+    NAVIJAC_MESECI
 }

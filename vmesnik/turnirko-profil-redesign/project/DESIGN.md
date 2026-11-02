@@ -332,6 +332,54 @@ Razredi so `.kartoteka__*` (stran) in `.zapisnik__*` (okna), zadnji razdelek
   »Filtri«. Masthead in spodnjo vrstico nosi aplikacija; »+ Nov igralec« je
   lepljiv nad spodnjo vrstico.
 
+### 4c. Logotip tekmovanja (oktober 2026)
+
+Liga in turnir imata lahko naložen logotip (`LogotipTekmovanja`, okno
+`LogotipOkno`, razdelek »Logotip tekmovanja« na koncu `slog.css`). To ni ikona
+namesto besede (točka 9): ime tekmovanja stoji vedno tik ob njem, zato je slika
+`alt=""`.
+
+- **Kje**: levo od naslova strani lige in turnirja (namizje ob 80 px naslovu,
+  telefon ob imenu v glavi), Turnirkov ekipni zapisnik (24 mm, desno), žreb
+  mreže (16 mm, desno v glavi) in listki skupin (v višini glave, pred znamko
+  Turnirka). **Ne** na uradnem obrazcu NTZS, sodniških listkih, seznamih lig in
+  turnirjev ali v koledarju — večina tekmovanj logotipa nima in seznam bi bil
+  lisast.
+- **Velikost je po enaki ploščini, ne po višini** (`meraLogotipa`): širok
+  napis in kvadraten grb na strani tehtata enako. Logotip ne dobi okvirja,
+  sence ne podlage; belo ozadje okno ob nalaganju ponudi odstraniti, ker bel
+  pravokotnik na papirju izstopa.
+- **Okno pokaže dva predogleda**: na papirju strani in v sivinah na belem
+  (tako ga natisne črno-beli tiskalnik). Ploščice knjižnice so bele z
+  `--barva-crta`, izbrana ima 2 px modro obrobo.
+- Logotip **ne nosi barve vmesnika**: barve so samo v sliki, glava in gumbi
+  ostanejo hišni (razdelek 2).
+
+### 4d. Profilna slika igralca in pokrovitelji (oktober 2026)
+
+**Profilna slika** (`SlikaIgralca`, okno `ProfilnaSlikaOkno`, razdelek »Profilna
+slika igralca« v `slog.css`) je kvadrat z 1 px črto črnila in radijem 0, kot
+fotografija na licenci. Stoji na treh mestih in nikjer drugje: glava profila
+(136 px), 1 na 1 (72 px) in stopničke dogodka (72 px, na telefonu 44 px).
+Lestvica, seznami, mreža in tisk je ne nosijo — pri nekaj odstotkih igralcev bi
+bil vsak seznam lisast.
+
+- **Kjer stoji več igralcev hkrati (1 na 1, stopničke), okvir dobijo vsi**, kakor
+  hitro ga ima eden: igralec brez slike ima v istem okvirju obris glave in ramen
+  (črta `--barva-crnilo-3`, brez polnila), da se imena ne zamaknejo.
+- Slika je okras (`alt=""`), ime stoji ob njej. Brez medalj, okvirjev v barvi
+  mesta in brez filtrov: odličje na stopničkah nosi še naprej številka in črta.
+- Okno izreza: kvadrat 280 px, premik z vlečenjem ali puščicami, povečava z
+  drsnikom; brez krožnega izreza (radij 0).
+
+**Pokrovitelji** (`PokroviteljiTrak`, `PokroviteljiOkno`, `PokroviteljiTisk`)
+so **kolofon in ne oglas**: trak na dnu strani lige in turnirja, pod vsebino, ločen
+z 1 px črto, brez gibanja, brez ozadja in okvirjev, oznaka »Pokrovitelji« v mono
+pisavi. Velikost je po enaki ploščini kot logotip (glavni 80 × 80, ostali
+56 × 56 px). Na tisku so v nogi Turnirkovega ekipnega zapisnika in žreba mreže
+(največ 12 mm visoko, slika v barvi — logotip je znamka); ne na uradnem obrazcu
+NTZS, sodniških listkih in listkih skupin.
+
 ## 5. Prepovedano
 
 Trdo prepovedano; nič od tega ne sme priti v vmesnik.
@@ -602,7 +650,7 @@ Obe poti odpreta **kratko registracijo** (brez korakov »Vloga« in »Paket«).
 Besedilo ostane zapisniško: brez vzklikov, številka pove (0 €, prvi mesec), in
 nikoli ne obljubi, kar brezplačen račun po preizkusu ne da.
 
-3. **»Spremljaj« za gosta** (stran lige, »Uredi izbor →« na domači strani):
+3. **»Spremljaj« za gosta** (stran lige, »Sledi ligi →« na domači strani):
    od 23. 10. 2026 je spremljanje lig brezplačno, zato gost gumb vidi; klik
    odpre kratko registracijo, ki na prvem koraku pove ligo (»Liga Savinja D:
    po vsakem kolu ti pošljemo izide in lestvico«), po prijavi pa račun ligo

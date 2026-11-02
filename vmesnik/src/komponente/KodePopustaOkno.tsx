@@ -34,6 +34,7 @@ const OZNAKE_VRSTE: Record<VrstaKodePopusta, string> = {
   PREMIUM_MESECI: 'Premium brez plačila (igralec)',
   ODSTOTEK: 'Popust na prvo plačilo',
   ORGANIZATOR_MESECI: 'Organizatorski paket brez plačila',
+  NAVIJAC_MESECI: 'Paket Navijač brez plačila (navijač)',
 }
 
 /* Kaj vrsta pomeni za osebo in kje velja: admin mora vedeti, preden kodo razdeli. */
@@ -42,11 +43,14 @@ const POJASNILO_VRSTE: Record<VrstaKodePopusta, string> = {
     'Brezplačna registracija igralca. Preizkus Premium traja toliko mesecev namesto enega; '
     + 'začne se, ko je račun povezan z igralcem.',
   ODSTOTEK:
-    'Registracija s plačilom (Premium ali organizator). Popust velja za prvo plačilo, obnova je po '
+    'Registracija s plačilom (Premium, Navijač ali organizator). Popust velja za prvo plačilo, obnova je po '
     + 'polni ceni. Največ 75 %: Stripe ne sprejme plačila pod 0,50 €.',
   ORGANIZATOR_MESECI:
     'Registracija organizatorja brez plačila. Paket velja toliko mesecev od tvoje potrditve '
     + 'organizatorja; po koncu se organizator vrne brez paketa.',
+  NAVIJAC_MESECI:
+    'Brezplačna registracija navijača. Paket Navijač velja toliko mesecev od potrditve računa; po '
+    + 'koncu se račun vrne na brezplačen paket (en spremljan igralec).',
 }
 
 const OZNAKE_STANJA: Record<StanjeKodePopusta, string> = {
@@ -143,7 +147,8 @@ function VrsticaKode({ koda: k }: { koda: KodaPopustaDto }) {
       </div>
       <div className="kode__ugodnost">
         {opisUgodnosti(k)}
-        {k.zaVlogo && ` · samo ${k.zaVlogo === 'IGRALEC' ? 'igralci' : 'organizatorji'}`}
+        {k.zaVlogo
+          && ` · samo ${k.zaVlogo === 'IGRALEC' ? 'igralci' : k.zaVlogo === 'NAVIJAC' ? 'navijači' : 'organizatorji'}`}
       </div>
       <div className="kode__meta">
         <span>
@@ -270,7 +275,7 @@ function NovaKoda({
   const [meseci, nastaviMesece] = useState('3')
   const [odstotek, nastaviOdstotek] = useState('20')
   const [paket, nastaviPaket] = useState<Paket>('ORGANIZATOR_PLUS')
-  const [zaVlogo, nastaviVlogo] = useState<'' | 'IGRALEC' | 'ORGANIZATOR'>('')
+  const [zaVlogo, nastaviVlogo] = useState<'' | 'IGRALEC' | 'NAVIJAC' | 'ORGANIZATOR'>('')
   const [veljaDo, nastaviVeljaDo] = useState('')
   const [najvec, nastaviNajvec] = useState('')
 
@@ -333,8 +338,9 @@ function NovaKoda({
             <label className="obrazec__polje">
               <span>Za koga</span>
               <select value={zaVlogo} onChange={(d) => nastaviVlogo(d.target.value as typeof zaVlogo)}>
-                <option value="">Igralce in organizatorje</option>
+                <option value="">Igralce, navijače in organizatorje</option>
                 <option value="IGRALEC">Samo igralce</option>
+                <option value="NAVIJAC">Samo navijače</option>
                 <option value="ORGANIZATOR">Samo organizatorje</option>
               </select>
             </label>

@@ -13,6 +13,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalniObravnavalecIzjem {
@@ -66,6 +67,14 @@ public class GlobalniObravnavalecIzjem {
     ProblemDetail zaklep(PessimisticLockingFailureException izjema) {
         return sestavi(HttpStatus.CONFLICT, "Socasna sprememba",
                 "Hkrati je potekala druga sprememba istih podatkov. Poskusi znova.");
+    }
+
+    /* Datoteka cez mejo spring.servlet.multipart (slike, V54) - Spring jo zavrne,
+       preden pride do kontrolerja; brez tega bi gledalec dobil splosno 500. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ProblemDetail prevelikaDatoteka(MaxUploadSizeExceededException izjema) {
+        return sestavi(HttpStatus.CONTENT_TOO_LARGE, "Prevelika datoteka",
+                "Datoteka je prevelika (največ 8 MB).");
     }
 
     /* Krsitev omejitve v bazi (UNIQUE, CHECK, tuji kljuc). */

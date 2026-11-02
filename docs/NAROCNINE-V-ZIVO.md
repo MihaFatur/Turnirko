@@ -218,6 +218,25 @@ in zaledje z `TURNIRKO_STRIPE_TAJNI_KLJUC`, `TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST` 
 - [ ] Preklic, obnova, preklop cikla, nadgradnja in znižanje organizatorja (kot 29. 9.).
 - [ ] V Stripu (Webhooks → Recent deliveries) vsi odgovori 2xx.
 
+**Paket Navijač in ugodnosti (V58–V61, dodano 30. 10. 2026; nič od tega še ni teklo proti Stripu):**
+
+- [ ] Navijač letno (19,99 €): registracija in nadgradnja brezplačnega navijača; izdelek »Turnirko
+      Navijač« je v Stripu nov, **preveri, kaj Moj Račun izda zanj** (ime postavke, brez DDV).
+- [ ] Mesečnega Navijača ni (ponudba, Checkout in strežnik ga zavrnejo).
+- [ ] Koda popusta za navijača (`NAVIJAC_MESECI`) in odstotkovna koda pri plačljivi registraciji navijača.
+- [ ] **Podpora klubu**: organizator kluba, ki ga podpira 10 plačnikov, pri prvem nakupu ali nadgradnji
+      paketa dobi kupon (`once`); preveri znesek na Checkoutu in na računu v Moj Računu ter da obnova
+      poteka po polni ceni (popusta ob obnovi namenoma ni).
+- [ ] Preklic Navijača: družinski Premium igralca preneha, osebni koledar vrne 403, potisna obvestila
+      prenehajo (podatki ostanejo za obnovo).
+- [ ] **Potisna obvestila**: ustvari par ključev (`java -cp target/classes si.turnirko.pomozno.VapidKljuci`),
+      nastavi `TURNIRKO_PUSH_JAVNI_KLJUC`, `TURNIRKO_PUSH_ZASEBNI_KLJUC`, `TURNIRKO_PUSH_SUBJEKT`
+      (`mailto:info@turnirko-nt.si`), na dveh napravah (Android Chrome, iPhone z dodano stranjo na začetni
+      zaslon) vklopi obvestila in pošlji preizkus. Šifriranje je preverjeno z uradnim testnim vektorjem
+      RFC 8291, **dostava prek FCM/Apple še ni preverjena**.
+- [ ] Osebni koledar: povezavo `.ics` dodaj v Google in Apple koledar, preveri, da se tekme pojavijo in da
+      po zamenjavi povezave stara preneha delovati.
+
 ### Faza 5 – preklop v živo (zaporedje je pomembno)
 
 1. [ ] Odločeno: DDV (opravljeno 21. 10.), dogovor o 4 %, računovodkinja potrdila pristop

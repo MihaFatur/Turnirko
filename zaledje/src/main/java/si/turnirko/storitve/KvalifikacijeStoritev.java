@@ -262,6 +262,8 @@ public class KvalifikacijeStoritev {
         k.setOdbitekBrezBoja(visja.getOdbitekBrezBoja());
         k.setRaven(visja.getRaven());
         k.setPredlogaListka(visja.getPredlogaListka());
+        // logotip (V54) visje lige - kvalifikacije igrajo pod njenim imenom
+        k.setLogotip(visja.getLogotip());
         k.nastaviKvalifikacije(visja, nizja);
         // lastnik visje lige - kvalifikacije so del njenega tekmovanja
         k.setUstvaril(visja.getUstvaril());

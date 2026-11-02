@@ -6,6 +6,9 @@
    ureja, tujih igralcev ne spreminja.
    IGRALEC vidi svoj profil s statistiko in si lahko zamenja geslo, drugega
    pa ne sme spreminjati.
+   NAVIJAC je oseba, ki ne igra (stars, soigralec, klubski clovek): spremlja
+   lige in dobiva obvestila po kolu. Z zapisom v sifrantu igralcev se ne
+   povezuje in ne caka admina - racun je potrjen, ko lastnik potrdi naslov.
    Gost (nihce prijavljen) ima samo bralni dostop in ni predstavljen z
    zapisom v tej tabeli. */
 package si.turnirko.modeli;
@@ -13,5 +16,6 @@ package si.turnirko.modeli;
 public enum Vloga {
     ADMIN,
     ORGANIZATOR,
-    IGRALEC
+    IGRALEC,
+    NAVIJAC
 }

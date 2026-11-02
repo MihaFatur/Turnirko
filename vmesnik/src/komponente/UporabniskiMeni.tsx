@@ -140,6 +140,7 @@ export function UporabniskiMeni() {
             Obvestila
           </button>
 
+          {/* Admin plačilnega paketa nima, navijač je brezplačen. */}
           {uporabnik.vloga !== 'ADMIN' && (
             <NavLink
               to="/narocnina"

@@ -11,6 +11,7 @@ import { TurnirjiStran } from './strani/TurnirjiStran'
 import { TurnirStran } from './strani/TurnirStran'
 import { DogodekStran } from './strani/DogodekStran'
 import { ListkiStran } from './strani/ListkiStran'
+import { SezonskiZapisnikStran } from './strani/SezonskiZapisnikStran'
 import { IgralciStran } from './strani/IgralciStran'
 import { SifrantiStran } from './strani/SifrantiStran'
 import { LestvicaStran } from './strani/LestvicaStran'
@@ -161,6 +162,8 @@ export function App() {
       {/* Žreb izločilnega dela (mreža) za vrata dvorane, ležeči list. */}
       <Route path="/dogodki/:id/zreb-mreze" element={<ZrebMrezeDogodkaStran />} />
       <Route path="/turnirji/:id/zreb-mreze" element={<ZrebMrezeTurnirjaStran />} />
+      {/* Sezonski zapisnik igralca za tisk (paket Navijač): ena sezona na listu A4. */}
+      <Route path="/igralci/:id/sezona" element={<SezonskiZapisnikStran />} />
       <Route element={<Postavitev />}>
         <Route index element={<DomacaStran />} />
         <Route path="/turnirji" element={<TurnirjiStran />} />

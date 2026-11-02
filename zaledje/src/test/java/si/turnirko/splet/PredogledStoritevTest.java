@@ -15,19 +15,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import si.turnirko.dto.EkipaDto;
 import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.LigaVnos;
+import si.turnirko.dto.SlikaDto;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
+import si.turnirko.pomozno.TestneSlike;
 import si.turnirko.splet.PredogledStrani.Predogled;
 import si.turnirko.storitve.IntegracijskiTest;
 import si.turnirko.storitve.LigaStoritev;
 import si.turnirko.storitve.PotekLige;
+import si.turnirko.storitve.SlikeStoritev;
 
 class PredogledStoritevTest extends IntegracijskiTest {
 
     @Autowired private PredogledStoritev predogledi;
     @Autowired private LigaStoritev ligaStoritev;
+    @Autowired private SlikeStoritev slikeStoritev;
 
     @Test
     void ligaImaImeSSezonoInPotek() {
@@ -64,6 +68,21 @@ class PredogledStoritevTest extends IntegracijskiTest {
         Predogled p = predogledi.liga(prva.id(), druga.ekipe().get(0).id()).orElseThrow();
 
         assertEquals("Prva · Sezona 8", p.naslov());
+    }
+
+    /* Liga z logotipom (V54) ga ponudi kot sliko predogleda - tudi v oknu
+       ekipe; liga brez njega ostane pri splosni sliki. */
+    @Test
+    void ligaZLogotipomGaPonudiZaDeljenje() {
+        Liga liga = pripraviLigo("Liga z logotipom");
+        Liga brez = pripraviLigo("Liga brez logotipa");
+        SlikaDto slika = slikeStoritev.nalozi(TestneSlike.png(500, 250));
+        slikeStoritev.nastaviLogotipLige(liga.id(), slika.id());
+
+        assertEquals(slika.zgostitev(), predogledi.liga(liga.id(), null).orElseThrow().logotip());
+        assertEquals(slika.zgostitev(),
+                predogledi.liga(liga.id(), liga.ekipe().get(0).id()).orElseThrow().logotip());
+        assertEquals(null, predogledi.liga(brez.id(), null).orElseThrow().logotip());
     }
 
     @Test

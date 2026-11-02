@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { racuniApi } from '../api/zahteve'
 import type { RacunIgralcaDto } from '../api/tipi'
 import { DostopiKarton } from '../komponente/DostopiKarton'
+import { DruzineNapis, DruzineOkno } from '../komponente/DruzineOkno'
 import { KodePopustaOkno } from '../komponente/KodePopustaOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import {
@@ -70,6 +71,7 @@ export function RacuniStran() {
 function Dostopi({ vsi }: { vsi: RacunIgralcaDto[] }) {
   const telefon = useTelefon()
   const [kodeOdprte, nastaviKodeOdprte] = useState(false)
+  const [druzineOdprte, nastaviDruzineOdprte] = useState(false)
 
   const cakajoci = useMemo(() => vsi.filter(jeCakajoca), [vsi])
   const igralciZRacunom = useMemo(
@@ -89,8 +91,10 @@ function Dostopi({ vsi }: { vsi: RacunIgralcaDto[] }) {
         telefon={telefon}
         igralciZRacunom={igralciZRacunom}
         onKode={() => nastaviKodeOdprte(true)}
+        onDruzine={() => nastaviDruzineOdprte(true)}
       />
       {kodeOdprte && <KodePopustaOkno onZapri={() => nastaviKodeOdprte(false)} />}
+      {druzineOdprte && <DruzineOkno onZapri={() => nastaviDruzineOdprte(false)} />}
     </section>
   )
 }
@@ -275,12 +279,15 @@ function Kartoteka({
   telefon,
   igralciZRacunom,
   onKode,
+  onDruzine,
 }: {
   vsi: RacunIgralcaDto[]
   telefon: boolean
   igralciZRacunom: Set<number>
   /* Odpre okno »Kode za popust« (ugodnosti ob registraciji). */
   onKode: () => void
+  /* Odpre okno »Družine« (zahteve navijačev za povezavo z igralcem do 21 let, V59). */
+  onDruzine: () => void
 }) {
   const [filtri, nastaviFiltre] = useState<FilterRacunov>(PRAZNI_FILTRI)
   const [razvrstitev, nastaviRazvrstitev] = useState<Razvrstitev>('ime')
@@ -292,7 +299,7 @@ function Kartoteka({
 
   /* Števila na žetonih so skupna, ne glede na filtre. */
   const stevilaVlog = useMemo(() => {
-    const s: Record<string, number> = { vsi: vsi.length, IGRALEC: 0, ORGANIZATOR: 0, ADMIN: 0 }
+    const s: Record<string, number> = { vsi: vsi.length, IGRALEC: 0, NAVIJAC: 0, ORGANIZATOR: 0, ADMIN: 0 }
     for (const r of vsi) s[r.vloga]++
     return s
   }, [vsi])
@@ -392,6 +399,9 @@ function Kartoteka({
             <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onKode}>
               Kode za popust
             </button>
+            <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onDruzine}>
+              <DruzineNapis />
+            </button>
           </span>
         </div>
         <div className="dostopi-kartoteka__iskanje-vrstica">
@@ -470,6 +480,9 @@ function Kartoteka({
           </span>
           <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onKode}>
             Kode za popust
+          </button>
+          <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onDruzine}>
+            <DruzineNapis />
           </button>
         </span>
       </div>
@@ -702,7 +715,7 @@ function VrsticaNamizje({
           <span className="dostopi-vrstica__ime">{imeRacuna(racun)}</span>
           {racun.vloga !== 'IGRALEC' && (
             <span className={`dostopi-vrstica__vloga dostopi-vrstica__vloga--${racun.vloga}`}>
-              {jeAdmin ? 'Admin' : 'Organizator'}
+              {jeAdmin ? 'Admin' : oznakaVloge(racun.vloga)}
             </span>
           )}
         </span>

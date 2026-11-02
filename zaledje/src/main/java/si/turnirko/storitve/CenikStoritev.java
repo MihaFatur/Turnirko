@@ -35,6 +35,11 @@ public class CenikStoritev {
     static final double PREMIUM_LETNO_MLAJSI = 9.99;
     static final double PREMIUM_LETNO_STAREJSI = 19.99;
 
+    /* Navijac (V58) je SAMO letni: pri mesecni ceni okoli 1,49-1,99 EUR bi Stripe
+       pobral 15-19 % (0,25 EUR + 2,2 %) - isti razlog kot spodnja meja pri Premium.
+       Cena je ena za vse: starsi ni igralec, zato starostnega pasu ni. */
+    static final double NAVIJAC_LETNO = 19.99;
+
     /* Organizatorski paketi so SAMO letni. */
     static final double ORGANIZATOR_BASIC_LETNO = 89.99;
     static final double ORGANIZATOR_PLUS_LETNO = 169.99;
@@ -46,6 +51,7 @@ public class CenikStoritev {
         return switch (paket) {
             case BREZPLACNO -> 0.0;
             case PREMIUM -> cenaPremium(ciklus, Boolean.TRUE.equals(starejsiOd21));
+            case NAVIJAC -> cenaNavijaca(ciklus);
             case ORGANIZATOR_BASIC -> cenaOrganizatorja(ciklus, ORGANIZATOR_BASIC_LETNO);
             case ORGANIZATOR_PLUS -> cenaOrganizatorja(ciklus, ORGANIZATOR_PLUS_LETNO);
             case ORGANIZATOR_PRO -> cenaOrganizatorja(ciklus, ORGANIZATOR_PRO_LETNO);
@@ -69,6 +75,13 @@ public class CenikStoritev {
             return starejsiOd21 ? PREMIUM_LETNO_STAREJSI : PREMIUM_LETNO_MLAJSI;
         }
         return starejsiOd21 ? PREMIUM_MESECNO_STAREJSI : PREMIUM_MESECNO_MLAJSI;
+    }
+
+    private double cenaNavijaca(CiklusPlacila ciklus) {
+        if (ciklus != CiklusPlacila.LETNO) {
+            throw new NeveljavenVnosIzjema("Paket Navijac je na voljo samo letno.");
+        }
+        return NAVIJAC_LETNO;
     }
 
     private double cenaOrganizatorja(CiklusPlacila ciklus, double letnaCena) {

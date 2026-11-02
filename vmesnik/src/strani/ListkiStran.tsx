@@ -96,6 +96,7 @@ export function ListkiStran() {
       <ZapisnikiEkipnegaDogodka
         dogodek={dogodek}
         imeTurnirja={turnir.data?.ime ?? null}
+        logotipTurnirja={turnir.data?.logotip ?? null}
         idjiSrecanj={listki.flatMap(({ tekma }) => (tekma.idSrecanje !== null ? [tekma.idSrecanje] : []))}
       />
     )

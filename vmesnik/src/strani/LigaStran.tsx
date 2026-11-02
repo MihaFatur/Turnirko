@@ -33,6 +33,10 @@ import { KoncnicaLige } from '../komponente/KoncnicaLige'
 import { KvalifikacijeOkno } from '../komponente/KvalifikacijeOkno'
 import { LestviceLige } from '../komponente/LestviceLige'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
+import { LogotipOkno } from '../komponente/LogotipOkno'
+import { LogotipTekmovanja } from '../komponente/LogotipTekmovanja'
+import { PokroviteljiOkno } from '../komponente/PokroviteljiOkno'
+import { PokroviteljiTrak } from '../komponente/PokroviteljiTrak'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
@@ -108,6 +112,8 @@ export function LigaStran() {
   /* Meja, za katero je odprto okno »Ustvari kvalifikacije«. */
   const [kvalifikacijeZa, nastaviKvalifikacijeZa] = useState<MejaKvalifikacij | null>(null)
   const [razveljavitevKvalOdprta, nastaviRazveljavitevKval] = useState(false)
+  const [logotipOdprt, nastaviLogotipOdprt] = useState(false)
+  const [pokroviteljiOdprti, nastaviPokrovitelje] = useState(false)
 
   /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
      nekaj skupinskih seštevkov čez vse tekme lige in strani z lestvico ne sme
@@ -322,6 +328,27 @@ export function LigaStran() {
      (na telefonu iz zavihka »Pravila« oz. menija »⋯«). */
   const okna = (
     <>
+      {/* Logotip je prikaz, ne pravilo: lastnik ga sme tudi pri uvoženi ligi
+          in v vsakem stanju (kot skrite razdelke Zanimivosti). */}
+      {logotipOdprt && (
+        <LogotipOkno
+          vrsta="liga"
+          id={idLiga}
+          ime={l.sezona ? `${l.ime} · ${l.sezona}` : l.ime}
+          logotip={l.logotip}
+          onZapri={() => nastaviLogotipOdprt(false)}
+        />
+      )}
+
+      {pokroviteljiOdprti && (
+        <PokroviteljiOkno
+          vrsta="liga"
+          id={idLiga}
+          ime={l.sezona ? `${l.ime} · ${l.sezona}` : l.ime}
+          onZapri={() => nastaviPokrovitelje(false)}
+        />
+      )}
+
       {pravilaOdprta && (
         <PravilaOkno
           liga={l}
@@ -510,6 +537,28 @@ export function LigaStran() {
                       </span>
                     )}
                   </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    onClick={() => {
+                      zapri()
+                      nastaviLogotipOdprt(true)
+                    }}
+                  >
+                    Logotip
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    onClick={() => {
+                      zapri()
+                      nastaviPokrovitelje(true)
+                    }}
+                  >
+                    Pokrovitelji
+                  </button>
                   {/* Razveljavitev se ponudi samo v oknu, ko je še mogoča —
                       trajno ugasnjena postavka bi bila sredi sezone samo šum. */}
                   {nobenoOdigrano && (
@@ -556,11 +605,16 @@ export function LigaStran() {
         <GlavaNaslov>
           {/* Ime zgoraj, sezona pod njim - isti vrstni red kot na namizju. */}
           <div className="glava-telefon__naslov">
-            <div className="naslov-mobi__vrsta">
-              <h1 className="naslov-mobi naslov-mobi--ena-vrsta">{l.ime}</h1>
-              <ZnackaVNaslovu status={l.status} />
+            <div className="naslov-z-logotipom naslov-z-logotipom--telefon">
+              <LogotipTekmovanja logotip={l.logotip} mesto="telefon" />
+              <div>
+                <div className="naslov-mobi__vrsta">
+                  <h1 className="naslov-mobi naslov-mobi--ena-vrsta">{l.ime}</h1>
+                  <ZnackaVNaslovu status={l.status} />
+                </div>
+                {l.sezona && <span className="naslov-mobi__pod">{l.sezona}</span>}
+              </div>
             </div>
-            {l.sezona && <span className="naslov-mobi__pod">{l.sezona}</span>}
             <div className="liga-mobi__stanje">
               {/* Brez odstotka: »odigrano 1 od 6 kol« ga že pove, palica pod
                   vrstico pa ga nariše - z njim se je vrstica pri 375 px lomila. */}
@@ -690,6 +744,8 @@ export function LigaStran() {
 
         {imaRazpored && mobilniPogled === 'ZANIMIVOSTI' && zanimivostiVsebina}
 
+        <PokroviteljiTrak vrsta="liga" id={idLiga} />
+
         {okna}
       </section>
     )
@@ -701,17 +757,20 @@ export function LigaStran() {
         <Link to="/lige" className="povezava-nazaj">← Lige</Link>
 
         <div className="stran-glava stran-glava--dno">
-          <div>
-            {/* Ime lige zgoraj, sezona pod njim - zavestno drugače od para
-                nadnaslov/naslov drugod: ligo gledalec išče po imenu, sezona
-                (prosto besedilo, »2025/26«, »8. sezona«) jo le umesti. Vrstice
-                »10 ekip · dvokrožno« pod naslovom ni več: sistem je v pravilih,
-                potek pa v napredku ob strani. */}
-            <h1 className="naslov-strani naslov-strani--podstran">
-              <span className="naslov-strani__glavni">{l.ime}</span>
-              {l.sezona && <span className="naslov-strani__pod">{l.sezona}</span>}
-            </h1>
-            {l.opombe && <p className="opomba-bloka">{l.opombe}</p>}
+          <div className="naslov-z-logotipom">
+            <LogotipTekmovanja logotip={l.logotip} mesto="glava" />
+            <div>
+              {/* Ime lige zgoraj, sezona pod njim - zavestno drugače od para
+                  nadnaslov/naslov drugod: ligo gledalec išče po imenu, sezona
+                  (prosto besedilo, »2025/26«, »8. sezona«) jo le umesti. Vrstice
+                  »10 ekip · dvokrožno« pod naslovom ni več: sistem je v pravilih,
+                  potek pa v napredku ob strani. */}
+              <h1 className="naslov-strani naslov-strani--podstran">
+                <span className="naslov-strani__glavni">{l.ime}</span>
+                {l.sezona && <span className="naslov-strani__pod">{l.sezona}</span>}
+              </h1>
+              {l.opombe && <p className="opomba-bloka">{l.opombe}</p>}
+            </div>
           </div>
 
           <div className="liga__stanje-blok">
@@ -771,6 +830,25 @@ export function LigaStran() {
                   onClick={() => nastaviTerminiOdprte(true)}
                 >
                   Termini
+                </button>
+              )}
+              {/* Logotip sme lastnik tudi pri uvoženi ligi - je prikaz. */}
+              {smemPoLastnistvu && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => nastaviLogotipOdprt(true)}
+                >
+                  Logotip
+                </button>
+              )}
+              {smemPoLastnistvu && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => nastaviPokrovitelje(true)}
+                >
+                  Pokrovitelji
                 </button>
               )}
               {/* Razveljavitev stoji ob ostalih dejanjih samo v oknu, ko je še
@@ -980,6 +1058,8 @@ export function LigaStran() {
           )}
         </>
       )}
+
+      <PokroviteljiTrak vrsta="liga" id={idLiga} />
 
       {okna}
     </section>

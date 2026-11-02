@@ -12,7 +12,7 @@
    vsebino, ne s povzetkom o sebi. Vse je bralno in vidno tudi gostom;
    spremljanje lig je edino dejanje in zahteva prijavo — gostu zato krmil
    računa (kvadratki, filtri lestvice) sploh ne pokažemo, namesto da bi jih
-   pokazali in ob kliku zahtevali prijavo. Izjema je »Uredi izbor« ob ligah:
+   pokazali in ob kliku zahtevali prijavo. Izjema je »Sledi ligi« ob ligah:
    ena mono povezava, ki gostu in igralcu brez Premium pokaže oglas Igralec
    Premium (PremiumOglas), ostalim pa okno za urejanje izbora.
 
@@ -29,6 +29,7 @@ import type { DomovLigaDto, LestvicaIgralcaDto, RazlogTurnirja, Spol, TurnirDto 
 import { EnaNaEna } from '../komponente/EnaNaEna'
 import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
 import { KoledarSklop } from '../komponente/KoledarSklop'
+import { MojIgralecSklop } from '../komponente/MojIgralecSklop'
 import { DomaceLigeOkno, IzborLigOkno } from '../komponente/IzborLigOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
@@ -233,7 +234,7 @@ export function DomacaStran() {
                     : odpriRegistracijo({ izvor: 'spremljanje' })
                 }
               >
-                Uredi izbor →
+                Sledi ligi →
               </button>
               {/* Kaj stoji tu privzeto, je uredniška odločitev zveze in ne
                   osebna nastavitev — zato svoje okno in samo za admina. */}
@@ -288,6 +289,10 @@ export function DomacaStran() {
           </div>
         </div>
       </div>
+
+      {/* Igralec, ki ga račun spremlja (V57): samo prijavljen, samo če kdo je ali če je
+          navijač (njemu sklop pove, kako se igralec doda). */}
+      <MojIgralecSklop />
 
       <SklopLestvica
         vrstice={lestvica.data}

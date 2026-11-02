@@ -22,20 +22,42 @@ public class DostopDoProfila {
 
     private final UporabnikRepozitorij uporabnikRepozitorij;
     private final NarocninaStoritev narocnina;
+    private final DruzinaStoritev druzina;
 
-    public DostopDoProfila(UporabnikRepozitorij uporabnikRepozitorij, NarocninaStoritev narocnina) {
+    public DostopDoProfila(UporabnikRepozitorij uporabnikRepozitorij, NarocninaStoritev narocnina,
+                           DruzinaStoritev druzina) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.narocnina = narocnina;
+        this.druzina = druzina;
+    }
+
+    /* Napoved dvoboja (V58): navijac s paketom Navijac in igralec Premium jo
+       dobita za KATERI KOLI par - rating in medsebojne tekme sta javna, napoved
+       torej ne razkrije nicesar zasebnega. Kdor teh paketov nima, jo vidi samo za
+       svoj profil (kot zasebne analize). */
+    @Transactional(readOnly = true)
+    public void preveriNapoved(Long idIgralec, String prijavnoIme) {
+        Uporabnik u = uporabnikRepozitorij.najdiZVsem(prijavnoIme)
+                .orElseThrow(() -> new PrepovedanoIzjema("Prijavljeni uporabnik ne obstaja."));
+        if (narocnina.imaSirokoSpremljanje(u)) {
+            return;
+        }
+        preveriLastnistvo(idIgralec, prijavnoIme);
     }
 
     /* Administrator sme vse; igralec samo svoj profil, in samo s Premium
-       paketom - brez njega je (tudi lastniku) na voljo enako kot gostu.
+       paketom - brez njega je (tudi lastniku) na voljo enako kot gostu; navijac
+       s paketom Navijac profile svoje potrjene druzine (DruzinaStoritev).
        "prijavnoIme" je ime prijavljenega uporabnika iz varnostnega konteksta. */
     @Transactional(readOnly = true)
     public void preveriLastnistvo(Long idIgralec, String prijavnoIme) {
         Uporabnik u = uporabnikRepozitorij.najdiZVsem(prijavnoIme)
                 .orElseThrow(() -> new PrepovedanoIzjema("Prijavljeni uporabnik ne obstaja."));
         if (u.getVloga() == Vloga.ADMIN) {
+            return;
+        }
+        // druzina (V59): navijac s paketom vidi zasebno statistiko potrjenih igralcev do 21 let
+        if (druzina.jeClan(u, idIgralec)) {
             return;
         }
         if (!u.jePotrjenIgralec()) {

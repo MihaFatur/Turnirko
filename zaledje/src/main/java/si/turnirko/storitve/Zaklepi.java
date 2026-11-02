@@ -49,7 +49,10 @@ public class Zaklepi {
         KVOTA_ORGANIZATORJA(6),
         DOMACA_STRAN(7),
         POTRDITVENA_KODA(8),
-        STRIPE(9);
+        STRIPE(9),
+        /* Pravila "najvec N na racun" (spremljani igralci, druzina): zaklene se
+           racun, da dva hkratna zahtevka ne prideta oba mimo stetja. */
+        RACUN(10);
 
         final int prostor;
 

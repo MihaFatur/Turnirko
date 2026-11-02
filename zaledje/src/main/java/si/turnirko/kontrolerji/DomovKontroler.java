@@ -15,10 +15,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import si.turnirko.dto.DomovIgralecDto;
 import si.turnirko.dto.DomovLigaDto;
 import si.turnirko.dto.DomovTurnirDto;
 import si.turnirko.storitve.DomaciTurnirjiStoritev;
 import si.turnirko.storitve.DomovStoritev;
+import si.turnirko.storitve.SpremljaniIgralciStoritev;
 
 @RestController
 @RequestMapping("/api/v1/domov")
@@ -26,10 +28,13 @@ public class DomovKontroler {
 
     private final DomovStoritev domovStoritev;
     private final DomaciTurnirjiStoritev domaciTurnirji;
+    private final SpremljaniIgralciStoritev spremljaniIgralci;
 
-    public DomovKontroler(DomovStoritev domovStoritev, DomaciTurnirjiStoritev domaciTurnirji) {
+    public DomovKontroler(DomovStoritev domovStoritev, DomaciTurnirjiStoritev domaciTurnirji,
+                          SpremljaniIgralciStoritev spremljaniIgralci) {
         this.domovStoritev = domovStoritev;
         this.domaciTurnirji = domaciTurnirji;
+        this.spremljaniIgralci = spremljaniIgralci;
     }
 
     /* Turnirji za sklop domace strani igralca s Premium (prihajajoci, zadnji,
@@ -64,5 +69,30 @@ public class DomovKontroler {
     @DeleteMapping("/moje-lige/{idLiga}")
     public List<Long> nehajSpremljati(@PathVariable Long idLiga) {
         return domovStoritev.nehajSpremljati(idLiga);
+    }
+
+    /* Igralci, ki jih spremlja prijavljeni racun (osebna nastavitev kot
+       moje-lige). Meja stevila je pravilo paketa in ne sheme: ob dosezeni meji
+       PUT vrne 409 s sporocilom, koga racun ze spremlja. */
+    @GetMapping("/moji-igralci")
+    public List<Long> mojiIgralci() {
+        return spremljaniIgralci.idji();
+    }
+
+    @PutMapping("/moji-igralci/{idIgralec}")
+    public List<Long> spremljajIgralca(@PathVariable Long idIgralec) {
+        return spremljaniIgralci.spremljaj(idIgralec);
+    }
+
+    @DeleteMapping("/moji-igralci/{idIgralec}")
+    public List<Long> nehajSpremljatiIgralca(@PathVariable Long idIgralec) {
+        return spremljaniIgralci.nehajSpremljati(idIgralec);
+    }
+
+    /* Povzetki spremljanih igralcev za sklop "Moj igralec". Ni pod
+       /moji-igralci/{id}, ker bi se pot stikala z naslovom PUT/DELETE. */
+    @GetMapping("/moji-igralci-povzetki")
+    public List<DomovIgralecDto> povzetkiIgralcev() {
+        return spremljaniIgralci.povzetki();
     }
 }

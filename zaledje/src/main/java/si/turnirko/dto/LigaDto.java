@@ -105,7 +105,9 @@ public record LigaDto(
         Long idKvalifikacijeNizja,
         String kvalifikacijeNizjaIme,
         // Opomba organizatorja (V52); prazno, ce je ni.
-        String opombe
+        String opombe,
+        // Logotip lige (V54); prazno, ce ga ni. Javno: stoji v glavi strani.
+        SlikaDto logotip
 ) {
 
     /* Naslednje kolo: stevilka in dan (null, ce kolo termina nima). */
@@ -142,6 +144,7 @@ public record LigaDto(
                 l.getKvalifikacijeVisja() != null ? l.getKvalifikacijeVisja().getIme() : null,
                 l.getKvalifikacijeNizja() != null ? l.getKvalifikacijeNizja().getId() : null,
                 l.getKvalifikacijeNizja() != null ? l.getKvalifikacijeNizja().getIme() : null,
-                l.getOpombe());
+                l.getOpombe(),
+                SlikaDto.iz(l.getLogotip()));
     }
 }

@@ -76,7 +76,11 @@ public class CiscenjeRacunovStoritev {
     }
 
     /* Dnevno ob 3.45, za odbitkom za neaktivnost (3.15) - takrat nihce
-       nicesar ne vnasa. */
+       nicesar ne vnasa. Transakcija mora biti TU: klic pocisti() iz istega
+       razreda gre mimo Springovega posrednika. Brez nje masovni izbris
+       (pobrisiPotekle, @Modifying) pade na "no transaction" in cakajoce
+       registracije z zgosceno geslo in datumom rojstva ostanejo za vedno. */
+    @Transactional
     @Scheduled(cron = "0 45 3 * * *")
     public void dnevnoOpravilo() {
         pocisti(LocalDateTime.now());

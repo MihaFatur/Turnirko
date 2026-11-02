@@ -31,6 +31,7 @@ produkcija do preklopa teče na njej.
 | 3 | **orodje in vse štiri preverbe — 30. 10. 2026**: ukaz `prenos` (`si.turnirko.prenos`), poročilo zeleno na kopiji produkcije; ni commitano |
 | 4 | **datoteke pripravljene — 30. 10. 2026**: `compose.yaml` (storitev `baza`), `skripte/baza/00-vloge.sh`, kopije, vaja obnove, obnova, stran Vzdrževanje, `OBJAVA.md`. **Z Dockerjem ni preizkušeno** (lokalno ga ni): skripte so preverjene sintaktično, SQL vlog na pravem PostgreSQL, YAML razčlenjen; prvi pravi zagon je generalka 2 na strežniku |
 | 5 | **skripte in navodilo pripravljeni** (`skripte/preklop/`, `docs/PREKLOP.md`); generalka 1 (lokalno, brez Dockerja) opravljena; generalka 2 in preklop sta stvar lastnika (dostop SSH) |
+| zlitje | **2. 11. 2026**: veja je commitana in zlita z `main` (`2efea30`: logotipi, profilne slike, paket Navijač V54–V61, termini). Konflikti v 6 datotekah, rešeni; entitete brez `CasKotBesedilo`; nova pravila »največ N na račun« (spremljani igralci, družina) dobila zaklep računa (`Zaklepi.Vrsta.RACUN`) in test; **1125 testov zelenih**; prava SQLite migracija V53→V61 na kopiji produkcije, prenos 45 tabel zelen (25 s), API 17.172 poti enakih. Ni pushano; naslednji korak je `docs/PREKLOP.md` |
 | 6 | **seznam pripravljen** (spodaj); izvedba šele po dveh tednih brez težav po preklopu |
 
 ### Faza 1 — kaj je narejeno

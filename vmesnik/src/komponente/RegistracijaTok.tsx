@@ -13,7 +13,13 @@
    vodita gosta, ki je očitno igralec in ne kupuje, zato koraka »Vloga« in
    »Paket« odpadeta - igralec, brezplačno, s prvim mesecem Premium (preizkus
    začne strežnik ob povezavi z zapisom). Ostanejo podatki, klub in zapis,
-   povzetek in koda. Vsak korak gre v statistiko (pomozno/statistika.ts). */
+   povzetek in koda. Vsak korak gre v statistiko (pomozno/statistika.ts).
+
+   Navijač (V55, oktober 2026) je oseba, ki ne igra: vloga → podatki →
+   [skrbnik] → povzetek → koda. Brez paketa (brezplačen), kluba in zapisa (z
+   igralci se ne primerja), brez kode popusta; račun je pripravljen, ko potrdi
+   e-pošto. Kratka pot iz »Spremljaj« (`izvor: 'spremljanje'`) zato ima korak
+   »Vloga« z izbiro Igralec / Navijač - ligo spremlja tudi, kdor v njej ne igra. */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -22,6 +28,7 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { opisNapake } from '../api/odjemalec'
 import { authApi, domovApi, klubiApi, placilaApi } from '../api/zahteve'
 import {
+  CENA_NAVIJAC_LETNO,
   CENA_ORGANIZATOR_LETNO,
   CENA_PREMIUM_LETNO,
   CENA_PREMIUM_MESECNO,
@@ -46,7 +53,47 @@ import { ZnakTurnirko } from './Postavitev'
    PrijavaOkno.tsx - strežnik dovoli eno na minuto, gumb to pove vnaprej). */
 const ODMIK_PONOVNEGA_POSILJANJA = 60
 
-type Vloga = 'igralec' | 'organizator'
+type Vloga = 'igralec' | 'organizator' | 'navijac'
+
+const OZNAKA_VLOGE: Record<Vloga, string> = {
+  igralec: 'Igralec',
+  organizator: 'Organizator',
+  navijac: 'Navijač',
+}
+
+/* Kartice koraka »Vloga«, v tem vrstnem redu (številka je mesto v seznamu). */
+/* Paketa navijača (V58): brezplačen in plačljiv Navijač. Opisa nista ponavljanje ugodnosti na
+   strani Naročnina, ampak povzetek, po katerem se oseba odloči že v registraciji. */
+const PAKETI_NAVIJACA: { paket: Paket; ime: string; opis: string }[] = [
+  {
+    paket: 'BREZPLACNO',
+    ime: 'Brezplačno',
+    opis: 'Spremljaš lige in enega igralca, po vsakem kolu dobiš izide po e-pošti.',
+  },
+  {
+    paket: 'NAVIJAC',
+    ime: 'Navijač',
+    opis: 'Neomejeno igralcev, e-pošta po turnirju, koledar v telefonu in napoved dvoboja za kateri koli par.',
+  },
+]
+
+const MOZNOSTI_VLOGE: { vloga: Vloga; opis: string; noga: string }[] = [
+  {
+    vloga: 'igralec',
+    opis: 'Tvoj profil, rating in zgodovina tekem. Račun povežemo z zapisom med igralci.',
+    noga: 'Prvi mesec Premium brez plačila',
+  },
+  {
+    vloga: 'navijac',
+    opis: 'Ne igraš, a spremljaš lige in igralce: starš, soigralec, klub. Račun je pripravljen, ko potrdiš e-pošto.',
+    noga: 'Brezplačno',
+  },
+  {
+    vloga: 'organizator',
+    opis: 'Klub ali oseba, ki vodi turnirje in lige. Vlogo potrdi administrator.',
+    noga: 'Letni paket od 89,99 €',
+  },
+]
 type OrganizatorPaket = 'ORGANIZATOR_BASIC' | 'ORGANIZATOR_PLUS' | 'ORGANIZATOR_PRO'
 type Korak = 'vloga' | 'paket' | 'podatki' | 'klub' | 'skrbnik' | 'povzetek' | 'koda' | 'konec'
 
@@ -81,15 +128,30 @@ export interface LigaZaSpremljanje {
   ime: string
 }
 
-/* Seznam korakov je odvisen od vloge (organizator klub-a med igralci nima) in
-   od tega, ali igralec potrebuje skrbnika - korak "skrbnik" se vstavi sproti.
-   Kratka pot nima vloge in paketa (vedno igralec, brezplačno). */
-function koraki(vloga: Vloga, potrebujeSkrbnika: boolean, kratko = false): Korak[] {
+/* Igralec, ob katerem je gost začel registracijo z gumbom »Spremljaj« na profilu (V57). */
+export interface IgralecZaSpremljanje {
+  id: number
+  ime: string
+}
+
+/* Seznam korakov je odvisen od vloge (organizator klub-a med igralci nima,
+   navijač ne paketa ne kluba) in od tega, ali igralec oz. navijač potrebuje
+   skrbnika - korak "skrbnik" se vstavi sproti. Kratka pot nima paketa (vedno
+   brezplačno), vlogo pa samo, kadar ponuja izbiro igralec / navijač. */
+function koraki(vloga: Vloga, potrebujeSkrbnika: boolean, kratko = false, izbiraVloge = false): Korak[] {
   if (vloga === 'organizator') {
     return ['vloga', 'paket', 'podatki', 'klub', 'povzetek', 'koda', 'konec']
   }
+  if (vloga === 'navijac') {
+    return [
+      ...(!kratko ? (['vloga', 'paket'] as const) : (['vloga'] as const)),
+      'podatki',
+      ...(potrebujeSkrbnika ? (['skrbnik'] as const) : []),
+      'povzetek', 'koda', 'konec',
+    ]
+  }
   return [
-    ...(kratko ? [] : (['vloga', 'paket'] as const)),
+    ...(!kratko ? (['vloga', 'paket'] as const) : izbiraVloge ? (['vloga'] as const) : []),
     'podatki', 'klub',
     ...(potrebujeSkrbnika ? (['skrbnik'] as const) : []),
     'povzetek', 'koda', 'konec',
@@ -116,6 +178,7 @@ function izracunajCeno(paket: Paket, ciklus: CiklusPlacila, datumRojstva: string
     const cene = ciklus === 'MESECNO' ? CENA_PREMIUM_MESECNO : CENA_PREMIUM_LETNO
     return starejsi ? cene.starejsi : cene.mlajsi
   }
+  if (paket === 'NAVIJAC') return CENA_NAVIJAC_LETNO
   return CENA_ORGANIZATOR_LETNO[paket]
 }
 
@@ -245,6 +308,7 @@ export function RegistracijaTok({
   izvor = 'meni',
   predizbran,
   liga,
+  igralec,
 }: {
   onZapri: () => void
   onNazajNaPrijavo: () => void
@@ -266,12 +330,17 @@ export function RegistracijaTok({
   /* Liga, ob kateri je gost kliknil »Spremljaj«: po samodejni prijavi jo
      račun začne spremljati (in z njo dobiva obvestila po kolu). */
   liga?: LigaZaSpremljanje
+  /* Igralec, ob katerem je gost kliknil »Spremljaj« (profil): po samodejni prijavi ga račun
+     začne spremljati, na domači strani dobi sklop »Moj igralec«. */
+  igralec?: IgralecZaSpremljanje
 }) {
   const telefon = useTelefon()
   const { prijava } = useAvtentikacija()
   const odjemalec = useQueryClient()
   /* Ime lige, ki jo je račun ob registraciji začel spremljati (korak »konec«). */
   const [ligaSpremljana, nastaviLigaSpremljana] = useState<string | null>(null)
+  /* Ime igralca, ki ga je račun ob registraciji začel spremljati (korak »konec«). */
+  const [igralecSpremljan, nastaviIgralecSpremljan] = useState<string | null>(null)
   const [s, nastavi] = useState<Stanje>(() =>
     zacetnoStanje(obnovljenoStanje, naPaketu, zacetniCiklus, predizbran),
   )
@@ -317,12 +386,16 @@ export function RegistracijaTok({
   }, [])
 
   const jeIgralec = s.vloga === 'igralec'
-  const leta = jeIgralec ? starost(s.datumRojstva) : null
+  const jeNavijac = s.vloga === 'navijac'
+  const jeOrganizator = s.vloga === 'organizator'
+  /* Kdor pride s »Spremljaj«, ni nujno igralec: kratka pot mu ponudi še navijača. */
+  const izbiraVloge = kratko && izvor === 'spremljanje'
+  const leta = !jeOrganizator ? starost(s.datumRojstva) : null
   const potrebujeSkrbnika = leta !== null && leta < 15
   const danes = new Date().toISOString().slice(0, 10)
   const polnoIme = `${s.ime.trim()} ${s.priimek.trim()}`.trim()
 
-  const seznamKorakov = koraki(s.vloga, potrebujeSkrbnika, kratko)
+  const seznamKorakov = koraki(s.vloga, potrebujeSkrbnika, kratko, izbiraVloge)
   const k = Math.min(s.korak, seznamKorakov.length - 1)
   const trenutniKorak = seznamKorakov[k]
 
@@ -393,13 +466,14 @@ export function RegistracijaTok({
   const cenePremium = s.ciklus === 'MESECNO' ? CENA_PREMIUM_MESECNO : CENA_PREMIUM_LETNO
   const enotaCene = s.ciklus === 'MESECNO' ? 'na mesec' : 'na leto'
 
-  const imePaketa = jeIgralec
-    ? (s.paket === 'BREZPLACNO' ? 'Brezplačno' : 'Premium')
+  const imePaketa = !jeOrganizator
+    ? (s.paket === 'BREZPLACNO' ? 'Brezplačno' : jeNavijac ? 'Navijač' : 'Premium')
     : OZNAKE_PAKET[paketUcinek].replace('Organizator ', '')
 
   const obnovaBesedilo = (() => {
     if (!placljiv) {
       if (koda?.vrsta === 'PREMIUM_MESECI' && koda.meseci) return `Premium: ${mesecev(koda.meseci)}`
+      if (koda?.vrsta === 'NAVIJAC_MESECI' && koda.meseci) return `Navijač: ${mesecev(koda.meseci)}`
       if (koda?.vrsta === 'ORGANIZATOR_MESECI' && koda.meseci) return `Brez plačila: ${mesecev(koda.meseci)}`
       return jeIgralec ? 'Prvi mesec s Premium' : 'Brez plačila'
     }
@@ -445,7 +519,7 @@ export function RegistracijaTok({
         || !s.priimek.trim()
         || !s.email.includes('@')
         || s.geslo.length < 8
-        || (jeIgralec && !s.datumRojstva)
+        || (!jeOrganizator && !s.datumRojstva)
       )
     }
     if (trenutniKorak === 'skrbnik') return !s.emailSkrbnika.includes('@')
@@ -468,7 +542,8 @@ export function RegistracijaTok({
     try {
       const odgovor = await authApi.kodaPopusta({
         koda: vpisana,
-        organizator: !jeIgralec,
+        organizator: jeOrganizator,
+        navijac: jeNavijac,
         paket: s.paket,
         email: s.email.trim() || null,
       })
@@ -500,8 +575,9 @@ export function RegistracijaTok({
       idKlub: s.idKlub ? Number(s.idKlub) : null,
       email: s.email.trim(),
       geslo: s.geslo,
-      organizator: !jeIgralec,
-      datumRojstva: jeIgralec ? s.datumRojstva : null,
+      organizator: jeOrganizator,
+      navijac: jeNavijac,
+      datumRojstva: !jeOrganizator ? s.datumRojstva : null,
       emailSkrbnika: potrebujeSkrbnika ? s.emailSkrbnika.trim() : null,
       kodaPopusta: koda?.koda ?? null,
     }
@@ -524,7 +600,7 @@ export function RegistracijaTok({
       const ciklusPlacila = s.paket === 'PREMIUM' ? s.ciklus : 'LETNO'
       zabelezi('registracija-placilo', { izvor, paket: s.paket })
       shraniStanjePlacila({
-        vloga: s.vloga,
+        vloga: jeOrganizator ? 'organizator' : jeNavijac ? 'navijac' : 'igralec',
         paket: s.paket,
         ciklus: ciklusPlacila,
         cena,
@@ -569,12 +645,24 @@ export function RegistracijaTok({
               /* ostane nespremljana */
             }
           }
+          /* Enako za igralca s profila (V57): pomoč in ne pogoj. */
+          if (igralec) {
+            try {
+              await domovApi.spremljajIgralca(igralec.id)
+              nastaviIgralecSpremljan(igralec.ime)
+              void odjemalec.invalidateQueries({ queryKey: ['moji-igralci'] })
+              void odjemalec.invalidateQueries({ queryKey: ['moji-igralci-povzetki'] })
+            } catch {
+              /* ostane nespremljan */
+            }
+          }
         } catch {
           /* konec vseeno pokaže rezultat, prijava ostane ročna */
         }
       }
       zabelezi('registracija-potrjena', {
         izvor,
+        vloga: s.vloga,
         povezan: odgovor.povezan,
         preizkus: odgovor.preizkusDo !== null,
       })
@@ -640,11 +728,31 @@ export function RegistracijaTok({
   const cenaEnota = s.paket === 'PREMIUM' && s.ciklus === 'MESECNO' ? ' / mesec' : ' / leto'
   const cenaNapisTrak = cena === 0 ? '0 €' : oblikujCeno(cena) + cenaEnota
 
-  const org = !jeIgralec ? OMEJITVE_ORGANIZATORJA[paketUcinek as OrganizatorPaket] : null
+  const org = jeOrganizator ? OMEJITVE_ORGANIZATORJA[paketUcinek as OrganizatorPaket] : null
 
-  const povzetekVrstice: { oznaka: string; vrednost: ReactNode; korak: Korak }[] = jeIgralec
+  const povzetekVrstice: { oznaka: string; vrednost: ReactNode; korak: Korak }[] = jeNavijac
     ? [
-        ...(kratko ? [] : [{ oznaka: 'Vloga', vrednost: 'Igralec', korak: 'vloga' as Korak }]),
+        { oznaka: 'Vloga', vrednost: 'Navijač', korak: 'vloga' },
+        { oznaka: 'Ime', vrednost: polnoIme || '—', korak: 'podatki' },
+        { oznaka: 'E-pošta', vrednost: s.email || '—', korak: 'podatki' },
+        ...(seznamKorakov.includes('skrbnik')
+          ? [{ oznaka: 'Skrbnik', vrednost: s.emailSkrbnika || '—', korak: 'skrbnik' as Korak }]
+          : []),
+        {
+          oznaka: 'Paket',
+          vrednost: s.paket === 'NAVIJAC'
+            ? `Navijač · ${oblikujCeno(CENA_NAVIJAC_LETNO)} na leto`
+            : koda?.vrsta === 'NAVIJAC_MESECI' && koda.meseci
+              ? `Navijač: ${mesecev(koda.meseci)} brez plačila`
+              : 'Brezplačno',
+          korak: 'paket',
+        },
+      ]
+    : jeIgralec
+    ? [
+        ...(seznamKorakov.includes('vloga')
+          ? [{ oznaka: 'Vloga', vrednost: 'Igralec', korak: 'vloga' as Korak }]
+          : []),
         { oznaka: 'Ime', vrednost: polnoIme || '—', korak: 'podatki' },
         { oznaka: 'E-pošta', vrednost: s.email || '—', korak: 'podatki' },
         { oznaka: 'Klub', vrednost: klubIzbran?.ime ?? 'Brez kluba', korak: 'klub' },
@@ -714,7 +822,7 @@ export function RegistracijaTok({
           imeKoraka={imeKoraka}
           onPojdi={pojdiNaKorak}
           izbiraVrstice={[
-            { oznaka: 'Vloga', vrednost: jeIgralec ? 'Igralec' : 'Organizator' },
+            { oznaka: 'Vloga', vrednost: OZNAKA_VLOGE[s.vloga] },
             { oznaka: 'Paket', vrednost: imePaketa },
             { oznaka: 'Cena', vrednost: cenaNapis(cena) },
           ]}
@@ -760,39 +868,61 @@ export function RegistracijaTok({
         <div className="registracija__telo">
           {trenutniKorak === 'vloga' && (
             <>
-              <div className="registracija__vloge">
-                <button
-                  type="button"
-                  className={'registracija__vloga' + (jeIgralec ? ' registracija__vloga--izbrana' : '')}
-                  onClick={() => vlogaSePrestavi('igralec')}
-                >
-                  <span className="registracija__vloga-glava">
-                    <span>01</span>
-                    {jeIgralec && <span className="registracija__vloga-oznaka">Izbrano</span>}
-                  </span>
-                  <span className="registracija__vloga-ime">Igralec</span>
-                  <span className="registracija__vloga-opis">
-                    Tvoj profil, rating in zgodovina tekem. Račun povežemo z zapisom med igralci.
-                  </span>
-                  <span className="registracija__vloga-noga">Prvi mesec Premium brez plačila</span>
-                </button>
-                <button
-                  type="button"
-                  className={'registracija__vloga' + (!jeIgralec ? ' registracija__vloga--izbrana' : '')}
-                  onClick={() => vlogaSePrestavi('organizator')}
-                >
-                  <span className="registracija__vloga-glava">
-                    <span>02</span>
-                    {!jeIgralec && <span className="registracija__vloga-oznaka">Izbrano</span>}
-                  </span>
-                  <span className="registracija__vloga-ime">Organizator</span>
-                  <span className="registracija__vloga-opis">
-                    Klub ali oseba, ki vodi turnirje in lige. Vlogo potrdi administrator.
-                  </span>
-                  <span className="registracija__vloga-noga">Letni paket od 89,99 €</span>
-                </button>
-              </div>
+              {/* Kratka pot s »Spremljaj« organizatorja ne ponudi: tja prideš iz menija. */}
+              {(() => {
+                const vloge = MOZNOSTI_VLOGE.filter((m) => !izbiraVloge || m.vloga !== 'organizator')
+                return (
+                  <div className={'registracija__vloge' + (vloge.length > 2 ? ' registracija__vloge--tri' : '')}>
+                    {vloge.map((m, i) => {
+                      const izbrana = s.vloga === m.vloga
+                      return (
+                        <button
+                          type="button"
+                          key={m.vloga}
+                          className={'registracija__vloga' + (izbrana ? ' registracija__vloga--izbrana' : '')}
+                          onClick={() => vlogaSePrestavi(m.vloga)}
+                        >
+                          <span className="registracija__vloga-glava">
+                            <span>{String(i + 1).padStart(2, '0')}</span>
+                            {izbrana && <span className="registracija__vloga-oznaka">Izbrano</span>}
+                          </span>
+                          <span className="registracija__vloga-ime">{OZNAKA_VLOGE[m.vloga]}</span>
+                          <span className="registracija__vloga-opis">{m.opis}</span>
+                          <span className="registracija__vloga-noga">{m.noga}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </>
+          )}
+
+          {trenutniKorak === 'paket' && jeNavijac && (
+            <div className="registracija__vloge">
+              {PAKETI_NAVIJACA.map((p, i) => {
+                const izbran = s.paket === p.paket
+                return (
+                  <button
+                    type="button"
+                    key={p.paket}
+                    className={'registracija__vloga' + (izbran ? ' registracija__vloga--izbrana' : '')}
+                    aria-pressed={izbran}
+                    onClick={() => posodobi({ paket: p.paket, ciklus: 'LETNO' })}
+                  >
+                    <span className="registracija__vloga-glava">
+                      <span>{String(i + 1).padStart(2, '0')}</span>
+                      {izbran && <span className="registracija__vloga-oznaka">Izbrano</span>}
+                    </span>
+                    <span className="registracija__vloga-ime">{p.ime}</span>
+                    <span className="registracija__vloga-opis">{p.opis}</span>
+                    <span className="registracija__vloga-noga">
+                      {p.paket === 'NAVIJAC' ? `${oblikujCeno(CENA_NAVIJAC_LETNO)} na leto` : 'Brezplačno'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           )}
 
           {trenutniKorak === 'paket' && jeIgralec && (
@@ -908,7 +1038,7 @@ export function RegistracijaTok({
             </>
           )}
 
-          {trenutniKorak === 'paket' && !jeIgralec && (
+          {trenutniKorak === 'paket' && jeOrganizator && (
             <>
               <p className="registracija__uvod">
                 Vsi paketi so letni. Obseg — koliko lig in turnirjev smeš voditi — je edina razlika.
@@ -947,13 +1077,18 @@ export function RegistracijaTok({
 
           {trenutniKorak === 'podatki' && (
             <>
-              {!jeIgralec && <p className="registracija__uvod">Kontaktna oseba organizatorja.</p>}
+              {jeOrganizator && <p className="registracija__uvod">Kontaktna oseba organizatorja.</p>}
               {kratko && (
                 <p className="registracija__uvod">
                   {liga
                     ? `${liga.ime}: po vsakem kolu ti pošljemo izide in lestvico. `
-                    : 'Račun je brezplačen: spremljaš svoje lige in po vsakem kolu dobiš izide po e-pošti. '}
-                  Prvi mesec dobiš še Premium brez plačila, kartica ni potrebna.
+                    : igralec
+                      ? `${igralec.ime}: na domači strani vidiš zadnje tekme in naslednji termin. `
+                      : 'Račun je brezplačen: spremljaš svoje lige in po vsakem kolu dobiš izide po e-pošti. '}
+                  {/* Preizkus Premium začne povezava z zapisom igralca - navijač je nima. */}
+                  {jeNavijac
+                    ? 'Račun je brezplačen in pripravljen takoj, ko potrdiš e-pošto.'
+                    : 'Prvi mesec dobiš še Premium brez plačila, kartica ni potrebna.'}
                 </p>
               )}
               <div className="obrazec__vrstica obrazec__vrstica--par">
@@ -970,7 +1105,7 @@ export function RegistracijaTok({
                   />
                 </label>
               </div>
-              {jeIgralec && (
+              {!jeOrganizator && (
                 <label className="obrazec__polje">
                   <span>Datum rojstva</span>
                   <input
@@ -980,7 +1115,9 @@ export function RegistracijaTok({
                     onChange={(d) => posodobi({ datumRojstva: d.target.value })}
                   />
                   <span className="registracija__polje-pripis">
-                    Javno ni viden. Z njim poiščemo tvoj zapis med igralci.
+                    {jeNavijac
+                      ? 'Javno ni viden. Mlajši od 15 let potrebujejo soglasje starša oz. skrbnika.'
+                      : 'Javno ni viden. Z njim poiščemo tvoj zapis med igralci.'}
                     {potrebujeSkrbnika ? ' Mlajši od 15 let: sledi korak za skrbnika.' : ''}
                   </span>
                 </label>
@@ -1023,7 +1160,7 @@ export function RegistracijaTok({
 
           {trenutniKorak === 'klub' && (
             <>
-              {!jeIgralec && (
+              {jeOrganizator && (
                 <p className="registracija__uvod">
                   Klub, ki ga zastopaš. Vlogo organizatorja in klub potrdi administrator.
                 </p>
@@ -1045,7 +1182,7 @@ export function RegistracijaTok({
                 <>
                   <IskalniIzbirnik
                     vObrazcu
-                    oznaka={jeIgralec ? 'Klub' : 'Klub, ki ga zastopaš'}
+                    oznaka={jeOrganizator ? 'Klub, ki ga zastopaš' : 'Klub'}
                     namig="Vpiši ime kluba ali kraj"
                     moznosti={(klubi.data ?? []).map((klub) => ({
                       id: klub.id,
@@ -1212,6 +1349,7 @@ export function RegistracijaTok({
                   </div>
                 )}
               </div>
+              {/* Koda velja za vsako vlogo: navijač dobi odstotek na paket Navijač ali mesece paketa. */}
               {!koda && (
                 <div className="registracija__koda-popusta">
                   {s.kodaOdprta ? (
@@ -1329,7 +1467,21 @@ export function RegistracijaTok({
             </>
           )}
 
-          {trenutniKorak === 'konec' && (
+          {trenutniKorak === 'konec' && jeNavijac && (
+            <KonecNavijaca
+              paketNapis={
+                s.paket === 'NAVIJAC'
+                  ? 'Navijač'
+                  : koda?.vrsta === 'NAVIJAC_MESECI' && koda.meseci
+                    ? `Navijač: ${mesecev(koda.meseci)} brez plačila`
+                    : 'Brezplačno'
+              }
+              ligaSpremljana={ligaSpremljana}
+              igralecSpremljan={igralecSpremljan}
+              onZapri={onZapri}
+            />
+          )}
+          {trenutniKorak === 'konec' && !jeNavijac && (
             <KonecKoraka
               jeIgralec={jeIgralec}
               povezan={!!s.izidPovezan}
@@ -1397,7 +1549,7 @@ function LeviStolpec({
       </div>
       <div>
         <span className="registracija__seznam-glava">
-          Nov račun · {vloga === 'igralec' ? 'Igralec' : 'Organizator'}
+          Nov račun · {OZNAKA_VLOGE[vloga]}
         </span>
         {seznamKorakov.slice(0, -1).map((korak, i) => {
           const opravljen = i < trenutniIndeks
@@ -1479,6 +1631,86 @@ function TrakTelefon({
         </div>
       )}
     </div>
+  )
+}
+
+/* Zadnji korak navijača: račun ne čaka nikogar, zato so prvi koraki tisto, kar
+   gledalec počne tudi brez računa - z računom pa pride izid kola po e-pošti. */
+function KonecNavijaca({
+  paketNapis,
+  ligaSpremljana,
+  igralecSpremljan,
+  onZapri,
+}: {
+  paketNapis: string
+  ligaSpremljana: string | null
+  igralecSpremljan: string | null
+  onZapri: () => void
+}) {
+  return (
+    <>
+      <p className="registracija__uvod">E-pošta je potrjena. Račun navijača je pripravljen.</p>
+      <div className="registracija__kolofon">
+        <div className="registracija__kolofon-vrstica">
+          <span className="registracija__kolofon-oznaka">Paket</span>
+          <span className="registracija__kolofon-vrednost">{paketNapis}</span>
+        </div>
+        <div className="registracija__kolofon-vrstica">
+          <span className="registracija__kolofon-oznaka">E-pošta</span>
+          <span className="registracija__kolofon-vrednost registracija__kolofon-vrednost--uspeh">Potrjena</span>
+        </div>
+      </div>
+      <div>
+        <div className="registracija__prvi-koraki-glava">
+          <h3 className="registracija__prvi-koraki-naslov">Prvi koraki</h3>
+          <span className="registracija__prvi-koraki-stevec">0 od 3</span>
+        </div>
+        <div className="registracija__korak-prvi">
+          <span className="registracija__korak-prvi-st">01</span>
+          <span className="registracija__korak-prvi-besedilo">
+            <span className="registracija__korak-prvi-naslov">
+              {igralecSpremljan
+                ? `Spremljaš ${igralecSpremljan}`
+                : ligaSpremljana
+                  ? `Spremljaš ${ligaVTozilniku(ligaSpremljana)}`
+                  : 'Izberi lige, ki jih spremljaš'}
+            </span>
+            <span className="registracija__korak-prvi-opis">
+              {igralecSpremljan
+                ? 'Zadnje tekme in naslednji termin sta na domači strani.'
+                : 'Njihova kola so na domači strani, izidi vsakega kola pridejo po e-pošti.'}
+            </span>
+          </span>
+          <Link
+            to={igralecSpremljan ? '/' : '/lige'}
+            className="registracija__korak-prvi-meta registracija__korak-prvi-meta--dejavno"
+            onClick={onZapri}
+          >
+            {igralecSpremljan ? 'Domov →' : 'Lige →'}
+          </Link>
+        </div>
+        <div className="registracija__korak-prvi">
+          <span className="registracija__korak-prvi-st">02</span>
+          <span className="registracija__korak-prvi-besedilo">
+            <span className="registracija__korak-prvi-naslov">Preveri koledar</span>
+            <span className="registracija__korak-prvi-opis">Kdaj in kje je naslednji turnir ali kolo.</span>
+          </span>
+          <Link to="/koledar" className="registracija__korak-prvi-meta registracija__korak-prvi-meta--dejavno" onClick={onZapri}>
+            Koledar →
+          </Link>
+        </div>
+        <div className="registracija__korak-prvi">
+          <span className="registracija__korak-prvi-st">03</span>
+          <span className="registracija__korak-prvi-besedilo">
+            <span className="registracija__korak-prvi-naslov">Poglej lestvico</span>
+            <span className="registracija__korak-prvi-opis">Turnirko rating vseh igralcev, po spolu in kategorijah.</span>
+          </span>
+          <Link to="/lestvica" className="registracija__korak-prvi-meta registracija__korak-prvi-meta--dejavno" onClick={onZapri}>
+            Lestvica →
+          </Link>
+        </div>
+      </div>
+    </>
   )
 }
 

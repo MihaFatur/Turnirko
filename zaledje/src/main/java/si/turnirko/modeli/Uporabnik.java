@@ -119,6 +119,12 @@ public class Uporabnik {
     @Column(name = "zeton_odjave")
     private String zetonOdjave;
 
+    /* Nakljucen zeton osebnega koledarja .ics (V58): naslov koledarja nima prijave
+       (koledar v telefonu ne zna poslati gesla), zato povezavo varuje zeton, ki ga
+       racun lahko zamenja. Nastane na zahtevo, ne ob registraciji. */
+    @Column(name = "zeton_koledarja")
+    private String zetonKoledarja;
+
     /* Stari zapisi so brez ure (polnoc dneva nastanka). */
     @Column(name = "ustvarjen_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenOb;
@@ -145,6 +151,12 @@ public class Uporabnik {
        tekmovanja). Za razliko od igralca ne potrebuje povezave na sifrant. */
     public boolean jePotrjenOrganizator() {
         return vloga == Vloga.ORGANIZATOR && status == StatusRacuna.POTRJEN;
+    }
+
+    /* Ali je racun potrjen navijac. Potrdi ga potrjen naslov (in skrbnik),
+       ne admin - glej RegistracijaStoritev.potrdiNavijaca. */
+    public boolean jePotrjenNavijac() {
+        return vloga == Vloga.NAVIJAC && status == StatusRacuna.POTRJEN;
     }
 
     /* Ali je lastnik naslova vpisal kodo s poste. */
@@ -212,6 +224,9 @@ public class Uporabnik {
 
     public String getZetonOdjave() { return zetonOdjave; }
     public void setZetonOdjave(String zetonOdjave) { this.zetonOdjave = zetonOdjave; }
+
+    public String getZetonKoledarja() { return zetonKoledarja; }
+    public void setZetonKoledarja(String zetonKoledarja) { this.zetonKoledarja = zetonKoledarja; }
 
     public LocalDateTime getUstvarjenOb() { return ustvarjenOb; }
 }

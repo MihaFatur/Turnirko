@@ -255,6 +255,40 @@ class PopravekRezultataTest extends IntegracijskiTest {
                 .spremembeZaTekmeSrecanja(List.of(aX.id()), RatingStanje.SISTEM_TURNIRKO).size());
     }
 
+    /* Popravek DVOJIC (Savinja B, okt 2026: v zadnjem nizu 13:11 namesto 11:5)
+       je na strezniku koncal z napako 500. Odgovor sestavi DTO iz tekme, ki jo
+       najdiZaObracun nalozi BREZ igralcev para (drugi igralec na strani); ce je
+       popravek po tem spraznil sejo, je bilo branje igralca para lenega
+       nalaganja izven seje. Posamicna tekma te tezave nima, ker ima igralca
+       naložena. Dvojice v rating ne stejejo, zato popravek ne sme premakniti
+       nicesar v dnevniku. */
+    @Test
+    void popravekTockDvojicVrneZapisnikZObemaIgralcemaPara() {
+        Zapisnik z = pripraviZapisnik(FormatSrecanja.SAVINJA, null, null);
+        TekmaSrecanjaDto dvojice = z.tekme().get(0);
+        srecanjeStoritev.vnesiRezultat(dvojice.id(), new VnosRezultataSrecanja(null, 3, 2, null,
+                List.of(new NizVnos(11, 7), new NizVnos(9, 11), new NizVnos(11, 8),
+                        new NizVnos(8, 11), new NizVnos(13, 11))));
+        seja.flush();
+        seja.clear();
+
+        TekmaSrecanjaDto po = srecanjeStoritev.popraviRezultat(dvojice.id(),
+                new VnosRezultataSrecanja(null, 3, 2, null,
+                        List.of(new NizVnos(11, 7), new NizVnos(9, 11), new NizVnos(11, 8),
+                                new NizVnos(8, 11), new NizVnos(11, 5))));
+
+        assertEquals(StranEkipe.DOMACI, po.zmagovalecStran());
+        assertEquals(dvojice.domaci2(), po.domaci2());
+        assertEquals(dvojice.gost2(), po.gost2());
+        assertEquals(dvojice.idDomaci2(), po.idDomaci2());
+        assertEquals(dvojice.idGost2(), po.idGost2());
+        List<String> tocke = nizSrecanjaRepozitorij.findByTekmaIdOrderByZaporednaStAsc(dvojice.id())
+                .stream().map(n -> n.getTockeDomaci() + ":" + n.getTockeGost()).toList();
+        assertEquals(List.of("11:7", "9:11", "11:8", "8:11", "11:5"), tocke);
+        assertTrue(ratingZgodovinaRepozitorij
+                .spremembeZaTekmeSrecanja(List.of(dvojice.id()), RatingStanje.SISTEM_TURNIRKO).isEmpty());
+    }
+
     /* Savinja liga odigra vse tekme srecanja, zato zamenjana imena v zapisniku
        ne spremenijo poteka - popravek sme obrniti zmagovalca. Obrne se tudi
        izid srecanja (3:2 -> 2:3) in rating: zdaj je tocke dobil gost. */

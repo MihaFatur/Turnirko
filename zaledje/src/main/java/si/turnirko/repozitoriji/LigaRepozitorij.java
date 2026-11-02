@@ -158,4 +158,8 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
        (glej TurnirRepozitorij.najdiZaUstvarjalca). */
     @Query("SELECT l FROM Liga l WHERE l.ustvaril.id = :idUstvaril")
     List<Liga> najdiZaUstvarjalca(Long idUstvaril);
+
+    /* Koliko lig nosi sliko kot logotip (V54) - izbris slike je dovoljen samo
+       pri nic, uporaba tuje slike pa samo, ce je ze javna. */
+    long countByLogotipId(Long idSlika);
 }

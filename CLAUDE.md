@@ -367,7 +367,11 @@
     ure.
 - **Prestavitev srečanja** (V47, okt 2026; `TerminiVnos.TerminSrecanja`,
   `Srecanje.prestaviVKolo` / `zacniCakatiNaTermin`). Organizator jo vpiše **samo v
-  oknu »Termini kol«** (razdelek »Prestavitve« z enim urejevalnikom) — odločitev
+  oknu »Termini kol«** (zavihek »Srečanja po kolih«, komponenta `SrecanjaPoKolih`:
+  vsa kola s svojimi srečanji, filter ekipe, izberi srečanje → klikni kolo ali ga
+  povleci; opozorilo, ne prepoved, ko ekipa v kolu igra več srečanj, kot jih ima
+  običajno; do 31. 10. 2026 je bil razdelek »Prestavitve« z iskalnikom po
+  srečanjih, ki je kazal osem zadetkov) — odločitev
   lastnika; gumba pri vrstici razporeda ni. Gre v istem `PUT /lige/{id}/termini`
   kot termini kol: najprej prestavitve, nato termini kol, nazadnje izrecni začetki.
   - **`kolo` je kolo, v katerem se srečanje IGRA**, ne kolo iz žreba: prestavljeno
@@ -750,6 +754,12 @@
   - Popravek na koncu pokliče `preracunajPoPopravku` (= `preracunajOd` dneva
     tekme). Sam obračun te tekme ne zadošča — njen izid je vstopal v vse
     poznejše tekme obeh igralcev. Regresija je `PopravekRezultataTest`.
+  - **Preračun teče samo za posamično tekmo tekmovanja, ki šteje** (dvojice v
+    rating ne gredo, popravek njihovih točk nima kaj preračunati). Preračun
+    izprazni sejo, `najdiZaObracun` pa drugega igralca para ne naloži, zato se
+    tekma za odgovor prebere znova (kot ob vnosu). Brez tega je popravek točk
+    dvojic v Savinja ligi B (okt 2026) vrnil 500 (`LazyInitializationException`);
+    varuje ga `popravekTockDvojicVrneZapisnikZObemaIgralcemaPara`.
 - **Razveljavitev zapisnika ligaškega srečanja**
   (`SrecanjeStoritev.razveljaviZapisnik`, `DELETE /srecanja/{id}/zapisnik`;
   okt 2026 — v Savinja ligi C je organizator v postavo vpisal napačna igralca
@@ -860,9 +870,10 @@
   - Regresija je `ZunanjaUvrstitevTest`; najpomembnejši test je
     `preracunOdZacetkaOhraniVpisanoStevilko` (če preračun uvrstitev odigra na
     napačnem mestu, je konec ponovljivosti).
-- **Avtorizacija in vloge:** štiri vloge — `ADMIN` (vse), `ORGANIZATOR`
+- **Avtorizacija in vloge:** pet vlog — `ADMIN` (vse), `ORGANIZATOR`
   (ustvarja turnirje/lige in upravlja **samo svoje** oz. klubske), `IGRALEC`
-  (svoj profil) in gost (neprijavljen, samo `GET`). Osnovna raven je v
+  (svoj profil), `NAVIJAC` (ne igra: spremlja lige, V55 — glej spodaj) in gost
+  (neprijavljen, samo `GET`). Osnovna raven je v
   varnostni verigi (`VarnostneNastavitve`, HTTP Basic, stateless): gost samo
   `GET`; organizator sme na turnirje/lige/dogodke/tekme/srečanja in `POST`
   igralca; ostale mutacije (šifranti, računi, urejanje/brisanje igralcev) le
@@ -957,6 +968,119 @@
   - **Admin se ne registrira in gesla ne ponastavlja po pošti**: najmočnejši
     račun ostane izven te poti (`Vloga.ADMIN` se v `RegistracijaStoritev`
     povsod izloči).
+  - **Navijač** (`Vloga.NAVIJAC`, V55, okt 2026; faza 0 predloga »paket
+    Navijač«): oseba, ki ne igra — starš, soigralec, klubski človek. Prej si je
+    tak človek lahko odprl samo račun igralca, ki se ni mogel povezati z nobenim
+    zapisom, obvisel je v `CAKA` in admin je dobil e-pošto o čakajočem računu.
+    Pravila, ki jih ne razbij:
+    - **Admina ne čaka**: potrjen naslov (in soglasje skrbnika pri mlajših od 15
+      let, zato je datum rojstva obvezen kot pri igralcu) račun potrdi
+      (`RegistracijaStoritev.potrdiNavijaca`, oba klica ob kodi);
+      `obvestiAdminaCeCaka` navijača izloči izrecno. `PotrditevOdgovorDto.navijac`
+      vmesniku pove, da je račun pripravljen.
+    - **Z zapisom med igralci se ne primerja** (tudi ob ujemanju imena in datuma)
+      in ga admin ne poveže (`RacuniStoritev.potrdi` ga zavrne). Varuje ga tudi
+      shema: `CHECK (vloga <> 'NAVIJAC' OR id_igralec IS NULL)`.
+    - **Brezplačen**: plačljiva registracija (`PlacilaStoritev.pripraviRegistracijo`)
+      in kode popusta ga zavrnejo, nadgradnja na Premium tudi (»Premium je paket
+      za igralca«). Pravica v verigi je `ROLE_NAVIJAC` (`CAKAJOCI`, dokler ni
+      potrjen) — odpre le osebne poti, ki zahtevajo prijavo (izbor lig,
+      obvestila). Ker preverbe Premium in organizatorja povsod sprašujejo »je
+      IGRALEC / ORGANIZATOR«, navijač nikamor ne pade po pomoti; nova preverba
+      vloge naj ostane v tej obliki in ne »ni ORGANIZATOR«.
+    - `RegistracijaVnos.navijac` se izključuje z `organizator`.
+    - V55 prezida `uporabnik` z izklopljenimi tujimi ključi (izven transakcije):
+      na tabelo kažejo vrstice z `ON DELETE CASCADE` in `SET NULL`. Preverjeno
+      na kopiji produkcije: števila vrstic odvisnih tabel enaka, `foreign_key_check`
+      prazen. Testi: `NavijacTest`, `AvtentikacijaDostopTest`
+      (`potrjenNavijacImaOsebnePotiInNicVec`).
+    - **Spremljani igralci** (V57, okt 2026; zadnji del faze 0): račun spremlja ljudi, ne le lige.
+      Tabela `spremljan_igralec` (račun + igralec, kot `spremljana_liga`), `/api/v1/domov/moji-igralci`
+      (GET/PUT/DELETE; osebna pot, pravilo v verigi stoji pred »GET je javen«) in
+      `GET /domov/moji-igralci-povzetki` (`SpremljaniIgralciStoritev`, `DomovIgralecDto`).
+      - **Meja je pravilo paketa in ne sheme**: `NAJVEC_BREZPLACNO` = 1 za vse vloge (tudi za igralca s
+        Premium: ta je paket za lasten profil). Ob doseženi meji PUT vrne 409 s sporočilom, koga račun že
+        spremlja; drugega igralca ne zamenjamo tiho (staršu bi ob pomoti otrok izginil z domače strani).
+        Plačljiv Navijač (faza 1) mejo dvigne, shema ostane. Račun igralca sebe ne spremlja.
+      - **Povzetek bere samo javno**: ime, klub, rating, mesto (`ProfilDto.Uvrstitev`), zadnje 3 tekme in
+        naslednje ligaško srečanje ekipe (isto pravilo kot `PotekLige`: ne končano, ne čaka na termin,
+        termin ni mimo) ali prihajajoči turnir prijave. Zasebnih analiz profila ni (vidi jih samo igralec).
+      - **Združitev igralcev izbor preusmeri** (`IgralciZdruzitevStoritev`): račun, ki je spremljal oba
+        zapisa, obdrži enega; račun, ki je sam obdržani igralec, sebe ne spremlja.
+      - Vmesnik: gumb »Spremljaj« (`GumbSpremljanja`) pod vrstico kluba na profilu,
+        `pomozno/spremljaniIgralci` (preklop NI optimističen: meja je lahko dosežena), sklop
+        `MojIgralecSklop` med vrhom in lestvico domače strani (gost ga nima; račun brez izbora ga vidi samo
+        kot navijač, kjer pove, kako se igralec doda). Gost po kliku dobi kratko registracijo (`izvor:
+        'spremljanje'`, `igralec`), po prijavi ga račun začne spremljati sam.
+      - Testi: `SpremljaniIgralciTest`, `AvtentikacijaDostopTest` (`gostNimaSpremljanihIgralcev`).
+    - **Plačljiv Navijač in njegove ugodnosti** (V58–V61, okt 2026; faze 1–3 predloga, NI preverjeno
+      proti živemu Stripu ne pravemu potisnemu strežniku). Paket `NAVIJAC` (`Paket`, `CenikStoritev`):
+      19,99 €/leto, **samo letno** (mesečne cene ni; Stripe vzame 2,2 % + 0,25 € na plačilo). Cena je
+      na dveh mestih kot pri Premium: `CenikStoritev` in `CENA_NAVIJAC_LETNO` v `api/tipi.ts`.
+      - **Kdo ima kaj** (`NarocninaStoritev`): `imaNavijaca` (veljaven paket NAVIJAC), `imaPremium` (lasten
+        ALI družinski), `imaDruzinskiPremium`, **`imaSirokoSpremljanje` = Navijač ALI Premium ALI admin** —
+        to je pogoj za neomejeno število spremljanih igralcev, e-pošto po turnirju, osebni koledar, potisna
+        obvestila, sezonski zapisnik in napoved poljubnega para. Nova preverba paketa naj ostane v tej obliki.
+      - **Plačljiva registracija in nadgradnja** (`PlacilaStoritev`): `RegistracijaVnos.navijac` skupaj s
+        paketom NAVIJAC gre skozi Stripe Checkout (`CakajocaRegistracija.navijac`, V58), račun brez plačila
+        ostane brezplačen navijač. Brezplačen navijač se nadgradi prek iste poti kot igralec
+        (`pripraviNadgradnjo` je skupna). Kode popusta imajo vlogo (`za_vlogo` + `NAVIJAC_MESECI`, V58):
+        brezplačni meseci paketa Navijač za nov račun navijača.
+      - **Spremljani igralci**: brezplačen račun 1, s paketom neomejeno (`SpremljaniIgralciStoritev`); družina je
+        v povzetkih prva.
+      - **E-pošta po turnirju** (`ObvestilaPoTurnirjuStoritev`, `obvestilo_turnirja`): ko je turnir
+        zaključen, prejemnik s paketom, ki spremlja nastopivšega igralca, dobi mesto, izkupiček in spremembo
+        ratinga. **Vsak turnir enkrat**; samo turnir, zaključen v zadnjih 7 dneh (uvožena zgodovina ni novica);
+        isto stikalo in odjava kot obvestila po kolu (`obvestila_po_kolu`, žeton odjave).
+      - **Osebni koledar .ics** (`OsebniKoledarStoritev`, `OsebniKoledarKontroler`): Google in Apple koledar ne
+        znata poslati gesla, zato naslov `/api/v1/koledar-ics/{žeton}.ics` varuje naključen žeton računa
+        (`uporabnik.zeton_koledarja`, unikaten delni indeks). Žeton odpre samo ta koledar; zamenja se z enim klikom
+        (`POST /moj-koledar/zamenjaj`). **Paket se preveri ob vsakem branju** (potekel = 403, koledar v telefonu
+        ostane, a se neha posodabljati). Stalen UID (`srecanje-{id}`, `turnir-{id}`): prestavitev dogodek
+        premakne in ga ne podvoji. V koledar gredo le javni podatki. Pot je v verigi javna (`GET /koledar-ics/**`),
+        `/moj-koledar*` zahteva prijavo.
+      - **Družina** (V59, `DruzinaStoritev`): račun s paketom Navijač prosi za povezavo z največ DVEMA igralcema
+        v mladinskem pasu U11–U21 (isto merilo kot cena Premium za mlajše; igralec brez datuma rojstva ni primeren).
+        **Povezavo vedno potrdi administrator** (V3 iz varnostnega pregleda: zasebna statistika tujega otroka ne sme
+        priti do nikogar samo z imenom in datumom rojstva); zahteva (`CAKA`) ne odpre ničesar. Potrjena povezava
+        odpre navijaču zasebno statistiko (`DostopDoProfila.preveriLastnistvo` pozna družino) in igralčevemu računu
+        da **Premium, dokler paket navijača velja** (`imaDruzinskiPremium`, `RacuniStoritev.profil` ga javi kot
+        `zDruzinskimPremiumom`). Ko igralec preraste U21, povezava velja do konca plačanega obdobja (`velja_do`,
+        zapiše ga dnevno opravilo, ne branje). Zavrnjena vrstica ostane, da je oseba ne ponavlja tiho. Poti
+        `/druzina/admin` in odločitve so `hasRole("ADMIN")` PRED splošnimi pravili `/druzina*` v
+        `VarnostneNastavitve`. Admin dobi e-pošto ob zahtevi (brez datuma rojstva).
+      - **Potisna obvestila** (V60, `PotisnaObvestilaStoritev`, `pomozno/WebPush`, `VapidKljuci`): Web Push z
+        JDK-jevo kriptografijo (RFC 8291 aes128gcm, RFC 8292 VAPID), **preverjena z uradnim testnim vektorjem
+        RFC 8291** (`WebPushTest`) — ne pa z živim FCM/Mozilla/Apple. Ključi: `java -cp target/classes
+        si.turnirko.pomozno.VapidKljuci` izpiše par; nastavitve `TURNIRKO_PUSH_JAVNI_KLJUC`,
+        `TURNIRKO_PUSH_ZASEBNI_KLJUC`, `TURNIRKO_PUSH_SUBJEKT` (npr. `mailto:info@turnirko-nt.si`). **Brez ključev
+        je vse ugasnjeno** (naprave ni mogoče vpisati, opravilo ne dela nič; `GET /push/kljuc` vrne prazno, vmesnik
+        kartice ne pokaže). Pasti: (1) **SSRF** — naslov vpiše odjemalec, zato strežnik pošilja samo na FCM, Mozilla,
+        Apple in Windows push (https, privzeta vrata), preverba ob vpisu IN ob pošiljanju; (2) pošiljanje je ZUNAJ
+        transakcije (SQLite en pisec, HTTP traja sekunde); (3) tekma se oznani enkrat (`potisni_dogodek`, ključ
+        tekma + igralec; zbiranje se ob zagonu začne pri največjem id-ju dnevnika, da se stare tekme ne oznanijo);
+        (4) naprava, ki jo storitev zavrne z 404/410, se izbriše; (5) samo račun z veljavnim paketom. Vmesnik:
+        `public/sw.js` (prikaz + klik, nič se ne predpomni), `pomozno/potisnaObvestila` (dovoljenje samo iz klika;
+        na iPhonu Push obstaja šele, ko je stran na začetnem zaslonu — kartica to pove), kartica na strani Naročnina.
+      - **Podpora klubu** (V61, `PodporaKlubaStoritev`): navijač s paketom izbere klub; ko ima klub 10/20/30
+        podpornikov, **organizator kluba** (`uporabnik.id_klub`, ki ga potrdi admin) dobi 10/20/30 % popusta na
+        **prvo plačilo** organizatorskega paketa (nakup ali nadgradnja, Stripov kupon `once` kot kode popusta).
+        Šteje se samo račun, ki paket plačuje ZDAJ (število se bere ob vsakem vprašanju, ne hrani). **Izplačil ni.**
+        **Popusta ob obnovi ni** — bi terjal poseg v Stripovo naročnino pred vsakim obdobjem, ki ga nismo
+        preverili. Imen podpornikov ne vidi nihče. Vmesnik pove omejitve, preden navijač izbere.
+      - **Sezonski zapisnik** (`strani/SezonskiZapisnikStran`, `/igralci/:id/sezona`, `pomozno/sezonskiZapisnik`):
+        list A4 za tisk, sestavljen v vmesniku iz JAVNEGA profila — zaledje ne rabi ničesar. **Pogoj paketa je v
+        vmesniku (povezava na profilu in domači strani), sama stran je javna kot profil**: ne razkrije nobenega
+        podatka, ki ga gost ne bi videl na profilu. Tekme brez datuma ne sodijo v nobeno sezono (izpiše se njihovo
+        število). Postavitev ni preverjena na PDF ali pravem tiskalniku.
+      - **Maskota** navijaču ne nastopa (gost ali igralec brez Premium, nihče drug).
+      - **Ni preverjeno** (ni Stripovih ključev, ni pravega brskalnika s Push): izdelek Navijač v Stripu in kako Moj
+        Račun izda račun zanj, kupon kluba na sandboxu, dostava pravega potisnega obvestila. Pred živim preklopom
+        preveri po `docs/NAROCNINE-V-ZIVO.md`.
+      - Testi: `PlacljivNavijacTest`, `OsebniKoledarInObvestiloTurnirjaTest`, `DruzinaTest`,
+        `PotisnaObvestilaTest`, `PodporaKlubaTest`, `pomozno/IcsTest`, `pomozno/WebPushTest`,
+        `AvtentikacijaDostopTest` (nove poti). Vsaka nova migracija SQLite potrebuje dvojnico v
+        `db/migration/postgresql` (dvojnice V58–V61 so v veji prenova-baze; ob spremembi stolpca ali CHECK-a javi seji za prenovo baze).
 - **Sistem tekmovanja** izbere dogodek; `ZrebStoritev` po njem razveji žreb
   (`IZLOCILNI`/`KROZNI`/`SKUPINE_IZLOCILNI`/`SKUPINE`). Lestvice računa
   `RazvrstitevStoritev` (zmage → porazi → **krog**: razlika nizov, nato
@@ -1602,6 +1726,110 @@
     vrstic; stolpca ratinga ni, kadar ga noben igralec nima. `kratekKlub` (`pomozno/oblikovanje.ts`)
     odstrani splošne predpone (»Namiznoteniški klub«) v lestvici, kartici tekme in razvrstitvi.
 
+- **Slike in logotip tekmovanja** (V54, okt 2026; `SlikeStoritev`, `SlikeKontroler`,
+  `pomozno/ObdelavaSlik`). Organizator ligi in turnirju doda logotip, ki stoji v glavi
+  strani, na Turnirkovem ekipnem zapisniku, na žrebu skupin in mreže za tisk in v
+  predogledu povezave. Pravila, ki jih ne razbij:
+  - **Dva koraka: knjižnica, nato izbira.** `POST /slike` (multipart, polje `datoteka`)
+    sliko shrani, `PUT /lige|turnirji/{id}/logotip {idSlika}` jo izbere, `DELETE` na isti
+    poti odstrani. Liga je vsako sezono nov zapis — Savinja A–D logotip naloži enkrat.
+    Knjižnica (`GET /slike`, ni javna: pravilo pred »GET je javen«) je adminu vse,
+    organizatorju njegove slike in logotipi tekmovanj, ki jih sme urejati (tudi klubskega
+    kolege). Izbris (`DELETE /slike/{id}`) samo svoje in samo, dokler je ne nosi nobeno
+    tekmovanje.
+  - **Logotip je prikaz, ne pravilo** (kot skriti razdelki Zanimivosti): lastnik in admin,
+    v vsakem stanju in tudi pri uvoženem tekmovanju (`preveri…ZaPrikazPoId`). Kvalifikacije
+    dobijo logotip višje lige ob nastanku.
+  - **Tujo sliko sme organizator uporabiti samo, če je že javna** (nosi jo kakšno
+    tekmovanje) — id-ji so zaporedni, ugibanje ne sme odpreti neobjavljene slike. Ista
+    datoteka, naložena znova, je ista slika (zgostitev je UNIQUE) in gre v knjižnico
+    zadnjega, ki jo je naložil.
+  - **Strežnik vsako sliko prebere in zapiše znova** (`ObdelavaSlik`): vrsto določi
+    vsebina (samo PNG in JPEG — SVG pretvori brskalnik, ker lahko nosi skript), meri se
+    preverijo iz glave PRED dekodiranjem (bomba), metapodatki (EXIF, GPS) ne pridejo v
+    bazo. Tri različice v `slika_razlicica`: TISK (≤ 1200 px), ZASLON (≤ 480 px),
+    DELJENJE (1200 × 630 na papirju — prosojen PNG bi WhatsApp v temnem načinu pokazal na
+    črnem). Neprosojna velika slika gre v JPEG.
+  - **Bajti so v bazi, v ločeni tabeli** (`slika` je opis, `slika_razlicica` bajti):
+    nočna kopija kopira samo `turnirko.db`, zato so slike v njej brez nove nastavitve na
+    strežniku. Liga in turnir nosita `logotip` kot **EAGER** `Slika` (samo opis):
+    `TurnirDto` nastane v kontrolerju izven transakcije. Ob prenovi na PostgreSQL gre
+    `vsebina` v `bytea`.
+  - **Javna pot je `/api/v1/slike/{zgostitev}?velikost=`** z `Cache-Control: immutable`
+    za leto dni in ETag — ista zgostitev je vedno ista vsebina, zamenjava logotipa je nov
+    naslov. Odgovor nosi `Content-Security-Policy: default-src 'none'; sandbox`. Ko bo
+    stran dobila CSP (V12), mora `img-src` dovoliti `blob:` (predogled v oknu).
+  - **Pripravo pred pošiljanjem dela brskalnik** (`pomozno/slike.ts`): obrez praznega
+    roba (prosojnega ali skoraj belega), po izbiri odstranitev belega ozadja, povezanega z
+    robom (bela v grbu ostane; mehki robovi dobijo delno prosojnost), pomanjšanje v
+    korakih na 1200 px, PNG. Okno `LogotipOkno` pokaže logotip na papirju in v sivinah na
+    belem (črno-beli tiskalnik) in opozori, ko bi bil na zapisniku pod 200 dpi
+    (`dpiNaTisku`).
+  - **Velikost na strani je po enaki ploščini** (`meraLogotipa`, `LogotipTekmovanja`):
+    pri enaki višini bi bil širok napis trikrat večji od kvadratnega grba. Logotip je
+    okras (`alt=""`), ime tekmovanja stoji ob njem.
+  - Omejitev: 30 nalaganj na račun na uro, 8 MB na datoteko (413 s slovenskim
+    sporočilom). Testi: `ObdelavaSlikTest`, `SlikeStoritevTest`, `SlikeDostopTest`,
+    `PredogledStraniTest`, `PredogledStoritevTest`.
+
+- **Profilna slika igralca** (V56, okt 2026; `ProfilneSlikeStoritev`,
+  `ProfilneSlikeKontroler`, `ProfilnaSlikaOkno`, `SlikaIgralca`). Fotografija igralca z
+  Igralcem Premium stoji na profilu, v 1 na 1 in na stopničkah dogodka — nikjer
+  drugje (lestvica, seznami, tisk). Pravila, ki jih ne razbij:
+  - **Javna je samo, če so izpolnjeni vsi štirje pogoji hkrati**: stanje
+    `OBJAVLJENA`, račun potrjen in aktiven, povezan z igralcem in **veljaven Premium**
+    (`NarocninaStoritev.imaPremium`, tudi preizkus). Ob izteku se skrije, shranjena
+    ostane; ob ponovnem Premiumu se spet pokaže. Pogoj se preverja pri BRANJU
+    (`vidne`), ne ob nalaganju.
+  - **Čaka na admina** (`CAKA`), kadar je igralec mlajši od 15 let
+    (`RegistracijaStoritev.STAROST_SKRBNIKA`; 1. 1. 1900 = neznano = odrasel) ali kadar
+    računa ni povezal admin (`VirPovezave != ADMIN`). To je namerna zapora namesto
+    popravka V3 v registraciji (orakelj datuma rojstva + prevzem identitete): kdor bi
+    prevzel tuj zapis, javne slike z njim ne dobi. Admin dobi e-pošto
+    (`PostaStoritev`, povezava `/igralci?slike=1`) in slike potrdi ali zavrne v pregledu
+    na strani Igralci (`PregledProfilnihSlik`: `GET /profilne-slike`, `POST
+    /profilne-slike/{id}/objavi`, `DELETE /profilne-slike/{id}`). Objavljene slike zadnjih
+    30 dni sme admin še odstraniti.
+  - **Strežnik sliko vedno obdela sam** (`ObdelavaSlik`): le PNG/JPEG, dimenzije iz glave
+    pred dekodiranjem, kvadrat (min. 160 px), EXIF in GPS ne pridejo v bazo, zapis v dveh
+    JPEG velikostih (VELIKA 480, MALA 160) v `profilna_slika_vsebina`. Brskalnik izrez
+    naredi sam (`pomozno/profilneSlike.izrezi`, 960 px). Ista datoteka na drugem računu
+    se zavrne (zgostitev je UNIQUE). Omejitev: 20 nalaganj na uro na račun.
+  - **Javne bajte streže `GET /api/v1/slike/profil/{zgostitev}?velikost=`** — zgostitev
+    je dostop (SHA-256 vsebine, ne ugibljiva), a odgovor nosi `max-age` samo en dan, NE
+    `immutable` kot logotipi: izbris in odstranitev se morata razširiti. Zgostitev
+    čakajoče slike vidita samo lastnik in admin.
+  - **Brisanje prek entitet in `flush()`** (`pobrisi`): množični JPQL `DELETE` pusti v
+    seji zastarele entitete, SQLite pa izbrisanemu id-ju da isti id novi vrstici
+    (`NonUniqueObjectException`). Isto velja za pokrovitelje.
+  - Vmesnik: `useSlikeIgralcev(idji)` je **ena zahteva za vse** (`GET /igralci/slike?idji=`,
+    največ 100); okvir dobijo vsi igralci v 1 na 1 in na stopničkah, kakor hitro ga ima
+    eden (obris glave in ramen namesto slike). Stopničke imajo sliko samo pri
+    posamičnih dogodkih (par in ekipa nimata ene fotografije). Testi:
+    `ProfilneSlikeStoritevTest`, `SlikeDostopTest` (`profilnaSlikaVlogeInPredpomnjenje`).
+- **Pokrovitelji lige in turnirja** (V56; `PokroviteljiStoritev`, `PokroviteljiKontroler`,
+  `PokroviteljiOkno`, `PokroviteljiTrak`, `PokroviteljiTisk`). Največ 8, eden glavni,
+  vrstni red seznama je vrstni red prikaza. `GET` je javen, `PUT
+  /lige|turnirji/{id}/pokrovitelji` (`{pokrovitelji:[{idSlika, ime, povezava, glavni}]}`) sme
+  lastnik in admin, tudi pri uvoženem tekmovanju (prikaz, ne pravilo).
+  - **Seznam se shrani v celoti**: najprej se preveri vse (ime 1–80 znakov, ena sama
+    glavna, logotip iz knjižnice), šele nato se stari izbrišejo in novi zapišejo — napaka
+    ne sme pustiti tekmovanja brez pokroviteljev.
+  - **Povezava je samo `http(s)`**: vnos brez sheme dobi `https://`, vse druge sheme
+    (`javascript:`, `data:`) se zavrnejo (`SHEMA` proti `POVEZAVA`; test je ujel
+    `javascript:alert(1)`, ki je prej dobil predpono). Vmesnik povezavo odpre z
+    `rel="noopener noreferrer nofollow sponsored"`.
+  - **Logotipi so iz iste knjižnice kot logotip tekmovanja** (`SlikeStoritev.zaUporabo`):
+    tujo sliko sme organizator uporabiti samo, če je že javna; knjižnica zdaj vključuje
+    tudi logotipe pokroviteljev tekmovanj, ki jih sme urejati. `steviloUporab` šteje tudi
+    pokrovitelje — slike, ki jo nosi pokrovitelj, ni mogoče izbrisati.
+  - Trak na strani je kolofon (pod vsebino, glavni večji); na tisku je vrstica v nogi
+    Turnirkovega ekipnega zapisnika in žreba mreže (največ 12 mm, **list ostane ena
+    ležeča stran A4**: mreža pri pokroviteljih skrči višino vrstice, zapisnik pa
+    razdeli, kar ostane). Ni na uradnem obrazcu NTZS, sodniških listkih in listkih
+    skupin. Testi: `PokroviteljiStoritevTest`, `SlikeDostopTest`
+    (`pokroviteljiBranjeJavnoPisanjeLastnik`).
+
 - **Upravljanje obstoječe naročnine** (V35, `UpravljanjeNarocnineStoritev`,
   `StripeNarocnine`, `/api/v1/narocnina`): pregled (obdobje, cikel, cena, zabeležen
   preklop), preklic ob koncu obdobja, obnova preklicane in preklop mesečno ↔ letno
@@ -1933,7 +2161,7 @@
   - **Sproži ga samo klik**, nikoli urnik. Sprožilec je obvestilo na lastnem profilu
     (`lastnikBrezPremium`, kontekst »statistika« — edini, ki je ostal). Spremljanje
     lig je od 23. 10. 2026 brezplačno, zato kontekst »lige« in `ponudiPremium` v
-    `useSpremljanjeLig` nista več; »Spremljaj« in »Uredi izbor →« gostu odpreta kratko
+    `useSpremljanjeLig` nista več; »Spremljaj« in »Sledi ligi →« gostu odpreta kratko
     registracijo (glej »Obvestila po kolu«).
   - **Gost**: »Ustvari račun · Premium …« odpre registracijo na koraku »Paket« z
     izbranim ciklom (`PrijavaOkno zacetniCiklus` → `RegistracijaTok`); povezava odpre
@@ -1995,7 +2223,11 @@
     dobi `DELEZ_Z_OKNOM` (0,5) gostov. Seja v Umamiju nosi skupino (`identify`), vsak
     dogodek lastnost `poziv`.
   - **Kratka registracija** (`RegistracijaTok kratko`): brez »Vloga« in »Paket«; v
-    povzetku vrstica Paket nima »Uredi«. »To si ti?« (`ProfilStran`, samo gost) poda še
+    povzetku vrstica Paket nima »Uredi«. Izjema je izvor `spremljanje`: tam ima korak
+    »Vloga« z izbiro Igralec / Navijač (ligo spremlja tudi, kdor v njej ne igra), polna
+    registracija pa ponudi tri vloge (`MOZNOSTI_VLOGE`, seznam namesto mreže). Navijač
+    ima korake vloga → podatki → [skrbnik] → povzetek → koda: brez paketa, kluba,
+    zapisa in kode popusta, besedilo o mesecu Premium mu ne pripada. »To si ti?« (`ProfilStran`, samo gost) poda še
     `predizbran` (ime, priimek, ime kluba → id iz šifranta, enkrat). Okno odpre
     `usePremiumOglas().odpriRegistracijo({ izvor, predizbran })`.
   - **Dogodki Umami** (`zabelezi`, brez osebnih podatkov; vrsta počaka na `defer`
@@ -2095,7 +2327,7 @@
     metode iz istega razreda gre mimo Springovega posrednika in spremembe entitet
     (žeton, `opomnik_poslan_ob`) se ne zapišejo. Testi tega ne ujamejo (so
     `@Transactional`); izmerjeno v brskalniku na kopiji baze.
-  - **Gost**: »Spremljaj« na strani lige in »Uredi izbor →« na domači strani odpreta
+  - **Gost**: »Spremljaj« na strani lige in »Sledi ligi →« na domači strani odpreta
     kratko registracijo (`izvor: 'spremljanje'`, `MoznostiRegistracije.liga`); po
     samodejni prijavi `RegistracijaTok` ligo spremlja sam. Primerjave paketov
     (registracija, naročnina, oglas 1c) imajo »Spremljanje lig in e-pošta po kolu« pri
@@ -2347,7 +2579,7 @@
     lestvici. Pari kola se izpišejo **samo pri izbranem dnevu**: cel mesec z
     devetimi ligami bi jih naštel nekaj sto.
 - **Izbor spremljanih lig ureja `IzborLigOkno`, ne stran `/lige`.** Izbor je
-  nastavitev domače strani in ne pot v ligo, zato »Uredi izbor« odpre okno —
+  nastavitev domače strani in ne pot v ligo, zato »Sledi ligi« odpre okno —
   gledalec ostane, kjer je, in takoj vidi, kaj se je spremenilo (gost izbora
   nima, zato mu isti napis odpre `PrijavaOkno` naravnost na registraciji); na `/lige` je
   vsaka vrstica povezava v ligo in preklopa ne more nositi. Okno mora zdržati
@@ -2582,11 +2814,10 @@
         je prazno za roko, in tudi ta obrazec se natisne pred postavo (vrstice iz
         formata). Stanje dvoboja se izpiše iz končanih tekem po vrstnem redu
         obrazca (`stanjaDvoboja`). **Lokacije in rezerve ne hranimo** — ostaneta črti.
-      - **Logotip lige** je po imenu lige (`pomozno/logotipiLig`, zdaj samo
-        Savinja; slika `src/assets/liga-savinja.png`, obrezana na 480 px) in
-        **samo pri ligi** — klub »Savinja« bi sicer dal logotip vsakemu turnirju.
-        Liga brez logotipa ima v glavi le znamko Turnirka. Nov logotip = zapis v
-        `LOGOTIPI`.
+      - **Logotip** je naložen logotip tekmovanja (V54, glej »Slike in logotip
+        tekmovanja«): pri ligi njen, pri ekipnem dogodku logotip turnirja (stran ga
+        poda kot `logotip`, različica TISK). Brez logotipa ima glava le znamko
+        Turnirka. Do V54 je bil vgrajen in izbran po imenu lige (samo Savinja).
       - **List je natanko ena ležeča stran A4** (`@page ekipni-zapisnik`, rob
         10 mm; 188 mm vsebine, ker tisk v zaokroževanju sicer prelije na prazen
         list). Višino vrstic mreže razdeli CSS grid po tem, kar ostane (dvojica
@@ -3179,8 +3410,11 @@
     »<naslov> – Turnirko« = `PredogledStrani.PRIPONA`); stran, ki jo odpre
     WhatsApp, in zavihek se imenujeta enako.
   - og:url in kanonični naslov gradi `turnirko.javni-naslov`
-    (`TURNIRKO_JAVNI_NASLOV`, privzeto https://turnirko-nt.si); slika
-    `predogled.png` (1200 × 630) je ena za vse strani.
+    (`TURNIRKO_JAVNI_NASLOV`, privzeto https://turnirko-nt.si); slika je
+    `predogled.png` (1200 × 630), razen pri ligi, turnirju, kategoriji in
+    srečanju lige, ki imajo logotip (V54): takrat je og:image njegova različica
+    DELJENJE (`Predogled.logotip`). Zato so oznake og:image v bloku med
+    `<!--predogled-->` in `<!--/predogled-->`.
 - **Ikone za bližnjico na začetnem zaslonu** (`apple-touch-icon.png`,
   `ikona-192/512.png`, `manifest.json` z `display: minimal-ui`,
   `theme-color` = papir) in `predogled.png` so izrisani iz

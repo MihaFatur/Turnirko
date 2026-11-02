@@ -17,6 +17,8 @@
    Črno-belo ne glede na temo, kot sodniški listki. */
 import type { CSSProperties } from 'react'
 
+import type { SlikaDto } from '../api/tipi'
+import { urlSlike } from '../pomozno/slike'
 import { ZnakTurnirko } from './Postavitev'
 import {
   KOL_V_PASU,
@@ -33,7 +35,8 @@ import {
 /* Širina vsebine listka: list 210 mm brez stranskih robov po 8 mm. */
 const SIRINA_VSEBINE_MM = 194
 
-export function ListiSkupin({ listi }: { listi: ListekSkupine[][] }) {
+/* logotip: logotip turnirja (V54) v glavi vsakega listka; prazno, ce ga ni. */
+export function ListiSkupin({ listi, logotip = null }: { listi: ListekSkupine[][]; logotip?: SlikaDto | null }) {
   return (
     <div className="listki-skupin">
       {listi.map((list, i) => {
@@ -47,7 +50,7 @@ export function ListiSkupin({ listi }: { listi: ListekSkupine[][] }) {
           >
             {list.map((listek) => {
               zasedeno += listek.sestin
-              return <Listek key={listek.kljuc} listek={listek} rez={zasedeno < 6} />
+              return <Listek key={listek.kljuc} listek={listek} rez={zasedeno < 6} logotip={logotip} />
             })}
           </section>
         )
@@ -56,7 +59,7 @@ export function ListiSkupin({ listi }: { listi: ListekSkupine[][] }) {
   )
 }
 
-function Listek({ listek, rez }: { listek: ListekSkupine; rez: boolean }) {
+function Listek({ listek, rez, logotip }: { listek: ListekSkupine; rez: boolean; logotip: SlikaDto | null }) {
   const { skupina, del } = listek
   const r = del.raztezek
   const mere = {
@@ -83,7 +86,18 @@ function Listek({ listek, rez }: { listek: ListekSkupine; rez: boolean }) {
       <header className="listek-skupine__glava">
         <span className="listek-skupine__kategorija">{listek.kategorija}</span>
         {listek.turnir && <span className="listek-skupine__turnir">{listek.turnir}</span>}
-        <span className="listek-skupine__znamka">
+        {/* Logotip je v stalni višini glave - višina listka se računa v mm
+            (zrebSkupin.MERE) in slika je ne sme spremeniti. */}
+        {logotip && (
+          <img
+            className="listek-skupine__logotip"
+            src={urlSlike(logotip, 'TISK')}
+            width={logotip.sirina}
+            height={logotip.visina}
+            alt=""
+          />
+        )}
+        <span className={'listek-skupine__znamka' + (logotip ? ' listek-skupine__znamka--ob-logotipu' : '')}>
           <ZnakTurnirko velikost={13} />
           Turnirko
         </span>
