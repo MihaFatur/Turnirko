@@ -412,8 +412,13 @@ Ce jo izgubis, izgubis samo zgodovino obiska; turnirjev to ne prizadene.
 ## Posodobitev
 
 ```bash
-cd /srv/turnirko && git pull && sudo docker compose up -d --build
+cd /srv/turnirko && git pull --autostash && sudo docker compose up -d --build
 ```
+
+`--autostash` je obvezen, ker ima `Caddyfile` na strezniku lokalen blok za projekt
+Pikado. Koda mora biti pred tem pushana na `main` (na racunalniku, v mapi `turnirko`).
+**Nikoli `docker compose down -v` ali `docker volume rm`**: zvezek `turnirko_turnirko_baza`
+je baza.
 
 Baza je v svojem vsebniku in zvezku (razdelek 4), zato posodobitev aplikacije ne
 izgubi podatkov. Migracije Flyway se izvedejo ob zagonu same (z vlogo

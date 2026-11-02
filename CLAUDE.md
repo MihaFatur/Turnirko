@@ -7,6 +7,81 @@
   izrazi ogrodij (Repository sufiks je preveden: `...Repozitorij`).
 - Komentarji pojasnjujejo ZAKAJ in domenska pravila, ne KAJ počne vrstica.
 
+## Delovni prostor, objava in varnost produkcije
+
+Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spremeniš.
+
+### Kje je koda in kam gredo spremembe
+
+- **Ena delovna mapa: `C:\Users\Miha\Desktop\Turnirko\turnirko`**: git repozitorij,
+  veja `main`, `origin` = `github.com/MihaFatur/Turnirko`. V njej beri, piši,
+  testiraj, commitaj in pushaj. Tudi `mvnw` in `npm` tečeta tam.
+- Nadrejena mapa `C:\Users\Miha\Desktop\Turnirko` **ni repozitorij**: v njej so
+  uvozni podatki, posnetki produkcije in prenosna lokalna baza (`pg18`).
+  Projektnih datotek tam ne ustvarjaj.
+- Mapa `turnirko-postgresql` je bila začasen *git worktree* (druga kopija istega
+  repozitorija na veji `prenova-baze`), narejen za selitev baze, da je glavna
+  mapa ostala prosta za druge seje. Po preklopu je veja vsebinsko enaka `main` in
+  mapa se pospravi (`git worktree remove`, veja `prenova-baze` se izbriše).
+  **Če jo še najdeš, v njej ne delaj**: povej uporabniku, naj se pospravi.
+- Začetek dela: `git status` in `git pull --ff-only`. Če je lokalni `main` zadaj
+  ali je v mapi tuje neshranjeno delo (isto mapo uporablja več sej), ustavi in
+  povej; ne prepisuj.
+- **Commitaj in pushaj samo, ko uporabnik to zahteva.** Vedno na `main`, nikoli
+  `--force`. Sporočilo commita slovensko: kaj in zakaj.
+
+### Objava na strežnik
+
+- Strežnik: `root@46.225.187.162`, mapa `/srv/turnirko`, naslov
+  `https://turnirko-nt.si`. Claude se nanj ne more prijaviti sam (SSH ključ ima
+  geslo): ukaz zažene z `run_in_terminal` (`ssh root@46.225.187.162 "..."`),
+  uporabnik v zavihek vpiše geslo ključa, izpis se bere z `read_terminal`. Pod
+  Windowsom odpadejo narekovaji v narekovajih, zato daljše ukaze daj v skripto v
+  repozitoriju in jo na strežniku samo pokliči.
+- Redna objava (koda je že pushana na `main`):
+  `cd /srv/turnirko && git pull --autostash && docker compose up -d --build`.
+  `--autostash` je obvezen: `Caddyfile` na strežniku ima lokalen blok za projekt
+  Pikado. Gradnja traja ~1,5 min, aplikacija je ~20 s nedosegljiva (Caddy kaže
+  stran Vzdrževanje). Migracije Flyway tečejo ob zagonu same.
+- Pred objavo, ki vsebuje migracijo, naredi ročno kopijo:
+  `skripte/varnostna-kopija.sh rocno` (gre tudi v oblak). Migracije so
+  enosmerne: povratek kode ne razveljavi sheme. Napako v migraciji popravi z
+  NOVO migracijo ali z obnovo kopije (`docs/OBJAVA.md`, »Obnova v sili«).
+- Po objavi: `docker compose ps` (`app` in `baza` morata biti `healthy`),
+  `skripte/preklop/po-preklopu.sh 10` (napake v dnevnikih in zaporedja) in
+  javni API.
+- Kopije: cron na strežniku (`skripte/baza/turnirko-kopije.cron`) vsako uro,
+  ponoči in mesečna vaja obnove; šifrirano odnašanje v Backblaze B2 (`rclone`,
+  `TURNIRKO_ODNASANJE` v `.env`). Gesla baze in `rclone.conf` hrani uporabnik v
+  upravitelju gesel.
+
+### Česa na strežniku in v bazi ne smeš
+
+- **Nikoli `docker compose down -v`, `docker volume rm` ali `docker volume
+  prune`**: zvezek `turnirko_turnirko_baza` JE baza. Brez izrecnega ukaza
+  uporabnika ga ne diraj.
+- Uveljavljene migracije se ne spreminjajo (Flyway preveri kontrolno vsoto).
+  Nova migracija gre **samo** v
+  `zaledje/src/main/resources/db/migration/postgresql/`; mapa `sqlite/` je
+  zamrznjena do faze 6 (pospravljanje, po 16. 11. 2026).
+- Aplikacija v produkciji teče kot `turnirko_app` (samo SELECT, INSERT, UPDATE,
+  DELETE); migracije kot `turnirko_lastnik`. Migracija ne sme predpostavljati
+  drugih pravic.
+- `uvoz`, `popravek` in `prenos` ne poganjaj nad produkcijsko bazo brez
+  kopije in izrecnega ukaza uporabnika.
+
+### Lokalno delo
+
+- Testi: `cd zaledje` in `.\mvnw.cmd test` z
+  `JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot`. Tečejo na
+  vgrajenem PostgreSQL, Docker ni potreben.
+- Frontend: `cd vmesnik` in `npm run dev` (vrata 5173; za podatke potrebuje
+  zaledje na vratih 8080).
+- Zaledje lokalno potrebuje PostgreSQL 18 (README, razdelek Zagon). Prenosna
+  namestitev je v `C:\Users\Miha\Desktop\Turnirko\pg18` (brez `psql`); zagon:
+  `pg18\bin\pg_ctl.exe -D pg18\podatki -o "-p 5433" -l pg18\pg.log start`.
+  Lokalna razvojna baza je testna in sme izgubiti podatke.
+
 ## Trdna pravila
 
 - Shemo baze spreminjaj SAMO z novo Flyway migracijo v `zaledje/src/main/resources/db/migration/postgresql/`
