@@ -81,14 +81,37 @@ case "$ukaz" in
 	primerjaj)
 		A="${2:?prvi posnetek}"
 		B="${3:?drugi posnetek}"
+		if [ "$(wc -l < "$A/kazalo.txt")" != "$(wc -l < "$B/kazalo.txt")" ]; then
+			echo "RAZLIKE: posnetka nimata enakega stevila poti."
+			exit 1
+		fi
 		if diff -q "$A/kazalo.txt" "$B/kazalo.txt" > /dev/null; then
 			echo "ENAKO: vseh $(wc -l < "$A/kazalo.txt") odgovorov se ujema do bajta."
 		else
-			echo "RAZLIKE (pot, status, SHA-256 prvega proti drugemu):"
-			join -t $'\t' -j 1 <(sort "$A/kazalo.txt") <(sort "$B/kazalo.txt") \
-				| awk -F'\t' '$2 != $4 || $3 != $5 { print "  " $1 "\t" $2 "/" $4 }'
-			echo "Podrobno: diff $A/<datoteka>.json $B/<datoteka>.json (ime = sha1 poti)."
-			exit 1
+			# Zgoscenka se razlikuje: pred razsodbo preglej vsebino. Seznam, ki je
+			# mnozica (idjiLig), SQLite vrne v vrstnem redu zapisa, PostgreSQL po
+			# id-ju; to ni razlika v podatkih (razlika-posnetkov.sh).
+			PRAVE=0
+			PREUREJENE=0
+			while IFS=$'\t' read -r pot s1 s2; do
+				[ -n "$pot" ] || continue
+				if [ "$s1" != "$s2" ]; then
+					echo "  RAZLIKA (status $s1/$s2): $pot"
+					PRAVE=$((PRAVE + 1))
+				elif "$(dirname "$0")/razlika-posnetkov.sh" --tiho "$pot" "$A" "$B" > /dev/null 2>&1; then
+					PREUREJENE=$((PREUREJENE + 1))
+				else
+					echo "  RAZLIKA (vsebina): $pot  -> skripte/preklop/razlika-posnetkov.sh '$pot' $A $B"
+					PRAVE=$((PRAVE + 1))
+				fi
+			done < <(join -t $'\t' -j 1 <(sort "$A/kazalo.txt") <(sort "$B/kazalo.txt") \
+				| awk -F'\t' '$2 != $4 || $3 != $5 { print $1 "\t" $2 "\t" $4 }')
+			if [ "$PRAVE" -eq 0 ]; then
+				echo "ENAKO po vsebini: $PREUREJENE odgovorov se razlikuje samo v vrstnem redu seznama id-jev (npr. idjiLig)."
+			else
+				echo "PRAVIH RAZLIK: $PRAVE"
+				exit 1
+			fi
 		fi
 		;;
 	*)
