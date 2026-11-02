@@ -90,10 +90,14 @@ fi
 
 # Preverba: kopija mora imeti kazalo in podatke tabel. Prazna ali okvarjena
 # datoteka je brez vrednosti, zato se izbrise, ne obdrzi.
-if ! baza pg_restore -l < "$CILJ.delno" | grep -q 'TABLE DATA'; then
-	rm -f "$CILJ.delno"
+# Brez cevovoda `pg_restore | grep -q`: grep -q se konca ob prvem zadetku, pg_restore
+# dobi SIGPIPE in zaradi pipefail bi dobra kopija propadla.
+if ! baza pg_restore -l < "$CILJ.delno" > "$CILJ.kazalo" 2> "$CILJ.kazalo.napaka" || ! grep -q 'TABLE DATA' "$CILJ.kazalo"; then
+	zapis "pg_restore -l: $(head -c 300 "$CILJ.kazalo.napaka" 2> /dev/null | tr '\n' ' ')" >&2
+	rm -f "$CILJ.delno" "$CILJ.kazalo" "$CILJ.kazalo.napaka"
 	napaka "kopija ni prestala preverbe (pg_restore -l)"
 fi
+rm -f "$CILJ.kazalo" "$CILJ.kazalo.napaka"
 mv "$CILJ.delno" "$CILJ"
 
 # Stevilo vrstic po tabelah ob kopiji: vaja obnove (vaja-obnove.sh) po njem
