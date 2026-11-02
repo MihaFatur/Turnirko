@@ -1,0 +1,12 @@
+# Varnostne kopije baze Turnirko (PostgreSQL). Namesti se v /etc/cron.d:
+#
+#     sudo install -m 644 skripte/baza/turnirko-kopije.cron /etc/cron.d/turnirko-kopije
+#
+# Cas je cas STREZNIKA (UTC). Uro 5-22 UTC pokrije 7-23 po slovenskem casu pozimi
+# (UTC+1) in poleti (UTC+2: 7-24); nocna kopija ob 2.20 UTC je ob 3.20 pozimi.
+# Skripte so bash (pipefail), zato se kliceju neposredno, ne prek `sh`.
+# Pot do skript je /srv/turnirko; drugje spremeni vse tri vrstice.
+
+0 5-22 * * * root /srv/turnirko/skripte/varnostna-kopija.sh ura >> /srv/turnirko/dnevniki/kopije.log 2>&1
+20 2 * * * root /srv/turnirko/skripte/varnostna-kopija.sh noc >> /srv/turnirko/dnevniki/kopije.log 2>&1
+30 4 2 * * root /srv/turnirko/skripte/vaja-obnove.sh >> /srv/turnirko/dnevniki/vaja-obnove.log 2>&1
