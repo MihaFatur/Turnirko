@@ -45,8 +45,25 @@ korak "3/9 Shranim staro sliko aplikacije (povratna pot)"
 ID_STARE=$(docker compose ps -q app)
 [ -n "$ID_STARE" ] || napaka "aplikacija ne tece - preklop mora iti iz delujocega stanja"
 STARA_SLIKA=$(docker inspect -f '{{.Image}}' "$ID_STARE")
-docker tag "$STARA_SLIKA" turnirko-app:pred-preklopom || napaka "slike ni bilo mogoce oznaciti"
-zapis "stara slika: $STARA_SLIKA -> turnirko-app:pred-preklopom"
+# Slika, iz katere tece vsebnik, ni nujno se v shrambi: ko pred-preklopom.sh
+# zgradi novo sliko z istim imenom, stara izgubi ime in jo shramba (containerd)
+# odstrani, vsebnik pa tece naprej. Zato po vrsti: ime po stevilki, stanje
+# delujocega vsebnika, gradnja iz oznake zadnje razlicice za SQLite.
+if docker tag "$STARA_SLIKA" turnirko-app:pred-preklopom 2> /dev/null; then
+	zapis "stara slika: $STARA_SLIKA -> turnirko-app:pred-preklopom"
+elif docker commit --pause=false "$ID_STARE" turnirko-app:pred-preklopom > /dev/null 2>&1; then
+	zapis "stare slike ni vec v shrambi: shranjeno stanje delujocega vsebnika -> turnirko-app:pred-preklopom"
+else
+	zapis "commit ni uspel: gradim staro sliko iz oznake sqlite-zadnja (nekaj minut; aplikacija tece)"
+	MAPA_STARA=$(mktemp -d)
+	git archive sqlite-zadnja | tar -x -C "$MAPA_STARA" && docker build -q -t turnirko-app:pred-preklopom "$MAPA_STARA" > /dev/null
+	RC_STARA=$?
+	rm -rf "$MAPA_STARA"
+	[ "$RC_STARA" -eq 0 ] || napaka "stare slike ni bilo mogoce shraniti (aplikacija tece, nic ni spremenjeno)"
+fi
+# Povratna pot je vredna toliko, kolikor se slika zazene: preveri jo PRED ustavitvijo.
+docker run --rm --entrypoint java turnirko-app:pred-preklopom -version > /dev/null 2>&1 || napaka "shranjena stara slika se ne zazene (aplikacija tece, nic ni spremenjeno)"
+zapis "shranjena slika se zazene (java -version ok)"
 
 korak "4/9 Ustavim aplikacijo (od tu naprej gledalci vidijo stran Vzdrzevanje)"
 docker compose stop app || napaka "aplikacije ni bilo mogoce ustaviti"
