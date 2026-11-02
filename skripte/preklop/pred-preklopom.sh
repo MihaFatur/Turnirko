@@ -65,7 +65,7 @@ if caka_zdrav baza 90; then
 	ok "baza je zdrava"
 	VLOGE=$(docker compose exec -T baza psql -U postgres -d turnirko -At -c "SELECT string_agg(rolname, ',' ORDER BY rolname) FROM pg_roles WHERE rolname LIKE 'turnirko_%'" 2> /dev/null || true)
 	[ "$VLOGE" = "turnirko_app,turnirko_lastnik" ] && ok "vlogi turnirko_lastnik in turnirko_app obstajata" || tezava "vlog ni ('$VLOGE'): zvezek turnirko_baza je bil ustvarjen brez skripte 00-vloge.sh"
-	TABEL=$(docker compose exec -T baza psql -U postgres -d turnirko -At -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> 'flyway_schema_history'" 2> /dev/null || echo "?")
+	TABEL=$(docker compose exec -T baza psql -U postgres -d turnirko -At -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> 'flyway_schema_history'" 2> /dev/null || echo "?")
 	[ "$TABEL" = "0" ] && ok "baza je prazna (brez tabel)" || tezava "baza ni prazna ($TABEL tabel): prenos gre samo v prazno bazo (izprazni z: docker compose down baza && docker volume rm \$(docker volume ls -q | grep turnirko_baza))"
 else
 	tezava "baza ne postane zdrava v 90 s (docker compose logs baza)"
