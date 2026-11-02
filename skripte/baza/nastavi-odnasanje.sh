@@ -36,6 +36,12 @@ esac
 read -r -p "Application Key ID (B2): " ID
 read -r -s -p "Application Key (B2, skrito): " KLJUC
 echo
+# Presledki in znaki za novo vrstico se radi prilepijo zraven.
+ID=${ID//[[:space:]]/}
+KLJUC=${KLJUC//[[:space:]]/}
+# Dolzina in zacetek, ne vsebina: pokaze, ali se je lepljenje posrecilo.
+# Pravi keyID ima 25 znakov (zacne se z 003), applicationKey 31 (zacne se s K003).
+echo "  keyID: ${#ID} znakov (pricakovano 25); applicationKey: ${#KLJUC} znakov, zacne se s '${KLJUC:0:4}' (pricakovano 31, 'K003')"
 [ -n "$ID" ] && [ -n "$KLJUC" ] || { echo "ID in kljuc sta obvezna."; exit 1; }
 
 rclone config create b2 b2 account "$ID" key "$KLJUC" hard_delete true no_check_bucket true --non-interactive > /dev/null
