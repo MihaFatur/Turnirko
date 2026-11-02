@@ -56,7 +56,7 @@ export function ListkiSrecanjaStran() {
 
   /* null = uporabi privzeto predlogo lige; sicer zacasna izbira za ta natis. */
   const [varianta, nastaviVarianto] = useState<PredlogaLige | null>(null)
-  /* null = zadnje izbire ni: velja privzetek formata. */
+  /* null = zadnje izbire ni: velja privzetek (spodaj). */
   const [izbranaOblika, nastaviObliko] = useState<OblikaZapisnika | null>(preberiOblikoZapisnika)
   const merilo = useMeriloLista(SIRINA_LEZECEGA_LISTA_PX)
 
@@ -67,7 +67,11 @@ export function ListkiSrecanjaStran() {
   /* Ekipna tekma turnirja nima lige in zato ne predloge (null). */
   const izbrana: PredlogaLige | null =
     srecanje.idLiga == null ? null : (varianta ?? liga.data?.predlogaListka ?? 'SNTL_23')
-  const oblika: OblikaZapisnika = izbranaOblika ?? privzetaOblika(podrobno.data.format)
+  /* Liga vedno začne z ležečim zapisnikom, ne glede na format; uradni obrazec
+     NTZS je izbira za posamezen natis. Ekipna tekma turnirja lige nima in
+     ostane pri privzetku formata. */
+  const oblika: OblikaZapisnika =
+    izbranaOblika ?? (srecanje.idLiga != null ? 'TURNIRKO' : privzetaOblika(podrobno.data.format))
   const lezeci = oblika === 'TURNIRKO'
 
   const izberi = (izbira: IzbiraObrazca) => {

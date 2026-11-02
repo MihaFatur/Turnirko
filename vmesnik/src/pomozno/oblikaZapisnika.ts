@@ -4,8 +4,9 @@
 
    Oblika ni pravilo tekmovanja - shema je ne pozna, vsi podatki so isti -,
    zato jo izbere tisk. Zadnja izbira ostane v brskalniku (organizator ponovno
-   natisne ob vsakem kolu); brez nje velja privzetek formata, saj je Turnirkov
-   zapisnik narejen po zapisniku, ki ga igra format Savinja. */
+   natisne ob vsakem kolu); brez nje ima liga ležeči zapisnik, ekipna tekma
+   turnirja pa privzetek formata (Turnirkov zapisnik je narejen po zapisniku,
+   ki ga igra format Savinja). */
 import type { FormatSrecanja, PredlogaLige } from '../api/tipi'
 
 export type OblikaZapisnika = 'NTZS' | 'TURNIRKO'
@@ -38,7 +39,8 @@ export function shraniOblikoZapisnika(oblika: OblikaZapisnika): void {
 }
 
 /* Brez shranjene izbire: format Savinja (2 igralca, dvojice prve) dobi
-   Turnirkov zapisnik, ostali uradnega. */
+   Turnirkov zapisnik, ostali uradnega. Liga tega privzetka ne uporablja - vedno
+   začne z ležečim (ListkiSrecanjaStran). */
 export function privzetaOblika(format: FormatSrecanja | null | undefined): OblikaZapisnika {
   return format === 'SAVINJA' ? 'TURNIRKO' : 'NTZS'
 }
