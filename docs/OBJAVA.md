@@ -321,6 +321,15 @@ povezave in mapa gresta v `.env`:
 TURNIRKO_ODNASANJE=oblak-sifrirano:turnirko-kopije
 ```
 
+**Hitra pot (Backblaze B2, 2. 11. 2026):** v spletni konzoli B2 ustvari zasebno vedro in
+aplikacijski kljuc, omejen na to vedro (Read and Write), nato na strezniku
+`ssh -t root@streznik "cd /srv/turnirko && skripte/baza/nastavi-odnasanje.sh <ime-vedra>"`.
+Skripta vpraseje keyID in applicationKey (skrito), sama ustvari sifrirno plast (imena in
+vsebina, gesli samo v rclone.conf), preizkusi zapis in branje, pokaze nerazumljiva imena v
+vedru in vpise `TURNIRKO_ODNASANJE=kopije:turnirko` v `.env`. Po koncu **skopiraj celo
+`/root/.config/rclone/rclone.conf` v upravitelj gesel**: brez nje kopij v oblaku ni mogoce prebrati.
+ApplicationKey ima 31 znakov in se zacne s `K003`; pokaze se samo ob nastanku kljuca.
+
 Preizkusi: `./skripte/varnostna-kopija.sh rocno`. V dnevniku mora pisati
 `odneseno: ...`; vsak dan brez tega je opozorilo `odnasanje ni nastavljeno`.
 

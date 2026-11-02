@@ -49,10 +49,13 @@ streznikih tece se projekt Pikado (omrezje `turnirko_default`, blok v
 samodejna kopija (cron je bil prazen). Windows OpenSSH odstrani znak `"` iz
 ukaza: daljse ukaze na streznik daj v skripto v repozitoriju.
 
+**Odnasanje kopij izven streznika je nastavljeno (2. 11. 2026):** Backblaze B2 v EU, sifrirano z
+`rclone` crypt (`skripte/baza/nastavi-odnasanje.sh`), prva kopija v oblaku obnovljena (46 tabel,
+803.821 vrstic, vsa stetja se ujemajo). `rclone.conf` mora biti shranjen tudi izven streznika.
+
 **Odprto po preklopu:** gesla baze (`.env`) v upravitelj gesel; kopijo SQLite
 (`kopije/sqlite-pred-preklopom-20261102-142951.db`) prenesti s streznika in jo
-hraniti 3 mesece; sifrirano odnasanje kopij (`rclone`, `TURNIRKO_ODNASANJE`);
-teden opazovanja (`skripte/baza-stanje.sh`, `po-preklopu.sh`); faza 6
+hraniti 3 mesece; teden opazovanja (`skripte/baza-stanje.sh`, `po-preklopu.sh`); faza 6
 (pospravljanje) po dveh tednih brez tezav, torej po 16. 11. 2026.
 
 ## Kaj se spremeni in zakaj
