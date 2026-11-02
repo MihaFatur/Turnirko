@@ -133,7 +133,10 @@ services:
       # Ob prvem zagonu (prazen zvezek) ustvari vlogi in pravice.
       - ./skripte/baza/00-vloge.sh:/docker-entrypoint-initdb.d/00-vloge.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d turnirko"]
+      # Prek TCP, ne prek vtica: streznik, ki ga docker-entrypoint zazene
+      # samo za cas prve nastavitve (skripta 00-vloge.sh), poslusa le na vticu
+      # in bi sicer javil "zdrava", preden sta vlogi ustvarjeni.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d turnirko"]
       interval: 10s
       timeout: 5s
       retries: 6

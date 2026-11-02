@@ -29,7 +29,7 @@ set -eo pipefail
 # SQLite; slovenski vrstni red ureja Java. Drugacna baza bi tiho spremenila
 # vrstni red povsod, kjer ga poizvedbe privzemajo - zato raje ne zazeni.
 IZVEDENO=$(psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -At \
-	-c "SELECT datlocprovider || ':' || datlocale FROM pg_database WHERE datname = current_database()")
+	-c "SELECT datlocprovider::text || ':' || datlocale FROM pg_database WHERE datname = current_database()")
 if [ "$IZVEDENO" != "b:C.UTF-8" ]; then
 	echo "NAPAKA: baza $POSTGRES_DB ima razvrscanje '$IZVEDENO', pricakovano 'b:C.UTF-8' (builtin C.UTF-8)." >&2
 	echo "Preveri POSTGRES_INITDB_ARGS v compose.yaml in zvezek turnirko_baza pred prvim zagonom izprazni." >&2
