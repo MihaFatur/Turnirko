@@ -12,24 +12,13 @@ Ce se odlocas, ali sploh objaviti, preberi najprej razdelek
 | Brez privzetega admin gesla | urejeno | `ZacetniAdmin` |
 | HTTPS | pripravljeno | `Caddyfile` |
 | Vmesnik in API v enem izdelku | urejeno | Mavnov profil `splet`, `SpletniVmesnik` |
-| Varnostne kopije | skripta pripravljena | `skripte/varnostna-kopija.sh` |
+| Baza PostgreSQL | pripravljena | `compose.yaml` (storitev `baza`), razdelek 4 |
+| Varnostne kopije | skripte pripravljene | `skripte/varnostna-kopija.sh`, `skripte/vaja-obnove.sh` |
+| Selitev s SQLite | pripravljena | `docs/PREKLOP.md` |
 
 Kar **ni** urejeno in ostane pred prvim tujim pilotom: starsevska soglasja
 za mladoletnike, pogodba o obdelavi podatkov s klubom in dnevnik
 sprememb (kdo je kaj popravil). Glej `RAZVOJNI-NACRT.md`, razdelek 7.
-
-## Kdaj objava sploh ni potrebna
-
-Za prve turnirje zadostuje namizna razlicica na prenosniku v dvorani:
-
-```bash
-java -jar turnirko-zaledje-0.1.0.jar --spring.profiles.active=namizni
-```
-
-Brskalnik se odpre sam, gledalci na istem Wi-Fi-ju stran odprejo prek
-naslova tvojega racunalnika. Nic ni na spletu, osebni podatki ne zapustijo
-prenosnika. Splet je smiseln sele, ko naj rezultate spremljajo ljudje, ki
-niso v dvorani.
 
 ## Kaj potrebujes
 
@@ -56,7 +45,7 @@ Ustvari VPS z **Ubuntu**. Prijavi se s **kljucem SSH**, ne z geslom.
 Nato na strezniku:
 
 ```bash
-sudo apt update && sudo apt install -y docker.io docker-compose-v2 sqlite3 git
+sudo apt update && sudo apt install -y docker.io docker-compose-v2 git
 sudo ufw allow OpenSSH && sudo ufw allow 80 && sudo ufw allow 443 && sudo ufw enable
 ```
 
@@ -83,15 +72,89 @@ javnem DNS. Let's Encrypt lastnistvo preveri tako, da se na domeno poveze po
 vratih 80; ce ta se kaze drugam, izdaja certifikata spodleti in po nekaj
 poskusih te zacasno zavrne. Preveri z `nslookup turnirko-nt.si 8.8.8.8`.
 
-### 4. Mapa za bazo
+### 4. Baza PostgreSQL in mapa za datoteke
+
+Vsi podatki Turnirka (igralci, turnirji, rezultati, rating, racuni) so v
+**bazi PostgreSQL**. Baza je poseben program, ki tece v svojem vsebniku
+(storitev `baza` v `compose.yaml`) in skrbi za podatke; aplikacija ji samo
+pise in jo bere po omrezju znotraj streznika. Od zunaj do nje ne pride
+nihce: njena vrata niso objavljena, tako kot vrata aplikacije.
+
+**Podatki ne lezijo v mapi, ampak v Dockerjevem zvezku** (`turnirko_baza`).
+Zvezek je prostor na disku, ki ga upravlja Docker in ki prezivi vsako
+posodobitev vsebnika. Zato velja pravilo: **mape ali zvezka baze nikoli ne
+kopiraj** (kopija med delovanjem je okvarjena) - kopije delaj samo s skripto
+`skripte/varnostna-kopija.sh` (razdelek 7).
+
+**Kaj je vloga?** Baza ima svoje uporabnike, imenovane vloge, in vsaka sme
+samo tisto, kar potrebuje. Turnirko uporablja tri:
+
+| Vloga | Kdo jo uporablja | Kaj sme |
+|---|---|---|
+| `postgres` (skrbnik) | ti, rocno | vse; za vzdrzevanje in kopije |
+| `turnirko_lastnik` | Flyway ob zagonu, ukazi `uvoz` / `popravek` / `prenos` | gradi in spreminja tabele |
+| `turnirko_app` | delujoca aplikacija | samo branje in pisanje vrstic |
+
+Zakaj tri: ce kdo vdre v aplikacijo, dobi v roke samo `turnirko_app` in ne
+more ne zbrisati tabel ne spremeniti sheme. Aplikacija ima poleg tega
+omejitve: poizvedba, ki tece dlje kot 30 s, se ustavi; cakanje na zaklep
+konca po 5 s; transakcija, ki 60 s samo caka, se prekine. Ena pozabljena
+poizvedba tako ne more ustaviti turnirja.
+
+Pred prvim zagonom v `.env` vpisi tri **razlicna** gesla (vsako ustvari z
+`openssl rand -base64 24`): `TURNIRKO_BAZA_ADMIN_GESLO`,
+`TURNIRKO_BAZA_LASTNIK_GESLO`, `TURNIRKO_BAZA_APP_GESLO`. Vloge ustvari
+skripta `skripte/baza/00-vloge.sh` **samo ob prvem zagonu** (ko je zvezek
+prazen), zato gesel kasneje ne zamenjas s spremembo `.env` - glej spodaj.
+
+Potem pripravi mapo za datoteke aplikacije (posnetki Stupe, porocila uvoza):
 
 ```bash
 mkdir -p podatki dnevniki kopije
 sudo chown -R 10001:10001 podatki
+chmod +x skripte/*.sh skripte/baza/*.sh
 ```
 
 Stevilka 10001 je uporabnik, pod katerim tece aplikacija v vsebniku (glej
-`Dockerfile`); brez tega v bazo ne bo mogla pisati.
+`Dockerfile`); brez tega v mapo ne bo mogla pisati.
+
+**Pregled baze.** Ukazna vrstica baze (`psql`):
+
+```bash
+sudo docker compose exec baza psql -U postgres -d turnirko
+```
+
+Primer: `SELECT count(*) FROM igralec;`, izhod z `\q`. Za grafični pregled od
+doma (DBeaver, pgAdmin) uporabi tunel SSH; vrata baze namrec niso objavljena,
+zato tunel pokaze na naslov vsebnika:
+
+```bash
+# na strezniku: naslov vsebnika baze
+sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' turnirko-baza-1
+# doma (naslov vstavi namesto 172.18.0.2):
+ssh -L 5433:172.18.0.2:5432 <uporabnik>@<streznik>
+```
+
+Nato se v DBeaverju povezes na `localhost:5433`, baza `turnirko`, uporabnik
+`postgres`, geslo iz `.env`. Pazi: skrbnik sme vse, tudi zbrisati; za
+branje je varnejsa vloga `turnirko_app`.
+
+**Zamenjava gesla baze.** Spremenjen `.env` gesla v obstojecem zvezku ne
+spremeni. Gesli vlog zamenjas v bazi, nato v `.env`, nato zazenes aplikacijo:
+
+```bash
+sudo docker compose exec baza psql -U postgres -c "ALTER ROLE turnirko_app PASSWORD 'novo-geslo'"
+nano .env                                   # isto geslo v TURNIRKO_BAZA_APP_GESLO
+sudo docker compose up -d app
+```
+
+(Geslo brez enojnih narekovajev; ustvari ga z `openssl rand -hex 24`.) Isto
+velja za `turnirko_lastnik` in `TURNIRKO_BAZA_LASTNIK_GESLO`.
+
+**Nova glavna razlicica PostgreSQL** (iz 18 v 19) NI posodobitev: zvezka
+starejse glavne razlicice nova slika ne odpre. Takrat naredi kopijo, ustvari
+novo bazo na novi sliki in kopijo obnovi (`skripte/obnovi-bazo.sh`). Manjse
+razlicice (18.6 -> 18.7) zamenjas samo z imenom slike v `compose.yaml`.
 
 ### 5. Zagon
 
@@ -204,21 +267,72 @@ prebran.
 
 ### 7. Varnostne kopije
 
+Kopije delata dve skripti: `skripte/varnostna-kopija.sh` (naredi kopijo) in
+`skripte/vaja-obnove.sh` (preveri, da se kopija res da obnoviti). Kopija je
+datoteka `.dump`, ki jo naredi ukaz **pg_dump**: bere bazo kot ena dosledna
+slika tocno ob zacetku, tudi ce vmes nekdo vnasa rezultate, in je stisnjena
+(~20 MB). Obnovi jo ukaz `pg_restore`.
+
+Tri vrste kopij, vsaka v svoji podmapi mape `kopije/`:
+
+| Vrsta | Kdaj | Koliko casa se hrani |
+|---|---|---|
+| `ura` | vsako uro med 7. in 23. uro | 48 ur |
+| `noc` | vsako noc ob 3.20 | 30 dni |
+| `mesec` | prvi dan v mesecu (kopija nocne) | 12 mesecev |
+
+Najslabsi primer ob izgubi streznika je tako izgubljena ura vnosov (ti so
+tudi na papirnatih listkih). Namesti `rclone` (odnasanje, spodaj) in dodaj v
+crontab (`crontab -e`):
+
+```
+0 7-23 * * * /srv/turnirko/skripte/varnostna-kopija.sh ura >> /srv/turnirko/dnevniki/kopije.log 2>&1
+20 3 * * *   /srv/turnirko/skripte/varnostna-kopija.sh noc >> /srv/turnirko/dnevniki/kopije.log 2>&1
+30 4 2 * *   /srv/turnirko/skripte/vaja-obnove.sh >> /srv/turnirko/dnevniki/vaja-obnove.log 2>&1
+```
+
+Zadnja vrstica je **mesecna vaja obnove**: skripta zadnjo nocno kopijo
+obnovi v zacasen vsebnik (produkcijska baza ostane nedotaknjena), prestej
+vrstice vsake tabele in jih primerja s stetjem, zapisanim ob kopiji. Kopija,
+ki je nihce ni obnovil, ni kopija. Uspeh ali napako najdes v
+`dnevniki/vaja-obnove.log`; prvic jo pozeni rocno.
+
+**Odnasanje s streznika** je obvezno: kopije na istem strezniku propadejo
+skupaj z njim. Kopija vsebuje osebne podatke (datume rojstva), zato naj bo
+shramba v **EU** in kopije **sifrirane**. Postopek z `rclone`:
+
 ```bash
-chmod +x skripte/varnostna-kopija.sh
-crontab -e
+sudo apt install -y rclone
+rclone config
 ```
 
-Dodaj:
+V `rclone config` ustvari (1) povezavo na shrambo S3 (Hetzner Object Storage,
+Backblaze B2 EU ... ~1 EUR/mesec; ponudnik ti da kljuc in naslov), nato (2)
+povezavo tipa **crypt**, ki kaze na prvo in sifrira imena datotek in vsebino
+z geslom, ki ga shranis ZUNAJ streznika (v upravitelj gesel). Ime druge
+povezave in mapa gresta v `.env`:
 
 ```
-20 3 * * * /srv/turnirko/skripte/varnostna-kopija.sh >> /srv/turnirko/dnevniki/kopije.log 2>&1
+TURNIRKO_ODNASANJE=oblak-sifrirano:turnirko-kopije
 ```
 
-Nato **enkrat rocno pozeni skripto in preizkusi obnovitev** na svojem
-racunalniku. Kopija, ki je nisi nikoli odprl, ni kopija. In uredi
-odnasanje kopij s streznika (glej komentar na koncu skripte) - kopije na
-istem strezniku propadejo skupaj z njim.
+Preizkusi: `./skripte/varnostna-kopija.sh rocno`. V dnevniku mora pisati
+`odneseno: ...`; vsak dan brez tega je opozorilo `odnasanje ni nastavljeno`.
+
+**Obnova v sili.** Najprej poglej, kaj je kopija (`ls -lt kopije/noc | head`),
+nato:
+
+```bash
+./skripte/obnovi-bazo.sh kopije/noc/turnirko-20261101-032000.dump
+```
+
+Skripta vpraša za potrditev (obstojeca baza se zbrise), pred tem naredi se
+kopijo trenutnega stanja v `kopije/pred-obnovo/`. Po obnovi izgubis vse, kar je
+bilo vneseno po kopiji. Ce je streznik izgubljen, ga postavi znova po
+razdelkih 2-5, kopijo prenesi iz shrambe (`rclone copy`) in obnovi z isto
+skripto.
+
+Statistika obiska (Umami, razdelek 8) ima svojo bazo in NI v teh kopijah.
 
 ### 8. Statistika obiska (Umami)
 
@@ -278,7 +392,7 @@ pravilen.
 Ko hoces novejso, preberi opombe ob izdaji, zamenjaj oznako slike in pozeni
 `sudo docker compose up -d umami`.
 
-Statistika ni v nocni varnostni kopiji (ta kopira samo `turnirko.db`).
+Statistika ni v varnostni kopiji baze Turnirka (ta kopira samo bazo `turnirko`).
 Ce jo izgubis, izgubis samo zgodovino obiska; turnirjev to ne prizadene.
 
 ## Posodobitev
@@ -287,65 +401,43 @@ Ce jo izgubis, izgubis samo zgodovino obiska; turnirjev to ne prizadene.
 cd /srv/turnirko && git pull && sudo docker compose up -d --build
 ```
 
-Baza je izven vsebnika (mapa `podatki/`), zato posodobitev ne izgubi
-podatkov. Migracije Flyway se izvedejo ob zagonu same. Pred vecjo
-posodobitvijo vseeno pozeni varnostno kopijo rocno.
+Baza je v svojem vsebniku in zvezku (razdelek 4), zato posodobitev aplikacije ne
+izgubi podatkov. Migracije Flyway se izvedejo ob zagonu same (z vlogo
+`turnirko_lastnik`). Med posodobitvijo Caddy pokaze stran »Turnirko je v
+vzdrzevanju«. Pred vecjo posodobitvijo pozeni varnostno kopijo rocno:
+`./skripte/varnostna-kopija.sh rocno`.
 
-### Enkratni popravek zgodovine (oktober 2026)
+### Ukazi nad bazo: uvoz, popravek, prenos
 
-Ta posodobitev prinese tudi popravek ze uvozene zgodovine NTZS
-(`PopravekZgodovineUkaz`, glej `../uvoz-stara-ntzs/README.md`). Popravek
-tece na TVOJEM racunalniku nad kopijo baze (potrebuje pretvorbo stare strani,
-ki je na strezniku ni, in dostop do Stupe), zato je postopek tak:
+Trije ukazi aplikacije delajo nad bazo mimo spletnega vmesnika: `uvoz`
+(zgodovina NTZS v prazno bazo), `popravek` (popravek uvozene zgodovine) in
+`prenos` (enkratna selitev iz SQLite, `docs/PREKLOP.md`). Tecejo kot
+samostojen zagon aplikacije in morajo imeti pravice **lastnika** baze
+(`turnirko_lastnik`), ne aplikacije (`turnirko_app`).
 
-0. Spremembe morajo biti v repozitoriju (commit in push), da jih streznik v
-   4. koraku dobi z `git pull`. Popravek pozeni z ISTO kodo, kot jo objavis:
-   migracije V38-V40 se izvedejo ze nad kopijo.
+`uvoz` in `popravek` potrebujeta mape, ki jih na strezniku ni (pretvorjena
+stara stran, posnetki Stupe), zato tecejo **na tvojem racunalniku nad kopijo
+baze** - tako kot prej nad kopijo datoteke SQLite:
 
-1. Na strezniku ustavi aplikacijo, da se baza vmes ne spremeni, in naredi kopijo:
+1. Na strezniku ustavi aplikacijo, da se baza vmes ne spremeni, in naredi
+   kopijo: `sudo docker compose stop app && ./skripte/varnostna-kopija.sh rocno`.
+2. Kopijo prenesi domov (`scp`), v lokalni PostgreSQL 18 ustvari bazo
+   `turnirko` (`CREATE DATABASE turnirko ENCODING 'UTF8' LOCALE_PROVIDER
+   builtin BUILTIN_LOCALE 'C.UTF-8' TEMPLATE template0;`) in jo obnovi:
+   `pg_restore -d turnirko --no-owner <kopija.dump>`.
+3. V mapi `zaledje` pozeni ukaz nad lokalno bazo, na primer popravek:
+   `./mvnw spring-boot:run -Dspring-boot.run.profiles=popravek "-Dspring-boot.run.arguments=--spring.datasource.url=jdbc:postgresql://localhost:5432/turnirko --spring.datasource.username=postgres"`.
+4. Popravljeno bazo shrani (`pg_dump -Fc turnirko > popravljena.dump`), jo
+   prenesi na streznik in obnovi s `./skripte/obnovi-bazo.sh popravljena.dump`.
 
-   ```bash
-   cd /srv/turnirko && sudo docker compose stop app
-   ./skripte/varnostna-kopija.sh
-   ls -t kopije | head -1
-   ```
+Aplikacija je med tem nedosegljiva, zato to naredi takrat, ko se ne igra.
 
-2. Na svojem racunalniku kopijo prenesi in razsiri (skripta jo stisne v
-   `.db.gz`; ime datoteke iz prejsnjega koraka):
-
-   ```bash
-   scp <uporabnik>@<streznik>:/srv/turnirko/kopije/turnirko-<cas>.db.gz .
-   gunzip -c turnirko-<cas>.db.gz > produkcija.db
-   ```
-
-3. V mapi `zaledje` pozeni popravek nad to kopijo (traja ~30 minut, na koncu
-   se ustavi sam in izpise povzetek; podrobno porocilo je v
-   `../../popravek-porocilo.csv`, torej v mapi nad repozitorijem):
-
-   ```bash
-   ./mvnw spring-boot:run -Dspring-boot.run.profiles=popravek "-Dspring-boot.run.arguments=--spring.datasource.url=jdbc:sqlite:<pot>/produkcija.db --server.port=0"
-   ```
-
-   Preden bazo nalozis nazaj, preveri: povzetek nima vrstic z `NAPAKA` ali
-   `ZAVRNJENIH`, ob `produkcija.db` pa ni datoteke `produkcija.db-wal` (ce je,
-   se zagon ni koncal pravilno - ne nalagaj, pozeni znova nad svezo kopijo).
-
-4. Popravljeno bazo nalozi nazaj, staro shrani, nato posodobi in zazeni:
-
-   ```bash
-   scp produkcija.db <uporabnik>@<streznik>:/tmp/turnirko-popravljena.db
-   # na strezniku:
-   cd /srv/turnirko
-   sudo mv podatki/turnirko.db podatki/turnirko.db.pred-popravkom
-   sudo rm -f podatki/turnirko.db-wal podatki/turnirko.db-shm
-   sudo mv /tmp/turnirko-popravljena.db podatki/turnirko.db
-   sudo chown 10001:10001 podatki/turnirko.db
-   git pull && sudo docker compose up -d --build
-   ```
-
-Ce gre kaj narobe, vrni `podatki/turnirko.db.pred-popravkom` na mesto in
-zazeni prejsnjo razlicico. Aplikacija je med postopkom nedosegljiva (~45
-minut), zato ga naredi takrat, ko se ne igra.
+SQL skripte za uvoze (`psql`) gredo v bazo na strezniku z
+`sudo docker compose exec -T baza psql -U postgres -d turnirko -v ON_ERROR_STOP=1 --single-transaction < uvoz.sql`.
+Aplikacije ni treba ustavljati: skripta je ena transakcija in gledalci do
+potrditve vidijo staro stanje. Po uvozu tekem je treba rating preracunati
+(stran Rating). V skriptah SQLite zamenjaj `INSERT OR IGNORE` z `ON CONFLICT
+DO NOTHING` in `last_insert_rowid()` z `RETURNING id`.
 
 ## Lokalni prevod brez Dockerja
 

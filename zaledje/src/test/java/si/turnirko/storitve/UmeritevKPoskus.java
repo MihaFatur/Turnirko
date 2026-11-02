@@ -9,7 +9,7 @@
 
    Zagon (vsak faktor nad svojo kopijo baze, ker preracun bazo prepise):
 
-     mvnw test -Dtest=UmeritevKPoskus -Dturnirko.umeritev.baza=<kopija.db>
+     mvnw test -Dtest=UmeritevKPoskus -Dturnirko.umeritev.baza=<naslov JDBC kopije>
          -Dturnirko.umeritev.k=0.9
 
    Brez lastnosti turnirko.umeritev.baza se ne izvede. */
@@ -40,7 +40,7 @@ class UmeritevKPoskus {
 
     @DynamicPropertySource
     static void baza(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", () -> "jdbc:sqlite:" + System.getProperty("turnirko.umeritev.baza"));
+        r.add("spring.datasource.url", () -> System.getProperty("turnirko.umeritev.baza"));
     }
 
     @TestConfiguration

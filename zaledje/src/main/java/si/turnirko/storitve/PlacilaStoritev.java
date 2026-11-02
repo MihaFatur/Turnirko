@@ -98,6 +98,7 @@ public class PlacilaStoritev {
     private final StripeNarocnine stripe;
     private final RacunDnevnikStoritev racunDnevnik;
     private final KodePopustaStoritev kodePopusta;
+    private final Zaklepi zaklepi;
 
     public PlacilaStoritev(
             @Value("${turnirko.stripe.tajni-kljuc:}") String tajniKljuc,
@@ -112,7 +113,8 @@ public class PlacilaStoritev {
             PasswordEncoder kodirnik,
             StripeNarocnine stripe,
             RacunDnevnikStoritev racunDnevnik,
-            KodePopustaStoritev kodePopusta) {
+            KodePopustaStoritev kodePopusta,
+            Zaklepi zaklepi) {
         Stripe.apiKey = tajniKljuc;
         this.webhookSkrivnost = webhookSkrivnost;
         this.vrniNaKoren = vrniNaKoren;
@@ -126,6 +128,7 @@ public class PlacilaStoritev {
         this.stripe = stripe;
         this.racunDnevnik = racunDnevnik;
         this.kodePopusta = kodePopusta;
+        this.zaklepi = zaklepi;
     }
 
     // ---------- Zacetek placila: nova registracija ----------
@@ -192,6 +195,9 @@ public class PlacilaStoritev {
             nova.setIdKoda(koda.getId());
         }
         CakajocaRegistracija cakajoca = cakajoce.save(nova);
+        if (koda != null && !kodePopusta.potrdiRezervacijo(koda.getId(), cakajoca.getId(), email)) {
+            throw new NeveljavenVnosIzjema(KodePopustaStoritev.NEVELJAVNA_KODA);
+        }
 
         SessionCreateParams.Builder seja = osnovaSeje(vnos.paket(), vnos.ciklus())
                 .setCustomerEmail(email)
@@ -309,6 +315,10 @@ public class PlacilaStoritev {
         } catch (SignatureVerificationException e) {
             throw new NeveljavenVnosIzjema("Neveljaven podpis Stripe webhooka.");
         }
+        /* Stripe isti dogodek lahko dostavi dvakrat hkrati: preverba "ze
+           obdelano" in zapis morata teci eden za drugim. Dogodkov je malo, zato
+           en zaklep za vse. */
+        zaklepi.zakleni(Zaklepi.Vrsta.STRIPE, 0);
 
         switch (event.getType()) {
             case "checkout.session.completed" -> obdelajZakljucenoSejo((Session) objekt(event));

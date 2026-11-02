@@ -1,0 +1,5 @@
+# Skripte za Linux streznik morajo imeti vedno konce vrstic LF: pri CRLF
+# "#!/bin/bash" ne najde ukaza in skripta se ne zazene. Windows (autocrlf)
+# bi jih sicer ob prevzemu pretvoril.
+*.sh text eol=lf
+Caddyfile text eol=lf

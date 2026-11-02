@@ -97,6 +97,7 @@ public class SrecanjeStoritev {
     private final PreracunRatingaStoritev preracunRatinga;
     private final LigaRepozitorij ligaRepozitorij;
     private final RazveljavitevEkipneTekmeStoritev razveljavitevEkipne;
+    private final Zaklepi zaklepi;
 
     public SrecanjeStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
                             PostavaSrecanjaRepozitorij postavaRepozitorij,
@@ -114,7 +115,8 @@ public class SrecanjeStoritev {
                             LastnistvoStoritev lastnistvo,
                             PreracunRatingaStoritev preracunRatinga,
                             LigaRepozitorij ligaRepozitorij,
-                            RazveljavitevEkipneTekmeStoritev razveljavitevEkipne) {
+                            RazveljavitevEkipneTekmeStoritev razveljavitevEkipne,
+                            Zaklepi zaklepi) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -132,6 +134,7 @@ public class SrecanjeStoritev {
         this.preracunRatinga = preracunRatinga;
         this.ligaRepozitorij = ligaRepozitorij;
         this.razveljavitevEkipne = razveljavitevEkipne;
+        this.zaklepi = zaklepi;
     }
 
     @Transactional(readOnly = true)
@@ -169,6 +172,7 @@ public class SrecanjeStoritev {
 
     @Transactional
     public void nastaviPostavo(Long idSrecanje, PostavaVnos vnos) {
+        zaklepi.zakleniTekmovanjePoSrecanju(idSrecanje);
         lastnistvo.preveriPoSrecanju(idSrecanje);
         Srecanje s = najdiPodrobno(idSrecanje);
         FormatSrecanja format = s.pravila().format();
@@ -233,6 +237,7 @@ public class SrecanjeStoritev {
 
     @Transactional
     public TekmaSrecanjaDto vnesiRezultat(Long idTekma, VnosRezultataSrecanja v) {
+        zaklepi.zakleniTekmovanjePoTekmiSrecanja(idTekma);
         lastnistvo.preveriPoTekmiSrecanja(idTekma);
         TekmaSrecanja t = tekmaRepozitorij.najdiZaObracun(idTekma)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja."));
@@ -339,6 +344,7 @@ public class SrecanjeStoritev {
        (preracunajCeVnesenoZaNazaj, samo pri ligi). */
     @Transactional
     public SrecanjePodrobnoDto razveljaviZapisnik(Long idSrecanje) {
+        zaklepi.zakleniTekmovanjePoSrecanju(idSrecanje);
         lastnistvo.preveriPoSrecanju(idSrecanje);
         Srecanje s = najdiPodrobno(idSrecanje);
         preveriRazveljavitev(s);
@@ -422,6 +428,7 @@ public class SrecanjeStoritev {
        igralcev. */
     @Transactional
     public TekmaSrecanjaDto popraviRezultat(Long idTekma, VnosRezultataSrecanja v) {
+        zaklepi.zakleniTekmovanjePoTekmiSrecanja(idTekma);
         lastnistvo.preveriPoTekmiSrecanja(idTekma);
         TekmaSrecanja t = tekmaRepozitorij.najdiZaObracun(idTekma)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja."));
@@ -643,6 +650,7 @@ public class SrecanjeStoritev {
        pravilo tekmovanja, ki ga liga v aplikaciji ne pozna. */
     @Transactional
     public SrecanjePodrobnoDto zamenjajIgralce(Long idTekma, MenjavaVnos v) {
+        zaklepi.zakleniTekmovanjePoTekmiSrecanja(idTekma);
         lastnistvo.preveriPoTekmiSrecanja(idTekma);
         TekmaSrecanja t = tekmaRepozitorij.najdiZaObracun(idTekma)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma srecanja z id " + idTekma + " ne obstaja."));

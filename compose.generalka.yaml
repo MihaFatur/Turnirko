@@ -1,0 +1,35 @@
+# Dopolnilo za GENERALKO preklopa (skripte/preklop/generalka.sh): isto kot
+# compose.yaml, a v svojem projektu "generalka" in brez vsega, kar bi motilo
+# delujoco stran.
+#
+#   docker compose -p generalka -f compose.yaml -f compose.generalka.yaml ...
+#
+# Kar se razlikuje od produkcije:
+#   - Caddy, Umami in njegova baza se ne zazenejo (profil "izklopljeno"), zato
+#     generalka ne zasede vrat 80/443 in ne poslje nicesar na internet;
+#   - aplikacija je dosegljiva samo z istega streznika: http://127.0.0.1:18080;
+#   - baza SQLite je kopija v mapi generalka/podatki, ne prava;
+#   - zvezek baze je svoj (generalka_turnirko_baza) - produkcijskega ne dotakne.
+# Aplikacija v generalki NE sme posiljati poste ali placil: ta del .env
+# generalka.sh prepise v spodnjih spremenljivkah.
+
+services:
+  app:
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - ./generalka/podatki:/podatki
+    environment:
+      TURNIRKO_POSTA_NACIN: dnevnik
+      TURNIRKO_POSTA_ADMIN: ""
+      TURNIRKO_STRIPE_TAJNI_KLJUC: ""
+      TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST: ""
+
+  caddy:
+    profiles: ["izklopljeno"]
+
+  umami:
+    profiles: ["izklopljeno"]
+
+  umami-baza:
+    profiles: ["izklopljeno"]

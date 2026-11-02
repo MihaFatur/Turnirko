@@ -145,8 +145,8 @@ class NarocninaStoritevTest {
 
         Turnir prvi = turnir(o);
         Turnir drugi = turnir(o);
-        backdateUstvarjenOb("turnir", prvi.getId(), "2020-04-01T10:00:00");
-        backdateUstvarjenOb("turnir", drugi.getId(), "2020-04-01T10:00:00");
+        backdateUstvarjenOb("turnir", prvi.getId(), LocalDateTime.of(2020, 4, 1, 10, 0));
+        backdateUstvarjenOb("turnir", drugi.getId(), LocalDateTime.of(2020, 4, 1, 10, 0));
         em.flush();
         em.clear();
 
@@ -193,7 +193,7 @@ class NarocninaStoritevTest {
         return ligaRepozitorij.save(l);
     }
 
-    private void backdateUstvarjenOb(String tabela, Long id, String zapis) {
+    private void backdateUstvarjenOb(String tabela, Long id, LocalDateTime zapis) {
         em.createNativeQuery("UPDATE " + tabela + " SET ustvarjen_ob = ?1 WHERE id = ?2")
                 .setParameter(1, zapis)
                 .setParameter(2, id)

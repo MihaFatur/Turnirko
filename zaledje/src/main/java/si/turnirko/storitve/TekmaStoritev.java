@@ -58,6 +58,7 @@ public class TekmaStoritev {
     private final LastnistvoStoritev lastnistvo;
     private final PreracunRatingaStoritev preracunRatinga;
     private final SvRegijaStoritev svRegija;
+    private final Zaklepi zaklepi;
 
     public TekmaStoritev(TekmaRepozitorij tekmaRepozitorij,
                          NizRepozitorij nizRepozitorij,
@@ -70,7 +71,8 @@ public class TekmaStoritev {
                          EkipneTekmeStoritev ekipneTekme,
                          LastnistvoStoritev lastnistvo,
                          PreracunRatingaStoritev preracunRatinga,
-                         SvRegijaStoritev svRegija) {
+                         SvRegijaStoritev svRegija,
+                         Zaklepi zaklepi) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
@@ -83,11 +85,18 @@ public class TekmaStoritev {
         this.lastnistvo = lastnistvo;
         this.preracunRatinga = preracunRatinga;
         this.svRegija = svRegija;
+        this.zaklepi = zaklepi;
     }
 
-    /* Vnese koncni rezultat tekme in sprozi vse posledice. */
+    /* Vnese koncni rezultat tekme in sprozi vse posledice.
+
+       Spremembe istega turnirja tecejo ena za drugo (Zaklepi): dve sosednji
+       tekmi mreze, koncani hkrati, sicer vpisujeta zmagovalca v isto naslednjo
+       tekmo, dva vnosa iste tekme pa bi oba prestala preverbo stanja. Zaklep
+       se vzame PRED prvim branjem tekme. */
     @Transactional
     public Tekma vnesiRezultat(Long idTekme, VnosRezultata vnos) {
+        zaklepi.zakleniTurnirPoTekmi(idTekme);
         lastnistvo.preveriTurnirPoTekmi(idTekme);
         Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
@@ -161,6 +170,7 @@ public class TekmaStoritev {
          zadosca: njen izid je vstopal v vse poznejse tekme obeh igralcev. */
     @Transactional
     public Tekma popraviRezultat(Long idTekme, VnosRezultata vnos) {
+        zaklepi.zakleniTurnirPoTekmi(idTekme);
         lastnistvo.preveriTurnirPoTekmi(idTekme);
         Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
@@ -306,6 +316,7 @@ public class TekmaStoritev {
        Na lestvici skupine tekma normalno steje kot njegova zmaga. */
     @Transactional
     public Prijava odstopiIgralca(Long idPrijave) {
+        zaklepi.zakleniTurnirPoPrijavi(idPrijave);
         lastnistvo.preveriTurnirPoPrijavi(idPrijave);
         Prijava prijava = prijavaRepozitorij.najdiZIgralcem(idPrijave)
                 .orElseThrow(() -> new NiNajdenoIzjema("Prijava z id " + idPrijave + " ne obstaja."));

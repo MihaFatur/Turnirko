@@ -209,6 +209,7 @@ public interface RatingZgodovinaRepozitorij extends JpaRepository<RatingZgodovin
     @Query("""
             SELECT DISTINCT z.igralec.id FROM RatingZgodovina z
             WHERE z.sistem = :sistem AND z.razlog = si.turnirko.modeli.RazlogSpremembe.POSTAVITEV
+            ORDER BY z.igralec.id
             """)
     List<Long> igralciSPostavitvijo(@Param("sistem") String sistem);
 
@@ -221,7 +222,7 @@ public interface RatingZgodovinaRepozitorij extends JpaRepository<RatingZgodovin
             SELECT z.igralec.id, z.veljaOb FROM RatingZgodovina z
             WHERE z.sistem = :sistem
               AND (z.tekma IS NOT NULL OR z.tekmaSrecanja IS NOT NULL)
-            ORDER BY z.igralec.id, z.veljaOb
+            ORDER BY z.igralec.id, z.veljaOb, z.id
             """)
     List<Object[]> casiObracunanihTekem(@Param("sistem") String sistem);
     /* Izidi igralca v danem casovnem oknu: [rating nasprotnika PRED tekmo,

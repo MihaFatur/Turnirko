@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
@@ -30,7 +29,6 @@ public class ObvestiloKola {
     @Column(name = "kolo", nullable = false)
     private int kolo;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "obdelano_ob", nullable = false)
     private LocalDateTime obdelanoOb;
 

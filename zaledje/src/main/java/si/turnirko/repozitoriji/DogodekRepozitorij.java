@@ -36,7 +36,7 @@ public interface DogodekRepozitorij extends JpaRepository<Dogodek, Long> {
 
     /* Roki prijave dogodkov, ki se prijave zbirajo (PRIPRAVA): [idTurnir, rok].
        Skalarna projekcija in ne MIN(): najzgodnejsi rok izbere klicatelj, ker
-       aggregat nad datumom v SQLite vrne besedilo, ne LocalDate. */
+       aggregat nad datumom je v SQLite vrnil besedilo, ne LocalDate. */
     @Query("""
             SELECT d.turnir.id, d.rokPrijave FROM Dogodek d
             WHERE d.status = si.turnirko.modeli.StatusTekmovanja.PRIPRAVA

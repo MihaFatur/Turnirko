@@ -7,7 +7,6 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -93,9 +92,7 @@ public class RatingZgodovina {
 
     /* Kdaj sprememba VELJA: cas tekme, ki jo je povzrocila - ne cas zapisa.
        Po njem tecejo preracun od datuma, graf napredka in odbitki za
-       neaktivnost. Pretvornik je nujen, ker gonilnik sqlite-jdbc uro sicer
-       odreze (glej CasKotBesedilo). */
-    @Convert(converter = CasKotBesedilo.class)
+       neaktivnost. */
     @Column(name = "velja_ob", nullable = false)
     private LocalDateTime veljaOb;
 

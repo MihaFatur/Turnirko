@@ -106,6 +106,7 @@ public interface UporabnikRepozitorij extends JpaRepository<Uporabnik, Long> {
             WHERE i.id IN (
                 SELECT k.igralec.id FROM KaderEkipe k JOIN k.ekipa e JOIN e.liga l
                 WHERE l.id = :idLiga)
+            ORDER BY u.id
             """)
     List<Uporabnik> najdiIgralceLige(Long idLiga);
 

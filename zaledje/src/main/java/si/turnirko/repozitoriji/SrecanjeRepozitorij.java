@@ -25,15 +25,15 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
        V kolu po zacetku in sele nato po id: pri ligi z urami srecanj (V31) je
        kolo vecer z vec urami in organizator jih sme srecanjem zamenjati -
        razpored in "naslednje srecanje" morata slediti uri, ne vrstnemu redu
-       zapisa. Zacetek je besedilo ISO (CasKotBesedilo), zato je abecedni red
-       tudi casovni. */
+       zapisa. Srecanje brez termina je v kolu prvo (NULLS FIRST): tako ga je
+       uredil SQLite, PostgreSQL pa bi ga brez tega postavil na konec. */
     @Query("""
             SELECT s FROM Srecanje s
             JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
             JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             LEFT JOIN FETCH s.serija
             WHERE s.liga.id = :idLiga
-            ORDER BY s.kolo, s.predvidenZacetek, s.id
+            ORDER BY s.kolo, s.predvidenZacetek NULLS FIRST, s.id
             """)
     List<Srecanje> najdiZaLigo(Long idLiga);
 
@@ -43,7 +43,7 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
             JOIN FETCH s.ekipaDomaci ed LEFT JOIN FETCH ed.klub
             JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             WHERE s.liga.id = :idLiga AND s.serija IS NULL
-            ORDER BY s.kolo, s.predvidenZacetek, s.id
+            ORDER BY s.kolo, s.predvidenZacetek NULLS FIRST, s.id
             """)
     List<Srecanje> najdiRednaZaLigo(Long idLiga);
 
@@ -108,11 +108,10 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
        sezono in klub. Ekipne tekme turnirjev izpadejo (stik na ligo je
        notranji) - v koledarju ze stoji njihov turnir.
 
-       Meji sta casovni in ne datumski, ker stolpec nosi tudi uro (pretvornik
-       CasKotBesedilo). Klicatelj ju namenoma razsiri za dan na vsako stran in
-       nato natancno omeji po datumu: v starih bazah so zapisi brez ure
-       ("2026-10-04"), ti pa so pri primerjavi nizov krajsi od "2026-10-04T00:00"
-       in bi na prvi dan obdobja odpadli. */
+       Meji sta casovni in ne datumski, ker stolpec nosi tudi uro. Klicatelj ju
+       razsiri za dan na vsako stran in nato natancno omeji po datumu (iz casa
+       SQLite, ko je bil stolpec besedilo in so zapisi brez ure pri primerjavi
+       nizov odpadli; poenostavitev sodi v fazo 6 prenove baze). */
     @Query("""
             SELECT s FROM Srecanje s
             JOIN FETCH s.liga l LEFT JOIN FETCH l.klubLastnik
@@ -182,7 +181,7 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
               AND s.status <> si.turnirko.modeli.StatusSrecanja.KONCANO
               AND s.predvidenZacetek IS NOT NULL
               AND s.predvidenZacetek < :pred
-            ORDER BY s.liga.id, s.kolo, s.predvidenZacetek, s.id
+            ORDER BY s.liga.id, s.kolo, s.predvidenZacetek NULLS FIRST, s.id
             """)
     List<Srecanje> cakajoNaZapisnik(List<Long> idjiLig, LocalDateTime pred);
 
@@ -193,6 +192,7 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
     @Query("""
             SELECT DISTINCT l.id FROM Srecanje s JOIN s.liga l
             WHERE s.odigranOb IS NOT NULL AND s.odigranOb >= :od
+            ORDER BY l.id
             """)
     List<Long> ligeZVnosomOd(LocalDateTime od);
 

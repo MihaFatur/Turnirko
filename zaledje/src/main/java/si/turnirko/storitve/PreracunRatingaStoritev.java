@@ -21,7 +21,16 @@
 
    Transakcije: ciscenje, obnova stanja in vsak paket tekem tecejo v svoji
    transakciji (TransactionTemplate). Pri 90 tisoc tekmah bi ena sama transakcija
-   pomenila ogromno sejo in dolg zaklep baze. */
+   pomenila ogromno sejo in dolg zaklep baze. Ce klicalec ze ima transakcijo
+   (popravek rezultata, srecanje, vneseno za nazaj), se paketi pridruzijo njej.
+
+   Socasnost (prenova baze, faza 2): preracun drzi izkljucni zaklep PRERACUN
+   (Zaklepi) cez vse pakete. Vnos rezultata med njim rezultat shrani BREZ
+   obracuna (zaklepa ne dobi) - preracun ga ob koncu doobracuna
+   (obracunajManjkajoce), za vsak primer pa isto vsakih nekaj minut pocne
+   varovalka. Preracun, ki ga zahteva vnos, medtem ko drug ze tece, se odlozi
+   in izvede takoj za njim (odlozi). Stevec in odlozena meja zivita v
+   pomnilniku: aplikacija tece v enem primerku (docs/PRENOVA-BAZE.md, 9). */
 package si.turnirko.storitve;
 
 import java.time.LocalDate;
@@ -33,9 +42,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import si.turnirko.modeli.Disciplina;
@@ -53,6 +67,8 @@ import si.turnirko.repozitoriji.TekmaSrecanjaRepozitorij;
 
 @Service
 public class PreracunRatingaStoritev {
+
+    private static final Logger dnevnik = LoggerFactory.getLogger(PreracunRatingaStoritev.class);
 
     /* Koliko tekem obracunamo v eni transakciji. Dovolj veliko, da sqlite ne
        placuje potrditve za vsako tekmo, dovolj majhno, da seja ne zraste. */
@@ -73,7 +89,15 @@ public class PreracunRatingaStoritev {
     private final IgralecRepozitorij igralecRepozitorij;
     private final RatingStoritev ratingStoritev;
     private final NeaktivnostStoritev neaktivnostStoritev;
+    private final Zaklepi zaklepi;
     private final TransactionTemplate transakcija;
+
+    /* Koliko samostojnih preracunov tece ali caka na zaklep. */
+    private final AtomicInteger samostojnih = new AtomicInteger();
+
+    /* Najzgodnejsa meja preracuna, ki ga je zahteval vnos med drugim
+       preracunom; null = nicesar ni odlozenega. */
+    private final AtomicReference<LocalDateTime> odlozeno = new AtomicReference<>();
 
     public PreracunRatingaStoritev(TekmaRepozitorij tekmaRepozitorij,
                                    TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij,
@@ -82,6 +106,7 @@ public class PreracunRatingaStoritev {
                                    IgralecRepozitorij igralecRepozitorij,
                                    RatingStoritev ratingStoritev,
                                    NeaktivnostStoritev neaktivnostStoritev,
+                                   Zaklepi zaklepi,
                                    PlatformTransactionManager upravitelj) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
@@ -90,6 +115,7 @@ public class PreracunRatingaStoritev {
         this.igralecRepozitorij = igralecRepozitorij;
         this.ratingStoritev = ratingStoritev;
         this.neaktivnostStoritev = neaktivnostStoritev;
+        this.zaklepi = zaklepi;
         this.transakcija = new TransactionTemplate(upravitelj);
     }
 
@@ -126,6 +152,86 @@ public class PreracunRatingaStoritev {
     /* Preracuna rating od datuma naprej (vkljucno). null pomeni "vse od zacetka". */
     public Porocilo preracunajOd(LocalDate od) {
         LocalDateTime meja = (od == null) ? VrstaRatinskeTekme.BREZ_DATUMA : od.atStartOfDay();
+        return TransactionSynchronizationManager.isActualTransactionActive()
+                ? preracunajVTransakciji(meja)
+                : preracunajSamostojno(meja);
+    }
+
+    /* Znotraj transakcije klicalca: zaklep do njenega konca. Ce samostojni
+       preracun ze tece (ali caka), bi cakanje nanj vnos ustavilo za minute -
+       zato se ta preracun odlozi in ga izvede tisti, ki tece. */
+    private Porocilo preracunajVTransakciji(LocalDateTime meja) {
+        if (samostojnih.get() > 0) {
+            odlozi(meja);
+            return new Porocilo(meja, 0,
+                    (int) stanjeRepozitorij.countBySistem(RatingStanje.SISTEM_TURNIRKO));
+        }
+        zaklepi.zakleniPreracunVTransakciji();
+        Porocilo porocilo = izvedi(meja);
+        obracunajManjkajoce();
+        return porocilo;
+    }
+
+    /* Brez transakcije klicalca: zaklep drzi lastna povezava cez vse pakete.
+       Na koncu se izvedejo odlozeni preracuni in obracunajo tekme, vnesene
+       medtem. */
+    private Porocilo preracunajSamostojno(LocalDateTime meja) {
+        samostojnih.incrementAndGet();
+        try (Zaklepi.ZaklepSeje zaklep = zaklepi.zakleniPreracunNaSeji()) {
+            Porocilo porocilo = izvedi(meja);
+            for (LocalDateTime naknadno = odlozeno.getAndSet(null); naknadno != null;
+                    naknadno = odlozeno.getAndSet(null)) {
+                izvedi(naknadno);
+            }
+            Integer dohiteli = transakcija.execute(stanje -> obracunajManjkajoce());
+            if (dohiteli != null && dohiteli > 0) {
+                dnevnik.info("Po preracunu obracunanih {} tekem, vnesenih med njim.", dohiteli);
+            }
+            return porocilo;
+        } finally {
+            samostojnih.decrementAndGet();
+        }
+    }
+
+    private void odlozi(LocalDateTime meja) {
+        odlozeno.accumulateAndGet(meja, (prej, nova) -> prej == null || nova.isBefore(prej) ? nova : prej);
+    }
+
+    /* Varovalka (OpravilaRatinga, vsakih nekaj minut): izvede odlozen
+       preracun, ki ga ni pobral noben drug, in obracuna koncane tekme brez
+       obracuna. Obicajno ne najde nicesar; ce kaj, je to tekma, vnesena v
+       trenutku, ko se je preracun koncaval. */
+    public void varovalka() {
+        if (samostojnih.get() > 0) {
+            return;
+        }
+        LocalDateTime naknadno = odlozeno.getAndSet(null);
+        if (naknadno != null) {
+            preracunajSamostojno(naknadno);
+            return;
+        }
+        Integer dohiteli = transakcija.execute(
+                stanje -> zaklepi.zakleniRating() ? obracunajManjkajoce() : 0);
+        if (dohiteli != null && dohiteli > 0) {
+            dnevnik.warn("Varovalka je obracunala {} tekem brez obracuna.", dohiteli);
+        }
+    }
+
+    /* Koncane tekme, ki stejejo v rating in v dnevniku nimajo zapisa, obracuna
+       v casovnem vrstnem redu (VrstaRatinskeTekme). Klicalec drzi zaklep in
+       transakcijo. Vrne stevilo tekem. */
+    int obracunajManjkajoce() {
+        List<VrstaRatinskeTekme> manjkajoce = vrsta(
+                tekmaRepozitorij.neobracunaneRatinske(Disciplina.POSAMICNO, ODIGRANE),
+                tekmaSrecanjaRepozitorij.neobracunaneRatinske(TipTekmeSrecanja.POSAMICNA, ODIGRANE),
+                tekmaSrecanjaRepozitorij.neobracunaneRatinskeTurnirskihSrecanj(
+                        TipTekmeSrecanja.POSAMICNA, ODIGRANE));
+        odigrajPaket(manjkajoce.stream().map(Korak::zaTekmo).toList());
+        return manjkajoce.size();
+    }
+
+    /* Telo preracuna od meje naprej. */
+    private Porocilo izvedi(LocalDateTime meja) {
 
         List<VrstaRatinskeTekme> zaPreracun = new ArrayList<>();
         for (VrstaRatinskeTekme v : vsaVrsta()) {
@@ -187,8 +293,18 @@ public class PreracunRatingaStoritev {
     /* Vse tekme, ki stejejo v rating - turnirske in ligaske skupaj, urejene v
        eno casovno vrsto. Merila so ista kot pri rednem vnosu rezultata. */
     public List<VrstaRatinskeTekme> vsaVrsta() {
+        return vrsta(
+                tekmaRepozitorij.ratinskeTekme(Disciplina.POSAMICNO, ODIGRANE),
+                tekmaSrecanjaRepozitorij.ratinskeTekme(TipTekmeSrecanja.POSAMICNA, ODIGRANE),
+                tekmaSrecanjaRepozitorij.ratinskeTekmeTurnirskihSrecanj(TipTekmeSrecanja.POSAMICNA, ODIGRANE));
+    }
+
+    /* Vrstice treh poizvedb (turnirske, ligaske, ekipnih tekem turnirjev) v
+       eno urejeno casovno vrsto. */
+    private static List<VrstaRatinskeTekme> vrsta(List<Object[]> turnirske, List<Object[]> ligaske,
+                                                  List<Object[]> ekipneTurnirske) {
         List<VrstaRatinskeTekme> vrsta = new ArrayList<>();
-        for (Object[] r : tekmaRepozitorij.ratinskeTekme(Disciplina.POSAMICNO, ODIGRANE)) {
+        for (Object[] r : turnirske) {
             vrsta.add(VrstaRatinskeTekme.turnirska(
                     ((Number) r[0]).longValue(),
                     (LocalDate) r[1],
@@ -196,7 +312,7 @@ public class PreracunRatingaStoritev {
                     ((Number) r[3]).intValue(),
                     ((Number) r[4]).intValue()));
         }
-        for (Object[] r : tekmaSrecanjaRepozitorij.ratinskeTekme(TipTekmeSrecanja.POSAMICNA, ODIGRANE)) {
+        for (Object[] r : ligaske) {
             // isto pravilo kot ob obracunu (RatingStoritev.casLigaskeTekme)
             LocalDateTime cas = Srecanje.casOdigranja((LocalDateTime) r[2], (LocalDateTime) r[1]);
             vrsta.add(VrstaRatinskeTekme.ligaska(
@@ -206,8 +322,7 @@ public class PreracunRatingaStoritev {
                     ((Number) r[4]).intValue()));
         }
         // posamicne tekme ekipnih tekem turnirjev: dan turnirja, zaporedje po stopnji
-        for (Object[] r : tekmaSrecanjaRepozitorij.ratinskeTekmeTurnirskihSrecanj(
-                TipTekmeSrecanja.POSAMICNA, ODIGRANE)) {
+        for (Object[] r : ekipneTurnirske) {
             vrsta.add(VrstaRatinskeTekme.ekipnaTurnirska(
                     ((Number) r[0]).longValue(),
                     (LocalDate) r[1],
@@ -227,10 +342,10 @@ public class PreracunRatingaStoritev {
                 uveljaviUvrstitev(k.idUvrstitve());
             } else if (k.tekma().ligaska()) {
                 tekmaSrecanjaRepozitorij.findById(k.tekma().id())
-                        .ifPresent(ratingStoritev::obracunajZaLigasko);
+                        .ifPresent(ratingStoritev::obracunajZaLigaskoPodZaklepom);
             } else {
                 tekmaRepozitorij.findById(k.tekma().id())
-                        .ifPresent(ratingStoritev::obracunajZaTurnirsko);
+                        .ifPresent(ratingStoritev::obracunajZaTurnirskoPodZaklepom);
             }
         }
     }

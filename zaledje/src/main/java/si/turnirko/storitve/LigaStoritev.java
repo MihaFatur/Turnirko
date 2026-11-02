@@ -88,6 +88,7 @@ public class LigaStoritev {
     private final SpremembeRatingaStoritev spremembeRatinga;
     private final LastnistvoStoritev lastnistvo;
     private final NarocninaStoritev narocnina;
+    private final Zaklepi zaklepi;
 
     public LigaStoritev(LigaRepozitorij ligaRepozitorij,
                         EkipaRepozitorij ekipaRepozitorij,
@@ -100,7 +101,8 @@ public class LigaStoritev {
                         LestvicaLigeStoritev lestvicaLigeStoritev,
                         SpremembeRatingaStoritev spremembeRatinga,
                         LastnistvoStoritev lastnistvo,
-                        NarocninaStoritev narocnina) {
+                        NarocninaStoritev narocnina,
+                        Zaklepi zaklepi) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.ekipaRepozitorij = ekipaRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
@@ -113,6 +115,7 @@ public class LigaStoritev {
         this.spremembeRatinga = spremembeRatinga;
         this.lastnistvo = lastnistvo;
         this.narocnina = narocnina;
+        this.zaklepi = zaklepi;
     }
 
     // ---------- Liga ----------
@@ -260,6 +263,8 @@ public class LigaStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + id + " ne obstaja."));
 
         if (naDomaci && !liga.isNaDomaci()) {
+            // dve hkratni kljukici bi sicer obe videli eno prosto mesto
+            zaklepi.zakleni(Zaklepi.Vrsta.DOMACA_STRAN, 0);
             List<Liga> ze = ligaRepozitorij.najdiNaDomaci();
             if (ze.size() >= LIG_NA_DOMACI) {
                 throw new DomenskaIzjema("Na domaci strani sta lahko najvec "

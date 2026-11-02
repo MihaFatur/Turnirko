@@ -36,6 +36,7 @@ import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Igralec;
+import si.turnirko.pomozno.CasBaze;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 
 @Service
@@ -207,14 +208,9 @@ public class IgralciZdruzitevStoritev {
         return ((Number) poizvedba(sql, parametri).getSingleResult()).longValue();
     }
 
-    /* Dan iz stolpca z datumom in uro (»2012-10-06T00:00« ali samo datum);
-       null, kadar vrstic ni. */
+    /* Dan iz casovnega stolpca; null, kadar vrstic ni. */
     private LocalDate prviDan(String sql, Object... parametri) {
-        Object vrednost = poizvedba(sql, parametri).getSingleResult();
-        if (vrednost == null) {
-            return null;
-        }
-        return LocalDate.parse(vrednost.toString().substring(0, 10));
+        return CasBaze.datum(poizvedba(sql, parametri).getSingleResult());
     }
 
     private Query poizvedba(String sql, Object... parametri) {

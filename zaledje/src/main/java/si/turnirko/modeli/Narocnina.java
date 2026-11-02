@@ -12,7 +12,6 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -67,19 +66,16 @@ public class Narocnina {
     @Column(name = "status", nullable = false)
     private StatusNarocnine status;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "zacetek_ob")
     private LocalDateTime zacetekOb;
 
     /* Konec placanega obdobja (Stripe current_period_end); po preklicu
        narocnina ostane AKTIVNA do tega datuma. */
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "trenutno_obdobje_do")
     private LocalDateTime trenutnoObdobjeDo;
 
     /* Zacetek tekocega placanega obdobja (Stripe current_period_start).
        NULL pri vrsticah izpred V35 - glej obdobjeOd(). */
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "obdobje_od")
     private LocalDateTime obdobjeOd;
 
@@ -98,15 +94,12 @@ public class Narocnina {
     private Paket naslednjiPaket;
 
     /* Kdaj je slo obvestilo, da se preizkus izteka (samo PREIZKUS, enkrat). */
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "opomnik_poslan_ob")
     private LocalDateTime opomnikPoslanOb;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "ustvarjena_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenaOb;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "posodobljena_ob", nullable = false)
     private LocalDateTime posodobljenaOb;
 

@@ -80,7 +80,7 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
        lige" na lestvici mora vedeti, kdo v spremljanih ligah sploh igra.
        Ekipe turnirjev izpadejo po izrecnem notranjem stiku na ligo - pot
        k.ekipa.liga.id bi Hibernate prebral kar iz tujega kljuca in vrnil null. */
-    @Query("SELECT DISTINCT k.igralec.id, l.id FROM KaderEkipe k JOIN k.ekipa e JOIN e.liga l")
+    @Query("SELECT DISTINCT k.igralec.id, l.id FROM KaderEkipe k JOIN k.ekipa e JOIN e.liga l ORDER BY k.igralec.id, l.id")
     List<Object[]> ligePoIgralcih();
 
     /* Ekipa dogodka, v kadru katere je igralec (kvecjemu ena - igralec na
@@ -103,6 +103,7 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
     @Query("""
             SELECT DISTINCT l.id, k.igralec.id FROM KaderEkipe k JOIN k.ekipa e JOIN e.liga l
             WHERE l.id IN :idjiLig
+            ORDER BY l.id, k.igralec.id
             """)
     List<Object[]> igralciLig(List<Long> idjiLig);
 
@@ -111,6 +112,7 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
             SELECT DISTINCT t.id, k.igralec.id FROM KaderEkipe k
             JOIN k.ekipa e JOIN e.dogodek d JOIN d.turnir t
             WHERE t.id IN :idjiTurnirjev
+            ORDER BY t.id, k.igralec.id
             """)
     List<Object[]> igralciEkipnihTurnirjev(List<Long> idjiTurnirjev);
 
@@ -129,6 +131,7 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
             SELECT DISTINCT t.id FROM KaderEkipe k
             JOIN k.ekipa e JOIN e.dogodek d JOIN d.turnir t
             WHERE k.igralec.id = :idIgralec
+            ORDER BY t.id
             """)
     List<Long> ekipniTurnirjiIgralca(Long idIgralec);
 }

@@ -8,7 +8,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -56,8 +55,7 @@ public class CakajocaRegistracija {
     @Column(name = "id_koda")
     private Long idKoda;
 
-    /* Ura steje (ciscenje po dneh od nastanka), zato pretvornik. */
-    @Convert(converter = CasKotBesedilo.class)
+    /* Ura steje (ciscenje po dneh od nastanka). */
     @Column(name = "ustvarjena_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenaOb;
 

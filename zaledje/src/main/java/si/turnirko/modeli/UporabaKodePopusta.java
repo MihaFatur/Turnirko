@@ -11,7 +11,6 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -37,7 +36,6 @@ public class UporabaKodePopusta {
     @Column(name = "id_uporabnik", nullable = false, unique = true, updatable = false)
     private Long idUporabnik;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "uporabljena_ob", nullable = false, updatable = false)
     private LocalDateTime uporabljenaOb;
 

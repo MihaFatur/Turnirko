@@ -8,9 +8,8 @@
    brez nastavljenega gesla se aplikacija raje ne zazene, kot da bi tekla
    odprta. Napaka pove natanko, kaj nastaviti.
 
-   Izjema je profil "namizni" (prenosna razlicica na prenosniku v dvorani):
-   tam gre za lokalno rabo brez javnega naslova, zato ostane admin/admin,
-   da je program takoj uporaben. */
+   Izjeme ni vec: namizna razlicica z lokalnim admin/admin je odsla skupaj s
+   SQLite (prenova baze, okt 2026). */
 package si.turnirko.nastavitve;
 
 import org.slf4j.Logger;
@@ -18,15 +17,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.env.Environment;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.prenos.PrenosUkaz;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
+/* Ukaz "prenos" (faza 3 prenove baze) polni PRAZNO bazo: admin, ustvarjen pred
+   njim, bi prenos zavrnil, po njem pa bi bil odvec (racuni pridejo iz SQLite). */
 @Component
+@Profile("!" + PrenosUkaz.PROFIL)
 public class ZacetniAdmin implements ApplicationRunner {
 
     private static final Logger dnevnik = LoggerFactory.getLogger(ZacetniAdmin.class);
@@ -39,23 +42,17 @@ public class ZacetniAdmin implements ApplicationRunner {
        znakov), a dovolj visoka, da ustavi "admin", "geslo123" in podobno. */
     private static final int NAJMANJSA_DOLZINA = 12;
 
-    /* Geslo prenosne (namizne) razlicice - velja samo pod profilom "namizni". */
-    private static final String NAMIZNO_GESLO = "admin";
-
     private final UporabnikRepozitorij uporabnikRepozitorij;
     private final PasswordEncoder kodirnik;
-    private final Environment okolje;
     private final String uporabniskoIme;
     private final String nastavljenoGeslo;
 
     public ZacetniAdmin(UporabnikRepozitorij uporabnikRepozitorij,
                         PasswordEncoder kodirnik,
-                        Environment okolje,
                         @Value("${turnirko.admin.uporabnisko-ime:admin}") String uporabniskoIme,
                         @Value("${" + NASTAVITEV_GESLA + ":}") String nastavljenoGeslo) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.kodirnik = kodirnik;
-        this.okolje = okolje;
         this.uporabniskoIme = uporabniskoIme;
         this.nastavljenoGeslo = nastavljenoGeslo;
     }
@@ -77,19 +74,14 @@ public class ZacetniAdmin implements ApplicationRunner {
        ne nastane nikoli. (Vrata so odprta le tistih nekaj trenutkov do
        izhoda, a v bazi takrat ni nobenega racuna.) */
     private String preverjenoGeslo() {
-        boolean namizni = okolje.matchesProfiles("namizni");
         String geslo = nastavljenoGeslo == null ? "" : nastavljenoGeslo.trim();
 
-        if (namizni) {
-            return geslo.isEmpty() ? NAMIZNO_GESLO : geslo;
-        }
         if (geslo.isEmpty()) {
             throw new IllegalStateException(
                     "Baza je prazna, zacetnega administratorja pa ni mogoce ustvariti brez gesla. "
                     + "Nastavi " + NASTAVITEV_GESLA + " (npr. prek spremenljivke okolja "
                     + "TURNIRKO_ADMIN_PRIVZETO_GESLO). Uporabi dolgo nakljucno geslo - "
-                    + "predlog: openssl rand -base64 24. "
-                    + "Za lokalno namizno razlicico zazeni s profilom \"namizni\".");
+                    + "predlog: openssl rand -base64 24.");
         }
         if (geslo.length() < NAJMANJSA_DOLZINA) {
             throw new IllegalStateException(

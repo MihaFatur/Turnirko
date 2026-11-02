@@ -35,7 +35,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Aplikacija ne sme teci kot root: ce jo kdo prevzame, naj ne dobi
-# celotnega vsebnika. Mapa /podatki je edino, kamor sme pisati.
+# celotnega vsebnika. Mapa /podatki je edino, kamor sme pisati (posnetki Stupe,
+# porocila; baze same tu ni vec).
 RUN useradd --system --uid 10001 turnirko \
     && mkdir -p /podatki \
     && chown turnirko:turnirko /podatki
@@ -47,7 +48,9 @@ VOLUME ["/podatki"]
 EXPOSE 8080
 
 ENV SPRING_PROFILES_ACTIVE=splet
-ENV SPRING_DATASOURCE_URL=jdbc:sqlite:/podatki/turnirko.db
+# Baza PostgreSQL je storitev "baza" v compose.yaml; uporabnika in gesli
+# podata compose.yaml iz .env.
+ENV SPRING_DATASOURCE_URL=jdbc:postgresql://baza:5432/turnirko
 # Posnetki uvoza iz Stupe; privzeta pot ./podatki bi bila /app/podatki,
 # kamor aplikacija ne sme pisati.
 ENV TURNIRKO_UVOZ_POSNETKI=/podatki/stupa-posnetki

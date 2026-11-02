@@ -33,11 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.RacunIgralcaDto.Dogodek;
 import si.turnirko.dto.RacunIgralcaDto.Prijave;
-import si.turnirko.modeli.CasKotBesedilo;
 import si.turnirko.modeli.CiklusPlacila;
 import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.RacunDogodek;
 import si.turnirko.modeli.RacunPrijava;
+import si.turnirko.pomozno.CasBaze;
 import si.turnirko.repozitoriji.RacunDogodekRepozitorij;
 import si.turnirko.repozitoriji.RacunPrijavaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
@@ -55,8 +55,6 @@ public class RacunDnevnikStoritev {
 
     /* Okno »prijave v 30 dneh«. */
     public static final int OKNO_DNI = 30;
-
-    private static final CasKotBesedilo BESEDILO_V_CAS = new CasKotBesedilo();
 
     private final RacunDogodekRepozitorij dogodki;
     private final RacunPrijavaRepozitorij prijave;
@@ -154,20 +152,16 @@ public class RacunDnevnikStoritev {
                 .map(RacunDnevnikStoritev::dogodek).toList();
     }
 
-    private static String odOkna() {
-        return vNiz(zdaj().minusDays(OKNO_DNI));
-    }
-
-    private static String vNiz(LocalDateTime cas) {
-        return BESEDILO_V_CAS.convertToDatabaseColumn(cas);
+    private static LocalDateTime odOkna() {
+        return zdaj().minusDays(OKNO_DNI);
     }
 
     private static Prijave povzetek(Object[] v) {
-        return new Prijave(BESEDILO_V_CAS.convertToEntityAttribute((String) v[1]),
+        return new Prijave(CasBaze.casovniZig(v[1]),
                 v[2] == null ? 0 : ((Number) v[2]).intValue());
     }
 
     private static Dogodek dogodek(Object[] v) {
-        return new Dogodek(BESEDILO_V_CAS.convertToEntityAttribute((String) v[1]), (String) v[2]);
+        return new Dogodek(CasBaze.casovniZig(v[1]), (String) v[2]);
     }
 }

@@ -84,6 +84,6 @@ public class RatingKontroler {
        tu je zato, da administratorju ni treba cakati do treh zjutraj. */
     @PostMapping("/neaktivnost")
     public NeaktivnostStoritev.Porocilo neaktivnost() {
-        return neaktivnostStoritev.uveljaviVse(LocalDateTime.now());
+        return neaktivnostStoritev.uveljaviVseZZaklepom(LocalDateTime.now());
     }
 }

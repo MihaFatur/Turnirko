@@ -380,7 +380,7 @@ class OrganizatorPregledTest extends IntegracijskiTest {
        zapisom v bazo (@PrePersist jo vedno postavi na zdaj). */
     private void postaviUstvarjenOb(String tabela, Long id, LocalDate dan) {
         seja.createNativeQuery("UPDATE " + tabela + " SET ustvarjen_ob = ?1 WHERE id = ?2")
-                .setParameter(1, dan.toString())
+                .setParameter(1, dan.atStartOfDay())
                 .setParameter(2, id)
                 .executeUpdate();
     }

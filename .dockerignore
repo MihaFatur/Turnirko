@@ -7,6 +7,14 @@ zaledje/podatki/
 *.db-*
 *.bak*
 
+# Kopije baze (pg_dump, osebni podatki), generalka in dnevniki preklopa -
+# nastanejo na strezniku v mapi projekta in ne smejo v sliko.
+kopije/
+generalka/
+dnevniki/
+*.dump
+*.dump.*
+
 # Rezultati prejsnjih prevodov - v sliki se zgradi vse na novo
 target/
 zaledje/target/

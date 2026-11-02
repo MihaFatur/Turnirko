@@ -6,7 +6,6 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -51,11 +50,9 @@ public class UvozZagon {
     @Column(name = "izvedel")
     private String izvedel;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "zacetek_ob", nullable = false)
     private LocalDateTime zacetekOb;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "konec_ob")
     private LocalDateTime konecOb;
 

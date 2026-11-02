@@ -6,7 +6,6 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -43,9 +42,7 @@ public class RatingStanje {
     private int stTekem = 0;
 
     /* Cas zadnje obracunane tekme (velja_ob, ne cas vnosa) - iz njega se
-       prepozna vrnitev po daljsi odsotnosti. Pretvornik je nujen iz istega
-       razloga kot drugod: gonilnik sqlite-jdbc bi uro odrezal. */
-    @Convert(converter = CasKotBesedilo.class)
+       prepozna vrnitev po daljsi odsotnosti. */
     @Column(name = "zadnja_tekma_ob")
     private LocalDateTime zadnjaTekmaOb;
 
@@ -63,14 +60,12 @@ public class RatingStanje {
        Loceno od zadnjaTekmaOb namenoma: tisto polje pomeni "zadnja TEKMA" in
        po njem se prepozna vrnitev po odsotnosti (visji K), ki se nanasa na
        igralca in ne na svezino nase stevilke. */
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "zunanja_uvrstitev_ob")
     private LocalDateTime zunanjaUvrstitevOb;
 
     /* Cas prve obracunane tekme. Dokler igralec igra na ta isti dan, je v
        obdobju UVRSTITVE: rating se mu ne sesteva po tekmah, ampak se vsakic
        znova izracuna iz vseh izidov tega dne (glej UvrstitevNovinca). */
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "prva_tekma_ob")
     private LocalDateTime prvaTekmaOb;
 

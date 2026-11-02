@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -122,7 +121,6 @@ public class Liga {
        srecanj; kasnejsi rocni popravki posameznih kol semena ne spremenijo
        (prestavljeno kolo ne sme prestaviti vseh naslednjih). Ura je ura
        prvega srecanja kola, 00:00 pomeni "ura ni dolocena". */
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "zacetek_prvega_kola")
     private LocalDateTime zacetekPrvegaKola;
 

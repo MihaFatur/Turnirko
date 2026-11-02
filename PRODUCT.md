@@ -115,8 +115,8 @@ Trdne omejitve, ki jih prihodnje delo ne sme razbiti:
 Izrecno neodločeno / še ne obstaja (ne razglašaj za obstoječe):
 
 - uradne jakostne točke NTZS (PST čl. 30) — implementiran je samo Turnirko rating;
-- gostovanje: danes SQLite in lokalni zagon; Postgres in večklubska raba sta
-  načrtovana, ne izvedena;
+- gostovanje: PostgreSQL 18 v Dockerju na istem VPS (selitev s SQLite: `docs/PREKLOP.md`);
+  večklubska raba je načrtovana, ne izvedena;
 - dvojice v krožnem in skupinskem sistemu — turnirske dvojice obstajajo, a
   igrajo izključno izločilno mrežo (par je ena prijava, v rating ne šteje);
 - samodejna (časovna) sinhronizacija s Stupo — uvoz je namerno ročen;

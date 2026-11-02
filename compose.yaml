@@ -1,6 +1,6 @@
-# Celotna postavitev na strezniku: aplikacija + Caddy (HTTPS).
+# Celotna postavitev na strezniku: aplikacija + baza PostgreSQL + Caddy (HTTPS).
 # Zagon:  docker compose up -d --build
-# Dnevnik: docker compose logs -f app
+# Dnevnik: docker compose logs -f app   (baza: docker compose logs -f baza)
 #
 # Pred prvim zagonom naredi datoteko .env po vzoru .env.primer.
 
@@ -18,7 +18,15 @@ services:
 
     environment:
       SPRING_PROFILES_ACTIVE: splet
-      SPRING_DATASOURCE_URL: jdbc:sqlite:/podatki/turnirko.db
+      # Baza je ločen vsebnik (storitev "baza" spodaj). Aplikacija se prijavi z
+      # vlogo turnirko_app, ki sme samo brati in pisati vrstice; sheme ne
+      # more spremeniti ne zbrisati. Shemo ob zagonu gradi Flyway z vlogo
+      # turnirko_lastnik (docs/OBJAVA.md, razdelek 4).
+      SPRING_DATASOURCE_URL: jdbc:postgresql://baza:5432/turnirko
+      TURNIRKO_BAZA_UPORABNIK: turnirko_app
+      TURNIRKO_BAZA_GESLO: ${TURNIRKO_BAZA_APP_GESLO:?nastavi TURNIRKO_BAZA_APP_GESLO v .env - glej docs/OBJAVA.md}
+      SPRING_FLYWAY_USER: turnirko_lastnik
+      SPRING_FLYWAY_PASSWORD: ${TURNIRKO_BAZA_LASTNIK_GESLO:?nastavi TURNIRKO_BAZA_LASTNIK_GESLO v .env - glej docs/OBJAVA.md}
       # Posnetki dogodkov Stupe (stran /uvoz). Privzeta relativna pot bi
       # kazala v /app, kamor uporabnik 10001 ne sme pisati.
       TURNIRKO_UVOZ_POSNETKI: /podatki/stupa-posnetki
@@ -45,10 +53,16 @@ services:
       TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST: ${TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST:-}
 
     volumes:
-      # Baza lezi na strezniku, ne v vsebniku - tako prezivi vsako
-      # posodobitev aplikacije. Mapa mora pripadati uporabniku 10001
-      # iz slike:  sudo chown -R 10001:10001 podatki
+      # Mapa za datoteke aplikacije (posnetki Stupe, porocila uvoza in prenosa).
+      # Same baze tu ni vec: leži v zvezku vsebnika "baza". Mapa mora pripadati
+      # uporabniku 10001 iz slike:  sudo chown -R 10001:10001 podatki
       - ./podatki:/podatki
+
+    # Aplikacija brez baze ne more nicesar; naj pocaka, da je PostgreSQL
+    # pripravljen (healthcheck spodaj), sicer bi se ob vsakem zagonu sesula.
+    depends_on:
+      baza:
+        condition: service_healthy
 
     # Ce se aplikacija sesuje, naj jo Docker znova zazene, a ne v nedogled.
     healthcheck:
@@ -57,6 +71,73 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+
+  # Baza PostgreSQL (docs/PRENOVA-BAZE.md, docs/OBJAVA.md razdelek 4).
+  # Locena od baze Umamija (umami-baza): drug zivljenjski cikel, druge kopije.
+  baza:
+    # Tocna razlicica, kot pri Umamiju: posodobitev je tvoja odlocitev. Manjse
+    # razlicice (18.x) so varne; glavno (19) prestavi sele po navodilu v
+    # docs/OBJAVA.md.
+    image: postgres:18.6
+    restart: unless-stopped
+    # Pocasna ugasnitev ni napaka: PostgreSQL pred izhodom zapise vse na disk.
+    stop_grace_period: 60s
+    # Privzetih 64 MB je premalo za vzporedne poizvedbe.
+    shm_size: 256mb
+    # Kot aplikacija: brez "ports:". Do baze pride samo aplikacija po
+    # notranjem omrezju. Za pregled od doma uporabi SSH-tunel (OBJAVA.md).
+    expose:
+      - "5432"
+    environment:
+      TZ: Europe/Ljubljana
+      POSTGRES_DB: turnirko
+      # Skrbnik (postgres) je samo za vzdrzevanje prek "docker compose exec";
+      # aplikacija ga ne uporablja nikoli.
+      POSTGRES_PASSWORD: ${TURNIRKO_BAZA_ADMIN_GESLO:?nastavi TURNIRKO_BAZA_ADMIN_GESLO v .env - glej docs/OBJAVA.md}
+      # Razvrscanje po kodnih tockah (C.UTF-8) - tako kot SQLite. Slovenski
+      # abecedni red ureja Java; spremenjen vrstni red v bazi bi razdrl vse,
+      # kar ga predpostavlja. Skripta 00-vloge.sh preveri, da je res tako.
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8 --locale-provider=builtin --builtin-locale=C.UTF-8
+      # Gesli vlog (skripta 00-vloge.sh ju prebere ob PRVEM zagonu).
+      TURNIRKO_BAZA_LASTNIK_GESLO: ${TURNIRKO_BAZA_LASTNIK_GESLO:?nastavi TURNIRKO_BAZA_LASTNIK_GESLO v .env - glej docs/OBJAVA.md}
+      TURNIRKO_BAZA_APP_GESLO: ${TURNIRKO_BAZA_APP_GESLO:?nastavi TURNIRKO_BAZA_APP_GESLO v .env - glej docs/OBJAVA.md}
+    # Nastavitve za VPS s 4 GB pomnilnika. Pri 2 GB vse tri vrednosti
+    # prepolovi (BAZA_SHARED_BUFFERS=256MB, BAZA_CACHE=512MB, BAZA_DELO=8MB v .env).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${BAZA_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${BAZA_CACHE:-1GB}
+      - -c
+      - work_mem=${BAZA_DELO:-16MB}
+      - -c
+      - max_connections=50
+      - -c
+      - timezone=Europe/Ljubljana
+      # Pocasne poizvedbe gredo v dnevnik (docker compose logs baza), zaklepi,
+      # na katere se caka dlje kot sekundo, tudi.
+      - -c
+      - log_min_duration_statement=250ms
+      - -c
+      - log_lock_waits=on
+      - -c
+      - "log_line_prefix=%t [%p] %u@%d "
+      # Statistika poizvedb za "teden opazovanja" po preklopu (skripte/baza-stanje.sh).
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+    volumes:
+      # PostgreSQL 18 hrani podatke v podmapi te poti. Zvezka NIKOLI ne
+      # kopiraj kot mapo; kopije so samo pg_dump (skripte/varnostna-kopija.sh).
+      - turnirko_baza:/var/lib/postgresql
+      # Ob prvem zagonu (prazen zvezek) ustvari vlogi in pravice.
+      - ./skripte/baza/00-vloge.sh:/docker-entrypoint-initdb.d/00-vloge.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d turnirko"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
 
   # Statistika obiska (Umami): pregled na https://statistika.turnirko-nt.si.
   # Ne uporablja piskotkov in ne hrani naslovov IP, zato pasica za soglasje
@@ -120,6 +201,7 @@ services:
       - app
 
 volumes:
+  turnirko_baza:
   caddy_podatki:
   caddy_nastavitve:
   umami_baza:

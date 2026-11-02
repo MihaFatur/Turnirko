@@ -1,72 +1,140 @@
-#!/bin/sh
-# Varnostna kopija baze Turnirko.
+#!/bin/bash
+# Varnostna kopija baze Turnirko (PostgreSQL).
 #
-# ZAKAJ NE "cp": SQLite med delovanjem pise v datoteko po delih. Navadna
-# kopija med pisanjem ujame bazo na pol posodobljeno in taksna kopija se
-# pogosto sploh ne odpre - napako pa opazis sele takrat, ko kopijo rabis.
-# Ukaz ".backup" naredi kopijo, ki je dosledna tudi med pisanjem.
+# Uporaba:   varnostna-kopija.sh ura | noc | rocno
+#
+# Kaj naredi: iz vsebnika "baza" potegne pg_dump v zgoscenem zapisu (-Fc),
+# preveri, da se kopija da prebrati, in jo odnese na drug racunalnik (rclone).
+#
+# ZAKAJ pg_dump in NE kopija mape: PostgreSQL med delovanjem pise po dolocenih
+# delih diska hkrati. Kopija mape med pisanjem ujame bazo na pol - taksna
+# kopija se lahko ne zazene, napako pa opazis sele takrat, ko kopijo rabis.
+# pg_dump bere bazo kot ena dosledna transakcija, zato je kopija tocno taka,
+# kot je baza bila ob zacetku, tudi ce vmes nekdo vnasa rezultate.
+#
+# Tri vrste kopij (vsaka v svoji podmapi mape kopije/):
+#   ura    vsako uro med 7. in 23. uro; hrani se 48 ur
+#   noc    vsako noc ob 3.20; hrani se 30 dni. Prvi dan v mesecu se kopija
+#          shrani tudi v mesec/ (hrani se 12 mesecev)
+#   rocno  pred vecjo posodobitvijo; hrani se 30 dni
+# Najslabsi primer ob izgubi streznika: izgubljena ura vnosov (ti so tudi na
+# papirnatih listkih).
 #
 # Namestitev na strezniku (mapa projekta, npr. /srv/turnirko):
-#     chmod +x skripte/varnostna-kopija.sh
-#     sudo apt install sqlite3
+#     chmod +x skripte/*.sh skripte/baza/*.sh
 #     crontab -e
-# in dodaj vrstico (vsak dan ob 3:20 zjutraj):
-#     20 3 * * * /srv/turnirko/skripte/varnostna-kopija.sh >> /srv/turnirko/dnevniki/kopije.log 2>&1
+# in dodaj vrstici:
+#     0 7-23 * * * /srv/turnirko/skripte/varnostna-kopija.sh ura >> /srv/turnirko/dnevniki/kopije.log 2>&1
+#     20 3 * * *   /srv/turnirko/skripte/varnostna-kopija.sh noc >> /srv/turnirko/dnevniki/kopije.log 2>&1
 #
-# POMEMBNO: kopije na istem strezniku niso varnostne kopije. Ce strezhnik
-# odpove ali ga kdo prevzame, gredo z njim. Glej razdelek "ODNASANJE" spodaj.
+# ODNASANJE: kopije na istem strezniku niso varnostne kopije - ce streznik
+# odpove ali ga kdo prevzame, gredo z njim. V .env nastavi
+#     TURNIRKO_ODNASANJE=oblak:turnirko-kopije
+# (ime nastavitve rclone in mapa v shrambi; glej docs/OBJAVA.md, razdelek 7).
+# Kopija vsebuje osebne podatke igralcev (datume rojstva): na shrambi naj bo
+# SIFRIRANA (rclone crypt), v EU.
 
-set -eu
+set -euo pipefail
 
-# --- Nastavitve ---------------------------------------------------------
-BAZA="${TURNIRKO_BAZA:-/srv/turnirko/podatki/turnirko.db}"
-KAM="${TURNIRKO_KOPIJE:-/srv/turnirko/kopije}"
-# Koliko dni kopij hranimo. Turnirska sezona je dolga; mesec dni je razumno
-# izhodisce, ker se napaka v podatkih (npr. napacno vnesen rezultat, ki je
-# pokvaril rating) lahko opazi sele cez nekaj tednov.
-HRANI_DNI="${TURNIRKO_HRANI_DNI:-30}"
+VRSTA="${1:-rocno}"
+MAPA="${TURNIRKO_MAPA:-/srv/turnirko}"
+KAM="${TURNIRKO_KOPIJE:-$MAPA/kopije}"
+
+case "$VRSTA" in
+	ura)   HRANI_MIN=$((48 * 60)) ;;
+	noc)   HRANI_MIN=$((30 * 24 * 60)) ;;
+	rocno) HRANI_MIN=$((30 * 24 * 60)) ;;
+	*)
+		echo "Uporaba: $0 ura | noc | rocno" >&2
+		exit 2
+		;;
+esac
+
+zapis() { echo "$(date '+%F %T')  $VRSTA  $*"; }
+
+# Kopija, ki je ni bilo mogoce narediti, mora glasno propasti (cron to
+# zapise v dnevnik); molk bi pomenil, da kopij ni, ti pa mislis, da so.
+napaka() {
+	zapis "NAPAKA: $*" >&2
+	exit 1
+}
+
+baza() { docker compose --project-directory "$MAPA" exec -T baza "$@"; }
+
+# Samo vrednost TURNIRKO_ODNASANJE: .env vsebuje tudi vrednosti s presledki,
+# ki jih lupina ne bi razumela, zato datoteke ne preberemo vse.
+ODNASANJE="${TURNIRKO_ODNASANJE:-}"
+if [ -z "$ODNASANJE" ] && [ -f "$MAPA/.env" ]; then
+	ODNASANJE=$(grep -E '^TURNIRKO_ODNASANJE=' "$MAPA/.env" | tail -n 1 | cut -d= -f2- || true)
+fi
+
+mkdir -p "$KAM/$VRSTA"
+
+# Prostor: kopija je ~20 MB, a poln disk bi ustavil tudi bazo.
+PROSTO_MB=$(df -Pm "$KAM" | awk 'NR == 2 { print $4 }')
+if [ "${PROSTO_MB:-0}" -lt 1024 ]; then
+	napaka "na disku je manj kot 1 GB prostora ($PROSTO_MB MB)"
+fi
 
 ZIG=$(date +%Y%m%d-%H%M%S)
-CILJ="$KAM/turnirko-$ZIG.db"
+CILJ="$KAM/$VRSTA/turnirko-$ZIG.dump"
 
-# --- Kopiranje ----------------------------------------------------------
-mkdir -p "$KAM"
-
-if [ ! -f "$BAZA" ]; then
-	echo "$(date '+%F %T')  NAPAKA: baze ni na $BAZA"
-	exit 1
+# --- Kopiranje ---------------------------------------------------------
+# Najprej v zacasno datoteko: pol zapisana kopija ne sme izgledati kot prava
+# (in je cistilec ne sme prestevati med dobre).
+umask 077
+if ! baza pg_dump -U postgres -d turnirko -Fc > "$CILJ.delno"; then
+	rm -f "$CILJ.delno"
+	napaka "pg_dump je odpovedal"
 fi
 
-# .backup zna brati bazo, ki je v rabi; ne ustavljaj aplikacije.
-sqlite3 "$BAZA" ".backup '$CILJ'"
+# Preverba: kopija mora imeti kazalo in podatke tabel. Prazna ali okvarjena
+# datoteka je brez vrednosti, zato se izbrise, ne obdrzi.
+if ! baza pg_restore -l < "$CILJ.delno" | grep -q 'TABLE DATA'; then
+	rm -f "$CILJ.delno"
+	napaka "kopija ni prestala preverbe (pg_restore -l)"
+fi
+mv "$CILJ.delno" "$CILJ"
 
-# Preverba, da kopija ni okvarjena. Kopija, ki je nihce ni pogledal, je
-# samo obcutek varnosti - ne varnost.
-if ! sqlite3 "$CILJ" "PRAGMA integrity_check;" | grep -q '^ok$'; then
-	echo "$(date '+%F %T')  NAPAKA: kopija $CILJ ni prestala preverbe"
-	rm -f "$CILJ"
-	exit 1
+# Stevilo vrstic po tabelah ob kopiji: vaja obnove (vaja-obnove.sh) po njem
+# preveri, da obnovljena baza ni okrnjena. Zapisano takoj po kopiji; pri
+# nocni kopiji vmes ni vnosov.
+if [ "$VRSTA" != "ura" ]; then
+	baza psql -U postgres -d turnirko -At -F $'\t' -c "
+		SELECT table_name,
+		       (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I', table_name), false, true, '')))[1]::text
+		FROM information_schema.tables
+		WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+		ORDER BY table_name" > "$CILJ.stevilo" || napaka "stetja vrstic ni bilo mogoce zapisati"
 fi
 
-gzip -f "$CILJ"
-CILJ="$CILJ.gz"
+KB=$(du -k "$CILJ" | cut -f1)
+zapis "kopija: $CILJ (${KB} KB)"
 
-# Baza vsebuje osebne podatke igralcev, zato kopija ni za javnost.
-chmod 600 "$CILJ"
+# --- Mesecna kopija ------------------------------------------------------
+if [ "$VRSTA" = "noc" ] && [ "$(date +%d)" = "01" ]; then
+	mkdir -p "$KAM/mesec"
+	cp -p "$CILJ" "$KAM/mesec/turnirko-$(date +%Y%m).dump"
+	cp -p "$CILJ.stevilo" "$KAM/mesec/turnirko-$(date +%Y%m).dump.stevilo"
+	find "$KAM/mesec" -name 'turnirko-*.dump*' -type f -mtime +366 -delete
+	zapis "mesecna kopija: $KAM/mesec/turnirko-$(date +%Y%m).dump"
+fi
 
-# --- Ciscenje starih ----------------------------------------------------
-find "$KAM" -name 'turnirko-*.db.gz' -type f -mtime +"$HRANI_DNI" -delete
+# --- Cistilec starih -----------------------------------------------------
+find "$KAM/$VRSTA" -name 'turnirko-*.dump*' -type f -mmin +"$HRANI_MIN" -delete
 
-echo "$(date '+%F %T')  kopija: $CILJ ($(du -h "$CILJ" | cut -f1))"
-
-# --- ODNASANJE S STREZNIKA ----------------------------------------------
-# Odkomentiraj eno od moznosti, ko jo nastavis. Brez tega koraka si
-# zavarovan pred pomoto (izbrisan turnir), NE pa pred izgubo streznika.
-#
-# a) na svoj racunalnik - to pozeni DOMA, ne na strezniku:
-#      scp streznik:/srv/turnirko/kopije/turnirko-*.db.gz ~/kopije-turnirko/
-#
-# b) v oblacno shrambo prek rclone (nastavis z "rclone config"):
-#      rclone copy "$CILJ" oblak:turnirko-kopije/
-#
-# Ce hranis kopije v EU oblaku, pazi: gre za osebne podatke igralcev.
+# --- Odnasanje s streznika -----------------------------------------------
+if [ -n "$ODNASANJE" ]; then
+	command -v rclone > /dev/null || napaka "TURNIRKO_ODNASANJE je nastavljen, rclone pa ni namescen"
+	rclone copyto "$CILJ" "$ODNASANJE/$VRSTA/$(basename "$CILJ")" || napaka "odnasanje kopije ni uspelo"
+	[ ! -f "$CILJ.stevilo" ] || rclone copyto "$CILJ.stevilo" "$ODNASANJE/$VRSTA/$(basename "$CILJ").stevilo" || napaka "odnasanje stetja ni uspelo"
+	if [ "$VRSTA" = "noc" ] && [ "$(date +%d)" = "01" ]; then
+		rclone copyto "$CILJ" "$ODNASANJE/mesec/turnirko-$(date +%Y%m).dump" || napaka "odnasanje mesecne kopije ni uspelo"
+	fi
+	# Stare kopije v shrambi pospravi enako kot na strezniku.
+	rclone delete "$ODNASANJE/$VRSTA" --min-age "$((HRANI_MIN / 60))h" || zapis "OPOZORILO: cistilec v shrambi ni uspel"
+	[ "$VRSTA" != "noc" ] || rclone delete "$ODNASANJE/mesec" --min-age "$((366 * 24))h" || true
+	zapis "odneseno: $ODNASANJE/$VRSTA/"
+else
+	zapis "OPOZORILO: odnasanje ni nastavljeno (TURNIRKO_ODNASANJE) - kopija je samo na tem strezniku"
+fi

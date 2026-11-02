@@ -389,6 +389,24 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
     List<Object[]> ratinskeTekme(@Param("disciplina") Disciplina disciplina,
                                  @Param("izidi") Collection<IzidTekme> izidi);
 
+    /* Isto kot ratinskeTekme, a samo tekme brez zapisa v dnevniku: rezultat,
+       shranjen med preracunom, ki ga je ta ob koncu doobracunal
+       (PreracunRatingaStoritev.obracunajManjkajoce). */
+    @Query("""
+            SELECT t.id, t.dogodek.turnir.datumZacetka, t.faza, t.kolo, t.pozicija
+            FROM Tekma t
+            WHERE t.dogodek.disciplina = :disciplina
+              AND t.dogodek.turnir.raven <> si.turnirko.modeli.RavenTekmovanja.NE_STEJE
+              AND t.izidTip IN :izidi
+              AND t.prijava1 IS NOT NULL
+              AND t.prijava2 IS NOT NULL
+              AND t.zmagovalec IS NOT NULL
+              AND t.idPrenesena IS NULL
+              AND NOT EXISTS (SELECT 1 FROM RatingZgodovina z WHERE z.tekma = t)
+            """)
+    List<Object[]> neobracunaneRatinske(@Param("disciplina") Disciplina disciplina,
+                                        @Param("izidi") Collection<IzidTekme> izidi);
+
     /* Tekme, ki so na vrsti in cakajo na vnos rezultata (oba znana, se ne
        koncane), po dogodkih izbranih turnirjev: [idTurnir, idDogodek,
        imeDogodka, stevilo]. Vir »Caka te« v organizatorskem pregledu. */

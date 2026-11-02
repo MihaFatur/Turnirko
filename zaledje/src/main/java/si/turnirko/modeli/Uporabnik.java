@@ -19,7 +19,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -87,9 +86,7 @@ public class Uporabnik {
     private Klub klubZelja;
 
     /* Kdaj je lastnik naslova vpisal kodo s poste; NULL = naslov se ni potrjen.
-       Casi racuna so besedilo s pretvornikom (CasKotBesedilo): gonilnik bi
-       sicer uro zavrgel, nocno ciscenje pa steje ure (48 h), ne dni. */
-    @Convert(converter = CasKotBesedilo.class)
+       Ura steje: nocno ciscenje steje ure (48 h), ne dni. */
     @Column(name = "email_potrjen_ob")
     private LocalDateTime emailPotrjenOb;
 
@@ -98,7 +95,6 @@ public class Uporabnik {
     @Column(name = "email_skrbnika")
     private String emailSkrbnika;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "skrbnik_potrjen_ob")
     private LocalDateTime skrbnikPotrjenOb;
 
@@ -107,7 +103,6 @@ public class Uporabnik {
     @Column(name = "vir_povezave")
     private VirPovezave virPovezave;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "povezan_ob")
     private LocalDateTime povezanOb;
 
@@ -124,9 +119,7 @@ public class Uporabnik {
     @Column(name = "zeton_odjave")
     private String zetonOdjave;
 
-    /* Stari zapisi so brez ure ("2026-08-16"); pretvornik jih bere kot polnoc,
-       ISO besedilo pa se leksikalno primerja pravilno tudi z njimi. */
-    @Convert(converter = CasKotBesedilo.class)
+    /* Stari zapisi so brez ure (polnoc dneva nastanka). */
     @Column(name = "ustvarjen_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenOb;
 

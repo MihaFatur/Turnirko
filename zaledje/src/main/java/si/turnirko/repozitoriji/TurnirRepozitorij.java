@@ -36,13 +36,15 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             """)
     List<Turnir> prazniBrezVira(LocalDate od, LocalDate doKdaj, StatusTekmovanja status);
 
-    /* Vsi turnirji s krajem in lastnistvom, najnovejsi najprej. */
+    /* Vsi turnirji s krajem in lastnistvom, najnovejsi najprej. Cas nastanka
+       je pri uvozenih turnirjih isti za stotine zapisov (uvoz v enem dnevu),
+       zato id odloci izenacene - brez njega bi PostgreSQL vrnil poljuben red. */
     @Query("""
             SELECT t FROM Turnir t
             LEFT JOIN FETCH t.kraj
             LEFT JOIN FETCH t.klubLastnik
             LEFT JOIN FETCH t.ustvaril
-            ORDER BY t.ustvarjenOb DESC
+            ORDER BY t.ustvarjenOb DESC, t.id
             """)
     List<Turnir> najdiVseSKrajem();
 

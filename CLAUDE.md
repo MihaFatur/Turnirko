@@ -9,8 +9,13 @@
 
 ## Trdna pravila
 
-- Shemo baze spreminjaj SAMO z novo Flyway migracijo v `zaledje/src/main/resources/db/migration/sqlite/`
+- Shemo baze spreminjaj SAMO z novo Flyway migracijo v `zaledje/src/main/resources/db/migration/postgresql/`
   (nikoli ne spreminjaj obstoječih migracij; `ddl-auto` ostane `none`).
+  **Baza je PostgreSQL** (prenova baze, `docs/PRENOVA-BAZE.md`). Prva datoteka
+  je izhodišče `V53__izhodisce.sql` (shema, enaka SQLite po V53); prva nova
+  migracija je V54. **Dokler preklop produkcije ni opravljen, produkcija teče
+  na SQLite**: vsaka nova migracija mora imeti dvojnico v obeh mapah
+  (`sqlite/` in `postgresql/`), sicer jo prenos podatkov izpusti.
 - Poslovna logika sodi v `storitve`, kontrolerji so tanki adapterji.
 - Navzven gredo samo DTO-ji, nikoli entitete. Osebni podatki (e-pošta, telefon,
   naslov, datum rojstva) ne smejo v javne poglede.
@@ -104,11 +109,13 @@
   U11 + U13 + U15.
 - **Admin geslo nima privzetka.** Če je baza prazna in
   `turnirko.admin.privzeto-geslo` ni nastavljen (oz. je krajši od 12 znakov),
-  `ZacetniAdmin` ustavi zagon. Izjema je profil `namizni` (lokalna prenosna
-  različica), ki obdrži `admin`/`admin`. Privzetka ne vračaj v
-  `application.properties`.
+  `ZacetniAdmin` ustavi zagon. Izjeme ni (namizna različica je odšla s
+  prenovo baze). Privzetka ne vračaj v `application.properties`.
 - Vsaka sprememba domenske logike (žreb, rezultati, rating) MORA imeti test.
-  Testi: `cd zaledje && mvnw test`.
+  Testi: `cd zaledje && mvnw test`. Tečejo na pravem PostgreSQL, ki ga ob
+  začetku zažene `TestnaBaza` (zonky embedded-postgres, brez namestitve in
+  Dockerja); v testnem profilu je `ddl-auto=validate`, zato vsako neujemanje
+  entitete s shemo ustavi testni zagon.
 - Statuse določa strežnik; prehodi stanj se preverjajo v storitvah.
 - **Status, ki ga vidi gledalec, ni vedno dejanski.** Zreb turnirja ali razpored
   lige pred datumom začetka je dejansko `V_TEKU` (prijave zaprte, popravek mogoč),
@@ -402,18 +409,15 @@
     `EkipaLigeOkno`, skupna pravila v `pomozno/prestavitve.ts`.
   - **Ni pokrito**: končnica lige (ima svoje termine, `KoncnicaStoritev`),
     ekipni turnirji in stran zapisnika srečanja (o prestavitvi molči).
-- **Časovni žig s pomembno uro potrebuje `@Convert(CasKotBesedilo.class)`.**
-  Gonilnik sqlite-jdbc pozna eno samo obliko za datume (`date_string_format`,
-  v `application.properties` `yyyy-MM-dd`) in z njo piše **tudi** časovne žige
-  — vsak `LocalDateTime` skozi gonilnik torej izgubi uro (`liga.ustvarjen_ob`
-  je v bazi `2026-07-23`). Nastavitve `timestamp_string_format` gonilnik ne
-  pozna in jo tiho spregleda. Pretvornik naredi iz stolpca navaden niz in ura
-  obstane; uporabljajo ga `srecanje.predviden_zacetek`,
-  `liga.zacetek_prvega_kola` in vsi časi računov ter potrditvenih kod (V33 —
-  brez njega je koda potekla že ob nastanku, ker je bil potek zapisan kot
-  polnoč). **Testi tega sami ne ujamejo**: `@Transactional`
-  test dobi entiteto iz predpomnilnika seje, zato mora preverba ure izrecno
-  `flush()` + `clear()` (glej `uraTerminaPrezivizapisVBazo`,
+- **Časi so `timestamp(3)`, datumi `date`, logične vrednosti `boolean`**
+  (izhodišče V53). Entiteta dobi `LocalDateTime`/`LocalDate` od Hibernata;
+  **izvorna poizvedba** (`List<Object[]>`, `getSingleResult`) pa vrne tip
+  gonilnika, zato gre vsak čas iz nje skozi `pomozno/CasBaze` — nikoli
+  `toString()` in rezanje niza (tako je bilo v SQLite, kjer so bili časi
+  besedilo s pretvornikom `CasKotBesedilo`). Zapisi iz časa SQLite, ki jim je
+  gonilnik odrezal uro, so ostali polnoč. Preverba ure v `@Transactional`
+  testu še vedno potrebuje `flush()` + `clear()` (entiteta pride iz
+  predpomnilnika seje; glej `uraTerminaPrezivizapisVBazo`,
   `kodaInCasiRacunaPrezivijoZapisVBazo`).
 - **Sistem se imenuje »Turnirko rating«** — tako v kodi, v bazi in v vmesniku.
   V bazi je to vrednost stolpca `sistem` obeh ratinških tabel: **`TURNIRKO`**
@@ -598,9 +602,9 @@
     `sistem = ?` se prebere v celoti v vsakem primeru. Brez indeksa je sqlite
     za vsak zapis bral še celo vrstico: 1,13 s namesto 0,09 s, lestvica ~3,2 s,
     profil do 3,3 s. Klicatelj sproži štetje **enkrat** za vse igralce, ki jih
-    potrebuje (profil ga je prej klical dvakrat). Varuje ga
-    `stetjeTekmovalnihTekemBereSamoPokrivniIndeks` (načrt pravega SQL-a
-    Hibernata) v `LoceneLestviceTest`.
+    potrebuje (profil ga je prej klical dvakrat). Test načrta za SQLite je
+    odšel s prenovo baze; v PostgreSQL se meri na kopiji produkcije
+    (`docs/PRENOVA-BAZE.md`, razdelek 9).
   - **Lestvica šteje zmage in poraze iz ŠTEVILK, ne iz entitet**
     (`izidiVsehOdigranih`, `izidiVsehOdigranihPosamicnih`): ~94 tisoč tekem ob
     vsakem ogledu, potrebni pa so samo trije id-ji na tekmo. Nalaganje tekem s
@@ -641,8 +645,7 @@
 - **Dnevnik ratinga ima časovno os (`rating_zgodovina.velja_ob`, V18).**
   `ustvarjen_ob` je čas ZAPISA, `velja_ob` pa čas TEKME, ki je spremembo
   povzročila — turnirska tekma dobi datum turnirja ob polnoči, ligaška čas
-  srečanja, postavitveni zapis pa trenutek postavitve. Stolpec ima
-  `@Convert(CasKotBesedilo.class)` iz istega razloga kot termini kol.
+  srečanja, postavitveni zapis pa trenutek postavitve.
   Po njem tečejo preračun od datuma, okno črte in premik mesta na lestvici;
   tekma brez znanega datuma velja 1. 1. 1900 (`VrstaRatinskeTekme.BREZ_DATUMA`)
   — namenoma na začetku, kjer najmanj škodi, in **ne** na dan vnosa, kjer bi se
@@ -661,7 +664,9 @@
   spremeni načrte po vsej aplikaciji). Poizvedbe, ki berejo **ves** obseg
   sistema ali iščejo po igralcu (`najdiZaIgralca`, `tekmovalnihTekem`,
   uvrstitev novinca), ostanejo pri `z.sistem` — tam indeks s `sistem` je
-  pravi. Varuje `NacrtiDnevnikaTest`; nova poizvedba po tekmah gre tja.
+  pravi. **Velja za SQLite**: PostgreSQL ima statistike in izraz ne škodi;
+  odstranitev sodi v fazo 6 prenove baze, ko so načrti izmerjeni na kopiji
+  produkcije (`NacrtiDnevnikaTest` je bil test načrta SQLite in je odšel).
 - **Rating je izpeljanka: `PreracunRatingaStoritev.preracunajOd(datum)` ga zna
   sestaviti znova** (`POST /api/v1/rating/preracun?od=`, admin; v vmesniku
   stran `/rating`, gl. razdelek Vmesnik).
@@ -1340,9 +1345,9 @@
     zbiranja je vseeno tudi DAN — posamično prestavljeno srečanje sodi na svoj
     dan in ne k ostalim.
   - **Meji poizvedbe srečanj sta za dan širši od obdobja**, natančno omeji šele
-    Java po datumu. `predviden_zacetek` je besedilo (`CasKotBesedilo`) in stari
-    zapisi brez ure (`2026-10-04`) so pri primerjavi nizov krajši od
-    `2026-10-04T00:00` — na prvi dan obdobja bi odpadli.
+    Java po datumu (iz časa SQLite, ko je bil `predviden_zacetek` besedilo in so
+    zapisi brez ure na prvi dan obdobja odpadli; s `timestamp` je razširitev
+    odveč, a ne škodi).
   - **Vrstni red vnosov je datum, nato ime.** Vmesnik iz njega izpelje vrstni
     red trakov v tednu in vrstic v seznamu, zato mora biti med klici enak.
 - **Domača stran bere izpeljanke, ne surovih tekem.** `TurnirDto` nosi
@@ -3141,8 +3146,10 @@
 ## Objava na splet
 
 - Navodilo po korakih je `docs/OBJAVA.md`; datoteke postavitve so v korenu
-  (`Dockerfile`, `compose.yaml`, `Caddyfile`, `.env.primer`) in
-  `skripte/varnostna-kopija.sh`.
+  (`Dockerfile`, `compose.yaml`, `Caddyfile`, `.env.primer`) in skripte v
+  `skripte/` (kopije `varnostna-kopija.sh`, obnova `obnovi-bazo.sh`, mesečna
+  vaja `vaja-obnove.sh`, pregled `baza-stanje.sh`, vloge baze `baza/00-vloge.sh`,
+  selitev s SQLite `preklop/`, `docs/PREKLOP.md`).
 - **Statistika obiska je Umami na istem strežniku** (storitvi `umami` in
   `umami-baza` v `compose.yaml`, poddomena `statistika.turnirko-nt.si` v
   `Caddyfile`, namestitev `skripte/vklopi-statistiko.sh`, OBJAVA.md razdelek 8).
@@ -3185,8 +3192,20 @@
   prazen CORS (isti izvor), `forward-headers-strategy`, brez sledi sklada v
   odgovoru. Vrata 8080 se na strežniku ne objavijo — do aplikacije se pride
   samo skozi Caddy, torej samo prek HTTPS (HTTP Basic bi bil sicer berljiv).
-- SQLite baze **nikoli ne kopiraj z `cp`** med delovanjem; uporabi
-  `sqlite3 ... ".backup"` (tako dela skripta za varnostne kopije).
+- **Baze PostgreSQL (zvezka `turnirko_baza`) nikoli ne kopiraj kot mapo**; kopija je
+  samo `pg_dump -Fc` (`skripte/varnostna-kopija.sh`: urna, nočna, mesečna, odnašanje
+  z `rclone` v šifrirano shrambo v EU). Kopija, ki je nihče ni obnovil, ni kopija:
+  `skripte/vaja-obnove.sh` jo vsak mesec obnovi v začasen vsebnik in primerja
+  števila vrstic. Obnova produkcije je `skripte/obnovi-bazo.sh`.
+- **Baza ima tri vloge** (`skripte/baza/00-vloge.sh`, ob prvem zagonu praznega
+  zvezka): `postgres` (samo vzdrževanje), `turnirko_lastnik` (Flyway ter ukazi
+  `uvoz`/`popravek`/`prenos`) in `turnirko_app` (aplikacija: samo SELECT/INSERT/
+  UPDATE/DELETE; `statement_timeout` 30 s, `lock_timeout` 5 s,
+  `idle_in_transaction_session_timeout` 60 s). Aplikacija v `splet` profilu se
+  prijavi z `turnirko_app`, Flyway z `SPRING_FLYWAY_USER` (compose.yaml). Novo
+  tabelo ali zaporedje Flyway ustvari kot `turnirko_lastnik`; privzete pravice
+  (`ALTER DEFAULT PRIVILEGES`) jih dajo aplikaciji. Ukaz, ki bi moral spremeniti
+  shemo ali zbrisati tabelo, z vlogo aplikacije ne bo deloval — to je namen.
 - **HSTS postavlja Caddy, ne aplikacija.** Spring Security privzeto pošilja
   `Strict-Transport-Security` z `includeSubDomains`, takoj ko zahteva pride po
   HTTPS. Poddomene niso na tem strežniku (`webmail.` in `mail.` sta pri

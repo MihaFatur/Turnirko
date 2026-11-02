@@ -12,14 +12,14 @@ public interface RacunDogodekRepozitorij extends JpaRepository<RacunDogodek, Lon
 
     /* Najnovejsih `najvec` dogodkov VSAKEGA racuna - ena poizvedba za cel
        administratorjev seznam, ne ena na racun. Vrstice: id_racun, ob, tekst
-       (ob je besedilo, ISO; razclenitev je v RacunDnevnikStoritev). Najnovejsi
-       prvi, pri enakem casu pozneje zapisani. */
+       (ob je cas, glej CasBaze). Najnovejsi prvi, pri enakem casu pozneje
+       zapisani. */
     @Query(value = """
             SELECT id_racun, ob, tekst FROM (
                 SELECT id_racun, ob, tekst, id,
                        ROW_NUMBER() OVER (PARTITION BY id_racun ORDER BY ob DESC, id DESC) AS vrstni
                 FROM racun_dogodek
-            ) WHERE vrstni <= :najvec
+            ) AS po_racunih WHERE vrstni <= :najvec
             ORDER BY id_racun, ob DESC, id DESC
             """, nativeQuery = true)
     List<Object[]> najnovejsiZaVse(int najvec);

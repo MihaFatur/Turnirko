@@ -5,7 +5,13 @@
 
    Klicalec (TekmaStoritev / SrecanjeStoritev) odloca, KDAJ se rating obracuna
    (npr. brez boja in diskvalifikacija ne stejeta, dvojice v ligi ne stejejo);
-   ta storitev le izracuna in zapise spremembo. */
+   ta storitev le izracuna in zapise spremembo.
+
+   Socasnost (prenova baze, faza 2): vsako pisanje najprej vzame zaklep ratinga
+   (Zaklepi.zakleniRating), zato dva vnosa iste tekme ne moreta oba prestati
+   preverbe "ze obracunana" in dva obracuna istega igralca ne bereta istega
+   stanja. Med preracunom se rezultat shrani brez obracuna; preracun ga ob
+   koncu doobracuna (PreracunRatingaStoritev.obracunajManjkajoce). */
 package si.turnirko.storitve;
 
 import java.time.LocalDate;
@@ -46,24 +52,41 @@ public class RatingStoritev {
     private final TurnirkoRatingStoritev turnirkoRating;
     private final SidroStoritev sidroStoritev;
     private final NeaktivnostStoritev neaktivnostStoritev;
+    private final Zaklepi zaklepi;
+
+    /* Odgovor administratorju, ki med preracunom rocno spreminja rating. */
+    static final String PRERACUN_TECE =
+            "Rating se ravno preracunava. Poskusi znova cez nekaj minut.";
 
     public RatingStoritev(RatingStanjeRepozitorij stanjeRepozitorij,
                           RatingZgodovinaRepozitorij zgodovinaRepozitorij,
                           TurnirkoRatingStoritev turnirkoRating,
                           SidroStoritev sidroStoritev,
-                          NeaktivnostStoritev neaktivnostStoritev) {
+                          NeaktivnostStoritev neaktivnostStoritev,
+                          Zaklepi zaklepi) {
         this.stanjeRepozitorij = stanjeRepozitorij;
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
         this.turnirkoRating = turnirkoRating;
         this.sidroStoritev = sidroStoritev;
         this.neaktivnostStoritev = neaktivnostStoritev;
+        this.zaklepi = zaklepi;
     }
 
     /* Obracuna Turnirko rating za koncano turnirsko tekmo (samo enkrat na tekmo).
-       Dvojice ne stejejo - izida para ni mogoce pripisati posamezniku (isto
-       pravilo kot pri ligaskih dvojicah spodaj). */
+       Vrne false, ce je obracun ostal preracunu, ki ravno tece. */
     @Transactional
-    public void obracunajZaTurnirsko(Tekma tekma) {
+    public boolean obracunajZaTurnirsko(Tekma tekma) {
+        if (!zaklepi.zakleniRating()) {
+            return false;
+        }
+        obracunajZaTurnirskoPodZaklepom(tekma);
+        return true;
+    }
+
+    /* Obracun za klicalca, ki zaklep ratinga ze drzi (preracun) in tece v
+       transakciji. Dvojice ne stejejo - izida para ni mogoce pripisati
+       posamezniku (isto pravilo kot pri ligaskih dvojicah spodaj). */
+    public void obracunajZaTurnirskoPodZaklepom(Tekma tekma) {
         if (tekma.getDogodek().jeDvojice()) {
             return;
         }
@@ -102,9 +125,19 @@ public class RatingStoritev {
     }
 
     /* Obracuna Turnirko rating za posamicno tekmo ligaskega srecanja.
-       Dvojice ne stejejo (dva igralca na strani nimata enega ratinga). */
+       Vrne false, ce je obracun ostal preracunu, ki ravno tece. */
     @Transactional
-    public void obracunajZaLigasko(TekmaSrecanja tekma) {
+    public boolean obracunajZaLigasko(TekmaSrecanja tekma) {
+        if (!zaklepi.zakleniRating()) {
+            return false;
+        }
+        obracunajZaLigaskoPodZaklepom(tekma);
+        return true;
+    }
+
+    /* Kot zgoraj, za klicalca z zaklepom. Dvojice ne stejejo (dva igralca na
+       strani nimata enega ratinga). */
+    public void obracunajZaLigaskoPodZaklepom(TekmaSrecanja tekma) {
         if (tekma.getTip() != TipTekmeSrecanja.POSAMICNA) {
             return; // dvojice ne stejejo v rating
         }
@@ -191,6 +224,9 @@ public class RatingStoritev {
             throw new NeveljavenVnosIzjema("Zacetni rating mora biti med "
                     + TurnirkoRatingStoritev.NAJNIZJI_ZACETNI + " in " + TurnirkoRatingStoritev.NAJVISJI_ZACETNI + ".");
         }
+        if (!zaklepi.zakleniRating()) {
+            throw new DomenskaIzjema(PRERACUN_TECE);
+        }
         RatingStanje stanje = stanjeRepozitorij
                 .findByIgralecIdAndSistem(igralec.getId(), RatingStanje.SISTEM_TURNIRKO)
                 .orElse(null);
@@ -244,6 +280,9 @@ public class RatingStoritev {
         }
         if (pojasnilo == null || pojasnilo.isBlank()) {
             throw new NeveljavenVnosIzjema("Zunanja uvrstitev mora navesti pojasnilo.");
+        }
+        if (!zaklepi.zakleniRating()) {
+            throw new DomenskaIzjema(PRERACUN_TECE);
         }
 
         LocalDateTime zdaj = LocalDateTime.now();

@@ -10,7 +10,6 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -42,20 +41,17 @@ public class PotrditvenaKoda {
     @Column(name = "koda_hash", nullable = false)
     private String kodaHash;
 
-    /* Casi so besedilo s pretvornikom: gonilnik sqlite-jdbc bi LocalDateTime
-       zapisal brez ure ("2026-09-17") in koda bi potekla ze ob nastanku. */
-    @Convert(converter = CasKotBesedilo.class)
+    /* Ura je del pomena: brez nje bi koda potekla ze ob nastanku (potek je
+       10 minut po nastanku). */
     @Column(name = "ustvarjen_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenOb;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "potece_ob", nullable = false)
     private LocalDateTime poteceOb;
 
     @Column(name = "poskusi", nullable = false)
     private int poskusi = 0;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "porabljen_ob")
     private LocalDateTime porabljenOb;
 

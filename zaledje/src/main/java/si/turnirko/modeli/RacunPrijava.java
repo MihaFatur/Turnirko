@@ -6,7 +6,6 @@ package si.turnirko.modeli;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,7 +23,6 @@ public class RacunPrijava {
     @Column(name = "id_racun", nullable = false)
     private Long idRacun;
 
-    @Convert(converter = CasKotBesedilo.class)
     @Column(name = "ob", nullable = false)
     private LocalDateTime ob;
 

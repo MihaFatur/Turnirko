@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -56,6 +57,15 @@ public class GlobalniObravnavalecIzjem {
     ProblemDetail socasnaSprememba(OptimisticLockingFailureException izjema) {
         return sestavi(HttpStatus.CONFLICT, "Socasna sprememba",
                 "Zapis je medtem spremenil nekdo drug. Osvezi podatke in poskusi znova.");
+    }
+
+    /* Baza je zahtevo ustavila zaradi zaklepa: zastoj dveh zahtev (eno
+       razveljavi sama) ali predolgo cakanje (lock_timeout vloge aplikacije).
+       Podatki so nespremenjeni, zahteva se lahko ponovi. */
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    ProblemDetail zaklep(PessimisticLockingFailureException izjema) {
+        return sestavi(HttpStatus.CONFLICT, "Socasna sprememba",
+                "Hkrati je potekala druga sprememba istih podatkov. Poskusi znova.");
     }
 
     /* Krsitev omejitve v bazi (UNIQUE, CHECK, tuji kljuc). */

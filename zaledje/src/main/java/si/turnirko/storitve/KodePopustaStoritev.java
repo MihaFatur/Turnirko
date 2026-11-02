@@ -105,6 +105,7 @@ public class KodePopustaStoritev {
     private final OmejevalnikPoskusov omejevalnik;
     private final StripeNarocnine stripe;
     private final RacunDnevnikStoritev racunDnevnik;
+    private final Zaklepi zaklepi;
 
     public KodePopustaStoritev(KodaPopustaRepozitorij kode,
                                UporabaKodePopustaRepozitorij uporabe,
@@ -114,7 +115,8 @@ public class KodePopustaStoritev {
                                CenikStoritev cenik,
                                OmejevalnikPoskusov omejevalnik,
                                StripeNarocnine stripe,
-                               RacunDnevnikStoritev racunDnevnik) {
+                               RacunDnevnikStoritev racunDnevnik,
+                               Zaklepi zaklepi) {
         this.kode = kode;
         this.uporabe = uporabe;
         this.cakajoce = cakajoce;
@@ -124,6 +126,7 @@ public class KodePopustaStoritev {
         this.omejevalnik = omejevalnik;
         this.stripe = stripe;
         this.racunDnevnik = racunDnevnik;
+        this.zaklepi = zaklepi;
     }
 
     // ---------- Administracija ----------
@@ -259,7 +262,14 @@ public class KodePopustaStoritev {
     private KodaPopusta zahtevajUporabno(String vnos, boolean organizator, Pot pot, String naslovIp,
                                          String email) {
         omeji(naslovIp);
-        KodaPopusta k = najdiSprejeto(vnos, normalizirajEmail(email))
+        /* Prosta mesta pri najvec uporab se prestejejo in zasedejo v isti
+           transakciji (brezplacna registracija), zato kodo pred stetjem
+           zaklenemo - sicer bi dve hkratni registraciji zasedli isto zadnje
+           mesto. Placljiva pot tece brez transakcije (klic Stripa) in mesto
+           potrdi naknadno: potrdiRezervacijo. */
+        Optional<KodaPopusta> najdena = kode.findByKoda(normaliziraj(vnos));
+        najdena.ifPresent(n -> zaklepi.zakleni(Zaklepi.Vrsta.KODA_POPUSTA, n.getId()));
+        KodaPopusta k = najdena.filter(n -> jeSprejeta(n, normalizirajEmail(email)))
                 .orElseThrow(() -> new NeveljavenVnosIzjema(NEVELJAVNA_KODA));
         String razlog = razlogNeuporabnosti(k, organizator, pot);
         if (razlog != null) {
@@ -291,6 +301,23 @@ public class KodePopustaStoritev {
                                     ? "Ta koda je za organizatorje."
                                     : "Ta koda je za igralce.";
         };
+    }
+
+    /* Placljiva registracija je mesto ze rezervirala (cakajoca vrstica s kodo),
+       preverba pa je tekla v svoji transakciji: dve hkratni registraciji bi
+       lahko obe videli zadnje prosto mesto. Zato se mesto potrdi znova POD
+       zaklepom kode, ko je rezervacija ze zapisana; ce ga ni vec, se lastna
+       rezervacija zbrise v isti transakciji (zaklep zadrzi naslednjega, dokler
+       izbris ni potrjen) in klicalec registracijo zavrne. */
+    @Transactional
+    public boolean potrdiRezervacijo(Long idKoda, Long idCakajoce, String email) {
+        zaklepi.zakleni(Zaklepi.Vrsta.KODA_POPUSTA, idKoda);
+        KodaPopusta k = kode.findById(idKoda).orElse(null);
+        if (k != null && jeSprejeta(k, normalizirajEmail(email))) {
+            return true;
+        }
+        cakajoce.deleteById(idCakajoce);
+        return false;
     }
 
     // ---------- Uporaba in ugodnosti ----------

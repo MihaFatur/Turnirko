@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -84,9 +83,7 @@ public class Srecanje {
     @Column(name = "prenesen", nullable = false)
     private boolean prenesen = false;
 
-    /* Termin kola z uro; gonilnik bi jo brez pretvornika odrezal (glej
-       CasKotBesedilo). */
-    @Convert(converter = CasKotBesedilo.class)
+    /* Termin kola z uro (00:00 = ura ni dolocena). */
     @Column(name = "predviden_zacetek")
     private LocalDateTime predvidenZacetek;
 
@@ -114,9 +111,8 @@ public class Srecanje {
     private String razlogPrestavitve;
 
     /* Kdaj je srecanje v aplikaciji dobilo PRVI izid - zgornja meja za cas,
-       ko je bilo odigrano (glej casOdigranja). Pretvornik iz istega razloga
-       kot pri terminu; starejsi zapisi so brez ure. */
-    @Convert(converter = CasKotBesedilo.class)
+       ko je bilo odigrano (glej casOdigranja). Starejsi zapisi so brez ure
+       (polnoc). */
     @Column(name = "odigran_ob")
     private LocalDateTime odigranOb;
 

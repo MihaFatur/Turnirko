@@ -330,6 +330,39 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
     List<Object[]> ratinskeTekmeTurnirskihSrecanj(@Param("tip") TipTekmeSrecanja tip,
                                                   @Param("izidi") Collection<IzidTekme> izidi);
 
+    /* ratinskeTekme in ratinskeTekmeTurnirskihSrecanj, a samo tekme brez zapisa v
+       dnevniku (PreracunRatingaStoritev.obracunajManjkajoce). */
+    @Query("""
+            SELECT t.id, t.srecanje.odigranOb, t.srecanje.predvidenZacetek,
+                   t.srecanje.kolo, t.zaporedje
+            FROM TekmaSrecanja t
+            WHERE t.tip = :tip
+              AND t.srecanje.liga.raven <> si.turnirko.modeli.RavenTekmovanja.NE_STEJE
+              AND t.izidTip IN :izidi
+              AND t.igralecDomaci IS NOT NULL
+              AND t.igralecGost IS NOT NULL
+              AND t.zmagovalecStran IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM RatingZgodovina z WHERE z.tekmaSrecanja = t)
+            """)
+    List<Object[]> neobracunaneRatinske(@Param("tip") TipTekmeSrecanja tip,
+                                        @Param("izidi") Collection<IzidTekme> izidi);
+
+    @Query("""
+            SELECT t.id, dg.turnir.datumZacetka, tk.faza, sk.stopnja, tk.kolo, tk.pozicija, t.zaporedje
+            FROM TekmaSrecanja t
+            JOIN t.srecanje s JOIN s.tekma tk JOIN tk.dogodek dg
+            LEFT JOIN Skupina sk ON sk.id = tk.idSkupina
+            WHERE t.tip = :tip
+              AND dg.turnir.raven <> si.turnirko.modeli.RavenTekmovanja.NE_STEJE
+              AND t.izidTip IN :izidi
+              AND t.igralecDomaci IS NOT NULL
+              AND t.igralecGost IS NOT NULL
+              AND t.zmagovalecStran IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM RatingZgodovina z WHERE z.tekmaSrecanja = t)
+            """)
+    List<Object[]> neobracunaneRatinskeTurnirskihSrecanj(@Param("tip") TipTekmeSrecanja tip,
+                                                         @Param("izidi") Collection<IzidTekme> izidi);
+
     /* Vse odigrane tekme srecanj enega ekipnega DOGODKA turnirja - za zavihek
        statistike turnirja (isti obseg kot najdiOdigraneZaLigo pri ligi). */
     @Query("""

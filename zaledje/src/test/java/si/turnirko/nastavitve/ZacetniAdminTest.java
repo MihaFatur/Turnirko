@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.env.MockEnvironment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,10 +29,8 @@ class ZacetniAdminTest {
     @Mock UporabnikRepozitorij uporabniki;
     @Mock PasswordEncoder kodirnik;
 
-    private ZacetniAdmin admin(String geslo, String... profili) {
-        MockEnvironment okolje = new MockEnvironment();
-        okolje.setActiveProfiles(profili);
-        return new ZacetniAdmin(uporabniki, kodirnik, okolje, "admin", geslo);
+    private ZacetniAdmin admin(String geslo) {
+        return new ZacetniAdmin(uporabniki, kodirnik, "admin", geslo);
     }
 
     @Test
@@ -54,16 +51,6 @@ class ZacetniAdminTest {
 
         assertThrows(IllegalStateException.class, () -> admin("admin").run(null));
         verify(uporabniki, never()).save(any());
-    }
-
-    @Test
-    void namizniNacinSmeImetiLokalniPrivzetek() {
-        when(uporabniki.count()).thenReturn(0L);
-        when(kodirnik.encode("admin")).thenReturn("zgostitev");
-
-        admin("", "namizni").run(null);
-
-        verify(uporabniki).save(any(Uporabnik.class));
     }
 
     @Test

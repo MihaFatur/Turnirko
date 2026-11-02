@@ -74,7 +74,7 @@ class UvozPrevzemKoledarjaTest {
 
     @BeforeEach
     void koledarInStupa() throws Exception {
-        jdbc.update("INSERT OR IGNORE INTO kraj (postna_st, ime) VALUES (2325, 'Kidričevo')");
+        jdbc.update("INSERT INTO kraj (postna_st, ime) VALUES (2325, 'Kidričevo') ON CONFLICT DO NOTHING");
         jdbc.update("INSERT INTO klub (id, ime) VALUES (9001, 'NTK Koledar')");
         u15 = turnir("1. OT ZA U-15", DAN, "PRIPRAVA");
         u21 = turnir("1. OT ZA U-21", DAN, "PRIPRAVA");
@@ -171,9 +171,9 @@ class UvozPrevzemKoledarjaTest {
     private long turnir(String ime, LocalDate dan, String status) {
         jdbc.update("INSERT INTO turnir (ime, postna_st, datum_zacetka, datum_konca, status, verzija, ustvarjen_ob,"
                 + " id_klub_lastnik, raven) VALUES (?, 2325, ?, ?, ?, 0, '2026-10-23', 9001, 'URADNO')",
-                ime, dan.toString(), dan.toString(), status);
+                ime, dan, dan, status);
         return jdbc.queryForObject("SELECT id FROM turnir WHERE ime = ? AND datum_zacetka = ?", Long.class,
-                ime, dan.toString());
+                ime, dan);
     }
 
     private int stevilo(String sql) {

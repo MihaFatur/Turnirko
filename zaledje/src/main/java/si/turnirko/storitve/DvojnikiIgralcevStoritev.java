@@ -108,8 +108,8 @@ public class DvojnikiIgralcevStoritev {
                 throw new NiNajdenoIzjema("Igralec z id " + id + " ne obstaja.");
             }
         }
-        em.createNativeQuery("INSERT OR IGNORE INTO igralec_ni_duplikat "
-                        + "(id_igralec_a, id_igralec_b) VALUES (?1, ?2)")
+        em.createNativeQuery("INSERT INTO igralec_ni_duplikat (id_igralec_a, id_igralec_b) "
+                        + "VALUES (?1, ?2) ON CONFLICT DO NOTHING")
                 .setParameter(1, Math.min(idA, idB))
                 .setParameter(2, Math.max(idA, idB))
                 .executeUpdate();

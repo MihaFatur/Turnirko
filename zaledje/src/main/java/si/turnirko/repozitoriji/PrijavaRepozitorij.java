@@ -127,7 +127,7 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             LEFT JOIN p.igralec2 i2
             LEFT JOIN p.ekipa e LEFT JOIN e.klub ek
             WHERE p.koncnoMesto = 1
-            ORDER BY p.dogodek.id
+            ORDER BY p.dogodek.id, p.id
             """)
     List<Object[]> zmagovalciPoTurnirjih();
 
@@ -141,7 +141,7 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             JOIN FETCH p.igralec
             LEFT JOIN FETCH p.igralec2
             WHERE d.turnir.id = :idTurnir AND p.koncnoMesto = 1
-            ORDER BY d.id
+            ORDER BY d.id, p.id
             """)
     List<Prijava> zmagovalciTurnirja(Long idTurnir);
 
@@ -211,6 +211,7 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             SELECT DISTINCT p.dogodek.turnir.id FROM Prijava p
             WHERE (p.igralec.id = :idIgralec OR p.igralec2.id = :idIgralec)
               AND p.status <> :odjavljen
+            ORDER BY p.dogodek.turnir.id
             """)
     List<Long> turnirjiIgralca(Long idIgralec, Prijava.StatusPrijave odjavljen);
 
@@ -232,6 +233,7 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             SELECT DISTINCT p.dogodek.turnir.id FROM Prijava p
             WHERE p.klubObPrijavi.id = :idKlub AND p.status <> :odjavljen
               AND p.igralec.id <> :idIgralec
+            ORDER BY p.dogodek.turnir.id
             """)
     List<Long> turnirjiKluba(Long idKlub, Long idIgralec, Prijava.StatusPrijave odjavljen);
 }

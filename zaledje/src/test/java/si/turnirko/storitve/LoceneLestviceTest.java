@@ -20,8 +20,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.sql.DataSource;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -65,7 +63,6 @@ class LoceneLestviceTest extends IntegracijskiTest {
     @Autowired private SrecanjeStoritev srecanjeStoritev;
     @Autowired private SrecanjeRepozitorij srecanjeRepozitorij;
     @Autowired private EkipeDogodkaStoritev ekipeDogodka;
-    @Autowired private DataSource podatkovniVir;
 
     private Optional<Tekma> pripravljena(Long idDogodka) {
         return tekmeDogodka(idDogodka).stream()
@@ -202,23 +199,6 @@ class LoceneLestviceTest extends IntegracijskiTest {
         ekipni.setRaven(RavenTekmovanja.REKREATIVNO);
         turnirRepozitorij.saveAndFlush(ekipni);
         assertTrue(jeRekreativec(igralec), "rekreativni ekipni turnir v prag ne steje vec");
-    }
-
-    /* Stetje tece ob vsakem ogledu lestvice in profila cez ves dnevnik, zato
-       sme iz dnevnika brati SAMO pokrivni indeks (V30). Brez njega je sqlite za
-       vsak zapis prebral se celotno vrstico in lestvica je na polni bazi
-       trajala sekunde - in noben funkcionalni test tega ne bi opazil.
-
-       Test prestreze SQL, ki ga Hibernate zares poslje, in preveri njegov
-       nacrt. Nacrt na prazni testni bazi je isti kot na polni: sqlite brez
-       statistik (ANALYZE) ne izbira po velikosti tabele. */
-    @Test
-    void stetjeTekmovalnihTekemBereSamoPokrivniIndeks() {
-        String sql = NacrtPoizvedbe.poslaniSql(
-                () -> rekreativecStoritev.rekreativci(List.of(0L)), "rating_zgodovina");
-        String dnevnik = NacrtPoizvedbe.vrsticaTabele(podatkovniVir, sql, "rating_zgodovina", "URADNO");
-        assertTrue(dnevnik.contains("COVERING INDEX idx_rating_zgodovina_igralec_tekme"),
-                "dnevnik se mora brati samo iz pokrivnega indeksa, nacrt: " + dnevnik);
     }
 
     // ---------- pomozno ----------

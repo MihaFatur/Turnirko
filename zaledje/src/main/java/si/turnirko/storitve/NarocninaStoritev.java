@@ -44,12 +44,16 @@ public class NarocninaStoritev {
     private final TurnirRepozitorij turnirRepozitorij;
     private final LigaRepozitorij ligaRepozitorij;
 
+    private final Zaklepi zaklepi;
+
     public NarocninaStoritev(NarocninaRepozitorij narocninaRepozitorij,
                              TurnirRepozitorij turnirRepozitorij,
-                             LigaRepozitorij ligaRepozitorij) {
+                             LigaRepozitorij ligaRepozitorij,
+                             Zaklepi zaklepi) {
         this.narocninaRepozitorij = narocninaRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
         this.ligaRepozitorij = ligaRepozitorij;
+        this.zaklepi = zaklepi;
     }
 
     /* Veljavna narocnina racuna (AKTIVNA, ali PREKLICANA do konca placanega
@@ -78,9 +82,17 @@ public class NarocninaStoritev {
         return veljavna(u).map(Narocnina::getPaket);
     }
 
+    /* Stevec in zapis novega tekmovanja tecejo v transakciji klicalca
+       (ustvari); zaklep na organizatorja zadrzi njegovo drugo hkratno zahtevo,
+       dokler prva ni zapisana - sicer bi obe videli eno prosto mesto. */
+    private void zakleniKvoto(Uporabnik organizator) {
+        zaklepi.zakleni(Zaklepi.Vrsta.KVOTA_ORGANIZATORJA, organizator.getId());
+    }
+
     /* Sme organizator zdaj ustvariti se en turnir? Meji na sezono (glej
        Omejitev); admin ni organizator in sem sploh ne pride. */
     public void preveriOmejitevTurnirja(Uporabnik organizator) {
+        zakleniKvoto(organizator);
         Omejitev omejitev = omejitevAliZavrni(organizator);
         long steviloVSezoni = steviloTurnirjevVSezoni(organizator.getId(), LocalDate.now());
         if (steviloVSezoni >= omejitev.turnirjev()) {
@@ -92,6 +104,7 @@ public class NarocninaStoritev {
     /* Sme organizator zdaj ustvariti se eno ligo? Isto pravilo kot pri
        turnirju, samo stevec je locen (Omejitev.lig). */
     public void preveriOmejitevLige(Uporabnik organizator) {
+        zakleniKvoto(organizator);
         Omejitev omejitev = omejitevAliZavrni(organizator);
         long steviloVSezoni = steviloLigVSezoni(organizator.getId(), LocalDate.now());
         if (steviloVSezoni >= omejitev.lig()) {

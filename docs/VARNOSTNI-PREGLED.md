@@ -24,7 +24,7 @@ v bazi je torej **datum rojstva**, nato licenca.
 | V8 | Pošiljanje kod kot orodje za spam/bombing (tudi prek naslova skrbnika) | srednja | pol dneva |
 | V9 | Preverjanje kod: tekma pri štetju poskusov, brez meje po IP | srednja | 2 uri |
 | V10 | Admin: znano ime `admin`, brez 2FA, zaklenljiv od zunaj | srednja | 1 dan |
-| V11 | Namizna različica: admin/admin dosegljiv vsem na Wi-Fi dvorane | srednja | 1 ura |
+| V11 | Namizna različica: admin/admin dosegljiv vsem na Wi-Fi dvorane — **zaprto** (odšla s prenovo baze) | srednja | 1 ura |
 | V12 | Manjkajoče varnostne glave (CSP, Permissions-Policy …) | nizka | 30 min |
 | V13 | Pravila gesel: brez seznama šibkih, >72 bajtov = napaka 500 | nizka | 1 ura |
 | V14 | Stripe webhook in nadgradnja: manjkajoče preverbe | nizka | 1 ura |
@@ -351,6 +351,10 @@ brezplačna registracija); dodaj mejo po IP in CAPTCHA. Za 4: obdelaj samo
 ---
 
 ## V11 — Namizna različica: admin/admin na Wi-Fi dvorane (srednja)
+
+**Zaprto (28. 10. 2026):** namizna različica je odšla s prenovo baze
+(`docs/PRENOVA-BAZE.md`); `ZacetniAdmin` privzetka nima več pod nobenim
+profilom.
 
 `ZacetniAdmin.java:43` — pod profilom `namizni` je geslo `admin`, OBJAVA.md pa
 svetuje, naj gledalci stran odprejo prek naslova prenosnika na istem Wi-Fi-ju.

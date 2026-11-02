@@ -40,6 +40,46 @@ turnirko-nt.si, www.turnirko-nt.si {
 		-Server
 	}
 
+	# Ko aplikacije ni (posodobitev, preklop baze, sesutje), Caddy namesto
+	# prazne napake 502 pokaze to stran. Gledalec iz dvorane tako ve, da gre
+	# za vzdrzevanje in naj osvezi stran, ne da je Turnirko izginil.
+	# Koda 503 s `Retry-After` pove iskalnikom, da je izpad zacasen.
+	handle_errors {
+		@vzdrzevanje expression `{err.status_code} in [502, 503, 504]`
+		handle @vzdrzevanje {
+			header Content-Type "text/html; charset=utf-8"
+			header Cache-Control "no-store"
+			header Retry-After "300"
+			respond <<HTML
+				<!doctype html>
+				<html lang="sl">
+				<head>
+				<meta charset="utf-8">
+				<meta name="viewport" content="width=device-width, initial-scale=1">
+				<meta http-equiv="refresh" content="60">
+				<title>Vzdrževanje – Turnirko</title>
+				<style>
+				body { margin: 0; padding: 24px 16px; background: #f4f1ea; color: #1b1b1b;
+				       font: 17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+				main { max-width: 34rem; margin: 12vh auto 0; padding-left: 16px; border-left: 4px solid #0088ce; }
+				h1 { margin: 0 0 8px; font-size: 1.6rem; }
+				p { margin: 0 0 12px; }
+				small { color: #555; }
+				</style>
+				</head>
+				<body>
+				<main>
+				<h1>Turnirko je v vzdrževanju</h1>
+				<p>Kmalu bo spet na voljo. Rezultati in lestvice niso izgubljeni.</p>
+				<p>Ta stran se osveži sama; lahko jo osvežiš tudi ročno.</p>
+				<small>Če traja dlje kot pol ure, piši na info@turnirko-nt.si.</small>
+				</main>
+				</body>
+				</html>
+				HTML 503
+		}
+	}
+
 	# Dnevnik dostopov - ob tezavah je to prvo, kar pogledas.
 	log {
 		output file /var/log/caddy/dostop.log {

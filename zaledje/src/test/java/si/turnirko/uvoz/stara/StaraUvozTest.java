@@ -161,12 +161,12 @@ class StaraUvozTest {
         long id = liga.getId();
 
         assertEquals(4, stej("SELECT count(*) FROM srecanje WHERE id_liga = ?", id));
-        assertEquals(1, stej("SELECT count(*) FROM srecanje WHERE id_liga = ? AND brez_boja = 1", id));
+        assertEquals(1, stej("SELECT count(*) FROM srecanje WHERE id_liga = ? AND brez_boja", id));
         assertEquals(0, stej("SELECT count(*) FROM tekma_srecanja t JOIN srecanje s ON s.id = t.id_srecanje"
-                + " WHERE s.id_liga = ? AND s.brez_boja = 1", id), "srecanje brez borbe nima tekem");
-        assertEquals(1, stej("SELECT count(*) FROM srecanje WHERE id_liga = ? AND prenesen = 1", id));
+                + " WHERE s.id_liga = ? AND s.brez_boja", id), "srecanje brez borbe nima tekem");
+        assertEquals(1, stej("SELECT count(*) FROM srecanje WHERE id_liga = ? AND prenesen", id));
         assertEquals(0, stej("SELECT count(*) FROM tekma_srecanja t JOIN srecanje s ON s.id = t.id_srecanje"
-                + " WHERE s.id_liga = ? AND s.prenesen = 1", id), "prenesen izid nima posamicnih tekem");
+                + " WHERE s.id_liga = ? AND s.prenesen", id), "prenesen izid nima posamicnih tekem");
         assertEquals(1, stej("SELECT count(*) FROM tekma_srecanja t JOIN srecanje s ON s.id = t.id_srecanje"
                 + " WHERE s.id_liga = ? AND t.izid_tip = 'BREZ_BOJA'", id));
         assertEquals(3 + 5 + 4, stej("SELECT count(*) FROM niz_srecanja n JOIN tekma_srecanja t"

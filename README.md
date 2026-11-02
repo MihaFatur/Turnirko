@@ -17,13 +17,24 @@ turnirko/
 
 ### Zagon
 
+Zaledje potrebuje PostgreSQL 18 (lokalno: namestitev za Windows ali prenosna
+mapa z `pg_ctl`, `psql`, `pg_dump`). Bazo ustvari enkrat, z razvrščanjem po
+kodnih točkah (glej `docs/PRENOVA-BAZE.md`, razdelek 3.2):
+
+```
+psql -U postgres -c "CREATE ROLE turnirko LOGIN PASSWORD '<geslo>'"
+psql -U postgres -c "CREATE DATABASE turnirko OWNER turnirko ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' TEMPLATE template0"
+```
+
 ```
 cd zaledje
+set TURNIRKO_BAZA_GESLO=<geslo>
 mvnw spring-boot:run
 ```
 
-API teče na `http://localhost:8080/api/v1`. Baza (SQLite) se ustvari
-samodejno v `zaledje/podatki/turnirko.db`, shemo postavi Flyway.
+API teče na `http://localhost:8080/api/v1`, shemo postavi Flyway
+(`resources/db/migration/postgresql`). Naslov baze je v
+`application.properties` (`jdbc:postgresql://localhost:5432/turnirko`).
 
 ### Prijava (administrator / gost)
 
@@ -31,17 +42,11 @@ Gost dostopa brez prijave in ima **samo bralni dostop** (turnirji, lestvica,
 mreže, rezultati, 1-na-1). Vse spremembe (žreb, vnos rezultatov, urejanje
 igralcev in šifrantov) sme **samo prijavljen administrator (sodnik)**.
 
-Ob prvem zagonu se ustvari začetni administrator (privzeto `admin` / `admin`).
-**Privzeto geslo čim prej zamenjaj** prek nastavitve `turnirko.admin.privzeto-geslo`
-(in `turnirko.admin.uporabnisko-ime`) v `application.properties`. Prijava teče
-prek HTTP Basic; strežnik uveljavlja pravice na vsaki končni točki (GET javno,
-POST/PUT/DELETE samo `ROLE_ADMIN`).
-
-Namizna (portable) različica z avtomatskim odpiranjem brskalnika:
-
-```
-mvnw spring-boot:run "-Dspring-boot.run.profiles=namizni"
-```
+Ob prvem zagonu na prazni bazi se ustvari začetni administrator. Privzetega
+gesla ni: podaj ga z `turnirko.admin.privzeto-geslo` (spremenljivka okolja
+`TURNIRKO_ADMIN_PRIVZETO_GESLO`, vsaj 12 znakov), sicer se zaledje ne zažene.
+Prijava teče prek HTTP Basic; strežnik uveljavlja pravice na vsaki končni
+točki.
 
 ### Testi
 
@@ -50,7 +55,9 @@ cd zaledje
 mvnw test
 ```
 
-Testi tečejo na ločeni bazi v `target/` in nikoli ne vplivajo na prave podatke.
+Testi tečejo na pravem PostgreSQL, ki ga ob začetku sami zaženejo
+(`TestnaBaza`, binarne datoteke prinese Maven) — namestitev in Docker nista
+potrebna. Baza je ob vsakem zagonu sveža in nikoli ne vpliva na prave podatke.
 
 ## Vmesnik (frontend)
 
@@ -91,7 +98,7 @@ za nepovratna dejanja se vedno odpre potrditveno okno.
 | `kontrolerji` | REST končne točke (tanki adapterji) |
 | `dto` | objekti za izmenjavo s frontendom (nikoli surove entitete) |
 | `izjeme` | domenske izjeme + globalni prevod v HTTP napake |
-| `nastavitve` | CORS, namizni profil |
+| `nastavitve` | CORS, varnost, začetni administrator |
 
 Ključna načela:
 

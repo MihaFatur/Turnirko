@@ -30,15 +30,17 @@ public class KodeStoritev {
 
     private final PotrditvenaKodaRepozitorij repozitorij;
     private final PasswordEncoder kodirnik;
+    private final Zaklepi zaklepi;
 
     /* Zgostitev, proti kateri primerjamo vnos, kadar zive kode NI - da klic
        traja enako dolgo in iz casa odgovora ni mogoce sklepati, ali racun
        oz. koda obstaja. */
     private final String nadomestnaZgostitev;
 
-    public KodeStoritev(PotrditvenaKodaRepozitorij repozitorij, PasswordEncoder kodirnik) {
+    public KodeStoritev(PotrditvenaKodaRepozitorij repozitorij, PasswordEncoder kodirnik, Zaklepi zaklepi) {
         this.repozitorij = repozitorij;
         this.kodirnik = kodirnik;
+        this.zaklepi = zaklepi;
         this.nadomestnaZgostitev = kodirnik.encode("000000");
     }
 
@@ -59,6 +61,10 @@ public class KodeStoritev {
        napacna steje poskus in po zadnjem dovoljenem kodo pobrise. */
     @Transactional
     public boolean preveri(Uporabnik racun, NamenKode namen, String vnos) {
+        /* Poskusi racuna se stejejo eden za drugim: hkratni napacni vnosi bi
+           sicer vsi prebrali isti stevec in ga zapisali enako - meja petih
+           poskusov bi ob vzporednem ugibanju ne veljala. */
+        zaklepi.zakleni(Zaklepi.Vrsta.POTRDITVENA_KODA, racun.getId());
         LocalDateTime zdaj = LocalDateTime.now();
         Optional<PotrditvenaKoda> ziva = repozitorij.findByRacunIdAndNamen(racun.getId(), namen)
                 .stream().filter(k -> k.jeZiva(zdaj)).findFirst();

@@ -18,10 +18,10 @@ package si.turnirko.storitve;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.modeli.RatingStanje;
 import si.turnirko.modeli.RatingZgodovina;
 import si.turnirko.modeli.RazlogSpremembe;
@@ -36,18 +36,31 @@ public class NeaktivnostStoritev {
 
     private final RatingStanjeRepozitorij stanjeRepozitorij;
     private final RatingZgodovinaRepozitorij zgodovinaRepozitorij;
+    private final Zaklepi zaklepi;
 
     public NeaktivnostStoritev(RatingStanjeRepozitorij stanjeRepozitorij,
-                               RatingZgodovinaRepozitorij zgodovinaRepozitorij) {
+                               RatingZgodovinaRepozitorij zgodovinaRepozitorij,
+                               Zaklepi zaklepi) {
         this.stanjeRepozitorij = stanjeRepozitorij;
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
+        this.zaklepi = zaklepi;
     }
 
     /* Kaj je opravilo naredilo. */
     public record Porocilo(int prizadetihIgralcev, int zapisanihOdbitkov, int odbitihTock) {}
 
+    /* uveljaviVse za klicalca BREZ zaklepa ratinga (gumb v upravljanju, dnevno
+       opravilo). Med preracunom zavrne: preracun odbitke ob koncu uveljavi sam. */
+    @Transactional
+    public Porocilo uveljaviVseZZaklepom(LocalDateTime doKdaj) {
+        if (!zaklepi.zakleniRating()) {
+            throw new DomenskaIzjema(RatingStoritev.PRERACUN_TECE);
+        }
+        return uveljaviVse(doKdaj);
+    }
+
     /* Uveljavi vse odbitke, ki so zapadli do danega trenutka - za vse igralce.
-       Uporabljata ga dnevno opravilo in ponovni preracun. */
+       Klicalec drzi zaklep ratinga (preracun ali uveljaviVseZZaklepom). */
     @Transactional
     public Porocilo uveljaviVse(LocalDateTime doKdaj) {
         int igralcev = 0, zapisov = 0, tock = 0;
@@ -95,12 +108,5 @@ public class NeaktivnostStoritev {
         }
         stanjeRepozitorij.save(stanje);
         return skupaj;
-    }
-
-    /* Dnevno ob 3.15 zjutraj: takrat nihce ne vnasa rezultatov, odbitki pa so
-       vezani na datum in ne na uro, zato tocna ura ni pomembna. */
-    @Scheduled(cron = "0 15 3 * * *")
-    public void dnevnoOpravilo() {
-        uveljaviVse(LocalDateTime.now());
     }
 }
