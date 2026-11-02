@@ -49,7 +49,9 @@ class PrenosTest {
         }
         baza = new PGSimpleDataSource();
         baza.setUrl(urlBaze(imeBaze));
-        Flyway.configure().dataSource(baza).locations("classpath:db/migration/postgresql").load().migrate();
+        // Prenos pozna shemo do V61 (zadnja verzija, ki jo je imela produkcija v SQLite). Poznejse migracije
+        // so samo za PostgreSQL in test bi brez omejitve padel ob prvi novi (V62).
+        Flyway.configure().dataSource(baza).locations("classpath:db/migration/postgresql").target("61").load().migrate();
 
         Flyway.configure().dataSource("jdbc:sqlite:" + datotekaSqlite.toString().replace('\\', '/'), null, null)
                 .locations("classpath:db/migration/sqlite").load().migrate();

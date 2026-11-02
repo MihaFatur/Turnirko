@@ -291,6 +291,11 @@ crontab (`crontab -e`):
 30 4 2 * *   /srv/turnirko/skripte/vaja-obnove.sh >> /srv/turnirko/dnevniki/vaja-obnove.log 2>&1
 ```
 
+Vse tri vrstice so tudi v datoteki `skripte/baza/turnirko-kopije.cron`, ki se na
+strezniku namesti z `sudo install -m 644 skripte/baza/turnirko-kopije.cron /etc/cron.d/turnirko-kopije`.
+Streznik uporablja cas UTC (ura 5-22 UTC pokrije 7-23 po slovenskem casu); skripte
+so bash, zato se kliceju neposredno in ne z `sh`.
+
 Zadnja vrstica je **mesecna vaja obnove**: skripta zadnjo nocno kopijo
 obnovi v zacasen vsebnik (produkcijska baza ostane nedotaknjena), prestej
 vrstice vsake tabele in jih primerja s stetjem, zapisanim ob kopiji. Kopija,

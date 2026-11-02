@@ -13,9 +13,9 @@
   (nikoli ne spreminjaj obstoječih migracij; `ddl-auto` ostane `none`).
   **Baza je PostgreSQL** (prenova baze, `docs/PRENOVA-BAZE.md`). Prva datoteka
   je izhodišče `V53__izhodisce.sql` (shema, enaka SQLite po V53); prva nova
-  migracija je V54. **Dokler preklop produkcije ni opravljen, produkcija teče
-  na SQLite**: vsaka nova migracija mora imeti dvojnico v obeh mapah
-  (`sqlite/` in `postgresql/`), sicer jo prenos podatkov izpusti.
+  migracija je V54. **Produkcija teče na PostgreSQL od 2. 11. 2026** (preklop: `docs/PREKLOP.md`).
+  Nova migracija gre SAMO v `postgresql/`; mapa `sqlite/` je zamrznjena do
+  faze 6 (pospravljanje) in po njej ne teče več nič.
 - Poslovna logika sodi v `storitve`, kontrolerji so tanki adapterji.
 - Navzven gredo samo DTO-ji, nikoli entitete. Osebni podatki (e-pošta, telefon,
   naslov, datum rojstva) ne smejo v javne poglede.
@@ -1080,7 +1080,7 @@
       - Testi: `PlacljivNavijacTest`, `OsebniKoledarInObvestiloTurnirjaTest`, `DruzinaTest`,
         `PotisnaObvestilaTest`, `PodporaKlubaTest`, `pomozno/IcsTest`, `pomozno/WebPushTest`,
         `AvtentikacijaDostopTest` (nove poti). Vsaka nova migracija SQLite potrebuje dvojnico v
-        `db/migration/postgresql` (dvojnice V58–V61 so v veji prenova-baze; ob spremembi stolpca ali CHECK-a javi seji za prenovo baze).
+        `db/migration/postgresql` (od preklopa 2. 11. 2026 velja samo mapa `postgresql/`).
 - **Sistem tekmovanja** izbere dogodek; `ZrebStoritev` po njem razveji žreb
   (`IZLOCILNI`/`KROZNI`/`SKUPINE_IZLOCILNI`/`SKUPINE`). Lestvice računa
   `RazvrstitevStoritev` (zmage → porazi → **krog**: razlika nizov, nato

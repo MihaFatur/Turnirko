@@ -3,3 +3,4 @@
 # bi jih sicer ob prevzemu pretvoril.
 *.sh text eol=lf
 Caddyfile text eol=lf
+*.cron text eol=lf

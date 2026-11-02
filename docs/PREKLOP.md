@@ -10,6 +10,51 @@ prenesejo v bazo PostgreSQL, ki tece v svojem vsebniku. Pred tem sta dve
 generalki, med preklopom pa vsak korak merimo in preverjamo. Do trenutka, ko
 sam potrdis, je povratek na staro stanje ena skripta.
 
+## Izvedeno: 2. 11. 2026
+
+Preklop je bil opravljen v enem popoldnevu in potrjen ob 15.57. **Izpad za
+gledalce je trajal 57 sekund** (aplikacija ustavljena 15.33.23, spet zdrava
+15.34.20; Caddy je ves cas kazal stran Vzdrzevanje). Koraki: kopija SQLite po
+ustavitvi 2 s, Flyway in prenos 38 s (45 tabel, 803.809 vrstic, nobena tabela
+izpuscena), zagon aplikacije 17 s, dim-test 9 s (40 odgovorov API-ja enakih po
+vsebini). Po preklopu: 0 napak v dnevnikih, aplikacija dela kot `turnirko_app`,
+nobeno zaporedje (identity) ne zaostaja za najvecjim id-jem (`po-preklopu.sh`),
+kopija `pg_dump` (9,6 MB) se obnovi v 4 s z vsemi 46 tabelami in 803.821
+vrsticami (`vaja-obnove.sh`). Stara baza je ohranjena kot
+`podatki/turnirko.db.pred-preklopom-20261102-142951` (hrani 3 mesece).
+
+**Napake, ki jih je ujel prvi pravi zagon na strezniku** (Dockerja lokalno ni
+bilo), vse popravljene in v `main`:
+
+1. `00-vloge.sh`: `datlocprovider || ':'` (tip `"char"`) odpove, treba je
+   `::text`. Ker docker-entrypoint pri ponovnem zagonu prve nastavitve ne
+   ponovi, je baza ostala brez vlog.
+2. Zdravstveni preizkus baze je gledal vtic, na katerem posluša tudi zacasni
+   streznik prve nastavitve: zdaj `pg_isready -h 127.0.0.1`.
+3. `pred-preklopom.sh` je kot tabeli stel dva pogleda razsiritve
+   `pg_stat_statements`.
+4. `idjiLig`: SQLite ga vrne v vrstnem redu zapisa, PostgreSQL po `ORDER BY`;
+   `razlika-posnetkov.sh` ga primerja kot mnozico, vse drugo ostane razlika.
+5. `preklop.sh`, korak 3: shramba slik Dockerja 29 (containerd) po gradnji nove
+   slike z istim imenom stare ne hrani vec; `docker tag` in `docker commit`
+   odpovesta. Skripta staro sliko zgradi iz oznake `sqlite-zadnja` (132 s) in
+   preveri `java -version`, preden ustavi aplikacijo.
+6. `varnostna-kopija.sh`: `pg_restore -l | grep -q` skupaj s `pipefail` da
+   SIGPIPE in dobra kopija propade. Kazalo gre zdaj v datoteko.
+
+**Stanje streznika, pomembno za naprej:** 3,7 GB RAM (dodan 2 GB `/swapfile`),
+Dockerjev predpomnilnik gradnje je bil 22 GB (`docker builder prune`), na istem
+streznikih tece se projekt Pikado (omrezje `turnirko_default`, blok v
+`Caddyfile`, zato `git pull --autostash`), pred preklopom ni tekla nobena
+samodejna kopija (cron je bil prazen). Windows OpenSSH odstrani znak `"` iz
+ukaza: daljse ukaze na streznik daj v skripto v repozitoriju.
+
+**Odprto po preklopu:** gesla baze (`.env`) v upravitelj gesel; kopijo SQLite
+(`kopije/sqlite-pred-preklopom-20261102-142951.db`) prenesti s streznika in jo
+hraniti 3 mesece; sifrirano odnasanje kopij (`rclone`, `TURNIRKO_ODNASANJE`);
+teden opazovanja (`skripte/baza-stanje.sh`, `po-preklopu.sh`); faza 6
+(pospravljanje) po dveh tednih brez tezav, torej po 16. 11. 2026.
+
 ## Kaj se spremeni in zakaj
 
 Danes je vsa baza ena datoteka (SQLite), v katero lahko naenkrat pise samo en
