@@ -13900,7 +13900,6 @@ a.ekipa-okno__srecanje:hover {
   .liga__kader-vrstica--dejanje {
     grid-template-columns: 28px minmax(0, 1fr) 48px 48px auto;
   }
-}
 
   .forma__znak {
     height: 36px;
