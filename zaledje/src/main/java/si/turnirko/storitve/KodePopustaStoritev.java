@@ -10,6 +10,10 @@
    - ORGANIZATOR_MESECI: registracija organizatorja brez placila; paket za
      toliko mesecev od potrditve organizatorja (uveljaviZaOrganizatorja).
 
+   Ze prijavljen racun navijaca lahko kodo vpise tudi pozneje na strani
+   Narocnina, a samo NAVIJAC_MESECI (uveljaviZaPrijavljenRacun); druge vrste
+   tam veljajo samo ob registraciji.
+
    Pravila, ki jih ne razbij:
    - Koda se na poti, na kateri ne deluje, ZAVRNE z razlago, ne tiho prezre:
      kdor vpise kodo, pricakuje ugodnost, in ce je ne dobi, ne ve zakaj.
@@ -417,7 +421,71 @@ public class KodePopustaStoritev {
         if (koda.isEmpty() || narocnine.findByUporabnikId(u.getId()).isPresent()) {
             return Optional.empty();
         }
-        KodaPopusta k = koda.get();
+        return Optional.of(zacniNavijacaBrezPlacila(u, koda.get(), zdaj));
+    }
+
+    /* Koda NAVIJAC_MESECI, ki jo vpise ze prijavljen racun na strani Narocnina
+       (odlocitev lastnika 3. 11. 2026: kdor se je registriral brez kode, jo lahko
+       vpise pozneje). Ista ugodnost kot ob registraciji, a se mesec steje od
+       vpisa. Vrne novo narocnino.
+
+       Zaenkrat velja SAMO koda NAVIJAC_MESECI na potrjenem racunu navijaca, ki
+       paketa se ni imel. Druge vrste na tej poti zavrne z razlago (kot povsod:
+       kdor vpise kodo, pricakuje ugodnost, in ce je ne dobi, mora vedeti zakaj):
+       ODSTOTEK bi potreboval kupon v Checkoutu nadgradnje, PREMIUM_MESECI in
+       ORGANIZATOR_MESECI pa teceta od povezave oz. potrditve racuna, ki sta tu
+       ze za nami. Pravila registracije ostanejo cela: en racun ena koda, mesto
+       pri najvec uporab se zasede pod zaklepom kode, isti ugibalni omejevalnik. */
+    @Transactional
+    public Narocnina uveljaviZaPrijavljenRacun(Uporabnik u, String vnos, String naslovIp, LocalDateTime zdaj) {
+        if (prazno(vnos)) {
+            throw new NeveljavenVnosIzjema("Vpiši kodo.");
+        }
+        if (u.getVloga() != Vloga.NAVIJAC) {
+            throw new NeveljavenVnosIzjema("Kodo za popust vpišeš ob registraciji. Pri obstoječem računu velja "
+                    + "samo koda za paket Navijač.");
+        }
+        if (!u.jePotrjenNavijac()) {
+            throw new DomenskaIzjema("Račun še ni potrjen, zato kode ni mogoče uporabiti.");
+        }
+        // dva hkratna zahtevka istega racuna ne smeta oba mimo preverbe spodaj
+        zaklepi.zakleni(Zaklepi.Vrsta.RACUN, u.getId());
+        if (narocnine.findByUporabnikId(u.getId()).isPresent()) {
+            throw new DomenskaIzjema("Kodo lahko uporabi samo račun, ki paketa Navijač še ni imel.");
+        }
+        if (kodaRacuna(u).isPresent()) {
+            throw new DomenskaIzjema("Ta račun je kodo popusta že uporabil.");
+        }
+
+        omeji(naslovIp);
+        Optional<KodaPopusta> najdena = kode.findByKoda(normaliziraj(vnos));
+        najdena.ifPresent(n -> zaklepi.zakleni(Zaklepi.Vrsta.KODA_POPUSTA, n.getId()));
+        // prazen naslov: racun je potrjen, nobenega nepotrjenega ostanka ni, ki bi zasedal mesto
+        KodaPopusta k = najdena.filter(n -> jeSprejeta(n, ""))
+                .orElseThrow(() -> new NeveljavenVnosIzjema(NEVELJAVNA_KODA));
+        String razlog = razlogNeuporabnostiPriPrijavljenemRacunu(k);
+        if (razlog != null) {
+            throw new NeveljavenVnosIzjema(razlog);
+        }
+
+        Narocnina n = zacniNavijacaBrezPlacila(u, k, zdaj);
+        zabeleziUporabo(u, k);
+        return n;
+    }
+
+    /* Zakaj koda na strani Narocnina ne velja; null, ce velja. */
+    private static String razlogNeuporabnostiPriPrijavljenemRacunu(KodaPopusta k) {
+        return switch (k.getVrsta()) {
+            case NAVIJAC_MESECI -> null;
+            case PREMIUM_MESECI -> "Ta koda je za registracijo igralca.";
+            case ORGANIZATOR_MESECI -> "Ta koda je za registracijo organizatorja.";
+            case ODSTOTEK -> "Ta koda zniža ceno ob registraciji in je pri obstoječem računu ne moreš uporabiti.";
+        };
+    }
+
+    /* Narocnina Navijac brez placila za toliko mesecev, kot jih obljublja koda
+       (od `zdaj`). Skupno ob potrditvi racuna in ob vpisu kode pozneje. */
+    private Narocnina zacniNavijacaBrezPlacila(Uporabnik u, KodaPopusta k, LocalDateTime zdaj) {
         Narocnina n = new Narocnina(u, Paket.NAVIJAC);
         n.setStatus(StatusNarocnine.PREIZKUS);
         n.setCiklus(CiklusPlacila.LETNO);
@@ -428,7 +496,7 @@ public class KodePopustaStoritev {
         narocnine.save(n);
         racunDnevnik.zabelezi(u.getId(), "Navijač brez plačila do "
                 + oblikuj(UpravljanjeNarocnineStoritev.dan(n.getTrenutnoObdobjeDo())) + " (koda " + k.getKoda() + ")");
-        return Optional.of(n);
+        return n;
     }
 
     /* Stripov kupon kode (ODSTOTEK); nastane ob prvem placilu in se uporabi znova.

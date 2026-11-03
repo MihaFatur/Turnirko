@@ -45,15 +45,18 @@ public class UpravljanjeNarocnineStoritev {
     private final LastnistvoStoritev lastnistvo;
     private final CenikStoritev cenik;
     private final StripeNarocnine stripe;
+    private final KodePopustaStoritev kodePopusta;
 
     public UpravljanjeNarocnineStoritev(NarocninaRepozitorij narocninaRepozitorij,
                                         LastnistvoStoritev lastnistvo,
                                         CenikStoritev cenik,
-                                        StripeNarocnine stripe) {
+                                        StripeNarocnine stripe,
+                                        KodePopustaStoritev kodePopusta) {
         this.narocninaRepozitorij = narocninaRepozitorij;
         this.lastnistvo = lastnistvo;
         this.cenik = cenik;
         this.stripe = stripe;
+        this.kodePopusta = kodePopusta;
     }
 
     // ---------- Pregled ----------
@@ -66,6 +69,17 @@ public class UpravljanjeNarocnineStoritev {
         return narocninaRepozitorij.findByUporabnikId(jaz.getId())
                 .map(this::dto)
                 .orElseGet(NarocninaDto::brez);
+    }
+
+    // ---------- Koda popusta ----------
+
+    /* Koda popusta pri ze prijavljenem racunu (navijac, ki je ob registraciji ni
+       imel). Pravila so v KodePopustaStoritev; tu je samo prijavljen racun in
+       odgovor v obliki ostalih dejanj na strani, da vmesnik ne bere znova. */
+    @Transactional
+    public NarocninaDto uveljaviKodo(String koda, String naslovIp) {
+        Uporabnik jaz = zahtevajPrijavo();
+        return dto(kodePopusta.uveljaviZaPrijavljenRacun(jaz, koda, naslovIp, LocalDateTime.now()));
     }
 
     // ---------- Preklic in obnova ----------

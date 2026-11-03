@@ -7211,6 +7211,45 @@ td.nizi-okno__niz--dobljen {
   margin-top: var(--r3);
 }
 
+/* Koda popusta že prijavljenega računa: povezava »Imam kodo za popust«, odprta pa polje z
+   gumbom »Uporabi«. Isti videz kot v povzetku registracije (.registracija__koda-popusta):
+   koda je mono in velike črke, vpis pa sprejme kakršnokoli obliko. */
+.narocnina-navijac__koda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--r1);
+  margin-top: var(--r3);
+}
+
+.narocnina-navijac__koda .obrazec__polje {
+  align-self: stretch;
+  max-width: 420px;
+}
+
+/* Povezava »Nimam kode« je otrok stolpca (.obrazec__polje): brez tega se raztegne čez polje
+   in je besedilo na sredi, oznaka nad vnosom pa je levo. */
+.narocnina-navijac__koda .obrazec__polje > .povezava-gumb {
+  align-self: flex-start;
+}
+
+.narocnina-navijac__koda-vnos {
+  display: flex;
+  gap: var(--r1);
+}
+
+.narocnina-navijac__koda-vnos input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.narocnina-navijac__koda-vnos .gumb {
+  flex: none;
+}
+
 .koledar-kartica {
   margin-top: var(--r5);
 }

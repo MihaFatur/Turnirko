@@ -71,6 +71,10 @@ function Pogled({
 }) {
   const odjemalec = useQueryClient()
   const [vprasanjePreklic, nastaviVprasanje] = useState(false)
+  const [kodaOdprta, nastaviKodaOdprta] = useState(false)
+  const [kodaVnos, nastaviKodaVnos] = useState('')
+  /* Po uspehu račun dobi vrstico naročnine in polje za kodo izgine, zato sporočilo drži Pogled. */
+  const [uspehKode, nastaviUspehKode] = useState<string | null>(null)
 
   const jePreizkus = n.aktivna && n.status === 'PREIZKUS'
   const imaPaket = n.aktivna && n.paket === 'NAVIJAC'
@@ -88,6 +92,26 @@ function Pogled({
       window.location.href = seja.url
     },
   })
+  /* Koda popusta že prijavljenega računa: strežnik odloči, ali velja (samo koda za paket Navijač,
+     samo račun brez naročnine), razlog zavrnitve pove sam. */
+  const uporabiKodo = useMutation({
+    mutationFn: (koda: string) => narocninaApi.uporabiKodo(koda),
+    onSuccess: (nova) => {
+      zabelezi('koda-popusta-narocnina', { vrsta: 'NAVIJAC_MESECI' })
+      poNarocilu(nova)
+      nastaviUspehKode(
+        `Koda je uporabljena. Paket Navijač je vklopljen brez plačila do ${oblikujDatum(nova.obdobjeDo)}.`,
+      )
+      nastaviKodaOdprta(false)
+      nastaviKodaVnos('')
+      /* Paket odpre še spremljanje več igralcev, koledar in drugo, kar so druge poizvedbe že prebrale. */
+      void odjemalec.invalidateQueries()
+    },
+  })
+  const oddajKodo = () => {
+    const vpisana = kodaVnos.trim()
+    if (vpisana && !uporabiKodo.isPending) uporabiKodo.mutate(vpisana)
+  }
   const preklici = useMutation({ mutationFn: narocninaApi.preklici, onSuccess: poNarocilu })
   const obnovi = useMutation({ mutationFn: () => narocninaApi.obnovi(), onSuccess: poNarocilu })
   const portal = useMutation({
@@ -137,6 +161,7 @@ function Pogled({
       {vrnitev && (
         <div className={vrnitev.uspeh ? 'narocnina-navijac__uspeh' : 'obvestilo'}>{vrnitev.besedilo}</div>
       )}
+      {uspehKode && <div className="narocnina-navijac__uspeh" role="status">{uspehKode}</div>}
       {zapadla && (
         <div className="napaka" role="alert">
           Zadnje plačilo ni uspelo, zato paket ne velja. Posodobi kartico v Stripu: ko se plačilo
@@ -195,6 +220,53 @@ function Pogled({
           </button>
         )}
       </div>
+      {/* Koda velja le za račun, ki paketa še ni imel (brez vrstice naročnine); strežnik to preveri znova. */}
+      {n.status === null && (
+        <div className="narocnina-navijac__koda">
+          {kodaOdprta ? (
+            <div className="obrazec__polje">
+              <span>Koda za popust</span>
+              <div className="narocnina-navijac__koda-vnos">
+                <input
+                  aria-label="Koda za popust"
+                  value={kodaVnos}
+                  onChange={(d) => {
+                    nastaviKodaVnos(d.target.value)
+                    if (uporabiKodo.isError) uporabiKodo.reset()
+                  }}
+                  onKeyDown={(d) => {
+                    if (d.key === 'Enter') {
+                      d.preventDefault()
+                      oddajKodo()
+                    }
+                  }}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  autoFocus
+                />
+                <button type="button" className="gumb" disabled={!kodaVnos.trim() || uporabiKodo.isPending}
+                        onClick={oddajKodo}>
+                  {uporabiKodo.isPending ? 'Preverjam …' : 'Uporabi'}
+                </button>
+              </div>
+              {uporabiKodo.error != null && <div className="napaka" role="alert">{opisNapake(uporabiKodo.error)}</div>}
+              <button type="button" className="povezava-gumb"
+                      onClick={() => {
+                        nastaviKodaOdprta(false)
+                        nastaviKodaVnos('')
+                        uporabiKodo.reset()
+                      }}>
+                Nimam kode
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="povezava-gumb" onClick={() => nastaviKodaOdprta(true)}>
+              Imam kodo za popust
+            </button>
+          )}
+        </div>
+      )}
       {napaka != null && <div className="napaka" role="alert">{opisNapake(napaka)}</div>}
       <p className="namig">
         Plačilo prek Stripa, račun prejmeš po e-pošti. Naročnina se obnavlja vsako leto, dokler je ne

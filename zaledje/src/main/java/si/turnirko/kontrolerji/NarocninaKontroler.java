@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
+import si.turnirko.dto.KodaZaRacunVnos;
 import si.turnirko.dto.NarocninaCiklusVnos;
 import si.turnirko.dto.NarocninaDto;
 import si.turnirko.dto.NarocninaObnovaVnos;
@@ -34,6 +36,13 @@ public class NarocninaKontroler {
     @GetMapping
     public NarocninaDto pregled() {
         return narocnina.pregled();
+    }
+
+    /* Koda popusta ze prijavljenega racuna (navijac): paket brez placila za toliko
+       mesecev, kot jih obljublja koda. Ugibanje kod omejuje storitev po naslovu IP. */
+    @PostMapping("/koda")
+    public NarocninaDto koda(@Valid @RequestBody KodaZaRacunVnos vnos, HttpServletRequest zahteva) {
+        return narocnina.uveljaviKodo(vnos.koda(), zahteva.getRemoteAddr());
     }
 
     @PostMapping("/preklic")

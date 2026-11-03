@@ -437,6 +437,9 @@ export const druzinaApi = {
 
 export const narocninaApi = {
   pregled: () => api.vrni<NarocninaDto>('/narocnina'),
+  /* Koda popusta že prijavljenega računa (navijač): paket brez plačila za toliko mesecev,
+     kot jih obljublja koda. */
+  uporabiKodo: (koda: string) => api.objavi<NarocninaDto>('/narocnina/koda', { koda }),
   /* Preklic ob koncu obdobja: Premium velja do konca plačanega časa. */
   preklici: () => api.objavi<NarocninaDto>('/narocnina/preklic'),
   /* Umik preklica; izbran cikel, drugačen od tekočega (igralec), oz. izbran

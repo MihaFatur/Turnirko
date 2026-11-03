@@ -2364,10 +2364,24 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     `toMap()`) je pod testom, ne pa Stripov odgovor ali kako Moj Račun izda račun za plačilo s
     kuponom — preveri na sandboxu pred živim preklopom (`docs/NAROCNINE-V-ZIVO.md`). Če
     kupon v Stripu izbrišeš, nastavi `koda_popusta.stripe_kupon_id` na NULL.
-  - Ni pokrito: vnos kode pri že prijavljenem računu (nadgradnja na strani Naročnina) in
+  - **Vnos kode pri že prijavljenem računu** (3. 11. 2026, `POST /api/v1/narocnina/koda`,
+    `KodePopustaStoritev.uveljaviZaPrijavljenRacun`, stran Naročnina navijača: »Imam kodo za
+    popust«). **Velja SAMO `NAVIJAC_MESECI`** na potrjenem računu navijača **brez vrstice v
+    `narocnina`** in brez zabeležene porabe; mesec se šteje od vpisa (`zacniNavijacaBrezPlacila`
+    je skupna s potrditvijo računa). Druge vrste se zavrnejo z razlago (`PREMIUM_MESECI` in
+    `ORGANIZATOR_MESECI` tečeta od povezave oz. potrditve, ki sta tu že mimo; `ODSTOTEK` bi
+    potreboval kupon v Checkoutu nadgradnje, kar ni zgrajeno). Pravila registracije držijo:
+    ena koda na račun, mesto pri `najvec_uporab` pod zaklepom kode, isto sporočilo za
+    neznano/ugasnjeno/potekle kode, isti omejevalnik ugibanja (30 na uro na IP); poleg tega
+    zaklep računa (`Zaklepi.Vrsta.RACUN`) proti dvojnemu pošiljanju. Checkout je Stripov in
+    polja za kodo nima (`allow_promotion_codes` ni vklopljen in naših kod Stripe ne pozna);
+    vmesnik polje kaže samo, ko je `NarocninaDto.status === null` (račun brez vrstice), po
+    uspehu pa razveljavi vse poizvedbe, ker paket odpre še spremljanje, koledar in družino.
+  - Ni pokrito: koda `ODSTOTEK` pri nadgradnji, vnos kode pri igralcu in organizatorju ter
     opomnik ob koncu organizatorskega paketa brez plačila (obvestilo o koncu preizkusa
     navaja ceno Premium, zato `posljiOpomnike` organizatorja preskoči). Testi:
-    `KodePopustaTest`, `KodePopustaDostopTest`.
+    `KodePopustaTest`, `KodePopustaDostopTest`, `KodaPriPrijavljenemRacunuTest`,
+    `KodaPriNarocniniDostopTest`.
 - **Obvestila po kolu in brezplačno spremljanje lig** (V50, odločitev lastnika
   23. 10. 2026; faza 2 za preizkusom Premium). Račun je moral dati nekaj, česar gost
   nima, in ga pripeljati nazaj: spremljanje lig je zdaj **brezplačno** (prej Premium;
