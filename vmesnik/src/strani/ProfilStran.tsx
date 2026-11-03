@@ -37,14 +37,14 @@ import { OZNAKE_IZID, izidNizov } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { GrafRatinga } from '../komponente/GrafRatinga'
 import { DruzinaGumb } from '../komponente/DruzinaGumb'
-import { GumbSpremljanja } from '../komponente/GumbSpremljanja'
+import { ProfilGlava, type GlavaPostavka, type GlavnoDejanje } from '../komponente/ProfilGlava'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { NapovedTekme } from '../komponente/NapovedTekme'
 import { usePremiumOglas } from '../komponente/PremiumOglasKontekst'
+import { ZaklenjenaStatistika } from '../komponente/ZaklenjenaStatistika'
 import { ProfilnaSlikaOkno } from '../komponente/ProfilnaSlikaOkno'
-import { SlikaIgralca } from '../komponente/SlikaIgralca'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { useSlikeIgralcev } from '../pomozno/profilneSlike'
+import { urlProfilneSlike, useSlikeIgralcev } from '../pomozno/profilneSlike'
 import { useDruzina } from '../pomozno/druzina'
 import { useSpremljanjeIgralcev } from '../pomozno/spremljaniIgralci'
 import { oznakaPoti, useIzvor } from '../pomozno/izvor'
@@ -171,218 +171,170 @@ export function ProfilStran() {
   const okolica = izracunajOkolico(lestvica.data, idIgralec, p.uvrstitev.mesto)
   const vPasu = mestoVPasu(lestvica.data, idIgralec)
 
+  /* Dejanja zgoraj desno: eno glavno in meni »⋯«. Pravice odloča strežnik,
+     vmesnik le skrije (smemZasebno, jeMoj, imaSirokoSpremljanje). */
+  const zapisnikPoved = `/igralci/${idIgralec}/sezona`
+  let glavnoDejanje: GlavnoDejanje | null = null
+  const meniDejanj: GlavaPostavka[] = []
+  if (jeMoj) {
+    if (imaSirokoSpremljanje && !nalaganje) {
+      glavnoDejanje = { vrsta: 'povezava', to: zapisnikPoved, oznaka: 'Sezonski zapisnik →' }
+    }
+    /* Lastnik vidi vstop v okno vedno: brez Premium mu okno pove, da je slika
+       del paketa (oglas 5c ima samo en sprožilec). */
+    meniDejanj.push({
+      oznaka: slikaProfila ? 'Uredi sliko' : 'Dodaj sliko',
+      naKlik: () => nastaviSlikaOdprta(true),
+    })
+  } else if (!nalaganje) {
+    /* Gost po kliku dobi registracijo (izvor »spremljanje«: ponudi tudi račun
+       navijača), po njej račun igralca začne spremljati sam. */
+    glavnoDejanje = {
+      vrsta: 'spremljanje',
+      ime: p.glava.polnoIme,
+      spremljam: spremljanjeIgralcev.spremljam(idIgralec),
+      naPreklop: () => {
+        if (!spremljanjeIgralcev.preklopi(idIgralec)) {
+          odpriRegistracijo({
+            izvor: 'spremljanje',
+            igralec: { id: idIgralec, ime: p.glava.polnoIme },
+          })
+        }
+      },
+    }
+    /* Sezonski zapisnik za tisk (paket Navijač in Premium): isti podatki kot profil, en list na sezono. */
+    if (imaSirokoSpremljanje) {
+      meniDejanj.push({ oznaka: 'Sezonski zapisnik za tisk →', to: zapisnikPoved })
+    }
+  }
+
   return (
     <section className="profil">
-      <div>
-        {/* Nazaj tja, od koder je gledalec prišel - na profil najpogosteje
-            pride iz lige ali zapisnika, stalna »← Lestvica« pa ga je odpeljala
-            drugam. Korak nazaj v zgodovini (in ne nova stran) obdrži stanje
-            prejšnje strani, npr. odprto okno ekipe v ligi. */}
-        <Link
-          to={izvor ?? '/lestvica'}
-          className="povezava-nazaj"
-          onClick={(dogodek) => {
-            /* Odpiranje v novem zavihku (Ctrl/⌘/srednji klik) naj ostane navadna povezava. */
-            if (izvor == null || dogodek.button !== 0) return
-            if (dogodek.metaKey || dogodek.ctrlKey || dogodek.shiftKey || dogodek.altKey) return
-            dogodek.preventDefault()
-            navigiraj(-1)
-          }}
-        >
-          ← {izvor ? oznakaPoti(izvor, odjemalec) : 'Lestvica'}
-        </Link>
-
-        <div className="stran-glava">
-          <div>
-            {/* Mesto pove tudi, na kateri lestvici je - samo »81. / 144« ni
-                povedalo, med kom (spol, člani oz. rekreativci; isti obseg in
-                isti imeni kot na strani Lestvica). */}
-            {p.uvrstitev.mesto !== null && (
-              <div className="profil__uvrstitev">
-                <span className="profil__mesto-znacka">
-                  {p.uvrstitev.mesto}. od {p.uvrstitev.skupajIgralcev}
-                </span>
-                <span className="profil__percentil">
-                  {imeLestvice(p.uvrstitev)}
-                  {p.uvrstitev.percentil !== null && (
-                    <> · boljši od {p.uvrstitev.percentil} %</>
-                  )}
-                </span>
-              </div>
-            )}
-            {/* Mladinec se primerja s svojim pasom: 104. med člani mu pove
-                malo, 12. v U19 pa to, po kar je prišel. Isto merilo kot
-                izbira kategorije na strani Lestvica (pas zajame mlajše). */}
-            {vPasu && p.uvrstitev.spol !== null && (
-              <div className="profil__uvrstitev">
-                <span className="profil__mesto-znacka">
-                  {vPasu.mesto}. od {vPasu.skupaj}
-                </span>
-                <span className="profil__percentil">
-                  Lestvica {p.uvrstitev.spol === 'ZENSKI' ? 'Ženske' : 'Moški'} · {vPasu.pas}
-                </span>
-              </div>
-            )}
-
-            <div className={slikaProfila ? 'naslov-z-logotipom' : undefined}>
-              {slikaProfila && (
-                <SlikaIgralca zgostitev={slikaProfila} velikost="VELIKA" mera={136} razred="profil__slika" />
-              )}
-              <h1 className="naslov-strani">
-                <span className="naslov-strani__nad">{ime}</span>
-                <span className="naslov-strani__glavni">{priimek}</span>
-              </h1>
-            </div>
-
-            <div className="profil__meta">
-              <span>{p.glava.klub ?? 'brez kluba'}</span>
-              {p.glava.igralnaRoka && (
-                <span>{p.glava.igralnaRoka === 'LEVA' ? 'Levičar' : 'Desničar'}</span>
-              )}
-              {/* Lastnik vidi vstop v okno vedno: brez Premium mu okno pove, da
-                  je slika del paketa (oglas 5c ima samo en sprožilec). */}
-              {jeMoj && (
-                <button
-                  type="button"
-                  className="povezava-gumb povezava-gumb--vrstica"
-                  onClick={() => nastaviSlikaOdprta(true)}
-                >
-                  {slikaProfila ? 'Uredi sliko' : 'Dodaj sliko'}
-                </button>
-              )}
-              {jeMoj && <span className="profil__moj">Tvoj profil</span>}
-            </div>
-
-            {/* Sebe ni treba spremljati. Gost po kliku dobi registracijo (izvor »spremljanje«: ponudi
-                tudi račun navijača), po njej račun igralca začne spremljati sam. */}
-            {!jeMoj && !nalaganje && (
-              <div className="profil__spremljanje">
-                <GumbSpremljanja
-                  ime={p.glava.polnoIme}
-                  spremljam={spremljanjeIgralcev.spremljam(idIgralec)}
-                  naPreklop={() => {
-                    if (!spremljanjeIgralcev.preklopi(idIgralec)) {
-                      odpriRegistracijo({
-                        izvor: 'spremljanje',
-                        igralec: { id: idIgralec, ime: p.glava.polnoIme },
-                      })
-                    }
-                  }}
-                />
-                <DruzinaGumb
-                  idIgralec={idIgralec}
-                  pas={lestvica.data?.find((v) => v.idIgralca === idIgralec)?.starostniPas}
-                />
-                <SporociloNapake napaka={spremljanjeIgralcev.napaka} />
-                {spremljanjeIgralcev.napaka != null && (
-                  <Link to="/narocnina" className="profil__spremljanje-paket">
-                    Naročnina →
-                  </Link>
-                )}
-              </div>
-            )}
-
-            {/* Sezonski zapisnik za tisk (paket Navijač in Premium): isti podatki kot profil, en list na sezono. */}
-            {imaSirokoSpremljanje && !nalaganje && (
-              <div className="profil__spremljanje">
-                <Link to={`/igralci/${idIgralec}/sezona`} className="povezava-gumb povezava-gumb--vrstica">
-                  Sezonski zapisnik za tisk →
-                </Link>
-              </div>
-            )}
-
-            {/* Tri velike številke nadomeščajo štiri vrstice kolofona: mesto,
-                odigrane, izkupiček in uspešnost so podatki, ki jih gledalec
-                išče prvi, zato so tu in ne v drobnem tisku desno. */}
-            <div className="profil__povzetek">
-              <Kazalnik oznaka="Odigrane tekme" vrednost={p.pregled.odigrane} prvi />
-              <Kazalnik
-                oznaka="Zmage – porazi"
-                vrednost={`${p.pregled.zmage}–${p.pregled.porazi}`}
+      <ProfilGlava
+        nazaj={
+          /* Nazaj tja, od koder je gledalec prišel - na profil najpogosteje
+             pride iz lige ali zapisnika, stalna »← Lestvica« pa ga je odpeljala
+             drugam. Korak nazaj v zgodovini (in ne nova stran) obdrži stanje
+             prejšnje strani, npr. odprto okno ekipe v ligi. */
+          <Link
+            to={izvor ?? '/lestvica'}
+            className="povezava-nazaj"
+            onClick={(dogodek) => {
+              /* Odpiranje v novem zavihku (Ctrl/⌘/srednji klik) naj ostane navadna povezava. */
+              if (izvor == null || dogodek.button !== 0) return
+              if (dogodek.metaKey || dogodek.ctrlKey || dogodek.shiftKey || dogodek.altKey) return
+              dogodek.preventDefault()
+              navigiraj(-1)
+            }}
+          >
+            ← {izvor ? oznakaPoti(izvor, odjemalec) : 'Lestvica'}
+          </Link>
+        }
+        glavno={glavnoDejanje}
+        meni={meniDejanj}
+        dodatno={
+          /* Sebe ni treba spremljati; družina, napaka in povezava na paket sodijo
+             k spremljanju in se pokažejo samo, kadar kaj prikažejo. */
+          !jeMoj && !nalaganje ? (
+            <>
+              <DruzinaGumb
+                idIgralec={idIgralec}
+                pas={lestvica.data?.find((v) => v.idIgralca === idIgralec)?.starostniPas}
               />
-              <Kazalnik oznaka="Uspešnost" vrednost={`${p.pregled.odstotekZmag} %`} poudarjen />
-            </div>
-          </div>
-
-          <div>
-            <div className="rating-blok">
-              <span className="rating-blok__oznaka">Turnirko rating</span>
-              <span className="rating-blok__vrednost">{p.glava.rating ?? '—'}</span>
-              {z?.forma && (
-                <div className="rating-blok__noga">
-                  <span>
-                    {z.forma.spremembaElo30dni === null
-                      ? 'brez tekem v 30 dneh'
-                      : `${z.forma.spremembaElo30dni >= 0 ? '+' : '−'}${Math.abs(z.forma.spremembaElo30dni)} / 30 dni`}
-                  </span>
-                  {z.forma.najvisjiRating !== null && (
-                    <span className="rating-blok__vrh">vrh {z.forma.najvisjiRating}</span>
-                  )}
-                </div>
+              <SporociloNapake napaka={spremljanjeIgralcev.napaka} />
+              {spremljanjeIgralcev.napaka != null && (
+                <Link to="/narocnina" className="profil__spremljanje-paket">
+                  Naročnina →
+                </Link>
               )}
-              {/* Številka brez razlage se bere kot napaka ali naklonjenost -
-                  posebej po prvem dnevu, ko skoči za stotine točk. */}
-              <Link to="/o-ratingu" className="rating-blok__povezava">
-                Kako se računa →
-              </Link>
-            </div>
-
-            <div className="kolofon">
-              {p.uvrstitev.klubskoPovprecje !== null && (
-                <div className="kolofon__vrstica">
-                  <span className="kolofon__oznaka">Klubsko povprečje</span>
-                  <span className="kolofon__vrednost">
-                    {p.uvrstitev.klubskoPovprecje}
-                    {p.glava.rating !== null && (
-                      <>
-                        {' '}
-                        <span
-                          className={
-                            p.glava.rating >= p.uvrstitev.klubskoPovprecje
-                              ? 'kolofon__vrednost--poz'
-                              : 'kolofon__vrednost--neg'
-                          }
-                        >
-                          {p.glava.rating >= p.uvrstitev.klubskoPovprecje ? '+' : '−'}
-                          {Math.abs(p.glava.rating - p.uvrstitev.klubskoPovprecje)}
-                        </span>
-                      </>
-                    )}
-                  </span>
-                </div>
-              )}
-              {/* Dve vrstici in ne »Turnirji / lige 0 / 4« - to se je bralo
-                  kot štiri lige, v resnici pa so tekme. */}
-              <div className="kolofon__vrstica">
-                <span className="kolofon__oznaka">Tekme na turnirjih</span>
-                <span className="kolofon__vrednost">{p.pregled.turnirskih}</span>
-              </div>
-              <div className="kolofon__vrstica">
-                <span className="kolofon__oznaka">Ligaške tekme</span>
-                <span className="kolofon__vrednost">{p.pregled.ligaskih}</span>
-              </div>
-              <div className="kolofon__vrstica">
-                <span className="kolofon__oznaka">Zadnja tekma</span>
-                <span className="kolofon__vrednost">
-                  {p.tekme.length > 0 && p.tekme[0].datum ? datum(p.tekme[0].datum) : '—'}
-                </span>
-              </div>
-              {okolica?.razlikaNad != null && (
-                <div className="kolofon__vrstica">
-                  <span className="kolofon__oznaka">Do {okolica.mestoNad}. mesta</span>
-                  <span className="kolofon__vrednost">
-                    {okolica.razlikaNad} {sklonTock(okolica.razlikaNad)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+            </>
+          ) : null
+        }
+        ime={ime}
+        priimek={priimek}
+        slika={slikaProfila ? urlProfilneSlike(slikaProfila, 'VELIKA') : null}
+        klub={p.glava.klub ?? 'brez kluba'}
+        roka={
+          p.glava.igralnaRoka ? (p.glava.igralnaRoka === 'LEVA' ? 'Levičar' : 'Desničar') : null
+        }
+        jeMoj={jeMoj}
+        uvrstitev={
+          /* Mesto pove tudi, na kateri lestvici je (spol, člani oz. rekreativci;
+             isti obseg in isti imeni kot na strani Lestvica). */
+          p.uvrstitev.mesto !== null
+            ? {
+                mesto: p.uvrstitev.mesto,
+                od: p.uvrstitev.skupajIgralcev,
+                oznaka: imeLestvice(p.uvrstitev).replace(/^Lestvica /, ''),
+                percentil: p.uvrstitev.percentil,
+              }
+            : null
+        }
+        pas={
+          /* Mladinec se primerja s svojim pasom: 104. med člani mu pove malo,
+             12. v U19 pa to, po kar je prišel. Isto merilo kot izbira kategorije
+             na strani Lestvica (pas zajame mlajše). */
+          vPasu && p.uvrstitev.spol !== null
+            ? {
+                mesto: vPasu.mesto,
+                od: vPasu.skupaj,
+                oznaka: `${p.uvrstitev.spol === 'ZENSKI' ? 'Ženske' : 'Moški'} · ${vPasu.pas}`,
+              }
+            : null
+        }
+        rating={p.glava.rating}
+        noga={
+          z?.forma
+            ? {
+                sprememba:
+                  z.forma.spremembaElo30dni === null
+                    ? 'brez tekem v 30 dneh'
+                    : `${z.forma.spremembaElo30dni >= 0 ? '+' : '−'}${Math.abs(z.forma.spremembaElo30dni)} / 30 dni`,
+                vrh: z.forma.najvisjiRating !== null ? `vrh ${z.forma.najvisjiRating}` : null,
+              }
+            : null
+        }
+        klubskoPovprecje={
+          p.uvrstitev.klubskoPovprecje !== null
+            ? {
+                vrednost: p.uvrstitev.klubskoPovprecje,
+                razlika:
+                  p.glava.rating !== null ? p.glava.rating - p.uvrstitev.klubskoPovprecje : null,
+              }
+            : null
+        }
+        doMesta={
+          okolica?.razlikaNad != null
+            ? {
+                mesto: okolica.mestoNad,
+                razlika: okolica.razlikaNad,
+                tock: `${okolica.razlikaNad} ${sklonTock(okolica.razlikaNad)}`,
+              }
+            : null
+        }
+        odigrane={p.pregled.odigrane}
+        turnirskih={p.pregled.turnirskih}
+        ligaskih={p.pregled.ligaskih}
+        zmage={p.pregled.zmage}
+        porazi={p.pregled.porazi}
+        odstotekZmag={p.pregled.odstotekZmag}
+        zadnjaTekma={p.tekme.length > 0 && p.tekme[0].datum ? datum(p.tekme[0].datum) : '—'}
+      />
 
       <GrafRatinga tocke={p.graf} naTekmo={skociNaTekmo}>
         {z && <PricakovanIzkupicek meseci={z.forma.poMesecih} />}
       </GrafRatinga>
+
+      {/* Kdor zasebnega dela ne sme videti, pod grafom vidi zaklenjen odsek: brez njega
+          ne bi vedel, da pod grafom obstaja še statistika. Igralec brez tekem nima
+          česa odkleniti. */}
+      {!nalaganje && !smemZasebno && p.pregled.odigrane > 0 && (
+        <ZaklenjenaStatistika
+          lastnik={lastnikBrezPremium}
+          pas={lestvica.data?.find((v) => v.idIgralca === idIgralec)?.starostniPas}
+          naOdkleni={() => odpriPremiumOglas('statistika')}
+        />
+      )}
 
       {smemZasebno && z && (
         <>
@@ -399,19 +351,6 @@ export function ProfilStran() {
       {smemZasebno && zasebno.error && <SporociloNapake napaka={zasebno.error} />}
       {slikaOdprta && <ProfilnaSlikaOkno onZapri={() => nastaviSlikaOdprta(false)} />}
 
-      {lastnikBrezPremium && (
-        <div className="obvestilo">
-          Forma, nasprotniki, napoved tekme, nizi in točke ter razrezi so Premium funkcija.{' '}
-          <button
-            type="button"
-            className="povezava-gumb povezava-gumb--vrstica"
-            onClick={() => odpriPremiumOglas('statistika')}
-          >
-            Nadgradi na Premium
-          </button>
-          , da jih vidiš.
-        </div>
-      )}
       {/* Gost na profilu je najpogosteje igralec sam (ali starš): vrstica pove,
           kaj mu račun da, in odpre kratko registracijo z že vpisanim imenom in
           klubom. Ali ima igralec račun že, gost ne izve - vrstica je ista za

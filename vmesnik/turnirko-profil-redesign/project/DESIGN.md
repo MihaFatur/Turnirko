@@ -360,7 +360,8 @@ namesto besede (točka 9): ime tekmovanja stoji vedno tik ob njem, zato je slika
 **Profilna slika** (`SlikaIgralca`, okno `ProfilnaSlikaOkno`, razdelek »Profilna
 slika igralca« v `slog.css`) je kvadrat z 1 px črto črnila in radijem 0, kot
 fotografija na licenci. Stoji na treh mestih in nikjer drugje: glava profila
-(136 px), 1 na 1 (72 px) in stopničke dogodka (72 px, na telefonu 44 px).
+(portret 300 px, razdelek 4e), 1 na 1 (72 px), stopničke dogodka (72 px, na telefonu 44 px)
+in sklop »Moji igralci« na domači strani (portret 240 px, v zavihku 36 px; razdelek 5g).
 Lestvica, seznami, mreža in tisk je ne nosijo — pri nekaj odstotkih igralcev bi
 bil vsak seznam lisast.
 
@@ -379,6 +380,38 @@ pisavi. Velikost je po enaki ploščini kot logotip (glavni 80 × 80, ostali
 56 × 56 px). Na tisku so v nogi Turnirkovega ekipnega zapisnika in žreba mreže
 (največ 12 mm visoko, slika v barvi — logotip je znamka); ne na uradnem obrazcu
 NTZS, sodniških listkih in listkih skupin.
+
+### 4e. Glava profila igralca (november 2026)
+
+Glavo `/igralci/:id` (od »← Lestvica« do vrstice številk) riše čista prikazna
+komponenta `komponente/ProfilGlava`, razredi `.profil-glava__*` v `slog.css`
+(zadnji razdelek). Vir: predaja `design_handoff_profil_glava`, možnost 1a. Tri
+vrstice: **kdo je** (portret, ime, klub, uvrstitev), **kolikšen je** (modra
+ploskev ratinga + primerjava) in **kaj je odigral** (štiri številke). Mere so
+prepisane iz makete in se **ne poravnavajo na ritem 8 px** (20, 14, 12, 10, 6 px
+so namerni).
+
+- **Dejanja** zgoraj desno: eno glavno (44 px, `--barva-glavna-polna`) + meni »⋯«
+  (44 × 44, črna obroba; meni je `.kartoteka__meni`). Moj profil: »Sezonski
+  zapisnik →« (samo ob `imaSirokoSpremljanje`), meni »Uredi/Dodaj sliko«. Tuj
+  profil: »Spremljaj« (obrobni »Spremljaš«, ko že spremljaš), meni »Sezonski
+  zapisnik za tisk →«. Prazen meni = brez gumba »⋯«.
+- **Portret** 300 px + 1 px obroba, višina se raztegne na srednji stolpec
+  (najmanj 400 px), `object-fit: cover` z `50% 18%`. Brez slike elementa ni
+  (brez silhuete) in priimek zraste na 144 px.
+- **Priimek** 112 px (s sliko) oz. 144 px, a največ `100cqw / (znakov × 0,47)`.
+  Ime je nadnaslov 56 px / teža 200.
+- **Uvrstitev**: tri črte `--barva-crnilo` nad blokom, palica »Boljši od N %«
+  (polnilo `--barva-glavna`), mladinski pas v drugi vrstici (32 px, 1 px črta).
+- **Ploskev ratinga** 372 px, številka 128 px; noga samo z zasebnimi podatki.
+  Primerjava pod njo je obstoječi `.kolofon`.
+- **Vrstica številk**: grid `1.15fr 1.25fr 1fr 1fr`, 3 px črta nad njo, stolpec
+  uspešnosti z 4 px modro črto. Palici sta okras (`aria-hidden`).
+- **Odzivnost**: ≤ 1100 ploskev ratinga pod portret in ime (cela širina); ≤ 768
+  številke 2 × 2; ≤ 640 postavitev telefona (portret 150 px, ime 32 px, ploskev
+  ratinga pred uvrstitvijo — `.profil-glava__oseba` je tam `display: contents`).
+- Preverjanje: razvojna pot `/dev/profil-glava?stanje=moj|gost&meni=1`
+  (`dev/ProfilGlavaPosnetki`), fiksni podatki iz predaje; posnetki 1280 in 390 px.
 
 ## 5. Prepovedano
 
@@ -426,7 +459,7 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
     *Druga izjema: maskota »Igralec Premium«, razdelek 5b. Tretja: celozaslonski
     oglas »Igralec Premium«, razdelek 5c. Četrta: animirani grafi in lik na
     strani »Kako deluje«, razdelek 5d. Peta: uvodna animacija ob prvem
-    nalaganju, razdelek 5e.*
+    nalaganju, razdelek 5e. Šesta: izkaznica »Moji igralci«, razdelek 5g.*
 
 ### 5b. Izjema: maskota »Igralec Premium«
 
@@ -669,6 +702,35 @@ Premium je ena poved z navadno povezavo — ne oglas. Nastavitev je okno
 »Obvestila« v meniju računa (isti kvadratek kot spremljanje), odjava
 `/odjava-obvestil` pa je gumb in ne samodejna (pregledovalniki pošte
 povezave odprejo sami).
+
+### 5g. Izjema: izkaznica »Moji igralci« (november 2026)
+
+Sklop »Moji igralci« na domači strani (`MojiIgralciIzkaznica`, razdelek »Moji
+igralci (izkaznica)« v `slog.css`) je ena velika izkaznica naenkrat; igralci so
+zavihki. Predaja: `design_handoff_moji_igralci`. Štiri odločitve lastnika, ki
+so izjeme od drugih razdelkov:
+
+1. **Profilna slika stoji tudi na domači strani** (4d: prej tri mesta):
+   portret 240 px (na telefonu 88 px), v zavihku 36 px. Igralec brez slike ima
+   v istem okvirju obris glave in ramen.
+2. **Gibanje (točka 12):** rating se naštevilči (od vrednosti − 96, 900 ms,
+   številčni izpis) in vrstice izkaznice se dvignejo ob vstopu (420 ms,
+   zamik 45 ms na vrstico, največ 12). Animirata se samo `transform` in
+   `opacity`; ob `prefers-reduced-motion: reduce` je takoj končno stanje.
+   Sproži se ob prvem prikazu vsebine, menjavi zavihka in prehodu
+   nalaganje/napaka → vsebina.
+3. **Črtkana obroba** (`2px dashed #14110f`) za »vstopnico« (naslednji termin) in
+   prazno izkaznico.
+4. **`container-type: inline-size` in `cqw` v `clamp()`** namesto media
+   queryjev: sklop se prilagaja širini svojega vsebnika (isti izrazi pri 1200 in
+   350 px).
+
+Izmerjena odstopanja od zapisa v predaji, da se sklop ujema z maketo:
+Bricolage ima v sklopu `font-variation-settings: 'opsz' 14` (maketa nalaga
+statično pisavo brez optične osi; avtomatsko merilo bi velike številke zožilo
+za 11 %), priimek v zavihku je Karla 700 (maketa Karle 800 ne nalaga) in gumb
+»Poišči igralca« je visok 74 px (maketa ima `min-height` 48 px na škatli
+`content-box`).
 
 ---
 

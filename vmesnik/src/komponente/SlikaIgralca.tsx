@@ -9,8 +9,9 @@ import { urlProfilneSlike, type VelikostProfilneSlike } from '../pomozno/profiln
 interface Lastnosti {
   zgostitev: string | null | undefined
   velikost: VelikostProfilneSlike
-  /* Stranica okvirja v px. */
-  mera: number
+  /* Stranica okvirja v px. Brez nje velikost določi CSS razreda (izkaznica na
+     domači strani: širina sledi vsebniku). */
+  mera?: number
   /* Dodaten razred za postavitev (npr. ob naslovu profila). */
   razred?: string
 }
@@ -32,10 +33,14 @@ export function SlikaIgralca({ zgostitev, velikost, mera, razred }: Lastnosti) {
   return (
     <span
       className={razredi + ' slika-igralca--prazna'}
-      style={{ width: mera, height: mera }}
+      style={mera === undefined ? undefined : { width: mera, height: mera }}
       aria-hidden="true"
     >
-      <svg viewBox="0 0 40 40" width={Math.round(mera * 0.6)} height={Math.round(mera * 0.6)}>
+      <svg
+        viewBox="0 0 40 40"
+        width={mera === undefined ? '60%' : Math.round(mera * 0.6)}
+        height={mera === undefined ? '60%' : Math.round(mera * 0.6)}
+      >
         <circle cx="20" cy="13" r="7.5" />
         <path d="M6 36c0-7.7 6.3-14 14-14s14 6.3 14 14" />
       </svg>

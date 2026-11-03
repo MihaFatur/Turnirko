@@ -230,6 +230,42 @@ class SpremljaniIgralciTest extends IntegracijskiTest {
         assertNull(spremljani.povzetki().get(0).prihajajociTurnir(), "turnir z datumom mimo ni prihajajoc");
     }
 
+    /* Forma je zadnjih pet izidov, najnovejsi prvi; sezona steje samo tekme od
+       1. julija (kot sezonski zapisnik), tekma brez datuma ne sodi v nobeno. */
+    @Test
+    void formaInBilancaSezone() {
+        LocalDate danes = LocalDate.of(2026, 11, 3);
+        var tekme = List.of(
+                tekma(LocalDate.of(2026, 10, 25), true), tekma(LocalDate.of(2026, 10, 18), false),
+                tekma(LocalDate.of(2026, 9, 1), true), tekma(LocalDate.of(2026, 6, 30), true),
+                tekma(null, false), tekma(LocalDate.of(2026, 5, 1), false));
+
+        assertEquals(List.of("Z", "P", "Z", "Z", "P"), SpremljaniIgralciStoritev.forma(tekme));
+        assertEquals(new DomovIgralecDto.Sezona(2, 1), SpremljaniIgralciStoritev.sezona(tekme, danes));
+        assertNull(SpremljaniIgralciStoritev.sezona(tekme.subList(3, 6), danes), "brez tekem sezone ni bilance");
+        assertEquals(List.of(), SpremljaniIgralciStoritev.forma(List.of()));
+    }
+
+    @Test
+    void povzetekNosiImeInPriimekLocenoInPraznoSlikoBrezPremiuma() {
+        Igralec ana = noviIgralec("Ana Marija", "Novak Kos");
+        prijava(navijac("navijac11@test"));
+        spremljani.spremljaj(ana.getId());
+
+        DomovIgralecDto p = spremljani.povzetki().get(0);
+
+        assertEquals("Ana Marija", p.ime());
+        assertEquals("Novak Kos", p.priimek());
+        assertNull(p.zgostitev());
+        assertNull(p.sezona());
+        assertTrue(p.forma().isEmpty());
+    }
+
+    private static si.turnirko.dto.ProfilDto.TekmaProfila tekma(LocalDate datum, boolean zmaga) {
+        return new si.turnirko.dto.ProfilDto.TekmaProfila(1L, true, datum, "T", "", 2L, "N", null,
+                zmaga ? 3 : 1, zmaga ? 1 : 3, zmaga, null, null, "l1");
+    }
+
     // ---------- zdruzitev ----------
 
     /* Zdruzitev preusmeri vse tuje kljuce (CLAUDE.md): racun, ki je spremljal

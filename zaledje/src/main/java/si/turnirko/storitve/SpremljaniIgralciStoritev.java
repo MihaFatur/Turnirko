@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.DomovIgralecDto;
 import si.turnirko.dto.ProfilDto;
+import si.turnirko.dto.SlikaIgralcaDto;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
@@ -27,6 +28,7 @@ import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.Prijava;
+import si.turnirko.modeli.Sezona;
 import si.turnirko.modeli.SpremljanIgralec;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
@@ -53,6 +55,9 @@ public class SpremljaniIgralciStoritev {
        vse, gre na profil. */
     private static final int ZADNJIH_TEKEM = 3;
 
+    /* Forma je krajsa od seznama: pet kvadratkov se se prilega v vrstico telefona. */
+    private static final int TEKEM_V_FORMI = 5;
+
     private final SpremljanIgralecRepozitorij repozitorij;
     private final IgralecRepozitorij igralecRepozitorij;
     private final LigaRepozitorij ligaRepozitorij;
@@ -61,6 +66,7 @@ public class SpremljaniIgralciStoritev {
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final TurnirRepozitorij turnirRepozitorij;
     private final ProfilStoritev profilStoritev;
+    private final ProfilneSlikeStoritev profilneSlike;
     private final LastnistvoStoritev lastnistvo;
     private final NarocninaStoritev narocnina;
     private final DruzinaStoritev druzina;
@@ -74,6 +80,7 @@ public class SpremljaniIgralciStoritev {
                                      PrijavaRepozitorij prijavaRepozitorij,
                                      TurnirRepozitorij turnirRepozitorij,
                                      ProfilStoritev profilStoritev,
+                                     ProfilneSlikeStoritev profilneSlike,
                                      LastnistvoStoritev lastnistvo,
                                      NarocninaStoritev narocnina,
                                      DruzinaStoritev druzina,
@@ -87,6 +94,7 @@ public class SpremljaniIgralciStoritev {
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
         this.profilStoritev = profilStoritev;
+        this.profilneSlike = profilneSlike;
         this.lastnistvo = lastnistvo;
         this.narocnina = narocnina;
         this.druzina = druzina;
@@ -187,16 +195,52 @@ public class SpremljaniIgralciStoritev {
            NAJVEC_BREZPLACNO igralcev. */
         ProfilDto profil = profilStoritev.profil(idIgralec);
         List<ProfilDto.TekmaProfila> zadnje = profil.tekme().stream().limit(ZADNJIH_TEKEM).toList();
+        Igralec igralec = igralecRepozitorij.findById(idIgralec).orElseThrow();
+        List<ProfilDto.TekmaProfila> odigrane = profil.tekme().stream()
+                .filter(t -> t.izidTip() == null || t.izidTip().jeOdigrana())
+                .toList();
+        String zgostitev = profilneSlike.vidne(List.of(idIgralec)).stream()
+                .findFirst().map(SlikaIgralcaDto::zgostitev).orElse(null);
         return new DomovIgralecDto(
                 idIgralec,
                 profil.glava().polnoIme(),
+                igralec.getIme(),
+                igralec.getPriimek(),
                 profil.glava().klub(),
                 profil.glava().rating(),
                 profil.uvrstitev(),
                 zadnje,
                 naslednjeSrecanje(idIgralec, danes),
                 prihajajociTurnir(idIgralec, danes),
-                izDruzine);
+                izDruzine,
+                forma(odigrane),
+                sezona(odigrane, danes),
+                zgostitev);
+    }
+
+    /* Izidi zadnjih petih odigranih tekem; profil jih ze nosi najnovejso prvo.
+       Neodigrane tekme (brez boja, diskvalifikacija) v formi ne nastopajo. */
+    static List<String> forma(List<ProfilDto.TekmaProfila> odigrane) {
+        return odigrane.stream()
+                .limit(TEKEM_V_FORMI)
+                .map(t -> t.zmaga() ? "Z" : "P")
+                .toList();
+    }
+
+    /* Bilanca tekoce sezone: ista definicija kot sezonski zapisnik v vmesniku
+       (1. julij - 30. junij po datumu tekme; tekma brez datuma ne sodi v nobeno
+       sezono). Brez tekem v sezoni je null, da vmesnik ne trdi "0-0". */
+    static DomovIgralecDto.Sezona sezona(List<ProfilDto.TekmaProfila> odigrane, LocalDate danes) {
+        LocalDate od = Sezona.zacetek(danes);
+        LocalDate konec = Sezona.naslednjaOd(danes);
+        List<ProfilDto.TekmaProfila> tekme = odigrane.stream()
+                .filter(t -> t.datum() != null && !t.datum().isBefore(od) && t.datum().isBefore(konec))
+                .toList();
+        if (tekme.isEmpty()) {
+            return null;
+        }
+        int zmage = (int) tekme.stream().filter(ProfilDto.TekmaProfila::zmaga).count();
+        return new DomovIgralecDto.Sezona(zmage, tekme.size() - zmage);
     }
 
     /* Naslednje srecanje ekipe, v kateri igralec nastopa, v ligah, ki se niso

@@ -1291,6 +1291,10 @@ export interface VrhLigeDto {
 export interface DomovIgralecDto {
   idIgralec: number
   polnoIme: string
+  /* Ločeno, ker priimka z več besedami iz polnega imena ni mogoče zanesljivo
+     izluščiti. */
+  ime: string
+  priimek: string
   klub: string | null
   rating: number | null
   /* Isti zapis kot v glavi profila, da se mesti ne moreta razhajati. */
@@ -1301,6 +1305,12 @@ export interface DomovIgralecDto {
   prihajajociTurnir: PrihajajociTurnirIgralca | null
   /* Igralec je v družini računa (V59): vmesnik ponudi zasebno statistiko na profilu. */
   druzina: boolean
+  /* Izidi zadnjih 5 odigranih tekem, najnovejša prva. */
+  forma: ('Z' | 'P')[]
+  /* Bilanca tekoče sezone (isti rez kot sezonski zapisnik); null brez tekem. */
+  sezona: { zmage: number; porazi: number } | null
+  /* Javna profilna slika (V56); null, kadar je ni. */
+  zgostitev: string | null
 }
 
 /* Srečanje ekipe igralca (igralec v njem ne igra nujno: kader je lahko širši

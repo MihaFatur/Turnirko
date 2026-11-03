@@ -108,3 +108,73 @@ export const LIGE = [
   { id: 4, ime: 'Zasavska liga', sezona: '2026/27', idVisjaLiga: 1, visjaLigaIme: 'Savinja liga A', stKvalifikacijeGor: 0, stKvalifikacijeDol: 0 },
   { id: 5, ime: 'Koroška liga', sezona: '8. Sezona', idVisjaLiga: null, visjaLigaIme: null, stKvalifikacijeGor: 2, stKvalifikacijeDol: 0 },
 ]
+
+/* Igralci za okno »Moji igralci« (izkaznica): iste številke kot
+   referenca/moji-igralci-podatki.js v predaji design_handoff_moji_igralci.
+   Zgostitev »dev-slika« harness nadomesti z diagonalno črtkanim poljem, kot
+   ga ima maketa namesto prave fotografije. */
+import type { DomovIgralecDto, TekmaProfila } from '../api/tipi'
+
+function tekma(
+  idTekme: number, datum: string, nasprotnik: string, tekmovanje: string,
+  niziZa: number, niziProti: number, sprememba: number,
+): TekmaProfila {
+  return {
+    idTekme, ligaska: true, datum, tekmovanje, del: '', idNasprotnika: 900 + idTekme, nasprotnik,
+    klubNasprotnika: null, niziZa, niziProti, zmaga: niziZa > niziProti, izidTip: 'IGRANO',
+    spremembaRatinga: sprememba, tekmovanjeKljuc: `l${idTekme}`,
+  }
+}
+
+const TURNIR_CELJE = {
+  idTurnir: 77, ime: 'Odprto prvenstvo Celja', datum: '2026-11-22', status: 'PRIPRAVA' as const,
+}
+
+export const MOJI_IGRALCI: DomovIgralecDto[] = [
+  {
+    idIgralec: 1, polnoIme: 'Luka Zupančič', ime: 'Luka', priimek: 'Zupančič', klub: 'KTT Maribor',
+    rating: 1482,
+    uvrstitev: { mesto: 14, skupajIgralcev: 212, percentil: null, klubskoPovprecje: null, spol: 'MOSKI', rekreativec: false },
+    zadnje: [
+      tekma(1, '2026-10-25', 'Žiga Horvat', 'Liga Savinja D', 3, 1, 6),
+      tekma(2, '2026-10-18', 'Rok Tomšič', 'Liga Savinja D', 2, 3, -8),
+      tekma(3, '2026-10-11', 'Matej Kos', 'Jesenski turnir Maribor', 3, 0, 9),
+    ],
+    naslednjeSrecanje: {
+      idSrecanje: 501, idLiga: 5, liga: 'Liga Savinja D', kolo: 6, zacetek: '2026-11-08T18:00:00',
+      ekipa: 'KTT Maribor B', nasprotnik: 'TTK Ptuj', doma: true,
+    },
+    prihajajociTurnir: TURNIR_CELJE,
+    druzina: false,
+    forma: ['Z', 'P', 'Z', 'Z', 'Z'],
+    sezona: { zmage: 18, porazi: 7 },
+    zgostitev: 'dev-slika',
+  },
+  {
+    idIgralec: 2, polnoIme: 'Maja Zupan', ime: 'Maja', priimek: 'Zupan', klub: 'TTK Ptuj',
+    rating: 1215,
+    uvrstitev: { mesto: 31, skupajIgralcev: 88, percentil: null, klubskoPovprecje: null, spol: 'ZENSKI', rekreativec: true },
+    zadnje: [
+      tekma(4, '2026-10-24', 'Eva Krajnc', 'Jesenski turnir Maribor', 3, 2, 11),
+      tekma(5, '2026-10-10', 'Nina Vidmar', 'Odprto prvenstvo Ptuja', 0, 3, -7),
+      tekma(6, '2026-09-27', 'Sara Božič', 'Odprto prvenstvo Ptuja', 3, 1, 5),
+    ],
+    naslednjeSrecanje: null,
+    prihajajociTurnir: TURNIR_CELJE,
+    druzina: true,
+    forma: ['Z', 'P', 'Z', 'Z', 'P'],
+    sezona: { zmage: 11, porazi: 9 },
+    zgostitev: null,
+  },
+  {
+    idIgralec: 3, polnoIme: 'Jan Rozman', ime: 'Jan', priimek: 'Rozman', klub: null, rating: null,
+    uvrstitev: { mesto: null, skupajIgralcev: 0, percentil: null, klubskoPovprecje: null, spol: 'MOSKI', rekreativec: false },
+    zadnje: [],
+    naslednjeSrecanje: null,
+    prihajajociTurnir: null,
+    druzina: false,
+    forma: [],
+    sezona: null,
+    zgostitev: null,
+  },
+]

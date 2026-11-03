@@ -144,6 +144,7 @@ function StranNeObstaja() {
 /* Prikazni harness za posnetke prenove (samo razvoj). Konstanta DEV je v produkciji
    false, zato se ta uvoz v paket sploh ne vključi. */
 const PosnetkiOkna = import.meta.env.DEV ? lazy(() => import('./dev/PosnetkiOkna')) : null
+const ProfilGlavaPosnetki = import.meta.env.DEV ? lazy(() => import('./dev/ProfilGlavaPosnetki')) : null
 
 export function App() {
   return (
@@ -151,6 +152,10 @@ export function App() {
       {PosnetkiOkna && (
         <Route path="/dev/posnetki"
           element={<Suspense fallback={null}><PosnetkiOkna /></Suspense>} />
+      )}
+      {ProfilGlavaPosnetki && (
+        <Route path="/dev/profil-glava"
+          element={<Suspense fallback={null}><ProfilGlavaPosnetki /></Suspense>} />
       )}
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}

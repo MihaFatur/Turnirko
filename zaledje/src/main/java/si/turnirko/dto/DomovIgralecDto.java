@@ -16,6 +16,9 @@ import si.turnirko.modeli.StatusTekmovanja;
 public record DomovIgralecDto(
         Long idIgralec,
         String polnoIme,
+        // Ime in priimek locena: priimek z vec besedami iz polnega imena ni zanesljiv.
+        String ime,
+        String priimek,
         String klub,
         // Turnirko rating; prazen, dokler igralec ni odigral tekme, ki bi stela.
         Integer rating,
@@ -29,8 +32,17 @@ public record DomovIgralecDto(
         // Najbolj zgoden turnir, na katerega je prijavljen in se ni mimo.
         PrihajajociTurnir prihajajociTurnir,
         // Igralec je v druzini racuna (V59): vmesnik ponudi zasebno statistiko na profilu.
-        boolean druzina
+        boolean druzina,
+        // Izidi zadnjih 5 odigranih tekem (liga in turnir), najnovejsa prva: "Z" ali "P".
+        List<String> forma,
+        // Bilanca tekoce sezone (isti rez kot sezonski zapisnik); prazno brez tekem.
+        Sezona sezona,
+        // Zgostitev javne profilne slike (V56); prazno, kadar je igralec nima ali ni javna.
+        String zgostitev
 ) {
+
+    /* Zmage in porazi odigranih tekem tekoce sezone (1. julij - 30. junij). */
+    public record Sezona(int zmage, int porazi) {}
 
     /* Srecanje ekipe igralca. Igralec v srecanju ne igra nujno (kader je lahko
        sirsi od postave), zato je podana ekipa in ne on. "zacetek" je lahko

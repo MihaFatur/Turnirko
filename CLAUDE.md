@@ -1087,6 +1087,11 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
         `MojIgralecSklop` med vrhom in lestvico domače strani (gost ga nima; račun brez izbora ga vidi samo
         kot navijač, kjer pove, kako se igralec doda). Gost po kliku dobi kratko registracijo (`izvor:
         'spremljanje'`, `igralec`), po prijavi ga račun začne spremljati sam.
+      - **Izkaznica** (nov. 2026, `MojiIgralciIzkaznica`, DESIGN.md 5g): ena izkaznica naenkrat, igralci so
+        zavihki. `DomovIgralecDto` nosi še `ime`/`priimek` ločeno, `forma` (zadnjih 5 odigranih, najnovejša
+        prva), `sezona` (bilanca od 1. julija — `Sezona.zacetek`, isti rez kot sezonski zapisnik; null brez
+        tekem) in `zgostitev` javne profilne slike (`ProfilneSlikeStoritev.vidne`). Izpeljava besedil je v
+        `pomozno/mojiIgralci.ts`, posnetki: `/dev/posnetki?okno=moji-igralci` (stanje, st, zacetni, sirina).
       - Testi: `SpremljaniIgralciTest`, `AvtentikacijaDostopTest` (`gostNimaSpremljanihIgralcev`).
     - **Plačljiv Navijač in njegove ugodnosti** (V58–V61, okt 2026; faze 1–3 predloga, NI preverjeno
       proti živemu Stripu ne pravemu potisnemu strežniku). Paket `NAVIJAC` (`Paket`, `CenikStoritev`):

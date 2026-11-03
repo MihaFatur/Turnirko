@@ -10,7 +10,10 @@
      okno=termini            okno Termini kol (2a)
      okno=prehodi            okno Prehodi in piramida (2c)
      okno=obrazec-termini    polje Termini kol v obrazcu nove lige (2b), 512 px
-     ure=1                   liga z dvema uri kola (vec_ur_na_kolo) */
+     ure=1                   liga z dvema uri kola (vec_ur_na_kolo)
+     okno=moji-igralci       sklop »Moji igralci« (izkaznica), okvir #posnetek:
+                             stanje=vsebina|prazno|napaka|nalaganje, st=1..3,
+                             zacetni=0..2, sirina=1280|390 */
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -19,8 +22,9 @@ import { ligeApi } from '../api/zahteve'
 import type { LigaDto, SrecanjeDto } from '../api/tipi'
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { TerminiOkno } from '../komponente/TerminiOkno'
+import { MojiIgralciIzkaznica, type StanjeSklopa } from '../komponente/MojiIgralciIzkaznica'
 import { TerminiPolja } from '../komponente/TerminiPolja'
-import { ENA_URA, LIGE, VEC_UR, type VzorecKola } from './primerPodatki'
+import { ENA_URA, LIGE, MOJI_IGRALCI, VEC_UR, type VzorecKola } from './primerPodatki'
 
 /* Shranjevanje tu ne sme nikamor. */
 ligeApi.termini = async () => []
@@ -104,6 +108,39 @@ function ObrazecTermini() {
   )
 }
 
+/* Zgostitev »dev-slika« je v maketi diagonalno črtkano polje namesto fotografije. */
+const SLIKA_V_MAKETI = `img.slika-igralca[src*="dev-slika"] {
+  content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/%3E");
+  background: repeating-linear-gradient(135deg, #EDE7DF 0 8px, #E4DDD3 8px 16px);
+}`
+
+/* Okvir posnetka: fiksna širina, ozadje papir, odmik kot ga v aplikaciji daje
+   .vsebina (40/40/64 na 1280, 20/20/40 na 390). */
+function MojiIgralci({ parametri }: { parametri: URLSearchParams }) {
+  const stanje = (parametri.get('stanje') ?? 'vsebina') as StanjeSklopa
+  const st = Math.max(1, Math.min(3, Number(parametri.get('st') ?? 2)))
+  const zacetni = Number(parametri.get('zacetni') ?? 0)
+  const sirina = Number(parametri.get('sirina') ?? 1280)
+  const odmik = sirina >= 1000 ? '40px 40px 64px' : '20px 20px 40px'
+  return (
+    <>
+      <style>{SLIKA_V_MAKETI}</style>
+      <div id="posnetek" style={{ width: sirina, boxSizing: 'border-box', background: '#FBF9F5', padding: odmik }}>
+        <MojiIgralciIzkaznica
+          stanje={stanje}
+          igralci={MOJI_IGRALCI.slice(0, st)}
+          zapisnik
+          naPreklop={() => {}}
+          poizvedba={{ error: new Error('Povezava s strežnikom ni uspela.'), isFetching: false, refetch: () => {} }}
+          zacetni={zacetni}
+          brezGibanja
+          danes="2026-11-03"
+        />
+      </div>
+    </>
+  )
+}
+
 export default function PosnetkiOkna() {
   const [parametri] = useSearchParams()
   const okno = parametri.get('okno') ?? 'termini'
@@ -112,7 +149,9 @@ export default function PosnetkiOkna() {
   const naZapri = () => {}
 
   let vsebina
-  if (okno === 'prehodi') {
+  if (okno === 'moji-igralci') {
+    vsebina = <MojiIgralci parametri={parametri} />
+  } else if (okno === 'prehodi') {
     const liga = ligaZaPrikaz(ENA_URA)
     const vse = [...LIGE, liga] as unknown as LigaDto[]
     vsebina = <PrehodiOkno liga={liga} vse={vse} onZapri={naZapri} onShranjeno={naZapri} />
