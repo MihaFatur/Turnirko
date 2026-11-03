@@ -14052,6 +14052,24 @@ a.ekipa-okno__srecanje:hover {
   .tekma-vrstica__nasprotnik .profil__klub {
     display: none;
   }
+
+  /* Razrezi in napredek ratinga sta dvostolpcna mreza (320 px desno): v 335 px
+     vsebine bi eden izpodrinil drugega, zato eden pod drugim. */
+  .forma,
+  .nizi__stolpca,
+  .razrezi {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r5);
+  }
+
+  .okolica__glava {
+    flex-wrap: wrap;
+  }
+
+  .izkupicek {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--r4);
+  }
 }
 
 @media (max-width: 640px) {
