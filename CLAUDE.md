@@ -2285,6 +2285,17 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     `@container (max-width: 899px)`): stopnice nad 900 px, palice pod njim. Glava razdelka in besedilo
     gumba (»Natisni« / »Natisni razvrstitev«) pa sledita strani (`useTelefon`: na telefonu je razvrstitev
     zavihek brez zgornje črte). Nikoli JS za mere.
+  - **Razvrstitev kaže VSE, ki so na dogodku nastopili** (5. 11. 2026, `razvrsceniUdelezenci`; odločitev
+    lastnika: »vedno vsi igralci«). Strežnik zapiše `koncno_mesto` samo, kjer ga sistem sam določi: izločilna
+    mreža iz Turnirka ima zapisana le mesta 1–4 (finale, tekma za 3. mesto), format TOP nobenega — vsi drugi
+    bi iz razvrstitve izpadli. Vmesnik zato **izpelje mesto po izpadu** in ga postavi ZA zapisana: izločilna
+    mreža po kolu zadnjega nastopa (poraženci istega kola si delijo razpon, »5.–8.«, »17.–24.«; pri mreži z
+    prostimi prehodi šteje število res izpadlih, ne velikost mreže), format TOP po skupini (A pred B, skupine
+    so rangi) in mestu v skupini, izpad v skupini pred izločilnim delom po mestu v skupini. **Zapisano mesto
+    je vedno zadnja beseda** (uvoženi dogodki, krožni sistem, SV regija — tam izpeljave ni, vsak ima mesto).
+    **V razvrstitvi so PRIJAVLJEN, ODSTOPIL in DISKVALIFICIRAN; ODJAVLJEN (šel pred žrebom) in REZERVA (v
+    TOP ni prišla v izbor) ne** — na tekmovanju nista bila. Izpeljava je samo prikaz: strežnik mest ne
+    zapisuje, zato profil igralca in statistika še vedno poznata samo zapisana mesta.
   - **Ime in priimek sta ločena iz BAZE** (`PrijavaDto.ime/priimek`, null pri ekipi), ne iz rezanja
     `polnoIme`; ekipa in par imata celotno ime v vrstici priimka (`imePrijave`).
   - **Slika: `SlikaIgralca` `velikost="VELIKA"`** (480 px na strežniku; 160 px bi bilo na 320 px zamegljeno),

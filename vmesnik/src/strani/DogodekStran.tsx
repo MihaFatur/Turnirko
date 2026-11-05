@@ -98,6 +98,7 @@ import {
   bilancePrijav,
   oznakaMesta,
   podnapisPrijave,
+  razvrsceniUdelezenci,
   steviloNaMestu,
   udelezenciRazvrstitve,
 } from '../pomozno/koncnaRazvrstitev'
@@ -1689,7 +1690,7 @@ function Tekmovanje({
      glavne mreže, a v istem pogledu. */
   const tolazilne = podatki.tekme.filter((t) => t.faza === 'TOLAZILNI')
   const skupinske = podatki.tekme.filter((t) => t.faza === 'SKUPINA')
-  const razvrscenih = podatki.prijave.filter((p) => p.koncnoMesto !== null).length
+  const razvrscenih = useMemo(() => razvrsceniUdelezenci(podatki).length, [podatki])
   const aktivnih = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN').length
 
   /* Na telefonu je koncna razvrstitev SVOJ zavihek in ne blok nad pasom: nad
@@ -2233,13 +2234,7 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
   const jeTelefon = useTelefon()
   /* Ekipa ratinga nima (v rating gredo posamične tekme njenih srečanj). */
   const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
-  const razvrscene = useMemo(
-    () =>
-      podatki.prijave
-        .filter((prijava) => prijava.koncnoMesto !== null)
-        .sort((prva, druga) => prva.koncnoMesto! - druga.koncnoMesto!),
-    [podatki.prijave],
-  )
+  const razvrscene = useMemo(() => razvrsceniUdelezenci(podatki), [podatki])
   /* Profilne slike (V56) samo na stopničkah in samo pri posameznikih: ekipa in
      par nimata ene fotografije. Kdor slike nima, dobi v okvirju obris, da se
      imena ne zamaknejo; če je nima nihče, okvirjev ni. */

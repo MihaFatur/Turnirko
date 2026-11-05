@@ -4,7 +4,7 @@
    tisk res isti podatek (predaja design_handoff_koncna_razvrstitev, razdelka
    4.1 in 6). */
 import { imePrijave } from '../api/tipi'
-import type { MrezaDto, PrijavaDto, TekmaDto } from '../api/tipi'
+import type { MrezaDto, PrijavaDto, StatusPrijave, TekmaDto } from '../api/tipi'
 import { kratekKlub } from './oblikovanje'
 
 export interface UdelezenecRazvrstitve {
@@ -98,6 +98,97 @@ export function steviloNaMestu(prijave: PrijavaDto[]): Map<number, number> {
   return stevilo
 }
 
+/* Kdo je na dogodku nastopil: prijavljeni in tisti, ki so med tekmovanjem
+   odstopili ali bili izključeni (njihove tekme so odigrane). Odjavljeni so šli
+   pred žrebom, rezerva v izbor ni prišla (format TOP) - ta dva v razvrstitvi
+   nista, ker nista bila na tekmovanju. */
+const NASTOPILI: ReadonlySet<StatusPrijave> = new Set(['PRIJAVLJEN', 'ODSTOPIL', 'DISKVALIFICIRAN'])
+
+const NEZNANO = Number.MAX_SAFE_INTEGER
+
+/* Merilo izpada prijave, ki strežnik zanjo ni zapisal končnega mesta; manjši
+   ključ je boljša uvrstitev, enaka ključa si mesto delita.
+   - izločilna mreža: kdor je izpadel v poznejšem kolu, je boljši (kolo, v
+     katerem je nazadnje igral, je kolo izpada);
+   - format TOP: skupine so rangi, zato A pred B, v skupini pa mesto v skupini;
+   - izpad v skupini pred izločilnim delom: po mestu v skupini, skupine skupaj;
+   - ostalo (npr. odstop pred prvo tekmo) skupaj na koncu. */
+function kljucIzpada(podatki: MrezaDto): (prijava: PrijavaDto) => number[] {
+  const zadnjeKolo = new Map<number, number>()
+  for (const tekma of podatki.tekme) {
+    if (tekma.faza !== 'GLAVNI') continue
+    for (const udelezenec of [tekma.udelezenec1, tekma.udelezenec2]) {
+      if (udelezenec) {
+        zadnjeKolo.set(udelezenec.idPrijave, Math.max(zadnjeKolo.get(udelezenec.idPrijave) ?? 0, tekma.kolo))
+      }
+    }
+  }
+  const skupinePoVrsti = podatki.skupine
+    .filter((skupina) => skupina.stopnja === 1)
+    .sort((prva, druga) => prva.oznaka.localeCompare(druga.oznaka, 'sl'))
+  const jeTop = podatki.dogodek.sistemTekmovanja === 'SKUPINE'
+
+  return (prijava) => {
+    const kolo = zadnjeKolo.get(prijava.id)
+    if (kolo !== undefined) return [0, -kolo, 0]
+    const vSkupini = prijava.mestoVSkupini ?? NEZNANO
+    if (jeTop) {
+      const indeks = skupinePoVrsti.findIndex((skupina) => skupina.id === prijava.idSkupina)
+      return [0, indeks < 0 ? NEZNANO : indeks, vSkupini]
+    }
+    return prijava.idSkupina !== null || prijava.mestoVSkupini !== null ? [1, vSkupini, 0] : [2, 0, 0]
+  }
+}
+
+function primerjajKljuca(prvi: number[], drugi: number[]): number {
+  for (let i = 0; i < prvi.length; i++) {
+    if (prvi[i] !== drugi[i]) return prvi[i] < drugi[i] ? -1 : 1
+  }
+  return 0
+}
+
+/* VSI, ki so nastopili na dogodku, po končnem mestu. Strežnik zapiše mesta le
+   tam, kjer jih sistem sam določi (finale, tekma za 3. mesto, lestvica, uvoz) -
+   pri izločilni mreži s 32 igralci torej samo prva štiri, pri formatu TOP nobenega.
+   Ostalim vmesnik izpelje mesto po izpadu (glej `kljucIzpada`) in ga postavi za
+   zapisana: izpadli v istem kolu si delijo razpon (»5.–8.«), kot v uvoženih
+   dogodkih. Zapisano mesto je vedno zadnja beseda. SV regija je izjema: tam
+   ima mesto vsak udeleženec po nivojih, izpeljave ne potrebuje. */
+export function razvrsceniUdelezenci(podatki: MrezaDto): PrijavaDto[] {
+  const sodelujoci = podatki.prijave.filter((p) => p.koncnoMesto !== null || NASTOPILI.has(p.status))
+  const zapisani = sodelujoci.filter((p) => p.koncnoMesto !== null)
+  const brezMesta = sodelujoci.filter((p) => p.koncnoMesto === null)
+  const poMestu = (prva: PrijavaDto, druga: PrijavaDto) => prva.koncnoMesto! - druga.koncnoMesto!
+  if (brezMesta.length === 0 || podatki.dogodek.sistemTekmovanja === 'SV_REGIJA') {
+    return zapisani.sort(poMestu)
+  }
+
+  let prvoProsto = 1
+  for (const [mesto, stevilo] of steviloNaMestu(zapisani)) {
+    prvoProsto = Math.max(prvoProsto, mesto + stevilo)
+  }
+
+  /* Znotraj razreda najprej jakostni vrstni red dogodka, nato abeceda - da je
+     izpis med nalaganji isti. */
+  const kljuc = kljucIzpada(podatki)
+  const kljuci = new Map(brezMesta.map((p) => [p.id, kljuc(p)]))
+  brezMesta.sort(
+    (prva, druga) =>
+      primerjajKljuca(kljuci.get(prva.id)!, kljuci.get(druga.id)!)
+      || (prva.stNosilca ?? NEZNANO) - (druga.stNosilca ?? NEZNANO)
+      || prva.polnoIme.localeCompare(druga.polnoIme, 'sl'),
+  )
+
+  let zacetekRazreda = 0
+  const izpeljani = brezMesta.map((p, i) => {
+    if (i > 0 && primerjajKljuca(kljuci.get(brezMesta[i - 1].id)!, kljuci.get(p.id)!) !== 0) {
+      zacetekRazreda = i
+    }
+    return { ...p, koncnoMesto: prvoProsto + zacetekRazreda }
+  })
+  return [...zapisani, ...izpeljani].sort(poMestu)
+}
+
 /* Mesto za izpis. Deljeno mesto se zapiše kot razpon, kot je navada v
    razpisih in biltenih (»3.–4.«, »5.–8.«), in ne kot dvakrat »3.« - tisto se
    je bralo, kot da je eden od njiju napaka. `kratko` je zapis brez pik za
@@ -163,9 +254,7 @@ export function udelezenciRazvrstitve(
   slike: Map<number, string> = new Map(),
 ): UdelezenecRazvrstitve[] {
   const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
-  const razvrscene = podatki.prijave
-    .filter((p) => p.koncnoMesto !== null)
-    .sort((prva, druga) => prva.koncnoMesto! - druga.koncnoMesto!)
+  const razvrscene = razvrsceniUdelezenci(podatki)
   const deljena = steviloNaMestu(razvrscene)
   /* Bilanco kaže samo krožni sistem: po njej določa vrstni red. */
   const bilance = podatki.dogodek.sistemTekmovanja === 'KROZNI' ? bilancePrijav(podatki.tekme) : null
