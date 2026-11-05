@@ -15,6 +15,12 @@ public record PrijavaDto(
         Long id,
         Long idIgralca,
         String polnoIme,
+        /* Ime in priimek (prvega) igralca LOCENO: koncna razvrstitev ju izpise v
+           dveh vrsticah, priimek pa se iz polnoIme ne da zanesljivo odrezati
+           (»Ana Marija Novak«, »Novak Kovac«). Pri ekipi sta null - ime ekipe je
+           samo polnoIme. */
+        String ime,
+        String priimek,
         String klub,
         /* Drugi igralec para; null pri posamicni prijavi in pri prijavljenem
            igralcu dvojic, ki soigralca se nima. */
@@ -46,6 +52,8 @@ public record PrijavaDto(
                 prijava.getId(),
                 ekipa ? null : prijava.getIgralec().getId(),
                 prijava.jeEkipa() ? prijava.getEkipa().prikazanoIme() : prijava.getIgralec().polnoIme(),
+                ekipa ? null : prijava.getIgralec().getIme(),
+                ekipa ? null : prijava.getIgralec().getPriimek(),
                 prijava.getKlubObPrijavi() != null ? prijava.getKlubObPrijavi().getIme() : null,
                 prijava.jePar() ? prijava.getIgralec2().getId() : null,
                 prijava.jePar() ? prijava.getIgralec2().polnoIme() : null,

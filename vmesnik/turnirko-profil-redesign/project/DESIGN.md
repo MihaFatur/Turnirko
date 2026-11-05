@@ -360,8 +360,9 @@ namesto besede (točka 9): ime tekmovanja stoji vedno tik ob njem, zato je slika
 **Profilna slika** (`SlikaIgralca`, okno `ProfilnaSlikaOkno`, razdelek »Profilna
 slika igralca« v `slog.css`) je kvadrat z 1 px črto črnila in radijem 0, kot
 fotografija na licenci. Stoji na treh mestih in nikjer drugje: glava profila
-(portret 300 px, razdelek 4e), 1 na 1 (72 px), stopničke dogodka (72 px, na telefonu 44 px)
-in sklop »Moji igralci« na domači strani (portret 240 px, v zavihku 36 px; razdelek 5g).
+(portret 300 px, razdelek 4e), 1 na 1 (72 px), stopničke dogodka (240–320 px na
+namizju, 116–148 px na telefonu; razdelek 5h) in sklop »Moji igralci« na domači
+strani (portret 240 px, v zavihku 36 px; razdelek 5g).
 Lestvica, seznami, mreža in tisk je ne nosijo — pri nekaj odstotkih igralcev bi
 bil vsak seznam lisast.
 
@@ -369,7 +370,8 @@ bil vsak seznam lisast.
   hitro ga ima eden: igralec brez slike ima v istem okvirju obris glave in ramen
   (črta `--barva-crnilo-3`, brez polnila), da se imena ne zamaknejo.
 - Slika je okras (`alt=""`), ime stoji ob njej. Brez medalj, okvirjev v barvi
-  mesta in brez filtrov: odličje na stopničkah nosi še naprej številka in črta.
+  mesta in brez filtrov: odličje na stopničkah nosi ploskev v barvi mesta in
+  velika številka (razdelek 5h; do novembra 2026 črta ob robu in številka).
 - Okno izreza: kvadrat 280 px, premik z vlečenjem ali puščicami, povečava z
   drsnikom; brez krožnega izreza (radij 0).
 
@@ -459,7 +461,8 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
     *Druga izjema: maskota »Igralec Premium«, razdelek 5b. Tretja: celozaslonski
     oglas »Igralec Premium«, razdelek 5c. Četrta: animirani grafi in lik na
     strani »Kako deluje«, razdelek 5d. Peta: uvodna animacija ob prvem
-    nalaganju, razdelek 5e. Šesta: izkaznica »Moji igralci«, razdelek 5g.*
+    nalaganju, razdelek 5e. Šesta: izkaznica »Moji igralci«, razdelek 5g.
+    Sedma: stopničke končne razvrstitve, razdelek 5h.*
 
 ### 5b. Izjema: maskota »Igralec Premium«
 
@@ -732,6 +735,53 @@ za 11 %), priimek v zavihku je Karla 700 (maketa Karle 800 ne nalaga) in gumb
 »Poišči igralca« je visok 74 px (maketa ima `min-height` 48 px na škatli
 `content-box`).
 
+### 5h. Izjema: končna razvrstitev — stopničke (november 2026)
+
+Razdelek »Končna razvrstitev« zaključenega dogodka (`komponente/KoncnaRazvrstitev`,
+razredi `.stopnice__*`, `.nivoji__*`, `.koncna-razvrstitev__*` v zadnjem razdelku
+`slog.css`) je po predaji `design_handoff_koncna_razvrstitev` (možnost 1b, tisk 1c)
+**drznejši od vsega ostalega v sistemu**. Lastnik je prenovo zahteval 4. 11. 2026;
+izjema velja samo za ta razdelek in njegov tisk. Mere so prepisane iz makete in se ne
+poravnavajo na ritem 8 px (10, 14, 20, 28, 84, 128 px so namerni).
+
+**Kaj je prikazano:** samo mesta 1.–3. (ali 1., 2. in dve »3.–4.«) kot prave stopnice,
+vsi ostali za črnim trakom »Še 44 igralcev · Pokaži vse ↓«, ki se razgrne po nivojih
+(5.–8., 9.–16. …). **Rating, sprememba ratinga in razlika nizov so izpuščeni**; bilanca
+(`9 – 0`) samo pri krožnem sistemu, ker po njej določa vrstni red.
+
+Pet izjem, vsaka z mejo:
+
+1. **Velikost slike** (4d: prej 72/44 px): 240–320 px na namizju, 116–148 px na telefonu.
+   Ostane: radij 0, obroba 1 px črnila, brez medalj in okvirjev v barvi mesta, `alt=""`.
+   Slika je `SlikaIgralca` z `velikost="VELIKA"` (480 px na strežniku); okvir dobijo vsi
+   na stopničkah, kakor hitro ga ima eden, če slike nima nihče, jih ni.
+2. **Ploskve v barvi mesta**: odličje ni več črta ob robu, ampak polna ploskev bloka.
+   Zmagovalec `--barva-poudarek` + črnilo, drugi `--barva-glavna-polna` + bela (NE
+   `--barva-glavna`: bela nanjo pade pod AA; kontrast 5,3 : 1), tretji črnilo + papir.
+   Barve ostanejo pomensko iste.
+3. **Tipografija**: številke mest 84–220 px presegajo `--tip-rezultat`. Veljajo samo na
+   stopnicah (1.: 220, 2.: 180, 3.: 128, deljeno 100 oz. 84 px; na telefonu 52–24 px).
+4. **Gibanje** (točka 12): vstop stopnic 520 ms (`transform`, `opacity`, zamik 90 ms po
+   vrsti) in razgrnitev 420 ms (`grid-template-rows`) + 300 ms (`opacity`). Nič drugega.
+   Ob `prefers-reduced-motion: reduce` je takoj končno stanje. Začetno stanje je vidno;
+   skrije ga šele `useLayoutEffect`, časovnik 60 ms ga spusti (ne `requestAnimationFrame`).
+5. **Postavitev po širini vsebnika, ne okna**: `container-type: inline-size` in
+   `@container (max-width: 899px)` — namizne stopnice (2. – 1. – 3. od leve) nad 900 px,
+   pod njim palice 1., 2., 3. od zgoraj navzdol, vsaka krajša od prejšnje. Glava razdelka
+   sledi strani (na telefonu je razvrstitev zavihek brez zgornje črte).
+
+Zaprt seznam je skrit pred tipkovnico in bralnikom (`visibility: hidden` po koncu prehoda),
+gumb ima `aria-expanded` in `aria-controls`. Gumb »Natisni razvrstitev« vodi na
+`/dogodki/:id/razvrstitev-tisk` (razdelek 6): natisne se vsa razvrstitev, ne glede na to,
+ali je seznam na zaslonu razgrnjen. **SV regija** dobi nove stopničke, seznam ostalih po
+nivojih (`RazvrstitevPoNivojih`) pa ostane, kot je bil.
+
+Preverjanje: razvojna pot `/dev/koncna-razvrstitev?primer=izlocilni|krozni|ekipni&stanje=zaprto|odprto&naprava=namizje|telefon&prikaz=tisk`
+(`dev/KoncnaRazvrstitevPosnetki`, podatki iz predaje). Merilo je prototip
+`Koncna razvrstitev.dc.html` v istem brezglavem Chromu: mere in lege vseh besedil so se
+ujemale na 0,00 px, piksli do 0,04 % (pri tisku mora biti list brez zaslonskega obrisa,
+ta spremeni zglajevanje črk).
+
 ---
 
 ## 6. Tisk (listki, zapisnik NTZS)
@@ -741,6 +791,12 @@ oznake in številke. Brez podlag, brez sivin pod 10 %, samo `1px` in `2px` črne
 črte. Polja za vpis rezultata so prazni pravokotniki `40px` višine, mreža
 `repeat(5, 1fr)` z `4px` vrzeljo. Vsak listek ima glavo (miza, faza), dve
 vrstici igralcev z klubom v mono in nogo z opombo o številu nizov in podpisu.
+
+**Končna razvrstitev** (`/dogodki/:id/razvrstitev-tisk`, razdelek 5h) je pokončni A4 z
+robom 12,7 × 14,8 mm (`@page razvrstitev`; rob da stran in ne padding, da ga ima tudi
+druga stran), brez slik: glava z znamko, ime turnirja, vrh 1.–3. v vrsticah čez celo
+širino, ostali v dveh stolpcih (oznaka nivoja v prvi vrstici nivoja in vsakega stolpca),
+noga. Pri 48 igralcih je list ena stran, pri več kot ~60 se prelomi (vrstice se ne lomijo).
 
 ---
 

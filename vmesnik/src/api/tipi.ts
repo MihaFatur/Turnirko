@@ -300,6 +300,9 @@ export interface PrijavaDto {
   /* Prazen pri ekipni prijavi — ta nosi ekipo (idEkipa). */
   idIgralca: number | null
   polnoIme: string
+  /* Ime in priimek (prvega) igralca ločeno; null pri ekipi. */
+  ime: string | null
+  priimek: string | null
   klub: string | null
   /* Drugi igralec para (samo dvojice). Prazen pri posamični prijavi in pri
      prijavljenem igralcu dvojic, ki soigralca še nima — tak v žreb ne gre. */

@@ -11,6 +11,7 @@ import { TurnirjiStran } from './strani/TurnirjiStran'
 import { TurnirStran } from './strani/TurnirStran'
 import { DogodekStran } from './strani/DogodekStran'
 import { ListkiStran } from './strani/ListkiStran'
+import { RazvrstitevTiskStran } from './strani/RazvrstitevTiskStran'
 import { SezonskiZapisnikStran } from './strani/SezonskiZapisnikStran'
 import { IgralciStran } from './strani/IgralciStran'
 import { SifrantiStran } from './strani/SifrantiStran'
@@ -145,6 +146,9 @@ function StranNeObstaja() {
    false, zato se ta uvoz v paket sploh ne vključi. */
 const PosnetkiOkna = import.meta.env.DEV ? lazy(() => import('./dev/PosnetkiOkna')) : null
 const ProfilGlavaPosnetki = import.meta.env.DEV ? lazy(() => import('./dev/ProfilGlavaPosnetki')) : null
+const KoncnaRazvrstitevPosnetki = import.meta.env.DEV
+  ? lazy(() => import('./dev/KoncnaRazvrstitevPosnetki'))
+  : null
 
 export function App() {
   return (
@@ -157,6 +161,10 @@ export function App() {
         <Route path="/dev/profil-glava"
           element={<Suspense fallback={null}><ProfilGlavaPosnetki /></Suspense>} />
       )}
+      {KoncnaRazvrstitevPosnetki && (
+        <Route path="/dev/koncna-razvrstitev"
+          element={<Suspense fallback={null}><KoncnaRazvrstitevPosnetki /></Suspense>} />
+      )}
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}
       <Route path="/dogodki/:id/listki" element={<ListkiStran />} />
@@ -167,6 +175,8 @@ export function App() {
       {/* Žreb izločilnega dela (mreža) za vrata dvorane, ležeči list. */}
       <Route path="/dogodki/:id/zreb-mreze" element={<ZrebMrezeDogodkaStran />} />
       <Route path="/turnirji/:id/zreb-mreze" element={<ZrebMrezeTurnirjaStran />} />
+      {/* Končna razvrstitev zaključenega dogodka za tisk, pokončni A4. */}
+      <Route path="/dogodki/:id/razvrstitev-tisk" element={<RazvrstitevTiskStran />} />
       {/* Sezonski zapisnik igralca za tisk (paket Navijač): ena sezona na listu A4. */}
       <Route path="/igralci/:id/sezona" element={<SezonskiZapisnikStran />} />
       <Route element={<Postavitev />}>

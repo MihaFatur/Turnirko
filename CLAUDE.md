@@ -1801,9 +1801,9 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     1.–8./1.–4./1.–2., pot poražencev 5.–8./5.–6., samostojni tekmi 3.–4. in 7.–8.; črte iz
     `idIzvorZmagovalca1/2` v `TekmaDto`, mere v CSS spremenljivkah `.sv-drevo`, JS računa le
     stolpec in višino), plošča razreza v pripravi (`SvPriprava.tsx`), urejevalnika
-    `SvSkupineOkno` in `SvZrebOkno`; imena v `pomozno/svRegija.ts`. Končna razvrstitev je pri
-    SV regiji po nivojih (zložljivo), pri več kot 24 igralcih drugih sistemov se pokaže prvih 16
-    vrstic; stolpca ratinga ni, kadar ga noben igralec nima. `kratekKlub` (`pomozno/oblikovanje.ts`)
+    `SvSkupineOkno` in `SvZrebOkno`; imena v `pomozno/svRegija.ts`. Končna razvrstitev ima pri
+    SV regiji nove stopničke, seznam ostalih pa po nivojih (zložljivo), kot doslej (glej »Končna
+    razvrstitev: stopničke«). `kratekKlub` (`pomozno/oblikovanje.ts`)
     odstrani splošne predpone (»Namiznoteniški klub«) v lestvici, kartici tekme in razvrstitvi.
 
 - **Slike in logotip tekmovanja** (V54, okt 2026; `SlikeStoritev`, `SlikeKontroler`,
@@ -2270,6 +2270,37 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     maskota in ključavnica zaženeta svoje učinke v otroku pred njim.
   - **Predogled**: `/?oglas=1a|1b|1c`; `&dokaz=412` nadomesti
     število samo v `npm run dev`.
+- **Končna razvrstitev: stopničke** (4. 11. 2026, DESIGN.md 5h; predaja
+  `design_handoff_koncna_razvrstitev`, možnost 1b + tisk 1c): `komponente/KoncnaRazvrstitev`
+  (čista prikazna komponenta), čista pravila v `pomozno/koncnaRazvrstitev` (nivoji, razpolovitev
+  za tisk, `udelezenciRazvrstitve` iz `MrezaDto`), tisk `KoncnaRazvrstitevTisk` +
+  `strani/RazvrstitevTiskStran` (`/dogodki/:id/razvrstitev-tisk`, pokončni A4, `@page razvrstitev`),
+  razredi `.stopnice__*`, `.nivoji__*`, `.koncna-razvrstitev__*`, `.razvrstitev-list__*` na koncu
+  `slog.css`. Pravila, ki jih ne razbij:
+  - **Samo mesta 1.–3. (ali 1., 2. in dve »3.–4.«) so izpostavljena, ostali so za gumbom »Še N
+    igralcev«** in se razgrnejo po nivojih (zaporedni z istim mestom). **Rating, sprememba ratinga in
+    razlika nizov so izpuščeni; bilanca (`9 – 0`) samo pri krožnem sistemu**, ker po njej določa
+    vrstni red. SV regija obdrži svoj seznam ostalih po nivojih (`RazvrstitevPoNivojih`) brez gumba.
+  - **Ena struktura, dve postavitvi, odloča širina vsebnika** (`container-type: inline-size` +
+    `@container (max-width: 899px)`): stopnice nad 900 px, palice pod njim. Glava razdelka in besedilo
+    gumba (»Natisni« / »Natisni razvrstitev«) pa sledita strani (`useTelefon`: na telefonu je razvrstitev
+    zavihek brez zgornje črte). Nikoli JS za mere.
+  - **Ime in priimek sta ločena iz BAZE** (`PrijavaDto.ime/priimek`, null pri ekipi), ne iz rezanja
+    `polnoIme`; ekipa in par imata celotno ime v vrstici priimka (`imePrijave`).
+  - **Slika: `SlikaIgralca` `velikost="VELIKA"`** (480 px na strežniku; 160 px bi bilo na 320 px zamegljeno),
+    velikost določa CSS (`--mera`), nikoli `mera`. Če slike na stopničkah nima nihče, okvirjev ni; če jo
+    ima vsaj eden, ga dobijo vsi (obris glave in ramen).
+  - **Razgrnitev ni samo odrezana**: zaprt `.nivoji` ima `visibility: hidden` po koncu prehoda
+    (tipkovnica, bralnik). Gibanje samo `transform`, `opacity`, `grid-template-rows`; začetno stanje
+    vstopa je VIDNO (`useLayoutEffect` ga skrije, časovnik 60 ms spusti, ne `requestAnimationFrame`).
+  - **Merilo je prototip `Koncna razvrstitev.dc.html` v istem brezglavem Chromu** (dev harness
+    `/dev/koncna-razvrstitev?primer=izlocilni|krozni|ekipni&stanje=zaprto|odprto&naprava=namizje|telefon&prikaz=tisk`,
+    podatki `dev/koncnaRazvrstitevPodatki.ts` iz predaje). Izmerjeno 4. 11. 2026 na vseh 15 primerih: višine
+    in širine enake, lege vseh besedil Δ 0,00 px, piksli ≤ 0,04 % (pri tisku mora biti list brez `outline`:
+    zaslonski obris spremeni zglajevanje črk v celem listu, 4,4 % pikslov, mere pa ostanejo iste). Tisk:
+    48 igralcev = ena stran A4 (PDF), 64 = dve; rob pri tisku da `@page` (12,7 × 14,8 mm), ne padding.
+  - Zaledje: samo `PrijavaDto.ime/priimek` (test v `LenoNalaganjeTest`). Ni preverjeno na pravem tiskalniku
+    in z resnično profilno sliko (preverjeno z generirano SVG sliko).
 - **Preizkus Premium, poziv k računu in »To si ti?«** (odločitev lastnika 23. 10. 2026,
   DESIGN.md 5f). Gostje si računa niso delali, ker brezplačen račun ni dal nič več kot
   gostovanje; zdaj ima prvi mesec Premium brez plačila.
@@ -3413,9 +3444,9 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
   Pejovnik – Ivan Zera« v zanimivostih), ob enem imenu pa »nasprotnik Aleš
   Sešel« (graf ratinga) — »proti Ivan Zera« je bilo narobe (dajalnik).
 - **Končno mesto, ki si ga deli več udeležencev, je razpon** (»3.–4.«, »5.–8.«;
-  `oznakaMesta` v `DogodekStran`, `TekmovanjeProfila.mestoDo` na profilu).
+  `oznakaMesta` v `pomozno/koncnaRazvrstitev`, `TekmovanjeProfila.mestoDo` na profilu).
   Izločilni sistem brez tekme za 3. mesto (uvoz Stupe) da obema polfinalistoma
-  »3.«: oba sta na stopničkah s slogom tretjega (`.razvrstitev__vrh--stiri`);
+  »3.«: oba sta na stopničkah s slogom tretjega (`.stopnice--s4`);
   prej je imel en slog stopničk, drugi navadno vrstico.
 - **Seznam turnirjev ima razdelek »Prihajajoči«** (v pripravi ali z datumom od
   danes, ne v teku in ne zaključeni; turnir v pripravi s preteklim datumom ne,

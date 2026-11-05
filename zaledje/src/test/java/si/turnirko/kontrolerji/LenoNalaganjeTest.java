@@ -137,6 +137,9 @@ class LenoNalaganjeTest {
         PrijavaDto odjavljena = dogodkiKontroler.odjavi(prijave.get(2).id());
         assertEquals(Prijava.StatusPrijave.ODJAVLJEN, odjavljena.status());
         assertEquals("Cene Tretji", odjavljena.polnoIme());
+        /* Koncna razvrstitev izpise ime in priimek v dveh vrsticah. */
+        assertEquals("Cene", odjavljena.ime());
+        assertEquals("Tretji", odjavljena.priimek());
         assertEquals("Testni klub", odjavljena.klub());
     }
 
