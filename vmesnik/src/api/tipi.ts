@@ -308,6 +308,10 @@ export interface PrijavaDto {
      prijavljenem igralcu dvojic, ki soigralca še nima — tak v žreb ne gre. */
   idIgralca2: number | null
   polnoIme2: string | null
+  /* Ime in priimek drugega igralca para ločeno (pogled Udeleženci ju izpiše v
+     dveh vrsticah); null kot polnoIme2. */
+  ime2: string | null
+  priimek2: string | null
   klub2: string | null
   status: StatusPrijave
   /* Mesto na jakostni lestvici dogodka (1 = najmočnejši). */
@@ -322,6 +326,8 @@ export interface PrijavaDto {
   mestoVSkupini: number | null
   /* Ekipa ekipnega dogodka; polnoIme je takrat ime ekipe. */
   idEkipa: number | null
+  /* Priimki kadra ekipe, najmočnejši prvi; prazen pri posamezniku in paru. */
+  kader: string[]
 }
 
 /* Udelezenec tekme (stran 1 ali 2); null pomeni, da se ni znan

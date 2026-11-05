@@ -153,9 +153,11 @@ public class DogodkiKontroler {
         boolean ekipno = dogodekEntiteta.jeEkipno();
         Map<Long, Integer> ratingi = izborStoritev.ratingi(prijaveEntitete);
         Map<Long, Integer> ekipni = ekipno ? izborStoritev.ratingiEkip(prijaveEntitete) : Map.of();
+        Map<Long, List<String>> kadri = ekipno ? izborStoritev.priimkiKadrov(prijaveEntitete) : Map.of();
         List<PrijavaDto> prijave = prijaveEntitete.stream()
                 .map(p -> p.jeEkipa()
-                        ? PrijavaDto.iz(p, ekipni.get(p.getEkipa().getId()), null)
+                        ? PrijavaDto.iz(p, ekipni.get(p.getEkipa().getId()), null,
+                                kadri.getOrDefault(p.getEkipa().getId(), List.of()))
                         : PrijavaDto.iz(p, ratingi.get(p.getIgralec().getId()),
                                 p.jePar() ? ratingi.get(p.getIgralec2().getId()) : null))
                 .toList();

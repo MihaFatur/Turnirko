@@ -9,6 +9,8 @@
    izpisejo brez posebne veje. idEkipa vodi do kadra. */
 package si.turnirko.dto;
 
+import java.util.List;
+
 import si.turnirko.modeli.Prijava;
 
 public record PrijavaDto(
@@ -26,6 +28,11 @@ public record PrijavaDto(
            igralcu dvojic, ki soigralca se nima. */
         Long idIgralca2,
         String polnoIme2,
+        /* Ime in priimek drugega igralca LOCENO, iz istega razloga kot pri
+           prvem: pogled Udelezenci par izpise v dveh vrsticah, ime v lazji teji,
+           priimek v debeli. Null kot pri polnoIme2. */
+        String ime2,
+        String priimek2,
         String klub2,
         Prijava.StatusPrijave status,
         Integer stNosilca,
@@ -39,14 +46,23 @@ public record PrijavaDto(
         Integer rating2,
         Long idSkupina,
         Integer mestoVSkupini,
-        Long idEkipa
+        Long idEkipa,
+        /* Priimki igralcev v kadru ekipe, najmocnejsi prvi (kot jih steje
+           predlagana jakost). Prazen seznam pri posamicni prijavi in paru;
+           pogled Udelezenci ekipe izpise »Kader: Novak · Kos · Petek« brez
+           posebne poizvedbe za vsako ekipo. */
+        List<String> kader
 ) {
 
     public static PrijavaDto iz(Prijava prijava) {
-        return iz(prijava, null, null);
+        return iz(prijava, null, null, List.of());
     }
 
     public static PrijavaDto iz(Prijava prijava, Integer rating, Integer rating2) {
+        return iz(prijava, rating, rating2, List.of());
+    }
+
+    public static PrijavaDto iz(Prijava prijava, Integer rating, Integer rating2, List<String> kader) {
         boolean ekipa = prijava.jeEkipa();
         return new PrijavaDto(
                 prijava.getId(),
@@ -57,6 +73,8 @@ public record PrijavaDto(
                 prijava.getKlubObPrijavi() != null ? prijava.getKlubObPrijavi().getIme() : null,
                 prijava.jePar() ? prijava.getIgralec2().getId() : null,
                 prijava.jePar() ? prijava.getIgralec2().polnoIme() : null,
+                prijava.jePar() ? prijava.getIgralec2().getIme() : null,
+                prijava.jePar() ? prijava.getIgralec2().getPriimek() : null,
                 prijava.getKlubObPrijavi2() != null ? prijava.getKlubObPrijavi2().getIme() : null,
                 prijava.getStatus(),
                 prijava.getStNosilca(),
@@ -67,7 +85,8 @@ public record PrijavaDto(
                 rating2,
                 prijava.getIdSkupina(),
                 prijava.getMestoVSkupini(),
-                ekipa ? prijava.getEkipa().getId() : null
+                ekipa ? prijava.getEkipa().getId() : null,
+                kader
         );
     }
 }

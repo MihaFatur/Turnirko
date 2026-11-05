@@ -27826,3 +27826,806 @@ html.uvod-tece {
     outline: none;
   }
 }
+
+/* ============================================================
+   Pogled »Udeleženci« (november 2026, predaja design_handoff_udelezenci,
+   varianta 1a): kartice nosilcev, skupine nosilcev, filtri s spustnima
+   menijema. Ena struktura, dve postavitvi: namizje in telefon (640 px).
+   Mere in teže so prepisane iz predaje; razmik črk je v em tam, kjer je
+   v predaji, sicer v pikslih.
+   ============================================================ */
+
+.udelezenci {
+  /* Velikost imena in ratinga na karticah sledi vrsti (par, ekipa) in napravi. */
+  --karta-ime: 32px;
+  --karta-rating: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  /* Predaja nima podedovane vrstične višine: brez tega bi vsak element brez
+     lastne (npr. imena v dodatku) podedoval 1,5 od body. */
+  line-height: normal;
+  font-family: var(--pisava-telo);
+}
+
+.udelezenci--ekipe {
+  --karta-ime: 26px;
+}
+
+.udelezenci--dvojice {
+  --karta-ime: 22px;
+  --karta-rating: 26px;
+}
+
+.udelezenci__glava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 16px;
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.udelezenci__naslov {
+  margin: 0;
+  font: 800 40px / 1 var(--pisava-display);
+  letter-spacing: -0.03em;
+  text-wrap: wrap;
+}
+
+.udelezenci__meta {
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__opomba {
+  margin: -16px 0 0;
+  max-width: 74ch;
+  font: 300 16px / 1.5 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+  text-wrap: wrap;
+}
+
+.udelezenci__prazno {
+  margin: 0;
+  font: 300 16px / 1.5 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+  text-wrap: wrap;
+}
+
+/* --- Filtri --- */
+
+.udelezenci__filtri {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.udelezenci__polje {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 320px;
+}
+
+.udelezenci__oznaka {
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__iskanje {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  font: 400 15px var(--pisava-telo);
+}
+
+.udelezenci__iskanje::placeholder {
+  color: var(--barva-crnilo-3);
+  font-weight: 300;
+  opacity: 1;
+}
+
+/* Na namizju sta meni v isti vrstici kot polje, zato ovoj ne šteje. */
+.udelezenci__meniji {
+  display: contents;
+}
+
+.udelezenci__stevec {
+  margin-left: auto;
+  padding-bottom: 14px;
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Spustni meni (komponente/MeniIzbire) --- */
+
+.meni-izbire {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 240px;
+}
+
+.meni-izbire__oznaka {
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Oznaka je v DOM dvakrat: nad gumbom (namizje) in v gumbu (telefon). */
+.meni-izbire__oznaka--znotraj {
+  display: none;
+}
+
+.meni-izbire__gumb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--barva-crnilo);
+  border-radius: 0;
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  font: 600 15px var(--pisava-telo);
+  text-align: left;
+  cursor: pointer;
+}
+
+.meni-izbire__besedilo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.meni-izbire__puscica {
+  font: 500 12px var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* Plošča je pod lepljivo glavo (30) in nad predlogi izbirnika (20): ob drsenju
+   pod glavo ne sme čez njo. */
+.meni-izbire__plosca {
+  position: absolute;
+  top: 72px;
+  left: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+  max-width: 320px;
+  background: var(--barva-bela);
+  border: 1px solid var(--barva-crnilo);
+}
+
+.meni-izbire--desno .meni-izbire__plosca {
+  left: auto;
+  right: 0;
+}
+
+.meni-izbire__postavka {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--barva-crta);
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  font: 400 15px var(--pisava-telo);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Izbrana postavka: modra črta levo, mehka modra podlaga, ime v debelejši teži.
+   Črta vzame 4 px, zato je odmik besedila 12 px in ime ostane na istem mestu. */
+.meni-izbire__postavka--izbrana {
+  padding: 0 16px 0 12px;
+  border-left: 4px solid var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+  font-weight: 600;
+}
+
+.meni-izbire__stevilo {
+  font: 500 12px var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Kartice nosilcev 1–4 --- */
+
+/* Dve skupini po dve kartici, drug ob drugem: skupaj štirje enako široki stolpci. */
+.udelezenci__karte {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.udelezenci__karte-skupina {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.udelezenci__karte-naslov {
+  margin: 0;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--barva-crta);
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__karte-naslov > span {
+  color: var(--barva-crnilo);
+}
+
+.udelezenci__karte-skupina + .udelezenci__karte-skupina .udelezenci__karte-naslov {
+  padding-left: 24px;
+  border-left: 1px solid var(--barva-crta);
+}
+
+.udelezenci__karte-mreza {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.udelezenci__karta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px 24px 24px;
+  border-top: 3px solid var(--barva-crnilo);
+  border-left: 1px solid var(--barva-crta);
+}
+
+.udelezenci__karte-skupina:first-child .udelezenci__karta:first-child {
+  border-left: 0;
+}
+
+.udelezenci__karta--prva {
+  border-top-color: var(--barva-glavna);
+}
+
+.udelezenci__karta--zbledela,
+.udelezenci__vrstica--zbledela {
+  opacity: 0.62;
+}
+
+.udelezenci__karta-vrh {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.udelezenci__karta-oznaka {
+  color: var(--barva-crnilo);
+}
+
+/* Značka stanja je siva; zelena za »V igri« in končna mesta 1–4. */
+.udelezenci__znacka {
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__znacka--zelena {
+  color: var(--barva-poudarek-tekst);
+}
+
+.udelezenci__karta-ime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--pisava-display);
+}
+
+.udelezenci__karta-vrstica {
+  font-size: var(--karta-ime);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.udelezenci__karta-vrstica .udelezenci__ime {
+  font-weight: 200;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__karta-vrstica .udelezenci__priimek {
+  font-weight: 800;
+}
+
+.udelezenci__karta-klub {
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__karta-podnapis {
+  font: 400 14px / 1.4 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__karta-rating {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.udelezenci__karta-stevilka {
+  font-family: var(--pisava-display);
+  font-weight: 800;
+  font-size: var(--karta-rating);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Palica ratinga: širina polnila je podatek (--palica, glej odstotekPalice). */
+.udelezenci__palica {
+  display: block;
+  flex: 1;
+  min-width: 24px;
+  height: 6px;
+  background: var(--barva-polnilo);
+}
+
+.udelezenci__palica-polnilo {
+  display: block;
+  width: var(--palica, 0%);
+  height: 100%;
+  background: var(--barva-glavna);
+}
+
+/* --- Skupine nosilcev --- */
+
+.udelezenci__skupine {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.udelezenci__skupina-glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__skupina-naslov {
+  color: var(--barva-crnilo);
+}
+
+.udelezenci__stolpci {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 56px;
+}
+
+.udelezenci__stolpci--dva {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.udelezenci__tabela-glava {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 128px;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--barva-crnilo);
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__tabela-glava > :first-child,
+.udelezenci__tabela-glava > :last-child {
+  text-align: right;
+}
+
+.udelezenci__vrstica {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 128px;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.udelezenci__vrstica-mesto {
+  text-align: right;
+  font: 500 14px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__vrstica-ime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.udelezenci__vrstica-vrstica {
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.udelezenci__vrstica-vrstica .udelezenci__ime {
+  font-weight: 300;
+}
+
+.udelezenci__vrstica-vrstica .udelezenci__priimek {
+  font-weight: 700;
+}
+
+.udelezenci__vrstica-klub {
+  font: 300 14px / 1.4 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__vrstica-podnapis {
+  font: 400 13px / 1.4 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+}
+
+.udelezenci__vrstica-desno {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.udelezenci__vrstica-podatki {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.udelezenci__znacka--vrstica {
+  font: 600 11px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.udelezenci__vrstica-rating {
+  font: 500 15px / 1.2 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.udelezenci__vrstica-desno > .udelezenci__palica {
+  flex: none;
+  width: 100%;
+}
+
+/* Dejanje ob udeležencu (odstop, samo organizator): besedilna povezava, tarča
+   dotika 44 px je podaljšana čez vrstico, da se ta zaradi nje ne razširi. */
+.udelezenci__dejanje {
+  position: relative;
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.udelezenci__dejanje::after {
+  content: '';
+  position: absolute;
+  inset: -14px -12px;
+}
+
+/* --- Dodatek: rezerve, igralci brez soigralca --- */
+
+.udelezenci__dodatek {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.udelezenci__dodatek-naslov {
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+}
+
+.udelezenci__dodatek-namig {
+  margin: 0;
+  font: 300 14px / 1.5 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+  text-wrap: wrap;
+}
+
+.udelezenci__dodatek-imena {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  font-size: 16px;
+}
+
+.udelezenci__dodatek-klub {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+/* --- Telefon --- */
+
+@media (max-width: 640px) {
+  .udelezenci {
+    --karta-ime: 24px;
+    --karta-rating: 30px;
+    gap: 24px;
+  }
+
+  .udelezenci--ekipe {
+    --karta-ime: 19px;
+  }
+
+  .udelezenci--dvojice {
+    --karta-ime: 15px;
+    --karta-rating: 15px;
+  }
+
+  .udelezenci__glava {
+    flex-wrap: nowrap;
+    gap: 12px;
+    padding-top: 10px;
+  }
+
+  .udelezenci__naslov {
+    font-size: 32px;
+  }
+
+  .udelezenci__meta {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-align: right;
+  }
+
+  .udelezenci__opomba {
+    margin-top: -8px;
+    font-size: 15px;
+  }
+
+  .udelezenci__prazno {
+    font-size: 15px;
+  }
+
+  .udelezenci__filtri {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .udelezenci__polje {
+    width: auto;
+  }
+
+  .udelezenci__oznaka--polje {
+    display: none;
+  }
+
+  .udelezenci__iskanje {
+    font-size: 16px;
+  }
+
+  .udelezenci__meniji {
+    display: flex;
+    gap: 8px;
+  }
+
+  .udelezenci__stevec {
+    display: none;
+  }
+
+  .meni-izbire {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    gap: 0;
+  }
+
+  .meni-izbire__oznaka--zunaj {
+    display: none;
+  }
+
+  .meni-izbire__oznaka--znotraj {
+    display: block;
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .meni-izbire__gumb {
+    min-height: 48px;
+    padding: 0 12px;
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .meni-izbire__vrednost {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .meni-izbire__plosca {
+    top: 52px;
+    width: 240px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .meni-izbire__postavka {
+    gap: 12px;
+  }
+
+  /* Dve skupini kartic ena pod drugo, vsaka z lastnim naslovom in mrežo 2 × n. */
+  .udelezenci__karte {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .udelezenci__karte-naslov {
+    font-size: 11px;
+  }
+
+  .udelezenci__karte-skupina + .udelezenci__karte-skupina .udelezenci__karte-naslov {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .udelezenci__karta {
+    gap: 8px;
+    padding: 14px 14px 16px;
+  }
+
+  .udelezenci__karta:first-child {
+    border-left: 0;
+  }
+
+  .udelezenci__karta-vrh {
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+
+  .udelezenci__znacka {
+    white-space: nowrap;
+  }
+
+  .udelezenci__karta-klub {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  .udelezenci__karta-podnapis {
+    font-size: 12px;
+  }
+
+  /* Rating in palica sta na telefonu ena pod drugo, kot otroka kartice. */
+  .udelezenci__karta-rating {
+    display: contents;
+  }
+
+  .udelezenci__karta-rating > .udelezenci__palica {
+    flex: none;
+    min-width: 0;
+  }
+
+  .udelezenci__skupine {
+    gap: 24px;
+  }
+
+  .udelezenci__skupina-glava {
+    gap: 12px;
+    font-size: 11px;
+  }
+
+  .udelezenci__stolpci {
+    gap: 0;
+  }
+
+  .udelezenci__stolpci--dva {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Dva stolpca se na telefonu zložita v enega; glava tabele stoji enkrat. */
+  .udelezenci__stolpec + .udelezenci__stolpec .udelezenci__tabela-glava {
+    display: none;
+  }
+
+  .udelezenci__tabela-glava {
+    grid-template-columns: 44px minmax(0, 1fr) 96px;
+    gap: 12px;
+    font-size: 11px;
+  }
+
+  .udelezenci__vrstica {
+    grid-template-columns: 44px minmax(0, 1fr) 96px;
+    gap: 12px;
+  }
+
+  .udelezenci__vrstica-mesto {
+    font-size: 13px;
+  }
+
+  .udelezenci__vrstica-vrstica {
+    font-size: 16px;
+  }
+
+  .udelezenci__vrstica-klub {
+    font-size: 13px;
+  }
+
+  .udelezenci__vrstica-podnapis {
+    font-size: 12px;
+  }
+
+  .udelezenci__znacka--vrstica {
+    font: 600 10px / 1.2 var(--pisava-mono);
+    letter-spacing: 0.04em;
+  }
+
+  .udelezenci__vrstica-rating {
+    font-size: 14px;
+  }
+
+  .udelezenci__dodatek-naslov {
+    font-size: 11px;
+  }
+
+  .udelezenci__dodatek-imena {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 6px;
+    font-size: 15px;
+  }
+
+  .udelezenci__dodatek-klub {
+    font-size: 13px;
+  }
+}

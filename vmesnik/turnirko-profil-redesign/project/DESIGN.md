@@ -782,6 +782,46 @@ Preverjanje: razvojna pot `/dev/koncna-razvrstitev?primer=izlocilni|krozni|ekipn
 ujemale na 0,00 px, piksli do 0,04 % (pri tisku mora biti list brez zaslonskega obrisa,
 ta spremeni zglajevanje črk).
 
+### 5i. Pogled »Udeleženci« — nosilci, palice, spustni meni (november 2026)
+
+Zavihek »Udeleženci« dogodka (in seznam prijavljenih, ki ga gost vidi v pripravi;
+`komponente/UdelezenciPogled`, `komponente/MeniIzbire`, razredi `.udelezenci__*` in
+`.meni-izbire__*` na koncu `slog.css`, pravila v `pomozno/udelezenci`) je po predaji
+`design_handoff_udelezenci` (varianta 1a) razporejen po **jakostnih mestih**: četverica
+nosilcev kot kartice, nato skupine 5–8, 9–16 in od 17 naprej, v vsaki vrstici palica
+ratinga. Isti pogled velja za posameznike, pare (rating `2184 / 2165`, palica povprečje) in
+ekipe (podnapis »Kader: …«) ter za vse tri faze (priprava, v teku, zaključen). Lastnik je
+prenovo zahteval 5. 11. 2026; mere in teže so prepisane iz makete in se ne poravnavajo na
+ritem 8 px (10, 14, 20, 26 px itd. so namerni).
+
+Izjeme, vsaka z mejo:
+
+1. **Filter kluba je spustni meni, ne vrsta gumbov** (odločitev lastnika; razdelek 4,
+   »segmentirani izbirnik«, tu ne velja). Meni je lasten (ne `<select>`): plošča ima ob
+   postavki število, izbrana postavka modro črto 4 px in `--barva-glavna-mehko`. Odpre se
+   samo en meni, zapre z izbiro, klikom zunaj in Escape; `aria-haspopup="listbox"`,
+   `role="listbox"`/`option`, puščici in Enter.
+2. **Tipografija zunaj lestvice**: ime na kartici 32 px (par 22, ekipa 26; telefon 24, 15, 19),
+   rating 48 px (par 26; telefon 30, 15), imena v vrstici 17 px, oznake 10–12 px.
+3. **Palica ratinga** je podatek in ne dekoracija: 6 px, polnilo `--barva-glavna`, širina
+   `(rating − 1400) / 8` odstotkov (`PALICA_NAJNIZJI_RATING`, `PALICA_RATINGOV_NA_ODSTOTEK`).
+   Meji sta iz makete in sta ena sama konstanta; pod 1400 je palica prazna.
+4. **Zbledeli** udeleženci (`opacity: 0.62`): izpadli in odstopili v teku turnirja. Edino mesto
+   v sistemu, kjer prosojnost pomeni stanje; ime ostane pri 5,0 : 1, sekundarno besedilo (klub, ocena) pade pod 4,5 : 1 - namerno, izpadel ni več v igri.
+5. **Značka stanja** je mono besedilo brez podlage: »V igri« in »Končal 1.–4.« v
+   `--barva-poudarek-tekst`, vse drugo `--barva-crnilo-3`.
+
+Kdo je »v igri« med turnirjem, strežnik ne hrani; vmesnik ga izpelje iz tekem izločilne
+mreže (`stanjaMedTurnirjem`) in ga **ne izpiše** pri krožnem sistemu, formatu TOP in SV regiji,
+kjer izpada ni. Vrstice s tremi stolpci so ena struktura za namizje in telefon (640 px), razen
+besedila v polju za iskanje.
+
+Preverjanje: stran `/dogodki/:id` z lažnim zaledjem. Merilo je prototip
+`Udelezenci prenova.dc.html` v istem brezglavem Chromu: besedila in škatle se ujemajo na
+0,5 px, piksli 0 % v vseh stanjih iz predaje (priprava, v teku, zaključen; posamezniki,
+dvojice, ekipe; odprt meni, filter kluba; namizje 1280 in telefon 388 px). Ciljni posnetki iz
+predaje niso ponovljivi na piksel (črta 3 px je v njih široka 2 px, vrstice 1–2 px drugje).
+
 ---
 
 ## 6. Tisk (listki, zapisnik NTZS)

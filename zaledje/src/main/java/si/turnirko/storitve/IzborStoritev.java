@@ -155,6 +155,44 @@ public class IzborStoritev {
         return po;
     }
 
+    /* Priimki igralcev v kadrih ekip, po ekipi: najmocnejsi (po Turnirko ratingu)
+       prvi, igralci brez ratinga na koncu, enaki po slovenski abecedi. Isti vrstni
+       red kot pri predlagani jakosti ekipe, zato prva imena kadra res pojasnijo
+       njeno stevilko. */
+    public Map<Long, List<String>> priimkiKadrov(List<Prijava> prijave) {
+        List<Long> idjiEkip = prijave.stream()
+                .filter(Prijava::jeEkipa)
+                .map(p -> p.getEkipa().getId())
+                .toList();
+        if (idjiEkip.isEmpty()) {
+            return Map.of();
+        }
+        record Clan(Integer rating, String priimek) { }
+        List<Object[]> vrstice = kaderRepozitorij.priimkiKadrov(idjiEkip);
+        Map<Long, Integer> ratingiIgralcev = new HashMap<>();
+        List<Long> idjiIgralcev = vrstice.stream().map(r -> ((Number) r[1]).longValue()).distinct().toList();
+        if (!idjiIgralcev.isEmpty()) {
+            for (Object[] vrstica : ratingStanjeRepozitorij.ratingiIgralcev(
+                    idjiIgralcev, RatingStanje.SISTEM_TURNIRKO)) {
+                ratingiIgralcev.put((Long) vrstica[0], (Integer) vrstica[1]);
+            }
+        }
+        Map<Long, List<Clan>> poEkipah = new HashMap<>();
+        for (Object[] r : vrstice) {
+            poEkipah.computeIfAbsent(((Number) r[0]).longValue(), k -> new ArrayList<>())
+                    .add(new Clan(ratingiIgralcev.get(((Number) r[1]).longValue()), (String) r[2]));
+        }
+        Map<Long, List<String>> po = new HashMap<>();
+        poEkipah.forEach((idEkipa, clani) -> {
+            clani.sort(Comparator
+                    .comparing((Clan c) -> c.rating() == null)
+                    .thenComparing(c -> c.rating() == null ? 0 : -c.rating())
+                    .thenComparing(Clan::priimek, SlovenskaAbeceda.RED));
+            po.put(idEkipa, clani.stream().map(Clan::priimek).toList());
+        });
+        return po;
+    }
+
     /* Trenutni Turnirko rating prijavljenih igralcev (manjka = igralec se nima
        nobene obracunane tekme). Pri dvojicah zajame OBA clana para - vmesnik
        ju v vrstici prijave izpise oba. */

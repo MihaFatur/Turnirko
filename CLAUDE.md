@@ -2312,6 +2312,32 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     48 igralcev = ena stran A4 (PDF), 64 = dve; rob pri tisku da `@page` (12,7 × 14,8 mm), ne padding.
   - Zaledje: samo `PrijavaDto.ime/priimek` (test v `LenoNalaganjeTest`). Ni preverjeno na pravem tiskalniku
     in z resnično profilno sliko (preverjeno z generirano SVG sliko).
+- **Udeleženci: nosilci, palice, spustni meni** (5. 11. 2026, DESIGN.md 5i; predaja
+  `design_handoff_udelezenci`, varianta 1a): `komponente/UdelezenciPogled` (izris),
+  `komponente/MeniIzbire` (spustni meni), pravila v `pomozno/udelezenci`, razredi `.udelezenci__*` in
+  `.meni-izbire__*` na koncu `slog.css`. Isti pogled za posameznike, pare in ekipe ter za pripravo (gost, `PripravaGost`),
+  turnir v teku in zaključen (zavihek »Udeleženci«, `Udelezenci` v `DogodekStran`). Pravila, ki jih ne razbij:
+  - **Številka je jakostno mesto (nosilec)** in po njem so vrstice v skupinah 1–2, 3–4 (kartice), 5–8, 9–16, od 17. Kartice samo,
+    kadar je razvrstitev »Po jakosti« IN klub »Vsi klubi« IN iskanje prazno; sicer zgornji dve skupini preideta v seznam. Mesto
+    je `stNosilca`, kadar ga imajo vsi (po žrebu), sicer vrstni red, ki ga je vrnil strežnik (`izbor`), sicer po moči (par:
+    povprečje; brez ratinga na dnu). **Pri dvojicah nosilcev ni** (žreb je naključen, `stNosilca` prazen): številka je tam
+    razvrstitev po ratingu, opomba iz predaje (»po njem se razporedijo nosilci«) pa je za pare neresnična - odločitev lastnika.
+  - **»V igri« / »Izpadel« strežnik ne hrani**, izpelje ga `stanjaMedTurnirjem` iz tekem izločilne mreže (v igri: še ima tekmo
+    ali ni nikoli izgubil; izpadel: izgubil in brez tekme, ali ni v mreži po skupinah) in ga **ne izpiše** pri krožnem sistemu, TOP
+    in SV regiji. Odstopil ima svojo značko »Odstopil«; po koncu velja »Končal 3.–4.« iz `razvrsceniUdelezenci`.
+  - **Zaledje**: `PrijavaDto.ime2/priimek2` (drugi igralec para, ločeno iz baze) in `kader` (priimki kadra ekipe, najmočnejši
+    prvi; `IzborStoritev.priimkiKadrov`, ena poizvedba za vse ekipe); testa v `LenoNalaganjeTest` in `LenoNalaganjeEkipnoTest`.
+  - **Palica ratinga** je `(rating − 1400) / 8` odstotkov (`PALICA_NAJNIZJI_RATING`); prava lestvica je nižje, zato je palica pri
+    slabše ocenjenih prazna. Spremeni se ena konstanta.
+  - **Dve postavitvi, ena struktura** (640 px v CSS); JS samo za besedilo v polju za iskanje. Značka in rating v vrstici ostaneta
+    element tudi, kadar sta prazna: razmik pod njima je del višine vrstice.
+  - **Organizator** v teku vidi pri udeležencu v igri povezavo »Odstopil« (potrditveno okno, kot prej); ekipni dogodek ima pod
+    pogledom še upravljanje ekip (`EkipeDogodka`: kader, preimenovanje). Priprava za organizatorja je nespremenjena
+    (`Priprava`: jakostni vrstni red, pari, `SeznamPrijavljenih` z odjavo) - tam so dejanja ob vrstici.
+  - **Merilo je prototip `Udelezenci prenova.dc.html` v istem brezglavem Chromu** (ciljni PNG iz predaje niso ponovljivi: črta 3 px
+    je 2 px, vrstice ~0,3 % nižje, telefon brez spodnje vrstice): besedila in škatle ±0,5 px, piksli 0 v vseh 14 stanjih iz
+    predaje in 9 dodatnih (dvojice in ekipe v teku/zaključeno, razvrstitve). Telefonski prototip je širok 388 px (1 px obroba
+    makete), aplikacija pri 390 px ima vsebino za 2 px širšo.
 - **Preizkus Premium, poziv k računu in »To si ti?«** (odločitev lastnika 23. 10. 2026,
   DESIGN.md 5f). Gostje si računa niso delali, ker brezplačen račun ni dal nič več kot
   gostovanje; zdaj ima prvi mesec Premium brez plačila.

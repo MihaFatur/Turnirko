@@ -124,6 +124,11 @@ class LenoNalaganjeEkipnoTest {
         MrezaDto mreza = dogodkiKontroler.mreza(dogodek.getId());
         assertEquals(4, mreza.prijave().size());
         assertTrue(mreza.prijave().stream().allMatch(p -> p.polnoIme() != null && p.polnoIme().startsWith("Klub")));
+        /* Pogled Udelezenci pod ekipo izpise kader, zato ga nosi vsaka prijava ekipe;
+           igralec posamicne prijave ne obstaja (ime2/priimek2 sta prazna). */
+        assertTrue(mreza.prijave().stream().allMatch(p -> p.kader().size() == 3
+                && p.kader().stream().allMatch("Ekipni"::equals)
+                && p.ime2() == null && p.priimek2() == null));
         List<TekmaDto> polfinala = mreza.tekme().stream().filter(t -> t.kolo() == 1).toList();
         assertEquals(2, polfinala.size());
         assertTrue(polfinala.stream().allMatch(t -> t.idSrecanje() != null), "ekipna tekma vodi na zapisnik");

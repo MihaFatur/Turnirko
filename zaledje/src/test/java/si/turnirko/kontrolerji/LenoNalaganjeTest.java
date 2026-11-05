@@ -28,12 +28,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import si.turnirko.dto.DogodekVnos;
 import si.turnirko.dto.MrezaDto;
 import si.turnirko.dto.NizVnos;
+import si.turnirko.dto.ParVnos;
 import si.turnirko.dto.PrijavaDto;
 import si.turnirko.dto.PrijaviIgralceVnos;
 import si.turnirko.dto.TekmaDto;
 import si.turnirko.dto.TurnirDto;
 import si.turnirko.dto.TurnirVnos;
 import si.turnirko.dto.VnosRezultata;
+import si.turnirko.modeli.Disciplina;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IzidTekme;
@@ -41,6 +43,7 @@ import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.Kraj;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.Spol;
+import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
@@ -194,6 +197,31 @@ class LenoNalaganjeTest {
         for (TekmaDto tekma : mreza.tekme()) {
             assertEquals(tekma.id().equals(pripravljena.id()) ? nizi : List.of(), tekma.nizi());
         }
+    }
+
+    /* Pogled Udelezenci izpise par v dveh vrsticah, vsakega igralca z imenom v
+       lazji in priimkom v debeli teji - priimek drugega zato pride iz baze in ne iz
+       rezanja polnega imena. */
+    @Test
+    void mrezaDvojicVrneImeInPriimekObehIgralcevLoceno() {
+        Dogodek dvojice = turnirjiStoritev.dodajDogodek(turnir.getId(), new DogodekVnos("Dvojice",
+                SpolKategorija.KDORKOLI, null, 5, null, null, Disciplina.DVOJICE,
+                SistemTekmovanja.IZLOCILNI, null, null, null, null, null));
+        Igralec prvi = novIgralec("Ana Marija", "Novak Kos");
+        Igralec drugi = novIgralec("Bor", "Drugi");
+        List<PrijavaDto> posamicni = dogodkiKontroler.prijavi(dvojice.getId(),
+                new PrijaviIgralceVnos(List.of(prvi.getId(), drugi.getId())));
+        dogodkiKontroler.poveziVPar(dvojice.getId(),
+                new ParVnos(posamicni.get(0).id(), posamicni.get(1).id()));
+
+        MrezaDto mreza = dogodkiKontroler.mreza(dvojice.getId());
+        assertEquals(1, mreza.prijave().size());
+        PrijavaDto par = mreza.prijave().get(0);
+        assertEquals("Ana Marija", par.ime());
+        assertEquals("Novak Kos", par.priimek());
+        assertEquals("Bor", par.ime2());
+        assertEquals("Drugi", par.priimek2());
+        assertTrue(par.kader().isEmpty());
     }
 
     private Igralec novIgralec(String ime, String priimek) {

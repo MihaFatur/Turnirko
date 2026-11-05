@@ -259,6 +259,14 @@ export function sklonEkip(n: number): string {
   return sklon(n, 'ekipa', 'ekipi', 'ekipe', 'ekip')
 }
 
+export function sklonParov(n: number): string {
+  return sklon(n, 'par', 'para', 'pari', 'parov')
+}
+
+export function sklonKlubov(n: number): string {
+  return sklon(n, 'klub', 'kluba', 'klubi', 'klubov')
+}
+
 export function sklonSkupin(n: number): string {
   return sklon(n, 'skupina', 'skupini', 'skupine', 'skupin')
 }

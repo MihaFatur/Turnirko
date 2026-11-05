@@ -76,6 +76,14 @@ public interface KaderEkipeRepozitorij extends JpaRepository<KaderEkipe, Long> {
             """)
     List<Object[]> igralciEkip(List<Long> idjiEkip);
 
+    /* Isto z priimkom: [idEkipa, idIgralec, priimek] - pogled Udelezenci pod
+       ekipo izpise kader, vrstni red uredi IzborStoritev.priimkiKadrov. */
+    @Query("""
+            SELECT k.ekipa.id, k.igralec.id, k.igralec.priimek FROM KaderEkipe k
+            WHERE k.ekipa.id IN :idjiEkip
+            """)
+    List<Object[]> priimkiKadrov(List<Long> idjiEkip);
+
     /* V katerih ligah igralci nastopajo: [idIgralca, idLige]. Filter "Moje
        lige" na lestvici mora vedeti, kdo v spremljanih ligah sploh igra.
        Ekipe turnirjev izpadejo po izrecnem notranjem stiku na ligo - pot

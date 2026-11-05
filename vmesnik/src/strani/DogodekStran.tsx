@@ -48,7 +48,6 @@ import {
   OZNAKE_SISTEM_KRATKO,
   OZNAKE_SPOL_KATEGORIJA,
   OZNAKE_STAROSTNI_PAS,
-  OZNAKE_STATUS_PRIJAVE,
   VRSTNI_RED_STAROSTNIH_PASOV,
   igralcevFormata,
   imePrijave,
@@ -90,6 +89,7 @@ import { NiziTekmeOkno, type StranTekme } from '../komponente/NiziTekmeOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TekmaKartica, type KlikTekme } from '../komponente/TekmaKartica'
 import { TekmeSeznam } from '../komponente/TekmeSeznam'
+import { UdelezenciPogled } from '../komponente/UdelezenciPogled'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
@@ -115,6 +115,7 @@ import {
 import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
+import { type VrsticaUdelezenca } from '../pomozno/udelezenci'
 import { imaMrezoZaTisk } from '../pomozno/zrebMreze'
 import { imaZrebanoSkupine } from '../pomozno/zrebSkupin'
 
@@ -891,37 +892,18 @@ function razdeli<T>(seznam: T[], koliko: number): T[][] {
 /* ---------- Faza priprave (gost): samo seznam prijavljenih ---------- */
 
 function PripravaGost({ podatki }: { podatki: MrezaDto }) {
-  /* Uvožen dogodek žreba pri nas nima - izvede ga zveza v svojem sistemu. */
-  const namig = podatki.dogodek.vir
-    ? 'Tekmovanje vodi zveza; žreb in rezultati se uvozijo iz njenega sistema.'
-    : 'Žreb izvede administrator (sodnik) po prijavi.'
-  if (podatki.dogodek.disciplina === 'EKIPNO') {
-    return (
-      <>
-        <EkipeDogodka dogodek={podatki.dogodek} smem={false} />
-        <p className="namig">{namig}</p>
-      </>
-    )
-  }
-  const aktivne = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
-  /* Pri dvojicah gost vidi ločeno, kdo je že v paru in kdo še išče soigralca -
-     to je edino, kar se do žreba dogaja. */
-  const dvojice = podatki.dogodek.disciplina === 'DVOJICE'
-  const pari = aktivne.filter((p) => p.polnoIme2 !== null)
-  const brezPara = aktivne.filter((p) => p.polnoIme2 === null)
+  /* Gost vidi isti pogled kot po žrebu: jakostna mesta, pri dvojicah pare in
+     igralce brez soigralca, pri ekipah kadre. Opomba pod naslovom pove, da žreba
+     še ni; uvožen dogodek ga pri nas nima nikoli - izvede ga zveza v svojem
+     sistemu, in to pove vrstica pod pogledom. */
   return (
     <>
-      {dvojice ? (
-        <>
-          <SeznamPrijavljenih naslov="Pari" prijave={pari} enota="par" />
-          {brezPara.length > 0 && (
-            <SeznamPrijavljenih naslov="Brez soigralca" prijave={brezPara} />
-          )}
-        </>
-      ) : (
-        <SeznamPrijavljenih naslov="Prijavljeni" prijave={aktivne} />
+      <UdelezenciPogled podatki={podatki} />
+      {podatki.dogodek.vir && (
+        <p className="namig">
+          Tekmovanje vodi zveza; žreb in rezultati se uvozijo iz njenega sistema.
+        </p>
       )}
-      <p className="namig">{namig}</p>
     </>
   )
 }
@@ -2040,8 +2022,11 @@ function TolazilniDel({
 
 /* ---------- Pogled: udeleženci ---------- */
 
-/* Kdo igra, kdo je rezerva (ni prišel v izbor formata TOP) in kdo je odstopil.
-   Odstop je nepovraten, zato gre prek potrditvenega okna. */
+/* Kdo igra, kdo je izpadel, kdo je rezerva (ni prišel v izbor formata TOP) in kdo
+   je odstopil - po koncu tudi, kje je kdo končal. Pogled je isti za igralce, pare
+   in ekipe (komponente/UdelezenciPogled); tu je samo odstop, ki ga organizator
+   zabeleži med tekmovanjem. Odstop je nepovraten, zato gre prek potrditvenega
+   okna. */
 function Udelezenci({
   podatki,
   osvezi,
@@ -2052,7 +2037,7 @@ function Udelezenci({
   /* Sme urejati (lastnik ali admin, dogodek ni uvožen). */
   smem: boolean
 }) {
-  const [odstopnik, nastaviOdstopnika] = useState<PrijavaDto | null>(null)
+  const [odstopnik, nastaviOdstopnika] = useState<VrsticaUdelezenca | null>(null)
   const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
   /* Odstop je dejanje med tekmovanjem; po koncu ni česa več predati. */
   const smemOdstop = smem && podatki.dogodek.status !== 'ZAKLJUCEN'
@@ -2065,86 +2050,31 @@ function Udelezenci({
     },
   })
 
-  const rezerve = podatki.prijave.filter((p) => p.status === 'REZERVA')
-  const odstopili = podatki.prijave.filter((p) => p.status === 'ODSTOPIL')
-  const igrajo = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
-
   return (
     <>
-      {/* Pri ekipah je udeleženec ekipa s kadrom: kdo je igral za katero
-          ekipo, je del zapisa tekmovanja, zato seznam ekip nosi kadre. */}
-      {ekipno ? (
-        <EkipeDogodka
-          dogodek={podatki.dogodek}
-          smem={smem}
-          dejanje={(ekipa) => {
-            const prijava = igrajo.find((p) => p.idEkipa === ekipa.id)
-            return smemOdstop && prijava ? (
-              <button
-                type="button"
-                className="gumb gumb--majhen"
-                onClick={() => nastaviOdstopnika(prijava)}
-              >
-                Odstopila
-              </button>
-            ) : null
-          }}
-        />
-      ) : (
-        <SeznamPrijavljenih
-          naslov="Udeleženci"
-          prijave={igrajo}
-          dejanje={
-            smemOdstop
-              ? (prijava) => (
+      <UdelezenciPogled
+        podatki={podatki}
+        dejanje={
+          smemOdstop
+            ? (vrstica) =>
+                vrstica.jeAktiven && vrstica.stanje !== 'izpadel' ? (
                   <button
                     type="button"
-                    className="prijava-vrstica__dejanje"
-                    onClick={() => nastaviOdstopnika(prijava)}
+                    className="udelezenci__dejanje"
+                    onClick={() => nastaviOdstopnika(vrstica)}
                   >
-                    Odstopil
+                    {ekipno ? 'Odstopila' : 'Odstopil'}
                   </button>
-                )
-              : undefined
-          }
-        />
-      )}
+                ) : null
+            : undefined
+        }
+      />
 
-      {rezerve.length > 0 && (
-        <div className="plosca">
-          <h2 className="sekcija__naslov--manjsi">Rezerve ({rezerve.length})</h2>
-          <p className="namig">
-            Niso prišli v izbor najboljših. Vrstni red pove, kdo je bil prvi pod črto.
-          </p>
-          <ul className="seznam-preprost">
-            {rezerve.map((p) => (
-              <li key={p.id}>
-                {p.stNosilca !== null && <strong>{p.stNosilca}. </strong>}
-                {p.polnoIme}
-                {p.klub && <span className="izbor__podrobnost">{p.klub}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {odstopili.length > 0 && (
-        <div className="plosca">
-          <h2 className="sekcija__naslov--manjsi">Odstopili ({odstopili.length})</h2>
-          <p className="namig">
-            Njihove odigrane tekme obveljajo, preostale so dobili nasprotniki brez
-            boja (te ne štejejo v rating).
-          </p>
-          <ul className="seznam-preprost">
-            {odstopili.map((p) => (
-              <li key={p.id}>
-                {p.polnoIme}
-                <span className="izbor__podrobnost">{OZNAKE_STATUS_PRIJAVE[p.status]}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Organizator ekipnega dogodka potrebuje še upravljanje ekip: kader se med
+          tekmovanjem sme dopolniti (ekipa pripelje rezervo), ime ekipe pa popraviti
+          v vsakem stanju, tudi po zaključku. Gledalec tega seznama nima: kader
+          vidi pod imenom ekipe v pogledu zgoraj. */}
+      {ekipno && smem && <EkipeDogodka dogodek={podatki.dogodek} smem />}
 
       <SporociloNapake napaka={odstop.error} />
 
@@ -2152,7 +2082,7 @@ function Udelezenci({
         <PotrditvenoOkno
           naslov={ekipno ? 'Odstop ekipe' : 'Odstop igralca'}
           sporocilo={
-            `${ekipno ? `Ekipa ${odstopnik.polnoIme}` : odstopnik.polnoIme} odstopi s tekmovanja?` +
+            `${ekipno ? `Ekipa ${odstopnik.imeCelo}` : odstopnik.imeCelo} odstopi s tekmovanja?` +
             ` Že odigrane tekme obveljajo, vse preostale pa dobijo nasprotniki brez boja. Ker te` +
             ` tekme niso bile odigrane, se ne štejejo v rating. Dejanja ni mogoče razveljaviti.`
           }
