@@ -36,6 +36,7 @@ import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.VirPovezave;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.pomozno.SlovenskaAbeceda;
+import si.turnirko.repozitoriji.DostopOrganizatorjaRepozitorij;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KlubRepozitorij;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
@@ -48,6 +49,7 @@ public class RacuniStoritev {
     private final IgralecRepozitorij igralecRepozitorij;
     private final KlubRepozitorij klubRepozitorij;
     private final NarocninaRepozitorij narocninaRepozitorij;
+    private final DostopOrganizatorjaRepozitorij dostopRepozitorij;
     private final CenikStoritev cenik;
     private final PasswordEncoder kodirnik;
     private final KodeStoritev kode;
@@ -60,6 +62,7 @@ public class RacuniStoritev {
                           IgralecRepozitorij igralecRepozitorij,
                           KlubRepozitorij klubRepozitorij,
                           NarocninaRepozitorij narocninaRepozitorij,
+                          DostopOrganizatorjaRepozitorij dostopRepozitorij,
                           CenikStoritev cenik,
                           PasswordEncoder kodirnik,
                           KodeStoritev kode,
@@ -71,6 +74,7 @@ public class RacuniStoritev {
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
         this.narocninaRepozitorij = narocninaRepozitorij;
+        this.dostopRepozitorij = dostopRepozitorij;
         this.cenik = cenik;
         this.kodirnik = kodirnik;
         this.kode = kode;
@@ -91,6 +95,10 @@ public class RacuniStoritev {
                 : null;
         UporabnikDto dto = UporabnikDto.iz(u, narocninaRepozitorij.findByUporabnikId(u.getId()).orElse(null),
                 starejsiOd21);
+        // dodeljena tekmovanja (V62): vmesnik po njih pokaze urejanje
+        if (u.getVloga() == Vloga.ORGANIZATOR) {
+            dto = dto.zDostopom(dostopRepozitorij.idjiTurnirjev(u.getId()), dostopRepozitorij.idjiLig(u.getId()));
+        }
         // Premium prek druzine (V59): vmesnik ga bere iz paketa racuna, zato ga vidi kot lastnega
         if (!(dto.paket() == Paket.PREMIUM && dto.paketAktiven()) && narocninaStoritev.imaDruzinskiPremium(u)) {
             return dto.zDruzinskimPremiumom();

@@ -256,6 +256,45 @@ export interface PokroviteljVnos {
   glavni: boolean
 }
 
+/* Dostop organizatorjev do turnirja ali lige (V62, okno »Organizatorji«,
+   samo admin). Organizatorji istega kluba imajo dostop samodejno in v seznamu
+   niso; nosi jih samo ime kluba. */
+export interface DostopTekmovanjaDto {
+  klubLastnik: string | null
+  /* Lastnik (ustvaril) je prvi, nato dodeljeni po abecedi. */
+  organizatorji: DostopOrganizator[]
+  /* Aktivni organizatorji, ki jih je še mogoče dodati. */
+  kandidati: DostopKandidat[]
+}
+
+export interface DostopOrganizator {
+  idRacun: number
+  ime: string
+  eposta: string
+  klub: string | null
+  /* LASTNIK je tekmovanje ustvaril (dostopa mu ni mogoče odvzeti, preklopi se
+     lahko samo štetje); DODELJEN je dostop, ki ga je odobril admin. */
+  vir: 'LASTNIK' | 'DODELJEN'
+  /* Ali tekmovanje šteje v mejo organizatorjevega paketa. */
+  steje: boolean
+  poraba: DostopPoraba
+}
+
+/* Poraba meje za VRSTO tega tekmovanja v tekoči sezoni; meja je null, ko
+   organizator nima organizatorskega paketa. */
+export interface DostopPoraba {
+  paket: Paket | null
+  uporabljeno: number
+  meja: number | null
+}
+
+export interface DostopKandidat {
+  idRacun: number
+  ime: string
+  eposta: string
+  klub: string | null
+}
+
 export interface DogodekDto {
   id: number
   idTurnir: number
@@ -646,6 +685,10 @@ export interface UporabnikDto {
      ceno Premium brez razkritja letnice; null pri organizatorju oz. če
      datum (še) ni znan. */
   starejsiOd21: boolean | null
+  /* Turnirji in lige, do katerih je organizatorju admin dodelil dostop (V62);
+     po njih vmesnik pokaže urejanje, kot po lastniku in klubu. Sicer prazna. */
+  dostopTurnirji: number[]
+  dostopLige: number[]
 }
 
 /* Placilni paket racuna - igralec izbira med BREZPLACNO in PREMIUM (cena po

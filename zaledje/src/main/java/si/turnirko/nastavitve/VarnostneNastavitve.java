@@ -162,6 +162,13 @@ public class VarnostneNastavitve {
                         // novih igralcev in kandidatov za istovetnost, zato je vsa pot
                         // samo administratorjeva - pravilo mora stati pred "GET je javen"
                         .requestMatchers("/api/v1/uvoz/**").hasRole("ADMIN")
+                        // dostop organizatorjev do turnirja ali lige (V62): odgovor nosi
+                        // e-poste organizatorjev, zato samo admin, tudi branje. Pred
+                        // splosnim "GET je javen" in pred "organizator sme turnirje/lige".
+                        .requestMatchers("/api/v1/turnirji/*/organizatorji",
+                                "/api/v1/turnirji/*/organizatorji/*",
+                                "/api/v1/lige/*/organizatorji",
+                                "/api/v1/lige/*/organizatorji/*").hasRole("ADMIN")
                         // kode popusta (seznam kaze, koliko je kdo uporabil): samo admin,
                         // tudi branje - pred splosnim "GET je javen"
                         .requestMatchers("/api/v1/kode-popusta", "/api/v1/kode-popusta/**").hasRole("ADMIN")

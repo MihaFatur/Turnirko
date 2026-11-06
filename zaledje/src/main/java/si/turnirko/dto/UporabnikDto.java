@@ -7,6 +7,7 @@
 package si.turnirko.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import si.turnirko.modeli.CiklusPlacila;
 import si.turnirko.modeli.Narocnina;
@@ -45,14 +46,25 @@ public record UporabnikDto(
         // je oseben in gre navzven samo prek /podrobno. Pove ceno Premium
         // (CenikStoritev) brez razkritja letnice; null pri organizatorju
         // oz. ce datum rojstva (se) ni znan.
-        Boolean starejsiOd21
+        Boolean starejsiOd21,
+        // turnirji in lige, do katerih je organizatorju admin dodelil dostop (V62) -
+        // vmesnik po njih pokaze urejanje, kot po lastniku in klubu; sicer prazna
+        List<Long> dostopTurnirji,
+        List<Long> dostopLige
 ) {
 
     /* Racun igralca, ki ima Premium prek druzine (V59): paket je za vmesnik Premium in
        velja, cikla pa ni (placuje ga navijac, ne ta racun). */
     public UporabnikDto zDruzinskimPremiumom() {
         return new UporabnikDto(id, uporabniskoIme, vloga, status, idIgralec, imeIgralca, polnoIme, idKlub,
-                klub, emailPotrjen, potrebnaKodaSkrbnika, Paket.PREMIUM, true, null, starejsiOd21);
+                klub, emailPotrjen, potrebnaKodaSkrbnika, Paket.PREMIUM, true, null, starejsiOd21,
+                dostopTurnirji, dostopLige);
+    }
+
+    public UporabnikDto zDostopom(List<Long> turnirji, List<Long> lige) {
+        return new UporabnikDto(id, uporabniskoIme, vloga, status, idIgralec, imeIgralca, polnoIme, idKlub,
+                klub, emailPotrjen, potrebnaKodaSkrbnika, paket, paketAktiven, ciklus, starejsiOd21,
+                turnirji, lige);
     }
 
     public static UporabnikDto iz(Uporabnik uporabnik, Narocnina narocnina, Boolean starejsiOd21) {
@@ -71,7 +83,9 @@ public record UporabnikDto(
                 narocnina != null ? narocnina.getPaket() : null,
                 narocnina != null && narocnina.jeVeljavna(LocalDateTime.now()),
                 narocnina != null ? narocnina.getCiklus() : null,
-                starejsiOd21);
+                starejsiOd21,
+                List.of(),
+                List.of());
     }
 
     private static String polnoIme(Uporabnik uporabnik) {

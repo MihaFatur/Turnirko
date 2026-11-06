@@ -13,6 +13,7 @@ import type {
   CiklusPlacila,
   DogodekDto,
   DogodekVnos,
+  DostopTekmovanjaDto,
   DomovIgralecDto,
   DruzinaAdmin,
   DruzinaPregled,
@@ -153,6 +154,20 @@ export const turnirjiApi = {
 
 /* Slike (V54): knjižnica logotipov urejevalca. Sliko samo gledalec dobi po
    zgostitvi (urlSlike v pomozno/slike) - ta pot ni v tem viru. */
+/* Dostop organizatorjev do turnirja ali lige (V62) - vse samo admin. PUT doda
+   dostop in ga posodobi (ali tekmovanje šteje v mejo paketa), DELETE ga odvzame
+   (lastniku vrne privzeto štetje); vsak odgovor je novo stanje okna. */
+export const dostopApi = {
+  vrni: (vrsta: 'liga' | 'turnir', id: number) =>
+    api.vrni<DostopTekmovanjaDto>(`/${vrsta === 'liga' ? 'lige' : 'turnirji'}/${id}/organizatorji`),
+  nastavi: (vrsta: 'liga' | 'turnir', id: number, idRacun: number, steje: boolean) =>
+    api.posodobi<DostopTekmovanjaDto>(
+      `/${vrsta === 'liga' ? 'lige' : 'turnirji'}/${id}/organizatorji/${idRacun}`, { steje }),
+  odvzemi: (vrsta: 'liga' | 'turnir', id: number, idRacun: number) =>
+    api.izbrisi<DostopTekmovanjaDto>(
+      `/${vrsta === 'liga' ? 'lige' : 'turnirji'}/${id}/organizatorji/${idRacun}`),
+}
+
 export const slikeApi = {
   knjiznica: () => api.vrni<SlikaDto[]>('/slike'),
   nalozi: (png: Blob) => {

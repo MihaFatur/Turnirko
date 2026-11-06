@@ -26,6 +26,7 @@
      zacelo - prazna liga brez parov se ne da sestaviti znova. */
 package si.turnirko.storitve;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +48,7 @@ import si.turnirko.dto.LigaDto;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
+import si.turnirko.modeli.DostopOrganizatorja;
 import si.turnirko.modeli.Ekipa;
 import si.turnirko.modeli.KaderEkipe;
 import si.turnirko.modeli.Liga;
@@ -55,6 +57,7 @@ import si.turnirko.modeli.SerijaKoncnice;
 import si.turnirko.modeli.Srecanje;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmovanja;
+import si.turnirko.repozitoriji.DostopOrganizatorjaRepozitorij;
 import si.turnirko.repozitoriji.EkipaRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
@@ -77,6 +80,7 @@ public class KvalifikacijeStoritev {
     private final KoncnicaStoritev koncnicaStoritev;
     private final LigaStoritev ligaStoritev;
     private final LastnistvoStoritev lastnistvo;
+    private final DostopOrganizatorjaRepozitorij dostopRepozitorij;
 
     public KvalifikacijeStoritev(LigaRepozitorij ligaRepozitorij,
                                  EkipaRepozitorij ekipaRepozitorij,
@@ -86,7 +90,8 @@ public class KvalifikacijeStoritev {
                                  LestvicaLigeStoritev lestvicaLigeStoritev,
                                  KoncnicaStoritev koncnicaStoritev,
                                  LigaStoritev ligaStoritev,
-                                 LastnistvoStoritev lastnistvo) {
+                                 LastnistvoStoritev lastnistvo,
+                                 DostopOrganizatorjaRepozitorij dostopRepozitorij) {
         this.ligaRepozitorij = ligaRepozitorij;
         this.ekipaRepozitorij = ekipaRepozitorij;
         this.kaderRepozitorij = kaderRepozitorij;
@@ -96,6 +101,7 @@ public class KvalifikacijeStoritev {
         this.koncnicaStoritev = koncnicaStoritev;
         this.ligaStoritev = ligaStoritev;
         this.lastnistvo = lastnistvo;
+        this.dostopRepozitorij = dostopRepozitorij;
     }
 
     // ---------- Predlog ----------
@@ -224,6 +230,7 @@ public class KvalifikacijeStoritev {
 
         Liga kval = novaLiga(visja, nizja, ime, nacin, predlog);
         kval = ligaRepozitorij.save(kval);
+        podedujDodeljenDostop(visja, kval);
 
         Map<Long, Ekipa> kopije = kopirajEkipe(kval,
                 predlog.ekipeVisje().stream().map(Udelezenec::idEkipa).toList(),
@@ -280,6 +287,18 @@ public class KvalifikacijeStoritev {
             k.setStIzpade(predlog.ekipeNizje().size());
         }
         return k;
+    }
+
+    /* Organizator z dodeljenim dostopom do visje lige (DostopOrganizatorja, V62)
+       vodi tudi njene kvalifikacije - kot ju vodita lastnik in klub, ki ju
+       kvalifikacije podedujejo. Kvalifikacije v mejo paketa ne stejejo nikoli,
+       zato vrstica nosi »ne steje«. Dodelitev, ki jo admin vpise po nastanku
+       kvalifikacij, se ne prenese sama: dodeli se jim posebej. */
+    private void podedujDodeljenDostop(Liga visja, Liga kval) {
+        for (DostopOrganizatorja dostop : dostopRepozitorij.findByIdLiga(visja.getId())) {
+            dostopRepozitorij.save(DostopOrganizatorja.zaLigo(
+                    kval.getId(), dostop.getIdRacun(), false, LocalDateTime.now()));
+        }
     }
 
     /* Kopije ekip s kadrom. Ime ekipe mora biti v ligi enolicno (v razporedu

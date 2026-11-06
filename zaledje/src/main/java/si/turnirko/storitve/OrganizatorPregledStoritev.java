@@ -3,12 +3,14 @@
    arhiv sezon in poraba paketa (glej OrganizatorPregledDto).
 
    MERILA, ki jih ne razbij:
-   - »Moja« tekmovanja so tista, ki jih je racun USTVARIL - isto merilo, po
-     katerem NarocninaStoritev steje mejo paketa. Klubska tekmovanja drugih
+   - »Moja« tekmovanja so tista, ki jih je racun USTVARIL ali mu jih je admin
+     DODELIL (DostopOrganizatorja) - isti dve poti, po katerih
+     NarocninaStoritev steje mejo paketa. Klubska tekmovanja drugih
      organizatorjev istega kluba so urejevalcu dostopna (LastnistvoStoritev), a
      v pregledu jih ni: pregled kaze porabo LASTNEGA paketa, in ce bi vrstice
      seznama stele drugo mnozico kot palica poleg njega, se stevili ne bi
-     ujemali.
+     ujemali. Dodeljeno tekmovanje, ki ne steje v mejo, je na seznamu, v meji
+     pa ne (vrstic je lahko vec kot meje).
    - Poraba paketa (uporabljeno / meja) pride iz NarocninaStoritev, ne iz
      stetja seznama: to je edina stevilka, ki jo strezniku ob ustvarjanju
      res preveri, in pregled mora pokazati natanko njo. Vrstic seznama je lahko
@@ -144,8 +146,8 @@ public class OrganizatorPregledStoritev {
        preizkusiti brez vrtenja ure. */
     OrganizatorPregledDto pregled(Uporabnik jaz, LocalDate danes) {
         String sezona = Sezona.oznaka(danes);
-        List<Turnir> turnirji = turnirRepozitorij.najdiZaUstvarjalca(jaz.getId());
-        List<Liga> lige = ligaRepozitorij.najdiZaUstvarjalca(jaz.getId());
+        List<Turnir> turnirji = turnirRepozitorij.najdiZaOrganizatorja(jaz.getId());
+        List<Liga> lige = ligaRepozitorij.najdiZaOrganizatorja(jaz.getId());
         List<Long> idjiTurnirjev = turnirji.stream().map(Turnir::getId).toList();
         List<Long> idjiLig = lige.stream().map(Liga::getId).toList();
 

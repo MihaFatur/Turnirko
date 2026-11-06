@@ -28629,3 +28629,110 @@ html.uvod-tece {
     font-size: 13px;
   }
 }
+
+/* --- Okno »Organizatorji« lige in turnirja (V62, samo admin) --- */
+
+.organizatorji-okno {
+  display: grid;
+  gap: var(--r3);
+}
+
+.organizatorji-okno__uvod {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 15px;
+  color: var(--barva-crnilo-2);
+}
+
+.organizatorji-okno__prazno {
+  margin: 0;
+  color: var(--barva-crnilo-3);
+}
+
+.organizatorji-okno__seznam {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+/* Oseba | stikalo | odvzem; potrditev odvzema pade v svojo vrstico čez vse stolpce,
+   da široka gumba ne stisneta imena. */
+.organizatorji-okno__vrstica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 6rem;
+  align-items: center;
+  gap: var(--r1) var(--r3);
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.organizatorji-okno__oseba {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.organizatorji-okno__ime {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.organizatorji-okno__meta {
+  font: 400 var(--tip-mono) / 1.5 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+/* Čez mejo paketa: odločitev admina, ne napaka - zato rjasto besedilo, ne okvir. */
+.organizatorji-okno__meta--presezek {
+  color: var(--barva-negativna-tekst);
+}
+
+.organizatorji-okno__steje {
+  white-space: nowrap;
+}
+
+.organizatorji-okno__odvzem {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--r1);
+}
+
+.organizatorji-okno__potrditev {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r1) var(--r2);
+  padding-top: var(--r1);
+  font-size: 14px;
+  color: var(--barva-negativna-tekst);
+}
+
+.organizatorji-okno__opomba {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 14px;
+  color: var(--barva-crnilo-3);
+}
+
+.organizatorji-okno__dodaj {
+  display: grid;
+  gap: var(--r1);
+}
+
+@media (max-width: 640px) {
+  .organizatorji-okno__vrstica {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .organizatorji-okno__oseba {
+    grid-column: 1 / -1;
+  }
+
+  .organizatorji-okno__odvzem {
+    grid-column: 2;
+  }
+}

@@ -1319,7 +1319,10 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     števka dvomestne — torej vse razen `1` (10–19). Ničla je enako varna;
     rezultat se ne piše »05«. Z 2–9 se dvomestni izid (22:20) *lahko* začne, a
     tako redko, da je premik pri stotih vpisih prihranek, pri enem pa vrnitev
-    s puščico levo.
+    s puščico levo. Izjema je podaljšek: enomestna 2–9 ostane v polju, kadar
+    se z drugim stolpcem ujema v podaljšku (`zacetekPodaljska`: 19:21, 25:23);
+    prej je prepisala prvi stolpec z 11 in podaljškov nad 21:19 ni bilo mogoče
+    vnesti.
   - **Po mreži se hodi s puščicami**: levo/desno med stranema in čez konec
     vrstice (samo z roba vpisa, da ostane mogoče postaviti kazalec sredi
     dvomestne številke), gor/dol po istem stolpcu, `Backspace` iz praznega
@@ -2005,9 +2008,10 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
   /api/v1/organizator/pregled`, samo `ORGANIZATOR`; pot mora v
   `VarnostneNastavitve` stati pred »GET je javen«, varuje ga
   `OrganizatorPregledDostopTest`). Merila, ki jih ne razbij:
-  - **»Moja« tekmovanja so tista, ki jih je račun USTVARIL** (`ustvaril`), ne
-    tudi klubska: isto merilo kot meja paketa. Klubska tekmovanja drugih
-    organizatorjev so urejevalcu dostopna, a v pregledu jih ni.
+  - **»Moja« tekmovanja so tista, ki jih je račun USTVARIL ali mu jih je admin
+    DODELIL** (`ustvaril` + `dostop_organizatorja`, glej spodaj): isto merilo kot
+    meja paketa. Klubska tekmovanja drugih organizatorjev so urejevalcu dostopna,
+    a v pregledu jih ni.
   - **Poraba paketa je številka iz `NarocninaStoritev`** (`omejitev`,
     `steviloLigVSezoni`, `steviloTurnirjevVSezoni`), ne štetje vrstic seznama:
     strežnik ob ustvarjanju preverja natanko to (ustvarjeno od 1. julija,
@@ -2027,6 +2031,46 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     prihodnost); zapisi brez ure so krajši od meje, zato datum preveri Java.
   - Zaledje pošlje števila, datume in imena; **sklanjanje in poved sestavi
     vmesnik** (`pomozno/organizatorPregled.ts`).
+
+- **Dostop organizatorjev do tekmovanj in štetje v mejo paketa** (V62, nov 2026;
+  `DostopOrganizatorjevStoritev`, `DostopOrganizatorjevKontroler`, tabela
+  `dostop_organizatorja`, vmesnik `OrganizatorjiOkno`). Admin na strani lige ali
+  turnirja (gumb »Organizatorji«, vidi ga samo admin) določi, kateri organizatorji
+  tekmovanje urejajo in ali se jim šteje v mejo paketa. Merila, ki jih ne razbij:
+  - **Dostop ima zdaj tri poti** (`LastnistvoStoritev.preveri`): ustvaril, klub
+    lastnik, dodelitev. Dodelitev je vrstica `(turnir ali liga, račun,
+    steje_v_mejo, dodeljen_ob)`; poizvedba v bazo je zadnja, ker prvi dve ne
+    potrebujeta nobene. Vmesnik jo bere iz `UporabnikDto.dostopTurnirji/dostopLige`
+    (`smemUrejati` ima tretji parameter: tekmovanje) in se po dodelitvi osveži ob
+    naslednji prijavi/osvežitvi profila.
+  - **Vrstica o lastniku dostopa ne daje, samo prepiše štetje.** Privzetek lastnika
+    je »šteje«, ki se NE hrani: preklop nazaj vrstico zbriše (stanje brez vrstice je
+    vedno privzeto). Lastništvo (`ustvaril`) se ne spremeni nikoli.
+  - **Meja = ustvarjeno (brez izvzetih) + dodeljeno, ki šteje**
+    (`NarocninaStoritev.steviloTurnirjevVSezoni/steviloLigVSezoni`; poizvedbe v
+    `DostopOrganizatorjaRepozitorij`). Ustvarjeno šteje od nastanka tekmovanja,
+    dodeljeno od `dodeljen_ob` (trenutek dodelitve), zato dodelitev starega turnirja
+    ne polni meje, ki se je že ponastavila. Ista številka gre v ustvarjanje,
+    organizatorski pregled in karton računa (Dostopi). Kvalifikacije med ligami
+    ne štejejo nikoli.
+  - **Admin sme mejo preseči**: dodelitev se zaradi polne meje ne zavrne, okno pa
+    presežek pokaže rjasto (»čez mejo«). Meja ostane pravilo ustvarjanja.
+  - **Samo admin, tudi branje** (odgovor nosi e-poste organizatorjev): pravilo v
+    `VarnostneNastavitve` stoji pred »GET je javen« in pred »organizator sme
+    turnirje/lige«; druga obramba je `preveriAdmina` v storitvi. Varuje ga
+    `DostopOrganizatorjevDostopTest`. Dodeli se lahko samo potrjen in aktiven
+    organizator; igralec, navijač in admin ne.
+  - Vsaka sprememba gre v dnevnik računa organizatorja (`RacunDnevnikStoritev`),
+    kjer jo admin najde, ko organizator vpraša, zakaj mu je meja polna.
+  - **Kvalifikacije podedujejo dodeljen dostop višje lige** (`KvalifikacijeStoritev.
+    podedujDodeljenDostop`, vrstica z »ne šteje«): ob nastanku, kot podedujejo
+    lastnika in klub. Dodelitev, vpisana pozneje, se ne prenese sama.
+  - **Ni pokrito**: organizatorji istega kluba imajo dostop samodejno in se jim
+    tekmovanje ne šteje v mejo (okno to pove z opombo); samodejnega dostopa prek
+    kluba ni mogoče ugasniti. Dodeljeno tekmovanje je v knjižnici logotipov
+    (`SlikaRepozitorij.knjiznicaOrganizatorja`) in organizatorskem pregledu.
+  - Testi: `DostopOrganizatorjevTest` (storitev), `DostopOrganizatorjevDostopTest`
+    (varnostna veriga).
 
 ## Vmesnik (vmesnik/)
 

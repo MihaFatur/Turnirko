@@ -17,6 +17,13 @@ import type { UporabnikDto } from '../api/tipi'
 
 const KLJUC_SHRAMBE = 'turnirko-poverilnice'
 
+/* Tekmovanje, o katerem se sprašuje smemUrejati: dodeljen dostop (V62) je vezan
+   na id turnirja oz. lige in ga iz lastništva ni mogoče prebrati. */
+export interface TekmovanjeDostopa {
+  vrsta: 'liga' | 'turnir'
+  id: number
+}
+
 interface Avtentikacija {
   uporabnik: UporabnikDto | null
   jeAdmin: boolean
@@ -36,9 +43,15 @@ interface Avtentikacija {
   /* Id igralca, čigar profil je "moj"; null za admina in nepotrjene račune. */
   mojIdIgralec: number | null
   /* Ali prijavljeni sme urejati turnir/ligo z danim lastništvom: administrator
-     vse, organizator svoje (idLastnik) ali od svojega kluba (idKlubLastnik).
-     Streznik je zadnja obramba - to le skrije dejanja, ki bi bila zavrnjena. */
-  smemUrejati: (idLastnik: number | null, idKlubLastnik: number | null) => boolean
+     vse, organizator svoje (idLastnik), od svojega kluba (idKlubLastnik) ali
+     tisto, do katerega mu je admin dodelil dostop (tretji parameter pove, katero
+     tekmovanje je to; brez njega dodelitev ne šteje). Strežnik je zadnja
+     obramba - to le skrije dejanja, ki bi bila zavrnjena. */
+  smemUrejati: (
+    idLastnik: number | null,
+    idKlubLastnik: number | null,
+    tekmovanje?: TekmovanjeDostopa,
+  ) => boolean
   /* Med začetnim preverjanjem shranjenih poverilnic. */
   nalaganje: boolean
   /* Vrne profil, da okno za prijavo ve, ali naslov še čaka na kodo. */
@@ -126,12 +139,20 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     || ((uporabnik?.paket === 'PREMIUM' || uporabnik?.paket === 'NAVIJAC') && !!uporabnik.paketAktiven)
 
   /* Ali sme prijavljeni urejati turnir/ligo z danim lastništvom. */
-  function smemUrejati(idLastnik: number | null, idKlubLastnik: number | null): boolean {
+  function smemUrejati(
+    idLastnik: number | null,
+    idKlubLastnik: number | null,
+    tekmovanje?: TekmovanjeDostopa,
+  ): boolean {
     if (jeAdmin) return true
     if (!jeOrganizator || !uporabnik) return false
     if (idLastnik !== null && idLastnik === uporabnik.id) return true
     if (idKlubLastnik !== null && uporabnik.idKlub !== null && idKlubLastnik === uporabnik.idKlub) {
       return true
+    }
+    if (tekmovanje) {
+      const dodeljena = tekmovanje.vrsta === 'liga' ? uporabnik.dostopLige : uporabnik.dostopTurnirji
+      return (dodeljena ?? []).includes(tekmovanje.id)
     }
     return false
   }

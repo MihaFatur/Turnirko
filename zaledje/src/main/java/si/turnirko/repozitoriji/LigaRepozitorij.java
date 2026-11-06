@@ -3,7 +3,6 @@
    transakcije. */
 package si.turnirko.repozitoriji;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -16,12 +15,6 @@ import si.turnirko.modeli.Liga;
 import si.turnirko.pomozno.SlovenskaAbeceda;
 
 public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
-
-    /* Koliko lig je ta organizator ustvaril od zacetka tekoce sezone - meja
-       placilnega paketa (NarocninaStoritev). Kvalifikacije med ligami ne
-       stejejo: so podaljsek lig, ki jih je ze stela, in ne novo tekmovanje. */
-    long countByUstvarilIdAndUstvarjenObGreaterThanEqualAndKvalifikacijeVisjaIsNull(
-            Long idUstvaril, LocalDateTime odSezone);
 
     /* Liga kvalifikacij med danima ligama, ce je ze ustvarjena. */
     @Query("""
@@ -154,10 +147,15 @@ public interface LigaRepozitorij extends JpaRepository<Liga, Long> {
             """)
     Optional<Liga> najdiZLastnistvomPoSeriji(Long idSerija);
 
-    /* Vse lige, ki jih je racun USTVARIL - vir organizatorskega pregleda
-       (glej TurnirRepozitorij.najdiZaUstvarjalca). */
-    @Query("SELECT l FROM Liga l WHERE l.ustvaril.id = :idUstvaril")
-    List<Liga> najdiZaUstvarjalca(Long idUstvaril);
+    /* Vse lige, ki jih je racun USTVARIL ali mu jih je admin DODELIL - vir
+       organizatorskega pregleda (glej TurnirRepozitorij.najdiZaOrganizatorja). */
+    @Query("""
+            SELECT l FROM Liga l
+            WHERE l.ustvaril.id = :idRacun
+               OR l.id IN (SELECT d.idLiga FROM DostopOrganizatorja d
+                           WHERE d.idRacun = :idRacun AND d.idLiga IS NOT NULL)
+            """)
+    List<Liga> najdiZaOrganizatorja(Long idRacun);
 
     /* Koliko lig nosi sliko kot logotip (V54) - izbris slike je dovoljen samo
        pri nic, uporaba tuje slike pa samo, ce je ze javna. */

@@ -26,6 +26,7 @@ import { DogodekObrazecOkno } from '../komponente/DogodekObrazecOkno'
 import { TurnirObrazecOkno } from './TurnirjiStran'
 import { LogotipOkno } from '../komponente/LogotipOkno'
 import { LogotipTekmovanja } from '../komponente/LogotipTekmovanja'
+import { OrganizatorjiOkno } from '../komponente/OrganizatorjiOkno'
 import { PokroviteljiOkno } from '../komponente/PokroviteljiOkno'
 import { PokroviteljiTrak } from '../komponente/PokroviteljiTrak'
 import { MeniDejanj } from '../komponente/MeniDejanj'
@@ -60,8 +61,10 @@ type PogledTurnirja = 'DOGODKI' | 'ZANIMIVOSTI'
 export function TurnirStran() {
   const { id } = useParams()
   const idTurnirja = Number(id)
+  /* Dodeljen dostop (V62) je vezan na id turnirja, zato ga smemUrejati dobi zraven. */
+  const dostopTurnirja = { vrsta: 'turnir', id: idTurnirja } as const
   const odjemalec = useQueryClient()
-  const { smemUrejati } = useAvtentikacija()
+  const { smemUrejati, jeAdmin } = useAvtentikacija()
   const jeTelefon = useTelefon()
   useNazaj('/turnirji', 'Turnirji')
 
@@ -82,6 +85,7 @@ export function TurnirStran() {
   const [potrjujemZakljucek, nastaviPotrjujemZakljucek] = useState(false)
   const [logotipOdprt, nastaviLogotipOdprt] = useState(false)
   const [pokroviteljiOdprti, nastaviPokrovitelje] = useState(false)
+  const [organizatorjiOdprti, nastaviOrganizatorje] = useState(false)
   const [pogled, nastaviPogled] = useState<PogledTurnirja>('DOGODKI')
   const [podrobnosti, nastaviPodrobnosti] = useState(false)
 
@@ -109,7 +113,7 @@ export function TurnirStran() {
      dogodka (isti zapis), pri čistem izločilnem sistemu mreža obstaja od žreba.
      Naloži se samo za urejevalca - gost gumba ne vidi. */
   const smemUrejatiTurnir =
-    !!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik)
+    !!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik, dostopTurnirja)
     && turnir.data.vir == null && turnir.data.status !== 'ZAKLJUCEN'
   const kandidatiMreze = smemUrejatiTurnir
     ? (dogodki.data ?? []).filter(
@@ -132,7 +136,7 @@ export function TurnirStran() {
   const podatki = turnir.data!
   /* Organizator sme upravljati svoj (ali klubski) turnir, admin vse - razen
      uvoženega: vir resnice je zveza, strežnik mutacijo zavrne. */
-  const smem = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik) && podatki.vir == null
+  const smem = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik, dostopTurnirja) && podatki.vir == null
 
   /* Gumb za zakljucek ponudimo sele, ko so vsi dogodki zakljuceni. */
   const vsiDogodkiZakljuceni =
@@ -181,7 +185,7 @@ export function TurnirStran() {
   const zanimivostiVsebina = (
     <>
       {/* Kaj vidijo ostali - samo lastniku in adminu; gost ga ne dobi. */}
-      {smemUrejati(podatki.idLastnik, podatki.idKlubLastnik) && (
+      {smemUrejati(podatki.idLastnik, podatki.idKlubLastnik, dostopTurnirja) && (
         <NastavitveZanimivosti vrsta="turnir" id={idTurnirja} />
       )}
       <NapakaPoizvedbe poizvedba={zanimivosti} kaj="zanimivosti" />
@@ -194,7 +198,7 @@ export function TurnirStran() {
 
   /* Logotip je prikaz, ne pravilo: lastnik ga sme tudi po zaključku in pri
      uvoženem turnirju (kot skrite razdelke Zanimivosti). */
-  const smemLogotip = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik)
+  const smemLogotip = smemUrejati(podatki.idLastnik, podatki.idKlubLastnik, dostopTurnirja)
 
   /* Okni (nov dogodek, potrditev zakljucka) sta na obeh sirinah isti. */
   const okna = (
@@ -215,6 +219,15 @@ export function TurnirStran() {
           id={idTurnirja}
           ime={podatki.ime}
           onZapri={() => nastaviPokrovitelje(false)}
+        />
+      )}
+
+      {jeAdmin && organizatorjiOdprti && (
+        <OrganizatorjiOkno
+          vrsta="turnir"
+          id={idTurnirja}
+          ime={podatki.ime}
+          onZapri={() => nastaviOrganizatorje(false)}
         />
       )}
 
@@ -310,6 +323,19 @@ export function TurnirStran() {
                   >
                     Pokrovitelji
                   </button>
+                  {jeAdmin && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={() => {
+                        zapri()
+                        nastaviOrganizatorje(true)
+                      }}
+                    >
+                      Organizatorji
+                    </button>
+                  )}
                   {seUreja && (
                     <button
                       type="button"
@@ -508,6 +534,11 @@ export function TurnirStran() {
             {smemLogotip && (
               <button className="gumb" onClick={() => nastaviPokrovitelje(true)}>
                 Pokrovitelji
+              </button>
+            )}
+            {jeAdmin && (
+              <button className="gumb" onClick={() => nastaviOrganizatorje(true)}>
+                Organizatorji
               </button>
             )}
             {smem && podatki.status !== 'ZAKLJUCEN' && (

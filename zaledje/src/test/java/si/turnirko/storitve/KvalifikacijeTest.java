@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,17 +35,23 @@ import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.TekmaSrecanjaDto;
 import si.turnirko.dto.VnosRezultataSrecanja;
 import si.turnirko.izjeme.DomenskaIzjema;
+import si.turnirko.modeli.DostopOrganizatorja;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
 import si.turnirko.modeli.NacinKvalifikacij;
 import si.turnirko.modeli.RavenTekmovanja;
 import si.turnirko.modeli.SpolKategorija;
+import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.StatusSrecanja;
 import si.turnirko.modeli.StatusTekmeSrecanja;
 import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.StranEkipe;
+import si.turnirko.modeli.Uporabnik;
+import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.DostopOrganizatorjaRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
+import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 class KvalifikacijeTest extends IntegracijskiTest {
 
@@ -53,6 +60,8 @@ class KvalifikacijeTest extends IntegracijskiTest {
     @Autowired private KoncnicaStoritev koncnicaStoritev;
     @Autowired private KvalifikacijeStoritev kvalifikacijeStoritev;
     @Autowired private LigaRepozitorij ligaRepozitorij;
+    @Autowired private UporabnikRepozitorij uporabnikRepozitorij;
+    @Autowired private DostopOrganizatorjaRepozitorij dostopRepozitorij;
 
     /* Cone od roba navznoter: napreduje, kvalifikacije gor, ..., kvalifikacije
        dol, izpade. */
@@ -113,6 +122,24 @@ class KvalifikacijeTest extends IntegracijskiTest {
         assertFalse(kvalifikacijeStoritev.predlog(l.a, l.b).ovire().isEmpty());
         assertThrows(DomenskaIzjema.class, () -> kvalifikacijeStoritev.ustvari(l.a,
                 new KvalifikacijeVnos(l.b, NacinKvalifikacij.ENA_TEKMA, null)));
+    }
+
+    /* Organizator, ki mu je admin dodelil visjo ligo (V62), vodi tudi njene
+       kvalifikacije - kot ju vodita lastnik in klub, ki ju podedujejo. */
+    @Test
+    void dodeljenDostopVisjeLigePrideTudiNaKvalifikacije() {
+        Lige l = dveLigi(1, 1);
+        Uporabnik organizator = new Uporabnik("kval-organizator@test", "{bcrypt}x", Vloga.ORGANIZATOR);
+        organizator.setStatus(StatusRacuna.POTRJEN);
+        organizator = uporabnikRepozitorij.save(organizator);
+        dostopRepozitorij.save(DostopOrganizatorja.zaLigo(l.a, organizator.getId(), true, LocalDateTime.now()));
+
+        LigaDto kval = kvalifikacijeStoritev.ustvari(l.a,
+                new KvalifikacijeVnos(l.b, NacinKvalifikacij.ENA_TEKMA, null));
+
+        DostopOrganizatorja vrstica = dostopRepozitorij.findByIdLigaAndIdRacun(kval.id(), organizator.getId())
+                .orElseThrow();
+        assertFalse(vrstica.isStejeVMejo(), "kvalifikacije v mejo paketa ne stejejo");
     }
 
     /* Krizni pari: najbolje uvrscena ekipa visje lige z najslabse uvrsceno

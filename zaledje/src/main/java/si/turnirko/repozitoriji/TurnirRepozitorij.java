@@ -7,7 +7,6 @@
 package si.turnirko.repozitoriji;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,10 +17,6 @@ import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Turnir;
 
 public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
-
-    /* Koliko turnirjev je ta organizator ustvaril od zacetka tekoce sezone -
-       meja placilnega paketa (NarocninaStoritev). */
-    long countByUstvarilIdAndUstvarjenObGreaterThanEqual(Long idUstvaril, LocalDateTime odSezone);
 
     /* Prazni turnirji iz koledarja, ki jih sme prevzeti uvoz iz Stupe
        (PrevzemKoledarja): brez vira, v danem stanju (PRIPRAVA), brez dogodkov,
@@ -156,15 +151,18 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             """)
     Optional<Turnir> najdiZLastnistvomPoKadru(Long idKader);
 
-    /* Vsi turnirji, ki jih je racun USTVARIL (ne tudi klubski), s krajem - vir
-       organizatorskega pregleda. Isto merilo kot meja paketa (ustvaril), ne
-       kot pravica urejanja (ustvaril ALI klub). Vrstni red ni zagotovljen. */
+    /* Vsi turnirji, ki jih je racun USTVARIL ali mu jih je admin DODELIL (ne tudi
+       klubski), s krajem - vir organizatorskega pregleda. Isto merilo kot meja
+       paketa (ustvaril + dodeljeno), ne kot pravica urejanja (ta zajame se
+       klub). Vrstni red ni zagotovljen. */
     @Query("""
             SELECT t FROM Turnir t
             LEFT JOIN FETCH t.kraj
-            WHERE t.ustvaril.id = :idUstvaril
+            WHERE t.ustvaril.id = :idRacun
+               OR t.id IN (SELECT d.idTurnir FROM DostopOrganizatorja d
+                           WHERE d.idRacun = :idRacun AND d.idTurnir IS NOT NULL)
             """)
-    List<Turnir> najdiZaUstvarjalca(Long idUstvaril);
+    List<Turnir> najdiZaOrganizatorja(Long idRacun);
 
     /* Koliko turnirjev nosi sliko kot logotip (V54; glej LigaRepozitorij). */
     long countByLogotipId(Long idSlika);

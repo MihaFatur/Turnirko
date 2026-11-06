@@ -6,8 +6,10 @@
    storitvah (in ne @PreAuthorize), jo storitveni testi normalno sprozijo.
 
    Pravilo: turnir/ligo sme urejati administrator (vse), organizator pa le
-   svoje (ustvaril == on) ali od svojega kluba (klubLastnik == njegov klub).
-   Klub je pri organizatorju neobvezen; brez kluba upravlja samo svoje.
+   svoje (ustvaril == on), od svojega kluba (klubLastnik == njegov klub) ali
+   tisto, do katerega mu je admin dodelil dostop (DostopOrganizatorja, V62).
+   Klub je pri organizatorju neobvezen; brez kluba upravlja samo svoje in
+   dodeljeno.
 
    UVOZENO TEKMOVANJE JE SAMO ZA BRANJE (V27) - za vse, tudi za administratorja
    in tudi brez varnostnega konteksta. Vir resnice je zveza: popravek v
@@ -22,6 +24,8 @@
    mutacije brez veljavne prijave sploh ne pride (ustavi jo veriga). */
 package si.turnirko.storitve;
 
+import java.util.function.Predicate;
+
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,6 +39,7 @@ import si.turnirko.modeli.Liga;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.DostopOrganizatorjaRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.TurnirRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
@@ -49,13 +54,16 @@ public class LastnistvoStoritev {
     private final UporabnikRepozitorij uporabnikRepozitorij;
     private final TurnirRepozitorij turnirRepozitorij;
     private final LigaRepozitorij ligaRepozitorij;
+    private final DostopOrganizatorjaRepozitorij dostopRepozitorij;
 
     public LastnistvoStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                               TurnirRepozitorij turnirRepozitorij,
-                              LigaRepozitorij ligaRepozitorij) {
+                              LigaRepozitorij ligaRepozitorij,
+                              DostopOrganizatorjaRepozitorij dostopRepozitorij) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
         this.ligaRepozitorij = ligaRepozitorij;
+        this.dostopRepozitorij = dostopRepozitorij;
     }
 
     /* Trenutno prijavljeni uporabnik ali null, ce prijave ni (gost, interni
@@ -100,7 +108,7 @@ public class LastnistvoStoritev {
         if (turnir.jeUvozen()) {
             throw new DomenskaIzjema(String.format(SAMO_ZA_BRANJE, turnir.getVir().getOznaka()));
         }
-        preveri(turnir.getUstvaril(), turnir.getKlubLastnik(), "turnirja");
+        preveriTurnirskoLastnistvo(turnir);
     }
 
     public void preveriTurnirPoId(Long idTurnir) {
@@ -128,7 +136,7 @@ public class LastnistvoStoritev {
     public void preveriTurnirZaPrikazPoId(Long idTurnir) {
         Turnir turnir = turnirRepozitorij.najdiZLastnistvom(idTurnir)
                 .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + idTurnir + " ne obstaja."));
-        preveri(turnir.getUstvaril(), turnir.getKlubLastnik(), "turnirja");
+        preveriTurnirskoLastnistvo(turnir);
     }
 
     // ---------- Preverba: liga ----------
@@ -137,7 +145,7 @@ public class LastnistvoStoritev {
         if (liga.jeUvozena()) {
             throw new DomenskaIzjema(String.format(SAMO_ZA_BRANJE, liga.getVir().getOznaka()));
         }
-        preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige");
+        preveriLigaskoLastnistvo(liga);
     }
 
     public void preveriLigaPoId(Long idLiga) {
@@ -147,15 +155,13 @@ public class LastnistvoStoritev {
     /* Preverba za OPIS lige (mesto v piramidi), ki ni pravilo tekmovanja in ga
        vir ne pozna - zato je dovoljen tudi pri uvozeni ligi. */
     public void preveriLigaZaOpis(Long idLiga) {
-        Liga liga = najdiLigo(idLiga);
-        preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige");
+        preveriLigaskoLastnistvo(najdiLigo(idLiga));
     }
 
     /* Enako kot pri turnirju: prikaz zavihka, ne pravilo lige (uvožena liga ostane
        brez urejanja pravil, razdelke pa sme organizator). */
     public void preveriLigaZaPrikazPoId(Long idLiga) {
-        Liga liga = najdiLigo(idLiga);
-        preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige");
+        preveriLigaskoLastnistvo(najdiLigo(idLiga));
     }
 
     public void preveriLigaPoSeriji(Long idSerija) {
@@ -214,7 +220,17 @@ public class LastnistvoStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Liga z id " + idLiga + " ne obstaja."));
     }
 
-    private void preveri(Uporabnik lastnik, Klub klubLastnik, String kaj) {
+    private void preveriTurnirskoLastnistvo(Turnir turnir) {
+        preveri(turnir.getUstvaril(), turnir.getKlubLastnik(), "turnirja",
+                idRacun -> dostopRepozitorij.existsByIdTurnirAndIdRacun(turnir.getId(), idRacun));
+    }
+
+    private void preveriLigaskoLastnistvo(Liga liga) {
+        preveri(liga.getUstvaril(), liga.getKlubLastnik(), "lige",
+                idRacun -> dostopRepozitorij.existsByIdLigaAndIdRacun(liga.getId(), idRacun));
+    }
+
+    private void preveri(Uporabnik lastnik, Klub klubLastnik, String kaj, Predicate<Long> imaDodeljenDostop) {
         Uporabnik jaz = trenutni();
         if (jaz == null) {
             return; // ni varnostnega konteksta - produkcijo varuje veriga
@@ -222,13 +238,17 @@ public class LastnistvoStoritev {
         if (jaz.getVloga() == Vloga.ADMIN) {
             return; // administrator sme vse
         }
-        if (jaz.getVloga() == Vloga.ORGANIZATOR && smeUrejati(jaz, lastnik, klubLastnik)) {
+        if (jaz.getVloga() == Vloga.ORGANIZATOR
+                && (smeUrejati(jaz, lastnik, klubLastnik) || imaDodeljenDostop.test(jaz.getId()))) {
             return;
         }
         throw new PrepovedanoIzjema("Nimate pravice urejati tega " + kaj + ".");
     }
 
-    /* Organizator sme, ce je zapis njegov (ustvaril) ali od njegovega kluba. */
+    /* Organizator sme, ce je zapis njegov (ustvaril) ali od njegovega kluba.
+       Tretja pot, dostop, ki mu ga je dodelil admin (DostopOrganizatorja), je
+       v klicatelju: poizvedba v bazo je zadnja, ker prvi dve ne potrebujeta
+       nobene. */
     private boolean smeUrejati(Uporabnik jaz, Uporabnik lastnik, Klub klubLastnik) {
         if (lastnik != null && lastnik.getId().equals(jaz.getId())) {
             return true;

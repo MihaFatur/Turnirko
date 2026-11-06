@@ -17,7 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
 import type { EkipaDto, LestvicaEkipeDto, LigaDto, SrecanjeDto } from '../api/tipi'
 import { OZNAKE_FORMAT, OZNAKE_RAVEN, nizovZaZmago } from '../api/tipi'
-import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
+import { useAvtentikacija, type TekmovanjeDostopa } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   GlavaDejanja,
   GlavaNaslov,
@@ -35,6 +35,7 @@ import { LestviceLige } from '../komponente/LestviceLige'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { LogotipOkno } from '../komponente/LogotipOkno'
 import { LogotipTekmovanja } from '../komponente/LogotipTekmovanja'
+import { OrganizatorjiOkno } from '../komponente/OrganizatorjiOkno'
 import { PokroviteljiOkno } from '../komponente/PokroviteljiOkno'
 import { PokroviteljiTrak } from '../komponente/PokroviteljiTrak'
 import { MeniDejanj } from '../komponente/MeniDejanj'
@@ -80,7 +81,7 @@ type MobilniPogled = 'LESTVICA' | 'RAZPORED' | 'KONCNICA' | 'PIRAMIDA' | 'ZANIMI
 export function LigaStran() {
   const { id } = useParams()
   const idLiga = Number(id)
-  const { smemUrejati } = useAvtentikacija()
+  const { smemUrejati, jeAdmin } = useAvtentikacija()
   const jeTelefon = useTelefon()
   /* Na telefonu glava strani ni nosila konteksta (samo logotip), ker stran
      kavlja ni klicala - gledalec ni imel poti nazaj na seznam lig. Kontekst
@@ -114,6 +115,7 @@ export function LigaStran() {
   const [razveljavitevKvalOdprta, nastaviRazveljavitevKval] = useState(false)
   const [logotipOdprt, nastaviLogotipOdprt] = useState(false)
   const [pokroviteljiOdprti, nastaviPokrovitelje] = useState(false)
+  const [organizatorjiOdprti, nastaviOrganizatorje] = useState(false)
 
   /* Zanimivosti se naložijo šele, ko gledalec odpre zavihek — poizvedba je
      nekaj skupinskih seštevkov čez vse tekme lige in strani z lestvico ne sme
@@ -229,7 +231,7 @@ export function LigaStran() {
   /* Organizator sme urejati svojo (ali klubsko) ligo, admin vse - razen
      uvožene: vir resnice je zveza (strežnik mutacijo zavrne). Opis lige v
      piramidi (prehodi) vir ne pozna, zato ga lastnik ureja tudi pri uvoženi. */
-  const smemPoLastnistvu = smemUrejati(l.idLastnik, l.idKlubLastnik)
+  const smemPoLastnistvu = smemUrejati(l.idLastnik, l.idKlubLastnik, { vrsta: 'liga', id: l.id })
   const uvozena = l.vir != null
   const smem = smemPoLastnistvu && !uvozena
   const vPripravi = l.dejanskiStatus === 'PRIPRAVA'
@@ -346,6 +348,15 @@ export function LigaStran() {
           id={idLiga}
           ime={l.sezona ? `${l.ime} · ${l.sezona}` : l.ime}
           onZapri={() => nastaviPokrovitelje(false)}
+        />
+      )}
+
+      {jeAdmin && organizatorjiOdprti && (
+        <OrganizatorjiOkno
+          vrsta="liga"
+          id={idLiga}
+          ime={l.sezona ? `${l.ime} · ${l.sezona}` : l.ime}
+          onZapri={() => nastaviOrganizatorje(false)}
         />
       )}
 
@@ -559,6 +570,19 @@ export function LigaStran() {
                   >
                     Pokrovitelji
                   </button>
+                  {jeAdmin && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={() => {
+                        zapri()
+                        nastaviOrganizatorje(true)
+                      }}
+                    >
+                      Organizatorji
+                    </button>
+                  )}
                   {/* Razveljavitev se ponudi samo v oknu, ko je še mogoča —
                       trajno ugasnjena postavka bi bila sredi sezone samo šum. */}
                   {nobenoOdigrano && (
@@ -849,6 +873,16 @@ export function LigaStran() {
                   onClick={() => nastaviPokrovitelje(true)}
                 >
                   Pokrovitelji
+                </button>
+              )}
+              {/* Dostop organizatorjev in štetje v mejo paketa ureja samo admin. */}
+              {jeAdmin && (
+                <button
+                  type="button"
+                  className="gumb gumb--majhen"
+                  onClick={() => nastaviOrganizatorje(true)}
+                >
+                  Organizatorji
                 </button>
               )}
               {/* Razveljavitev stoji ob ostalih dejanjih samo v oknu, ko je še
@@ -1509,7 +1543,11 @@ interface MejaKvalifikacij {
 function mejeKvalifikacij(
   liga: LigaDto,
   vse: LigaDto[],
-  smemUrejati: (idLastnik: number | null, idKlubLastnik: number | null) => boolean,
+  smemUrejati: (
+    idLastnik: number | null,
+    idKlubLastnik: number | null,
+    tekmovanje?: TekmovanjeDostopa,
+  ) => boolean,
 ): MejaKvalifikacij[] {
   if (liga.idKvalifikacijeVisja != null) return []
   const ta = vse.find((k) => k.id === liga.id) ?? liga
@@ -1520,7 +1558,8 @@ function mejeKvalifikacij(
     obstojece: vse.find(
       (k) => k.idKvalifikacijeVisja === visja.id && k.idKvalifikacijeNizja === nizja.id,
     ) ?? null,
-    smemUstvariti: visja.vir == null && smemUrejati(visja.idLastnik, visja.idKlubLastnik),
+    smemUstvariti: visja.vir == null
+      && smemUrejati(visja.idLastnik, visja.idKlubLastnik, { vrsta: 'liga', id: visja.id }),
   })
   const meje: MejaKvalifikacij[] = []
   const visja = liga.idVisjaLiga != null ? vse.find((k) => k.id === liga.idVisjaLiga) : undefined

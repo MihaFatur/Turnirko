@@ -111,7 +111,8 @@ export function SrecanjeStran() {
      admin vse - razen uvozenih: vir resnice je zveza. */
   const lastnik = liga.data ?? turnir.data
   const smem = k.vir == null
-    && (jeAdmin || (!!lastnik && smemUrejati(lastnik.idLastnik, lastnik.idKlubLastnik)))
+    && (jeAdmin || (!!lastnik && smemUrejati(lastnik.idLastnik, lastnik.idKlubLastnik,
+      liga.data ? { vrsta: 'liga', id: liga.data.id } : { vrsta: 'turnir', id: lastnik.id })))
   const opis = k.opis ?? `${s.kolo}. kolo`
   const imaRezultate = p.tekme.some((t) => t.status === 'KONCANA')
   const lahkoUrejaPostavo = smem && s.status !== 'KONCANO' && !imaRezultate

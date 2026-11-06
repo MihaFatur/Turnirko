@@ -59,6 +59,18 @@ public interface UporabnikRepozitorij extends JpaRepository<Uporabnik, Long> {
             """)
     List<Uporabnik> najdiRacuneOseb();
 
+    /* Potrjeni in aktivni organizatorji, z lastnim klubom - kandidati za dodeljen
+       dostop do tekmovanja (DostopOrganizatorjevStoritev). Vrstni red uredi
+       storitev po slovenski abecedi. */
+    @Query("""
+            SELECT u FROM Uporabnik u
+            LEFT JOIN FETCH u.klub
+            WHERE u.vloga = si.turnirko.modeli.Vloga.ORGANIZATOR
+              AND u.status = si.turnirko.modeli.StatusRacuna.POTRJEN
+              AND u.aktiven = true
+            """)
+    List<Uporabnik> najdiAktivneOrganizatorje();
+
     long countByVlogaAndStatus(si.turnirko.modeli.Vloga vloga, StatusRacuna status);
 
     /* Vsi racuni v danem stanju (za stevec cakajocih - igralci IN organizatorji;

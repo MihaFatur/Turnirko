@@ -205,7 +205,8 @@ export function DogodekStran() {
   /* Organizator sme upravljati dogodke svojega (ali klubskega) turnirja, admin
      vse - razen uvoženih: vir resnice je zveza. */
   const smem = !uvozen
-    && (jeAdmin || (!!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik)))
+    && (jeAdmin || (!!turnir.data && smemUrejati(turnir.data.idLastnik, turnir.data.idKlubLastnik,
+      { vrsta: 'turnir', id: turnir.data.id })))
 
   /* Kontrole sledijo dejanskemu stanju, napis (status) pa gledalcu: po zrebu, pred
      datumom turnirja, so prijave zaprte, zreb pa je se popravljiv. */

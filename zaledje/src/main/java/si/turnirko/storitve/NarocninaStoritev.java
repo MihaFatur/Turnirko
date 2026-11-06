@@ -4,6 +4,8 @@
      obvestila po kolu ima od 23. 10. 2026 vsak racun;
    - organizator sme na sezono ustvariti toliko turnirjev/lig, kolikor
      dovoljuje njegov paket (TurnirjiStoritev.ustvari, LigaStoritev.ustvari).
+     V mejo steje, kar je ustvaril, in kar mu je admin dodelil kot stetje v
+     mejo (DostopOrganizatorja); admin lahko ustvarjeno tekmovanje tudi izvzame.
 
    Admin nima paketa in ni nikoli omejen - to preveri vsak klicatelj sam
    (isti vzorec kot LastnistvoStoritev: admin gre mimo, preden vpraša tu). */
@@ -23,10 +25,9 @@ import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.Sezona;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.repozitoriji.DostopOrganizatorjaRepozitorij;
 import si.turnirko.repozitoriji.DruzinaPovezavaRepozitorij;
-import si.turnirko.repozitoriji.LigaRepozitorij;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
-import si.turnirko.repozitoriji.TurnirRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
 
 @Service
@@ -44,22 +45,19 @@ public class NarocninaStoritev {
     private static final Omejitev PRO = new Omejitev(5, 10);
 
     private final NarocninaRepozitorij narocninaRepozitorij;
-    private final TurnirRepozitorij turnirRepozitorij;
-    private final LigaRepozitorij ligaRepozitorij;
+    private final DostopOrganizatorjaRepozitorij dostopRepozitorij;
     private final DruzinaPovezavaRepozitorij druzinaRepozitorij;
     private final UporabnikRepozitorij uporabnikRepozitorij;
 
     private final Zaklepi zaklepi;
 
     public NarocninaStoritev(NarocninaRepozitorij narocninaRepozitorij,
-                             TurnirRepozitorij turnirRepozitorij,
-                             LigaRepozitorij ligaRepozitorij,
+                             DostopOrganizatorjaRepozitorij dostopRepozitorij,
                              Zaklepi zaklepi,
                              DruzinaPovezavaRepozitorij druzinaRepozitorij,
                              UporabnikRepozitorij uporabnikRepozitorij) {
         this.narocninaRepozitorij = narocninaRepozitorij;
-        this.turnirRepozitorij = turnirRepozitorij;
-        this.ligaRepozitorij = ligaRepozitorij;
+        this.dostopRepozitorij = dostopRepozitorij;
         this.zaklepi = zaklepi;
         this.druzinaRepozitorij = druzinaRepozitorij;
         this.uporabnikRepozitorij = uporabnikRepozitorij;
@@ -160,16 +158,21 @@ public class NarocninaStoritev {
         }
     }
 
-    /* Koliko turnirjev oz. lig je racun ustvaril v sezoni, ki tece na dani dan.
-       Ena metoda za preverbo ob ustvarjanju in za pregled organizatorja. */
+    /* Koliko turnirjev oz. lig steje v mejo racuna v sezoni, ki tece na dani
+       dan: tisti, ki jih je ustvaril, in tisti, ki jih je admin dodelil kot
+       stetje v mejo (DostopOrganizatorja). Admin lahko ustvarjeno tekmovanje iz
+       meje tudi izvzame. Ena metoda za preverbo ob ustvarjanju in za pregled
+       organizatorja, zato mejo vedno bere ista stevilka. */
     public long steviloTurnirjevVSezoni(Long idUporabnik, LocalDate danes) {
-        return turnirRepozitorij.countByUstvarilIdAndUstvarjenObGreaterThanEqual(
-                idUporabnik, Sezona.zacetek(danes).atStartOfDay());
+        LocalDateTime od = Sezona.zacetek(danes).atStartOfDay();
+        return dostopRepozitorij.steviloUstvarjenihTurnirjev(idUporabnik, od)
+                + dostopRepozitorij.steviloDodeljenihTurnirjev(idUporabnik, od);
     }
 
     public long steviloLigVSezoni(Long idUporabnik, LocalDate danes) {
-        return ligaRepozitorij.countByUstvarilIdAndUstvarjenObGreaterThanEqualAndKvalifikacijeVisjaIsNull(
-                idUporabnik, Sezona.zacetek(danes).atStartOfDay());
+        LocalDateTime od = Sezona.zacetek(danes).atStartOfDay();
+        return dostopRepozitorij.steviloUstvarjenihLig(idUporabnik, od)
+                + dostopRepozitorij.steviloDodeljenihLig(idUporabnik, od);
     }
 
     /* Meje organizatorskega paketa; prazno za vsak drug paket. */

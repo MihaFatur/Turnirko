@@ -68,18 +68,29 @@ export function preveriNize(
   return null
 }
 
+/* Ali je enomestna števka d (2–9) začetek dvomestnega izida v podaljšku, ki se ujema
+   z drugim stolpcem: izid 2x ima nasprotnika natanko dve točki stran (21 pri 19, 23
+   pri 25). Takrat d ni poraz z 11, zato drugega stolpca ne sme prepisati — prej je
+   pri 19:21 vpis »2« v drugem stolpcu prepisal 19 z 11 in tako ni bilo mogoče vnesti
+   nobenega podaljška nad 21:19. */
+export function zacetekPodaljska(d: number, drugo: number): boolean {
+  if (d < 2 || d > 9) return false
+  return drugo >= 10 * d - 2 && drugo <= 10 * d + 11
+}
+
 /* Drugi stolpec niza, ko je vpisan prvi, kadar je izid edini mogoč:
-   - 2–9 (ali 0) pomeni, da je nasprotnik zmagal z 11;
+   - 2–9 (ali 0) pomeni, da je nasprotnik zmagal z 11, razen če drugi stolpec že nosi
+     podaljšek, ki se s to števko ujema (zacetekPodaljska);
    - 10 pomeni zmago z 12, ker zmaga šele z dvema točkama razlike;
    - 1 je lahko začetek 10, zato se 11 zapiše samo v prazen stolpec; prejšnja
      vrednost ostane, da brisanje 11 v 1 ne prepiše drugega stolpca;
    - dvomestni vpis 11 in več pomeni, da je zmagal ta stolpec, zato se ostanek 11
      iz prejšnjega samodejnega vpisa izbriše (drugi ne more imeti 11). */
-function drugaTocka(vpis: string, drugo: string): string {
+export function drugaTocka(vpis: string, drugo: string): string {
   if (vpis === '') return drugo
   if (vpis === '1') return drugo === '' ? '11' : drugo
   if (vpis === '10') return '12'
-  if (vpis.length === 1) return '11'
+  if (vpis.length === 1) return zacetekPodaljska(Number(vpis), Number(drugo)) ? drugo : '11'
   return drugo === '11' ? '' : drugo
 }
 
@@ -183,6 +194,7 @@ export function TockeNizov({
     const indeks = Math.floor(mesto / 2)
     const stran = mesto % 2 === 0 ? 'tocke1' : 'tocke2'
     const drugaStran = mesto % 2 === 0 ? 'tocke2' : 'tocke1'
+    const drugo = vrstice[indeks][drugaStran]
     nastaviVrstice((prejsnje) =>
       prejsnje.map((vrstica, i) =>
         i === indeks
@@ -191,6 +203,8 @@ export function TockeNizov({
       ),
     )
     if (vpis === '' || vpis === '1') return
+    // enomestna števka, ki se ujema z drugim stolpcem v podaljšku, ni konec niza
+    if (vpis.length === 1 && zacetekPodaljska(Number(vpis), Number(drugo))) return
     if (vpis.length >= 2 && vpis !== '10') naMesto(mesto + 1)
     // konec niza: levi stolpec naslednje vrstice; pri zadnji vrstici fokus ostane
     else naMesto((indeks + 1) * 2)
