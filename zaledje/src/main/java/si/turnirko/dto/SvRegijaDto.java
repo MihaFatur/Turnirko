@@ -1,4 +1,4 @@
-/* Pregled sistema SV_REGIJA: nivoji, njihove skupine in zrebi.
+/* Pregled sistema SV_REGIJA: Skupine (v kodi nivoji), njihove skupine in zrebi.
 
    Pred zrebom skupin je to PREDOGLED razreza (kako bi se igralci razdelili po
    trenutnem stevilu prijav in nastavitvah), po zrebu pa stanje iz baze. Razrez
@@ -26,20 +26,25 @@ public record SvRegijaDto(
         /* Nastavitve, kot jih je vpisal organizator (prazno = samodejno). */
         Integer steviloNivojev,
         List<Integer> velikostiNivojev,
-        List<Integer> rangovVZreb
+        /* Zrebi po nivojih, kot jih je vpisal organizator (null = samodejno). */
+        List<Integer> steviloZrebov,
+        List<Integer> velikostZrebov
 ) {
 
-    /* Nivo (tezavnostna skupina): koliko igralcev, katera mesta zajame in
-       kakšne so njegove skupine ter zrebi. velikostiSkupin je po zrebu
-       dejanska, pred njim predlagana (vecje skupine najprej). */
+    /* Nivo (Skupina 1, 2 ...): koliko igralcev, katera mesta zajame in kakšne
+       so njegove skupine ter zrebi. velikostiSkupin je po zrebu dejanska, pred
+       njim predlagana (vecje skupine najprej). */
     public record NivoDto(
             int nivo,
             int velikost,
             int odMesta,
             int doMesta,
             List<Integer> velikostiSkupin,
-            /* Koliko rangov iz vsake skupine pride v en zreb (1 ali 2). */
-            int rangovVZreb,
+            /* Velikost mreze ravni, na kateri se zrebi nivoja zacnejo (8 =
+               cetrtfinale); zadnji zreb je lahko manjsi. */
+            int velikostZreba,
+            /* Stevilo zrebov, ki ga je vpisal organizator; null = samodejno. */
+            Integer vpisanoZrebov,
             List<ZrebDto> zrebi
     ) {}
 
@@ -60,6 +65,10 @@ public record SvRegijaDto(
             boolean uredljiv,
             /* Prijave po mestih v mrezi od vrha navzdol (null = prosto mesto);
                prazen seznam, dokler zreb ni zgrajen. */
-            List<Long> razpored
+            List<Long> razpored,
+            /* Od kod pridejo udelezenci, po vrsti: "A1", "B1", ... "C2" (crka
+               skupine in mesto v njej). Po zrebu skupin dejanski, pred njim po
+               predlaganih velikostih skupin. */
+            List<String> viri
     ) {}
 }

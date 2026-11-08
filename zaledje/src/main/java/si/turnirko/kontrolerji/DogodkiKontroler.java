@@ -230,14 +230,14 @@ public class DogodkiKontroler {
     /* Jakostni vrstni red pred zrebom; pri formatu TOP se crta reza in
        predogled skupin. Razrez racuna ZrebStoritev, da predogled in dejanski
        zreb ne moreta razsoditi razlicno. Pri SV regiji so "skupine" predogleda
-       NIVOJI (oznaka N1, N2 ...): jakostni vrstni red jih razrezi po vrsti. */
+       Skupine 1, 2 ... (oznaka S1, S2 ...): jakostni vrstni red jih razrezi po vrsti. */
     private IzborDto izbor(Dogodek dogodek, List<Prijava> prijave, SvRegijaDto sv) {
         List<Prijava> prijavljeni = prijave.stream()
                 .filter(p -> p.getStatus() == Prijava.StatusPrijave.PRIJAVLJEN)
                 .toList();
         if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SV_REGIJA && sv != null) {
             List<IzborDto.SkupinaPredogledDto> nivoji = sv.nivoji().stream()
-                    .map(n -> new IzborDto.SkupinaPredogledDto("N" + n.nivo(), n.velikost(),
+                    .map(n -> new IzborDto.SkupinaPredogledDto("S" + n.nivo(), n.velikost(),
                             n.odMesta(), n.doMesta()))
                     .toList();
             int skupin = sv.nivoji().stream().mapToInt(n -> n.velikostiSkupin().size()).sum();

@@ -11,15 +11,16 @@ public final class SvVnos {
     /* Nastavitve razreza (samo v pripravi). Vse so neobvezne: prazno pomeni
        samodejno (stevilo prijav doloci nivoje, skupine so 4 x 4). Ce so
        velikostiNivojev vpisane, veljajo namesto samodejne razdelitve.
-       rangovVZreb: po nivojih 1 ali 2 (privzeto 2) - koliko rangov iz vsake
-       skupine pride v en zreb. */
+       Zrebi po nivojih (null na mestu nivoja = samodejno): steviloZrebov je
+       stevilo izlocilnih zrebov nivoja, velikostZrebov velikost mreze ravni, na
+       kateri se zacnejo (2, 4, 8, 16, 32; privzeto 8 = cetrtfinale). */
     public record Nastavitve(Integer steviloNivojev, List<Integer> velikostiNivojev,
                              Integer steviloSkupin, Integer velikostSkupine,
-                             List<Integer> rangovVZreb) {
+                             List<Integer> steviloZrebov, List<Integer> velikostZrebov) {
 
         public Nastavitve(Integer steviloNivojev, List<Integer> velikostiNivojev,
                           Integer steviloSkupin, Integer velikostSkupine) {
-            this(steviloNivojev, velikostiNivojev, steviloSkupin, velikostSkupine, null);
+            this(steviloNivojev, velikostiNivojev, steviloSkupin, velikostSkupine, null, null);
         }
     }
 

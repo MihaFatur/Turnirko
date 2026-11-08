@@ -1,6 +1,7 @@
-/* Zreb enega nivoja sistema SV_REGIJA: glavni (indeks 0), tolazilni (1),
-   tretji (2) ... Vanj pridejo igralci iz skupin nivoja po parih rangov: prvo-
-   in drugouvrsceni v glavni zreb, tretje- in cetrtouvrsceni v tolazilni.
+/* Zreb enega nivoja (Skupine) sistema SV_REGIJA: glavni (indeks 0), tolazilni
+   (1), tretji (2) ... Igralci nivoja gredo vanj ZAPOREDOMA po mestu v skupini
+   in crki skupine (A1, B1, ..., A2, B2 ...), toliko, kolikor jih zreb sprejme
+   (stUdelezencev; privzeto 8 = cetrtfinale, zadnji zreb ostanek).
 
    Zreb se igra za VSA mesta: porazenca vsakega kola se srecata med seboj, do
    zadnjega para. Zato je mesto, ki ga odloca zmagovalec zreba (prvoMesto),

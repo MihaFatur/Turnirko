@@ -267,11 +267,11 @@ export function DogodekObrazecOkno({
 
         {sistemDogodka === 'SV_REGIJA' && (
           <p className="namig">
-            Igralci so po jakosti razdeljeni v nivoje (privzeto po 16), v vsakem nivoju igrajo
-            skupine po 4 vsak z vsakim. Prvo- in drugouvrščeni gredo v glavni žreb nivoja,
-            tretje- in četrtouvrščeni v tolažilni žreb; žreb se igra za vsa mesta. Število
-            nivojev, velikosti skupin, ročni vpis skupin in razporeditev v žrebu nastaviš v
-            pripravi dogodka. Igra se posamično.
+            Igralci so po jakosti razdeljeni v Skupine 1, 2 … (privzeto po 16), v vsaki Skupini
+            igrajo skupine po 4 vsak z vsakim. Nato gredo igralci po vrsti A1, B1 …, A2, B2 … v
+            izločilne žrebe od četrtfinala (glavni, tolažilni …); žreb se igra za vsa mesta.
+            Število Skupin, žrebe zadnje Skupine, ročni vpis skupin in razporeditev v žrebu
+            nastaviš v pripravi dogodka. Igra se posamično.
           </p>
         )}
 

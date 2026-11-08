@@ -1,13 +1,14 @@
-/* SV regija: pogled »Nivoji« po žrebu.
+/* SV regija: pogled »Skupine« po žrebu.
 
-   Dogodek ima nivoje (težavnostne skupine). Vsak nivo ima skupine »vsak z
-   vsakim« in žreba: glavni (1.–2. iz vsake skupine) in tolažilni (3.–4.).
+   Dogodek ima Skupine 1, 2 … (težavnostne skupine; v kodi »nivo«). Vsaka ima
+   skupine A, B … »vsak z vsakim« in izločilne žrebe, v katere gredo igralci
+   po vrsti A1, B1 …, A2, B2 … (privzeto po 8, od četrtfinala).
    Žreb se igra za VSA mesta: poraženca vsakega kola se srečata med seboj, do
    zadnjega para - zato žreb ni ena mreža, ampak drevo, ki ga stran izriše po
    kolih (stolpcih), v vsakem stolpcu pa po razponih mest.
 
-   Nivoji tečejo neodvisno: žreb nivoja nastane, ko so odigrane skupine TEGA
-   nivoja, ne celotnega dogodka. Dokler nastane, žreb stoji kot prazen razdelek
+   Skupine tečejo neodvisno: žreb Skupine nastane, ko so odigrane skupine TE
+   Skupine, ne celotnega dogodka. Dokler nastane, žreb stoji kot prazen razdelek
    z opisom, kdaj bo na vrsti.
 
    Organizator vidi dejanja samo, dokler jih strežnik dovoljuje (žreb skupin
@@ -19,7 +20,7 @@ import { useMutation } from '@tanstack/react-query'
 import { svApi } from '../api/zahteve'
 import type { MrezaDto, SkupinaDto, SvNivoDto, SvZrebDto } from '../api/tipi'
 import { sklonIgralcev, sklonSkupin } from '../pomozno/oblikovanje'
-import { crkaSkupine, opisRazpona } from '../pomozno/svRegija'
+import { crkaSkupine, mestVZrebu, opisRazpona } from '../pomozno/svRegija'
 import { PotrditvenoOkno } from './PotrditvenoOkno'
 import { SkupinaVrstica } from './SkupinaVrstica'
 import { SporociloNapake } from './SporociloNapake'
@@ -127,7 +128,7 @@ export function SvRegijaDel({ podatki, klik, osvezi, smem }: Lastnosti) {
                   aria-pressed={nivoZaPrikaz === n.nivo}
                   onClick={() => nastaviIzbran(n.nivo)}
                 >
-                  Nivo {n.nivo}
+                  Skupina {n.nivo}
                   {s ? ` · ${s.odigranih}/${s.vseh}` : ''}
                 </button>
               )
@@ -137,7 +138,7 @@ export function SvRegijaDel({ podatki, klik, osvezi, smem }: Lastnosti) {
       )}
 
       <div className="naslovna-vrstica">
-        <h2>Nivo {nivo.nivo}</h2>
+        <h2>Skupina {nivo.nivo}</h2>
         <span className="sekcija__meta">
           {opisRazpona(nivo.odMesta, nivo.doMesta)} · {nivo.velikost} {sklonIgralcev(nivo.velikost)} ·{' '}
           {skupineNivoja.length} {sklonSkupin(skupineNivoja.length)}
@@ -150,12 +151,11 @@ export function SvRegijaDel({ podatki, klik, osvezi, smem }: Lastnosti) {
         podatki={podatki}
         klik={klik}
         zrebi={nivo.zrebi}
-        rangov={nivo.rangovVZreb}
       />
 
       {nivo.zrebi.length === 0 && (
         <p className="namig">
-          Nivo ima eno samo skupino, zato žreba ni: mesta določi razvrstitev v skupini.
+          Skupina ima eno samo skupino, zato žreba ni: mesta določi razvrstitev v skupini.
         </p>
       )}
 
@@ -196,72 +196,84 @@ export function SvRegijaDel({ podatki, klik, osvezi, smem }: Lastnosti) {
   )
 }
 
-/* ---------- Skupine nivoja ---------- */
+/* ---------- Skupine A, B … ---------- */
 
 /* Skupine kot zložljive vrstice, odprta je največ ena (kot pri drugih sistemih
-   s skupinami). Privzeto gresta prva dva v vsaki skupini v glavni žreb, tretji in
-   četrti v tolažilnega - lestvica to pove z barvo vrstice in legendo. Kadar ima
-   nivo en rang v žrebu, je vsak rang svoj žreb: barvi pokrijeta prva dva ranga,
-   ostale pove vrstica pod naslovom. */
+   s skupinami). Igralci gredo v žrebe po vrsti A1, B1 …, A2, B2 …, zato vsaka
+   skupina v glavni žreb pošlje drugačno število igralcev (pri petih skupinah A
+   in B dva, D in E enega). Lestvica to pove z barvo vrstice (glavni in drugi
+   žreb), vrstica nad skupinami pa za vsak žreb našteje, od kod pridejo vanj. */
 function SkupineNivoja({
   skupine,
   podatki,
   klik,
   zrebi,
-  rangov,
 }: {
   skupine: SkupinaDto[]
   podatki: MrezaDto
   klik?: KlikTekme
   zrebi: SvZrebDto[]
-  rangov: number
 }) {
   const [odprta, nastaviOdprto] = useState<number | null>(null)
+  const vGlavnem = useMemo(() => mestVZrebu(zrebi[0]?.viri ?? []), [zrebi])
+  const vDrugem = useMemo(() => mestVZrebu(zrebi[1]?.viri ?? []), [zrebi])
   if (skupine.length === 0) {
-    return <p className="obvestilo">Nivo nima skupin.</p>
+    return <p className="obvestilo">V tej Skupini ni skupin.</p>
   }
   return (
     <div>
       <p className="podnaslov-sekcije">Skupine</p>
-      {rangov === 1 && zrebi.length > 1 && (
-        <p className="namig">
-          Vsak rang iz skupine ima svoj žreb:{' '}
-          {zrebi
-            .map((z, i) => `${i + 1}. mesto → ${opisRazpona(z.prvoMesto, z.zadnjeMesto)}`)
-            .join(', ')}
-          .
+      {zrebi.length > 0 && (
+        <p className="namig sv-viri">
+          {zrebi.map((z) => (
+            <span className="sv-viri__zreb" key={z.indeks}>
+              {z.ime} ({opisRazpona(z.prvoMesto, z.zadnjeMesto)}): {z.viri.join(', ')}
+            </span>
+          ))}
         </p>
       )}
       <div className="skupine-seznam">
-        {skupine.map((skupina) => (
-          <SkupinaVrstica
-            key={skupina.id}
-            oznaka={crkaSkupine(skupina.oznaka)}
-            opis={opisSkupine(skupina, false)}
-            odprta={odprta === skupina.id}
-            naPreklop={() => nastaviOdprto((prej) => (prej === skupina.id ? null : skupina.id))}
-          >
-            <VsebinaSkupine
-              skupina={skupina}
-              tekme={podatki.tekme.filter((t) => t.faza === 'SKUPINA' && t.idSkupina === skupina.id)}
-              klik={klik}
-              napreduje={zrebi.length > 0 ? rangov : undefined}
-              tolazilni={zrebi.length > 1 ? 2 * rangov : undefined}
-              legenda={rangov === 1 ? '1. mesto: glavni žreb' : '1.–2. mesto: glavni žreb'}
-              legendaTolazilni={
-                zrebi.length > 1
-                  ? rangov === 1
-                    ? '2. mesto: tolažilni žreb'
-                    : '3.–4. mesto: tolažilni žreb'
-                  : undefined
-              }
-              ekipno={false}
-            />
-          </SkupinaVrstica>
-        ))}
+        {skupine.map((skupina) => {
+          const crka = crkaSkupine(skupina.oznaka)
+          const glavni = vGlavnem.get(crka) ?? 0
+          const drugi = vDrugem.get(crka) ?? 0
+          return (
+            <SkupinaVrstica
+              key={skupina.id}
+              oznaka={crka}
+              opis={opisSkupine(skupina, false)}
+              odprta={odprta === skupina.id}
+              naPreklop={() => nastaviOdprto((prej) => (prej === skupina.id ? null : skupina.id))}
+            >
+              <VsebinaSkupine
+                skupina={skupina}
+                tekme={podatki.tekme.filter((t) => t.faza === 'SKUPINA' && t.idSkupina === skupina.id)}
+                klik={klik}
+                napreduje={zrebi.length > 0 ? glavni : undefined}
+                tolazilni={zrebi.length > 1 && drugi > 0 ? glavni + drugi : undefined}
+                legenda={
+                  glavni > 0
+                    ? `${opisMest(1, glavni)}: ${zrebi[0]?.ime.toLowerCase() ?? 'glavni žreb'}`
+                    : 'nihče v glavnem žrebu'
+                }
+                legendaTolazilni={
+                  zrebi.length > 1 && drugi > 0
+                    ? `${opisMest(glavni + 1, glavni + drugi)}: ${zrebi[1].ime.toLowerCase()}`
+                    : undefined
+                }
+                ekipno={false}
+              />
+            </SkupinaVrstica>
+          )
+        })}
       </div>
     </div>
   )
+}
+
+/* »1. mesto« oz. »1.–2. mesto« v skupini. */
+function opisMest(od: number, doMesta: number): string {
+  return od === doMesta ? `${od}. mesto` : `${od}.–${doMesta}. mesto`
 }
 
 /* ---------- Žrebi nivoja ---------- */
@@ -370,10 +382,10 @@ function VsebinaZreba({
 
       {!zreb.zgrajen ? (
         smem && zreb.uredljiv ? (
-          /* Skupine nivoja so odigrane, zreb pa ne nastane sam: organizator izbere. */
+          /* Skupine so odigrane, zreb pa ne nastane sam: organizator izbere. */
           <div className="sv-zreb__cakanje">
             <p className="obvestilo">
-              Skupine nivoja so odigrane. Žreb še ni narejen: izberi računalniški žreb
+              Skupine so odigrane. Žreb še ni narejen: izberi računalniški žreb
               {zreb.stUdelezencev > 2 ? ' ali ročno razporeditev mest' : ''}.
             </p>
             <span className="sv-zreb__dejanja">
@@ -398,9 +410,8 @@ function VsebinaZreba({
           </div>
         ) : (
           <p className="obvestilo">
-            Žreb nastane, ko so odigrane vse skupine nivoja. Vanj gresta
-            {zreb.indeks === 0 ? ' prvo- in drugouvrščeni' : zreb.indeks === 1 ? ' tretje- in četrtouvrščeni' : ' naslednja dva'}{' '}
-            vsake skupine.
+            Žreb nastane, ko so odigrane vse skupine te Skupine. Vanj gredo po vrsti{' '}
+            {zreb.viri.join(', ')}.
           </p>
         )
       ) : tekme.length === 0 ? (

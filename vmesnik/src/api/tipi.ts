@@ -330,8 +330,10 @@ export interface DogodekDto {
      organizator (prazno = samodejno). */
   steviloNivojev: number | null
   velikostiNivojev: number[]
-  /* Rangov iz skupine v en žreb po nivojih (prazno = povsod 2). */
-  rangovVZreb: number[]
+  /* Izločilni žrebi po Skupinah, kot jih je vpisal organizator: število žrebov
+     in velikost mreže ravni (8 = četrtfinale); null = samodejno. */
+  steviloZrebov: (number | null)[]
+  velikostZrebov: (number | null)[]
 }
 
 export interface PrijavaDto {
@@ -536,8 +538,12 @@ export interface SvZrebDto {
   /* Prijave po mestih v mreži od vrha navzdol (null = prosto mesto); prazen
      seznam, dokler žreb ni zgrajen. */
   razpored: (number | null)[]
+  /* Od kod pridejo udeleženci, po vrsti: »A1«, »B1« … (črka skupine in mesto v
+     njej). Po žrebu skupin dejanski, pred njim po predlaganih velikostih. */
+  viri: string[]
 }
 
+/* Skupina 1, 2 … (v kodi nivo): skupine A, B … in izločilni žrebi. */
 export interface SvNivoDto {
   nivo: number
   velikost: number
@@ -545,8 +551,10 @@ export interface SvNivoDto {
   doMesta: number
   /* Po žrebu dejanske, pred njim predlagane velikosti skupin. */
   velikostiSkupin: number[]
-  /* Koliko rangov iz vsake skupine pride v en žreb: 2 (privzeto) ali 1. */
-  rangovVZreb: number
+  /* Velikost mreže ravni, na kateri se žrebi začnejo (8 = četrtfinale). */
+  velikostZreba: number
+  /* Število žrebov, ki ga je vpisal organizator; null = samodejno. */
+  vpisanoZrebov: number | null
   zrebi: SvZrebDto[]
 }
 
@@ -564,7 +572,8 @@ export interface SvRegijaDto {
   velikostSkupine: number
   steviloNivojev: number | null
   velikostiNivojev: number[]
-  rangovVZreb: number[]
+  steviloZrebov: (number | null)[]
+  velikostZrebov: (number | null)[]
 }
 
 export interface SvClanDto {
@@ -630,7 +639,9 @@ export interface SvNastavitveVnos {
   velikostiNivojev: number[]
   steviloSkupin: number | null
   velikostSkupine: number | null
-  rangovVZreb: number[]
+  /* Žrebi po Skupinah: število in velikost mreže ravni (null = samodejno). */
+  steviloZrebov: (number | null)[]
+  velikostZrebov: (number | null)[]
 }
 
 /* Ročni vpis skupin: nivoji po vrsti, vsak s skupinami, vsaka z id-ji prijav. */
@@ -1660,7 +1671,7 @@ export const OZNAKE_SISTEM: Record<SistemTekmovanja, string> = {
   SKUPINE_IZLOCILNI: 'Skupine + izločilni',
   SKUPINE: 'Skupine po jakosti (TOP)',
   SKUPINE_ZA_MESTA: 'Skupine + finalne skupine za mesta',
-  SV_REGIJA: 'SV regija (nivoji, skupine, žreb za vsa mesta)',
+  SV_REGIJA: 'SV regija (Skupine po 16, žrebi za vsa mesta)',
 }
 
 /* Kratke oznake sistemov za značke. */

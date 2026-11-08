@@ -35,7 +35,31 @@ export function imeTekmeZreba(
   return od === prvoMestoZreba ? stopnja : `${stopnja} za ${opisRazpona(od, doMesta)}`
 }
 
-/* Oznaka skupine brez nivoja: »1A« -> »A« (nivo je že v naslovu pogleda). */
+/* Oznaka skupine brez Skupine: »1A« -> »A« (Skupina je že v naslovu pogleda). */
 export function crkaSkupine(oznaka: string): string {
   return oznaka.replace(/^\d+/, '')
+}
+
+/* Raven, na kateri se žreb začne, v rodilniku: »od četrtfinala«. */
+export function imeRavni(velikostMreze: number): string {
+  switch (velikostMreze) {
+    case 2: return 'finala'
+    case 4: return 'polfinala'
+    case 8: return 'četrtfinala'
+    case 16: return 'osmine finala'
+    case 32: return 'šestnajstine finala'
+    default: return `mreže ${velikostMreze}`
+  }
+}
+
+/* Koliko mest vsake skupine gre v žreb: »A« -> 2 pomeni, da sta A1 in A2 v
+   njem. Viri žreba so po vrsti A1, B1 …, zato so mesta skupine v žrebu vedno
+   zaporedna in v zaporednih žrebih naraščajo. */
+export function mestVZrebu(viri: string[]): Map<string, number> {
+  const mest = new Map<string, number>()
+  for (const vir of viri) {
+    const crka = vir.replace(/\d+$/, '')
+    mest.set(crka, (mest.get(crka) ?? 0) + 1)
+  }
+  return mest
 }

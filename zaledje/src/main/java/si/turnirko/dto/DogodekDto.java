@@ -47,8 +47,10 @@ public record DogodekDto(
            vpisal organizator (prazno = samodejno); drugod prazno. */
         Integer steviloNivojev,
         List<Integer> velikostiNivojev,
-        /* Sistem SV_REGIJA: rangov iz skupine v en zreb po nivojih (prazno = povsod 2). */
-        List<Integer> rangovVZreb
+        /* Sistem SV_REGIJA: izlocilni zrebi po nivojih (Skupinah), kot jih je vpisal
+           organizator - stevilo zrebov in velikost mreze ravni; null = samodejno. */
+        List<Integer> steviloZrebov,
+        List<Integer> velikostZrebov
 ) {
 
     /* Brez stevcev - za odgovor ob nastanku dogodka, ko jih se ni. */
@@ -81,7 +83,8 @@ public record DogodekDto(
                 dogodek.getTurnir().getVir(),
                 dogodek.getSteviloNivojev(),
                 dogodek.velikostiNivojevSeznam(),
-                dogodek.rangovVZrebSeznam()
+                dogodek.steviloZrebovSeznam(),
+                dogodek.velikostZrebovSeznam()
         );
     }
 }

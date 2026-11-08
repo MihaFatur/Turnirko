@@ -216,7 +216,7 @@ public class ZrebStoritev {
             poId.put(p.getId(), p);
         }
         if (vnos == null || vnos.nivoji() == null) {
-            throw new NeveljavenVnosIzjema("Vpisan mora biti vsaj en nivo.");
+            throw new NeveljavenVnosIzjema("Vpisana mora biti vsaj ena Skupina.");
         }
         List<List<List<Prijava>>> nivoji = new ArrayList<>();
         java.util.Set<Long> videni = new java.util.HashSet<>();

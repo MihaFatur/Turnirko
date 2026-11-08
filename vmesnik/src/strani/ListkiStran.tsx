@@ -225,12 +225,12 @@ function pripraviListke(podatki: MrezaDto | undefined): PripravljenListek[] {
 
 function oznakaFaze(tekma: TekmaDto, zadnjeKolo: number, podatki: MrezaDto): string {
   if (tekma.faza === 'SKUPINA') return `${tekma.kolo}. kolo`
-  /* SV regija: tekma žreba nosi razpon mest, ki ga odloča (»Nivo 2 · Za 21. mesto«). */
+  /* SV regija: tekma žreba nosi razpon mest, ki ga odloča (»Skupina 2 · Za 21. mesto«). */
   if (tekma.idZreb !== null && tekma.razponOd !== null && tekma.razponDo !== null) {
     for (const nivo of podatki.svRegija?.nivoji ?? []) {
       const zreb = nivo.zrebi.find((z) => z.id === tekma.idZreb)
       if (zreb) {
-        return `Nivo ${nivo.nivo} · ${imeTekmeZreba(
+        return `Skupina ${nivo.nivo} · ${imeTekmeZreba(
           tekma.razponOd, tekma.razponDo, zreb.prvoMesto, zreb.indeks === 0,
         )}`
       }

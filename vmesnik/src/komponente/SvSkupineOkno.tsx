@@ -150,14 +150,14 @@ export function SvSkupineOkno({ idDogodka, podatki, izhodisce, onZapri, onShranj
 
   return (
     <ModalnoOkno
-      naslov="Skupine po nivojih"
+      naslov="Ročni vpis skupin"
       podnaslov={nivoji ? `${igralcev} ${sklonIgralcev(igralcev)}` : undefined}
       onZapri={onZapri}
       siroko
     >
       <p className="obvestilo">
-        Nivoji si sledijo od najmočnejšega. Igralca prestaviš z izbirnikom ob imenu; dodaš lahko
-        skupino ali nivo. Skupine igrajo vsak z vsakim, njihove tekme in žrebi nastanejo ob shranjevanju.
+        Skupine 1, 2 … si sledijo od najmočnejše. Igralca prestaviš z izbirnikom ob imenu; dodaš lahko
+        skupino A, B … ali novo Skupino. V skupini igra vsak z vsakim, tekme in žrebi nastanejo ob shranjevanju.
       </p>
 
       {izhodisce === 'predlog' && (
@@ -183,7 +183,7 @@ export function SvSkupineOkno({ idDogodka, podatki, izhodisce, onZapri, onShranj
           return (
             <section className="sv-urejanje__nivo" key={n}>
               <div className="naslovna-vrstica">
-                <h3>Nivo {n + 1}</h3>
+                <h3>Skupina {n + 1}</h3>
                 <span className="sekcija__meta">
                   {velikost} {sklonIgralcev(velikost)} · {skupine.length} {sklonSkupin(skupine.length)}
                 </span>
@@ -247,7 +247,7 @@ export function SvSkupineOkno({ idDogodka, podatki, izhodisce, onZapri, onShranj
       {nivoji && (
         <div className="zreb__krmila">
           <button type="button" className="gumb gumb--majhen" onClick={dodajNivo}>
-            Dodaj nivo
+            Dodaj Skupino
           </button>
         </div>
       )}

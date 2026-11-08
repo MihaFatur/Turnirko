@@ -75,11 +75,15 @@ public class Dogodek {
     @Column(name = "velikosti_nivojev")
     private String velikostiNivojev;
 
-    /* Koliko rangov iz vsake skupine pride v en zreb, po nivojih ("2,2,1").
-       Brez vnosa (ali za nivo brez vnosa) velja 2: prvo- in drugouvrsceni v glavni
-       zreb, tretje- in cetrtouvrsceni v tolazilni. 1 loci zrebe po rangih. */
-    @Column(name = "rangov_v_zreb")
-    private String rangovVZreb;
+    /* Izlocilni zrebi po nivojih (V63), CSV s praznimi mesti (",,,3"):
+       steviloZrebov je stevilo, ki ga je vpisal organizator (prazno = samodejno),
+       velikostZrebov velikost mreze ravni, na kateri se zrebi zacnejo (prazno =
+       8, cetrtfinale). Igralci gredo v zrebe po vrsti A1, B1, ..., A2, B2 ... */
+    @Column(name = "stevilo_zrebov")
+    private String steviloZrebov;
+
+    @Column(name = "velikost_zrebov")
+    private String velikostZrebov;
 
     /* Ekipni dogodek (disciplina EKIPNO, V28): format srecanja in prag zmag,
        pri katerem se srecanje konca (null = odigrajo se vse tekme). Ista
@@ -168,23 +172,40 @@ public class Dogodek {
     public String getVelikostiNivojev() { return velikostiNivojev; }
     public void setVelikostiNivojev(String velikostiNivojev) { this.velikostiNivojev = velikostiNivojev; }
 
-    public String getRangovVZreb() { return rangovVZreb; }
-    public void setRangovVZreb(String rangovVZreb) { this.rangovVZreb = rangovVZreb; }
+    public String getSteviloZrebov() { return steviloZrebov; }
+    public void setSteviloZrebov(String steviloZrebov) { this.steviloZrebov = steviloZrebov; }
 
-    /* Rangov v zrebu po nivojih ("2,2,1") kot seznam; prazen, kadar niso vpisani. */
-    public java.util.List<Integer> rangovVZrebSeznam() {
-        java.util.List<Integer> rangi = new java.util.ArrayList<>();
-        if (rangovVZreb == null || rangovVZreb.isBlank()) {
-            return rangi;
+    public String getVelikostZrebov() { return velikostZrebov; }
+    public void setVelikostZrebov(String velikostZrebov) { this.velikostZrebov = velikostZrebov; }
+
+    /* Stevilo zrebov po nivojih kot seznam; null na mestu nivoja brez vnosa. */
+    public java.util.List<Integer> steviloZrebovSeznam() {
+        return seznamSPraznimi(steviloZrebov);
+    }
+
+    /* Velikost mreze zrebov po nivojih kot seznam; null na mestu nivoja brez vnosa. */
+    public java.util.List<Integer> velikostZrebovSeznam() {
+        return seznamSPraznimi(velikostZrebov);
+    }
+
+    /* "8,,16" -> [8, null, 16]; prazen seznam, kadar ni vnosa ali ni veljaven. */
+    private static java.util.List<Integer> seznamSPraznimi(String csv) {
+        java.util.List<Integer> seznam = new java.util.ArrayList<>();
+        if (csv == null || csv.isBlank()) {
+            return seznam;
         }
-        for (String del : rangovVZreb.split(",")) {
+        for (String del : csv.split(",", -1)) {
+            if (del.isBlank()) {
+                seznam.add(null);
+                continue;
+            }
             try {
-                rangi.add(Integer.parseInt(del.trim()));
+                seznam.add(Integer.parseInt(del.trim()));
             } catch (NumberFormatException e) {
                 return new java.util.ArrayList<>();
             }
         }
-        return rangi;
+        return seznam;
     }
 
     /* Rocne velikosti nivojev ("16,16,12") kot seznam; prazen, kadar niso vpisane

@@ -270,7 +270,7 @@ public class TurnirjiStoritev {
         if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SV_REGIJA
                 && (dogodek.jeDvojice() || dogodek.jeEkipno())) {
             throw new NeveljavenVnosIzjema(
-                    "SV regija se igra posamično: nivoje razvrsti jakost igralca.");
+                    "SV regija se igra posamično: v Skupine razvrsti jakost igralca.");
         }
     }
 
@@ -285,14 +285,14 @@ public class TurnirjiStoritev {
             Integer velikost = vnos.velikostSkupine();
             Integer nivojev = vnos.steviloNivojev();
             if (skupin != null && (skupin < 1 || skupin > SvRegijaStoritev.NAJVEC_SKUPIN)) {
-                throw new NeveljavenVnosIzjema("Skupin na nivo mora biti med 1 in "
+                throw new NeveljavenVnosIzjema("Skupin v polni Skupini mora biti med 1 in "
                         + SvRegijaStoritev.NAJVEC_SKUPIN + ".");
             }
             if (velikost != null && (velikost < 2 || velikost > 24)) {
                 throw new NeveljavenVnosIzjema("Velikost skupine mora biti med 2 in 24.");
             }
             if (nivojev != null && (nivojev < 1 || nivojev > SvRegijaStoritev.NAJVEC_NIVOJEV)) {
-                throw new NeveljavenVnosIzjema("Število nivojev mora biti med 1 in "
+                throw new NeveljavenVnosIzjema("Število Skupin mora biti med 1 in "
                         + SvRegijaStoritev.NAJVEC_NIVOJEV + ".");
             }
             dogodek.setSteviloSkupin(skupin);
@@ -301,7 +301,7 @@ public class TurnirjiStoritev {
             return;
         }
         if (vnos.steviloNivojev() != null) {
-            throw new NeveljavenVnosIzjema("Nivoje ima samo sistem SV regija.");
+            throw new NeveljavenVnosIzjema("Skupine 1, 2 … ima samo sistem SV regija.");
         }
         if (dogodek.getSistemTekmovanja() == SistemTekmovanja.SKUPINE_ZA_MESTA) {
             // stevilo predtekmovalnih skupin je neobvezno - brez njega ga doloci zreb

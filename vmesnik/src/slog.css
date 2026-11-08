@@ -21724,6 +21724,45 @@ a.ekipa-okno__srecanje:hover {
   margin-top: var(--r2);
 }
 
+/* Izločilni žrebi po Skupinah: vrstica na Skupino - oznaka z igralci, raven in
+   število žrebov. Na telefonu gre oznaka nad polji. */
+.sv-zrebi-nastavitve {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+.sv-zrebi-nastavitve > .podnaslov-sekcije {
+  margin: 0;
+}
+
+.sv-zrebi-nastavitve__vrstica {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+
+.sv-zrebi-nastavitve__oznaka {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: var(--r2);
+  font-weight: 600;
+}
+
+.sv-zrebi-nastavitve__igralci {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Od kod pridejo igralci v vsak žreb: vrstica na žreb. */
+.sv-viri__zreb {
+  display: block;
+}
+
 /* Urejevalnik skupin: kartica na skupino, igralci v vrsticah, ob imenu
    izbirnik skupine, v katero se igralec prestavi. */
 .sv-urejanje__nivo {
@@ -21807,6 +21846,18 @@ a.ekipa-okno__srecanje:hover {
 
   .sv-razrez__opis {
     grid-column: 1 / -1;
+  }
+
+  .sv-zrebi-nastavitve__vrstica {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .sv-zrebi-nastavitve__oznaka {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--r1);
+    padding-bottom: 0;
   }
 
   .sv-urejanje__skupine {

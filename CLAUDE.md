@@ -1747,11 +1747,34 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
   Tekma za 3. mesto je `TOLAZILNI` z izvorom `PORAZENEC` iz polfinal.
 - **SV regija** (V42, `SistemTekmovanja.SV_REGIJA`, `SvRegijaStoritev`; odločitev
   lastnika 5. 10. 2026): igralci so po jakosti razdeljeni v **nivoje** (težavnostne
-  skupine), v vsakem nivoju igrajo skupine vsak z vsakim, prvo- in drugouvrščeni
-  gredo v **glavni žreb** nivoja, tretje- in četrtouvrščeni v **tolažilni žreb** (5.–6.
-  v tretjega ...), žreb pa se igra za **vsa mesta**. **En dogodek z nivoji**: ena
-  prijavna lista, ena končna razvrstitev (nivo 1 = mesta 1–16, nivo 2 = 17–32 ...),
-  brez prehajanja med nivoji. Samo posamično (strežnik zavrne dvojice in ekipe).
+  skupine), v vsakem nivoju igrajo skupine vsak z vsakim, nato gredo igralci v
+  izločilne žrebe (glavni, tolažilni, 3. ...), žreb pa se igra za **vsa mesta**. **En
+  dogodek z nivoji**: ena prijavna lista, ena končna razvrstitev (nivo 1 = mesta 1–16,
+  nivo 2 = 17–32 ...), brez prehajanja med nivoji. Samo posamično (strežnik zavrne
+  dvojice in ekipe).
+  - **Poimenovanje (7. 11. 2026):** organizator in gledalec vidita **»Skupina 1, 2 …«**
+    (oznaka S1, S2; zavihek »Skupine«), znotraj nje skupine A, B …; v kodi, API-ju in
+    bazi ostane **nivo** (`nivoji`, `nivo`, `stevilo_nivojev`), da se ne pomeša s
+    skupino A. Besedila za ljudi pišejo »Skupina« z veliko začetnico.
+  - **Žrebi po ravni (V63, odločitev lastnika 7. 11. 2026):** igralci nivoja gredo v
+    žrebe **zaporedoma po mestu v skupini in črki skupine** — A1, B1, …, E1, A2, B2 … —
+    vsak žreb sprejme toliko igralcev, kolikor jih ima mreža **ravni** (`velikost_zrebov`,
+    CSV po nivojih 2/4/8/16/32, prazno = 8 = četrtfinale), zadnji dobi ostanek (pet
+    skupin po 4: glavni A1–E1, A2–C2; drugi D2, E2, A3–E3, A4; tretji B4–E4). Organizator
+    lahko vpiše tudi **število žrebov** (`stevilo_zrebov`); če ne ustreza natanko
+    (premalo mest ali prazen zadnji žreb), **sistem žreba ne dovoli** — `zrebiNivoja`
+    vrže `DomenskaIzjema`, ki je v predogledu zadržek (Skupine se kljub temu pokažejo,
+    `razrezZaPrikaz`). Udeležence zreba bere `udelezenci(zreb)` kot odsek zaporedja po
+    **zapisanih** velikostih zrebov (`zreb.st_udelezencev`) — tako so dogodki, izžrebani
+    po prejšnjem pravilu (`rangov_v_zreb`, V42; stolpec v V63 odstranjen), še vedno
+    pravilni: njihovi žrebi so isti odseki istega zaporedja. Nosilci:
+    `NosilciStoritev.vMrezoPoVrsti` — višje v zaporedju je višji nosilec, pasovi se
+    žrebajo, igralca iz iste skupine se srečata čim pozneje (kazen po kolu srečanja +
+    klubski trki, naključni poskusi z zamenjavami v pasovih). `ZrebDto.viri` (»A1« ...)
+    pove gledalcu, od kod pridejo igralci; lestvica skupine obarva mesta po žrebih.
+  - **Vrstni red tekem v skupini štirih** (`tekmeSkupine`, 7. 11. 2026): 1-4, 2-3 |
+    4-3, 1-2 | 2-4, 3-1 (1 = nosilec skupine, prvi v paru je `prijava1`). Druge
+    velikosti ostanejo pri krožni metodi (skupina treh: 2-3, 1-3, 1-2).
   - **Razrez je čista logika** (`SvRegijaStoritev.razrez`, `velikostiSkupin`,
     `velikostiZrebov`), da ga predogled in žreb ne razsodita različno. Poln nivo je
     `stevilo_skupin × velikost_skupine` (privzeto 4 × 4 = 16, v obstoječih stolpcih
@@ -1760,10 +1783,9 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     so nivoji polni, dokler prijav zadošča, sicer enakomerni; `velikosti_nivojev`
     (CSV »16,16,12«) imajo prednost in se morajo ujemati s številom prijav. Nepopolna
     skupina je dovoljena (vsaj 3 igralci; nivo, ki ga ni mogoče razdeliti tako, je ena
-    skupina in nima žrebov — mesta določi skupina). **Rangov v žrebu** (`rangov_v_zreb`,
-    CSV po nivojih »2,2,1«, vrednosti 1 ali 2, privzeto 2): pri 1 ima vsak rang iz
-    skupine svoj žreb (8 skupin = žrebi po 8: prvouvrščeni za 1.–8. mesto, drugouvrščeni za
-    9.–16. ...), kot ga je v praksi igral 5. OT SV regije (nivo z 8 skupinami).
+    skupina in nima žrebov — mesta določi skupina). Ostanek odloči organizator: brez
+    vnosa se ostanek pod 4 pridruži zadnjemu nivoju (67 = 16+16+16+19), z izbranim
+    številom nivojev zadnji dobi vse preostale (60 v treh = 16+16+28).
   - **Žreb za vsa mesta je drevo** (`razdeli`): mreža za mesta p..p+n−1 igra n/2 tekem,
     zmagovalci gredo v mrežo n/2 za p..p+n/2−1, **poraženci v mrežo n/2 za naslednja
     mesta** — poraženca sosednjih parov se srečata med seboj. Mreža z 8 igralci ima 12

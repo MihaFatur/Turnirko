@@ -120,8 +120,11 @@ class LenoNalaganjeSvRegijaTest {
         assertEquals(8, slika.svRegija().nivoji().get(0).velikost());
         assertEquals(List.of(4, 4), slika.svRegija().nivoji().get(0).velikostiSkupin());
         assertNull(slika.svRegija().zadrzek());
-        // jakostni vrstni red nosi predogled nivojev (oznaka N1)
-        assertEquals("N1", slika.izbor().skupine().get(0).oznaka());
+        // jakostni vrstni red nosi predogled Skupin (oznaka S1)
+        assertEquals("S1", slika.izbor().skupine().get(0).oznaka());
+        // dve skupini po 4: en zreb od cetrtfinala, igralci po vrsti A1, B1, A2, B2 ...
+        assertEquals(List.of("A1", "B1", "A2", "B2", "A3", "B3", "A4", "B4"),
+                slika.svRegija().nivoji().get(0).zrebi().get(0).viri());
     }
 
     @Test
@@ -153,11 +156,12 @@ class LenoNalaganjeSvRegijaTest {
         }
         MrezaDto po = dogodkiKontroler.mreza(dogodek.getId());
         var zrebi = po.svRegija().nivoji().get(0).zrebi();
-        assertEquals(2, zrebi.size());
+        // osem igralcev: en zreb od cetrtfinala (privzeta raven)
+        assertEquals(1, zrebi.size());
         for (var zreb : zrebi) {
             assertTrue(zreb.zgrajen());
-            assertEquals(4, zreb.stUdelezencev());
-            assertEquals(4, zreb.razpored().size(), "razpored mest po mrezi");
+            assertEquals(8, zreb.stUdelezencev());
+            assertEquals(8, zreb.razpored().size(), "razpored mest po mrezi");
             assertTrue(zreb.razpored().stream().allMatch(java.util.Objects::nonNull));
         }
         assertFalse(po.svRegija().skupineUredljive(), "po prvi odigrani tekmi skupin ni vec mogoce urejati");

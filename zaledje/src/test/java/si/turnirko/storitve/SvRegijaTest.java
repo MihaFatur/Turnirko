@@ -116,11 +116,66 @@ class SvRegijaTest extends IntegracijskiTest {
     @Test
     void velikostiZrebovSestejejoVStevilIgralcev() {
         List<Integer> skupine = SvRegijaStoritev.velikostiSkupin(17, 4); // 4,4,3,3,3
+        // zrebi od cetrtfinala po 8, zadnji ostanek
         List<Integer> zrebi = SvRegijaStoritev.velikostiZrebov(skupine);
-        assertEquals(List.of(10, 7), zrebi);
+        assertEquals(List.of(8, 8, 1), zrebi);
         assertEquals(17, zrebi.stream().mapToInt(Integer::intValue).sum());
         // nivo z eno skupino zrebov nima
         assertEquals(List.of(), SvRegijaStoritev.velikostiZrebov(List.of(5)));
+    }
+
+    @Test
+    void igralciGredoVZrebeZaporedomaPoMestuInCrkiSkupine() {
+        // primer lastnika (7. 11. 2026): pet skupin po 4, trije zrebi od cetrtfinala
+        List<Integer> skupine = List.of(4, 4, 4, 4, 4);
+        List<Integer> zrebi = SvRegijaStoritev.velikostiZrebov(skupine, 8);
+        assertEquals(List.of(8, 8, 4), zrebi);
+        assertEquals(List.of(
+                        List.of("A1", "B1", "C1", "D1", "E1", "A2", "B2", "C2"),
+                        List.of("D2", "E2", "A3", "B3", "C3", "D3", "E3", "A4"),
+                        List.of("B4", "C4", "D4", "E4")),
+                SvRegijaStoritev.viriZrebov(skupine, zrebi));
+        // skupina s tremi igralci cetrtega nima: 19 = 8 + 8 + 3
+        assertEquals(List.of("B4", "C4", "D4"),
+                SvRegijaStoritev.viriZrebov(List.of(4, 4, 4, 4, 3), List.of(8, 8, 3)).get(2));
+    }
+
+    @Test
+    void ravenZrebaDolociVelikostZrebov() {
+        List<Integer> osemSkupin = SvRegijaStoritev.velikostiSkupin(31, 4); // 4 x7, 3
+        assertEquals(List.of(16, 15), SvRegijaStoritev.velikostiZrebov(osemSkupin, 16));
+        assertEquals(List.of(8, 8, 8, 7), SvRegijaStoritev.velikostiZrebov(osemSkupin, 8));
+        assertEquals(List.of(4, 4, 4, 4, 4, 4, 4, 3), SvRegijaStoritev.velikostiZrebov(osemSkupin, 4));
+        // raven velja po Skupinah: prva od polfinala, druga privzeto od cetrtfinala
+        List<NivoRazrez> razrez = SvRegijaStoritev.razrez(47, 4, 4, null, List.of(16, 31),
+                null, java.util.Arrays.asList(4, null));
+        assertEquals(List.of(4, 4, 4, 4), razrez.get(0).velikostiZrebov());
+        assertEquals(List.of(8, 8, 8, 7), razrez.get(1).velikostiZrebov());
+    }
+
+    @Test
+    void vpisanoSteviloZrebovMoraSprejetiVseIgralceSkupine() {
+        // 67 prijav: 16 + 16 + 16 + 19, zadnja Skupina ima pet skupin (4, 4, 4, 4, 3)
+        List<NivoRazrez> razrez = SvRegijaStoritev.razrez(67, 4, 4, null, null);
+        assertEquals(List.of(16, 16, 16, 19), velikosti(razrez));
+        assertEquals(List.of(8, 8, 3), razrez.get(3).velikostiZrebov());
+        assertEquals(49, razrez.get(3).odMesta());
+
+        List<Integer> trije = java.util.Arrays.asList(null, null, null, 3);
+        assertEquals(List.of(8, 8, 3),
+                SvRegijaStoritev.razrez(67, 4, 4, null, null, trije, null).get(3).velikostiZrebov());
+        // dva zreba od cetrtfinala sprejmeta 16 od 19: sistem ne dovoli
+        DomenskaIzjema premalo = assertThrows(DomenskaIzjema.class, () -> SvRegijaStoritev.razrez(
+                67, 4, 4, null, null, java.util.Arrays.asList(null, null, null, 2), null));
+        assertTrue(premalo.getMessage().contains("Skupina 4") && premalo.getMessage().contains("19"),
+                premalo.getMessage());
+        // stirje bi pustili zadnjega praznega
+        assertThrows(DomenskaIzjema.class, () -> SvRegijaStoritev.razrez(
+                67, 4, 4, null, null, java.util.Arrays.asList(null, null, null, 4), null));
+        // dva zreba od osmine finala: 16 + 3
+        assertEquals(List.of(16, 3), SvRegijaStoritev.razrez(67, 4, 4, null, null,
+                java.util.Arrays.asList(null, null, null, 2),
+                java.util.Arrays.asList(null, null, null, 16)).get(3).velikostiZrebov());
     }
 
     // ------------------------------------------------------------------
@@ -268,11 +323,12 @@ class SvRegijaTest extends IntegracijskiTest {
 
     @Test
     void nivojZEnajstIgralciIgraZProstimiPrehodiInVsaMestaOstanejoStrnjena() {
-        // 11 igralcev: skupine 4 + 4 + 3, glavni zreb 6 (2 prosta), tolazilni 5 (3 prosta)
+        // 11 igralcev: skupine 4 + 4 + 3, glavni zreb 8 (od cetrtfinala), tolazilni 3
+        // (mreza 4, eno prosto mesto)
         Dogodek dogodek = pripraviJakostniDogodek(11, SistemTekmovanja.SV_REGIJA);
         zrebStoritev.izvediZreb(dogodek.getId());
         List<Zreb> zrebi = zrebRepozitorij.findByDogodekIdOrderByNivoAscIndeksAsc(dogodek.getId());
-        assertEquals(List.of(6, 5), zrebi.stream().map(Zreb::getStUdelezencev).toList());
+        assertEquals(List.of(8, 3), zrebi.stream().map(Zreb::getStUdelezencev).toList());
 
         odigrajVse(dogodek.getId());
 
@@ -280,9 +336,10 @@ class SvRegijaTest extends IntegracijskiTest {
         assertEquals(StatusTekmovanja.ZAKLJUCEN, svez.getStatus());
         assertEquals(poln(11), koncnaMesta(dogodek.getId()));
 
-        // prosti prehod ne ustvari tekme: v glavnem zrebu s 6 igralci je 7 tekem
-        // (2 + 2 + 1 + 1 + 1), ne 12
-        assertEquals(7, tekmaRepozitorij.findByIdZreb(zrebi.get(0).getId()).size());
+        // prosti prehod ne ustvari tekme: v zrebu s 3 igralci sta 2 tekmi (polfinale
+        // 2.-3. nosilca in finale), tekme za 3. mesto ni - 1. nosilec je bil prost
+        assertEquals(12, tekmaRepozitorij.findByIdZreb(zrebi.get(0).getId()).size());
+        assertEquals(2, tekmaRepozitorij.findByIdZreb(zrebi.get(1).getId()).size());
         assertTrue(tekmeDogodka(dogodek.getId()).stream()
                 .noneMatch(t -> t.getFaza() != FazaTekme.SKUPINA
                         && (t.getPrijava1() == null || t.getPrijava2() == null)),
@@ -395,7 +452,7 @@ class SvRegijaTest extends IntegracijskiTest {
         assertEquals(List.of(16, 16, 43), velikosti(razrez));
         assertEquals(List.of(4, 4, 4, 4), razrez.get(0).velikostiSkupin());
         assertEquals(11, razrez.get(2).velikostiSkupin().size());
-        assertEquals(List.of(22, 21), razrez.get(2).velikostiZrebov());
+        assertEquals(List.of(8, 8, 8, 8, 8, 3), razrez.get(2).velikostiZrebov());
         assertEquals(33, razrez.get(2).odMesta());
         assertEquals(75, razrez.get(2).doMesta());
 
@@ -419,21 +476,10 @@ class SvRegijaTest extends IntegracijskiTest {
     }
 
     @Test
-    void enRangVZrebuDaZrebePoRangih() {
-        List<Integer> osemSkupin = SvRegijaStoritev.velikostiSkupin(31, 4); // 4 x7, 3
-        assertEquals(List.of(16, 15), SvRegijaStoritev.velikostiZrebov(osemSkupin, 2));
-        // vsak rang svoj zreb: 8 + 8 + 8 + 7
-        assertEquals(List.of(8, 8, 8, 7), SvRegijaStoritev.velikostiZrebov(osemSkupin, 1));
-        // nastavitev velja po nivojih: prvi nivo privzeto, drugi po rangih
-        List<NivoRazrez> razrez = SvRegijaStoritev.razrez(47, 4, 4, null, List.of(16, 31), List.of(2, 1));
-        assertEquals(List.of(8, 8), razrez.get(0).velikostiZrebov());
-        assertEquals(List.of(8, 8, 8, 7), razrez.get(1).velikostiZrebov());
-    }
-
-    @Test
-    void zrebiPoRangihSeOdigrajoDoKonca() {
+    void zrebiOdCetrtfinalaVVelikiSkupiniSeOdigrajoDoKonca() {
+        // ena Skupina z osmimi skupinami: zrebi po 8 (prvouvrsceni, drugouvrsceni ...)
         Dogodek dogodek = pripraviJakostniDogodek(31, SistemTekmovanja.SV_REGIJA);
-        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(1, null, null, null, List.of(1)));
+        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(1, null, null, null));
         zrebStoritev.izvediZreb(dogodek.getId());
 
         List<Zreb> zrebi = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1);
@@ -448,15 +494,128 @@ class SvRegijaTest extends IntegracijskiTest {
     }
 
     @Test
-    void rangovVZrebuSta1Ali2() {
+    void nastavitveZrebovSePreverijoInShranijoPoSkupinah() {
         Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
+        // raven je velikost mreze: 6 ni potenca 2
         assertThrows(NeveljavenVnosIzjema.class, () -> svRegija.nastavi(dogodek.getId(),
-                new SvVnos.Nastavitve(null, null, null, null, List.of(3))));
+                new SvVnos.Nastavitve(null, null, null, null, null, List.of(6))));
         assertThrows(NeveljavenVnosIzjema.class, () -> svRegija.nastavi(dogodek.getId(),
-                new SvVnos.Nastavitve(null, null, null, null, List.of(0))));
-        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(null, null, null, null, List.of(2, 1)));
-        assertEquals(List.of(2, 1),
-                dogodekRepozitorij.findById(dogodek.getId()).orElseThrow().rangovVZrebSeznam());
+                new SvVnos.Nastavitve(null, null, null, null, List.of(0), null)));
+        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(null, null, null, null,
+                java.util.Arrays.asList(null, 3), java.util.Arrays.asList(16, null, null)));
+        Dogodek svez = dogodekRepozitorij.findById(dogodek.getId()).orElseThrow();
+        assertEquals(java.util.Arrays.asList(null, 3), svez.steviloZrebovSeznam());
+        // prazen rep se ne shrani
+        assertEquals(List.of(16), svez.velikostZrebovSeznam());
+    }
+
+    @Test
+    void neustreznoSteviloZrebovZaustaviZrebInJeZadrzekPredogleda() {
+        // 67 prijav: zadnja Skupina 49.-67. ima 19 igralcev
+        Dogodek dogodek = pripraviJakostniDogodek(67, SistemTekmovanja.SV_REGIJA);
+        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(null, null, null, null,
+                java.util.Arrays.asList(null, null, null, 2), null));
+        DomenskaIzjema napaka = assertThrows(DomenskaIzjema.class,
+                () -> zrebStoritev.izvediZreb(dogodek.getId()));
+        assertTrue(napaka.getMessage().contains("Skupina 4"), napaka.getMessage());
+
+        // predogled pokaze Skupine kljub napaki, da jo organizator lahko popravi
+        Dogodek svez = dogodekRepozitorij.findById(dogodek.getId()).orElseThrow();
+        var pregled = svRegija.pregled(svez, prijavaRepozitorij.najdiZaDogodek(dogodek.getId()),
+                List.of(), List.of());
+        assertEquals(napaka.getMessage(), pregled.zadrzek());
+        assertEquals(4, pregled.nivoji().size());
+        assertEquals(2, pregled.nivoji().get(3).vpisanoZrebov());
+
+        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(null, null, null, null,
+                java.util.Arrays.asList(null, null, null, 3), null));
+        zrebStoritev.izvediZreb(dogodek.getId());
+        assertEquals(List.of(8, 8, 3), zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 4)
+                .stream().map(Zreb::getStUdelezencev).toList());
+        assertEquals(List.of(49, 57, 65), zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 4)
+                .stream().map(Zreb::getPrvoMesto).toList());
+
+        odigrajVse(dogodek.getId());
+        assertEquals(StatusTekmovanja.ZAKLJUCEN,
+                dogodekRepozitorij.findById(dogodek.getId()).orElseThrow().getStatus());
+        assertEquals(poln(67), koncnaMesta(dogodek.getId()));
+    }
+
+    @Test
+    void zrebiPetihSkupinZberejoIgralcePoVrstiInLocijoSkupine() {
+        // primer lastnika: ena Skupina s petimi skupinami po 4, trije zrebi od cetrtfinala
+        Dogodek dogodek = pripraviJakostniDogodek(20, SistemTekmovanja.SV_REGIJA);
+        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(null, List.of(20), null, null));
+        zrebStoritev.izvediZreb(dogodek.getId());
+        odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
+
+        Map<Long, String> crka = new HashMap<>();
+        for (Skupina s : skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId())) {
+            crka.put(s.getId(), s.getOznaka().substring(1));
+        }
+        Map<Long, String> vir = new HashMap<>();
+        for (Prijava p : prijavaRepozitorij.najdiZaDogodek(dogodek.getId())) {
+            vir.put(p.getId(), crka.get(p.getIdSkupina()) + p.getMestoVSkupini());
+        }
+
+        List<Zreb> zrebi = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1);
+        List<Set<String>> pricakovano = List.of(
+                Set.of("A1", "B1", "C1", "D1", "E1", "A2", "B2", "C2"),
+                Set.of("D2", "E2", "A3", "B3", "C3", "D3", "E3", "A4"),
+                Set.of("B4", "C4", "D4", "E4"));
+        List<String> prviNosilec = List.of("A1", "D2", "B4");
+        List<String> drugiNosilec = List.of("B1", "E2", "C4");
+        assertEquals(3, zrebi.size());
+        for (int d = 0; d < zrebi.size(); d++) {
+            List<Long> razpored = zrebi.get(d).razporedKotSeznam();
+            List<String> viri = razpored.stream().map(vir::get).toList();
+            assertEquals(pricakovano.get(d), Set.copyOf(viri), zrebi.get(d).ime());
+            // visje v zaporedju je visji nosilec: 1. na vrhu, 2. na dnu mreze
+            assertEquals(prviNosilec.get(d), viri.get(0), zrebi.get(d).ime());
+            assertEquals(drugiNosilec.get(d), viri.get(viri.size() - 1), zrebi.get(d).ime());
+            // igralca iz iste skupine sta v nasprotnih polovicah (srecata se sele v finalu)
+            for (int i = 0; i < viri.size(); i++) {
+                for (int j = i + 1; j < viri.size(); j++) {
+                    if (viri.get(i).charAt(0) == viri.get(j).charAt(0)) {
+                        assertNotEquals(i < viri.size() / 2, j < viri.size() / 2,
+                                zrebi.get(d).ime() + ": " + viri.get(i) + " in " + viri.get(j));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void skupinaStirihIgraPoVrstnemReduSvRegije() {
+        Dogodek dogodek = pripraviJakostniDogodek(19, SistemTekmovanja.SV_REGIJA);
+        zrebStoritev.izvediZreb(dogodek.getId());
+
+        Map<Long, List<Prijava>> claniPoSkupini = prijavaRepozitorij.najdiZaDogodek(dogodek.getId()).stream()
+                .sorted(Comparator.comparing(Prijava::getStNosilca))
+                .collect(Collectors.groupingBy(Prijava::getIdSkupina));
+        int stirih = 0;
+        int treh = 0;
+        for (Map.Entry<Long, List<Prijava>> skupina : claniPoSkupini.entrySet()) {
+            // mesto v skupini po jakosti: 1 = nosilec skupine
+            List<Long> clani = skupina.getValue().stream().map(Prijava::getId).toList();
+            List<String> pari = tekmeDogodka(dogodek.getId()).stream()
+                    .filter(t -> skupina.getKey().equals(t.getIdSkupina()))
+                    .sorted(Comparator.comparingInt(Tekma::getKolo).thenComparingInt(Tekma::getPozicija))
+                    .map(t -> t.getKolo() + ":" + (clani.indexOf(t.getPrijava1().getId()) + 1) + "-"
+                            + (clani.indexOf(t.getPrijava2().getId()) + 1))
+                    .toList();
+            if (clani.size() == 4) {
+                stirih++;
+                assertEquals(List.of("1:1-4", "1:2-3", "2:4-3", "2:1-2", "3:2-4", "3:3-1"), pari);
+            } else {
+                treh++;
+                // skupina treh ostane pri krozni metodi
+                assertEquals(List.of("1:2-3", "2:1-3", "3:1-2"), pari);
+            }
+        }
+        assertEquals(4, stirih);
+        assertEquals(1, treh);
     }
 
     @Test

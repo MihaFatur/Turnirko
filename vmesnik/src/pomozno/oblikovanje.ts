@@ -275,8 +275,9 @@ export function sklonListov(n: number): string {
   return sklon(n, 'list', 'lista', 'liste', 'listov')
 }
 
-export function sklonNivojev(n: number): string {
-  return sklon(n, 'nivo', 'nivoja', 'nivoji', 'nivojev')
+/* Skupine SV regije (Skupina 1, 2 …) z veliko začetnico, da se ločijo od skupin A, B …. */
+export function sklonVelikihSkupin(n: number): string {
+  return sklon(n, 'Skupina', 'Skupini', 'Skupine', 'Skupin')
 }
 
 export function sklonDogodkov(n: number): string {

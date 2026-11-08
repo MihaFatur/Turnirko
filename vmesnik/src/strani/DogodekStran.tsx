@@ -1234,8 +1234,8 @@ function JakostniVrstniRed({
           </>
         ) : svNivoji ? (
           <>
-            Igrajo vsi. Vrstni red razreže igralce v nivoje (N1, N2 …): najmočnejši v prvi nivo,
-            naslednji v drugi in tako naprej. Znotraj nivoja žreb sestavi skupine po jakostnih
+            Igrajo vsi. Vrstni red razreže igralce v Skupine (S1, S2 …): najmočnejši v prvo Skupino,
+            naslednji v drugo in tako naprej. Znotraj Skupine žreb sestavi skupine po jakostnih
             pasovih: prvi po jakosti je nosilec skupine A, drugi skupine B …
           </>
         ) : izbor.steviloSkupin !== null ? (
@@ -1694,7 +1694,7 @@ function Tekmovanje({
          skupaj, ker so nivoji med seboj neodvisni tekmovanja in jih bralec
          spremlja po nivojih, ne po vrsti tekmovanja. */
       if (podatki.skupine.length > 0) {
-        seznam.push({ kljuc: 'nivoji', oznaka: 'Nivoji', stevec: podatki.svRegija?.nivoji.length })
+        seznam.push({ kljuc: 'nivoji', oznaka: 'Skupine', stevec: podatki.svRegija?.nivoji.length })
       }
     } else {
       if (zakljucekVZavihku && sistem === 'KROZNI') {
@@ -2283,7 +2283,7 @@ function RazvrstitevPoNivojih({
         return (
           <SkupinaVrstica
             key={nivo.nivo}
-            oznaka={`N${nivo.nivo}`}
+            oznaka={`S${nivo.nivo}`}
             opis={`${opisRazpona(nivo.odMesta, nivo.doMesta)} · ${nivo.velikost} ${sklonIgralcev(nivo.velikost)}`}
             odprta={odprt === nivo.nivo}
             naPreklop={() => nastaviOdprt((prej) => (prej === nivo.nivo ? null : nivo.nivo))}

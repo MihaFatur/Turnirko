@@ -1,4 +1,8 @@
-/* Sistem SV_REGIJA: nivoji, skupine, glavni in tolazilni zreb, igra se za VSA mesta.
+/* Sistem SV_REGIJA: Skupine, skupine, glavni in tolazilni zreb, igra se za VSA mesta.
+
+   POIMENOVANJE. Organizator in gledalec poznata "Skupino 1, Skupino 2 ..."
+   (prej "nivo"); v kodi in bazi je to se vedno NIVO, da se ne pomesa s
+   skupino A, B ... znotraj njega (odlocitev lastnika 7. 11. 2026).
 
    POTEK
    1. Igralci se po jakosti (IzborStoritev) razdelijo v NIVOJE. Nivo ima
@@ -7,14 +11,19 @@
       velikost vsakega nivoja tudi vpise (Dogodek.velikostiNivojev).
    2. V vsakem nivoju igrajo skupine "vsak z vsakim". Skupine nastanejo po
       jakostnih pasovih kot pri vseh skupinskih sistemih (NosilciStoritev) ali
-      pa jih organizator vpise rocno.
+      pa jih organizator vpise rocno. Skupina stirih igra po vrstnem redu
+      1-4, 2-3 | 4-3, 1-2 | 2-4, 3-1 (tekmeSkupine), ostale po krozni metodi.
    3. Ko so odigrane vse skupine NIVOJA (ne celega dogodka - nivoji tecejo
-      neodvisno), nastaneta zreba nivoja: prvo- in drugouvrsceni vsake skupine v
-      GLAVNI zreb, tretje- in cetrtouvrsceni v TOLAZILNI zreb, in tako naprej po
-      dva ranga. Nosilci se postavijo po istem pravilu kot v izlocilnem delu
-      skupin (NosilciStoritev.vMrezoIzSkupin): igralca iz iste skupine se ne
-      srecata prej kot v finalu. Razpored mest sme organizator rocno popraviti,
-      dokler se zreb ni zacel.
+      neodvisno), nastanejo zrebi nivoja. Igralci gredo vanje ZAPOREDOMA po
+      mestu v skupini in crki skupine - A1, B1, ..., E1, A2, B2 ... - vsak zreb
+      sprejme toliko igralcev, kolikor jih ima mreza izbrane ravni (privzeto
+      cetrtfinale = 8), zadnji dobi ostanek. Pri petih skupinah po 4 je tako
+      glavni zreb A1-E1, A2, B2, C2, drugi D2, E2, A3-E3, A4, tretji B4-E4.
+      Organizator lahko za vsak nivo izbere raven in vpise stevilo zrebov; ce
+      zrebi ne sprejmejo vseh igralcev (ali bi kateri ostal prazen), zreba ni.
+      Visje mesto v zaporedju je visji nosilec, pasovi se zrebajo, igralca iz
+      iste skupine se srecata cim pozneje (NosilciStoritev.vMrezoPoVrsti).
+      Razpored mest sme organizator rocno popraviti, dokler se zreb ni zacel.
    4. Zreb se igra za VSA mesta: porazenca vsakega kola se srecata med seboj za
       slabsa mesta, zmagovalca za boljsa, do zadnjega para. Mreza z 8 igralci
       ima 12 tekem (4 + 2 + 1 + 1 + 2 + 1 + 1) in odloci vseh 8 mest.
@@ -99,13 +108,12 @@ public class SvRegijaStoritev {
        ena sama tekma). Rocni vpis sme biti manjsi (2). */
     static final int NAJMANJ_V_SKUPINI = 3;
 
-    /* Privzeto gresta iz vsake skupine v isti zreb dva ranga: 1.-2. v glavni zreb,
-       3.-4. v tolazilni, 5.-6. v tretji ... (isto kot finalne skupine za mesta).
-       Organizator lahko za nivo izbere 1: vsak rang je svoj zreb (pri 8 skupinah
-       so to zrebi po 8 igralcev: prvouvrsceni za 1.-8. mesto, drugouvrsceni za
-       9.-16. ...). Vec kot 2 ni mogoce - mreza pozna le "zmagovalce" in "druge". */
-    static final int PRIVZETO_RANGOV_V_ZREB = 2;
-    static final int NAJVEC_RANGOV_V_ZREB = 2;
+    /* Raven, na kateri se zrebi zacnejo, je velikost mreze: zreb sprejme toliko
+       igralcev (zadnji ostanek). Privzeto cetrtfinale - v SV regiji se povsod
+       igrajo zrebi po 8. Pri 4 skupinah to da isto kot prejsnje pravilo "1.-2. v
+       glavni, 3.-4. v tolazilni", pri 8 skupinah isto kot "vsak rang svoj zreb". */
+    public static final int PRIVZETA_VELIKOST_ZREBA = 8;
+    static final List<Integer> VELIKOSTI_ZREBA = List.of(2, 4, 8, 16, 32);
 
     private final DogodekRepozitorij dogodekRepozitorij;
     private final PrijavaRepozitorij prijavaRepozitorij;
@@ -155,13 +163,15 @@ public class SvRegijaStoritev {
        prednost in morajo sestati natanko v stevilo igralcev. */
     public static List<NivoRazrez> razrez(int igralcev, int skupinNaNivo, int velikostSkupine,
                                           Integer steviloNivojev, List<Integer> rocneVelikosti) {
-        return razrez(igralcev, skupinNaNivo, velikostSkupine, steviloNivojev, rocneVelikosti, null);
+        return razrez(igralcev, skupinNaNivo, velikostSkupine, steviloNivojev, rocneVelikosti, null, null);
     }
 
-    /* rangovVZreb: po nivojih 1 ali 2 (manjkajoci nivo ima 2). */
+    /* steviloZrebov in velikostZrebov: po nivojih, null (ali manjkajoc nivo) =
+       samodejno. Vpisano stevilo zrebov, ki ne ustreza igralcem nivoja, ustavi
+       razrez (DomenskaIzjema) - zreb takrat ni mogoc. */
     public static List<NivoRazrez> razrez(int igralcev, int skupinNaNivo, int velikostSkupine,
                                           Integer steviloNivojev, List<Integer> rocneVelikosti,
-                                          List<Integer> rangovVZreb) {
+                                          List<Integer> steviloZrebov, List<Integer> velikostZrebov) {
         if (igralcev < 2) {
             throw new DomenskaIzjema("Za žreb sta potrebna vsaj 2 igralca (trenutno: " + igralcev + ").");
         }
@@ -174,12 +184,12 @@ public class SvRegijaStoritev {
         for (int i = 0; i < velikosti.size(); i++) {
             List<Integer> skupine = velikostiSkupin(velikosti.get(i), velikostSkupine);
             if (skupine.size() > NAJVEC_SKUPIN) {
-                throw new DomenskaIzjema("Nivo " + (i + 1) + " bi imel " + skupine.size()
-                        + " skupin, največ jih je " + NAJVEC_SKUPIN + ". Povečaj število nivojev"
+                throw new DomenskaIzjema("Skupina " + (i + 1) + " bi imela " + skupine.size()
+                        + " skupin, največ jih je " + NAJVEC_SKUPIN + " (A–Z). Povečaj število Skupin"
                         + " ali velikost skupine.");
             }
             razrez.add(new NivoRazrez(i + 1, velikosti.get(i), odMesta, skupine,
-                    velikostiZrebov(skupine, rangovNivoja(rangovVZreb, i + 1))));
+                    zrebiNivoja(i + 1, skupine, steviloZrebov, velikostZrebov)));
             odMesta += velikosti.get(i);
         }
         return razrez;
@@ -187,17 +197,17 @@ public class SvRegijaStoritev {
 
     private static List<Integer> preveriRocneVelikosti(List<Integer> velikosti, int igralcev) {
         if (velikosti.size() > NAJVEC_NIVOJEV) {
-            throw new DomenskaIzjema("Nivojev je lahko največ " + NAJVEC_NIVOJEV + ".");
+            throw new DomenskaIzjema("Skupin 1, 2 … je lahko največ " + NAJVEC_NIVOJEV + ".");
         }
         int vsota = 0;
         for (int velikost : velikosti) {
             if (velikost < 2) {
-                throw new DomenskaIzjema("Nivo mora imeti vsaj 2 igralca.");
+                throw new DomenskaIzjema("Skupina mora imeti vsaj 2 igralca.");
             }
             vsota += velikost;
         }
         if (vsota != igralcev) {
-            throw new DomenskaIzjema("Vpisane velikosti nivojev (skupaj " + vsota
+            throw new DomenskaIzjema("Vpisane velikosti Skupin (skupaj " + vsota
                     + ") se ne ujemajo s številom prijavljenih (" + igralcev + "). Popravi velikosti"
                     + " ali jih izbriši, da jih določi sistem.");
         }
@@ -230,11 +240,11 @@ public class SvRegijaStoritev {
 
         int nivojev = Math.max(1, steviloNivojev);
         if (nivojev > NAJVEC_NIVOJEV) {
-            throw new DomenskaIzjema("Nivojev je lahko največ " + NAJVEC_NIVOJEV + ".");
+            throw new DomenskaIzjema("Skupin 1, 2 … je lahko največ " + NAJVEC_NIVOJEV + ".");
         }
         if (igralcev < nivojev * 2) {
-            throw new DomenskaIzjema("Za " + nivojev + " nivojev je premalo prijav (" + igralcev
-                    + "): vsak nivo potrebuje vsaj 2 igralca.");
+            throw new DomenskaIzjema("Za " + nivojev + " Skupin je premalo prijav (" + igralcev
+                    + "): vsaka Skupina potrebuje vsaj 2 igralca.");
         }
         if (igralcev >= (nivojev - 1) * poln + NAJMANJ_ZADNJEGA_NIVOJA) {
             for (int i = 0; i < nivojev - 1; i++) {
@@ -270,37 +280,131 @@ public class SvRegijaStoritev {
         return velikosti;
     }
 
-    /* Koliko igralcev pride v vsak zreb nivoja: zreb d zbere ranga 2d+1 in 2d+2 iz
-       vsake skupine. Nivo z eno skupino zrebov nima. */
+    /* Koliko igralcev pride v vsak zreb nivoja s privzeto ravnjo (cetrtfinale). */
     public static List<Integer> velikostiZrebov(List<Integer> velikostiSkupin) {
-        return velikostiZrebov(velikostiSkupin, PRIVZETO_RANGOV_V_ZREB);
+        return velikostiZrebov(velikostiSkupin, PRIVZETA_VELIKOST_ZREBA);
     }
 
-    /* Isto z izbranim stevilom rangov v zrebu: zreb d zbere rangove
-       d*r+1 ... d*r+r iz vsake skupine, ki jih ima. */
-    public static List<Integer> velikostiZrebov(List<Integer> velikostiSkupin, int rangov) {
+    /* Igralci nivoja gredo v zrebe zaporedoma (A1, B1, ..., A2, B2 ...), vsak
+       zreb sprejme velikostZreba igralcev, zadnji ostanek. Nivo z eno skupino
+       zrebov nima - mesta doloci razvrstitev v skupini. */
+    public static List<Integer> velikostiZrebov(List<Integer> velikostiSkupin, int velikostZreba) {
         if (velikostiSkupin.size() <= 1) {
             return List.of();
         }
-        int najvecja = velikostiSkupin.stream().mapToInt(Integer::intValue).max().orElse(0);
-        int zrebov = (najvecja + rangov - 1) / rangov;
+        int igralcev = velikostiSkupin.stream().mapToInt(Integer::intValue).sum();
         List<Integer> velikosti = new ArrayList<>();
-        for (int d = 0; d < zrebov; d++) {
-            int skupaj = 0;
-            for (int velikost : velikostiSkupin) {
-                skupaj += Math.max(0, Math.min(rangov, velikost - d * rangov));
-            }
-            velikosti.add(skupaj);
+        for (int ostalo = igralcev; ostalo > 0; ostalo -= velikostZreba) {
+            velikosti.add(Math.min(velikostZreba, ostalo));
         }
         return velikosti;
     }
 
-    /* Rangov v zrebu za nivo (nivoji so oznaceni od 1): vpisana vrednost ali privzeta 2. */
-    static int rangovNivoja(List<Integer> rangovVZreb, int nivo) {
-        if (rangovVZreb == null || nivo < 1 || nivo > rangovVZreb.size() || rangovVZreb.get(nivo - 1) == null) {
-            return PRIVZETO_RANGOV_V_ZREB;
+    /* Zrebi nivoja po nastavitvah organizatorja. Vpisano stevilo mora natanko
+       ustrezati: ce zrebi ne sprejmejo vseh igralcev ali bi kateri ostal prazen,
+       sistem zreba ne dovoli (odlocitev lastnika 7. 11. 2026). */
+    static List<Integer> zrebiNivoja(int nivo, List<Integer> velikostiSkupin,
+                                     List<Integer> steviloZrebov, List<Integer> velikostZrebov) {
+        int velikostZreba = velikostZrebaNivoja(velikostZrebov, nivo);
+        List<Integer> zrebi = velikostiZrebov(velikostiSkupin, velikostZreba);
+        Integer vpisano = vpisanoZrebov(steviloZrebov, nivo);
+        if (vpisano == null || vpisano == zrebi.size()) {
+            return zrebi;
         }
-        return rangovVZreb.get(nivo - 1);
+        int igralcev = velikostiSkupin.stream().mapToInt(Integer::intValue).sum();
+        if (zrebi.isEmpty()) {
+            throw new DomenskaIzjema("Skupina " + nivo + " ima eno samo skupino, zato izločilnih"
+                    + " žrebov nima (vpisanih: " + vpisano + "). Izbriši število žrebov ali razdeli"
+                    + " Skupino v več skupin.");
+        }
+        String raven = imeRavni(velikostZreba);
+        if (vpisano < zrebi.size()) {
+            throw new DomenskaIzjema("Skupina " + nivo + " ima " + igralcev(igralcev) + ", "
+                    + zrebov(vpisano) + " od " + raven + " " + sprejme(vpisano) + " največ "
+                    + vpisano * velikostZreba + ". Potrebno število žrebov: " + zrebi.size()
+                    + " (ali izberi zgodnejšo raven).");
+        }
+        throw new DomenskaIzjema("Skupina " + nivo + " ima samo " + igralcev(igralcev) + ": pri "
+                + vpisano + " žrebih od " + raven + " bi zadnji ostal prazen. Potrebno število"
+                + " žrebov: " + zrebi.size() + " (ali izberi poznejšo raven).");
+    }
+
+    /* "ima 19 igralcev" (tozilnik). */
+    private static String igralcev(int n) {
+        return n + switch (n % 100) {
+            case 1, 2 -> " igralca";
+            case 3, 4 -> " igralce";
+            default -> " igralcev";
+        };
+    }
+
+    /* Velikost mreze ravni za nivo (nivoji so oznaceni od 1): vpisana ali privzeta 8. */
+    static int velikostZrebaNivoja(List<Integer> velikostZrebov, int nivo) {
+        Integer vpisana = vpisanoNaNivoju(velikostZrebov, nivo);
+        return vpisana != null ? vpisana : PRIVZETA_VELIKOST_ZREBA;
+    }
+
+    /* Stevilo zrebov, ki ga je za nivo vpisal organizator; null = samodejno. */
+    static Integer vpisanoZrebov(List<Integer> steviloZrebov, int nivo) {
+        return vpisanoNaNivoju(steviloZrebov, nivo);
+    }
+
+    private static Integer vpisanoNaNivoju(List<Integer> poNivojih, int nivo) {
+        if (poNivojih == null || nivo < 1 || nivo > poNivojih.size()) {
+            return null;
+        }
+        return poNivojih.get(nivo - 1);
+    }
+
+    /* Ime ravni v rodilniku: "od cetrtfinala". */
+    static String imeRavni(int velikostMreze) {
+        return switch (velikostMreze) {
+            case 2 -> "finala";
+            case 4 -> "polfinala";
+            case 8 -> "četrtfinala";
+            case 16 -> "osmine finala";
+            case 32 -> "šestnajstine finala";
+            default -> "mreže " + velikostMreze;
+        };
+    }
+
+    private static String zrebov(int n) {
+        return n + switch (n % 100) {
+            case 1 -> " žreb";
+            case 2 -> " žreba";
+            case 3, 4 -> " žrebi";
+            default -> " žrebov";
+        };
+    }
+
+    private static String sprejme(int n) {
+        return switch (n % 100) {
+            case 1 -> "sprejme";
+            case 2 -> "sprejmeta";
+            default -> "sprejmejo";
+        };
+    }
+
+    /* Od kod pridejo udelezenci vsakega zreba, kot oznake "A1", "B1" ... (crka
+       skupine in mesto v njej) - po istem zaporedju, kot jih zbere zreb. */
+    static List<List<String>> viriZrebov(List<Integer> velikostiSkupin, List<Integer> velikostiZrebov) {
+        List<String> zaporedje = new ArrayList<>();
+        int najvec = velikostiSkupin.stream().mapToInt(Integer::intValue).max().orElse(0);
+        for (int mesto = 1; mesto <= najvec; mesto++) {
+            for (int s = 0; s < velikostiSkupin.size(); s++) {
+                if (velikostiSkupin.get(s) >= mesto) {
+                    zaporedje.add((char) ('A' + s) + String.valueOf(mesto));
+                }
+            }
+        }
+        List<List<String>> viri = new ArrayList<>();
+        int od = 0;
+        for (int velikost : velikostiZrebov) {
+            int doIzkljucno = Math.min(od + velikost, zaporedje.size());
+            viri.add(List.copyOf(zaporedje.subList(Math.min(od, doIzkljucno), doIzkljucno)));
+            od = doIzkljucno;
+        }
+        return viri;
     }
 
 
@@ -316,7 +420,16 @@ public class SvRegijaStoritev {
     public static List<NivoRazrez> razrez(Dogodek dogodek, int igralcev) {
         return razrez(igralcev, skupinNaNivo(dogodek), velikostSkupine(dogodek),
                 dogodek.getSteviloNivojev(), dogodek.velikostiNivojevSeznam(),
-                dogodek.rangovVZrebSeznam());
+                dogodek.steviloZrebovSeznam(), dogodek.velikostZrebovSeznam());
+    }
+
+    /* Isti razrez brez preverbe vpisanega stevila zrebov - za predogled, ki naj
+       pokaze Skupine tudi takrat, ko vpisano stevilo ne ustreza (napaka je
+       takrat zadrzek). */
+    private static List<NivoRazrez> razrezZaPrikaz(Dogodek dogodek, int igralcev) {
+        return razrez(igralcev, skupinNaNivo(dogodek), velikostSkupine(dogodek),
+                dogodek.getSteviloNivojev(), dogodek.velikostiNivojevSeznam(),
+                null, dogodek.velikostZrebovSeznam());
     }
 
     /* Mesta v mrezi iz seznama nosilcev (poSeedu.get(0) = 1. nosilec): mesto i
@@ -555,6 +668,13 @@ public class SvRegijaStoritev {
     @Transactional
     public List<Tekma> zapisiSkupine(Dogodek dogodek, List<List<List<Prijava>>> nivoji) {
         preveriStrukturo(nivoji);
+        // zrebi vseh nivojev se preverijo, preden se karkoli zapise (rocni vpis ima lahko
+        // drugacne velikosti kot predogled, vpisano stevilo zrebov pa mora ustrezati)
+        List<List<Integer>> zrebiPoNivojih = new ArrayList<>();
+        for (int n = 0; n < nivoji.size(); n++) {
+            zrebiPoNivojih.add(zrebiNivoja(n + 1, nivoji.get(n).stream().map(List::size).toList(),
+                    dogodek.steviloZrebovSeznam(), dogodek.velikostZrebovSeznam()));
+        }
 
         List<Tekma> vse = new ArrayList<>();
         List<Prijava> vsiClani = new ArrayList<>();
@@ -572,10 +692,9 @@ public class SvRegijaStoritev {
             }
             skupinaRepozitorij.saveAll(skupine);
 
-            List<Integer> velikosti = new ArrayList<>();
             int velikostNivoja = 0;
             for (int j = 0; j < skupineNivoja.size(); j++) {
-                // clani po jakosti: nosilec skupine zacne z najsibkejsim, dvoboj 1-2 pade v zadnje kolo
+                // clani po jakosti: 1 je nosilec skupine (tekmeSkupine steje od tu)
                 List<Prijava> clani = new ArrayList<>(skupineNivoja.get(j));
                 clani.sort(Comparator.comparing(
                         (Prijava p) -> p.getStNosilca() == null ? Integer.MAX_VALUE : p.getStNosilca()));
@@ -586,16 +705,14 @@ public class SvRegijaStoritev {
                     clan.setKoncnoMesto(null);
                     vsiClani.add(clan);
                 }
-                for (Tekma tekma : ZrebStoritev.kroznePare(dogodek, clani, skupina.getId())) {
+                for (Tekma tekma : tekmeSkupine(dogodek, clani, skupina.getId())) {
                     tekma.setPozicija(globalnaPozicija++);
                     vse.add(tekma);
                 }
-                velikosti.add(clani.size());
                 velikostNivoja += clani.size();
             }
 
-            List<Integer> zrebi = velikostiZrebov(velikosti,
-                    rangovNivoja(dogodek.rangovVZrebSeznam(), nivo));
+            List<Integer> zrebi = zrebiPoNivojih.get(n);
             int mesto = odMesta;
             for (int d = 0; d < zrebi.size(); d++) {
                 zrebRepozitorij.save(new Zreb(dogodek, nivo, d, mesto, zrebi.get(d)));
@@ -608,22 +725,58 @@ public class SvRegijaStoritev {
         return vse;
     }
 
+    /* Vrstni red tekem v skupini stirih (odlocitev lastnika 7. 11. 2026), po
+       mestih v skupini (1 = nosilec): kolo 1: 1-4, 2-3; kolo 2: 4-3, 1-2;
+       kolo 3: 2-4, 3-1. Prvi v paru je prijava1 (na listku levo). */
+    private static final int[][][] VRSTNI_RED_STIRIH = {
+            {{1, 4}, {2, 3}},
+            {{4, 3}, {1, 2}},
+            {{2, 4}, {3, 1}},
+    };
+
+    /* Tekme "vsak z vsakim" v skupini; clani so urejeni po jakosti. Skupina
+       stirih igra po vrstnem redu SV regije, druge velikosti po krozni metodi
+       (skupina treh: 2-3, 1-3, 1-2). */
+    static List<Tekma> tekmeSkupine(Dogodek dogodek, List<Prijava> clani, Long idSkupina) {
+        if (clani.size() != 4) {
+            return ZrebStoritev.kroznePare(dogodek, clani, idSkupina);
+        }
+        List<Tekma> tekme = new ArrayList<>();
+        for (int kolo = 1; kolo <= VRSTNI_RED_STIRIH.length; kolo++) {
+            int[][] pari = VRSTNI_RED_STIRIH[kolo - 1];
+            for (int i = 0; i < pari.length; i++) {
+                Tekma tekma = new Tekma();
+                tekma.setDogodek(dogodek);
+                tekma.setFaza(FazaTekme.SKUPINA);
+                tekma.setKolo(kolo);
+                tekma.setPozicija(i + 1);
+                tekma.setSteviloNizov(dogodek.getPrivzetoSteviloNizov());
+                tekma.setIdSkupina(idSkupina);
+                tekma.setPrijava1(clani.get(pari[i][0] - 1));
+                tekma.setPrijava2(clani.get(pari[i][1] - 1));
+                tekma.setStatus(StatusTekme.PRIPRAVLJENA);
+                tekme.add(tekma);
+            }
+        }
+        return tekme;
+    }
+
     /* Vsak nivo ima skupino, vsaka skupina vsaj dva igralca, nihce ni dvakrat. */
     private static void preveriStrukturo(List<List<List<Prijava>>> nivoji) {
         if (nivoji.isEmpty()) {
-            throw new NeveljavenVnosIzjema("Vpisan mora biti vsaj en nivo.");
+            throw new NeveljavenVnosIzjema("Vpisana mora biti vsaj ena Skupina.");
         }
         if (nivoji.size() > NAJVEC_NIVOJEV) {
-            throw new NeveljavenVnosIzjema("Nivojev je lahko največ " + NAJVEC_NIVOJEV + ".");
+            throw new NeveljavenVnosIzjema("Skupin 1, 2 … je lahko največ " + NAJVEC_NIVOJEV + ".");
         }
         Set<Long> videni = new HashSet<>();
         for (int n = 0; n < nivoji.size(); n++) {
             List<List<Prijava>> skupine = nivoji.get(n);
             if (skupine.isEmpty()) {
-                throw new NeveljavenVnosIzjema("Nivo " + (n + 1) + " nima nobene skupine.");
+                throw new NeveljavenVnosIzjema("Skupina " + (n + 1) + " nima nobene skupine.");
             }
             if (skupine.size() > NAJVEC_SKUPIN) {
-                throw new NeveljavenVnosIzjema("Nivo " + (n + 1) + " ima več kot " + NAJVEC_SKUPIN
+                throw new NeveljavenVnosIzjema("Skupina " + (n + 1) + " ima več kot " + NAJVEC_SKUPIN
                         + " skupin.");
             }
             for (int j = 0; j < skupine.size(); j++) {
@@ -711,40 +864,42 @@ public class SvRegijaStoritev {
         Integer skupin = vnos.steviloSkupin();
         Integer velikost = vnos.velikostSkupine();
         if (skupin != null && (skupin < 1 || skupin > NAJVEC_SKUPIN)) {
-            throw new NeveljavenVnosIzjema("Skupin na nivo mora biti med 1 in " + NAJVEC_SKUPIN + ".");
+            throw new NeveljavenVnosIzjema("Skupin v polni Skupini mora biti med 1 in " + NAJVEC_SKUPIN + ".");
         }
         if (velikost != null && (velikost < 2 || velikost > 24)) {
             throw new NeveljavenVnosIzjema("Velikost skupine mora biti med 2 in 24.");
         }
         List<Integer> velikosti = vnos.velikostiNivojev() == null ? List.of() : vnos.velikostiNivojev();
         if (velikosti.size() > NAJVEC_NIVOJEV) {
-            throw new NeveljavenVnosIzjema("Nivojev je lahko največ " + NAJVEC_NIVOJEV + ".");
+            throw new NeveljavenVnosIzjema("Skupin 1, 2 … je lahko največ " + NAJVEC_NIVOJEV + ".");
         }
         for (Integer v : velikosti) {
             if (v == null || v < 2) {
-                throw new NeveljavenVnosIzjema("Vsak nivo mora imeti vsaj 2 igralca.");
+                throw new NeveljavenVnosIzjema("Vsaka Skupina mora imeti vsaj 2 igralca.");
             }
         }
         Integer nivojev = vnos.steviloNivojev();
         if (nivojev != null && (nivojev < 1 || nivojev > NAJVEC_NIVOJEV)) {
-            throw new NeveljavenVnosIzjema("Število nivojev mora biti med 1 in " + NAJVEC_NIVOJEV + ".");
+            throw new NeveljavenVnosIzjema("Število Skupin mora biti med 1 in " + NAJVEC_NIVOJEV + ".");
         }
-        List<Integer> rangov = vnos.rangovVZreb() == null ? List.of() : vnos.rangovVZreb();
-        if (rangov.size() > NAJVEC_NIVOJEV) {
-            throw new NeveljavenVnosIzjema("Rangov v žrebu je mogoče vpisati za največ "
-                    + NAJVEC_NIVOJEV + " nivojev.");
+        List<Integer> steviloZrebov = poNivojih(vnos.steviloZrebov());
+        for (Integer st : steviloZrebov) {
+            if (st != null && (st < 1 || st > 16)) {
+                throw new NeveljavenVnosIzjema("Število žrebov v Skupini mora biti med 1 in 16.");
+            }
         }
-        for (Integer r : rangov) {
-            if (r == null || r < 1 || r > NAJVEC_RANGOV_V_ZREB) {
-                throw new NeveljavenVnosIzjema("Rangov iz skupine v en žreb je lahko 1 ali "
-                        + NAJVEC_RANGOV_V_ZREB + ".");
+        List<Integer> velikostZrebov = poNivojih(vnos.velikostZrebov());
+        for (Integer v : velikostZrebov) {
+            if (v != null && !VELIKOSTI_ZREBA.contains(v)) {
+                throw new NeveljavenVnosIzjema("Žreb se lahko začne v šestnajstini finala (32),"
+                        + " osmini (16), četrtfinalu (8), polfinalu (4) ali finalu (2).");
             }
         }
 
         dogodek.setSteviloSkupin(skupin);
         dogodek.setVelikostSkupine(velikost);
-        dogodek.setRangovVZreb(rangov.isEmpty() ? null : rangov.stream().map(String::valueOf)
-                .collect(Collectors.joining(",")));
+        dogodek.setSteviloZrebov(csvPoNivojih(steviloZrebov));
+        dogodek.setVelikostZrebov(csvPoNivojih(velikostZrebov));
         if (velikosti.isEmpty()) {
             dogodek.setVelikostiNivojev(null);
             dogodek.setSteviloNivojev(nivojev);
@@ -755,6 +910,27 @@ public class SvRegijaStoritev {
             dogodek.setSteviloNivojev(null);
         }
         return dogodekRepozitorij.save(dogodek);
+    }
+
+    /* Vnos po nivojih brez praznega repa ([8, null, null] -> [8]); najvec 9 nivojev. */
+    private static List<Integer> poNivojih(List<Integer> vnos) {
+        List<Integer> seznam = vnos == null ? new ArrayList<>() : new ArrayList<>(vnos);
+        while (!seznam.isEmpty() && seznam.get(seznam.size() - 1) == null) {
+            seznam.remove(seznam.size() - 1);
+        }
+        if (seznam.size() > NAJVEC_NIVOJEV) {
+            throw new NeveljavenVnosIzjema("Žrebe je mogoče nastaviti za največ " + NAJVEC_NIVOJEV
+                    + " Skupin.");
+        }
+        return seznam;
+    }
+
+    /* [8, null, 16] -> "8,,16"; prazen seznam -> null. */
+    private static String csvPoNivojih(List<Integer> seznam) {
+        if (seznam.isEmpty()) {
+            return null;
+        }
+        return seznam.stream().map(v -> v == null ? "" : String.valueOf(v)).collect(Collectors.joining(","));
     }
 
     // ---------------------------------------------------------------------
@@ -803,35 +979,48 @@ public class SvRegijaStoritev {
         return uvrstitve;
     }
 
-    /* Udelezenci zreba iz razvrstitve v skupinah: zreb d zbere ranga 2d+1 (kot
-       "zmagovalec") in 2d+2 (kot "drugi") iz vsake skupine, ki ju ima. */
-    private record Udelezenci(List<Prijava> prvi, List<Prijava> drugi) {
-        List<Prijava> vsi() {
-            List<Prijava> vsi = new ArrayList<>(prvi);
-            drugi.stream().filter(Objects::nonNull).forEach(vsi::add);
-            return vsi;
-        }
-    }
+    /* Udelezenec zreba: igralec in indeks njegove skupine (0 = A). */
+    private record Udelezenec(Prijava prijava, int skupina) {}
 
-    private static Udelezenci udelezenci(Zreb zreb, List<List<Prijava>> uvrstitve) {
-        int rangov = rangovNivoja(zreb.getDogodek().rangovVZrebSeznam(), zreb.getNivo());
-        int rang = zreb.getIndeks() * rangov;
-        List<Prijava> prvi = new ArrayList<>();
-        List<Prijava> drugi = new ArrayList<>();
-        for (List<Prijava> poVrsti : uvrstitve) {
-            if (poVrsti.size() <= rang) {
-                continue; // skupina nima igralca tega ranga
+    /* Igralci nivoja v zaporedju, v katerem gredo v zrebe: po mestu v skupini,
+       znotraj mesta po crki skupine (A1, B1, ..., A2, B2 ...). */
+    private static List<Udelezenec> zaporedjeNivoja(List<List<Prijava>> uvrstitve) {
+        List<Udelezenec> zaporedje = new ArrayList<>();
+        int najvec = uvrstitve.stream().mapToInt(List::size).max().orElse(0);
+        for (int mesto = 0; mesto < najvec; mesto++) {
+            for (int s = 0; s < uvrstitve.size(); s++) {
+                if (uvrstitve.get(s).size() > mesto) {
+                    zaporedje.add(new Udelezenec(uvrstitve.get(s).get(mesto), s));
+                }
             }
-            prvi.add(poVrsti.get(rang));
-            drugi.add(rangov > 1 && poVrsti.size() > rang + 1 ? poVrsti.get(rang + 1) : null);
         }
-        return new Udelezenci(prvi, drugi);
+        return zaporedje;
     }
 
-    /* Mesta v mrezi po pravilu zreba (nosilci, locitev skupin in klubov). */
+    /* Udelezenci zreba: zaporedje nivoja od mesta, kjer se konca prejsnji zreb,
+       toliko, kolikor jih zreb sprejme. Velikosti zrebov so zapisane ob zrebu
+       skupin, zato veljajo tudi za dogodke, izzrebane po prejsnjem pravilu
+       ("1.-2. v glavni, 3.-4. v tolazilni"): njegovi zrebi so isti odseki istega
+       zaporedja. */
+    private List<Udelezenec> udelezenci(Zreb zreb, List<List<Prijava>> uvrstitve) {
+        int od = 0;
+        for (Zreb drug : zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(
+                zreb.getDogodek().getId(), zreb.getNivo())) {
+            if (drug.getIndeks() < zreb.getIndeks()) {
+                od += drug.getStUdelezencev();
+            }
+        }
+        List<Udelezenec> zaporedje = zaporedjeNivoja(uvrstitve);
+        int doIzkljucno = Math.min(od + zreb.getStUdelezencev(), zaporedje.size());
+        return new ArrayList<>(zaporedje.subList(Math.min(od, doIzkljucno), doIzkljucno));
+    }
+
+    /* Mesta v mrezi po pravilu zreba (nosilci po zaporedju, locitev skupin in klubov). */
     private Prijava[] nakljucnaMesta(Zreb zreb, List<List<Prijava>> uvrstitve) {
-        Udelezenci udelezenci = udelezenci(zreb, uvrstitve);
-        return mestaVMrezi(nosilci.vMrezoIzSkupin(udelezenci.prvi(), udelezenci.drugi()));
+        List<Udelezenec> udelezenci = udelezenci(zreb, uvrstitve);
+        return mestaVMrezi(nosilci.vMrezoPoVrsti(
+                udelezenci.stream().map(Udelezenec::prijava).toList(),
+                udelezenci.stream().map(Udelezenec::skupina).toList()));
     }
 
     /* Predlog razporeditve v mrezi BREZ zapisa (isti zreb, kot bi ga naredil
@@ -860,11 +1049,10 @@ public class SvRegijaStoritev {
         lastnistvo.preveriTurnirPoDogodku(zreb.getDogodek().getId());
         preveriUredljiv(zreb);
         PodatkiNivoja podatki = podatkiNivoja(zreb);
-        Udelezenci udelezenci = udelezenci(zreb, podatki.uvrstitve());
 
         Map<Long, Prijava> poId = new HashMap<>();
-        for (Prijava p : udelezenci.vsi()) {
-            poId.put(p.getId(), p);
+        for (Udelezenec u : udelezenci(zreb, podatki.uvrstitve())) {
+            poId.put(u.prijava().getId(), u.prijava());
         }
         int velikost = NosilciStoritev.najblizjaPotencaDve(poId.size());
         if (idjiPoMestih == null || idjiPoMestih.size() != velikost) {
@@ -911,7 +1099,7 @@ public class SvRegijaStoritev {
         List<Skupina> skupine = predtekmovalnePoNivojih(
                 skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(idDogodka)).get(zreb.getNivo());
         if (skupine == null) {
-            throw new NiNajdenoIzjema("Nivo " + zreb.getNivo() + " nima skupin.");
+            throw new NiNajdenoIzjema("Skupina " + zreb.getNivo() + " nima skupin.");
         }
         List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodek(idDogodka);
         List<Tekma> tekme = tekmaRepozitorij.najdiZaDogodek(idDogodka);
@@ -926,7 +1114,8 @@ public class SvRegijaStoritev {
             throw new DomenskaIzjema("Žreb je mogoče urejati samo, dokler dogodek teče.");
         }
         if (!zreb.isZgrajen() && !skupineNivojaKoncane(zreb)) {
-            throw new DomenskaIzjema("Žreb še ni pripravljen: počakaj, da se odigrajo vse skupine nivoja.");
+            throw new DomenskaIzjema("Žreb še ni pripravljen: počakaj, da so odigrane vse tekme v"
+                    + " skupinah Skupine " + zreb.getNivo() + ".");
         }
         boolean zacet = tekmaRepozitorij.findByIdZreb(zreb.getId()).stream()
                 .anyMatch(t -> t.getStatus() == StatusTekme.KONCANA || t.getStatus() == StatusTekme.V_IGRI);
@@ -1042,26 +1231,40 @@ public class SvRegijaStoritev {
         int velikost = velikostSkupine(dogodek);
         List<Integer> rocne = dogodek.velikostiNivojevSeznam();
 
+        List<Integer> vpisanoZrebov = dogodek.steviloZrebovSeznam();
+        List<Integer> velikostZrebov = dogodek.velikostZrebovSeznam();
+
         List<SvRegijaDto.NivoDto> nivoji = new ArrayList<>();
         String zadrzek = null;
         if (!zrebane) {
             int prijavljenih = (int) prijave.stream()
                     .filter(p -> p.getStatus() == Prijava.StatusPrijave.PRIJAVLJEN).count();
+            List<NivoRazrez> razrez = List.of();
             try {
-                for (NivoRazrez nivo : razrez(dogodek, prijavljenih)) {
-                    List<SvRegijaDto.ZrebDto> zrebi = new ArrayList<>();
-                    int mesto = nivo.odMesta();
-                    for (int d = 0; d < nivo.velikostiZrebov().size(); d++) {
-                        int st = nivo.velikostiZrebov().get(d);
-                        zrebi.add(zrebDto(null, d, mesto, st, false, false, false, List.of()));
-                        mesto += st;
-                    }
-                    nivoji.add(new SvRegijaDto.NivoDto(nivo.nivo(), nivo.velikost(), nivo.odMesta(),
-                            nivo.doMesta(), nivo.velikostiSkupin(),
-                            rangovNivoja(dogodek.rangovVZrebSeznam(), nivo.nivo()), zrebi));
-                }
+                razrez = razrez(dogodek, prijavljenih);
             } catch (DomenskaIzjema e) {
                 zadrzek = e.getMessage();
+                // vpisano stevilo zrebov, ki ne ustreza, ne skrije Skupin - organizator mora
+                // videti, koliko igralcev ima vsaka, da ga lahko popravi
+                try {
+                    razrez = razrezZaPrikaz(dogodek, prijavljenih);
+                } catch (DomenskaIzjema drugaNapaka) {
+                    razrez = List.of();
+                }
+            }
+            for (NivoRazrez nivo : razrez) {
+                List<List<String>> viri = viriZrebov(nivo.velikostiSkupin(), nivo.velikostiZrebov());
+                List<SvRegijaDto.ZrebDto> zrebi = new ArrayList<>();
+                int mesto = nivo.odMesta();
+                for (int d = 0; d < nivo.velikostiZrebov().size(); d++) {
+                    int st = nivo.velikostiZrebov().get(d);
+                    zrebi.add(zrebDto(null, d, mesto, st, false, false, false, List.of(), viri.get(d)));
+                    mesto += st;
+                }
+                nivoji.add(new SvRegijaDto.NivoDto(nivo.nivo(), nivo.velikost(), nivo.odMesta(),
+                        nivo.doMesta(), nivo.velikostiSkupin(),
+                        velikostZrebaNivoja(velikostZrebov, nivo.nivo()),
+                        vpisanoZrebov(vpisanoZrebov, nivo.nivo()), zrebi));
             }
         } else {
             Map<Long, Long> clanov = prijave.stream()
@@ -1077,36 +1280,45 @@ public class SvRegijaStoritev {
                         .map(s -> clanov.getOrDefault(s.getId(), 0L).intValue()).toList();
                 int velikostNivoja = velikosti.stream().mapToInt(Integer::intValue).sum();
                 boolean skupineKoncane = skupineKoncane(nivo.getValue(), tekme);
-                List<SvRegijaDto.ZrebDto> zrebi = zrebRepozitorij
-                        .findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), nivo.getKey()).stream()
-                        .map(z -> zrebDto(z.getId(), z.getIndeks(), z.getPrvoMesto(), z.getStUdelezencev(),
-                                z.isZgrajen(), z.isRocni(),
-                                // nezgrajen zreb se sme zgraditi, ko so skupine nivoja odigrane;
-                                // zgrajen se sme popraviti, dokler se nobena njegova tekma ni zacela
-                                vTeku && (z.isZgrajen()
-                                        ? tekmePoZrebu.getOrDefault(z.getId(), List.of()).stream()
-                                                .allMatch(t -> t.getStatus() == StatusTekme.CAKA
-                                                        || t.getStatus() == StatusTekme.PRIPRAVLJENA)
-                                        : skupineKoncane),
-                                z.razporedKotSeznam()))
-                        .toList();
+                List<Zreb> zrebiNivoja = zrebRepozitorij
+                        .findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), nivo.getKey());
+                List<List<String>> viri = viriZrebov(velikosti,
+                        zrebiNivoja.stream().map(Zreb::getStUdelezencev).toList());
+                List<SvRegijaDto.ZrebDto> zrebi = new ArrayList<>();
+                for (int d = 0; d < zrebiNivoja.size(); d++) {
+                    Zreb z = zrebiNivoja.get(d);
+                    zrebi.add(zrebDto(z.getId(), z.getIndeks(), z.getPrvoMesto(), z.getStUdelezencev(),
+                            z.isZgrajen(), z.isRocni(),
+                            // nezgrajen zreb se sme zgraditi, ko so skupine nivoja odigrane;
+                            // zgrajen se sme popraviti, dokler se nobena njegova tekma ni zacela
+                            vTeku && (z.isZgrajen()
+                                    ? tekmePoZrebu.getOrDefault(z.getId(), List.of()).stream()
+                                            .allMatch(t -> t.getStatus() == StatusTekme.CAKA
+                                                    || t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                                    : skupineKoncane),
+                            z.razporedKotSeznam(), viri.get(d)));
+                }
+                // raven po zrebu pove prvi zreb (tudi pri dogodkih, izzrebanih po prejsnjem pravilu)
+                int velikostZreba = zrebiNivoja.isEmpty()
+                        ? velikostZrebaNivoja(velikostZrebov, nivo.getKey())
+                        : zrebiNivoja.get(0).velikostMreze();
                 nivoji.add(new SvRegijaDto.NivoDto(nivo.getKey(), velikostNivoja, odMesta,
-                        odMesta + velikostNivoja - 1, velikosti,
-                        rangovNivoja(dogodek.rangovVZrebSeznam(), nivo.getKey()), zrebi));
+                        odMesta + velikostNivoja - 1, velikosti, velikostZreba,
+                        vpisanoZrebov(vpisanoZrebov, nivo.getKey()), zrebi));
                 odMesta += velikostNivoja;
             }
         }
         return new SvRegijaDto(nivoji, zadrzek, zrebane,
                 zrebane && dogodek.getStatus() == StatusTekmovanja.V_TEKU && !zacete,
-                skupin, velikost, dogodek.getSteviloNivojev(), rocne, dogodek.rangovVZrebSeznam());
+                skupin, velikost, dogodek.getSteviloNivojev(), rocne, vpisanoZrebov, velikostZrebov);
     }
 
     private static SvRegijaDto.ZrebDto zrebDto(Long id, int indeks, int prvoMesto, int stUdelezencev,
                                               boolean zgrajen, boolean rocni, boolean uredljiv,
-                                              List<Long> razpored) {
+                                              List<Long> razpored, List<String> viri) {
         return new SvRegijaDto.ZrebDto(id, indeks, Zreb.faza(indeks), Zreb.ime(indeks), prvoMesto,
                 prvoMesto + stUdelezencev - 1, stUdelezencev, Zreb.velikostMreze(stUdelezencev),
-                zgrajen, rocni, uredljiv, razpored);
+                zgrajen, rocni, uredljiv, razpored, viri);
     }
 
     // ---------------------------------------------------------------------

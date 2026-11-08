@@ -284,7 +284,7 @@ export function sklopiZrebSkupin(mreza: MrezaDto): TiskSklop[] {
     const nivoji = [...new Set(skupine.map((s) => s.nivo))].sort((a, b) => a - b)
     return nivoji.map((nivo) => ({
       kljuc: `nivo-${nivo}`,
-      naslov: nivoji.length > 1 ? `Nivo ${nivo}` : null,
+      naslov: nivoji.length > 1 ? `Skupina ${nivo}` : null,
       skupine: skupine
         .filter((s) => s.nivo === nivo)
         .sort(poOznaki)

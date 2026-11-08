@@ -57,6 +57,11 @@ public class NosilciStoritev {
        varovalka za primer, ko zreba brez klubskega trka sploh ni. */
     private static final int POSKUSOV = 300;
 
+    /* Zreb po vrsti (SV regija) vsak poskus se izboljsa z zamenjavami, zato jih
+       je dovolj manj; skupinska kazen pretehta vse klubske trke. */
+    private static final int POSKUSOV_PO_VRSTI = 60;
+    private static final long SKUPINSKA_KAZEN = 1000;
+
     /* Vir nakljucnosti je zamenljiv, da so testi lahko deterministicni.
        Isti vir uporablja tudi ZrebStoritev, da je zreb v celoti ponovljiv. */
     private Random nakljucje = new SecureRandom();
@@ -180,6 +185,96 @@ public class NosilciStoritev {
             }
         }
         return najboljsi;
+    }
+
+    /* Nosilska mesta zreba, v katerega pridejo igralci iz vec skupin PO VRSTI
+       (SV regija: A1, B1, ..., E1, A2, B2 ...). Visje v seznamu je boljse mesto
+       v skupini, zato visji nosilec: 1. in 2. ostaneta, pasovi (3-4, 5-8, 9-16
+       ...) se zrebajo kot v vsaki mrezi. Igralca iz iste skupine naj se srecata
+       cim pozneje - najraje sele v finalu zreba (pri dveh iz skupine to pomeni
+       nasprotni polovici, kot pri vMrezoIzSkupin); klubska locitev v 1. kolu je
+       drugotna. Vsak nakljucni zreb pasov se izboljsa z zamenjavami znotraj
+       pasov, obvelja tisti z najmanjso kaznijo. skupine.get(i) je skupina
+       i-tega igralca. Vrne seznam po nosilskih mestih (prvi = 1. nosilec). */
+    public List<Prijava> vMrezoPoVrsti(List<Prijava> poVrsti, List<Integer> skupine) {
+        int stevilo = poVrsti.size();
+        if (stevilo <= 2) {
+            return new ArrayList<>(poVrsti);
+        }
+        int velikostMreze = najblizjaPotencaDve(stevilo);
+        int[] indeksMesta = indeksiNosilskihMest(velikostMreze);
+        List<int[]> pasovi = pasovi(stevilo);
+
+        List<Integer> najboljsi = null;
+        long najmanjsaKazen = Long.MAX_VALUE;
+        for (int poskus = 0; poskus < POSKUSOV_PO_VRSTI && najmanjsaKazen > 0; poskus++) {
+            // red.get(nosilec - 1) = indeks igralca v poVrsti
+            List<Integer> red = premesajPasove(zaporedje(stevilo));
+            long kazen = izboljsajZamenjavami(red, pasovi, poVrsti, skupine, indeksMesta, velikostMreze);
+            if (kazen < najmanjsaKazen) {
+                najmanjsaKazen = kazen;
+                najboljsi = red;
+            }
+        }
+        List<Prijava> nosilci = new ArrayList<>(stevilo);
+        for (int indeks : najboljsi) {
+            nosilci.add(poVrsti.get(indeks));
+        }
+        return nosilci;
+    }
+
+    /* Zamenjave znotraj pasov, dokler katera zmanjsa kazen. */
+    private static long izboljsajZamenjavami(List<Integer> red, List<int[]> pasovi, List<Prijava> poVrsti,
+                                             List<Integer> skupine, int[] indeksMesta, int velikostMreze) {
+        long kazen = kazenPoVrsti(red, poVrsti, skupine, indeksMesta, velikostMreze);
+        boolean izboljsano = true;
+        while (izboljsano && kazen > 0) {
+            izboljsano = false;
+            for (int[] pas : pasovi) {
+                for (int a = pas[0]; a < pas[1]; a++) {
+                    for (int b = a + 1; b < pas[1]; b++) {
+                        Collections.swap(red, a, b);
+                        long nova = kazenPoVrsti(red, poVrsti, skupine, indeksMesta, velikostMreze);
+                        if (nova < kazen) {
+                            kazen = nova;
+                            izboljsano = true;
+                        } else {
+                            Collections.swap(red, a, b);
+                        }
+                    }
+                }
+            }
+        }
+        return kazen;
+    }
+
+    /* Kazen razporeda: za vsak par iz iste skupine, ki se lahko sreca pred
+       finalom zreba, toliko huje, kolikor prej (polfinale 1, cetrtfinale 3,
+       osmina 7 ...), in za vsak klubski trk v 1. kolu po 1. Skupinska kazen
+       ima prednost pred vsemi klubskimi trki. */
+    private static long kazenPoVrsti(List<Integer> red, List<Prijava> poVrsti, List<Integer> skupine,
+                                     int[] indeksMesta, int velikostMreze) {
+        int kol = Integer.numberOfTrailingZeros(velikostMreze);
+        long kazen = 0;
+        for (int a = 0; a < red.size(); a++) {
+            for (int b = a + 1; b < red.size(); b++) {
+                if (!skupine.get(red.get(a)).equals(skupine.get(red.get(b)))) {
+                    continue;
+                }
+                int prvi = indeksMesta[a + 1];
+                int drugi = indeksMesta[b + 1];
+                int kolo = 1; // kolo, v katerem se lahko srecata (kol = finale)
+                while ((prvi >> kolo) != (drugi >> kolo)) {
+                    kolo++;
+                }
+                kazen += SKUPINSKA_KAZEN * ((1L << (kol - kolo)) - 1);
+            }
+        }
+        List<Prijava> nosilci = new ArrayList<>(red.size());
+        for (int indeks : red) {
+            nosilci.add(poVrsti.get(indeks));
+        }
+        return kazen + klubskihTrkovVPrvemKolu(nosilci, velikostMreze);
     }
 
     private List<Prijava> enZrebIzSkupin(List<Prijava> zmagovalci, List<Prijava> drugi,
