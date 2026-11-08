@@ -845,6 +845,146 @@ class SvRegijaTest extends IntegracijskiTest {
     }
 
     // ------------------------------------------------------------------
+    // Zrebi Skupine po zrebu skupin
+    // ------------------------------------------------------------------
+
+    @Test
+    void zrebiSkupineSeSpremenijoTudiPoOdigranihTekmahInOdstopu() {
+        // pet skupin po 4: od cetrtfinala trije zrebi (8 + 8 + 4)
+        Dogodek dogodek = pripraviJakostniDogodek(20, SistemTekmovanja.SV_REGIJA);
+        svRegija.nastavi(dogodek.getId(), new SvVnos.Nastavitve(null, List.of(20), null, null));
+        zrebStoritev.izvediZreb(dogodek.getId());
+        assertEquals(List.of(8, 8, 4), velikostiZrebov(dogodek.getId(), 1));
+
+        // odstop zapise tekme brez boja, zato razveljavitev zreba skupin ne gre vec
+        Prijava odstopil = izborStoritev.vrstniRed(dogodek.getId()).get(19);
+        tekmaStoritev.odstopiIgralca(odstopil.getId());
+        assertThrows(DomenskaIzjema.class, () -> svRegija.razveljaviZrebSkupin(dogodek.getId()));
+        odigrajSkupine(dogodek.getId(), 1);
+        Map<Long, Long> skupinaPrej = new HashMap<>();
+        prijavaRepozitorij.najdiZaDogodek(dogodek.getId())
+                .forEach(p -> skupinaPrej.put(p.getId(), p.getIdSkupina()));
+        List<Long> tekmeSkupinPrej = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getFaza() == FazaTekme.SKUPINA).map(Tekma::getId).sorted().toList();
+
+        // od osmine finala: dva zreba (16 + 4)
+        svRegija.nastaviZrebeNivoja(dogodek.getId(), 1, new SvVnos.ZrebiSkupine(2, 16));
+
+        List<Zreb> zrebi = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1);
+        assertEquals(List.of(16, 4), zrebi.stream().map(Zreb::getStUdelezencev).toList());
+        assertEquals(List.of(1, 17), zrebi.stream().map(Zreb::getPrvoMesto).toList());
+        assertTrue(zrebi.stream().noneMatch(Zreb::isZgrajen));
+        // skupine, njihove tekme in izidi ostanejo
+        prijavaRepozitorij.najdiZaDogodek(dogodek.getId())
+                .forEach(p -> assertEquals(skupinaPrej.get(p.getId()), p.getIdSkupina()));
+        List<Tekma> tekmeSkupin = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getFaza() == FazaTekme.SKUPINA).toList();
+        assertEquals(tekmeSkupinPrej, tekmeSkupin.stream().map(Tekma::getId).sorted().toList());
+        assertTrue(tekmeSkupin.stream().allMatch(t -> t.getStatus() == StatusTekme.KONCANA));
+        // nastavitev se zapise na mesto Skupine
+        Dogodek svez = dogodekRepozitorij.findById(dogodek.getId()).orElseThrow();
+        assertEquals(List.of(2), svez.steviloZrebovSeznam());
+        assertEquals(List.of(16), svez.velikostZrebovSeznam());
+        var nivo = svRegija.pregled(svez, prijavaRepozitorij.najdiZaDogodek(dogodek.getId()),
+                skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId()),
+                tekmeDogodka(dogodek.getId())).nivoji().get(0);
+        assertEquals(16, nivo.velikostZreba());
+        assertTrue(nivo.zrebiUredljivi());
+        assertEquals(List.of("A1", "B1", "C1", "D1", "E1", "A2", "B2", "C2", "D2", "E2",
+                "A3", "B3", "C3", "D3", "E3", "A4"), nivo.zrebi().get(0).viri());
+
+        odigrajVse(dogodek.getId());
+        assertEquals(StatusTekmovanja.ZAKLJUCEN,
+                dogodekRepozitorij.findById(dogodek.getId()).orElseThrow().getStatus());
+        assertEquals(poln(20), koncnaMesta(dogodek.getId()));
+    }
+
+    @Test
+    void zgrajeniNezaceteZrebeSkupineSePodrejoZaceteNe() {
+        Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
+        assertEquals(24, tekmeZrebov(dogodek.getId()).size());
+
+        // isti zrebi (dva od cetrtfinala): zgrajeni ostanejo
+        svRegija.nastaviZrebeNivoja(dogodek.getId(), 1, new SvVnos.ZrebiSkupine(2, null));
+        assertTrue(zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1)
+                .stream().allMatch(Zreb::isZgrajen));
+        assertEquals(24, tekmeZrebov(dogodek.getId()).size());
+
+        // stevilo, ki ne ustreza, se zavrne in nic ne spremeni
+        assertThrows(DomenskaIzjema.class, () -> svRegija.nastaviZrebeNivoja(dogodek.getId(), 1,
+                new SvVnos.ZrebiSkupine(3, 4)));
+        assertEquals(List.of(8, 8), velikostiZrebov(dogodek.getId(), 1));
+
+        // od polfinala: stirje zrebi po 4, zgrajeni se podrejo
+        svRegija.nastaviZrebeNivoja(dogodek.getId(), 1, new SvVnos.ZrebiSkupine(null, 4));
+        assertEquals(List.of(4, 4, 4, 4), velikostiZrebov(dogodek.getId(), 1));
+        assertTrue(tekmeZrebov(dogodek.getId()).isEmpty());
+        assertTrue(zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(dogodek.getId(), 1)
+                .stream().noneMatch(Zreb::isZgrajen));
+
+        // ko se tekma zreba zacne, zrebov ni vec mogoce spremeniti
+        zgradiPripravljeneZrebe(dogodek.getId());
+        Tekma prva = tekmeZrebov(dogodek.getId()).stream()
+                .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA).findFirst().orElseThrow();
+        tekmaStoritev.vnesiRezultat(prva.getId(), new VnosRezultata(null, 3, 1, null, null));
+        assertThrows(DomenskaIzjema.class, () -> svRegija.nastaviZrebeNivoja(dogodek.getId(), 1,
+                new SvVnos.ZrebiSkupine(null, 8)));
+        Dogodek svez = dogodekRepozitorij.findById(dogodek.getId()).orElseThrow();
+        assertFalse(svRegija.pregled(svez, prijavaRepozitorij.najdiZaDogodek(dogodek.getId()),
+                skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId()),
+                tekmeDogodka(dogodek.getId())).nivoji().get(0).zrebiUredljivi());
+
+        odigrajVse(dogodek.getId());
+        assertEquals(poln(16), koncnaMesta(dogodek.getId()));
+    }
+
+    @Test
+    void edinUdelezenecPodrtegaZrebaIzgubiKoncnoMesto() {
+        // trije skupini po 3: od cetrtfinala 8 + 1, deveti dobi mesto ze ob gradnji
+        Dogodek dogodek = pripraviJakostniDogodek(9, SistemTekmovanja.SV_REGIJA);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        assertEquals(List.of(8, 1), velikostiZrebov(dogodek.getId(), 1));
+        odigrajSkupine(dogodek.getId(), 1);
+        zgradiPripravljeneZrebe(dogodek.getId());
+        assertEquals(1, prijavaRepozitorij.najdiZaDogodek(dogodek.getId()).stream()
+                .filter(p -> p.getKoncnoMesto() != null).count());
+
+        svRegija.nastaviZrebeNivoja(dogodek.getId(), 1, new SvVnos.ZrebiSkupine(1, 16));
+
+        assertEquals(List.of(9), velikostiZrebov(dogodek.getId(), 1));
+        assertTrue(prijavaRepozitorij.najdiZaDogodek(dogodek.getId()).stream()
+                .allMatch(p -> p.getKoncnoMesto() == null));
+        odigrajVse(dogodek.getId());
+        assertEquals(poln(9), koncnaMesta(dogodek.getId()));
+    }
+
+    @Test
+    void zrebovSkupineNiMogoceSpremenitiPredZrebomInZaNeobstojecoSkupino() {
+        Dogodek dogodek = pripraviJakostniDogodek(16, SistemTekmovanja.SV_REGIJA);
+        assertThrows(DomenskaIzjema.class, () -> svRegija.nastaviZrebeNivoja(dogodek.getId(), 1,
+                new SvVnos.ZrebiSkupine(2, 8)));
+        zrebStoritev.izvediZreb(dogodek.getId());
+        assertThrows(si.turnirko.izjeme.NiNajdenoIzjema.class, () -> svRegija.nastaviZrebeNivoja(
+                dogodek.getId(), 2, new SvVnos.ZrebiSkupine(null, 8)));
+        assertThrows(NeveljavenVnosIzjema.class, () -> svRegija.nastaviZrebeNivoja(dogodek.getId(), 1,
+                new SvVnos.ZrebiSkupine(null, 6)));
+        assertThrows(NeveljavenVnosIzjema.class, () -> svRegija.nastaviZrebeNivoja(dogodek.getId(), 1,
+                new SvVnos.ZrebiSkupine(0, null)));
+    }
+
+    private List<Integer> velikostiZrebov(Long idDogodka, int nivo) {
+        return zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(idDogodka, nivo).stream()
+                .map(Zreb::getStUdelezencev).toList();
+    }
+
+    private List<Tekma> tekmeZrebov(Long idDogodka) {
+        return tekmeDogodka(idDogodka).stream().filter(t -> t.getIdZreb() != null).toList();
+    }
+
+    // ------------------------------------------------------------------
     // Pomozno
     // ------------------------------------------------------------------
 

@@ -41,6 +41,15 @@ public class SvRegijaKontroler {
         return DogodekDto.iz(svRegija.nastavi(id, vnos));
     }
 
+    /* Raven in stevilo izlocilnih zrebov ene Skupine po zrebu skupin; skupine in
+       izidi ostanejo. Dokler se nobena tekma zrebov te Skupine ni zacela. */
+    @PutMapping("/{id}/sv/nivoji/{nivo}/zrebi")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void zrebiSkupine(@PathVariable Long id, @PathVariable int nivo,
+                             @RequestBody SvVnos.ZrebiSkupine vnos) {
+        svRegija.nastaviZrebeNivoja(id, nivo, vnos);
+    }
+
     /* Predlog skupin brez zapisa: isti zreb, kot bi ga izvedel dogodek. */
     @PostMapping("/{id}/sv/predlog")
     public SvPredlogDto predlog(@PathVariable Long id) {

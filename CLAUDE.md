@@ -1772,6 +1772,21 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     žrebajo, igralca iz iste skupine se srečata čim pozneje (kazen po kolu srečanja +
     klubski trki, naključni poskusi z zamenjavami v pasovih). `ZrebDto.viri` (»A1« ...)
     pove gledalcu, od kod pridejo igralci; lestvica skupine obarva mesta po žrebih.
+  - **Žrebi Skupine se smejo spremeniti tudi PO žrebu skupin** (`nastaviZrebeNivoja`,
+    `PUT /dogodki/{id}/sv/nivoji/{nivo}/zrebi {steviloZrebov, velikostZreba}`, odločitev
+    lastnika 8. 11. 2026): organizator pogosto šele med igranjem skupin vidi, da žrebe
+    potrebuje drugače, razveljavitev žreba skupin pa takrat ne gre več (že **odstop
+    igralca** zapiše tekme brez boja) in bi skupine izžrebala na novo. Zamenjajo se
+    **samo** vrstice `zreb` tega nivoja (stare se izbrišejo in izperejo pred novimi —
+    UNIQUE dogodek+nivo+indeks), skupine, tekme in izidi ostanejo, nastavitev se zapiše
+    na mesto nivoja v `stevilo_zrebov`/`velikost_zrebov`. **Meja je prva začeta tekma
+    žrebov tega nivoja** (ne skupin in ne drugih nivojev): zgrajen, a nezačet žreb se
+    podre (tekme gredo, `koncno_mesto` članov nivoja se izprazni — ob gradnji ga dobi
+    edini udeleženec žreba) in čaka na organizatorja kot ob koncu skupin; enake
+    velikosti žrebov zgrajenih ne podrejo. Število preveri isti `zrebiNivoja` kot pred
+    žrebom; velikosti skupin štejejo vse člane, tudi odstopljene (v zaporedju ostanejo).
+    `NivoDto.zrebiUredljivi` pove vmesniku, kdaj ponudi gumb »Spremeni žrebe«
+    (`SvUrejanjeZrebov` nad žrebi Skupine).
   - **Vrstni red tekem v skupini štirih** (`tekmeSkupine`, 7. 11. 2026): 1-4, 2-3 |
     4-3, 1-2 | 2-4, 3-1 (1 = nosilec skupine, prvi v paru je `prijava1`). Druge
     velikosti ostanejo pri krožni metodi (skupina treh: 2-3, 1-3, 1-2).
@@ -1816,7 +1831,8 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     POST, ker vsak klic žreba znova) — vse samo, dokler se žreb ni začel. Razporeditev se
     hrani v `zreb.razpored` (CSV), ker se iz tekem ne da prebrati (prosti prehodi);
     `zreb.rocni` je **javna** oznaka (»razpored mest je vpisal organizator«). Nastavitve
-    razreza `PUT .../sv/nastavitve` (samo v pripravi).
+    razreza `PUT .../sv/nastavitve` (samo v pripravi; žrebi ene Skupine po žrebu skupin
+    gredo prek `PUT .../sv/nivoji/{nivo}/zrebi`).
   - **Pasti**: brisanje tekem zreba mora najprej pretrgati povezave (`id_izvor_tekma_*`) in
     izprati (`flush`) PRED novimi vstavki — Hibernate izvede vstavke pred izbrisi in
     UNIQUE trči ob stare vrstice. Test, ki preverja `GET /dogodki/{id}` izven transakcije,

@@ -26,6 +26,7 @@ import { SkupinaVrstica } from './SkupinaVrstica'
 import { SporociloNapake } from './SporociloNapake'
 import { SvDrevo } from './SvDrevo'
 import { SvSkupineOkno } from './SvSkupineOkno'
+import { SvUrejanjeZrebov } from './SvUrejanjeZrebov'
 import { SvZrebOkno } from './SvZrebOkno'
 import type { KlikTekme } from './TekmaKartica'
 import { VsebinaSkupine, opisSkupine } from './VsebinaSkupine'
@@ -162,7 +163,8 @@ export function SvRegijaDel({ podatki, klik, osvezi, smem }: Lastnosti) {
       {nivo.zrebi.length > 0 && (
         <ZrebiNivoja
           key={nivo.nivo}
-          zrebi={nivo.zrebi}
+          nivo={nivo}
+          vpisanaRaven={sv.velikostZrebov[nivo.nivo - 1] ?? null}
           podatki={podatki}
           klik={klik}
           smem={smem}
@@ -283,22 +285,46 @@ function opisMest(od: number, doMesta: number): string {
    se tam odloča o najboljših mestih. Vrstica pove mesta, ki jih žreb odloča, in -
    ko je žreb odigran - kdo je zmagal, da se ne da prebrati, ne da bi ga odprl. */
 function ZrebiNivoja({
-  zrebi,
+  nivo,
+  vpisanaRaven,
   podatki,
   klik,
   smem,
   osvezi,
 }: {
-  zrebi: SvZrebDto[]
+  nivo: SvNivoDto
+  vpisanaRaven: number | null
   podatki: MrezaDto
   klik?: KlikTekme
   smem: boolean
   osvezi: () => void
 }) {
+  const zrebi = nivo.zrebi
   const [odprt, nastaviOdprt] = useState<number | null>(zrebi[0].indeks)
+  const [urejam, nastaviUrejam] = useState(false)
+  const smemUrediti = smem && nivo.zrebiUredljivi
   return (
     <div className="sv-zrebi">
-      <p className="podnaslov-sekcije">Žrebi za vsa mesta</p>
+      <div className="sv-zrebi__glava">
+        <p className="podnaslov-sekcije">Žrebi za vsa mesta</p>
+        {smemUrediti && !urejam && (
+          <button type="button" className="gumb gumb--majhen" onClick={() => nastaviUrejam(true)}>
+            Spremeni žrebe
+          </button>
+        )}
+      </div>
+      {smemUrediti && urejam && (
+        <SvUrejanjeZrebov
+          idDogodka={podatki.dogodek.id}
+          nivo={nivo}
+          vpisanaRaven={vpisanaRaven}
+          onZapri={() => nastaviUrejam(false)}
+          onShranjeno={() => {
+            nastaviOdprt(0)
+            osvezi()
+          }}
+        />
+      )}
       <div className="skupine-seznam">
         {zrebi.map((zreb) => (
           <SkupinaVrstica

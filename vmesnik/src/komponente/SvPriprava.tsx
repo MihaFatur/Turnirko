@@ -21,13 +21,10 @@ import { useMutation } from '@tanstack/react-query'
 import { svApi } from '../api/zahteve'
 import type { MrezaDto, SvNivoDto } from '../api/tipi'
 import { sklonIgralcev, sklonSkupin, sklonVelikihSkupin } from '../pomozno/oblikovanje'
-import { imeRavni, opisRazpona } from '../pomozno/svRegija'
+import { RAVNI_ZREBA, imeRavni, imeRavniZaIzbiro, opisRazpona } from '../pomozno/svRegija'
 import { SporociloNapake } from './SporociloNapake'
 import { StevilskoPolje } from './StevilskoPolje'
 import { SvSkupineOkno } from './SvSkupineOkno'
-
-/* Ravni, na katerih se lahko začnejo žrebi (velikost mreže). */
-const RAVNI = [32, 16, 8, 4, 2]
 
 /* »4 skupine po 4« oz. »5 skupin (4 + 4 + 4 + 4 + 3)«. */
 function opisSkupin(velikosti: number[]): string {
@@ -263,9 +260,9 @@ export function SvPriprava({
                       onChange={(d) => nastaviRavni((prej) => nastaviNaIndeksu(prej, i, d.target.value))}
                     >
                       <option value="">Četrtfinale</option>
-                      {RAVNI.filter((r) => r !== 8).map((r) => (
+                      {RAVNI_ZREBA.filter((r) => r !== 8).map((r) => (
                         <option key={r} value={String(r)}>
-                          {zVelikoZacetnico(imeRavniImenovalnik(r))}
+                          {imeRavniZaIzbiro(r)}
                         </option>
                       ))}
                     </select>
@@ -319,18 +316,4 @@ export function SvPriprava({
 /* Seznam besedil, podaljšan s praznimi ali skrajšan na dano dolžino. */
 function poravnaj(seznam: string[], dolzina: number): string[] {
   return Array.from({ length: dolzina }, (_, i) => seznam[i] ?? '')
-}
-
-function imeRavniImenovalnik(velikost: number): string {
-  switch (velikost) {
-    case 32: return 'šestnajstina finala'
-    case 16: return 'osmina finala'
-    case 4: return 'polfinale'
-    case 2: return 'finale'
-    default: return 'četrtfinale'
-  }
-}
-
-function zVelikoZacetnico(besedilo: string): string {
-  return besedilo.charAt(0).toUpperCase() + besedilo.slice(1)
 }

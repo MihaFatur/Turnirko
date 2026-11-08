@@ -52,6 +52,30 @@ export function imeRavni(velikostMreze: number): string {
   }
 }
 
+/* Ravni, na katerih se lahko začnejo žrebi (velikost mreže), od najzgodnejše. */
+export const RAVNI_ZREBA = [32, 16, 8, 4, 2]
+
+/* Ime ravni za izbirnik: »Osmina finala«. */
+export function imeRavniZaIzbiro(velikostMreze: number): string {
+  switch (velikostMreze) {
+    case 32: return 'Šestnajstina finala'
+    case 16: return 'Osmina finala'
+    case 4: return 'Polfinale'
+    case 2: return 'Finale'
+    default: return 'Četrtfinale'
+  }
+}
+
+/* Velikosti žrebov za toliko igralcev, kot jih sprejme raven (zadnji dobi
+   ostanek) - isto pravilo kot strežnik, samo za predogled v obrazcu. */
+export function velikostiZrebov(igralcev: number, velikostMreze: number): number[] {
+  const velikosti: number[] = []
+  for (let ostalo = igralcev; ostalo > 0; ostalo -= velikostMreze) {
+    velikosti.push(Math.min(velikostMreze, ostalo))
+  }
+  return velikosti
+}
+
 /* Koliko mest vsake skupine gre v žreb: »A« -> 2 pomeni, da sta A1 in A2 v
    njem. Viri žreba so po vrsti A1, B1 …, zato so mesta skupine v žrebu vedno
    zaporedna in v zaporednih žrebih naraščajo. */

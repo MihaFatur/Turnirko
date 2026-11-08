@@ -556,6 +556,9 @@ export interface SvNivoDto {
   /* Število žrebov, ki ga je vpisal organizator; null = samodejno. */
   vpisanoZrebov: number | null
   zrebi: SvZrebDto[]
+  /* Raven in število žrebov se smeta spremeniti tudi po žrebu skupin: dogodek
+     teče, Skupina ima več skupin in nobena tekma njenih žrebov se ni začela. */
+  zrebiUredljivi: boolean
 }
 
 /* Pred žrebom skupin je to predogled razreza po trenutnem številu prijav in

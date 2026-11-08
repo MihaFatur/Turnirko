@@ -45,7 +45,12 @@ public record SvRegijaDto(
             int velikostZreba,
             /* Stevilo zrebov, ki ga je vpisal organizator; null = samodejno. */
             Integer vpisanoZrebov,
-            List<ZrebDto> zrebi
+            List<ZrebDto> zrebi,
+            /* Raven in stevilo zrebov se smeta spremeniti tudi po zrebu skupin
+               (PUT .../sv/nivoji/{nivo}/zrebi): dogodek tece, Skupina ima vec
+               skupin in nobena tekma njenih zrebov se ni zacela. Pred zrebom
+               skupin false - takrat velja obrazec nastavitev. */
+            boolean zrebiUredljivi
     ) {}
 
     /* En zreb nivoja. id je prazen pred zrebom skupin; uredljiv pomeni, da so

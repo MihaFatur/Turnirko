@@ -21877,6 +21877,36 @@ a.ekipa-okno__srecanje:hover {
   margin-top: var(--r5);
 }
 
+/* Naslov žrebov Skupine z gumbom »Spremeni žrebe« ob desnem robu; črta je
+   skupna, da gumb ne visi pod njo. */
+.sv-zrebi__glava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--r1) var(--r3);
+  margin-top: var(--r4);
+  padding-bottom: var(--r1);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.sv-zrebi__glava .podnaslov-sekcije {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Obrazec za raven in število žrebov po žrebu skupin. */
+.sv-zrebi__urejanje {
+  margin-top: var(--r3);
+  max-width: 560px;
+}
+
+.sv-zrebi__urejanje .namig,
+.sv-zrebi__urejanje .obvestilo {
+  margin: var(--r2) 0 0;
+}
+
 /* Dejanja organizatorja nad drevesom: opomba levo, gumbi desno. */
 .sv-zreb__glava {
   margin-bottom: var(--r2);

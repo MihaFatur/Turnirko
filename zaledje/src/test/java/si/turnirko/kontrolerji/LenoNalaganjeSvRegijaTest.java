@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import si.turnirko.dto.DogodekVnos;
 import si.turnirko.dto.MrezaDto;
 import si.turnirko.dto.SvPredlogDto;
+import si.turnirko.dto.SvVnos;
 import si.turnirko.dto.TurnirVnos;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.modeli.Dogodek;
@@ -151,6 +152,14 @@ class LenoNalaganjeSvRegijaTest {
         MrezaDto pred = dogodkiKontroler.mreza(dogodek.getId());
         assertTrue(pred.svRegija().nivoji().get(0).zrebi().stream()
                 .allMatch(z -> !z.zgrajen() && z.uredljiv()), "zreba caka na organizatorja");
+        // raven in stevilo zrebov Skupine se smeta spremeniti tudi po odigranih skupinah
+        assertTrue(pred.svRegija().nivoji().get(0).zrebiUredljivi());
+        svRegijaKontroler.zrebiSkupine(dogodek.getId(), 1, new SvVnos.ZrebiSkupine(2, 4));
+        var odPolfinala = dogodkiKontroler.mreza(dogodek.getId()).svRegija().nivoji().get(0);
+        assertEquals(List.of(4, 4), odPolfinala.zrebi().stream().map(z -> z.stUdelezencev()).toList());
+        assertEquals(4, odPolfinala.velikostZreba());
+        svRegijaKontroler.zrebiSkupine(dogodek.getId(), 1, new SvVnos.ZrebiSkupine(null, null));
+        pred = dogodkiKontroler.mreza(dogodek.getId());
         for (var zreb : pred.svRegija().nivoji().get(0).zrebi()) {
             svRegijaKontroler.znova(zreb.id());
         }

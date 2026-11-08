@@ -24,6 +24,11 @@ public final class SvVnos {
         }
     }
 
+    /* Zrebi ene Skupine PO zrebu skupin: stevilo zrebov (null = samodejno) in
+       velikost mreze ravni, na kateri se zacnejo (2, 4, 8, 16, 32; null =
+       privzeta 8 = cetrtfinale). Isto pomenita mesti nivoja v Nastavitvah. */
+    public record ZrebiSkupine(Integer steviloZrebov, Integer velikostZreba) {}
+
     /* Rocni vpis skupin: nivoji po vrsti (prvi je najmocnejsi), vsak s
        skupinami, vsaka s prijavami po id-ju. Vsak prijavljeni mora nastopati
        natanko enkrat. */

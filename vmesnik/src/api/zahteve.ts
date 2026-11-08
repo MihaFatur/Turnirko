@@ -263,6 +263,13 @@ export const svApi = {
     api.posodobi<void>(`/dogodki/${id}/sv/skupine`, vnos),
   /* Razveljavi žreb skupin: dogodek se vrne v pripravo. */
   razveljavi: (id: number) => api.objavi<void>(`/dogodki/${id}/sv/razveljavi`),
+  /* Raven in število izločilnih žrebov ene Skupine po žrebu skupin (skupine in
+     izidi ostanejo); null = samodejno oz. četrtfinale. */
+  zrebiSkupine: (
+    id: number,
+    nivo: number,
+    vnos: { steviloZrebov: number | null; velikostZreba: number | null },
+  ) => api.posodobi<void>(`/dogodki/${id}/sv/nivoji/${nivo}/zrebi`, vnos),
   predlogZreba: (idZreba: number) =>
     api.objavi<SvZrebPredlogDto>(`/dogodki/sv/zrebi/${idZreba}/predlog`),
   /* Razporeditev mest v mreži: id prijav od vrha navzdol, null je prosto mesto. */

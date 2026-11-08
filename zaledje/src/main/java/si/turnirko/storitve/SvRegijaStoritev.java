@@ -883,18 +883,9 @@ public class SvRegijaStoritev {
             throw new NeveljavenVnosIzjema("Število Skupin mora biti med 1 in " + NAJVEC_NIVOJEV + ".");
         }
         List<Integer> steviloZrebov = poNivojih(vnos.steviloZrebov());
-        for (Integer st : steviloZrebov) {
-            if (st != null && (st < 1 || st > 16)) {
-                throw new NeveljavenVnosIzjema("Število žrebov v Skupini mora biti med 1 in 16.");
-            }
-        }
+        steviloZrebov.forEach(SvRegijaStoritev::preveriSteviloZrebov);
         List<Integer> velikostZrebov = poNivojih(vnos.velikostZrebov());
-        for (Integer v : velikostZrebov) {
-            if (v != null && !VELIKOSTI_ZREBA.contains(v)) {
-                throw new NeveljavenVnosIzjema("Žreb se lahko začne v šestnajstini finala (32),"
-                        + " osmini (16), četrtfinalu (8), polfinalu (4) ali finalu (2).");
-            }
-        }
+        velikostZrebov.forEach(SvRegijaStoritev::preveriVelikostZreba);
 
         dogodek.setSteviloSkupin(skupin);
         dogodek.setVelikostSkupine(velikost);
@@ -910,6 +901,104 @@ public class SvRegijaStoritev {
             dogodek.setSteviloNivojev(null);
         }
         return dogodekRepozitorij.save(dogodek);
+    }
+
+    private static void preveriSteviloZrebov(Integer stevilo) {
+        if (stevilo != null && (stevilo < 1 || stevilo > 16)) {
+            throw new NeveljavenVnosIzjema("Število žrebov v Skupini mora biti med 1 in 16.");
+        }
+    }
+
+    private static void preveriVelikostZreba(Integer velikost) {
+        if (velikost != null && !VELIKOSTI_ZREBA.contains(velikost)) {
+            throw new NeveljavenVnosIzjema("Žreb se lahko začne v šestnajstini finala (32),"
+                    + " osmini (16), četrtfinalu (8), polfinalu (4) ali finalu (2).");
+        }
+    }
+
+    /* Raven in stevilo izlocilnih zrebov ene Skupine PO zrebu skupin (odlocitev
+       lastnika 8. 11. 2026). Organizator pogosto sele med igranjem skupin vidi,
+       da zrebe potrebuje drugace, razveljavitev zreba pa takrat ne gre vec (tudi
+       odstop igralca zapise tekme brez boja) in bi skupine izzrebala na novo.
+       Zato se zamenjajo SAMO zrebi te Skupine: skupine, tekme in izidi ostanejo.
+       Mogoce je, dokler se nobena tekma zrebov te Skupine ni zacela - zgrajen,
+       a nezacet zreb se podre in caka na organizatorja kot ob koncu skupin.
+       Pravilo stevila je isto kot pred zrebom (zrebiNivoja: ce zrebi ne
+       sprejmejo vseh igralcev ali bi kateri ostal prazen, sistem ne dovoli). */
+    @Transactional
+    public void nastaviZrebeNivoja(Long idDogodka, int nivo, SvVnos.ZrebiSkupine vnos) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        Dogodek dogodek = najdiDogodek(idDogodka);
+        if (dogodek.getStatus() == StatusTekmovanja.PRIPRAVA) {
+            throw new DomenskaIzjema("Skupine še niso izžrebane: žrebe nastaviš v nastavitvah razreza.");
+        }
+        if (dogodek.getStatus() != StatusTekmovanja.V_TEKU) {
+            throw new DomenskaIzjema("Dogodek je zaključen, žrebov ni več mogoče spremeniti.");
+        }
+        preveriSteviloZrebov(vnos.steviloZrebov());
+        preveriVelikostZreba(vnos.velikostZreba());
+
+        List<Skupina> skupine = skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(idDogodka);
+        List<Skupina> skupineNivoja = predtekmovalnePoNivojih(skupine).get(nivo);
+        if (skupineNivoja == null) {
+            throw new NiNajdenoIzjema("Skupina " + nivo + " na tem dogodku ne obstaja.");
+        }
+        List<Prijava> prijave = prijavaRepozitorij.najdiZaDogodek(idDogodka);
+        // velikosti skupin stejejo vse clane, tudi odstopljene: v zaporedju zrebov
+        // ostanejo (zadnji v skupini), isto kot ob zrebu skupin
+        List<Integer> velikostiSkupin = skupineNivoja.stream()
+                .map(s -> (int) prijave.stream().filter(p -> s.getId().equals(p.getIdSkupina())).count())
+                .toList();
+
+        List<Zreb> stari = zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(idDogodka, nivo);
+        boolean zacet = stari.stream()
+                .flatMap(z -> tekmaRepozitorij.findByIdZreb(z.getId()).stream())
+                .anyMatch(t -> t.getStatus() == StatusTekme.KONCANA || t.getStatus() == StatusTekme.V_IGRI);
+        if (zacet) {
+            throw new DomenskaIzjema("Žrebov Skupine " + nivo + " ni več mogoče spremeniti:"
+                    + " tekme izločilnih žrebov so že začete.");
+        }
+
+        List<Integer> steviloZrebov = naNivoju(dogodek.steviloZrebovSeznam(), nivo, vnos.steviloZrebov());
+        List<Integer> velikostZrebov = naNivoju(dogodek.velikostZrebovSeznam(), nivo, vnos.velikostZreba());
+        List<Integer> novi = zrebiNivoja(nivo, velikostiSkupin, steviloZrebov, velikostZrebov);
+
+        dogodek.setSteviloZrebov(csvPoNivojih(steviloZrebov));
+        dogodek.setVelikostZrebov(csvPoNivojih(velikostZrebov));
+        dogodekRepozitorij.save(dogodek);
+
+        if (novi.equals(stari.stream().map(Zreb::getStUdelezencev).toList())) {
+            return; // isti zrebi: zgrajenih ne podiramo
+        }
+        for (Zreb zreb : stari) {
+            odstraniTekmeZreba(zreb);
+        }
+        // koncno mesto ima ob gradnji samo edini udelezenec zreba; nivo pa se ni odigran
+        Set<Long> idjiSkupin = skupineNivoja.stream().map(Skupina::getId).collect(Collectors.toSet());
+        List<Prijava> claniNivoja = prijave.stream()
+                .filter(p -> p.getIdSkupina() != null && idjiSkupin.contains(p.getIdSkupina()))
+                .toList();
+        claniNivoja.forEach(p -> p.setKoncnoMesto(null));
+        prijavaRepozitorij.saveAll(claniNivoja);
+        // UNIQUE (dogodek, nivo, indeks): izbris mora v bazo pred novimi vrsticami
+        zrebRepozitorij.deleteAll(stari);
+        zrebRepozitorij.flush();
+
+        int mesto = zacetkiNivojev(skupine, prijave).get(nivo);
+        for (int d = 0; d < novi.size(); d++) {
+            zrebRepozitorij.save(new Zreb(dogodek, nivo, d, mesto, novi.get(d)));
+            mesto += novi.get(d);
+        }
+    }
+
+    /* Seznam po nivojih z novo vrednostjo na mestu nivoja (od 1), brez praznega repa. */
+    private static List<Integer> naNivoju(List<Integer> seznam, int nivo, Integer vrednost) {
+        List<Integer> nov = seznam == null ? new ArrayList<>() : new ArrayList<>(seznam);
+        while (nov.size() < nivo) {
+            nov.add(null);
+        }
+        nov.set(nivo - 1, vrednost);
+        return poNivojih(nov);
     }
 
     /* Vnos po nivojih brez praznega repa ([8, null, null] -> [8]); najvec 9 nivojev. */
@@ -1264,7 +1353,7 @@ public class SvRegijaStoritev {
                 nivoji.add(new SvRegijaDto.NivoDto(nivo.nivo(), nivo.velikost(), nivo.odMesta(),
                         nivo.doMesta(), nivo.velikostiSkupin(),
                         velikostZrebaNivoja(velikostZrebov, nivo.nivo()),
-                        vpisanoZrebov(vpisanoZrebov, nivo.nivo()), zrebi));
+                        vpisanoZrebov(vpisanoZrebov, nivo.nivo()), zrebi, false));
             }
         } else {
             Map<Long, Long> clanov = prijave.stream()
@@ -1302,9 +1391,15 @@ public class SvRegijaStoritev {
                 int velikostZreba = zrebiNivoja.isEmpty()
                         ? velikostZrebaNivoja(velikostZrebov, nivo.getKey())
                         : zrebiNivoja.get(0).velikostMreze();
+                // zrebe Skupine sme organizator spremeniti, dokler se nobena njihova tekma ni zacela
+                boolean zrebiZaceti = zrebiNivoja.stream()
+                        .flatMap(z -> tekmePoZrebu.getOrDefault(z.getId(), List.of()).stream())
+                        .anyMatch(t -> t.getStatus() == StatusTekme.KONCANA
+                                || t.getStatus() == StatusTekme.V_IGRI);
                 nivoji.add(new SvRegijaDto.NivoDto(nivo.getKey(), velikostNivoja, odMesta,
                         odMesta + velikostNivoja - 1, velikosti, velikostZreba,
-                        vpisanoZrebov(vpisanoZrebov, nivo.getKey()), zrebi));
+                        vpisanoZrebov(vpisanoZrebov, nivo.getKey()), zrebi,
+                        vTeku && velikosti.size() > 1 && !zrebiZaceti));
                 odMesta += velikostNivoja;
             }
         }
