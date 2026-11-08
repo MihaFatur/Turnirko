@@ -18,6 +18,8 @@ public record MrezaDto(
         List<TekmaDto> tekme,
         List<SkupinaDto> skupine,
         List<VrsticaLestviceDto> lestvica,
+        /* Izracun krogov skupne lestvice kroznega sistema (skupine imajo svojega). */
+        List<KrogDto> krogi,
         IzborDto izbor,
         SvRegijaDto svRegija
 ) {}

@@ -15,5 +15,7 @@ public record SkupinaDto(
         String ime,
         Integer prvoMesto,
         int nivo,
-        List<VrsticaLestviceDto> lestvica
+        List<VrsticaLestviceDto> lestvica,
+        /* Izracun krogov te skupine; prazno, ce kroga ni. */
+        List<KrogDto> krogi
 ) {}

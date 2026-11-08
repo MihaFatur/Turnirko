@@ -14,16 +14,26 @@
    - Brez boja / diskvalifikacija: samo zmagovalec, nizi se pripisejo.
 
    POPRAVEK (lastnost popravek) je isti obrazec nad ze koncano tekmo: polja so
-   napolnjena s shranjenim izidom, shrani pa se na drugo koncno tocko, ki
-   zmagovalca ne sme spremeniti (glej TekmaStoritev.popraviRezultat). Isti
-   obrazec zato, ker je popravek isti vpis - drugacen je samo njegov ucinek. */
+   napolnjena s shranjenim izidom, shrani pa se na drugo koncno tocko (glej
+   TekmaStoritev.popraviRezultat). Isti obrazec zato, ker je popravek isti vpis -
+   drugacen je samo njegov ucinek. Pred shranjevanjem strežnik pove, kaj bo popravek
+   naredil: ob zamenjanem zmagovalcu ali spremenjenem vrstnem redu skupine okno
+   preide na potrditev (PotrditevPopravka), v istem oknu, da Escape ne zapre dveh. */
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 
 import { tekmeApi } from '../api/zahteve'
 import { imeUdelezenca, nizovZaZmago, priimekUdelezenca } from '../api/tipi'
-import type { IzidTekme, NizVnos, TekmaDto, VnosRezultata } from '../api/tipi'
+import type {
+  IzidTekme,
+  NacinPopravka,
+  NizVnos,
+  PopravekPredogledDto,
+  TekmaDto,
+  VnosRezultata,
+} from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
+import { PotrditevPopravka } from './PotrditevPopravka'
 import { SporociloNapake } from './SporociloNapake'
 import { StevilskoPolje } from './StevilskoPolje'
 import {
@@ -130,14 +140,55 @@ export function VnosRezultataOkno({
   /* Sklici za premik s puščicami in samodejni fokus na točke (glej useSkliciNizov). */
   const sklici = useSkliciNizov()
 
+  /* Drugi korak popravka: kaj bo popravek naredil in organizatorjeva izbira. */
+  const [potrditev, nastaviPotrditev] = useState<{
+    vnos: VnosRezultata
+    predogled: PopravekPredogledDto
+  } | null>(null)
+  const [nacin, nastaviNacin] = useState<NacinPopravka | null>(null)
+
   const shranjevanje = useMutation({
-    mutationFn: (vnos: VnosRezultata) =>
-      popravek ? tekmeApi.popraviRezultat(tekma.id, vnos) : tekmeApi.vnesiRezultat(tekma.id, vnos),
+    mutationFn: ({ vnos, nacin: izbran }: { vnos: VnosRezultata; nacin: NacinPopravka | null }) =>
+      popravek
+        ? tekmeApi.popraviRezultat(tekma.id, vnos, izbran)
+        : tekmeApi.vnesiRezultat(tekma.id, vnos),
     onSuccess: () => {
       onShranjeno()
       onZapri()
     },
   })
+
+  /* Popravek, ki ne spremeni ničesar razen izpisa te tekme, gre mimo potrditve. */
+  const predogledPopravka = useMutation({
+    mutationFn: (vnos: VnosRezultata) => tekmeApi.predogledPopravka(tekma.id, vnos),
+    onSuccess: (predogled, vnos) => {
+      if (!predogled.zamenjanZmagovalec && predogled.izbire.length === 0) {
+        shranjevanje.mutate({ vnos, nacin: null })
+      } else {
+        nastaviNacin(null)
+        nastaviPotrditev({ vnos, predogled })
+      }
+    },
+  })
+
+  function oddaj(vnos: VnosRezultata) {
+    if (popravek) {
+      predogledPopravka.mutate(vnos)
+    } else {
+      shranjevanje.mutate({ vnos, nacin: null })
+    }
+  }
+
+  function potrdiPopravek(dogodek: FormEvent) {
+    dogodek.preventDefault()
+    if (!potrditev) return
+    if (potrditev.predogled.izbire.length > 0 && nacin === null) {
+      nastaviNapakoVnosa('Izberi, kaj naj se zgodi.')
+      return
+    }
+    nastaviNapakoVnosa(null)
+    shranjevanje.mutate({ vnos: potrditev.vnos, nacin })
+  }
 
   /* Koliko nizov je odigranih - po tem se ravna stevilo vrstic za tocke. Dokler
      je vpisan samo en igralec, ni izida in ni vrstic. */
@@ -204,7 +255,7 @@ export function VnosRezultataOkno({
         }
       }
 
-      shranjevanje.mutate({
+      oddaj({
         izidTip: 'IGRANO',
         dobljeniNizi1: nizi1,
         dobljeniNizi2: nizi2,
@@ -220,7 +271,7 @@ export function VnosRezultataOkno({
       nastaviNapakoVnosa('Izberi zmagovalca.')
       return
     }
-    shranjevanje.mutate({
+    oddaj({
       izidTip,
       dobljeniNizi1: izidTip === 'PREDAJA' ? Number(predajaNizi1) : null,
       dobljeniNizi2: izidTip === 'PREDAJA' ? Number(predajaNizi2) : null,
@@ -228,6 +279,45 @@ export function VnosRezultataOkno({
       nizi: null,
       steviloNizov: prepis,
     })
+  }
+
+  if (potrditev) {
+    return (
+      <ModalnoOkno naslov="Potrditev popravka" onZapri={onZapri}>
+        <p className="modal__podnaslov">
+          {ime1} : {ime2}
+        </p>
+        <form className="obrazec" onSubmit={potrdiPopravek}>
+          <PotrditevPopravka
+            predogled={potrditev.predogled}
+            nacin={nacin}
+            naIzbiro={(izbira) => {
+              nastaviNacin(izbira)
+              nastaviNapakoVnosa(null)
+            }}
+          />
+          {napakaVnosa && <div className="napaka">{napakaVnosa}</div>}
+          <SporociloNapake napaka={shranjevanje.error} />
+          <div className="obrazec__gumbi">
+            <button
+              type="button"
+              className="gumb"
+              disabled={shranjevanje.isPending}
+              onClick={() => {
+                shranjevanje.reset()
+                nastaviNapakoVnosa(null)
+                nastaviPotrditev(null)
+              }}
+            >
+              Nazaj
+            </button>
+            <button type="submit" className="gumb gumb--glavni" disabled={shranjevanje.isPending}>
+              {shranjevanje.isPending ? 'Shranjujem …' : 'Potrdi popravek'}
+            </button>
+          </div>
+        </form>
+      </ModalnoOkno>
+    )
   }
 
   return (
@@ -249,9 +339,8 @@ export function VnosRezultataOkno({
       )}
       {popravek && (
         <p className="namig">
-          Popravek sme spremeniti izid, ne pa zmagovalca — po njem je turnir tekel naprej.
-          Turnirko rating se preračuna od dneva te tekme naprej, kar lahko traja nekaj
-          trenutkov.
+          Popravek sme spremeniti tudi zmagovalca. Preden se karkoli shrani, vidiš, kaj to
+          pomeni za naslednje tekme. Turnirko rating se preračuna od dneva te tekme naprej.
         </p>
       )}
 
@@ -389,14 +478,18 @@ export function VnosRezultataOkno({
         )}
 
         {napakaVnosa && <div className="napaka">{napakaVnosa}</div>}
-        <SporociloNapake napaka={shranjevanje.error} />
+        <SporociloNapake napaka={predogledPopravka.error ?? shranjevanje.error} />
 
         <div className="obrazec__gumbi">
           <button type="button" className="gumb" onClick={onZapri}>
             Prekliči
           </button>
-          <button type="submit" className="gumb gumb--glavni" disabled={shranjevanje.isPending}>
-            {shranjevanje.isPending
+          <button
+            type="submit"
+            className="gumb gumb--glavni"
+            disabled={shranjevanje.isPending || predogledPopravka.isPending}
+          >
+            {shranjevanje.isPending || predogledPopravka.isPending
               ? 'Shranjujem …'
               : popravek
                 ? 'Shrani popravek'

@@ -13,6 +13,7 @@ import type {
   PrijavaDto,
   SistemTekmovanja,
   SkupinaDto,
+  TekmaDto,
   TurnirDto,
 } from '../api/tipi'
 import { OZNAKE_SPOL_KATEGORIJA, imePrijave, imeUdelezenca } from '../api/tipi'
@@ -160,7 +161,38 @@ function klubClana(prijava: PrijavaDto | undefined, klubLestvice: string | null,
   return brezPodvojitev.length > 0 ? brezPodvojitev.join(' / ') : null
 }
 
-function pripraviSkupino(mreza: MrezaDto, skupina: SkupinaDto): TiskSkupina {
+/* Tekma, kot gre na papir; par sta številki članov v križni tabeli (brez tabele 0). */
+export function tiskTekma(t: TekmaDto, par: [number, number]): TiskTekma {
+  return {
+    id: t.id,
+    kolo: t.kolo,
+    par,
+    ime1: imeUdelezenca(t.udelezenec1) ?? '',
+    ime2: imeUdelezenca(t.udelezenec2) ?? '',
+    izid:
+      t.status === 'KONCANA'
+        ? {
+            nizi: `${t.dobljeniNizi1}/${t.dobljeniNizi2}`,
+            oznaka: (t.izidTip && OZNAKE_IZIDA[t.izidTip]) || null,
+          }
+        : null,
+    tocke: t.status === 'KONCANA' ? t.nizi.map((n) => `${n.tocke1}:${n.tocke2}`) : [],
+    zmagovalec:
+      t.status !== 'KONCANA' || t.idZmagovalcaPrijave === null
+        ? null
+        : t.idZmagovalcaPrijave === t.udelezenec1?.idPrijave
+          ? 1
+          : 2,
+    prenesena: t.idPrenesena !== null,
+  }
+}
+
+/* idSkupine: tekme krožnega sistema niso v nobeni skupini (null), zato ga poda klicatelj. */
+function pripraviSkupino(
+  mreza: MrezaDto,
+  skupina: SkupinaDto,
+  idSkupine: number | null = skupina.id,
+): TiskSkupina {
   const ekipno = mreza.dogodek.disciplina === 'EKIPNO'
   const prijavePoId = new Map(mreza.prijave.map((p) => [p.id, p]))
 
@@ -189,7 +221,7 @@ function pripraviSkupino(mreza: MrezaDto, skupina: SkupinaDto): TiskSkupina {
   const tekme = mreza.tekme.filter(
     (t) =>
       t.faza === 'SKUPINA' &&
-      t.idSkupina === skupina.id &&
+      t.idSkupina === idSkupine &&
       t.udelezenec1 !== null &&
       t.udelezenec2 !== null &&
       stevilkaPrijave.has(t.udelezenec1.idPrijave) &&
@@ -226,31 +258,12 @@ function pripraviSkupino(mreza: MrezaDto, skupina: SkupinaDto): TiskSkupina {
       )
       return {
         kolo,
-        tekme: vKolu.map((t) => ({
-          id: t.id,
-          kolo,
-          par: [
+        tekme: vKolu.map((t) =>
+          tiskTekma(t, [
             stevilkaPrijave.get(t.udelezenec1!.idPrijave)!,
             stevilkaPrijave.get(t.udelezenec2!.idPrijave)!,
-          ],
-          ime1: imeUdelezenca(t.udelezenec1) ?? '',
-          ime2: imeUdelezenca(t.udelezenec2) ?? '',
-          izid:
-            t.status === 'KONCANA'
-              ? {
-                  nizi: `${t.dobljeniNizi1}/${t.dobljeniNizi2}`,
-                  oznaka: (t.izidTip && OZNAKE_IZIDA[t.izidTip]) || null,
-                }
-              : null,
-          tocke: t.status === 'KONCANA' ? t.nizi.map((n) => `${n.tocke1}:${n.tocke2}`) : [],
-          zmagovalec:
-            t.status !== 'KONCANA' || t.idZmagovalcaPrijave === null
-              ? null
-              : t.idZmagovalcaPrijave === t.udelezenec1!.idPrijave
-                ? 1
-                : 2,
-          prenesena: t.idPrenesena !== null,
-        })),
+          ]),
+        ),
         prosti: clani.filter((c) => !igra.has(c.idPrijave)).map((c) => c.stevilka),
       }
     })
@@ -316,6 +329,23 @@ export function sklopiZrebSkupin(mreza: MrezaDto): TiskSklop[] {
     naslov: sklopi.length > 1 ? sklop.naslov : null,
     skupine: sklop.skupine.map((s) => pripraviSkupino(mreza, s)),
   }))
+}
+
+/* Krožni sistem je ena sama lestvica brez skupin: za izpis rezultatov je to ena
+   križna tabela vseh udeležencev (izpisani po mestu, ker številk iz žreba nima). */
+export function sklopKroznega(mreza: MrezaDto): TiskSklop[] {
+  if (mreza.dogodek.sistemTekmovanja !== 'KROZNI' || mreza.lestvica.length === 0) return []
+  const skupina: SkupinaDto = {
+    id: 0,
+    oznaka: '',
+    stopnja: 2,
+    ime: 'Vsak z vsakim',
+    prvoMesto: null,
+    nivo: 1,
+    lestvica: mreza.lestvica,
+    krogi: mreza.krogi,
+  }
+  return [{ kljuc: 'krozni', naslov: null, skupine: [pripraviSkupino(mreza, skupina, null)] }]
 }
 
 export function steviloSkupinVSklopih(sklopi: TiskSklop[]): number {

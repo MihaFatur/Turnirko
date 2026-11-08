@@ -4,13 +4,17 @@
    Pri ekipnem dogodku je vrstica ekipa: profila nima, stolpec »Nizi« pa so
    dobljene in izgubljene posamične tekme srečanj (izid ekipne tekme je
    število dobljenih tekem, tako kot je izid posamične tekme število nizov). */
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { VrsticaLestviceDto } from '../api/tipi'
+import type { KrogDto, VrsticaLestviceDto } from '../api/tipi'
 import { kratekKlub } from '../pomozno/oblikovanje'
+import { IzracunKrogaOkno } from './IzracunKrogaOkno'
 
 interface Lastnosti {
   vrstice: VrsticaLestviceDto[]
+  /* Izračun krogov te lestvice: gumb pod tabelo obstaja samo, kadar je krog. */
+  krogi?: KrogDto[]
   /* Koliko najboljših napreduje (obarva vrstice napredovanja). */
   napreduje?: number
   /* Do katerega mesta gre drugi pas (SV regija: 3.–4. mesto v tolažilni žreb);
@@ -25,11 +29,13 @@ interface Lastnosti {
 
 export function Lestvica({
   vrstice,
+  krogi = [],
   napreduje,
   tolazilni,
   strnjena = false,
   ekipno = false,
 }: Lastnosti) {
+  const [izracunOdprt, nastaviIzracunOdprt] = useState(false)
   if (vrstice.length === 0) {
     return <p className="obvestilo">Ni še udeležencev.</p>
   }
@@ -140,6 +146,22 @@ export function Lestvica({
           ° krog — mesta določa izkupiček med izenačenimi, ne skupna razlika{' '}
           {ekipno ? 'tekem' : 'nizov'}
         </p>
+      )}
+      {krogi.length > 0 && (
+        <button
+          type="button"
+          className="gumb gumb--majhen lestvica__krog-gumb"
+          onClick={() => nastaviIzracunOdprt(true)}
+        >
+          {krogi.length === 1 ? 'Kako je bil izračunan krog?' : 'Kako so bili izračunani krogi?'}
+        </button>
+      )}
+      {izracunOdprt && (
+        <IzracunKrogaOkno
+          krogi={krogi}
+          ekipno={ekipno}
+          onZapri={() => nastaviIzracunOdprt(false)}
+        />
       )}
     </>
   )

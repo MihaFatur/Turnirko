@@ -54,6 +54,7 @@ import type {
   LigaVnos,
   MenjavaVnos,
   MrezaDto,
+  NacinPopravka,
   NakljucniParDto,
   NapovedTekmeDto,
   IzracunTekmeDto,
@@ -71,6 +72,7 @@ import type {
   PodobenIgralecDto,
   PodobenIgralecPodrobenDto,
   PodobniVnos,
+  PopravekPredogledDto,
   PreveriKodoVnos,
   PreverjenaKodaDto,
   PreracunPorociloDto,
@@ -283,9 +285,13 @@ export const tekmeApi = {
     api.objavi<TekmaDto>(`/tekme/${id}/rezultat`, vnos),
   /* Popravek že shranjenega rezultata. Ločena pot in ne isti POST: vnos je
      dejanje nad tekmo, ki še nima izida, popravek pa poseg v zgodovino, ki
-     zmagovalca ne sme spremeniti in sproži preračun ratinga. */
-  popraviRezultat: (id: number, vnos: VnosRezultata) =>
-    api.posodobi<TekmaDto>(`/tekme/${id}/rezultat`, vnos),
+     sproži preračun ratinga. Sme zamenjati tudi zmagovalca; ko je po tekmi že kaj
+     odigrano, nacin pove, kaj naj se s tem zgodi (najprej predogledPopravka). */
+  popraviRezultat: (id: number, vnos: VnosRezultata, nacin: NacinPopravka | null = null) =>
+    api.posodobi<TekmaDto>(`/tekme/${id}/rezultat${nacin ? `?nacin=${nacin}` : ''}`, vnos),
+  /* Kaj bi popravek naredil; nič se ne zapiše. */
+  predogledPopravka: (id: number, vnos: VnosRezultata) =>
+    api.objavi<PopravekPredogledDto>(`/tekme/${id}/rezultat/predogled`, vnos),
 }
 
 export const igralciApi = {

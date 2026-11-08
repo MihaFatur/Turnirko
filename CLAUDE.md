@@ -796,12 +796,55 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
   pokaže šele čez nekaj dni, ko je turnir že zaključen. Zato **PUT in ne POST**:
   vnos ustvari izid, popravek ga zamenja; `vnesiRezultat` končano tekmo še
   naprej zavrne.
-  - **Turnirska tekma ZMAGOVALCA ne spremeni.** Zmagovalec tam ni podatek o
-    tekmi, ampak vozlišče tekmovanja: po njem je bilo napredovano po mreži, iz
-    njega so nastala mesta v skupinah in končna mesta. Obrnjen izid je
-    *razveljavitev poteka tekmovanja* in ne popravek vpisa — zavrne se s
-    pojasnilom (409) in se ne ugiba. Isto velja za tekmo v ekipni tekmi
-    turnirja (izid srečanja je postal izid tekme v mreži).
+  - **Turnirska tekma ZMAGOVALCA SME spremeniti** (`PoslediceIzidaStoritev`,
+    `POST /tekme/{id}/rezultat/predogled`, `PUT /tekme/{id}/rezultat?nacin=`,
+    enum `NacinPopravka`; nov. 2026, SV regija: napačen zmagovalec zadnje tekme
+    veje ni bil popravljiv, odločitve lastnika). Zmagovalec tam ni le podatek o
+    tekmi, ampak vozlišče tekmovanja, zato se popravek najprej **oceni brez
+    zapisa** (ista ocena gre v predogled in v preverbo pred zapisom), organizator
+    pa se odloči, kjer je kaj že odigrano. Aplikacija tega ne more odločiti sama:
+    ali so naslednje tekme res igrali pravi igralci, je znano samo v dvorani.
+    Sme lastnik in admin, tudi po zaključku; uvoženo ostane samo za branje.
+    - **Mreža oz. žreb.** Naslednja tekma brez izida samo dobi novega igralca
+      (odločitve ni). Naslednje tekme z izidom zahtevajo izbiro (brez nje 409 in
+      nič se ne spremeni): `IZBRISI_IZIDE` izprazni celo vejo (izidi, točke po
+      nizih in obračuni gredo, igralci, ki prihajajo iz izpraznjene tekme, niso več
+      znani), `ZAMENJAJ_IGRALCA` pusti izid na njegovi **strani** tekme, zato si
+      igralca zamenjata mesti po celi veji, tudi po poti poraženih.
+    - **Skupina.** Spremenjen vrstni red, iz katerega je že nastal naslednji del,
+      zahteva izbiro: `PODRI_NASLEDNJI_DEL` (žrebi Skupine, izločilni del ali
+      finalne skupine gredo, tudi z vnesenimi izidi; finalne nastanejo same,
+      žrebe naredi organizator znova) ali `OHRANI_NASLEDNJI_DEL` (popravita se
+      tabela in rating, del ostane in se s tabelo ne ujema več). Merilo je, ali
+      nov vrstni red za del kaj pomeni (`delPrizadet`): izločilni del vzame prva
+      dva, finalne skupine pasove po dva, žrebi SV regije vse. Odločitev velja za
+      vsak popravek, ki tako spremeni vrstni red, tudi ob istem zmagovalcu (razlika
+      nizov odloča krog). Lastnik je želel v oknu tudi tretjo možnost »podri samo,
+      če še ni vnesene tekme«: ta ni svoja izbira, ker je pri 0 vnesenih enaka prvi,
+      pri vnesenih pa preklicu, zato okno pove število izgubljenih tekem.
+    - **Lestvica po popravku se izračuna pred zapisom** (`RazvrstitevStoritev.
+      NadomestniIzid`), tudi s točkami po nizih, ker lahko odločijo krog.
+    - **Obračun se izrecno pobriše** (`pobrisiObracune`, izprazni sejo, zato gre
+      prvi in se tekma prebere znova). Preračun briše samo zapise tekem, ki jih
+      odigra znova, zato bi tekma brez izida, izbrisana tekma ali tekma, ki postane
+      brez boja, obdržala stari obračun (to je veljalo že prej za »odigrano → brez
+      boja«). Izbris tekem žreba brez tega trči ob tuji ključ dnevnika.
+    - **Dogodek, ki izgubi izide, spet teče** in turnir se odpre
+      (`RazveljavitevEkipneTekmeStoritev.ponovnoOdpriDogodek`), mesta nastanejo ob
+      novem zaključku. Pri SV regiji gredo samo mesta iz tekem žrebov: kdor je prišel
+      do konca brez tekme (edini v žrebu), jih je dobil ob gradnji. Popravek brez
+      izgubljenih izidov dogodek pusti zaključen in mesta dodeli znova; zato
+      `dodeliMestaIzFinala` stara mesta najprej počisti (nekdanji finalist bi jih
+      sicer obdržal).
+    - **Prenesena tekma sledi izvorni** (`uskladiPrenesene`,
+      `SkupineStoritev.prepisiIzid`), sicer finalna tabela šteje drug izid kot
+      predtekmovalna.
+    - Tekma v ekipni tekmi turnirja zmagovalca **ne spremeni** (izid srečanja je
+      postal izid tekme v mreži); za to je razveljavitev zapisnika.
+    - Vmesnik: `VnosRezultataOkno` pred shranjevanjem vpraša predogled in ob
+      zamenjanem zmagovalcu ali spremenjenem vrstnem redu preide na
+      `PotrditevPopravka` (v istem oknu). Regresije: `PopravekZmagovalcaTest`,
+      `PopravekZmagovalcaDostopTest`, `LenoNalaganjeTest`.
   - **Ligaška tekma zmagovalca SME spremeniti, dokler ostane potek isti**
     (`SrecanjeStoritev.preveriZamenjavoZmagovalca`, september 2026 — v
     Savinja ligi sta se pri prepisu zamenjali imeni in zmagal je napačni).
@@ -1163,12 +1206,34 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
         `db/migration/postgresql` (od preklopa 2. 11. 2026 velja samo mapa `postgresql/`).
 - **Sistem tekmovanja** izbere dogodek; `ZrebStoritev` po njem razveji žreb
   (`IZLOCILNI`/`KROZNI`/`SKUPINE_IZLOCILNI`/`SKUPINE`). Lestvice računa
-  `RazvrstitevStoritev` (zmage → porazi → **krog**: razlika nizov, nato
-  razlika točk **samo iz tekem med izenačenimi**, rekurzivno), izločilni
-  del po skupinah pa `SkupineStoritev` (generira se, ko so odigrane vse
-  skupine — nujno pred preverbo zaključka dogodka; **samo** pri
+  `RazvrstitevStoritev` (zmage → porazi → **krog**: medsebojne zmage, razlika
+  nizov, nato razlika točk **samo iz tekem med izenačenimi**, rekurzivno),
+  izločilni del po skupinah pa `SkupineStoritev` (generira se, ko so odigrane
+  vse skupine — nujno pred preverbo zaključka dogodka; **samo** pri
   `SKUPINE_IZLOCILNI`). Izlocilno mrezo gradi ena metoda
   (`ZrebStoritev.zgradiIzlocilnoMrezo`), da jo delita oba sistema.
+- **Izračun kroga je viden gledalcu** (nov. 2026; `KrogDto`, `SkupinaDto.krogi`,
+  `MrezaDto.krogi`, `IzracunKrogaOkno`; odločitve lastnika). Pod lestvico vseh
+  turnirskih sistemov s skupinami in krožnega sistema je gumb »Kako je bil
+  izračunan krog?«, samo kadar je v lestvici krog; odpre okno (ne razpira se pod
+  tabelo). Lestvica lige ima svoje pravilo in tega nima.
+  - **Nastane sproti med razvrščanjem** (`RazvrstitevStoritev.ZapisKroga`) in se ne
+    računa znova: vmesnik pravil ne pozna, zato razlaga ne more trditi nečesa,
+    česar razvrstitev ni storila.
+  - **Ena tabela, stolpci samo za merila, ki so odločala.** Kjer odločijo zmage,
+    nizov ni; kjer nizi, točk ni. Enaki nizi se izpišejo, ker pojasnijo, zakaj
+    štejejo točke. Enake zmage niso stolpec, ampak stavek nad tabelo. Prva
+    pojavitev merila gre v njegov stolpec, ponovitev v manjšem krogu v »Med
+    njimi« (dvojica: »Med njima« z izidom njune tekme). Krog dveh z eno tekmo je
+    samo ta tekma, brez tabele. Tekme kroga so za »Pokaži tekme«.
+  - **Oznaka `krog` zdaj pomeni: izenačeni z vsaj eno medsebojno tekmo** in ne več
+    »katero od meril je koga razbilo«. Povsem izenačeni (cikel 3 : 0 brez vpisanih
+    točk) so bili prej brez oznake, čeprav prav tam gledalec najbolj sprašuje;
+    izračun pove, katero zadnje merilo je odločilo (`KrogDto.Opomba`).
+    Izenačeni, ki se še niso srečali (začetek skupine), kroga nimajo.
+  - Gumb je viden tudi med igranjem; okno takrat pove, da se izračun lahko
+    spremeni (`vseTekmeOdigrane`).
+  - Imena se v stavkih ne sklanjajo (ime je podatek). Testi: `IzracunKrogaTest`.
 - **Žreb z nosilci je svoja storitev** (`NosilciStoritev`; 21. in 22. člen
   PST). `ZrebStoritev` samo prebere jakostni vrstni red (`IzborStoritev`), ga
   zabeleži v `Prijava.stNosilca` in iz razporeditve sestavi tekme:
@@ -2354,9 +2419,9 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     število samo v `npm run dev`.
 - **Končna razvrstitev: stopničke** (4. 11. 2026, DESIGN.md 5h; predaja
   `design_handoff_koncna_razvrstitev`, možnost 1b + tisk 1c): `komponente/KoncnaRazvrstitev`
-  (čista prikazna komponenta), čista pravila v `pomozno/koncnaRazvrstitev` (nivoji, razpolovitev
-  za tisk, `udelezenciRazvrstitve` iz `MrezaDto`), tisk `KoncnaRazvrstitevTisk` +
-  `strani/RazvrstitevTiskStran` (`/dogodki/:id/razvrstitev-tisk`, pokončni A4, `@page razvrstitev`),
+  (čista prikazna komponenta), čista pravila v `pomozno/koncnaRazvrstitev` (nivoji, razrez na liste
+  za tisk, `udelezenciRazvrstitve` iz `MrezaDto`), tisk je del izpisa rezultatov (glej »Izpis
+  rezultatov kategorije«; `/dogodki/:id/razvrstitev-tisk` je ista stran, zaklenjena na razvrstitev),
   razredi `.stopnice__*`, `.nivoji__*`, `.koncna-razvrstitev__*`, `.razvrstitev-list__*` na koncu
   `slog.css`. Pravila, ki jih ne razbij:
   - **Samo mesta 1.–3. (ali 1., 2. in dve »3.–4.«) so izpostavljena, ostali so za gumbom »Še N
@@ -2390,8 +2455,8 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     `/dev/koncna-razvrstitev?primer=izlocilni|krozni|ekipni&stanje=zaprto|odprto&naprava=namizje|telefon&prikaz=tisk`,
     podatki `dev/koncnaRazvrstitevPodatki.ts` iz predaje). Izmerjeno 4. 11. 2026 na vseh 15 primerih: višine
     in širine enake, lege vseh besedil Δ 0,00 px, piksli ≤ 0,04 % (pri tisku mora biti list brez `outline`:
-    zaslonski obris spremeni zglajevanje črk v celem listu, 4,4 % pikslov, mere pa ostanejo iste). Tisk:
-    48 igralcev = ena stran A4 (PDF), 64 = dve; rob pri tisku da `@page` (12,7 × 14,8 mm), ne padding.
+    zaslonski obris spremeni zglajevanje črk v celem listu, 4,4 % pikslov, mere pa ostanejo iste). Merilo
+    velja za zaslon: list za tisk je od 8. 11. 2026 po izpisu rezultatov in prototipu ne sledi več.
   - Zaledje: samo `PrijavaDto.ime/priimek` (test v `LenoNalaganjeTest`). Ni preverjeno na pravem tiskalniku
     in z resnično profilno sliko (preverjeno z generirano SVG sliko).
 - **Udeleženci: nosilci, palice, spustni meni** (5. 11. 2026, DESIGN.md 5i; predaja
@@ -3179,6 +3244,53 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
   - Izmerjeno z brezglavim Chromom (PDF → mupdf): 12, 32 in 64 igralcev, 6 po
     skupinah; vsak list je ležeči A4 (842 × 595 pt), mreža 32 igralcev ob robu
     (150 mm visoka). Ob spremembi mer ponovi.
+- **Izpis rezultatov kategorije** (8. 11. 2026, zahteva lastnika; `strani/IzpisStran`,
+  `/dogodki/:id/izpis`, gumb »Natisni rezultate«). Končna razvrstitev, skupinski in izločilni del
+  **posebej ali v enem dokumentu**, po kljukicah; stikalo »Točke po nizih« velja za skupine in mrežo
+  in ga ni, kadar točke nikjer niso vpisane. Izbira je v naslovu (`?deli=razvrstitev,skupine&tocke=0`).
+  Stran je zunaj `Postavitve`, tiska brskalnik, **brez zaledja**: vse je v `MrezaDto`. Odločitve lastnika:
+  - **Ena kategorija naenkrat**, samo na strani dogodka (ne na strani turnirja). Vrstni red delov je
+    vedno razvrstitev, skupine, izločilni del.
+  - **Vsak list nosi** znak in napis Turnirko, vrsto lista, ime turnirja, kategorijo, datum in kraj,
+    logotip turnirja (če ga ima), v nogi pokrovitelje in »List 2 od 4«; v mreži je tudi klub.
+  - **Gumb vidita organizator in admin, ko je kategorija zaključena** (`dejanskiStatus`); admin tudi pri
+    uvoženem dogodku, ker tisk ničesar ne spremeni. Žreb skupin in mreža za vrata dvorane ostaneta,
+    kot sta bila (samo med tekmovanjem). `/dogodki/:id/razvrstitev-tisk` (gumb »Natisni razvrstitev«)
+    ostane javen kot prej.
+  - **Vse je izračunano, nič izmerjeno** (`pomozno/izpisRezultatov`, čista logika; `sestaviIzpis` vrne
+    liste): vrstice imajo stalno višino v mm, besedilo se ne lomi, zato je število listov znano,
+    preden se kaj izriše, in iste številke (`MERE_LISTA`, `MERE_SKUPIN`, `MERE_SV`) postavi izris v
+    spremenljivke sloga. `@page izpis-pokoncni` in `izpis-lezeci` imata rob 0 (brskalnik tako ne doda
+    svoje glave in noge), rob je odmik lista; mešana usmeritev v istem PDF deluje prek `page` na listu.
+  - **Razvrstitev na en list, največ dva** (zahteva lastnika): `listiRazvrstitve` vzame najbolj prostorno
+    od gostot (`GOSTOTE`), pri kateri gre na en list, sicer najbolj prostorno, pri kateri gre na dva.
+    Brez pokroviteljev gre okoli 82 udeležencev na en list in okoli 195 na dva. **Stolpca se polnita po vrsti**
+    (`listiOstalih`: levi do dna lista, desni, nato naslednji list; razpolovljen je samo zadnji list):
+    prejšnji razpolovljen seznam se je na dveh listih pomešal (levi stolpec je šel na drugi list, desni
+    je tekel naprej na prvem). Ime ima prednost pred klubom, izkupiček krožnega sistema se ne odreže.
+    Par in dolgo ime ekipe sta v enem stolpcu. Če si več kot štirje delijo vrh (stara uvožena zgodovina
+    z zapisanima samo 1. in 2. mestom, ostali »3.–91.«), gre tretje mesto med ostale (`razdeliNaStopnice`).
+  - **Skupine** uporabijo `KriznaTabela` in `RazporedZNizi` listkov z nižjimi vrsticami (`zaRezultate`:
+    izid »3:1« namesto poševnice, prazno ostane prazno), brez črt za rez; štiri skupine po 4 s točkami
+    oz. sedem do osem samo s tabelo na list. Skupina gre na list cela, samo prevelika (krožni sistem) se
+    nadaljuje med koli. Krožni sistem je ena križna tabela »Vsak z vsakim« (`sklopKroznega`). Skupina
+    brez vpisanih točk ima samo tabelo (seznam ne bi povedal nič novega).
+  - **Mreža** (`IzpisMreza`, ležeči A4, razrez kot pri mreži za vrata) ima točke v tanki vrstici pod
+    okvirjem (zunaj okvirja, da črte ostanejo ravne), klub pa samo v prvem kolu lista: tam igralec v
+    mrežo vstopi, naprej se isti ljudje ponavljajo. Dolgo ime se zmanjša, preden se odreže; par se v
+    ozkem stolpcu skrajša na priimka. Tekma za 3. mesto stoji ob zmagovalcu.
+  - **Žrebi SV regije** (`IzpisSv`, `blokiZreba`): poti žreba (`odsekiZreba` iz `SvDrevo`) v dveh pasovih
+    na ležečem listu, najširša levo, ožje desno, kar desno ne gre, pod levo. Dva žreba po 8 ali en
+    žreb 16 na list (tudi s pokrovitelji); žreb 32 tri liste.
+  - **Uvoženi dogodki imajo tudi drugačne oblike**: polna tolažilna mreža dobi svoje liste
+    (»Tolažilna mreža«), nepolna mreža in tekme za razvrstitev pa seznam po kolih (`listiTekem`,
+    »Izločilne tekme«, »Tekme za razvrstitev«), da ne manjka noben rezultat.
+  - Izmerjeno z brezglavim Chromom (`Page.printToPDF`, PDF → mupdf) na testni bazi z vsemi sistemi
+    (izločilni 8–180, skupine, TOP, krožni do 14, skupine za mesta, SV regija z žrebi 8/16/32, dvojice,
+    ekipno) in na vzorcu pravih uvoženih dogodkov: število strani je enako izračunu, nič ne prelije;
+    čez vseh 957 dogodkov testne baze pravila tečejo brez napake, vsaka odigrana izločilna tekma je na
+    izpisu, razvrstitev nikjer čez dva lista. **Na pravem tiskalniku ni preverjeno**; mešana usmeritev
+    je preverjena v PDF iz Chroma.
 - **Zavihki dogodka na telefonu tečejo po vrsti tekmovanja** (`pogledi` v
   `DogodekStran`, odločitev lastnika, okt 2026): Skupine (privzeto) ·
   Izločilni del · Razvrstitev · Udeleženci. Zavihek »Razvrstitev« (končna

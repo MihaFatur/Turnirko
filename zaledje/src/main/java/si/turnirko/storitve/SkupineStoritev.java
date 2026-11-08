@@ -264,13 +264,19 @@ public class SkupineStoritev {
         if (prvotna == null || prvotna.getStatus() != StatusTekme.KONCANA) {
             return; // ekipi se v predtekmovanju nista srecali - tekma se odigra
         }
-        boolean enakaSmer = prvotna.getPrijava1().getId().equals(a);
-        nova.setDobljeniNizi1(enakaSmer ? prvotna.getDobljeniNizi1() : prvotna.getDobljeniNizi2());
-        nova.setDobljeniNizi2(enakaSmer ? prvotna.getDobljeniNizi2() : prvotna.getDobljeniNizi1());
-        nova.setZmagovalec(prvotna.getZmagovalec());
-        nova.setIzidTip(prvotna.getIzidTip());
+        prepisiIzid(prvotna, nova);
         nova.setStatus(StatusTekme.KONCANA);
         nova.setIdPrenesena(prvotna.getId());
+    }
+
+    /* Izid prvotne tekme na preneseni: strani sta lahko obrnjeni. Popravek prvotne
+       tekme gre po isti poti (PoslediceIzidaStoritev.uskladiPrenesene). */
+    static void prepisiIzid(Tekma prvotna, Tekma prenesena) {
+        boolean enakaSmer = prvotna.getPrijava1().getId().equals(prenesena.getPrijava1().getId());
+        prenesena.setDobljeniNizi1(enakaSmer ? prvotna.getDobljeniNizi1() : prvotna.getDobljeniNizi2());
+        prenesena.setDobljeniNizi2(enakaSmer ? prvotna.getDobljeniNizi2() : prvotna.getDobljeniNizi1());
+        prenesena.setZmagovalec(prvotna.getZmagovalec());
+        prenesena.setIzidTip(prvotna.getIzidTip());
     }
 
     private static int stopnja(List<Skupina> skupine, Tekma t) {

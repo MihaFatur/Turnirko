@@ -20,14 +20,14 @@ import type { SvZrebDto, TekmaDto } from '../api/tipi'
 import { imeStopnje, opisRazpona } from '../pomozno/svRegija'
 import { TekmaKartica, type KlikTekme } from './TekmaKartica'
 
-interface Postavljena {
+export interface Postavljena {
   tekma: TekmaDto
   stolpec: number
   /* Višina sredine kartice v enotah vrstice (0,5 = prva vrstica). */
   y: number
 }
 
-interface Odsek {
+export interface Odsek {
   od: number
   doMesta: number
   naslov: string

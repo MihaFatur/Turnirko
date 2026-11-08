@@ -459,7 +459,7 @@ export interface TekmaDto {
    pojasnita vrstnega reda — o njem odloči le izkupiček med izenačenimi.
    `krog` je zaporedna številka takega izenačenja (člani istega kroga imajo
    isto), sicer null; prikaz z njo označi mesta, kjer skupna razlika nizov
-   vrstnemu redu ne sledi. */
+   vrstnemu redu ne sledi. Izračun kroga je v KrogDto. */
 export interface VrsticaLestviceDto {
   idPrijave: number
   /* Prazen pri ekipi (ekipni dogodek) - ta profila nima. */
@@ -475,6 +475,74 @@ export interface VrsticaLestviceDto {
   krog: number | null
 }
 
+/* Izračun enega kroga: kaj je izenačene razvrstilo in s katerimi številkami.
+   Nastane sproti med razvrščanjem (RazvrstitevStoritev), zato vmesnik pravil
+   ne pozna in samo izpiše, kar je strežnik res upošteval. Številke veljajo za
+   tekme med izenačenimi, nikoli za celo skupino. */
+export type MeriloKroga = 'ZMAGE' | 'NIZI' | 'TOCKE' | 'TEKMA'
+export type ZadnjeMeriloKroga = 'RAZLIKA_NIZOV' | 'DOBLJENI_NIZI' | 'JAKOSTNO_MESTO' | 'ABECEDA'
+
+export interface IzkupicekKroga {
+  za: number
+  proti: number
+}
+
+/* Merilo, ki se je ponovilo v manjšem krogu. TEKMA je izid dvoboja dveh, ki sta
+   ostala izenačena; izid je izpolnjen, kadar tekma ni bila odigrana do konca. */
+export interface KorakKroga {
+  merilo: MeriloKroga
+  za: number
+  proti: number
+  izid: IzidTekme | null
+}
+
+/* Član nosi samo merila, ki so zanj res štela; ostala so null. */
+export interface ClanKroga {
+  idPrijave: number
+  ime: string
+  mesto: number
+  zmage: number | null
+  nizi: IzkupicekKroga | null
+  tocke: IzkupicekKroga | null
+  medNjimi: KorakKroga[]
+}
+
+/* Izenačene, ki jih medsebojne tekme niso razsodile, loči zadnje merilo. */
+export interface OdlocitevKroga {
+  merilo: ZadnjeMeriloKroga
+  vrednosti: { ime: string; vrednost: number | null }[]
+}
+
+export interface OpombaKroga {
+  /* Med seboj še niso igrali (samo sredi skupine). */
+  brezTekem: boolean
+  odlocitve: OdlocitevKroga[]
+}
+
+export interface TekmaKroga {
+  ime1: string
+  ime2: string
+  nizi1: number
+  nizi2: number
+  prviZmagal: boolean
+  izid: IzidTekme | null
+}
+
+export interface KrogDto {
+  odMesta: number
+  doMesta: number
+  /* Prvo merilo, ki je cel krog razbilo; null, če je med člani vse enako. */
+  odlocilo: MeriloKroga | null
+  /* Koliko medsebojnih zmag ima vsak, kadar zmage kroga ne razbijejo. */
+  enakeZmage: number | null
+  vseTekmeOdigrane: boolean
+  /* Pri merilu točk je vsaj ena tekma brez vpisanih točk po nizih. */
+  tockeManjkajo: boolean
+  clani: ClanKroga[]
+  opombe: OpombaKroga[]
+  tekme: TekmaKroga[]
+}
+
 /* Skupina z lestvico (sistem skupine + izločilni). */
 export interface SkupinaDto {
   id: number
@@ -488,6 +556,8 @@ export interface SkupinaDto {
   /* SV regija: nivo skupine (drugod 1). */
   nivo: number
   lestvica: VrsticaLestviceDto[]
+  /* Izračun krogov te skupine; prazno, če kroga ni. */
+  krogi: KrogDto[]
 }
 
 /* Ena skupina v predogledu razreza: katera mesta jakostne lestvice zajame. */
@@ -662,6 +732,8 @@ export interface MrezaDto {
   tekme: TekmaDto[]
   skupine: SkupinaDto[]
   lestvica: VrsticaLestviceDto[]
+  /* Izračun krogov skupne lestvice krožnega sistema (skupine imajo svojega). */
+  krogi: KrogDto[]
   izbor: IzborDto | null
   /* SV regija: nivoji, skupine in žrebi; null pri drugih sistemih. */
   svRegija: SvRegijaDto | null
@@ -1569,6 +1641,49 @@ export interface VnosRezultata {
   nizi: NizVnos[] | null
   /* Prepis števila nizov za to tekmo (3, 5 ali 7); null pusti, kar je določil dogodek. */
   steviloNizov: number | null
+}
+
+/* Kaj naj popravek naredi s tistim, kar je po tekmi že teklo. */
+export type NacinPopravka =
+  | 'IZBRISI_IZIDE'
+  | 'ZAMENJAJ_IGRALCA'
+  | 'PODRI_NASLEDNJI_DEL'
+  | 'OHRANI_NASLEDNJI_DEL'
+
+export interface TekmaPosledice {
+  id: number
+  oznaka: string
+  udelezenec1: string
+  udelezenec2: string
+  nizi1: number
+  nizi2: number
+  izidTip: IzidTekme | null
+}
+
+export type VrstaNaslednjegaDela = 'ZREBI' | 'IZLOCILNI' | 'FINALNE_SKUPINE'
+
+export interface NaslednjiDelPopravka {
+  vrsta: VrstaNaslednjegaDela
+  /* Skupina (nivo) pri sistemu SV regija. */
+  nivo: number | null
+  /* Koliko izidov se izgubi, če se del podre. */
+  vnesenihTekem: number
+  vrstniRedPrej: string[]
+  vrstniRedPotem: string[]
+}
+
+/* Kaj bi popravek naredil; strežnik ga izračuna brez zapisa. Izbire so prazne,
+   kadar odločitve ni treba. */
+export interface PopravekPredogledDto {
+  zamenjanZmagovalec: boolean
+  stariZmagovalec: string
+  novZmagovalec: string
+  izbire: NacinPopravka[]
+  odvisneZIzidom: TekmaPosledice[]
+  odvisnihBrezIzida: number
+  naslednjiDel: NaslednjiDelPopravka | null
+  dogodekZakljucen: boolean
+  stejeVRating: boolean
 }
 
 /* ---------- Oznake za prikaz (tu so sumniki dovoljeni) ---------- */

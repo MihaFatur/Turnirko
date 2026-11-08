@@ -26,7 +26,9 @@ export function ZrebOkvir({
   steviloZaTisk,
   prazno,
   lezeci = false,
+  sirokList = lezeci,
   razred,
+  izbira,
   orodja,
   navodilo,
   children,
@@ -43,8 +45,13 @@ export function ZrebOkvir({
   steviloZaTisk: number
   prazno: string
   lezeci?: boolean
+  /* Širina, po kateri se list pomanjša na ozkem zaslonu: dokument z mešanimi listi
+     (lezeci je za celo stran) se meri po ležečem. */
+  sirokList?: boolean
   /* Dodaten razred strani (oblika lista, @page). */
   razred?: string
+  /* Izbira ob povezavi nazaj (kaj gre v dokument). */
+  izbira?: ReactNode
   /* Izbira ob števcu (npr. kaj nosi listek). */
   orodja?: ReactNode
   /* Navodilo za tisk nad listi; samo na zaslonu. */
@@ -57,7 +64,7 @@ export function ZrebOkvir({
   const [merilo, nastaviMerilo] = useState(1)
   useEffect(() => {
     if (!okvir) return
-    const sirinaLista = lezeci ? SIRINA_LEZECEGA_LISTA_PX : SIRINA_POKONCNEGA_LISTA_PX
+    const sirinaLista = sirokList ? SIRINA_LEZECEGA_LISTA_PX : SIRINA_POKONCNEGA_LISTA_PX
     const izmeri = () => {
       const slog = getComputedStyle(okvir)
       const notranja = okvir.clientWidth - parseFloat(slog.paddingLeft) - parseFloat(slog.paddingRight)
@@ -67,7 +74,7 @@ export function ZrebOkvir({
     const opazovalec = new ResizeObserver(izmeri)
     opazovalec.observe(okvir)
     return () => opazovalec.disconnect()
-  }, [okvir, lezeci])
+  }, [okvir, sirokList])
 
   if (nalaganje) return <p className="obvestilo">Nalaganje …</p>
   if (napaka) return <SporociloNapake napaka={napaka} />
@@ -78,6 +85,7 @@ export function ZrebOkvir({
         <Link to={nazaj} className="povezava-nazaj">
           {nazajOznaka}
         </Link>
+        {izbira}
         <span className="listki-orodja__stevec">{stevec}</span>
         {orodja}
         <button

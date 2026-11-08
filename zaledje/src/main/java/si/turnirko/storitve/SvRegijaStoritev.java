@@ -991,6 +991,28 @@ public class SvRegijaStoritev {
         }
     }
 
+    /* Zgrajene zrebe Skupine podre, tudi z odigranimi tekmami: popravljen izid v
+       skupini je spremenil vrstni red, iz katerega so nastali, organizator pa je
+       izbral, naj gredo (PoslediceIzidaStoritev). Vrstice zreba ostanejo, velikosti so
+       iz zreba skupin - zrebi spet cakajo nanj kot ob koncu skupin. Obracune ratinga je
+       klicalec ze pobrisal. */
+    @Transactional
+    public void podriZrebeNivoja(Long idDogodka, int nivo) {
+        for (Zreb zreb : zrebRepozitorij.findByDogodekIdAndNivoOrderByIndeksAsc(idDogodka, nivo)) {
+            odstraniTekmeZreba(zreb);
+            zreb.setZgrajen(false);
+            zreb.setRocni(false);
+            zreb.setRazpored(null);
+        }
+        List<Skupina> skupineNivoja = predtekmovalnePoNivojih(
+                skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(idDogodka)).getOrDefault(nivo, List.of());
+        Set<Long> idjiSkupin = skupineNivoja.stream().map(Skupina::getId).collect(Collectors.toSet());
+        // koncno mesto ima zdaj samo, kdor je bil edini v zrebu; ta ga dobi znova ob gradnji
+        prijavaRepozitorij.najdiZaDogodek(idDogodka).stream()
+                .filter(p -> p.getIdSkupina() != null && idjiSkupin.contains(p.getIdSkupina()))
+                .forEach(p -> p.setKoncnoMesto(null));
+    }
+
     /* Seznam po nivojih z novo vrednostjo na mestu nivoja (od 1), brez praznega repa. */
     private static List<Integer> naNivoju(List<Integer> seznam, int nivo, Integer vrednost) {
         List<Integer> nov = seznam == null ? new ArrayList<>() : new ArrayList<>(seznam);

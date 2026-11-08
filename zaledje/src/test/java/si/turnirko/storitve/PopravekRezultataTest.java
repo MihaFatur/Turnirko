@@ -8,9 +8,9 @@
    rezultat kdo prepisal na roko.
 
    Kar mora test cuvati:
-   1. popravek ne sme spremeniti ZMAGOVALCA, kadar je po njem tekmovanje ze
-      teklo (mreza turnirja, prag zmag v srecanju) - v ligi, ki odigra vse
-      tekme srecanja, pa ga sme, ker potek ostane isti,
+   1. popravek v srecanju ne sme spremeniti ZMAGOVALCA, kadar je po njem tekmovanje
+      ze teklo (prag zmag) - v ligi, ki odigra vse tekme srecanja, pa ga sme, ker
+      potek ostane isti (turnirska tekma ga sme vedno: PopravekZmagovalcaTest),
    2. popravek MORA premakniti rating - sicer je popravljen samo izpis,
    3. ligaska tekma ima ob obracunu in ob preracunu isti cas. */
 package si.turnirko.storitve;
@@ -45,6 +45,7 @@ import si.turnirko.dto.TekmaSrecanjaDto;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.dto.VnosRezultataSrecanja;
 import si.turnirko.izjeme.DomenskaIzjema;
+import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.FormatSrecanja;
 import si.turnirko.modeli.Igralec;
@@ -129,14 +130,16 @@ class PopravekRezultataTest extends IntegracijskiTest {
                 .spremembeZaTekme(List.of(tekma.getId()), RatingStanje.SISTEM_TURNIRKO).size());
     }
 
+    /* Napacen vnos se zavrne in ne spremeni nicesar. */
     @Test
-    void popravekNeSmeSpremenitiZmagovalca() {
+    void neveljavenPopravekNeSpremeniNicesar() {
         Tekma tekma = pripraviEnoTekmo();
         tekmaStoritev.vnesiRezultat(tekma.getId(), new VnosRezultata(null, 3, 0, null, null));
         Long zmagovalec = tekma.getZmagovalec().getId();
 
-        assertThrows(DomenskaIzjema.class, () -> tekmaStoritev.popraviRezultat(
-                tekma.getId(), new VnosRezultata(null, 0, 3, null, null)));
+        assertThrows(NeveljavenVnosIzjema.class, () -> tekmaStoritev.popraviRezultat(
+                tekma.getId(), new VnosRezultata(null, 2, 3, null,
+                        List.of(new NizVnos(11, 5), new NizVnos(11, 7), new NizVnos(11, 9)))));
 
         Tekma po = tekmaRepozitorij.findById(tekma.getId()).orElseThrow();
         assertEquals(zmagovalec, po.getZmagovalec().getId(), "zavrnjen popravek ne sme nicesar spremeniti");

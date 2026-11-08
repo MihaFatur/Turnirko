@@ -832,11 +832,16 @@ oznake in številke. Brez podlag, brez sivin pod 10 %, samo `1px` in `2px` črne
 `repeat(5, 1fr)` z `4px` vrzeljo. Vsak listek ima glavo (miza, faza), dve
 vrstici igralcev z klubom v mono in nogo z opombo o številu nizov in podpisu.
 
-**Končna razvrstitev** (`/dogodki/:id/razvrstitev-tisk`, razdelek 5h) je pokončni A4 z
-robom 12,7 × 14,8 mm (`@page razvrstitev`; rob da stran in ne padding, da ga ima tudi
-druga stran), brez slik: glava z znamko, ime turnirja, vrh 1.–3. v vrsticah čez celo
-širino, ostali v dveh stolpcih (oznaka nivoja v prvi vrstici nivoja in vsakega stolpca),
-noga. Pri 48 igralcih je list ena stran, pri več kot ~60 se prelomi (vrstice se ne lomijo).
+**Izpis rezultatov** (`/dogodki/:id/izpis`; končna razvrstitev, skupinski in izločilni del, po
+izbiri v enem dokumentu) ima na vsakem listu A4 isto glavo: znak in napis Turnirko, vrsta lista
+v mono, črta 0,8 mm, ime turnirja v display 800, kategorija in sistem ter datum in kraj v mono,
+desno logotip turnirja; v nogi pokrovitelji in »List 2 od 4«. Rob je odmik lista, `@page` nima
+robov. Mreža in žrebi SV regije so ležeči, ostalo pokončno.
+
+**Končna razvrstitev** (razdelek 5h; tudi `/dogodki/:id/razvrstitev-tisk`): vrh 1.–3. v vrsticah čez
+celo širino, ostali v dveh stolpcih (oznaka nivoja v prvi vrstici nivoja in vsakega stolpca), ki se
+polnita po vrsti, levi do dna lista, nato desni. Gostota sledi številu: 12 pt do ~55 igralcev na
+listu, nato 10,5 pt in 9,5 pt, da gre seznam na en list ali največ na dva.
 
 ---
 

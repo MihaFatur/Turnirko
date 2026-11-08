@@ -12,7 +12,8 @@
    potrebuje ničesar svojega. */
 import type { DogodekDto, MrezaDto, SistemTekmovanja, TekmaDto } from '../api/tipi'
 import { imeUdelezenca } from '../api/tipi'
-import { imeKola, imeKolaKratko } from './oblikovanje'
+import { priimekUdelezenca } from '../api/tipi'
+import { imeKola, imeKolaKratko, kratekKlub } from './oblikovanje'
 import { OZNAKE_IZIDA } from './zrebSkupin'
 
 /* Sistemi z izločilno mrežo: čist izločilni in skupine, po katerih sledi mreža.
@@ -36,18 +37,22 @@ export function jeKandidatZaTiskMreze(dogodek: DogodekDto): boolean {
 /* Tekme glavne mreže po kolih (indeks 0 = 1. kolo), po poziciji. null, kadar
    mreža ni polno drevo - takega lista ne znamo pošteno narisati (uvožen
    dogodek z drugačno obliko), zato ga raje ne ponudimo. */
-function kolaGlavneMreze(tekme: TekmaDto[]): TekmaDto[][] | null {
-  const glavne = tekme.filter((t) => t.faza === 'GLAVNI')
-  if (glavne.length === 0) return null
-  const stKol = Math.max(...glavne.map((t) => t.kolo))
+function kolaMreze(tekme: TekmaDto[], faza: 'GLAVNI' | 'TOLAZILNI'): TekmaDto[][] | null {
+  const vFazi = tekme.filter((t) => t.faza === faza)
+  if (vFazi.length === 0) return null
+  const stKol = Math.max(...vFazi.map((t) => t.kolo))
   const kola: TekmaDto[][] = []
   for (let kolo = 1; kolo <= stKol; kolo++) {
-    const vKolu = glavne.filter((t) => t.kolo === kolo).sort((a, b) => a.pozicija - b.pozicija)
+    const vKolu = vFazi.filter((t) => t.kolo === kolo).sort((a, b) => a.pozicija - b.pozicija)
     const pricakovano = 2 ** (stKol - kolo)
     if (vKolu.length !== pricakovano || vKolu.some((t, i) => t.pozicija !== i + 1)) return null
     kola.push(vKolu)
   }
   return kola
+}
+
+function kolaGlavneMreze(tekme: TekmaDto[]): TekmaDto[][] | null {
+  return kolaMreze(tekme, 'GLAVNI')
 }
 
 export function imaMrezoZaTisk(mreza: MrezaDto): boolean {
@@ -58,6 +63,10 @@ export function imaMrezoZaTisk(mreza: MrezaDto): boolean {
    katero organizator vpiše zmagovalca. */
 export interface MrezaStran {
   ime: string | null
+  /* Kratka oblika za ozek okvir (pri paru priimka, »Novak / Zupan«). */
+  kratko: string | null
+  /* Klub za izpis rezultatov; pri ekipi ga ni. */
+  klub: string | null
   /* Kdo pride v prazno mesto, kadar vir ni na istem listu (»Zmagovalec 2. dela«). */
   napis: string | null
   /* Prosti prehod: nasprotnika ni. */
@@ -75,6 +84,8 @@ export interface MrezaTekmaTisk {
   strani: [MrezaStran, MrezaStran]
   /* »b. b.«, »predaja«; prazna pri odigrani tekmi. */
   oznaka: string | null
+  /* Točke po nizih z vidika zgornje strani, »11:7 9:11 11:5«; prazno, kadar niso vpisane. */
+  tocke: string
   /* Črta iz tekme vodi k zgornjemu oz. spodnjemu viru naslednje tekme; null pri
      zadnji tekmi lista. */
   smer: 'zgoraj' | 'spodaj' | null
@@ -118,11 +129,20 @@ interface Okno {
   nadaljevanje: boolean
 }
 
-function stran(tekma: TekmaDto, ktera: 1 | 2, napis: string | null): MrezaStran {
+/* Pri dvojicah oba kluba, če sta različna (kot v križni tabeli). */
+function klubUdelezenca(udelezenec: TekmaDto['udelezenec1']): string | null {
+  if (!udelezenec) return null
+  const kluba = [udelezenec.klub, udelezenec.klub2].filter((k): k is string => !!k).map(kratekKlub)
+  return kluba.filter((k, i) => kluba.indexOf(k) === i).join(' / ') || null
+}
+
+export function stranTekme(tekma: TekmaDto, ktera: 1 | 2, napis: string | null): MrezaStran {
   const udelezenec = ktera === 1 ? tekma.udelezenec1 : tekma.udelezenec2
   const koncana = tekma.status === 'KONCANA' && tekma.izidTip !== 'PROSTO'
   return {
     ime: imeUdelezenca(udelezenec),
+    kratko: udelezenec?.polnoIme2 ? priimekUdelezenca(udelezenec) : null,
+    klub: klubUdelezenca(udelezenec),
     napis: udelezenec ? null : napis,
     prost: tekma.izidTip === 'PROSTO' && !udelezenec,
     nizi: koncana ? (ktera === 1 ? tekma.dobljeniNizi1 : tekma.dobljeniNizi2) : null,
@@ -130,9 +150,13 @@ function stran(tekma: TekmaDto, ktera: 1 | 2, napis: string | null): MrezaStran 
   }
 }
 
-function oznakaIzida(tekma: TekmaDto): string | null {
+export function oznakaIzida(tekma: TekmaDto): string | null {
   if (tekma.status !== 'KONCANA' || !tekma.izidTip) return null
   return OZNAKE_IZIDA[tekma.izidTip] ?? null
+}
+
+export function tockeTekme(tekma: TekmaDto): string {
+  return tekma.status === 'KONCANA' ? tekma.nizi.map((n) => `${n.tocke1}:${n.tocke2}`).join(' ') : ''
 }
 
 /* Okna lista: mreža do 5 kol gre na en list; večja se razreže na poddrevesa po
@@ -168,8 +192,16 @@ function oknaMreze(stKol: number): Okno[] {
   return okna
 }
 
-export function sklopiZrebMreze(mreza: MrezaDto): ZrebMrezeDogodka | null {
-  const kola = kolaGlavneMreze(mreza.tekme)
+/* Ali se dá tekme faze narisati kot mrežo (uvožene so lahko tudi drugačne oblike). */
+export function imaMrezo(mreza: MrezaDto, faza: 'GLAVNI' | 'TOLAZILNI'): boolean {
+  return kolaMreze(mreza.tekme, faza) !== null
+}
+
+export function sklopiZrebMreze(
+  mreza: MrezaDto,
+  faza: 'GLAVNI' | 'TOLAZILNI' = 'GLAVNI',
+): ZrebMrezeDogodka | null {
+  const kola = kolaMreze(mreza.tekme, faza)
   if (kola === null) return null
   const stKol = kola.length
 
@@ -182,7 +214,9 @@ export function sklopiZrebMreze(mreza: MrezaDto): ZrebMrezeDogodka | null {
      tolažilna mreža z več tekmami ni del tega lista). */
   const tolazilne = mreza.tekme.filter((t) => t.faza === 'TOLAZILNI')
   const zaTretje =
-    mreza.dogodek.tekmaZaTretjeMesto && tolazilne.length === 1 && stKol >= 2 ? tolazilne[0] : null
+    faza === 'GLAVNI' && mreza.dogodek.tekmaZaTretjeMesto && tolazilne.length === 1 && stKol >= 2
+      ? tolazilne[0]
+      : null
   const napisPorazenca = `Poraženec ${imeKolaKratko(stKol - 1, stKol)}`
 
   const listi = oknaMreze(stKol).map((okno): ZrebMrezeList => {
@@ -208,8 +242,9 @@ export function sklopiZrebMreze(mreza: MrezaDto): ZrebMrezeDogodka | null {
               id: t.id,
               vrstica: (t.pozicija - od) * razpon + 1,
               razpon,
-              strani: [stran(t, 1, napis(1)), stran(t, 2, napis(2))],
+              strani: [stranTekme(t, 1, napis(1)), stranTekme(t, 2, napis(2))],
               oznaka: oznakaIzida(t),
+              tocke: tockeTekme(t),
               smer: kolo < okno.kolaDo ? (t.pozicija % 2 === 1 ? 'zgoraj' : 'spodaj') : null,
             }
           }),
@@ -241,8 +276,9 @@ export function sklopiZrebMreze(mreza: MrezaDto): ZrebMrezeDogodka | null {
               id: zaTretje.id,
               vrstica: 1,
               razpon: 1,
-              strani: [stran(zaTretje, 1, napisPorazenca), stran(zaTretje, 2, napisPorazenca)],
+              strani: [stranTekme(zaTretje, 1, napisPorazenca), stranTekme(zaTretje, 2, napisPorazenca)],
               oznaka: oznakaIzida(zaTretje),
+              tocke: tockeTekme(zaTretje),
               smer: null,
             }
           : null,

@@ -1,8 +1,8 @@
 /* Vnos rezultata tekme - avtomat stanj z jasnimi pravili:
    - rezultat je mogoce vnesti samo na tekmi v stanju PRIPRAVLJENA ali V_IGRI
      in samo, dokler je dogodek V_TEKU,
-   - vnos na ze KONCANO tekmo je zavrnjen; zanjo je popraviRezultat, ki izida
-     ne sme obrniti (zmagovalec ostane) in sam preracuna rating,
+   - vnos na ze KONCANO tekmo je zavrnjen; zanjo je popraviRezultat, ki sme
+     zamenjati tudi zmagovalca (PoslediceIzidaStoritev) in sam preracuna rating,
    - ob koncu tekme se (enkrat!) obracuna rating, izvede napredovanje po mrezi
      in po zadnji tekmi zakljuci dogodek ter dodeli koncna mesta.
 
@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import si.turnirko.dto.NizVnos;
+import si.turnirko.dto.PopravekPredogledDto;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.dto.VrsticaLestviceDto;
 import si.turnirko.izjeme.DomenskaIzjema;
@@ -32,6 +33,7 @@ import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.IzidTekme;
+import si.turnirko.modeli.NacinPopravka;
 import si.turnirko.modeli.Niz;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.SistemTekmovanja;
@@ -58,6 +60,7 @@ public class TekmaStoritev {
     private final LastnistvoStoritev lastnistvo;
     private final PreracunRatingaStoritev preracunRatinga;
     private final SvRegijaStoritev svRegija;
+    private final PoslediceIzidaStoritev poslediceIzida;
     private final Zaklepi zaklepi;
 
     public TekmaStoritev(TekmaRepozitorij tekmaRepozitorij,
@@ -72,6 +75,7 @@ public class TekmaStoritev {
                          LastnistvoStoritev lastnistvo,
                          PreracunRatingaStoritev preracunRatinga,
                          SvRegijaStoritev svRegija,
+                         PoslediceIzidaStoritev poslediceIzida,
                          Zaklepi zaklepi) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
@@ -85,6 +89,7 @@ public class TekmaStoritev {
         this.lastnistvo = lastnistvo;
         this.preracunRatinga = preracunRatinga;
         this.svRegija = svRegija;
+        this.poslediceIzida = poslediceIzida;
         this.zaklepi = zaklepi;
     }
 
@@ -152,45 +157,45 @@ public class TekmaStoritev {
        ze zakljucen. Doslej je bil edini izhod pustiti napako v bazi: vsak vnos
        na koncano tekmo je bil zavrnjen, rating pa se ni znal popraviti.
 
-       Kaj popravek SME: izid v nizih, tocke po nizih in nacin zakljucka
-       (odigrano / predaja / brez boja / diskvalifikacija).
+       Kaj popravek SME: izid v nizih, tocke po nizih, nacin zakljucka
+       (odigrano / predaja / brez boja / diskvalifikacija) in ZMAGOVALCA. Prav
+       zmagovalec se pri prepisu najlazje zamenja, zaklep je organizatorja pustil
+       brez izhoda (SV regija, nov. 2026: napacen zmagovalec zadnje tekme veje).
 
-       Cesa NE sme: spremeniti zmagovalca. Zmagovalec ni podatek o tekmi, ampak
-       vozlisce tekmovanja - po njem je bilo napredovano po mrezi, iz njega so
-       nastale finalne skupine in koncna mesta. To ni popravek vpisa, ampak
-       razveljavitev poteka tekmovanja, in bi morala biti svoje dejanje s svojimi
-       jamstvi. Zato ga tu zavrnemo s pojasnilom in ne ugibamo.
+       Zmagovalec ni le podatek o tekmi, ampak vozlisce tekmovanja. Kaj se zgodi s
+       tistim, kar je po njem ze teklo, je zato izbira organizatorja, ki jo ta metoda
+       dobi v `nacin` (PoslediceIzidaStoritev; vmesnik jo ponudi po predogledu).
 
        Posledice, ki jih popravek SPROZI:
        - posledice(tekma): mesta v koncani skupini in koncna mesta se dodelijo
-         znova (razlika nizov se je lahko spremenila). Napredovanje po mrezi
-         je ze zapisano in vpis v zaseden slot ne more spremeniti nicesar -
-         zmagovalec je isti.
+         znova. Napredovanje v zaseden slot ne spremeni nicesar: zamenjan
+         zmagovalec je tja ze vpisan (preusmeriNaslednje).
        - preracun ratinga od dneva te tekme naprej. Sam obracun te tekme ne
          zadosca: njen izid je vstopal v vse poznejse tekme obeh igralcev. */
     @Transactional
     public Tekma popraviRezultat(Long idTekme, VnosRezultata vnos) {
+        return popraviRezultat(idTekme, vnos, null);
+    }
+
+    @Transactional
+    public Tekma popraviRezultat(Long idTekme, VnosRezultata vnos, NacinPopravka zahtevanNacin) {
         zaklepi.zakleniTurnirPoTekmi(idTekme);
         lastnistvo.preveriTurnirPoTekmi(idTekme);
-        Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme)
-                .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
+        Tekma tekma = najdiTekmo(idTekme);
 
-        preveriPopravek(tekma);
-        // stevilo nizov je del izida, ki je tekma ze odigrala - popravek ga ne prepisuje
-        if (vnos.steviloNizov() != null) {
-            throw new DomenskaIzjema("Stevilo nizov se ob popravku ne spreminja - popravi izid.");
-        }
+        /* Vse se preveri, PREDEN se karkoli spremeni. Preklic po zapisu bi se
+           zanasal na povrnitev transakcije, ta pa ob zunanji transakciji (npr. v
+           testu) ni takojsnja - v seji bi ostala popravljena tekma. */
+        IzidTekme izid = preveriVnosPopravka(tekma, vnos);
+        PredvidenIzid nov = predvidenIzid(tekma, vnos, izid);
+        PoslediceIzidaStoritev.Ocena ocena = poslediceIzida.oceni(tekma, nov.zaLestvico(tekma, vnos));
+        NacinPopravka nacin = ocena.veljavenNacin(zahtevanNacin);
+        boolean steje = stejeVRating(tekma);
 
-        IzidTekme izid = vnos.izidTip() == null ? IzidTekme.IGRANO : vnos.izidTip();
-        /* Zmagovalec se preveri, PREDEN se karkoli spremeni. Preklic po zapisu
-           bi se zanasal na povrnitev transakcije, ta pa ob zunanji transakciji
-           (npr. v testu) ni takojsnja - v seji bi ostala popravljena tekma. */
-        if (!tekma.getZmagovalec().getId().equals(predvidenZmagovalec(tekma, vnos, izid).getId())) {
-            throw new DomenskaIzjema("Popravek ne more spremeniti zmagovalca tekme:"
-                    + " po njem je tekmovanje ze teklo naprej (napredovanje po mrezi,"
-                    + " mesta v skupinah, koncna mesta). Popravi lahko izid v nizih,"
-                    + " tocke po nizih in nacin zakljucka.");
-        }
+        // izprazni sejo, zato gre prvi, tekma pa se prebere znova
+        int pobrisanihObracunov = poslediceIzida.pobrisiObracune(tekma, ocena, nacin);
+        tekma = najdiTekmo(idTekme);
+        poslediceIzida.pripravi(tekma, ocena, nacin);
 
         /* Stare tocke gredo, nove se pisejo od prvega niza naprej. Izbris se
            izpere TAKOJ: Hibernate sicer vstavke izvede pred izbrisi in nov prvi
@@ -207,25 +212,86 @@ public class TekmaStoritev {
         }
         tekmaRepozitorij.save(tekma);
 
+        if (ocena.zamenjanZmagovalec()) {
+            poslediceIzida.preusmeriNaslednje(tekma, nacin);
+        }
+        poslediceIzida.uskladiPrenesene(tekma);
+
         posledice(tekma);
-        preracunRatinga.preracunajPoPopravku(RatingStoritev.casTurnirskeTekme(tekma));
-        return tekma;
+        if (steje || pobrisanihObracunov > 0) {
+            preracunRatinga.preracunajPoPopravku(RatingStoritev.casTurnirskeTekme(tekma));
+        }
+        // preracun izprazni sejo, odgovor pa bere igralce tekme
+        return najdiTekmo(idTekme);
     }
 
-    /* Kdo bi bil po tem vnosu zmagovalec - brez spreminjanja tekme. Podrobno
-       veljavnost izida preverijo sele vnesi* metode; tu je dovolj, da je
-       zmagovalec razpoznaven. */
-    private static Prijava predvidenZmagovalec(Tekma tekma, VnosRezultata vnos, IzidTekme izid) {
-        if (izid != IzidTekme.IGRANO) {
-            return zahtevajZmagovalca(tekma, vnos);
+    /* Kaj bi popravek naredil - nic se ne zapise. Preverbe so iste kot pri popravku,
+       zato se napacen vnos pokaze ze tu in ne sele po potrditvi. */
+    @Transactional(readOnly = true)
+    public PopravekPredogledDto predogledPopravka(Long idTekme, VnosRezultata vnos) {
+        lastnistvo.preveriTurnirPoTekmi(idTekme);
+        Tekma tekma = najdiTekmo(idTekme);
+        IzidTekme izid = preveriVnosPopravka(tekma, vnos);
+        PredvidenIzid nov = predvidenIzid(tekma, vnos, izid);
+        PoslediceIzidaStoritev.Ocena ocena = poslediceIzida.oceni(tekma, nov.zaLestvico(tekma, vnos));
+        return poslediceIzida.predogled(tekma, ocena, nov.zmagovalec(), stejeVRating(tekma));
+    }
+
+    private Tekma najdiTekmo(Long idTekme) {
+        return tekmaRepozitorij.najdiZVsem(idTekme)
+                .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
+    }
+
+    /* Enako pravilo kot ob vnosu: posamicna tekma tekmovanja, ki steje. */
+    private static boolean stejeVRating(Tekma tekma) {
+        return !tekma.getDogodek().jeDvojice()
+                && !tekma.getDogodek().jeEkipno()
+                && tekma.getDogodek().getTurnir().getRaven().steje();
+    }
+
+    private static IzidTekme preveriVnosPopravka(Tekma tekma, VnosRezultata vnos) {
+        preveriPopravek(tekma);
+        // stevilo nizov je del izida, ki je tekma ze odigrala - popravek ga ne prepisuje
+        if (vnos.steviloNizov() != null) {
+            throw new DomenskaIzjema("Stevilo nizov se ob popravku ne spreminja - popravi izid.");
         }
-        if (vnos.dobljeniNizi1() == null || vnos.dobljeniNizi2() == null) {
-            throw new NeveljavenVnosIzjema("Manjkata dobljena niza (dobljeniNizi1, dobljeniNizi2).");
+        return vnos.izidTip() == null ? IzidTekme.IGRANO : vnos.izidTip();
+    }
+
+    /* Izid, ki bi ga vnos zapisal: zmagovalec in dobljeni nizi na vsaki strani. */
+    private record PredvidenIzid(Prijava zmagovalec, int nizi1, int nizi2) {
+
+        RazvrstitevStoritev.NadomestniIzid zaLestvico(Tekma tekma, VnosRezultata vnos) {
+            return new RazvrstitevStoritev.NadomestniIzid(
+                    tekma.getId(), nizi1, nizi2, zmagovalec.getId(), vnos.nizi());
         }
-        if (vnos.dobljeniNizi1().equals(vnos.dobljeniNizi2())) {
-            throw new NeveljavenVnosIzjema("Neodlocen izid ni mogoc.");
-        }
-        return vnos.dobljeniNizi1() > vnos.dobljeniNizi2() ? tekma.getPrijava1() : tekma.getPrijava2();
+    }
+
+    /* Kaj bi vnos zapisal - brez spreminjanja tekme, z vsemi preverbami vnosa. */
+    private static PredvidenIzid predvidenIzid(Tekma tekma, VnosRezultata vnos, IzidTekme izid) {
+        return switch (izid) {
+            case IGRANO -> {
+                preveriIgrano(tekma, vnos);
+                yield new PredvidenIzid(
+                        vnos.dobljeniNizi1() > vnos.dobljeniNizi2() ? tekma.getPrijava1() : tekma.getPrijava2(),
+                        vnos.dobljeniNizi1(), vnos.dobljeniNizi2());
+            }
+            case BREZ_BOJA, DISKVALIFIKACIJA -> {
+                Prijava zmagovalec = zahtevajZmagovalca(tekma, vnos);
+                boolean prviZmagal = zmagovalec.getId().equals(tekma.getPrijava1().getId());
+                int zaZmago = zmagZaIzid(tekma);
+                yield new PredvidenIzid(zmagovalec, prviZmagal ? zaZmago : 0, prviZmagal ? 0 : zaZmago);
+            }
+            case PREDAJA -> {
+                Prijava zmagovalec = zahtevajZmagovalca(tekma, vnos);
+                preveriPredajo(tekma, vnos);
+                yield new PredvidenIzid(zmagovalec,
+                        vnos.dobljeniNizi1() == null ? 0 : vnos.dobljeniNizi1(),
+                        vnos.dobljeniNizi2() == null ? 0 : vnos.dobljeniNizi2());
+            }
+            case PROSTO -> throw new NeveljavenVnosIzjema(
+                    "Prostega prehoda ni mogoce vnesti rocno - doloci ga zreb.");
+        };
     }
 
     /* Kaj mora drzati, da je popravek sploh popravek vpisa. */
@@ -423,6 +489,21 @@ public class TekmaStoritev {
 
     /* Normalno odigrana tekma: preveri nize in po zelji tocke po nizih. */
     private void vnesiIgrano(Tekma tekma, VnosRezultata vnos) {
+        preveriIgrano(tekma, vnos);
+        int nizi1 = vnos.dobljeniNizi1();
+        int nizi2 = vnos.dobljeniNizi2();
+
+        tekma.setDobljeniNizi1(nizi1);
+        tekma.setDobljeniNizi2(nizi2);
+        tekma.setIzidTip(IzidTekme.IGRANO);
+        tekma.setZmagovalec(nizi1 > nizi2 ? tekma.getPrijava1() : tekma.getPrijava2());
+
+        shraniTockeNizov(tekma, vnos);
+    }
+
+    /* Veljavnost odigrane tekme - brez spreminjanja tekme, zato jo lahko predogled
+       popravka poklice, preden je kaj zapisano. */
+    private static void preveriIgrano(Tekma tekma, VnosRezultata vnos) {
         Integer nizi1 = vnos.dobljeniNizi1();
         Integer nizi2 = vnos.dobljeniNizi2();
         if (nizi1 == null || nizi2 == null) {
@@ -445,22 +526,18 @@ public class TekmaStoritev {
         if (porazencevi >= zaZmago) {
             throw new NeveljavenVnosIzjema("Porazenec ima prevec dobljenih nizov.");
         }
-
-        tekma.setDobljeniNizi1(nizi1);
-        tekma.setDobljeniNizi2(nizi2);
-        tekma.setIzidTip(IzidTekme.IGRANO);
-        tekma.setZmagovalec(nizi1 > nizi2 ? tekma.getPrijava1() : tekma.getPrijava2());
-
-        shraniTockeNizov(tekma, vnos, nizi1, nizi2);
+        // tocke po nizih so za klubske turnirje neobvezne
+        if (vnos.nizi() != null && !vnos.nizi().isEmpty()) {
+            NiziPravila.preveri(vnos.nizi(), nizi1, nizi2, zaZmago);
+        }
     }
 
-    /* Ce so vnesene tocke po nizih, jih preveri in shrani. */
-    private void shraniTockeNizov(Tekma tekma, VnosRezultata vnos, int nizi1, int nizi2) {
+    /* Vnesene tocke po nizih shrani; preveril jih je preveriIgrano. */
+    private void shraniTockeNizov(Tekma tekma, VnosRezultata vnos) {
         List<NizVnos> nizi = vnos.nizi();
         if (nizi == null || nizi.isEmpty()) {
-            return; // tocke po nizih so za klubske turnirje neobvezne
+            return;
         }
-        NiziPravila.preveri(nizi, nizi1, nizi2, tekma.nizovZaZmago());
 
         int zaporedna = 1;
         for (NizVnos niz : nizi) {
@@ -484,6 +561,14 @@ public class TekmaStoritev {
     /* Predaja med igro: delni rezultat ostane, rating SE obracuna. */
     private void vnesiPredajo(Tekma tekma, VnosRezultata vnos) {
         Prijava zmagovalec = zahtevajZmagovalca(tekma, vnos);
+        preveriPredajo(tekma, vnos);
+        tekma.setDobljeniNizi1(vnos.dobljeniNizi1() == null ? 0 : vnos.dobljeniNizi1());
+        tekma.setDobljeniNizi2(vnos.dobljeniNizi2() == null ? 0 : vnos.dobljeniNizi2());
+        tekma.setIzidTip(IzidTekme.PREDAJA);
+        tekma.setZmagovalec(zmagovalec);
+    }
+
+    private static void preveriPredajo(Tekma tekma, VnosRezultata vnos) {
         int nizi1 = vnos.dobljeniNizi1() == null ? 0 : vnos.dobljeniNizi1();
         int nizi2 = vnos.dobljeniNizi2() == null ? 0 : vnos.dobljeniNizi2();
         int zaZmago = tekma.nizovZaZmago();
@@ -492,10 +577,6 @@ public class TekmaStoritev {
                     "Pri predaji mora biti delni rezultat pred koncem tekme (manj kot "
                             + zaZmago + " dobljenih nizov).");
         }
-        tekma.setDobljeniNizi1(nizi1);
-        tekma.setDobljeniNizi2(nizi2);
-        tekma.setIzidTip(IzidTekme.PREDAJA);
-        tekma.setZmagovalec(zmagovalec);
     }
 
     private static Prijava zahtevajZmagovalca(Tekma tekma, VnosRezultata vnos) {
@@ -552,8 +633,11 @@ public class TekmaStoritev {
     }
 
     /* Izlocilni in skupinski sistem: 1. in 2. mesto iz finala glavne mreze,
-       3. in 4. iz tekme za 3. mesto, ce jo dogodek ima. */
+       3. in 4. iz tekme za 3. mesto, ce jo dogodek ima. Stara mesta gredo najprej:
+       po popravku zmagovalca v zgodnjem kolu bi igralec, ki finala ni vec igral,
+       sicer obdrzal svoje mesto. */
     private void dodeliMestaIzFinala(Long idDogodka) {
+        prijavaRepozitorij.najdiZaDogodek(idDogodka).forEach(p -> p.setKoncnoMesto(null));
         List<Tekma> tekme = tekmaRepozitorij.najdiZaDogodek(idDogodka);
         tekme.stream()
                 .filter(t -> t.getFaza() == FazaTekme.GLAVNI && t.getPozicija() == 1)

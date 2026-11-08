@@ -13,7 +13,8 @@
 import { useSearchParams } from 'react-router-dom'
 
 import { KoncnaRazvrstitev } from '../komponente/KoncnaRazvrstitev'
-import { KoncnaRazvrstitevTisk } from '../komponente/KoncnaRazvrstitevTisk'
+import { IzpisListi } from '../komponente/IzpisListi'
+import { listiRazvrstitve, visinaVsebine } from '../pomozno/izpisRezultatov'
 import { SlikaIgralca } from '../komponente/SlikaIgralca'
 import type { UdelezenecRazvrstitve } from '../pomozno/koncnaRazvrstitev'
 import { sklonEkip, sklonIgralcev } from '../pomozno/oblikovanje'
@@ -81,12 +82,16 @@ function Okvir() {
 
   if (tisk) {
     return (
-      <div id="posnetek" className="zreb-stran--razvrstitev" style={{ width: 794, background: '#fff' }}>
-        <KoncnaRazvrstitevTisk
-          naslov={primer.naslov}
-          lastnosti={primer.lastnosti}
-          skupaj={`${udelezenci.length} ${enota(udelezenci.length)}`}
-          udelezenci={udelezenci}
+      <div id="posnetek" className="zreb-stran--izpis" style={{ width: 794, background: '#fff' }}>
+        <IzpisListi
+          listi={listiRazvrstitve(udelezenci, 2, visinaVsebine('pokoncni', false))}
+          glava={{
+            naslov: primer.naslov,
+            lastnosti: `${primer.lastnosti} · ${udelezenci.length} ${enota(udelezenci.length)}`,
+            kdajKje: null,
+          }}
+          logotip={null}
+          pokrovitelji={[]}
         />
       </div>
     )

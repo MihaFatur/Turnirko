@@ -179,6 +179,24 @@ class LenoNalaganjeTest {
         assertEquals("Testni klub", koncana.udelezenec2().klub());
     }
 
+    /* Popravek po preracunu izprazni sejo, odgovor pa nastane izven transakcije in
+       bere igralce, klube in zmagovalca. */
+    @Test
+    void popravekZZamenjanimZmagovalcemVrneTekmoSKlubi() {
+        TekmaDto pripravljena = dogodkiKontroler.zreb(dogodek.getId()).stream()
+                .filter(t -> t.status() == StatusTekme.PRIPRAVLJENA)
+                .findFirst().orElseThrow();
+        tekmeKontroler.vnesiRezultat(pripravljena.id(), new VnosRezultata(IzidTekme.IGRANO, 3, 0, null, null));
+        VnosRezultata obrnjen = new VnosRezultata(IzidTekme.IGRANO, 0, 3, null, null);
+
+        assertTrue(tekmeKontroler.predogledPopravka(pripravljena.id(), obrnjen).zamenjanZmagovalec());
+        TekmaDto popravljena = tekmeKontroler.popraviRezultat(pripravljena.id(), obrnjen, null);
+
+        assertEquals("Testni klub", popravljena.udelezenec1().klub());
+        assertEquals("Testni klub", popravljena.udelezenec2().klub());
+        assertEquals(popravljena.udelezenec2().idPrijave(), popravljena.idZmagovalcaPrijave());
+    }
+
     /* Gledalec s klikom na koncano tekmo odpre tocke po nizih - te pridejo z
        mrezo, v vrstnem redu odigranih nizov in samo pri tekmi, ki jih ima. */
     @Test

@@ -146,6 +146,9 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
     /* Tekme enega zreba sistema SV_REGIJA (brez nalaganja udelezencev). */
     List<Tekma> findByIdZreb(Long idZreb);
 
+    /* Tekme finalnih skupin, ki nosijo izid te tekme (id_prenesena). */
+    List<Tekma> findByIdPrenesena(Long idPrenesena);
+
     /* Najvisja pozicija v kolu in fazi dogodka; pozicija je enolicna cez ves
        dogodek (UNIQUE dogodek+faza+kolo+pozicija), zato jo tekme vecih zrebov
        in nivojev stejejo naprej. */

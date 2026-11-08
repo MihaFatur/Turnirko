@@ -28,6 +28,7 @@ import si.turnirko.dto.EkipaVnos;
 import si.turnirko.dto.IzborDto;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
+import si.turnirko.dto.KrogDto;
 import si.turnirko.dto.MrezaDto;
 import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.ParVnos;
@@ -200,6 +201,7 @@ public class DogodkiKontroler {
 
         List<SkupinaDto> skupine = List.of();
         List<VrsticaLestviceDto> lestvica = List.of();
+        List<KrogDto> krogi = List.of();
         IzborDto izbor = null;
         SvRegijaDto svPregled = null;
 
@@ -221,10 +223,12 @@ public class DogodkiKontroler {
             List<Prijava> udelezenci = prijaveEntitete.stream()
                     .filter(p -> p.getStatus() == Prijava.StatusPrijave.PRIJAVLJEN)
                     .toList();
-            lestvica = razvrstitevStoritev.lestvica(udelezenci, tekmeEntitete);
+            RazvrstitevStoritev.Razvrstitev razvrstitev = razvrstitevStoritev.razvrsti(udelezenci, tekmeEntitete);
+            lestvica = razvrstitev.vrstice();
+            krogi = razvrstitev.krogi();
         }
 
-        return new MrezaDto(dogodek, prijave, tekme, skupine, lestvica, izbor, svPregled);
+        return new MrezaDto(dogodek, prijave, tekme, skupine, lestvica, krogi, izbor, svPregled);
     }
 
     /* Jakostni vrstni red pred zrebom; pri formatu TOP se crta reza in
@@ -308,9 +312,10 @@ public class DogodkiKontroler {
                 .filter(t -> t.getFaza() == FazaTekme.SKUPINA
                         && skupina.getId().equals(t.getIdSkupina()))
                 .toList();
+        RazvrstitevStoritev.Razvrstitev razvrstitev = razvrstitevStoritev.razvrsti(clani, tekmeSkupine);
         return new SkupinaDto(skupina.getId(), skupina.getOznaka(), skupina.getStopnja(),
                 skupina.getIme(), skupina.getPrvoMesto(), skupina.getNivo(),
-                razvrstitevStoritev.lestvica(clani, tekmeSkupine));
+                razvrstitev.vrstice(), razvrstitev.krogi());
     }
 
     @PostMapping("/{id}/prijave")

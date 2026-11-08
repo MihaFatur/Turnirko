@@ -249,6 +249,9 @@ export function DogodekStran() {
   const zaTiskSkupin = smem && imaZrebanoSkupine(dogodek) && podatki.skupine.length > 0
   /* Žreb izločilnega dela: ko mreža obstaja (pri skupinah nastane šele po njih). */
   const zaTiskMreze = smem && imaMrezoZaTisk(podatki)
+  /* Izpis rezultatov: ko je kategorija zaključena. Tisk ničesar ne spremeni, zato ga
+     admin dobi tudi pri uvoženem dogodku. */
+  const zaIzpisRezultatov = dogodek.dejanskiStatus === 'ZAKLJUCEN' && (smem || jeAdmin)
 
   /* "Ženske · do 21 let · krožni · na 5 nizov" - lastnosti dogodka v enem
      stavku; enak vrstni red na obeh širinah. Disciplina stoji na začetku samo
@@ -427,6 +430,16 @@ export function DogodekStran() {
                       Izločilni žreb za tiskanje
                     </Link>
                   )}
+                  {zaIzpisRezultatov && (
+                    <Link
+                      to={`/dogodki/${idDogodka}/izpis`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Natisni rezultate
+                    </Link>
+                  )}
                 </>
               )}
             </MeniDejanj>
@@ -470,6 +483,11 @@ export function DogodekStran() {
               {zaTiskMreze && (
                 <Link to={`/dogodki/${idDogodka}/zreb-mreze`} className="gumb">
                   Izločilni žreb za tiskanje
+                </Link>
+              )}
+              {zaIzpisRezultatov && (
+                <Link to={`/dogodki/${idDogodka}/izpis`} className="gumb">
+                  Natisni rezultate
                 </Link>
               )}
               <ZnackaStatusa status={dogodek.status} />
@@ -645,7 +663,8 @@ export function DogodekStran() {
           tekma={popravljana}
           popravek
           onZapri={() => nastaviPopravljano(null)}
-          onShranjeno={osvezi}
+          /* Popravek seže dlje od tega dogodka: stanje turnirja, rating, lestvica. */
+          onShranjeno={() => odjemalec.invalidateQueries()}
         />
       )}
     </section>
@@ -1798,7 +1817,7 @@ function Tekmovanje({
       {izbrani === 'skupine' &&
         (sistem === 'KROZNI' ? (
           jeTelefon ? (
-            <Lestvica vrstice={podatki.lestvica} ekipno={ekipno} />
+            <Lestvica vrstice={podatki.lestvica} krogi={podatki.krogi} ekipno={ekipno} />
           ) : (
             <Krozni podatki={podatki} klik={klik} />
           )
@@ -2110,7 +2129,11 @@ function Krozni({
     <div className="dvostolpicno dvostolpicno--lestvica">
       <div className="plosca">
         <h2 className="sekcija__naslov--manjsi">Lestvica</h2>
-        <Lestvica vrstice={podatki.lestvica} ekipno={podatki.dogodek.disciplina === 'EKIPNO'} />
+        <Lestvica
+          vrstice={podatki.lestvica}
+          krogi={podatki.krogi}
+          ekipno={podatki.dogodek.disciplina === 'EKIPNO'}
+        />
       </div>
       <div className="plosca">
         <h2 className="sekcija__naslov--manjsi">Tekme</h2>

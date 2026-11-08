@@ -139,8 +139,8 @@ const NAJMANJ_ZA_IME_MM = 54
 /* Širine stolpcev: celice so pri majhni skupini široke (16 mm), pri veliki
    ožje, a ime ostane berljivo; klub se zoži, ko celic zmanjka prostora, in ga
    ni, kadar ga nihče nima (ekipa, igralci brez kluba). */
-function sirineKrizne(clanov: number, sKlubom: boolean) {
-  const zaCelice = SIRINA_VSEBINE_MM - 1 - SIRINA_STEVILKE_MM - SIRINA_VSOT_MM
+function sirineKrizne(clanov: number, sKlubom: boolean, sirinaVsebine: number) {
+  const zaCelice = sirinaVsebine - 1 - SIRINA_STEVILKE_MM - SIRINA_VSOT_MM
   const celica = Math.min(16, (zaCelice - NAJMANJ_ZA_IME_MM) / clanov)
   const ostane = zaCelice - clanov * celica
   const klub = !sKlubom ? 0 : ostane >= 72 ? 18 : 14
@@ -155,18 +155,28 @@ function dolzinaImena(ime: string, sirina: number): '' | ' krizna__ime--dolgo' |
   return ime.length <= gre * 1.2 ? ' krizna__ime--dolgo' : ' krizna__ime--zelo-dolgo'
 }
 
-function KriznaTabela({
+/* Izid za papir: listek ima poševnico, ker se nizi vpisujejo na roke levo in desno
+   od nje; izpis rezultatov je že izpolnjen in nosi običajni »3:1«. */
+function izpisNizov(nizi: string, zaRezultate: boolean): string {
+  return zaRezultate ? nizi.replace('/', ':') : nizi
+}
+
+export function KriznaTabela({
   skupina,
   sklop,
   ekipno,
+  sirinaVsebine = SIRINA_VSEBINE_MM,
+  zaRezultate = false,
 }: {
   skupina: TiskSkupina
   sklop: string | null
   ekipno: boolean
+  sirinaVsebine?: number
+  zaRezultate?: boolean
 }) {
   const clani = skupina.clani
   const sKlubom = clani.some((clan) => clan.klub)
-  const sirine = sirineKrizne(clani.length, sKlubom)
+  const sirine = sirineKrizne(clani.length, sKlubom, sirinaVsebine)
   const klub = sKlubom ? `${sirine.klub}mm ` : ''
   const stolpci = {
     '--kriz-stolpci': `${SIRINA_STEVILKE_MM}mm minmax(0, 1fr) ${klub}repeat(${clani.length}, ${sirine.celica}mm) 14mm 13mm 13mm`,
@@ -227,11 +237,11 @@ function KriznaTabela({
                   role="cell"
                 />
               ) : (
-                <Celica key={j} celica={skupina.izidi[i][j]} prva={j === 0} />
+                <Celica key={j} celica={skupina.izidi[i][j]} prva={j === 0} zaRezultate={zaRezultate} />
               ),
             )}
             <div className="krizna__vsota krizna__vsota--prva" role="cell">
-              {izkupicek ? izkupicek.nizi : <span className="krizna__crta">/</span>}
+              {izkupicek ? izpisNizov(izkupicek.nizi, zaRezultate) : <span className="krizna__crta">/</span>}
             </div>
             <div className="krizna__vsota" role="cell">
               {izkupicek?.zmage}
@@ -248,12 +258,20 @@ function KriznaTabela({
 
 /* Celica tekme z vidika igralca v vrstici. Prazna nosi poševnico kot na
    papirju (nizi se vpišejo levo in desno od nje). */
-function Celica({ celica, prva }: { celica: TiskCelica | null; prva: boolean }) {
+function Celica({
+  celica,
+  prva,
+  zaRezultate,
+}: {
+  celica: TiskCelica | null
+  prva: boolean
+  zaRezultate: boolean
+}) {
   const razred = 'krizna__celica' + (prva ? ' krizna__celica--prva' : '')
   if (!celica) {
     return (
       <div className={razred} role="cell">
-        <span className="krizna__crta">/</span>
+        {!zaRezultate && <span className="krizna__crta">/</span>}
       </div>
     )
   }
@@ -262,7 +280,7 @@ function Celica({ celica, prva }: { celica: TiskCelica | null; prva: boolean }) 
       className={razred + ' krizna__celica--izid' + (celica.zmaga ? ' krizna__celica--zmaga' : '')}
       role="cell"
     >
-      <span className="krizna__izid">{celica.nizi}</span>
+      <span className="krizna__izid">{izpisNizov(celica.nizi, zaRezultate)}</span>
       {celica.oznaka && <span className="krizna__oznaka">{celica.oznaka}</span>}
     </div>
   )
@@ -270,29 +288,37 @@ function Celica({ celica, prva }: { celica: TiskCelica | null; prva: boolean }) 
 
 /* ---------- Razpored z nizi ---------- */
 
-function RazporedZNizi({
+export function RazporedZNizi({
   skupina,
   kola,
   ekipno,
   oznaka,
+  zaRezultate = false,
+  brezPara = false,
 }: {
   skupina: TiskSkupina
   kola: TiskKolo[]
   ekipno: boolean
   /* Napis nad stolpcem tekem, ko je razpored razdeljen na več listkov. */
   oznaka: string | null
+  /* Izpis rezultatov: neodigrano ostane prazno, ker tu nihče več ne piše na roke. */
+  zaRezultate?: boolean
+  /* Tekme brez križne tabele nimajo številk, po katerih bi se bral par. */
+  brezPara?: boolean
 }) {
   const nizov = skupina.steviloNizov
   const nizi = Array.from({ length: nizov }, (_, i) => i + 1)
+  /* Od desetih članov naprej so številke para dvomestne (»13 – 14«). */
+  const stolpecPara = skupina.clani.length >= 10 ? 15 : 10
   const stolpci = {
-    '--seznam-stolpci': `16mm 10mm minmax(0, 1fr) ${nizov > 0 ? `repeat(${nizov}, ${nizov > 5 ? 9.5 : 11}mm) ` : ''}${nizov > 0 ? 14 : 18}mm`,
+    '--seznam-stolpci': `16mm ${brezPara ? '' : `${stolpecPara}mm `}minmax(0, 1fr) ${nizov > 0 ? `repeat(${nizov}, ${nizov > 5 ? 9.5 : 11}mm) ` : ''}${nizov > 0 ? 14 : 18}mm`,
   } as CSSProperties
 
   return (
     <div className="seznam-skupine" role="table" aria-label="Razpored tekem" style={stolpci}>
       <div className="seznam-skupine__vrsta seznam-skupine__vrsta--glava" role="row">
         <div role="columnheader">Kolo</div>
-        <div role="columnheader">Par</div>
+        {!brezPara && <div role="columnheader">Par</div>}
         <div className="seznam-skupine__glava-tekme" role="columnheader">
           {oznaka ?? (ekipno ? 'Srečanje' : 'Tekma')}
         </div>
@@ -332,9 +358,11 @@ function RazporedZNizi({
                 )}
               </div>
             )}
-            <div className="seznam-skupine__par" role="cell">
-              {tekma.par[0]} – {tekma.par[1]}
-            </div>
+            {!brezPara && (
+              <div className="seznam-skupine__par" role="cell">
+                {tekma.par[0]} – {tekma.par[1]}
+              </div>
+            )}
             <ImenaTekme tekma={tekma} />
             {nizi.map((n) => (
               <div
@@ -342,13 +370,13 @@ function RazporedZNizi({
                 className={'seznam-skupine__niz' + (n === 1 ? ' seznam-skupine__niz--prvi' : '')}
                 role="cell"
               >
-                {tekma.tocke[n - 1] ?? <span className="seznam-skupine__crta">:</span>}
+                {tekma.tocke[n - 1] ?? (zaRezultate ? null : <span className="seznam-skupine__crta">:</span>)}
               </div>
             ))}
             <div className="seznam-skupine__izid" role="cell">
               {tekma.izid ? (
                 <>
-                  <span>{tekma.izid.nizi}</span>
+                  <span>{izpisNizov(tekma.izid.nizi, zaRezultate)}</span>
                   {(tekma.izid.oznaka ?? (tekma.prenesena ? 'prenesen' : null)) && (
                     <span className="seznam-skupine__oznaka">
                       {tekma.izid.oznaka ?? 'prenesen'}

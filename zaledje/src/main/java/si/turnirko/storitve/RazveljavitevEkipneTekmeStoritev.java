@@ -243,8 +243,10 @@ public class RazveljavitevEkipneTekmeStoritev {
     /* Dogodek, ki se je zakljucil z to tekmo, spet tece: koncna mesta (nastala
        ob zakljucku) gredo, turnir, ki je bil zaprt zaradi njega, se odpre. Ne
        gre za novo odlocitev - tak je turnir bil, ko ta tekma se ni bila
-       odigrana; organizator ga po novem vnosu zakljuci znova. */
-    private void ponovnoOdpriDogodek(Long idDogodka) {
+       odigrana; organizator ga po novem vnosu zakljuci znova. Isto velja za
+       popravek izida, ki tekmam vzame izid (PoslediceIzidaStoritev). */
+    @Transactional
+    public void ponovnoOdpriDogodek(Long idDogodka) {
         Dogodek dogodek = dogodekRepozitorij.najdiSTurnirjem(idDogodka)
                 .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
         if (dogodek.getStatus() != StatusTekmovanja.ZAKLJUCEN) {
@@ -261,6 +263,21 @@ public class RazveljavitevEkipneTekmeStoritev {
                         skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(idDogodka))) {
                     SkupineStoritev.clani(finalna, prijave, tekme)
                             .forEach(p -> p.setKoncnoMesto(null));
+                }
+            }
+            /* SV regija: mesta nosijo tekme zrebov. Kdor je prisel na konec brez tekme
+               (prosti prehodi, edini v zrebu), je mesto dobil ob gradnji in ga obdrzi. */
+            case SV_REGIJA -> {
+                for (Tekma tekma : tekmaRepozitorij.najdiZaDogodek(idDogodka)) {
+                    if (tekma.getMestoZmagovalca() == null && tekma.getMestoPorazenca() == null) {
+                        continue;
+                    }
+                    if (tekma.getPrijava1() != null) {
+                        tekma.getPrijava1().setKoncnoMesto(null);
+                    }
+                    if (tekma.getPrijava2() != null) {
+                        tekma.getPrijava2().setKoncnoMesto(null);
+                    }
                 }
             }
             default -> prijave.forEach(p -> p.setKoncnoMesto(null));

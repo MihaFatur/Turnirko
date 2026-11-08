@@ -44,6 +44,7 @@ export function VsebinaSkupine({
       <div>
         <Lestvica
           vrstice={skupina.lestvica}
+          krogi={skupina.krogi}
           napreduje={napreduje}
           tolazilni={tolazilni}
           strnjena

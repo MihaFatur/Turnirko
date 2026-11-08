@@ -34,9 +34,13 @@ export function razdeliNaStopnice(razvrscene: UdelezenecRazvrstitve[]): {
   vrh: UdelezenecRazvrstitve[]
   ostali: UdelezenecRazvrstitve[]
 } {
+  /* Stara uvožena zgodovina ima včasih zapisana samo 1. in 2. mesto, vsi ostali pa si
+     delijo »3.–91.«: to ni več vrh, ampak seznam. */
+  const naVrhu = (u: UdelezenecRazvrstitve) => u.mesto <= NAJVISJE_MESTO_NA_STOPNICAH
+  const meja = razvrscene.filter(naVrhu).length > 4 ? 2 : NAJVISJE_MESTO_NA_STOPNICAH
   return {
-    vrh: razvrscene.filter((u) => u.mesto <= NAJVISJE_MESTO_NA_STOPNICAH),
-    ostali: razvrscene.filter((u) => u.mesto > NAJVISJE_MESTO_NA_STOPNICAH),
+    vrh: razvrscene.filter((u) => u.mesto <= meja),
+    ostali: razvrscene.filter((u) => u.mesto > meja),
   }
 }
 
@@ -67,11 +71,18 @@ export interface VrsticaTiska {
   rob: RobVrsticeTiska
 }
 
-/* Ploski seznam ostalih, razpolovljen na ceil(n/2): levi stolpec je daljši ali
-   enak desnemu. Rob nad vrstico: nič v prvi vrstici stolpca, polna črta pred
-   prvim v nivoju, pikasta znotraj nivoja. */
-export function stolpciTiska(ostali: UdelezenecRazvrstitve[]): VrsticaTiska[][] {
-  const polovica = Math.ceil(ostali.length / 2)
+/* Ostali, razdeljeni na liste in stolpce lista: levi stolpec do dna lista, nato
+   desni, nato naslednji list. Tako se seznam bere zaporedno tudi čez list; dva
+   stolpca, razpolovljena čez cel seznam, bi se pri prelomu pomešala (levi bi šel
+   na drugi list, desni pa bi že tekel na prvem). Samo zadnji list je razpolovljen
+   (levi stolpec daljši ali enak desnemu), da ne ostane en sam dolg stolpec.
+   Rob nad vrstico: nič v prvi vrstici stolpca, polna črta pred prvim v nivoju,
+   pikasta znotraj nivoja. */
+export function listiOstalih(
+  ostali: UdelezenecRazvrstitve[],
+  vrsticNaStolpec: (indeksLista: number) => number,
+  stolpcev: number,
+): VrsticaTiska[][][] {
   const vrstice = ostali.map((udelezenec, i) => ({
     udelezenec,
     prva: i === 0 || ostali[i - 1].mesto !== udelezenec.mesto,
@@ -82,7 +93,21 @@ export function stolpciTiska(ostali: UdelezenecRazvrstitve[]): VrsticaTiska[][] 
       oznaka: prva || indeks === 0 ? udelezenec.oznaka : '',
       rob: indeks === 0 ? 'brez' : prva ? 'nivo' : 'pika',
     }))
-  return [stolpec(vrstice.slice(0, polovica)), stolpec(vrstice.slice(polovica))]
+
+  const listi: VrsticaTiska[][][] = []
+  let od = 0
+  while (od < vrstice.length) {
+    const naStolpec = vrsticNaStolpec(listi.length)
+    const ostane = vrstice.length - od
+    const vStolpcu = ostane <= naStolpec * stolpcev ? Math.ceil(ostane / stolpcev) : naStolpec
+    const stolpci: VrsticaTiska[][] = []
+    for (let s = 0; s < stolpcev && od < vrstice.length; s++) {
+      stolpci.push(stolpec(vrstice.slice(od, od + vStolpcu)))
+      od += vStolpcu
+    }
+    listi.push(stolpci)
+  }
+  return listi
 }
 
 /* ---------- Iz podatkov dogodka ---------- */

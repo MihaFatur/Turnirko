@@ -1591,6 +1591,94 @@ input[type='radio'] {
   font-size: 15px;
 }
 
+/* --- Potrditev popravka rezultata --- */
+
+/* Drugi korak okna popravka: kaj bo popravek naredil in izbira organizatorja. */
+.popravek__glavno {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.popravek__tekme {
+  list-style: none;
+  margin: var(--r1) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.popravek__tekme li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--r2);
+  padding: var(--r1) 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: 15px;
+}
+
+.popravek__oznaka {
+  grid-column: 1 / -1;
+  color: var(--barva-crnilo-3);
+  font-size: 13px;
+}
+
+.popravek__izid {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.popravek__vrstni-red {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--r2);
+  margin-top: var(--r1);
+  font-size: 15px;
+}
+
+.popravek__vrstni-red ol {
+  margin: var(--r1) 0 0;
+  padding-left: 1.4em;
+}
+
+.popravek__izbire {
+  border: 0;
+  margin: var(--r2) 0 0;
+  padding: 0;
+}
+
+.popravek__izbire legend {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0;
+}
+
+.popravek__izbira {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--r1);
+  min-height: 44px;
+  padding: var(--r1) 0;
+  cursor: pointer;
+}
+
+.popravek__izbira input {
+  margin-top: 4px;
+  flex: none;
+}
+
+.popravek__izbira-naslov {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.popravek__izbira-opis {
+  display: block;
+  color: var(--barva-crnilo-3);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 /* --- Iskalni izbirnik (combobox) --- */
 
 /* Izbira iz dolgega seznama (igralec, klub, kraj, liga) z vpisom imena - glej
@@ -14813,6 +14901,7 @@ a.ekipa-okno__srecanje:hover {
 /* V lepljivi orodni vrstici je povezava nazaj navpicno poravnana z gumbom. */
 .listki-orodja .povezava-nazaj,
 .listki-orodja .nazaj {
+  align-self: center;
   margin-bottom: 0;
 }
 
@@ -27728,99 +27817,217 @@ html.uvod-tece {
   }
 }
 
-/* ---------- Tisk: končna razvrstitev na pokončni A4 (1c) ----------
-   Črno-belo, brez slik. List je na zaslonu 794 × 1123 px z robom 48 × 56 px;
-   pri tisku rob da @page (na vsaki strani, tudi drugi), zato je padding 0. */
-@page razvrstitev {
+/* ---------- Izpis rezultatov: listi A4 (pomozno/izpisRezultatov) ----------
+   Končna razvrstitev, skupinski in izločilni del, posebej ali v enem dokumentu.
+   Stran nima robov (@page margin 0: brskalnik tako ne doda svoje glave in noge), rob
+   je odmik lista. Vse višine so izračunane v mm (spremenljivke postavi izris), zato je
+   število listov znano vnaprej. Črno-belo, samo črte; ista zasnova kot listki. */
+@page izpis-pokoncni {
   size: A4 portrait;
-  margin: 12.7mm 14.8mm;
+  margin: 0;
 }
 
-.zreb-stran--razvrstitev {
-  page: razvrstitev;
+@page izpis-lezeci {
+  size: A4 landscape;
+  margin: 0;
 }
 
-.razvrstitev-list {
-  box-sizing: border-box;
-  width: 794px;
-  min-height: 1123px;
-  margin: 0 auto;
-  padding: 48px 56px;
+.zreb-stran--izpis {
+  max-width: none;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  color: var(--barva-crnilo);
-  outline: 1px solid var(--barva-crnilo-3);
-  zoom: var(--zreb-merilo, 1);
+  align-items: center;
+  gap: var(--r3);
 }
 
-.razvrstitev-list__glava {
+.izpis-list {
+  box-sizing: border-box;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  font-family: var(--pisava-telo);
+  outline: 1px solid var(--barva-crnilo-3);
+  zoom: var(--zreb-merilo, 1);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.izpis-list--pokoncni {
+  page: izpis-pokoncni;
+  width: 210mm;
+  height: 297mm;
+  padding: 10mm 12mm 9mm;
+}
+
+.izpis-list--lezeci {
+  page: izpis-lezeci;
+  width: 297mm;
+  height: 210mm;
+  padding: 9mm 10mm 8mm;
+}
+
+/* Znak je na zaslonu črn kot na papirju (tretja poteza polna, četrta obrisana). */
+.izpis-list .logo-znak__poteza,
+.izpis-list .logo-znak__poteza--glavna {
+  fill: #000;
+}
+
+.izpis-list .logo-znak__poteza--izid {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.izpis-list__glava {
+  flex: none;
+  height: var(--izpis-glava);
+  overflow: hidden;
+}
+
+.izpis-list__vrh {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
+  height: 6.5mm;
+  padding-bottom: 1mm;
+  border-bottom: 0.8mm solid #000;
 }
 
-.razvrstitev-list__znamka {
+.izpis-list__znamka {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font: 800 20px / 1 var(--pisava-display);
+  gap: 1.6mm;
+  font: 800 13pt / 1 var(--pisava-display);
   letter-spacing: -0.02em;
 }
 
-.razvrstitev-list__znamka rect {
-  fill: var(--barva-crnilo);
-}
-
-.razvrstitev-list__oznaka {
-  font: 500 12px / 1.4 var(--pisava-mono);
+.izpis-list__oznaka {
+  font: 600 9pt / 1 var(--pisava-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.razvrstitev-list__naslov-blok {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 3px solid var(--barva-crnilo);
+.izpis-list__naslov-blok {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 5mm;
+  margin-top: 2mm;
 }
 
-.razvrstitev-list__naslov {
+.izpis-list__besedilo {
+  flex: 1;
+  min-width: 0;
+}
+
+.izpis-list__naslov {
   margin: 0;
-  font: 800 34px / 0.95 var(--pisava-display);
-  letter-spacing: -0.035em;
-  text-wrap: wrap;
+  overflow: hidden;
+  font: 800 20pt / 1.05 var(--pisava-display);
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #000;
 }
 
-.razvrstitev-list__lastnosti {
-  margin: 8px 0 0;
-  font: 500 12px / 1.4 var(--pisava-mono);
-  letter-spacing: 0.06em;
+.izpis-list__naslov--dolg {
+  font-size: 14pt;
+  line-height: 1.5;
+}
+
+.izpis-list__naslov--zelo-dolg {
+  font-size: 11pt;
+  line-height: 1.9;
+  letter-spacing: -0.015em;
+}
+
+.izpis-list__lastnosti {
+  margin: 0.8mm 0 0;
+  overflow: hidden;
+  font: 500 7.5pt / 1.25 var(--pisava-mono);
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  text-wrap: wrap;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.izpis-list__logotip {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 15mm;
+  max-width: 48mm;
+  object-fit: contain;
+}
+
+.izpis-list__vsebina {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 2mm 0;
+}
+
+.izpis-list__dno {
+  flex: none;
+}
+
+.izpis-list__pokrovitelji {
+  box-sizing: border-box;
+  height: 12.5mm;
+  padding-bottom: 0.5mm;
+}
+
+.izpis-list__noga {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: var(--izpis-noga);
+  border-top: 1px solid #000;
+  font: 500 7pt / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* --- Končna razvrstitev: vrh 1.-3. čez celo širino, ostali v stolpcih. Tri gostote;
+   izbere jo izračun, da gre seznam na en list ali največ na dva. --- */
+
+.razvrstitev-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
 }
 
 .razvrstitev-list__vrh {
-  margin-top: 16px;
-  border-top: 2px solid var(--barva-crnilo);
+  border-top: 0.5mm solid #000;
 }
 
 .razvrstitev-list__vrh-vrstica {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) auto;
+  grid-template-columns: var(--sirina-vrha) minmax(0, 1fr) auto;
+  align-content: center;
   align-items: baseline;
-  column-gap: 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--barva-crnilo);
-  break-inside: avoid;
+  column-gap: 4mm;
+  box-sizing: border-box;
+  height: var(--vrh-vrstica);
+  border-bottom: 1px solid #000;
 }
 
 .razvrstitev-list__vrh-mesto {
-  font: 800 36px / 1 var(--pisava-display);
+  font: 800 var(--pisava-vrh-mesto) / 1 var(--pisava-display);
   letter-spacing: -0.05em;
+  white-space: nowrap;
 }
 
 .razvrstitev-list__vrh-ime {
-  font: 400 24px / 1.1 var(--pisava-telo);
+  overflow: hidden;
+  font: 400 var(--pisava-vrh-ime) / 1.1 var(--pisava-telo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .razvrstitev-list__ime-lahko {
@@ -27832,17 +28039,21 @@ html.uvod-tece {
 }
 
 .razvrstitev-list__vrh-desno {
-  font: 500 14px / 1.4 var(--pisava-mono);
+  display: flex;
+  justify-content: flex-end;
+  gap: 3mm;
+  max-width: 70mm;
+  font: 500 var(--pisava-vrh-klub) / 1.4 var(--pisava-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .razvrstitev-list__ostali {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 32px;
+  grid-template-columns: repeat(var(--stolpcev), minmax(0, 1fr));
+  column-gap: 8mm;
   align-items: start;
-  margin-top: 16px;
 }
 
 .razvrstitev-list__stolpec {
@@ -27851,29 +28062,34 @@ html.uvod-tece {
 
 .razvrstitev-list__vrstica {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
+  grid-template-columns: var(--sirina-mesta) minmax(0, max-content) minmax(var(--najmanj-desno, 0), 1fr);
+  align-content: center;
   align-items: baseline;
-  column-gap: 8px;
-  padding: 4px 0;
-  break-inside: avoid;
+  column-gap: 2mm;
+  box-sizing: border-box;
+  height: var(--vrstica);
 }
 
 .razvrstitev-list__vrstica--nivo {
-  border-top: 1px solid var(--barva-crnilo);
+  border-top: 1px solid #000;
 }
 
 .razvrstitev-list__vrstica--pika {
-  border-top: 1px dotted var(--barva-crnilo-3);
+  border-top: 1px dotted #000;
 }
 
 .razvrstitev-list__vrstica-mesto {
-  font: 800 16px / 1.2 var(--pisava-display);
+  font: 800 var(--pisava-vrstica) / 1.2 var(--pisava-display);
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
 .razvrstitev-list__vrstica-ime {
   min-width: 0;
-  font: 400 16px / 1.2 var(--pisava-telo);
+  overflow: hidden;
+  font: 400 var(--pisava-vrstica) / 1.2 var(--pisava-telo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .razvrstitev-list__priimek {
@@ -27881,30 +28097,432 @@ html.uvod-tece {
 }
 
 .razvrstitev-list__vrstica-desno {
-  font: 500 12px / 1.4 var(--pisava-mono);
+  display: flex;
+  justify-content: flex-end;
+  gap: 2mm;
+  min-width: 0;
+  font: 500 var(--pisava-vrstica-klub) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.razvrstitev-list__klub {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Izkupiček krožnega sistema določa vrstni red in se ne sme odrezati. */
+.razvrstitev-list__izid {
+  flex: none;
+  font-weight: 700;
+}
+
+.razvrstitev-list--z-izidom {
+  --najmanj-desno: 12mm;
+}
+
+.razvrstitev-list--prostorno {
+  --sirina-vrha: 25mm;
+  --pisava-vrh-mesto: 27pt;
+  --pisava-vrh-ime: 18pt;
+  --pisava-vrh-klub: 10pt;
+  --pisava-vrstica: 12pt;
+  --pisava-vrstica-klub: 8pt;
+}
+
+.razvrstitev-list--srednje {
+  --sirina-vrha: 21mm;
+  --pisava-vrh-mesto: 22pt;
+  --pisava-vrh-ime: 15pt;
+  --pisava-vrh-klub: 9pt;
+  --pisava-vrstica: 10.5pt;
+  --pisava-vrstica-klub: 7.2pt;
+}
+
+.razvrstitev-list--gosto {
+  --sirina-vrha: 18mm;
+  --pisava-vrh-mesto: 19pt;
+  --pisava-vrh-ime: 13pt;
+  --pisava-vrh-klub: 8.5pt;
+  --pisava-vrstica: 9.5pt;
+  --pisava-vrstica-klub: 6.8pt;
+}
+
+.razvrstitev-list--najgosteje {
+  --sirina-vrha: 18mm;
+  --pisava-vrh-mesto: 19pt;
+  --pisava-vrh-ime: 13pt;
+  --pisava-vrh-klub: 8.5pt;
+  --pisava-vrstica: 8.8pt;
+  --pisava-vrstica-klub: 6.4pt;
+}
+
+/* --- Skupinski del: križna tabela in razpored sta skupna listkom skupin, višine pa
+   nižje (spremenljivke --kriz-*, --seznam-*), ker izpisa nihče ne izpolnjuje na roke. --- */
+
+.izpis-skupine__sklop {
+  display: flex;
+  align-items: flex-end;
+  box-sizing: border-box;
+  height: var(--izpis-sklop);
+  margin: 0;
+  padding-bottom: 1.2mm;
+  font: 800 12pt / 1 var(--pisava-display);
+  letter-spacing: -0.015em;
+  color: #000;
+}
+
+.izpis-skupine__sklop:not(:first-child),
+.izpis-skupine__skupina + .izpis-skupine__skupina {
+  margin-top: var(--izpis-med-skupinami);
+}
+
+.izpis-skupine__nadaljevanje {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  height: var(--izpis-nadaljevanje);
+  margin: 0;
+  font: 500 6.5pt / 1 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.izpis-skupine__nadaljevanje strong {
+  font: 800 11pt / 1 var(--pisava-display);
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.izpis-skupine .krizna__skupina {
+  font-size: 12pt;
+}
+
+.izpis-skupine .krizna__ime {
+  font-size: 9pt;
+}
+
+.izpis-skupine .krizna__ime--dolgo {
+  font-size: 8pt;
+}
+
+.izpis-skupine .krizna__ime--zelo-dolgo {
+  font-size: 7pt;
+}
+
+.izpis-skupine .krizna__klub {
+  font-size: 6.3pt;
+}
+
+.izpis-skupine .krizna__izid {
+  font-size: 8pt;
+}
+
+.izpis-skupine .krizna__oznaka {
+  font-size: 4.8pt;
+}
+
+.izpis-skupine .krizna__celica--izid {
+  gap: 0.2mm;
+}
+
+.izpis-skupine .seznam-skupine__izid {
+  flex-direction: row;
+  gap: 0.8mm;
+  font-size: 8pt;
+}
+
+.izpis-skupine .seznam-skupine__oznaka {
+  font-size: 4.8pt;
+  letter-spacing: 0;
+}
+
+.izpis-skupine .seznam-skupine__imena {
+  font-size: 8pt;
+}
+
+.izpis-skupine .seznam-skupine__niz {
+  font-size: 7.5pt;
+}
+
+/* --- Izločilni del: okvir tekme, skupen mreži in žrebom SV regije. Imena v dveh
+   vrsticah, pod okvirjem točke po nizih (izven okvirja, da stoji okvir točno na
+   sredini med viroma in črte ostanejo ravne). --- */
+
+.izpis-okvir {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.izpis-okvir__stran {
+  display: flex;
+  align-items: center;
+  gap: 1mm;
+  box-sizing: border-box;
+  height: var(--stran-visina);
+  padding: 0 1.2mm;
+  font: 500 var(--stran-pisava) / 1 var(--pisava-telo);
+  white-space: nowrap;
+}
+
+.izpis-okvir__stran + .izpis-okvir__stran {
+  border-top: 1px solid #000;
+}
+
+/* Zmagovalec je krepek, poraženec navaden - izid se bere tudi brez nizov. */
+.izpis-okvir__stran--zmagovalec {
+  font-weight: 800;
+}
+
+/* Ime ima prednost, klub vzame, kar ostane. */
+.izpis-okvir__ime {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+}
+
+.izpis-okvir__ime i {
+  font: 500 6pt / 1 var(--pisava-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.razvrstitev-list__noga {
-  display: flex;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--barva-crnilo);
-  font: 500 12px / 1.4 var(--pisava-mono);
-  letter-spacing: 0.06em;
+.izpis-okvir__stran--prost .izpis-okvir__ime {
+  font: 500 6.5pt / 1 var(--pisava-mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
+.izpis-okvir__klub {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  font: 500 calc(var(--stran-pisava) * 0.72) / 1 var(--pisava-mono);
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.izpis-okvir__oznaka {
+  flex: none;
+  margin-left: auto;
+  font: 500 5pt / 1 var(--pisava-mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.izpis-okvir__nizi {
+  flex: none;
+  min-width: 2.4mm;
+  margin-left: auto;
+  font: 700 var(--stran-pisava) / 1 var(--pisava-mono);
+  text-align: right;
+}
+
+.izpis-okvir__oznaka + .izpis-okvir__nizi {
+  margin-left: 0;
+}
+
+.izpis-okvir__tocke {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  padding-top: 0.25mm;
+  font: 500 6pt / 1 var(--pisava-mono);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.izpis-mreza .zreb-mreza__naslovi,
+.izpis-mreza .zreb-mreza__mreza {
+  max-width: none;
+}
+
+.izpis-mreza .zreb-mreza__naslovi {
+  height: 5mm;
+  overflow: hidden;
+}
+
+.izpis-mreza .zreb-mreza__naslov {
+  margin: 0;
+  font-size: 7.5pt;
+  white-space: nowrap;
+}
+
+.izpis-mreza .zreb-mreza__prvak-crta {
+  font-size: 12pt;
+}
+
+.izpis-mreza__tretje {
+  top: calc(50% + 2mm);
+  bottom: auto;
+}
+
+/* --- Žrebi SV regije: poti žreba v dveh pasovih, drevo je postavljeno v mm. --- */
+
+.izpis-sv {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv-med-zrebi);
+}
+
+.izpis-sv__naslov {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--sv-naslov);
+  margin: 0;
+  border-bottom: 0.4mm solid #000;
+  font: 800 11pt / 1 var(--pisava-display);
+  letter-spacing: -0.01em;
+  color: #000;
+}
+
+.izpis-sv__pasova {
+  display: flex;
+  gap: var(--sv-med-pasovoma);
+}
+
+.izpis-sv__pas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sv-med-odseki);
+  min-width: 0;
+}
+
+.izpis-sv__odsek-naslov {
+  display: flex;
+  align-items: flex-end;
+  box-sizing: border-box;
+  height: var(--sv-odsek);
+  margin: 0;
+  padding-bottom: 0.7mm;
+  font: 700 7.5pt / 1 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #000;
+}
+
+.izpis-sv__stolpci {
+  display: grid;
+  align-items: center;
+  height: var(--sv-glava);
+  font: 500 6pt / 1 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.izpis-sv__platno {
+  position: relative;
+}
+
+.izpis-sv__crta {
+  position: absolute;
+  display: block;
+  height: 0;
+  border-top: 1px solid #000;
+}
+
+.izpis-sv__crta--navpicna {
+  width: 0;
+  border-top: 0;
+  border-left: 1px solid #000;
+}
+
+.izpis-sv__tekma {
+  position: absolute;
+  display: flex;
+  transform: translateY(-50%);
+}
+
+.izpis-sv__mesta {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateY(-50%);
+  font: 500 7.5pt / 1.3 var(--pisava-telo);
+}
+
+.izpis-sv__mesta li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.izpis-sv__mesta b {
+  font-family: var(--pisava-mono);
+  font-weight: 700;
+}
+
+/* --- Orodna vrstica: kaj gre v dokument. Samo na zaslonu. --- */
+
+.izpis-izbira {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r1) var(--r3);
+  margin-left: var(--r3);
+}
+
+.izpis-izbira__del {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo);
+  cursor: pointer;
+}
+
+.izpis-izbira__del input {
+  width: auto;
+  margin: 0;
+}
+
+.izpis-izbira__del--tocke {
+  padding-left: var(--r3);
+  border-left: 1px solid var(--barva-crnilo-3);
+}
+
+/* Na telefonu se izbira prelomi: ločilna črta bi obvisela na začetku vrstice. */
+@media (max-width: 640px) {
+  .izpis-izbira {
+    margin-left: 0;
+  }
+
+  .izpis-izbira__del--tocke {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
 @media print {
-  .zreb-stran--razvrstitev .razvrstitev-list {
+  .zreb-stran--izpis {
+    display: block;
+  }
+
+  .izpis-list {
     zoom: 1 !important;
-    width: auto;
-    min-height: 269mm;
-    margin: 0;
-    padding: 0;
     outline: none;
+    break-inside: avoid;
+  }
+
+  .izpis-list + .izpis-list {
+    break-before: page;
   }
 }
 
@@ -28815,5 +29433,140 @@ html.uvod-tece {
 
   .organizatorji-okno__odvzem {
     grid-column: 2;
+  }
+}
+
+/* --- Izračun kroga (gumb pod lestvico, IzracunKrogaOkno) --- */
+
+.lestvica__krog-gumb {
+  margin-top: var(--r1);
+}
+
+.krog-izracun {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+/* Več krogov v isti skupini: vsak je svoj sklop pod debelo črto. */
+.krog-izracun + .krog-izracun {
+  padding-top: var(--r3);
+  border-top: 3px solid var(--barva-crnilo);
+}
+
+.krog-izracun__naslov {
+  margin: 0;
+  font: 800 var(--tip-h3) / 1.2 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.krog-izracun__uvod {
+  margin: 0;
+  font-size: var(--tip-telo);
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--barva-crnilo-2);
+}
+
+.krog-izracun__opomba {
+  margin: 0;
+  font-size: var(--tip-drobno);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--barva-crnilo-3);
+}
+
+/* Stolpcev je od enega do pet in so samo tako široki, kot njihove številke;
+   ime vzame preostanek in se po potrebi prelomi. */
+.krog-izracun__tabela {
+  margin-top: 0;
+}
+
+.krog-izracun__tabela th,
+.krog-izracun__tabela td {
+  padding-right: var(--r2);
+}
+
+.krog-izracun__tabela .lestvica__stevilka {
+  width: auto;
+  white-space: nowrap;
+}
+
+.krog-izracun__mesto {
+  width: 32px;
+  font: 600 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo-3);
+}
+
+.tabela th.krog-izracun__mesto,
+.krog-izracun__tabela td.krog-izracun__mesto {
+  padding-right: var(--r1);
+}
+
+.krog-izracun__ime {
+  line-height: 1.3;
+  color: var(--barva-crnilo);
+}
+
+/* Razlika je številka, ki je vrstni red določila, zato edina v polnem črnilu. */
+.lestvica__stevilka.krog-izracun__razlika {
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+.krog-izracun__preklop {
+  min-height: 44px;
+  padding: 0;
+}
+
+.krog-izracun__tekme {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--barva-crnilo);
+}
+
+.krog-izracun__tekme li {
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.krog-izracun__tekma {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+  padding: 12px 0;
+  font-size: 16px;
+  line-height: 1.3;
+  color: var(--barva-crnilo);
+}
+
+.krog-izracun__zmagovalec {
+  font-weight: 700;
+}
+
+.krog-izracun__izid {
+  flex: none;
+  font: 600 15px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+@media (max-width: 640px) {
+  .krog-izracun__tabela th,
+  .krog-izracun__tabela td {
+    padding-right: var(--r1);
+  }
+
+  .krog-izracun__tabela th:last-child,
+  .krog-izracun__tabela td:last-child {
+    padding-right: 0;
+  }
+}
+
+@media print {
+  .lestvica__krog-gumb {
+    display: none;
   }
 }
