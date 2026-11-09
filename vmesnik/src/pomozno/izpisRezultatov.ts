@@ -19,6 +19,7 @@ import {
   type VrsticaTiska,
 } from './koncnaRazvrstitev'
 import { oblikujObdobje, sklonEkip, sklonIgralcev, sklonParov } from './oblikovanje'
+import { jeSvRegija, listiSvr, type ListSvr } from './izpisSvr'
 import { opisRazpona } from './svRegija'
 import { imaMrezo, sklopiZrebMreze, type ZrebMrezeList } from './zrebMreze'
 import {
@@ -43,6 +44,15 @@ export const NASLOVI_DELOV: Record<DelIzpisa, string> = {
 export const VRSTNI_RED_DELOV: DelIzpisa[] = ['razvrstitev', 'skupine', 'mreza']
 
 export type Usmeritev = 'pokoncni' | 'lezeci'
+
+/* Slog izpisa: Turnirkov (privzet) ali SVR, ki posnema Excelove liste SV regije; SVR
+   obstaja samo za dogodke SV regije (pomozno/izpisSvr). */
+export type SlogIzpisa = 'turnirko' | 'svr'
+
+/* Ali ima dogodek slog SVR: sistem SV regija z nivoji. */
+export function imaSlogSvr(mreza: MrezaDto): boolean {
+  return jeSvRegija(mreza)
+}
 
 /* ---------- Mere lista (mm) ----------
    Stran nima robov (@page margin 0, zato brskalnik ne doda svoje glave in noge),
@@ -138,12 +148,15 @@ export function deliDogodka(mreza: MrezaDto): DelIzpisa[] {
   return deli
 }
 
-/* Stikalo »Točke po nizih« ima smisel samo, kadar so kje v izbranih delih vpisane. */
-export function imaVpisaneTocke(mreza: MrezaDto, deli: DelIzpisa[]): boolean {
+/* Stikalo »Točke po nizih« ima smisel samo, kadar so kje v izbranih delih vpisane. V
+   slogu SVR so točke po nizih samo v razporedu skupin (stolpec »Točke«); žreb jih nima. */
+export function imaVpisaneTocke(mreza: MrezaDto, deli: DelIzpisa[], slog: SlogIzpisa = 'turnirko'): boolean {
   return mreza.tekme.some(
     (t) =>
       t.nizi.length > 0
-      && (t.faza === 'SKUPINA' ? deli.includes('skupine') : deli.includes('mreza')),
+      && (t.faza === 'SKUPINA'
+        ? deli.includes('skupine')
+        : slog === 'turnirko' && deli.includes('mreza')),
   )
 }
 
@@ -676,7 +689,7 @@ function listiSv(mreza: MrezaDto, visina: number, sTockami: boolean): ListSv[] {
 
 /* ---------- Dokument ---------- */
 
-export type ListIzpisa = ListRazvrstitve | ListSkupin | ListMreze | ListSv
+export type ListIzpisa = ListRazvrstitve | ListSkupin | ListMreze | ListSv | ListSvr
 
 /* Par ima dve dolgi imeni in ekipa lahko dolgo ime kluba (»Namiznoteniški klub Tempo
    Velenje 1«): v polovico lista ne gresta. Posameznik gre vedno. */
@@ -688,19 +701,50 @@ function stolpcevRazvrstitve(dogodek: DogodekDto, udelezenci: UdelezenecRazvrsti
   return udelezenci.some((u) => u.priimek.length > NAJDALJSE_IME_V_STOLPCU) ? 1 : 2
 }
 
+/* Spodnja meja vsebine lista SVR v pt: pri čistem listu (kot vzorec) skoraj do roba, ob
+   dodatnem oblikovanju nad nogo (pokrovitelji, številka lista). */
+const PT_NA_MM = 72 / 25.4
+
+function spodnjaMejaSvr(sPokrovitelji: boolean, sOblikovanjem: boolean): number {
+  const rezervaMm = sOblikovanjem
+    ? MERE_LISTA.pokoncni.spodaj + MERE_LISTA.noga + (sPokrovitelji ? MERE_LISTA.pokrovitelji : 0) + 2
+    : 14
+  return (MERE_LISTA.pokoncni.visina - rezervaMm) * PT_NA_MM
+}
+
+/* Naslov (ime turnirja) potrebuje samo slog SVR: tam je v velikem naslovu lista. */
 export function sestaviIzpis(
   mreza: MrezaDto,
   izbrani: DelIzpisa[],
   sTockami: boolean,
   sPokrovitelji: boolean,
+  slog: SlogIzpisa = 'turnirko',
+  sOblikovanjem = true,
+  naslov = '',
 ): ListIzpisa[] {
   const pokoncni = visinaVsebine('pokoncni', sPokrovitelji)
   const lezeci = visinaVsebine('lezeci', sPokrovitelji)
+  const razvrstitev = () => {
+    const udelezenci = udelezenciRazvrstitve(mreza)
+    return listiRazvrstitve(udelezenci, stolpcevRazvrstitve(mreza.dogodek, udelezenci), pokoncni)
+  }
+
+  /* Slog SVR: razvrstitev ostane Turnirkov list, skupine in žrebi so po nivojih kot v Excelu. */
+  if (slog === 'svr' && imaSlogSvr(mreza)) {
+    return [
+      ...(izbrani.includes('razvrstitev') ? razvrstitev() : []),
+      ...listiSvr(
+        mreza,
+        { skupine: izbrani.includes('skupine'), mreza: izbrani.includes('mreza') },
+        naslov || mreza.dogodek.ime,
+        sTockami,
+        { spodaj: spodnjaMejaSvr(sPokrovitelji, sOblikovanjem) },
+      ),
+    ]
+  }
+
   return VRSTNI_RED_DELOV.filter((del) => izbrani.includes(del)).flatMap((del): ListIzpisa[] => {
-    if (del === 'razvrstitev') {
-      const udelezenci = udelezenciRazvrstitve(mreza)
-      return listiRazvrstitve(udelezenci, stolpcevRazvrstitve(mreza.dogodek, udelezenci), pokoncni)
-    }
+    if (del === 'razvrstitev') return razvrstitev()
     if (del === 'skupine') return listiSkupin(mreza, pokoncni, sTockami)
     if (mreza.svRegija) return listiSv(mreza, lezeci, sTockami)
     const tolazilnih = mreza.tekme.filter((t) => t.faza === 'TOLAZILNI').length

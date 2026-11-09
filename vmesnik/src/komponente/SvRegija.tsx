@@ -30,6 +30,7 @@ import { SvUrejanjeZrebov } from './SvUrejanjeZrebov'
 import { SvZrebOkno } from './SvZrebOkno'
 import type { KlikTekme } from './TekmaKartica'
 import { VsebinaSkupine, opisSkupine } from './VsebinaSkupine'
+import { POJASNILO_ROCNEGA_ZREBA, ZrebOblacek } from './ZrebOblacek'
 
 interface Lastnosti {
   podatki: MrezaDto
@@ -204,7 +205,7 @@ export function SvRegijaDel({ podatki, klik, osvezi, smem }: Lastnosti) {
    s skupinami). Igralci gredo v žrebe po vrsti A1, B1 …, A2, B2 …, zato vsaka
    skupina v glavni žreb pošlje drugačno število igralcev (pri petih skupinah A
    in B dva, D in E enega). Lestvica to pove z barvo vrstice (glavni in drugi
-   žreb), vrstica nad skupinami pa za vsak žreb našteje, od kod pridejo vanj. */
+   žreb). Od kod pridejo igralci v žreb, pove oznaka pri vsakem žrebu spodaj. */
 function SkupineNivoja({
   skupine,
   podatki,
@@ -225,15 +226,6 @@ function SkupineNivoja({
   return (
     <div>
       <p className="podnaslov-sekcije">Skupine</p>
-      {zrebi.length > 0 && (
-        <p className="namig sv-viri">
-          {zrebi.map((z) => (
-            <span className="sv-viri__zreb" key={z.indeks}>
-              {z.ime} ({opisRazpona(z.prvoMesto, z.zadnjeMesto)}): {z.viri.join(', ')}
-            </span>
-          ))}
-        </p>
-      )}
       <div className="skupine-seznam">
         {skupine.map((skupina) => {
           const crka = crkaSkupine(skupina.oznaka)
@@ -334,7 +326,14 @@ function ZrebiNivoja({
             odprta={odprt === zreb.indeks}
             naPreklop={() => nastaviOdprt((prej) => (prej === zreb.indeks ? null : zreb.indeks))}
           >
-            <VsebinaZreba zreb={zreb} podatki={podatki} klik={klik} smem={smem} osvezi={osvezi} />
+            <VsebinaZreba
+              zreb={zreb}
+              zrebi={zrebi}
+              podatki={podatki}
+              klik={klik}
+              smem={smem}
+              osvezi={osvezi}
+            />
           </SkupinaVrstica>
         ))}
       </div>
@@ -354,15 +353,19 @@ function opisZreba(zreb: SvZrebDto, podatki: MrezaDto): string {
   return zmagovalec ? `${osnova} · ${zreb.prvoMesto}. ${zmagovalec.polnoIme}` : osnova
 }
 
-/* Vsebina odprtega žreba: dejanja organizatorja in drevo za vsa mesta. */
+/* Vsebina odprtega žreba: dejanja organizatorja in drevo za vsa mesta. Oznaka v glavi
+   pove, od kod pridejo igralci v vse žrebe nivoja (»zrebi«); pri ročnem žrebu je hkrati
+   pojasnilo, da razpored ni bil izžrebljan. */
 function VsebinaZreba({
   zreb,
+  zrebi,
   podatki,
   klik,
   smem,
   osvezi,
 }: {
   zreb: SvZrebDto
+  zrebi: SvZrebDto[]
   podatki: MrezaDto
   klik?: KlikTekme
   smem: boolean
@@ -384,13 +387,31 @@ function VsebinaZreba({
   /* Pri enem ali dveh udeležencih ni kaj razporejati (en sam igralec ali ena tekma). */
   const uredljiv = smem && zreb.uredljiv && zreb.id !== null && zreb.stUdelezencev > 2
 
+  /* Od kod pridejo igralci: vsi žrebi nivoja, ne le ta. Pri ročnem žrebu je to
+     del oblačka poleg pojasnila, pri računalniškem je oblaček »Od kod igralci« sam. */
+  const viri = zrebi.filter((z) => z.viri.length > 0)
+  const opisViri = viri.map((z) => (
+    <span className="zreb-oznaka__vrstica" key={z.indeks}>
+      {z.ime} ({opisRazpona(z.prvoMesto, z.zadnjeMesto)}): {z.viri.join(', ')}
+    </span>
+  ))
+
   return (
     <div className="skupina-vsebina__cela">
-      {(uredljiv || zreb.rocni) && (
+      {(uredljiv || zreb.rocni || viri.length > 0) && (
         <div className="sv-zreb__glava">
-          <p className="namig">
-            {zreb.rocni ? 'Razpored mest je vpisal organizator, žreb ni bil naključen.' : ''}
-          </p>
+          {zreb.rocni ? (
+            <ZrebOblacek oznaka="Ročni žreb" levo>
+              <span className="zreb-oznaka__vrstica">{POJASNILO_ROCNEGA_ZREBA}</span>
+              {opisViri}
+            </ZrebOblacek>
+          ) : (
+            viri.length > 0 && (
+              <ZrebOblacek oznaka="Od kod igralci" levo>
+                {opisViri}
+              </ZrebOblacek>
+            )
+          )}
           {uredljiv && (
             <span className="sv-zreb__dejanja">
               <button type="button" className="gumb gumb--majhen" onClick={() => nastaviUrejam(true)}>

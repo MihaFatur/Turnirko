@@ -3291,6 +3291,36 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     čez vseh 957 dogodkov testne baze pravila tečejo brez napake, vsaka odigrana izločilna tekma je na
     izpisu, razvrstitev nikjer čez dva lista. **Na pravem tiskalniku ni preverjeno**; mešana usmeritev
     je preverjena v PDF iz Chroma.
+  - **Slog SVR** (9. 11. 2026, zahteva lastnika; `pomozno/izpisSvr`, `komponente/IzpisSvr`,
+    `?slog=svr&oblikovanje=0`). Pri dogodkih **SV regije** (samo tam; `imaSlogSvr`) izbere organizator ob tisku
+    med **Turnirko** (privzeto) in **SVR**: pokončni A4, ki posnemajo Excelove liste SV regije (vzorca 1. in
+    5. OT SV regije, PDF iz LibreOffica). Po nivojih kot v vzorcu: listi skupin (dve skupini na list:
+    križna tabela z rdečimi točkami 2/0, skor, točke = 2 × zmage, mesto, razpored po kolih »1. Kolo (1-4, 2-3)«
+    s seti), nato list(i) žreba za vsa mesta (glavna pot, poti za 3., 5., 7. mesto …, oznake »A1« ob vstopu,
+    izid v oklepaju za imenom zmagovalca, »bye«, »N. mesto«). Naslov lista je **ime turnirja**, nivo »I. SKUPINA«
+    (rimsko do IX.; vzorec ima pri 4. nivoju arabsko, kar je Excelov spodrsljaj). Imena so »Ime Priimek (Klub)«
+    brez predpone NTK/NTD. **Končna razvrstitev ostane izbirni del in je Turnirkov list** (vzorca je nimata), z
+    lastno glavo. Kljukica »Točke po nizih« v SVR napolni stolpec »Točke« v razporedu skupin (v vzorcu je
+    prazen); žreb točk nima.
+    - **Dodatno oblikovanje** (kljukica, privzeto vključena; `?oblikovanje=0` ga izklopi): pas zgoraj
+      (znamka Turnirko, kategorija, datum in kraj, logotip turnirja) in noga (pokrovitelji, »List i od n«). Brez
+      njega je list enak vzorcu; z njim se vsebina po potrebi pomanjša (`merilo`) nad nogo.
+    - **Cel list je en SVG v točkah** (viewBox 595,28 × 841,89 = 1 enota je 1 pt): HTML črte pod ~0,75 pt
+      brskalnik zaokroži na slikovno piko, vzorec pa ima črte 0,4 in 0,53 pt. Mere so zapisane po vzorcu (konstante
+      `SK` za skupine, `ZR` za žrebe: pisava 8,39 oz. 6,4 pt, ker je Excel vsaki strani nastavil drugo merilo;
+      vrstice tabele 24 pt, ker ima vzorec 22,6 in 25,4). Izmerjeno s prekrivanjem PDF-ja vzorca in mojega
+      (žreb se ujema do slikovne pike, tabela do višine vrstic).
+    - **Žreb se rekonstruira iz `razpored` žreba in poišče tekme po paru igralcev** (`poti`, `odigraj`): enako
+      drevo kot `SvRegijaStoritev.razdeli` (zmagovalci naprej, poraženec para i v pot za slabša mesta na mesto i,
+      prosti prehod pusti prazno mesto poraženca). Stolpec poti: poraženec stoji v stolpcu kola, ki ga je
+      izgubil (3. mesto v 2. stolpcu, 5. v 1.). Zato »bye« stoji na pravem mestu tudi v tolažilnih poteh, ki jih
+      iz samih tekem ni mogoče sestaviti. Razmik med potmi: 18 pt za glavno, 27 pt med ostalimi in med žrebi.
+    - **Dev harness** `/dev/izpis-svr` (podatki prepisani iz vzorca; `velik=16|32`, `deli=skupine|zreb`,
+      `oblikovanje=0`) in `/dev/izpis-svr-stran/1` (prava stran z napolnjenim predpomnilnikom). Preverjeno tudi s
+      pravim zaledjem: dogodek SV regije s 27 igralci, nivo 2 z žrebom treh igralcev v mreži 4 (prosti prehod).
+      Primerjava z vzorcem: PDF → mupdf, prekrivanje (vzorec rdeče, moj izpis modro).
+    - **Ni preverjeno**: pravi tiskalnik, Firefox/Safari, dogodki z več kot ~8 igralci v skupini (tabela raste v
+      širino, zadnja stolpca gresta do roba), žreb 64.
 - **Zavihki dogodka na telefonu tečejo po vrsti tekmovanja** (`pogledi` v
   `DogodekStran`, odločitev lastnika, okt 2026): Skupine (privzeto) ·
   Izločilni del · Razvrstitev · Udeleženci. Zavihek »Razvrstitev« (končna

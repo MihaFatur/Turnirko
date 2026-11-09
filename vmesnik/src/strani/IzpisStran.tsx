@@ -16,11 +16,13 @@ import { ZrebOkvir } from '../komponente/ZrebOkvir'
 import {
   deliDogodka,
   glavaIzpisa,
+  imaSlogSvr,
   imaVpisaneTocke,
   NASLOVI_DELOV,
   sestaviIzpis,
   VRSTNI_RED_DELOV,
   type DelIzpisa,
+  type SlogIzpisa,
 } from '../pomozno/izpisRezultatov'
 import { sklonListov } from '../pomozno/oblikovanje'
 import { usePokrovitelje } from '../pomozno/pokrovitelji'
@@ -58,17 +60,27 @@ export function IzpisStran({ samoRazvrstitev = false }: { samoRazvrstitev?: bool
   )
   const sTockami = iskanje.get('tocke') !== '0'
 
-  const listi = useMemo(
-    () => (mreza.data ? sestaviIzpis(mreza.data, izbrani, sTockami, pokrovitelji.length > 0) : []),
-    [mreza.data, izbrani, sTockami, pokrovitelji.length],
-  )
+  /* Slog SVR (Excelovi listi SV regije) ponudimo samo pri dogodkih SV regije; izbira je v
+     naslovu, da ostane ob osvežitvi. Dodatno oblikovanje (znak, logotip, pokrovitelji,
+     številka lista) je pri SVR privzeto vključeno. */
+  const moznaSvr = !samoRazvrstitev && !!mreza.data && imaSlogSvr(mreza.data)
+  const slog: SlogIzpisa = moznaSvr && iskanje.get('slog') === 'svr' ? 'svr' : 'turnirko'
+  const oblikovanje = iskanje.get('oblikovanje') !== '0'
+
   const glava = useMemo(
     () => (mreza.data ? glavaIzpisa(mreza.data, turnir.data) : null),
     [mreza.data, turnir.data],
   )
+  const listi = useMemo(
+    () =>
+      mreza.data
+        ? sestaviIzpis(mreza.data, izbrani, sTockami, pokrovitelji.length > 0, slog, oblikovanje, glava?.naslov ?? '')
+        : [],
+    [mreza.data, izbrani, sTockami, pokrovitelji.length, slog, oblikovanje, glava],
+  )
 
   const dogodek = mreza.data?.dogodek
-  const prikaziTocke = !!mreza.data && imaVpisaneTocke(mreza.data, izbrani)
+  const prikaziTocke = !!mreza.data && imaVpisaneTocke(mreza.data, izbrani, slog)
   const imaLezece = listi.some((list) => list.usmeritev === 'lezeci')
 
   function preklopiDel(del: DelIzpisa, vkljucen: boolean) {
@@ -90,6 +102,30 @@ export function IzpisStran({ samoRazvrstitev = false }: { samoRazvrstitev?: bool
         const naprej = new URLSearchParams(prej)
         if (vkljucene) naprej.delete('tocke')
         else naprej.set('tocke', '0')
+        return naprej
+      },
+      { replace: true },
+    )
+  }
+
+  function izberiSlog(novi: SlogIzpisa) {
+    nastaviIskanje(
+      (prej) => {
+        const naprej = new URLSearchParams(prej)
+        if (novi === 'svr') naprej.set('slog', 'svr')
+        else naprej.delete('slog')
+        return naprej
+      },
+      { replace: true },
+    )
+  }
+
+  function preklopiOblikovanje(vkljuceno: boolean) {
+    nastaviIskanje(
+      (prej) => {
+        const naprej = new URLSearchParams(prej)
+        if (vkljuceno) naprej.delete('oblikovanje')
+        else naprej.set('oblikovanje', '0')
         return naprej
       },
       { replace: true },
@@ -118,6 +154,32 @@ export function IzpisStran({ samoRazvrstitev = false }: { samoRazvrstitev?: bool
         !samoRazvrstitev &&
         moznosti.length > 0 && (
           <div className="izpis-izbira">
+            {moznaSvr && (
+              <div className="izpis-izbira__slog" role="radiogroup" aria-label="Slog izpisa">
+                <span className="izpis-izbira__naslov">Slog</span>
+                <label className="izpis-izbira__del">
+                  <input
+                    type="radio"
+                    name="slog-izpisa"
+                    checked={slog === 'turnirko'}
+                    onChange={() => izberiSlog('turnirko')}
+                  />
+                  Turnirko
+                </label>
+                <label
+                  className="izpis-izbira__del"
+                  title="Listi kot Excelova tabela SV regije: skupine s križno tabelo in žrebi za vsa mesta"
+                >
+                  <input
+                    type="radio"
+                    name="slog-izpisa"
+                    checked={slog === 'svr'}
+                    onChange={() => izberiSlog('svr')}
+                  />
+                  SVR
+                </label>
+              </div>
+            )}
             {moznosti.map((del) => (
               <label key={del} className="izpis-izbira__del">
                 <input
@@ -138,11 +200,29 @@ export function IzpisStran({ samoRazvrstitev = false }: { samoRazvrstitev?: bool
                 Točke po nizih
               </label>
             )}
+            {slog === 'svr' && (
+              <label
+                className="izpis-izbira__del izpis-izbira__del--tocke"
+                title="Znak Turnirko, kategorija, datum in kraj ter logotip zgoraj; pokrovitelji in številka lista spodaj. Brez tega je list enak Excelovemu vzorcu."
+              >
+                <input
+                  type="checkbox"
+                  checked={oblikovanje}
+                  onChange={(d) => preklopiOblikovanje(d.target.checked)}
+                />
+                Dodatno oblikovanje
+              </label>
+            )}
           </div>
         )
       }
       navodilo={
-        imaLezece && listi.some((list) => list.usmeritev === 'pokoncni') ? (
+        slog === 'svr' ? (
+          <>
+            Slog SVR posnema Excelove liste SV regije: pokončni A4, vsi listi. Natisni v merilu 100 %,
+            brez robov in brez glave in noge brskalnika. Za datoteko izberi »Shrani kot PDF«.
+          </>
+        ) : imaLezece && listi.some((list) => list.usmeritev === 'pokoncni') ? (
           <>
             Izločilni del je ležeč, ostalo pokončno: v oknu za tisk pusti usmeritev, kot je. Natisni na A4 v
             merilu 100 %. Za datoteko izberi »Shrani kot PDF«.
@@ -158,6 +238,7 @@ export function IzpisStran({ samoRazvrstitev = false }: { samoRazvrstitev?: bool
           glava={glava}
           logotip={turnir.data?.logotip ?? null}
           pokrovitelji={pokrovitelji}
+          oblikovanje={oblikovanje}
         />
       )}
     </ZrebOkvir>

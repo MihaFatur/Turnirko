@@ -17,6 +17,7 @@ import {
 } from '../pomozno/izpisRezultatov'
 import { urlSlike } from '../pomozno/slike'
 import { IzpisMreze, IzpisSv } from './IzpisMreza'
+import { IzpisSvrPlatno } from './IzpisSvr'
 import { PokroviteljiTisk } from './PokroviteljiTisk'
 import { ZnakTurnirko } from './Postavitev'
 import { KriznaTabela, RazporedZNizi } from './ZrebSkupinTisk'
@@ -26,42 +27,96 @@ export function IzpisListi({
   glava,
   logotip,
   pokrovitelji,
+  oblikovanje = true,
 }: {
   listi: ListIzpisa[]
   glava: GlavaIzpisa
   logotip: SlikaDto | null
   pokrovitelji: PokroviteljDto[]
+  /* Samo za liste SVR: Turnirkov znak, logotip, kraj in datum zgoraj, pokrovitelji in
+     številka lista spodaj. Brez njega je list kot Excelov vzorec. */
+  oblikovanje?: boolean
 }) {
   return (
     <>
-      {listi.map((list, i) => (
-        <section
-          key={list.kljuc}
-          className={`izpis-list izpis-list--${list.usmeritev}`}
-          aria-label={`List ${i + 1} od ${listi.length}: ${list.oznaka}`}
-          style={
-            {
-              '--izpis-glava': `${MERE_LISTA.glava}mm`,
-              '--izpis-noga': `${MERE_LISTA.noga}mm`,
-            } as CSSProperties
-          }
-        >
-          <GlavaLista oznaka={list.oznaka} glava={glava} logotip={logotip} />
-          <div className="izpis-list__vsebina">
-            <VsebinaLista list={list} />
-          </div>
-          <footer className="izpis-list__dno">
-            <PokroviteljiTisk pokrovitelji={pokrovitelji} razred="izpis-list__pokrovitelji" />
-            <div className="izpis-list__noga">
-              <span>Turnirko · turnirko-nt.si</span>
-              <span>
-                List {i + 1} od {listi.length}
-              </span>
+      {listi.map((list, i) =>
+        list.vrsta === 'svr' ? (
+          <section
+            key={list.kljuc}
+            className="izpis-list izpis-list--pokoncni izpis-list--svr"
+            aria-label={`List ${i + 1} od ${listi.length}: ${list.oznaka}`}
+          >
+            <IzpisSvrPlatno list={list} />
+            {oblikovanje && (
+              <>
+                <VrhSvr glava={glava} logotip={logotip} />
+                <footer className="izpis-svr__dno">
+                  <PokroviteljiTisk pokrovitelji={pokrovitelji} razred="izpis-list__pokrovitelji" />
+                  <div className="izpis-list__noga">
+                    <span>Turnirko · turnirko-nt.si</span>
+                    <span>
+                      List {i + 1} od {listi.length}
+                    </span>
+                  </div>
+                </footer>
+              </>
+            )}
+          </section>
+        ) : (
+          <section
+            key={list.kljuc}
+            className={`izpis-list izpis-list--${list.usmeritev}`}
+            aria-label={`List ${i + 1} od ${listi.length}: ${list.oznaka}`}
+            style={
+              {
+                '--izpis-glava': `${MERE_LISTA.glava}mm`,
+                '--izpis-noga': `${MERE_LISTA.noga}mm`,
+              } as CSSProperties
+            }
+          >
+            <GlavaLista oznaka={list.oznaka} glava={glava} logotip={logotip} />
+            <div className="izpis-list__vsebina">
+              <VsebinaLista list={list} />
             </div>
-          </footer>
-        </section>
-      ))}
+            <footer className="izpis-list__dno">
+              <PokroviteljiTisk pokrovitelji={pokrovitelji} razred="izpis-list__pokrovitelji" />
+              <div className="izpis-list__noga">
+                <span>Turnirko · turnirko-nt.si</span>
+                <span>
+                  List {i + 1} od {listi.length}
+                </span>
+              </div>
+            </footer>
+          </section>
+        ),
+      )}
     </>
+  )
+}
+
+/* Dodatno oblikovanje lista SVR: znamka Turnirko, kategorija, datum in kraj ter logotip
+   turnirja v tankem pasu nad naslovom (SVR naslov stoji nižje, zato pas ne zadene vzorca). */
+function VrhSvr({ glava, logotip }: { glava: GlavaIzpisa; logotip: SlikaDto | null }) {
+  return (
+    <header className="izpis-svr__vrh">
+      <div className="izpis-list__znamka">
+        <ZnakTurnirko velikost={15} />
+        Turnirko
+      </div>
+      <p className="izpis-svr__vrh-besedilo">
+        <span>{glava.lastnosti}</span>
+        {glava.kdajKje && <span>{glava.kdajKje}</span>}
+      </p>
+      {logotip && (
+        <img
+          className="izpis-svr__logotip"
+          src={urlSlike(logotip, 'TISK')}
+          width={logotip.sirina}
+          height={logotip.visina}
+          alt=""
+        />
+      )}
+    </header>
   )
 }
 
@@ -120,6 +175,9 @@ function VsebinaLista({ list }: { list: ListIzpisa }) {
       return <IzpisMreze list={list} />
     case 'sv':
       return <IzpisSv list={list} />
+    case 'svr':
+      /* List SVR ima svoj okvir (brez Turnirkove glave), glej IzpisListi. */
+      return null
   }
 }
 

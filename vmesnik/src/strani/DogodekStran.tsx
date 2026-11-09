@@ -555,7 +555,13 @@ export function DogodekStran() {
           <PripravaGost podatki={podatki} />
         )
       ) : (
-        <Tekmovanje podatki={podatki} klik={klik} osvezi={osvezi} jeAdmin={smem} />
+        <Tekmovanje
+          key={podatki.dogodek.id}
+          podatki={podatki}
+          klik={klik}
+          osvezi={osvezi}
+          jeAdmin={smem}
+        />
       )}
 
       {urejamDogodek && (
@@ -1762,34 +1768,39 @@ function Tekmovanje({
     zakljucekVZavihku,
   ])
 
-  const [pogled, nastaviPogled] = useState<PogledDogodka | null>(null)
+  /* Zaključen dogodek se odpre z zaprtimi pogledi (odločitev lastnika, nov. 2026):
+     vsebina pride šele na klik, ponovni klik na odprt pogled ga zapre. Izjema je
+     seznam udeležencev, ki ostane odprt, da gledalec najprej vidi, kdo je igral.
+     Tekoč dogodek se še vedno odpre s prvim pogledom. */
+  const [pogled, nastaviPogled] = useState<PogledDogodka | 'zaprto' | null>(null)
   /* Privzeti pogled je prvi obstojeci; ce izbrani izgine (npr. po odstopu ali
      ob prehodu na sirsi zaslon), pas ne sme ostati prazen. */
-  const izbrani = pogled && pogledi.some((p) => p.kljuc === pogled)
-    ? pogled
-    : pogledi[0]?.kljuc ?? 'udelezenci'
+  const izbrani: PogledDogodka | null =
+    pogled === 'zaprto'
+      ? null
+      : pogled && pogledi.some((p) => p.kljuc === pogled)
+        ? pogled
+        : koncan
+          ? pogledi.some((p) => p.kljuc === 'udelezenci') ? 'udelezenci' : null
+          : pogledi[0]?.kljuc ?? 'udelezenci'
+  const izberiPogled = (kljuc: PogledDogodka) =>
+    nastaviPogled(koncan && izbrani === kljuc ? 'zaprto' : kljuc)
+  /* Razvrstitev na namizju je blok nad pasom; pri zaključenem dogodku je zaprta. */
+  const [zakljucekOdprt, nastaviZakljucekOdprt] = useState(false)
 
   /* Na telefonu kartica ne pokaže, da je klikljiva (dotik nima prehoda miške),
-     zato namig pove, kaj klik naredi. Točke omeni samo, kadar jih ima vsaj ena
-     tekma - gledalcu sicer klik ne naredi ničesar. */
-  const zTockami = podatki.tekme.some(imaTocke)
+     zato namig pove, kaj klik naredi: organizatorju vnos rezultata, pri ekipnem
+     dogodku tudi gledalcu. Pri posamičnem dogodku gledalcu namiga ni. */
   const namigKlika = ekipno
     ? (koncan
         ? null
         : 'Klikni tekmo za zapisnik srečanja — postavo in izide posamičnih tekem. Izid tekme' +
           ' nastane iz srečanja, zmagovalec napreduje sam.')
     : jeAdmin && !koncan
-      ? [
-          izbrani === 'mreza'
-            ? 'Klikni tekmo z obema znanima igralcema za vnos rezultata. Zmagovalec samodejno napreduje.'
-            : 'Klikni tekmo za vnos rezultata. Lestvica skupine se preračuna sproti.',
-          zTockami ? 'Odigrana tekma pokaže točke po nizih.' : null,
-        ]
-          .filter(Boolean)
-          .join(' ')
-      : zTockami
-        ? 'Klikni odigrano tekmo za točke po nizih.'
-        : null
+      ? izbrani === 'mreza'
+        ? 'Klikni tekmo z obema znanima igralcema za vnos rezultata. Zmagovalec samodejno napreduje.'
+        : 'Klikni tekmo za vnos rezultata. Lestvica skupine se preračuna sproti.'
+      : null
 
   const odigranih =podatki.tekme.filter((t) => t.status === 'KONCANA').length
   const povzetek = [
@@ -1803,12 +1814,20 @@ function Tekmovanje({
 
   return (
     <>
-      {koncan && !zakljucekVZavihku && <Zakljucek podatki={podatki} />}
+      {koncan && !zakljucekVZavihku && (
+        <Zakljucek
+          podatki={podatki}
+          zlozljiva={{
+            odprta: zakljucekOdprt,
+            naPreklop: () => nastaviZakljucekOdprt((prej) => !prej),
+          }}
+        />
+      )}
 
       <PodnavigacijaDogodka
         pogledi={pogledi}
         izbrani={izbrani}
-        naIzbiro={nastaviPogled}
+        naIzbiro={izberiPogled}
         povzetek={povzetek}
       />
 
@@ -1844,7 +1863,7 @@ function Tekmovanje({
         <Udelezenci podatki={podatki} osvezi={osvezi} smem={jeAdmin} />
       )}
 
-      {namigKlika && izbrani !== 'udelezenci' && izbrani !== 'zakljucek' && (
+      {namigKlika && izbrani !== null && izbrani !== 'udelezenci' && izbrani !== 'zakljucek' && (
         <p className="namig">{namigKlika}</p>
       )}
     </>
@@ -2184,7 +2203,13 @@ function razredRatinga(rating: number | null, osnova: string): string {
 
 /* Končna razvrstitev: stopničke in nivoji (komponenta KoncnaRazvrstitev). SV regija
    obdrži svoj seznam ostalih po nivojih (zložljive vrstice), stopničke so iste. */
-function Zakljucek({ podatki }: { podatki: MrezaDto }) {
+function Zakljucek({
+  podatki,
+  zlozljiva,
+}: {
+  podatki: MrezaDto
+  zlozljiva?: { odprta: boolean; naPreklop: () => void }
+}) {
   const jeTelefon = useTelefon()
   /* Ekipa ratinga nima (v rating gredo posamične tekme njenih srečanj). */
   const ekipno = podatki.dogodek.disciplina === 'EKIPNO'
@@ -2228,6 +2253,7 @@ function Zakljucek({ podatki }: { podatki: MrezaDto }) {
       kljucVstopa={podatki.dogodek.id}
       povezavaTisk={`/dogodki/${podatki.dogodek.id}/razvrstitev-tisk`}
       ostaliSv={ostaliSv}
+      zlozljiva={zlozljiva}
     />
   )
 }

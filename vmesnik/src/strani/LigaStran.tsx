@@ -10,7 +10,7 @@
    Postavitev mora zdržati lige različnih velikosti (4 do 16+ ekip), povezane in
    samostojne lige ter ligo v pripravi (takrat lestvice in razporeda še ni in se
    sekciji ne izrišeta prazni). */
-import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -45,6 +45,7 @@ import { PreimenovanjeEkipe, PreimenujEkipoOkno } from '../komponente/Preimenova
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { RocniZrebOkno } from '../komponente/RocniZrebOkno'
+import { POJASNILO_ROCNEGA_ZREBA, ZrebOblacek } from '../komponente/ZrebOblacek'
 import { NastavitveZanimivosti } from '../komponente/NastavitveZanimivosti'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
@@ -2017,48 +2018,8 @@ function Forma({ znaki }: { znaki: IzidEkipe[] }) {
    kot opozorilo, da je z žrebom nekaj narobe. Gledalec mora še vedno izvedeti,
    od kod razpored je - sicer bi igralec, ki je pare dobil po pošti, sklepal,
    da je aplikacija izžrebala nove - zato je pojasnilo na dosegu. */
-const OPOMBA_ROCNEGA_ZREBA =
-  'Žreb ni bil naključen — razpored je vpisal organizator. Za pojasnilo se obrnite na organizatorja.'
-
 function OznakaRocnegaZreba() {
-  const [odprta, nastaviOdprta] = useState(false)
-  const ovoj = useRef<HTMLSpanElement>(null)
-  const idOpombe = useId()
-
-  /* Na dotik se pojasnilo odpre s tapom in zapre s tapom drugam (ali Escape) -
-     prehoda miške telefon nima. */
-  useEffect(() => {
-    if (!odprta) return
-    function obKliku(dogodek: MouseEvent) {
-      if (ovoj.current && !ovoj.current.contains(dogodek.target as Node)) nastaviOdprta(false)
-    }
-    function obTipki(dogodek: KeyboardEvent) {
-      if (dogodek.key === 'Escape') nastaviOdprta(false)
-    }
-    document.addEventListener('mousedown', obKliku)
-    document.addEventListener('keydown', obTipki)
-    return () => {
-      document.removeEventListener('mousedown', obKliku)
-      document.removeEventListener('keydown', obTipki)
-    }
-  }, [odprta])
-
-  return (
-    <span ref={ovoj} className={'zreb-oznaka' + (odprta ? ' zreb-oznaka--odprta' : '')}>
-      <button
-        type="button"
-        className="zreb-oznaka__gumb"
-        aria-expanded={odprta}
-        aria-describedby={idOpombe}
-        onClick={() => nastaviOdprta((prej) => !prej)}
-      >
-        Ročni žreb
-      </button>
-      <span id={idOpombe} role="tooltip" className="zreb-oznaka__oblacek">
-        {OPOMBA_ROCNEGA_ZREBA}
-      </span>
-    </span>
-  )
+  return <ZrebOblacek oznaka="Ročni žreb">{POJASNILO_ROCNEGA_ZREBA}</ZrebOblacek>
 }
 
 /* Poved o prestavitvi pod vrstico srečanja: »Prestavljeno iz 5. kola« in, če ga
