@@ -25,8 +25,7 @@ export interface PogledGumb {
 
 interface Lastnosti {
   pogledi: PogledGumb[]
-  /* null = nobeden ni odprt (zaključen dogodek se odpre zaprt). */
-  izbrani: PogledDogodka | null
+  izbrani: PogledDogodka
   naIzbiro: (pogled: PogledDogodka) => void
   /* Mono povzetek desno, npr. "25 skupin · odigranih 78 / 150". */
   povzetek: string

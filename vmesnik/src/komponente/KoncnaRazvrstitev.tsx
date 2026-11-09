@@ -52,9 +52,6 @@ export interface KoncnaRazvrstitevLastnosti {
   razgrnjeno?: boolean
   /* Razvojni nadomestek slike (harness); sicer javna profilna slika. */
   izrisiSliko?: (udelezenec: UdelezenecRazvrstitve, razred: string) => ReactNode
-  /* Zaključen dogodek na namizju: razvrstitev je zaprta, dokler je gledalec ne
-     odpre (odločitev lastnika, nov. 2026). Brez lastnosti je vedno razgrnjena. */
-  zlozljiva?: { odprta: boolean; naPreklop: () => void }
 }
 
 /* Stopničke nastopijo z zamikom 90 ms po vrsti; ob zmanjšanem gibanju je takoj
@@ -74,25 +71,21 @@ export function KoncnaRazvrstitev({
   ostaliSv,
   razgrnjeno = false,
   izrisiSliko,
-  zlozljiva,
 }: KoncnaRazvrstitevLastnosti) {
   const [odprto, nastaviOdprto] = useState(razgrnjeno)
   const idOstalih = useId()
-  const idTelesa = useId()
-  const zaprta = zlozljiva !== undefined && !zlozljiva.odprta
 
   /* Začetno stanje je VIDNO: če bi stopnice začele skrite in bi se zagon
      zataknil (skrit zavihek, rAF ne teče), bi ostal razdelek prazen. Skrijemo
      jih pred prvim izrisom in čez 60 ms spustimo; requestAnimationFrame se v
-     skritem zavihku ne izvaja, časovnik pa. Ob vsakem odprtju zaprte razvrstitve
-     se stopnice dvignejo znova, zato je odprtje zaprte razvrstitve del odvisnosti. */
+     skritem zavihku ne izvaja, časovnik pa. */
   const [vstop, nastaviVstop] = useState(true)
   useLayoutEffect(() => {
     if (zmanjsanoGibanje() || document.visibilityState !== 'visible') return
     nastaviVstop(false)
     const cas = window.setTimeout(() => nastaviVstop(true), 60)
     return () => window.clearTimeout(cas)
-  }, [kljucVstopa, zlozljiva?.odprta])
+  }, [kljucVstopa])
 
   const { vrh, ostali } = useMemo(() => razdeliNaStopnice(udelezenci), [udelezenci])
   const nivoji = useMemo(() => razdeliVNivoje(ostali), [ostali])
@@ -131,21 +124,10 @@ export function KoncnaRazvrstitev({
           <Link className="koncna-razvrstitev__natisni" to={povezavaTisk}>
             {jeTelefon ? 'Natisni' : 'Natisni razvrstitev'}
           </Link>
-          {zlozljiva && (
-            <button
-              type="button"
-              className="koncna-razvrstitev__natisni"
-              aria-expanded={zlozljiva.odprta}
-              aria-controls={idTelesa}
-              onClick={zlozljiva.naPreklop}
-            >
-              {zlozljiva.odprta ? 'Skrij ↑' : 'Pokaži razvrstitev ↓'}
-            </button>
-          )}
         </div>
       </div>
 
-      <div id={idTelesa} className="koncna-razvrstitev__telo" hidden={zaprta}>
+      <div className="koncna-razvrstitev__telo">
         <div className={razredStopnic}>
           {stopnice.map(({ u, mesto, deljeno, red, i }) => (
             <div

@@ -27299,12 +27299,6 @@ html.uvod-tece {
   flex-direction: column;
 }
 
-/* Zaprta razvrstitev zaključenega dogodka ima telo z `hidden`; brez tega pravila
-   bi ga `display: flex` zgoraj prekril in zaprtje ne bi nič skrilo. */
-.koncna-razvrstitev__telo[hidden] {
-  display: none;
-}
-
 /* ---------- Stopnice (namizje) ---------- */
 
 .stopnice {
