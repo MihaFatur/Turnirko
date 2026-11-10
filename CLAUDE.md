@@ -14,8 +14,12 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
 ### Kje je koda in kam gredo spremembe
 
 - **Ena delovna mapa: `C:\Users\Miha\Desktop\Turnirko\turnirko`**: git repozitorij,
-  veja `main`, `origin` = `github.com/MihaFatur/Turnirko`. V njej beri, piši,
-  testiraj, commitaj in pushaj. Tudi `mvnw` in `npm` tečeta tam.
+  **veja `test`** (od 10. 11. 2026, testno okolje), `origin` =
+  `github.com/MihaFatur/Turnirko`. V njej beri, piši, testiraj, commitaj in
+  pushaj. Tudi `mvnw` in `npm` tečeta tam. `main` je od 10. 11. 2026 samo
+  **preverjeno** stanje (kar teče ali bo teklo v produkciji): na `main` se ne
+  commita in se ne preklaplja nanj; dobi ga samo povišanje preizkušenega
+  commita (glej »Testno okolje« spodaj).
 - Nadrejena mapa `C:\Users\Miha\Desktop\Turnirko` **ni repozitorij**: v njej so
   uvozni podatki, posnetki produkcije in prenosna lokalna baza (`pg18`).
   Projektnih datotek tam ne ustvarjaj.
@@ -27,8 +31,11 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
 - Začetek dela: `git status` in `git pull --ff-only`. Če je lokalni `main` zadaj
   ali je v mapi tuje neshranjeno delo (isto mapo uporablja več sej), ustavi in
   povej; ne prepisuj.
-- **Commitaj in pushaj samo, ko uporabnik to zahteva.** Vedno na `main`, nikoli
-  `--force`. Sporočilo commita slovensko: kaj in zakaj.
+- **Commitaj in pushaj samo, ko uporabnik to zahteva.** Vedno na vejo `test`
+  (ne na `main`), nikoli `--force`. Sporočilo commita slovensko: kaj in zakaj.
+  Če je delovna mapa na drugi veji kot `test` in v njej ni tujega neshranjenega
+  dela, ustavi in povej; mapo deli več sej, zato veje ne preklapljaj brez
+  vednosti uporabnika.
 
 ### Objava na strežnik
 
@@ -38,11 +45,27 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
   uporabnik v zavihek vpiše geslo ključa, izpis se bere z `read_terminal`. Pod
   Windowsom odpadejo narekovaji v narekovajih, zato daljše ukaze daj v skripto v
   repozitoriju in jo na strežniku samo pokliči.
-- Redna objava (koda je že pushana na `main`):
-  `cd /srv/turnirko && git pull --autostash && docker compose up -d --build`.
-  `--autostash` je obvezen: `Caddyfile` na strežniku ima lokalen blok za projekt
-  Pikado. Gradnja traja ~1,5 min, aplikacija je ~20 s nedosegljiva (Caddy kaže
-  stran Vzdrževanje). Migracije Flyway tečejo ob zagonu same.
+- **Testno okolje** (`https://test.turnirko-nt.si`, od 10. 11. 2026; celotna
+  navodila `docs/TESTNO-OKOLJE.md`): koda gre v produkcijo SAMO prek testa.
+  Pot: (1) commit + push na vejo `test`; (2) na strežniku
+  `bash /srv/turnirko-test/skripte/test/objavi.sh` (zgradi, zažene, preveri;
+  po potrebi prej `bash /srv/turnirko/skripte/test/osvezi-bazo.sh`, kopija
+  produkcijske baze); (3) uporabnik pregleda test; (4) **šele po njegovem
+  izrecnem »v produkcijo«** `git push origin <preizkušen-commit>:main` (brez
+  preklopa na `main`, brez `--force`; commit izpiše `objavi.sh`); (5)
+  `bash /srv/turnirko/skripte/test/v-produkcijo.sh`, ki zavrne objavo, če `main`
+  vsebuje kaj, česar test ni zgradil. Skripte so `bash`, ne `sh` (strežnikov `sh`
+  je `dash`, ne pozna `pipefail`). Test je kopija prave baze z naslovi pravih
+  igralcev: pošta in plačila sta v njem ugasnjena in tega v `compose.test.yaml`
+  ne spreminjaj; kode za registracijo bere `skripte/test/koda.sh`. Ukazov
+  `docker compose` v `/srv/turnirko-test` ne poganjaj z `-f compose.yaml`
+  (to je produkcijski compose).
+- Ročna redna objava brez testa (`git pull --autostash && docker compose up -d
+  --build` v `/srv/turnirko`) je od 10. 11. 2026 **izjema za sili**, ne pot;
+  zahteva izrecen ukaz uporabnika. `--autostash` je obvezen: `Caddyfile` na
+  strežniku ima lokalen blok za projekt Pikado. Gradnja traja ~1,5 min,
+  aplikacija je ~20 s nedosegljiva (Caddy kaže stran Vzdrževanje). Migracije
+  Flyway tečejo ob zagonu same.
 - Pred objavo, ki vsebuje migracijo, naredi ročno kopijo:
   `skripte/varnostna-kopija.sh rocno` (gre tudi v oblak). Migracije so
   enosmerne: povratek kode ne razveljavi sheme. Napako v migraciji popravi z

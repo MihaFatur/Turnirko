@@ -89,6 +89,52 @@ turnirko-nt.si, www.turnirko-nt.si {
 	}
 }
 
+# TESTNO okolje (compose.test.yaml, docs/TESTNO-OKOLJE.md): druga kopija
+# Turnirka s kopijo prave baze. Ker so v njej pravi podatki in nepreverjena
+# koda, je zaklenjena s SKRITO POVEZAVO in ne z geslom: aplikacija sama
+# uporablja glavo Authorization, zato bi geslo na vratih Caddyja (basic auth)
+# trcilo z njeno prijavo. Postopek:
+#   1. obiskovalec odpre https://test.turnirko-nt.si/odpri/<TEST_ZETON>
+#   2. Caddy mu nastavi pisckot test_dostop (30 dni) in ga preusmeri na /
+#   3. vsaka zahteva brez tega pisckota dobi 404, kot da strani ni.
+# TEST_ZETON je v .env produkcije (tja ga zapise skripte/test/nastavi.sh) in
+# pride v Caddy prek compose.yaml. Brez njega (prazno) ne spusti nikogar.
+# Ce test-app ne tece, obiskovalec z zetonom dobi 503 (to ne vpliva na produkcijo).
+test.turnirko-nt.si {
+	encode zstd gzip
+
+	header {
+		# Iskalniki testa ne smejo indeksirati.
+		X-Robots-Tag "noindex, nofollow, noarchive"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	@vstop path /odpri/{$TEST_ZETON}
+	handle @vstop {
+		# Zetona ne zapisuj v dnevnik dostopov.
+		log_skip
+		header Set-Cookie "test_dostop={$TEST_ZETON}; Path=/; Max-Age=2592000; Secure; HttpOnly; SameSite=Lax"
+		redir / 303
+	}
+
+	# "!= \"\"" je varovalka: ce zetona v okolju ni, izraz ne pusti nikogar.
+	@dovoljen expression `"{$TEST_ZETON}" != "" && {http.request.cookie.test_dostop} == "{$TEST_ZETON}"`
+	handle @dovoljen {
+		reverse_proxy test-app:8080
+	}
+
+	handle {
+		respond "Ni najdeno" 404
+	}
+
+	handle_errors {
+		respond "Testno okolje trenutno ne tece." 503
+	}
+}
+
 # Statistika obiska (Umami, storitev "umami" iz compose.yaml). Na tem naslovu
 # je pregled za lastnika, od tod pa se nalozi tudi skript obisk.js, ki ga
 # turnirko-nt.si vkljuci in ki sem posilja oglede. Certifikat Caddy pridobi

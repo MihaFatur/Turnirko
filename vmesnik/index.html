@@ -56,6 +56,26 @@
         }
       } catch (e) {}
     </script>
+    <!-- Testno okolje (test.turnirko-nt.si, glej docs/TESTNO-OKOLJE.md): rjast
+         trak na vrhu in tanka črta ob robu, da test ne zamenjaš s pravo stranjo.
+         Na drugih naslovih (razen test.localhost) ne naredi ničesar. -->
+    <script>
+      try {
+        if (location.hostname.indexOf('test.') === 0) {
+          const crta = document.createElement('div')
+          crta.setAttribute('aria-hidden', 'true')
+          crta.style.cssText = 'position:fixed;top:0;left:0;right:0;height:4px;background:#b23a1e;z-index:2147483647;pointer-events:none'
+          const trak = document.createElement('div')
+          trak.setAttribute('role', 'note')
+          trak.textContent = 'TESTNO OKOLJE · podatki so kopija in se prepišejo'
+          trak.style.cssText = 'background:#b23a1e;color:#fff;font:600 12px/1.3 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.04em;padding:6px 16px;text-align:center'
+          document.addEventListener('DOMContentLoaded', function () {
+            document.body.insertBefore(trak, document.body.firstChild)
+            document.body.appendChild(crta)
+          })
+        }
+      } catch (e) {}
+    </script>
     <!-- Statistika obiska (Umami, glej docs/OBJAVA.md, razdelek 8). Šteje samo
          na pravi domeni (data-domains), zato razvoj in namizna različica ne
          pošiljata ničesar; defer pomeni, da stran brez interneta ne čaka nanj. -->

@@ -188,6 +188,11 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    environment:
+      # Zeton skrite povezave do testnega okolja (Caddyfile, blok
+      # test.turnirko-nt.si; docs/TESTNO-OKOLJE.md). Prazno = testno okolje
+      # ne spusti nikogar.
+      TEST_ZETON: ${TEST_ZETON:-}
     ports:
       - "80:80"    # potreben za preverbo lastnistva domene (Let's Encrypt)
       - "443:443"

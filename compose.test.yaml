@@ -1,0 +1,140 @@
+# TESTNO okolje (https://test.turnirko-nt.si): druga, popolnoma locena kopija
+# Turnirka na istem strezniku. Navodila: docs/TESTNO-OKOLJE.md.
+#
+# Zagon (vedno prek skript, ne na pamet):  skripte/test/objavi.sh
+# Rocno, v mapi /srv/turnirko-test:          docker compose ps | logs -f test-app
+#
+# Kaj je locenega od produkcije (compose.yaml):
+#   - svoj compose projekt (turnirko-test), svoja mapa, svoj .env z drugimi gesli;
+#   - svoja baza PostgreSQL v svojem zvezku (turnirko-test_baza_test): kopija
+#     produkcijske baze, ki jo osvezi skripte/test/osvezi-bazo.sh;
+#   - storitvi se NAMENOMA imenujeta test-app in test-baza, ne app in baza.
+#     Docker vsako storitev vpise v DNS omrezja pod njenim imenom; test-app je
+#     zaradi Caddyja tudi v produkcijskem omrezju, in ce bi se imenovala "app",
+#     bi Caddy del produkcijskega prometa poslal v test;
+#   - test-baza NI v produkcijskem omrezju: do nje ne pride nihce razen
+#     test-app;
+#   - posta gre v dnevnik, placil in potisnih obvestil ni (ni kljucev), zato
+#     nihce od pravih igralcev iz testa ne dobi ne sporocila ne racuna.
+#
+# Caddy (v produkciji) test.turnirko-nt.si usmeri na test-app:8080, a samo za
+# obiskovalca s skrbnim zetonom (Caddyfile, blok test.turnirko-nt.si).
+
+name: turnirko-test
+
+services:
+  test-app:
+    build: .
+    restart: unless-stopped
+
+    # Brez "ports:": kot produkcija je dosegljiva samo po notranjem omrezju.
+    expose:
+      - "8080"
+
+    # Najvec 1 GB; JVM si vzame do 65 % tega. Brez omejitve bi test ob
+    # preracunu ratinga lahko pojedel pomnilnik, ki ga potrebuje produkcija.
+    mem_limit: 1g
+    environment:
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65
+      SPRING_PROFILES_ACTIVE: splet
+      SPRING_DATASOURCE_URL: jdbc:postgresql://test-baza:5432/turnirko
+      TURNIRKO_BAZA_UPORABNIK: turnirko_app
+      TURNIRKO_BAZA_GESLO: ${TURNIRKO_BAZA_APP_GESLO:?nastavi TURNIRKO_BAZA_APP_GESLO v .env - glej docs/TESTNO-OKOLJE.md}
+      SPRING_FLYWAY_USER: turnirko_lastnik
+      SPRING_FLYWAY_PASSWORD: ${TURNIRKO_BAZA_LASTNIK_GESLO:?nastavi TURNIRKO_BAZA_LASTNIK_GESLO v .env - glej docs/TESTNO-OKOLJE.md}
+      TURNIRKO_UVOZ_POSNETKI: /podatki/stupa-posnetki
+      # Velja samo za prazno bazo; po osvezitvi iz produkcije admin ze obstaja
+      # (z produkcijskim geslom).
+      TURNIRKO_ADMIN_PRIVZETO_GESLO: ${TURNIRKO_ADMIN_GESLO:?nastavi TURNIRKO_ADMIN_GESLO v .env - glej docs/TESTNO-OKOLJE.md}
+      # Povezave v sporocilih in predogledih kazejo na test, ne na produkcijo.
+      TURNIRKO_JAVNI_NASLOV: https://test.turnirko-nt.si
+      TURNIRKO_STRIPE_VRNI_NA: https://test.turnirko-nt.si
+      # NAMENOMA fiksno, ne iz .env: baza je kopija prave, z naslovi pravih
+      # igralcev. Posta v dnevnik (kode preberes s skripte/test/koda.sh),
+      # nobenega SMTP, nobenega obvestila adminu, nobenih placil in potisnih
+      # obvestil (brez kljucev so ugasnjena).
+      TURNIRKO_POSTA_NACIN: dnevnik
+      TURNIRKO_POSTA_OD: Turnirko TEST <test@localhost>
+      TURNIRKO_POSTA_ODGOVOR: ""
+      TURNIRKO_POSTA_ADMIN: ""
+      TURNIRKO_STRIPE_TAJNI_KLJUC: ""
+      TURNIRKO_STRIPE_WEBHOOK_SKRIVNOST: ""
+      TURNIRKO_PUSH_JAVNI_KLJUC: ""
+      TURNIRKO_PUSH_ZASEBNI_KLJUC: ""
+
+    volumes:
+      - ./podatki:/podatki
+
+    depends_on:
+      test-baza:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/api/v1/klubi > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+    networks:
+      default: {}
+      # Skupno omrezje s produkcijskim Caddyjem. Samo test-app, ne test-baza.
+      produkcija: {}
+
+  test-baza:
+    image: postgres:18.6
+    restart: unless-stopped
+    stop_grace_period: 60s
+    shm_size: 128mb
+    mem_limit: 512m
+    expose:
+      - "5432"
+    environment:
+      TZ: Europe/Ljubljana
+      POSTGRES_DB: turnirko
+      POSTGRES_PASSWORD: ${TURNIRKO_BAZA_ADMIN_GESLO:?nastavi TURNIRKO_BAZA_ADMIN_GESLO v .env - glej docs/TESTNO-OKOLJE.md}
+      # Enako kot produkcija (razvrscanje po kodnih tockah): drugace bi testni
+      # rezultati razvrscanja odstopali od pravih.
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8 --locale-provider=builtin --builtin-locale=C.UTF-8
+      TURNIRKO_BAZA_LASTNIK_GESLO: ${TURNIRKO_BAZA_LASTNIK_GESLO:?nastavi TURNIRKO_BAZA_LASTNIK_GESLO v .env - glej docs/TESTNO-OKOLJE.md}
+      TURNIRKO_BAZA_APP_GESLO: ${TURNIRKO_BAZA_APP_GESLO:?nastavi TURNIRKO_BAZA_APP_GESLO v .env - glej docs/TESTNO-OKOLJE.md}
+    # Manjsi pomnilnik kot produkcija (512 MB / 1 GB / 16 MB), sicer enake
+    # nastavitve (pg_stat_statements mora biti naložen, ker ga produkcijska
+    # kopija vsebuje).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - max_connections=30
+      - -c
+      - timezone=Europe/Ljubljana
+      - -c
+      - log_min_duration_statement=250ms
+      - -c
+      - "log_line_prefix=%t [%p] %u@%d "
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+    volumes:
+      - baza_test:/var/lib/postgresql
+      - ./skripte/baza/00-vloge.sh:/docker-entrypoint-initdb.d/00-vloge.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d turnirko"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  baza_test:
+
+networks:
+  # Omrezje produkcije (compose projekt "turnirko", omrezje "default"): v njem
+  # sta Caddy in Pikado. Mora ze obstajati, torej produkcija mora teci.
+  produkcija:
+    external: true
+    name: turnirko_default
