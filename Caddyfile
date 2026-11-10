@@ -117,7 +117,9 @@ test.turnirko-nt.si {
 		# Zetona ne zapisuj v dnevnik dostopov.
 		log_skip
 		header Set-Cookie "test_dostop={$TEST_ZETON}; Path=/; Max-Age=2592000; Secure; HttpOnly; SameSite=Lax"
-		redir / 303
+		# "*" je izrecen ujemalnik: brez njega bi Caddy "/" prebral kot ujemalnik
+		# poti in "303" kot cilj (obiskovalec bi ostal na prazni strani).
+		redir * / 303
 	}
 
 	# "!= \"\"" je varovalka: ce zetona v okolju ni, izraz ne pusti nikogar.
