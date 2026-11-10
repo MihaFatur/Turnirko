@@ -31,7 +31,17 @@ glavno() {
 	SHA=$(git rev-parse HEAD)
 
 	echo "2/4 gradnja in zagon (okoli 2 minuti; produkcija tece naprej)"
-	free -m | awk 'NR==2 {print "    prost pomnilnik pred gradnjo: " $7 " MB"}'
+	# Streznik ima ~3,8 GB pomnilnika in ga s produkcijo deli. Gradnja (Maven +
+	# Node) potrebuje ~1 GB, tekoca testna aplikacija ~0,6 GB: skupaj bi
+	# OOM-killer lahko ubil PRODUKCIJSKI proces. Zato se test-app za cas gradnje
+	# ustavi, in ce je prostega pomnilnika se vedno premalo, se gradnja ne zacne.
+	dc stop test-app || true
+	PROST=$(free -m | awk 'NR==2 {print $7}')
+	echo "    prost pomnilnik pred gradnjo: $PROST MB"
+	if [ "$PROST" -lt 900 ]; then
+		echo "NAPAKA: prostega pomnilnika je manj kot 900 MB; gradnja bi lahko ogrozila produkcijo. Ne gradim." >&2
+		exit 1
+	fi
 	dc build -q
 	dc up -d --remove-orphans
 

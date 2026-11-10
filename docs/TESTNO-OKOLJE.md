@@ -25,6 +25,23 @@ zvezek za bazo in omejitev pomnilnika (`test-app` največ 1 GB, `test-baza`
 `test.turnirko-nt.si` v `Caddyfile` usmeri promet v `test-app` in sam pridobi
 certifikat.
 
+## Pomnilnik in disk
+
+Strežnik ima ~3,8 GB pomnilnika (+ 2 GB swap) in ga produkcija, Umami in
+Pikado že porabijo ~2 GB. Teče test porabi ~0,8 GB, gradnja slike še ~1 GB
+začasno. Zato `objavi.sh` testno aplikacijo pred gradnjo ustavi in ne gradi,
+če je prostega manj kot 900 MB (OOM-killer bi sicer lahko ubil produkcijski
+proces). Kadar testa ne rabiš, ga ugasni in sprosti pomnilnik:
+
+```
+docker compose -p turnirko-test --project-directory /srv/turnirko-test -f /srv/turnirko-test/compose.test.yaml stop
+```
+
+(`start` ga spet zažene; baza ostane.) Disk je ob postavitvi 81 % poln
+(7 GB prostega): testna slika deli sloje s produkcijsko, testna baza je kopija
+(sto do nekaj sto MB), a stari sloji slik se kopičijo, zato občasno
+`docker image prune` (nikoli `volume prune`).
+
 ## Pot kode: od commita do produkcije
 
 ```
