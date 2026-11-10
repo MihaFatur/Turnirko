@@ -808,10 +808,12 @@ function RatingVrstice({ igralec }: { igralec: IgralecDto }) {
 function ImeVrstice({
   igralec,
   rekreativec,
+  datumUgiban,
   duplikat,
 }: {
   igralec: IgralecDto
   rekreativec: boolean
+  datumUgiban: boolean
   duplikat: boolean
 }) {
   return (
@@ -824,6 +826,14 @@ function ImeVrstice({
           title="Rekreativec — začetni rating 800"
         >
           Rekr.
+        </span>
+      )}
+      {datumUgiban && (
+        <span
+          className="kartoteka__znacka kartoteka__znacka--ugib"
+          title="Datum rojstva je ugiban (približek, ne točen podatek)"
+        >
+          Ugib.
         </span>
       )}
       {duplikat && (
@@ -894,6 +904,7 @@ function SeznamNamizje({
               <ImeVrstice
                 igralec={igralec}
                 rekreativec={Boolean(podroben?.rekreativniVstop)}
+                datumUgiban={Boolean(podroben?.datumRojstvaUgiban)}
                 duplikat={jeAdmin && d.idjiDuplikatov.has(igralec.id)}
               />
               <span
@@ -1105,6 +1116,14 @@ function SeznamTelefon({ vrstice, ...d }: DejanjaSeznama & { vrstice: IgralecDto
                     Rekr.
                   </span>
                 )}
+                {podroben?.datumRojstvaUgiban && (
+                  <span
+                    className="kartoteka__znacka kartoteka__znacka--ugib"
+                    title="Datum rojstva je ugiban (približek, ne točen podatek)"
+                  >
+                    Ugib.
+                  </span>
+                )}
                 {jeAdmin && d.idjiDuplikatov.has(igralec.id) && (
                   <span className="kartoteka__znacka kartoteka__znacka--dup">Duplikat?</span>
                 )}
@@ -1241,7 +1260,8 @@ function StranPara({
       <span className="kartoteka__par-ime">{polnoIme(igralec)}</span>
       <span className="kartoteka__par-klub">{igralec.klub?.ime ?? 'brez kluba'}</span>
       <span className="kartoteka__par-meta">
-        r. {oblikujDatum(igralec.datumRojstva) || '—'} · lic. {igralec.ntzsLicenca ?? '—'}
+        r. {oblikujDatum(igralec.datumRojstva) || '—'}
+        {igralec.datumRojstvaUgiban ? ' (ugiban)' : ''} · lic. {igralec.ntzsLicenca ?? '—'}
       </span>
       <span className="kartoteka__par-meta">
         rating {igralec.rating ?? '—'} · {igralec.steviloTekem} tekem
@@ -1595,6 +1615,9 @@ function IgralecOkno({
   const [rekreativniVstop, nastaviRekreativniVstop] = useState(
     igralec?.rekreativniVstop ?? false,
   )
+  const [datumRojstvaUgiban, nastaviDatumRojstvaUgiban] = useState(
+    igralec?.datumRojstvaUgiban ?? false,
+  )
   /* Oznaka velja ob prvi tekmi. Kdor jih že ima, dobi nov začetek šele s
      preračunom — to mora urejevalec vedeti, preden shrani. */
   const potrebenPreracun =
@@ -1623,7 +1646,7 @@ function IgralecOkno({
     podpis: string
     zadetki: PodobenZapis[]
   } | null>(null)
-  const podpis = [ime.trim(), priimek.trim(), spol, datumRojstva].join('|')
+  const podpis = [ime.trim(), priimek.trim(), spol, datumRojstva, datumRojstvaUgiban].join('|')
   const podobni = opozorilo?.podpis === podpis ? opozorilo.zadetki : []
   const okvirOpozorila = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -1660,6 +1683,7 @@ function IgralecOkno({
       postnaSt: postnaSt ? Number(postnaSt) : null,
       idKlub: idKlub ? Number(idKlub) : null,
       rekreativniVstop,
+      datumRojstvaUgiban,
     }
     // urejanje ne ustvari novega zapisa, vpis, na katerega je bil bralec
     // že opozorjen, pa je s ponovnim klikom potrjen
@@ -1668,12 +1692,12 @@ function IgralecOkno({
       return
     }
     // poizvedba dobi samo to, po čemer išče: e-pošta, telefon in naslov
-    // novega igralca ji ne pripadajo
+    // novega igralca ji ne pripadajo; ugiban datum ni podatek, zato brez njega
     const iskano: PodobniVnos = {
       ime: vnos.ime,
       priimek: vnos.priimek,
       spol: vnos.spol,
-      datumRojstva: vnos.datumRojstva,
+      datumRojstva: vnos.datumRojstvaUgiban ? undefined : vnos.datumRojstva,
     }
     preverjanje.mutate(iskano, {
       onSuccess: (zadetki) => {
@@ -1721,7 +1745,22 @@ function IgralecOkno({
           </label>
         </div>
 
-        {/* Takoj pod datumom rojstva: tudi ta pove, kje igralec začne. */}
+        {/* Takoj pod datumom rojstva: pove, ali je vpisani datum točen. */}
+        <label className="zapisnik__kljukica">
+          <input
+            type="checkbox"
+            checked={datumRojstvaUgiban}
+            onChange={(d) => nastaviDatumRojstvaUgiban(d.target.checked)}
+          />
+          <span>Datum rojstva je ugiban</span>
+        </label>
+        <p className="zapisnik__namig">
+          Obkljukaj, kadar pravega datuma ne poznaš in vpisuješ približek (npr. 1. 1. letnika, da
+          igralec spada v kategorijo, v kateri igra). Ugiban datum ne povezuje računa z zapisom in
+          ne šteje za dokaz, da sta dva zapisa ista oseba.
+        </p>
+
+        {/* Tudi ta pove, kje igralec začne. */}
         <label className="zapisnik__kljukica">
           <input
             type="checkbox"

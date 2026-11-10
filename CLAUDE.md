@@ -172,6 +172,31 @@ Velja od preklopa na PostgreSQL (2. 11. 2026). Preberi to, preden karkoli spreme
     `DvojnikiIgralcevDostopTest`.
   - Admin dobi v `IgralecDto` tudi izpeljan `starostniPas` (isti kot v javnem
     izpisu; datum rojstva ostane samo pri adminu).
+- **Datum rojstva ugiban** (V64, nov 2026; `igralec.datum_rojstva_ugiban`,
+  `IgralecVnos.datumRojstvaUgiban`, `IgralecDto.datumRojstvaUgiban`). Admin in
+  organizator ob vpisu novega igralca (admin tudi ob urejanju) obkljukata, da je
+  vpisani datum PRIBLIŽEK (npr. 1. 1. letnika, da igralec spada v kategorijo, v
+  kateri igra, ker pravega datuma ni). Pravila, ki jih ne razbij:
+  - **Ugiban datum ni dokaz o osebi.** Račun se z zapisom NE poveže samodejno in
+    predogled zapisa ga ne ponudi (`RegistracijaStoritev.kandidatiZaRacun`,
+    `predogledZapisa`): datum 1. 1. letnika kdo uganè ali pozna, zato bi bil
+    prevzem profila prelahek; tak zapis poveže samo admin. Primerjava dvojnikov
+    (`DvojnikiIgralcevStoritev.primerjajDatum`) in opozorilo ob vpisu
+    (`najdiPodobnePodrobno`) ga obravnavata kot neznan datum (ne »enak«). Obrazec
+    ob ugibanem datumu podobnih igralcev išče brez datuma.
+  - **Starostni pas in sidro ratinga se izpeljeta iz ugibanega datuma kot iz
+    pravega** — zato obstaja: ocenjen datum uvrsti igralca v kategorijo, v kateri
+    igra. Od 1. 1. 1900 (= »datum ni znan«, igralec velja za odraslega) se loči
+    po tem, da je ugiban datum izbran tako, da starost drži. Uvoz mladinskih
+    turnirjev (1. MRNTZ) uporablja 1. 1. letnika, ki je zgornja meja kategorije:
+    U11 → 2016, U13 → 2014, U15 → 2012, U19 → 2008 (sezona 2026/27).
+  - **Združitev dvojnikov**: pravi datum premaga ugibanega (in neznanega), znacka
+    gre z datumom (`IgralciZdruzitevStoritev`). Značka je samo v podrobnem
+    zapisu (admin), nikoli v javnem; organizator je ne vidi po vpisu.
+  - Obstoječi igralci so `false`. Admin popravi datum v oknu »Uredi igralca« in
+    odkljuka značko, ko pravi datum izve. Testi: `DatumRojstvaUgibanTest`,
+    `RegistracijaTest` (ugibanDatumRojstvaNePovezeSamodejnoInNiVPredogledu),
+    `IgralciZdruzitevTest`.
 - **Ime pred priimkom, povsod.** Slovensko se oseba imenuje »Ana Novak« in tak
   je *vsak* izpis igralca — v zaledju ga sestavi `Igralec.polnoIme()`, v
   vmesniku pa vsako mesto, ki ime in priimek izpiše ločeno (izbirniki,

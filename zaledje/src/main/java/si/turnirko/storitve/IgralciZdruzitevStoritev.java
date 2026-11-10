@@ -137,9 +137,15 @@ public class IgralciZdruzitevStoritev {
         if (ohranjen.getNaslov() == null) ohranjen.setNaslov(odvecen.getNaslov());
         if (ohranjen.getKraj() == null) ohranjen.setKraj(odvecen.getKraj());
         if (ohranjen.getKlub() == null) ohranjen.setKlub(odvecen.getKlub());
-        if (DvojnikiIgralcevStoritev.NEZNAN_DATUM.equals(ohranjen.getDatumRojstva())
-                && !DvojnikiIgralcevStoritev.NEZNAN_DATUM.equals(odvecen.getDatumRojstva())) {
+        /* Datum rojstva: znan premaga neznanega (1. 1. 1900), TOCEN pa ugibanega
+           (V64) - tak datum je priblizek, zato obdrzan igralec dobi pravega,
+           cim ga ima odvecni. Znacka gre z datumom. */
+        boolean ohranjenNeznan = DvojnikiIgralcevStoritev.NEZNAN_DATUM.equals(ohranjen.getDatumRojstva());
+        boolean odvecenNeznan = DvojnikiIgralcevStoritev.NEZNAN_DATUM.equals(odvecen.getDatumRojstva());
+        if (!odvecenNeznan && (ohranjenNeznan
+                || (ohranjen.isDatumRojstvaUgiban() && !odvecen.isDatumRojstvaUgiban()))) {
             ohranjen.setDatumRojstva(odvecen.getDatumRojstva());
+            ohranjen.setDatumRojstvaUgiban(odvecen.isDatumRojstvaUgiban());
         }
         igralecRepozitorij.saveAndFlush(ohranjen);
         return preracunajOd;

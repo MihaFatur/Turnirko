@@ -385,6 +385,7 @@ public class RegistracijaStoritev {
         String priimek = RacuniStoritev.normaliziraj(v.priimek());
         List<Igralec> kandidati = igralecRepozitorij.najdiPoDatumihRojstva(List.of(datum)).stream()
                 .filter(i -> !i.isArhiviran())
+                .filter(i -> !i.isDatumRojstvaUgiban())
                 .filter(i -> RacuniStoritev.normaliziraj(i.getIme()).equals(ime)
                         && RacuniStoritev.normaliziraj(i.getPriimek()).equals(priimek))
                 .toList();
@@ -452,12 +453,16 @@ public class RegistracijaStoritev {
     }
 
     /* Aktivni igralci, ki jim ime, priimek in datum rojstva z racuna (brez
-       sumnikov in velikih crk) ustrezajo; datum rojstva mora biti znan. */
+       sumnikov in velikih crk) ustrezajo; datum rojstva mora biti znan.
+       Igralec z UGIBANIM datumom (V64) se ne ujame: datum je lahko 1. 1.
+       letnika, ki ga kdo pozna ali ugane, zato bi bil »dokaz« za prevzem
+       profila prelahek - tak zapis poveze samo admin. */
     private List<Igralec> kandidatiZaRacun(Uporabnik u) {
         String ime = RacuniStoritev.normaliziraj(u.getPrijavljenoIme());
         String priimek = RacuniStoritev.normaliziraj(u.getPrijavljeniPriimek());
         return igralecRepozitorij.najdiPoDatumihRojstva(List.of(u.getPrijavljeniDatumRojstva())).stream()
                 .filter(i -> !i.isArhiviran())
+                .filter(i -> !i.isDatumRojstvaUgiban())
                 .filter(i -> RacuniStoritev.normaliziraj(i.getIme()).equals(ime)
                         && RacuniStoritev.normaliziraj(i.getPriimek()).equals(priimek))
                 .toList();

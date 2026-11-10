@@ -24618,6 +24618,13 @@ button.kartoteka__meta {
   border: 1px solid var(--barva-crnilo);
 }
 
+/* Datum rojstva je ugiban (V64): obris v tišji barvi, da se ne bere kot opozorilo. */
+.kartoteka__znacka--ugib {
+  padding: 2px 6px;
+  border: 1px solid var(--barva-crnilo-4);
+  color: var(--barva-crnilo-3);
+}
+
 .kartoteka__znacka--prov {
   letter-spacing: normal;
   padding: 3px 6px;
@@ -24992,7 +24999,8 @@ button.kartoteka__meta {
   color: var(--barva-crnilo-3);
 }
 
-.kartoteka__mobi-vrstica .kartoteka__znacka--rekr {
+.kartoteka__mobi-vrstica .kartoteka__znacka--rekr,
+.kartoteka__mobi-vrstica .kartoteka__znacka--ugib {
   padding: 2px 5px;
 }
 

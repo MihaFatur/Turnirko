@@ -129,10 +129,11 @@ public class DvojnikiIgralcevStoritev {
         return Math.min(a, b) + "-" + Math.max(a, b);
     }
 
-    /* Neznan datum (1. 1. 1900) pri enem ali obeh ni »enak« ali »podoben«:
-       o datumu ne vemo nicesar. */
+    /* Neznan datum (1. 1. 1900) ali UGIBAN datum (V64) pri enem ali obeh ni
+       »enak« ali »podoben«: o datumu ne vemo nicesar zanesljivega. */
     private static PrimerjavaDatuma primerjajDatum(Igralec a, Igralec b) {
-        if (NEZNAN_DATUM.equals(a.getDatumRojstva()) || NEZNAN_DATUM.equals(b.getDatumRojstva())) {
+        if (NEZNAN_DATUM.equals(a.getDatumRojstva()) || NEZNAN_DATUM.equals(b.getDatumRojstva())
+                || a.isDatumRojstvaUgiban() || b.isDatumRojstvaUgiban()) {
             return PrimerjavaDatuma.DRUG;
         }
         return PodobnostImen.primerjajDatum(a.getDatumRojstva(), b.getDatumRojstva());

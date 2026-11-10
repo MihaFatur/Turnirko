@@ -52,6 +52,12 @@ public class Igralec {
     @Column(name = "datum_rojstva", nullable = false)
     private LocalDate datumRojstva;
 
+    /* Vpisani datum rojstva je PRIBLIZEK (npr. 1. 1. letnika, da igralec spada
+       v kategorijo, v kateri igra) in ne dokaz o osebi (V64). Zato ga ne
+       uporabljata samodejna povezava racuna in primerjava dvojnikov. */
+    @Column(name = "datum_rojstva_ugiban", nullable = false)
+    private boolean datumRojstvaUgiban = false;
+
     @Column(name = "email")
     private String email;
 
@@ -129,6 +135,9 @@ public class Igralec {
 
     public LocalDate getDatumRojstva() { return datumRojstva; }
     public void setDatumRojstva(LocalDate datumRojstva) { this.datumRojstva = datumRojstva; }
+
+    public boolean isDatumRojstvaUgiban() { return datumRojstvaUgiban; }
+    public void setDatumRojstvaUgiban(boolean datumRojstvaUgiban) { this.datumRojstvaUgiban = datumRojstvaUgiban; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

@@ -28,6 +28,8 @@ public record IgralecDto(
         int steviloTekem,
         // rating zacne pri 800 namesto pri starostnem sidru (V36)
         boolean rekreativniVstop,
+        // vpisani datum rojstva je priblizek (V64), ne tocen podatek
+        boolean datumRojstvaUgiban,
         /* Isti izpeljani pas kot v IgralecJavniDto: stran Igralci filtrira po
            njem, datum rojstva pa mora ostati le tu, pri adminu. */
         StarostniPas starostniPas
@@ -55,6 +57,7 @@ public record IgralecDto(
                 rating,
                 steviloTekem,
                 igralec.isRekreativniVstop(),
+                igralec.isDatumRojstvaUgiban(),
                 StarostniPas.izpelji(igralec.getDatumRojstva(), LocalDate.now())
         );
     }

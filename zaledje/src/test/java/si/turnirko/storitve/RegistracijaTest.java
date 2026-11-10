@@ -348,6 +348,26 @@ class RegistracijaTest {
         dostopDoProfila.preveriLastnistvo(igralec.id(), "ziga@test.si");
     }
 
+    /* Ugiban datum (V64) je lahko 1. 1. letnika, ki ga kdo pozna ali ugane, zato
+       ni dokaz za prevzem profila: tak zapis poveze samo admin. */
+    @Test
+    void ugibanDatumRojstvaNePovezeSamodejnoInNiVPredogledu() {
+        igralci.ustvari(new IgralecVnos("Žiga", "Ugibač", Spol.MOSKI, ODRASEL,
+                null, null, null, null, "SLO", null, null, null, null, true));
+
+        assertFalse(registracija.predogledZapisa(
+                new PredogledZapisaVnos("Žiga", "Ugibač", ODRASEL), IP).najden(),
+                "zapis z ugibanim datumom se v predogledu ne ponudi");
+
+        registracija.registriraj(igralec("Žiga", "Ugibač", "ugiban@test.si"), IP);
+        PotrditevOdgovorDto odgovor = registracija.potrdiEposto(
+                new PotrditevKodeVnos("ugiban@test.si", koda("ugiban@test.si")));
+
+        assertFalse(odgovor.povezan(), "ugiban datum ne povezuje racuna z zapisom");
+        assertNull(racun("ugiban@test.si").getIgralec());
+        assertEquals(StatusRacuna.CAKA, racun("ugiban@test.si").getStatus(), "racun caka na admina");
+    }
+
     @Test
     void drugDatumRojstvaAliDvaZadetkaNePovezeta() {
         igralecVSifrantu("Ana", "Kovač", ODRASEL);

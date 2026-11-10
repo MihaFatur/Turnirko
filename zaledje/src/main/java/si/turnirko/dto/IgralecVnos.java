@@ -29,5 +29,17 @@ public record IgralecVnos(
         Long idKlub,
         // igralec pride iz rekreacije: rating zacne pri 800 namesto pri
         // starostnem sidru (V36); null = ne
-        Boolean rekreativniVstop
-) {}
+        Boolean rekreativniVstop,
+        // vpisani datum rojstva je priblizek (V64); null = ne
+        Boolean datumRojstvaUgiban
+) {
+
+    /* Vnos brez znacke »datum rojstva ugiban« (datum je tocen). */
+    public IgralecVnos(String ime, String priimek, Spol spol, LocalDate datumRojstva, String email,
+                       String telefonskaSt, IgralnaRoka igralnaRoka, String ntzsLicenca,
+                       String drzavljanstvo, String naslov, Integer postnaSt, Long idKlub,
+                       Boolean rekreativniVstop) {
+        this(ime, priimek, spol, datumRojstva, email, telefonskaSt, igralnaRoka, ntzsLicenca,
+                drzavljanstvo, naslov, postnaSt, idKlub, rekreativniVstop, null);
+    }
+}

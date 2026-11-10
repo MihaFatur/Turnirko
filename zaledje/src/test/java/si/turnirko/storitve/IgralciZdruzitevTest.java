@@ -98,6 +98,19 @@ class IgralciZdruzitevTest extends IntegracijskiTest {
     }
 
     @Test
+    void ugibanDatumNiDokazZaIstoOsebo() {
+        Igralec a = igralec("Tadej", "Ugiban", LocalDate.of(2015, 1, 1));
+        a.setDatumRojstvaUgiban(true);
+        igralecRepozitorij.save(a);
+        Igralec b = igralec("Tadej", "Ugiban", LocalDate.of(2015, 1, 1));
+
+        DvojnikIgralcaDto par = pariZ(a, b).get(0);
+
+        assertEquals(PrimerjavaDatuma.DRUG, par.datum(),
+                "enak 1. 1. letnika pri ugibanem datumu ni »enak datum rojstva«");
+    }
+
+    @Test
     void tipkarskaNapakaJePodobnoImeInLevijeJeTistiZVecTekmami() {
         Igralec novejsi = igralec("Marjetka", "Napakic", LocalDate.of(1990, 1, 1));
         Igralec starejsi = igralec("Marjetko", "Napakic", LocalDate.of(1990, 1, 1));
@@ -175,6 +188,42 @@ class IgralciZdruzitevTest extends IntegracijskiTest {
         assertTrue(arhiviran.isArhiviran());
         assertNull(arhiviran.getNtzsLicenca(), "unikatna polja odvecnega so sproscena");
         assertEquals(obdrzan.getId(), izid.igralec().id());
+    }
+
+    @Test
+    void zdruzitevZamenjaUgibanDatumSTocnim() {
+        Igralec obdrzan = noviIgralec("Ugiban", "Obdrzan");
+        obdrzan.setDatumRojstva(LocalDate.of(2016, 1, 1));
+        obdrzan.setDatumRojstvaUgiban(true);
+        igralecRepozitorij.save(obdrzan);
+        Igralec odvec = noviIgralec("Ugiban", "Obdrzan");
+        odvec.setDatumRojstva(LocalDate.of(2016, 6, 15));
+        igralecRepozitorij.save(odvec);
+
+        zdruzitev.zdruzi(obdrzan.getId(), odvec.getId());
+        em.clear();
+
+        Igralec po = igralecRepozitorij.findById(obdrzan.getId()).orElseThrow();
+        assertEquals(LocalDate.of(2016, 6, 15), po.getDatumRojstva(), "pravi datum premaga ugibanega");
+        assertFalse(po.isDatumRojstvaUgiban(), "znacka gre z datumom");
+    }
+
+    @Test
+    void zdruzitevTocnegaDatumaNeNadomestiZUgibanim() {
+        Igralec obdrzan = noviIgralec("Tocen", "Obdrzan");
+        obdrzan.setDatumRojstva(LocalDate.of(2016, 6, 15));
+        igralecRepozitorij.save(obdrzan);
+        Igralec odvec = noviIgralec("Tocen", "Obdrzan");
+        odvec.setDatumRojstva(LocalDate.of(2016, 1, 1));
+        odvec.setDatumRojstvaUgiban(true);
+        igralecRepozitorij.save(odvec);
+
+        zdruzitev.zdruzi(obdrzan.getId(), odvec.getId());
+        em.clear();
+
+        Igralec po = igralecRepozitorij.findById(obdrzan.getId()).orElseThrow();
+        assertEquals(LocalDate.of(2016, 6, 15), po.getDatumRojstva());
+        assertFalse(po.isDatumRojstvaUgiban());
     }
 
     @Test

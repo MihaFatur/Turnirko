@@ -139,7 +139,8 @@ public class IgralciStoritev {
     @Transactional(readOnly = true)
     public List<PodobenIgralecDto> najdiPodobnePodrobno(PodobniIgralciVnos vnos) {
         List<Zadetek> zadetki = najdiZadetke(vnos).stream()
-                .map(z -> vnos.datumRojstva() == null ? z : z.sDatumom(
+                // ugiban datum obstojecega ni dokaz za isto ali drugo osebo: kot neznan
+                .map(z -> vnos.datumRojstva() == null || z.igralec().isDatumRojstvaUgiban() ? z : z.sDatumom(
                         PodobnostImen.primerjajDatum(vnos.datumRojstva(), z.igralec().getDatumRojstva())))
                 .sorted(Comparator
                         .comparingInt((Zadetek z) -> z.moc())
@@ -225,6 +226,7 @@ public class IgralciStoritev {
         igralec.setPriimek(vnos.priimek().trim());
         igralec.setSpol(vnos.spol());
         igralec.setDatumRojstva(vnos.datumRojstva());
+        igralec.setDatumRojstvaUgiban(Boolean.TRUE.equals(vnos.datumRojstvaUgiban()));
         igralec.setEmail(ocisti(vnos.email()));
         igralec.setTelefonskaSt(ocisti(vnos.telefonskaSt()));
         igralec.setIgralnaRoka(vnos.igralnaRoka());

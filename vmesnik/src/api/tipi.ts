@@ -114,6 +114,8 @@ export interface IgralecPodrobenDto extends IgralecDto {
   kraj: KrajDto | null
   /* Rating začne pri 800 namesto pri starostnem sidru (glej IgralecVnos). */
   rekreativniVstop: boolean
+  /* Vpisani datum rojstva je približek (glej IgralecVnos). */
+  datumRojstvaUgiban: boolean
 }
 
 /* Kako se vpisano ime ujema z imenom obstoječega igralca (zrcali UjemanjeImena):
@@ -1610,10 +1612,17 @@ export interface IgralecVnos {
   /* Igralec pride iz rekreacije: rating začne pri 800 namesto pri starostnem
      sidru. Ni oznaka lestvice rekreativcev (ta se izpelje iz tekem). */
   rekreativniVstop: boolean
+  /* Vpisani datum rojstva je približek (npr. 1. 1. letnika, da igralec spada v
+     kategorijo, v kateri igra), ne točen podatek. Takega datuma strežnik ne
+     šteje za dokaz o osebi: račun se z zapisom ne poveže sam, primerjava
+     dvojnikov ga ne šteje za »enak datum«. */
+  datumRojstvaUgiban: boolean
 }
 
-/* Podatki vpisa, po katerih strežnik išče podobne igralce. */
-export type PodobniVnos = Pick<IgralecVnos, 'ime' | 'priimek' | 'spol' | 'datumRojstva'>
+/* Podatki vpisa, po katerih strežnik išče podobne igralce. Datum rojstva je
+   neobvezen: pri ugibanem datumu se ne pošlje, ker o datumu ne vemo nič. */
+export type PodobniVnos = Pick<IgralecVnos, 'ime' | 'priimek' | 'spol'> &
+  Partial<Pick<IgralecVnos, 'datumRojstva'>>
 
 export interface KlubVnos {
   ime: string
