@@ -18,7 +18,15 @@ turnirko-nt.si, www.turnirko-nt.si {
 	# "app" je ime storitve iz compose.yaml; Docker ga razresi v notranji
 	# naslov. Vrata 8080 niso izpostavljena navzven (glej compose.yaml) -
 	# do aplikacije se pride SAMO skozi Caddy, torej samo prek HTTPS.
-	reverse_proxy app:8080
+	#
+	# Kdo je odjemalec, sme povedati samo Caddy (X-Forwarded-For postavi sam).
+	# Glavi Forwarded in X-Real-IP bi sicer prisli od odjemalca nespremenjeni
+	# in z njima bi vsak zahtevek lahko nosil izmisljen naslov - mimo vseh
+	# omejitev poskusov po IP (docs/VARNOSTNI-PREGLED.md, V1).
+	reverse_proxy app:8080 {
+		header_up -Forwarded
+		header_up -X-Real-IP
+	}
 
 	# Glave, ki brskalniku povejo, cesa naj ne pocne. HSTS pomeni: to
 	# stran odslej odpiraj samo prek HTTPS, tudi ce kdo poslje povezavo
@@ -125,7 +133,10 @@ test.turnirko-nt.si {
 	# "!= \"\"" je varovalka: ce zetona v okolju ni, izraz ne pusti nikogar.
 	@dovoljen expression `"{$TEST_ZETON}" != "" && {http.request.cookie.test_dostop} == "{$TEST_ZETON}"`
 	handle @dovoljen {
-		reverse_proxy test-app:8080
+		reverse_proxy test-app:8080 {
+			header_up -Forwarded
+			header_up -X-Real-IP
+		}
 	}
 
 	handle {
