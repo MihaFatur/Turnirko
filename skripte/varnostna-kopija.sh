@@ -142,3 +142,20 @@ if [ -n "$ODNASANJE" ]; then
 else
 	zapis "OPOZORILO: odnasanje ni nastavljeno (TURNIRKO_ODNASANJE) - kopija je samo na tem strezniku"
 fi
+
+# Znak zivljenja zunanjemu nadzoru ("dead man's switch", docs/VZDRZEVANJE-STREZNIKA.md).
+# Do sem pride skripta samo po USPELI kopiji (in odnasanju, ce je nastavljeno):
+# vsaka napaka zgoraj konca z "exit 1". Nadzor, ki klica ne dobi pravocasno,
+# poslje lastniku e-posto - sicer neuspela kopija ostane samo v dnevniku, ki ga
+# nihce ne bere. Naslov je po vrsti kopije: TURNIRKO_PING_NOC, TURNIRKO_PING_URA
+# (okolje ali .env); brez njega se ne zgodi nic. Rocna kopija ne javlja.
+if [ "$VRSTA" != "rocno" ]; then
+	IME_PINGA="TURNIRKO_PING_$(printf '%s' "$VRSTA" | tr '[:lower:]' '[:upper:]')"
+	PING="${!IME_PINGA:-}"
+	if [ -z "$PING" ] && [ -f "$MAPA/.env" ]; then
+		PING=$(grep -E "^${IME_PINGA}=" "$MAPA/.env" | tail -n 1 | cut -d= -f2- || true)
+	fi
+	if [ -n "$PING" ]; then
+		curl -fsS -m 10 --retry 2 -o /dev/null "$PING" || zapis "OPOZORILO: nadzor kopij ni dosegljiv ($IME_PINGA)"
+	fi
+fi
