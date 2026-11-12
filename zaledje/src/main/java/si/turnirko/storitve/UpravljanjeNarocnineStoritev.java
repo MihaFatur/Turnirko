@@ -106,6 +106,36 @@ public class UpravljanjeNarocnineStoritev {
         return dto(narocninaRepozitorij.save(n));
     }
 
+    /* Pred izbrisom racuna (administrator, nocno ciscenje). Vrstica narocnine
+       izgine z racunom (ON DELETE CASCADE), Stripe pa bi zaracunaval naprej in
+       webhook narocnine ne bi vec nasel: placnik bi placeval brez racuna in
+       brez moznosti preklica. Zato se obnova v Stripu ustavi PRED izbrisom.
+       Preklicana narocnina se ne obnavlja vec; preizkus in brezplacni paketi
+       Stripove narocnine nimajo. Ce Stripe odpove, izjema izbris prepreci.
+
+       Vrstica narocnine se nato izbrise TUDI v enoti dela, ne le v bazi (isto
+       kot kode v KodeStoritev.pobrisiVse): nalozena narocnina kaze na racun in
+       Hibernate ob izpisu izbris racuna sicer zavrne.
+
+       NAMENOMA brez @Transactional: klicatelj transakcijo ze ima, nocno
+       ciscenje pa izjemo ujame in racun preskoci - meja transakcije tukaj bi
+       njegovo celotno delo oznacila za povrnitev. */
+    public void odstraniNarocninoPredIzbrisom(Uporabnik racun) {
+        Narocnina n = narocninaRepozitorij.findByUporabnikId(racun.getId()).orElse(null);
+        if (n == null) {
+            return;
+        }
+        boolean stripeSeObnavlja = n.getStripeNarocninaId() != null
+                && (n.getStatus() == StatusNarocnine.AKTIVNA || n.getStatus() == StatusNarocnine.ZAPADLA);
+        if (stripeSeObnavlja) {
+            // narocnino z urnikom vodi urnik, zato ga najprej sprostimo (kot pri preklicu)
+            stripe.sprostiUrnik(n.getStripeNarocninaId());
+            stripe.nastaviPreklicOKoncu(n.getStripeNarocninaId(), true);
+        }
+        narocninaRepozitorij.delete(n);
+        narocninaRepozitorij.flush();
+    }
+
     /* Obnova preklicane narocnine ne stane nic: obdobje je ze placano, obnova
        samo umakne preklic. Izbran cikel drugacen od tekocega se zabelezi kot
        preklop ob obnovi (uporabnik ob obnovi izbira placevanje), izbran drug

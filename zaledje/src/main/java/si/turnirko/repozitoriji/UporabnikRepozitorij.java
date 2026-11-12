@@ -90,13 +90,17 @@ public interface UporabnikRepozitorij extends JpaRepository<Uporabnik, Long> {
 
     /* Registracije, pri katerih lastnik naslova kode ni vpisal do meje.
        Zavrnjeni racuni ostanejo: zavrnitev je adminova odlocitev, ki naslov
-       zasede, dokler ga admin sam ne izbrise. */
+       zasede, dokler ga admin sam ne izbrise. Racun z vrstico narocnine ostane
+       prav tako: placljiva registracija ustvari racun in narocnino ob placilu,
+       se preden je naslov potrjen. Izbris bi odnesel narocnino (ON DELETE
+       CASCADE), Stripe pa bi placniku zaracunaval naprej brez racuna. */
     @Query("""
             SELECT u FROM Uporabnik u
             WHERE u.emailPotrjenOb IS NULL
               AND u.vloga <> si.turnirko.modeli.Vloga.ADMIN
               AND u.status <> si.turnirko.modeli.StatusRacuna.ZAVRNJEN
               AND u.ustvarjenOb < :meja
+              AND NOT EXISTS (SELECT n.id FROM Narocnina n WHERE n.uporabnik = u)
             """)
     List<Uporabnik> najdiNepotrjeneStarejseOd(LocalDateTime meja);
 

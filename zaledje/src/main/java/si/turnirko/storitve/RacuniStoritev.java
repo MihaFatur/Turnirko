@@ -57,6 +57,7 @@ public class RacuniStoritev {
     private final NarocninaStoritev narocninaStoritev;
     private final PreizkusPremiumStoritev preizkus;
     private final KodePopustaStoritev kodePopusta;
+    private final UpravljanjeNarocnineStoritev upravljanjeNarocnine;
 
     public RacuniStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                           IgralecRepozitorij igralecRepozitorij,
@@ -69,7 +70,8 @@ public class RacuniStoritev {
                           RacunDnevnikStoritev dnevnik,
                           NarocninaStoritev narocninaStoritev,
                           PreizkusPremiumStoritev preizkus,
-                          KodePopustaStoritev kodePopusta) {
+                          KodePopustaStoritev kodePopusta,
+                          UpravljanjeNarocnineStoritev upravljanjeNarocnine) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.klubRepozitorij = klubRepozitorij;
@@ -82,6 +84,7 @@ public class RacuniStoritev {
         this.narocninaStoritev = narocninaStoritev;
         this.preizkus = preizkus;
         this.kodePopusta = kodePopusta;
+        this.upravljanjeNarocnine = upravljanjeNarocnine;
     }
 
     // ---------- Lastni racun ----------
@@ -258,10 +261,16 @@ public class RacuniStoritev {
     /* Izbris racuna. Potreben je, ker zavrnjen racun sicer za vedno zasede
        svojo e-posto - brisanje je edini nacin, da se ista oseba lahko
        registrira znova (ali da se odstrani lazna oz. testna registracija).
-       Zapisi igralca in njegovih tekem se s tem ne dotaknejo. */
+       Zapisi igralca in njegovih tekem se s tem ne dotaknejo.
+
+       Placljiva narocnina: njena vrstica izgine z racunom, zato se obnova v
+       Stripu ustavi NAJPREJ. Ce Stripe odpove, izjema izbris prepreci - racun
+       brez vrstice narocnine, ki mu Stripe se zaracunava, je slabsi od racuna,
+       ki ga je treba izbrisati se enkrat. */
     @Transactional
     public void zbrisi(Long idRacuna) {
         Uporabnik u = najdiRacun(idRacuna);
+        upravljanjeNarocnine.odstraniNarocninoPredIzbrisom(u);
         kode.pobrisiVse(u);
         uporabnikRepozitorij.delete(u);
     }

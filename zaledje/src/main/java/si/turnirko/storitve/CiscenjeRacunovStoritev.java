@@ -39,21 +39,31 @@ public class CiscenjeRacunovStoritev {
     private final PotrditvenaKodaRepozitorij kodaRepozitorij;
     private final CakajocaRegistracijaRepozitorij cakajoce;
 
+    private final UpravljanjeNarocnineStoritev narocnine;
+
     public CiscenjeRacunovStoritev(UporabnikRepozitorij uporabnikRepozitorij,
                                    PotrditvenaKodaRepozitorij kodaRepozitorij,
-                                   CakajocaRegistracijaRepozitorij cakajoce) {
+                                   CakajocaRegistracijaRepozitorij cakajoce,
+                                   UpravljanjeNarocnineStoritev narocnine) {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.kodaRepozitorij = kodaRepozitorij;
         this.cakajoce = cakajoce;
+        this.narocnine = narocnine;
     }
 
     /* Vrne stevilo izbrisanih racunov. */
     @Transactional
     public int pocisti(LocalDateTime zdaj) {
+        // placani, a nepotrjeni racuni niso med njimi (glej poizvedbo)
         List<Uporabnik> brezNaslova = uporabnikRepozitorij
                 .najdiNepotrjeneStarejseOd(zdaj.minusHours(UR_ZA_POTRDITEV_NASLOVA));
+        /* Racun brez soglasja skrbnika se mora izbrisati tudi, ce je placljiv,
+           zato se obnova v Stripu ustavi pred izbrisom. Ce Stripe odpove, racun
+           ostane do naslednje noci - izbris brez tega bi pustil narocnino, ki
+           zaracunava, a je v aplikaciji ni vec. */
         List<Uporabnik> brezSoglasja = uporabnikRepozitorij
-                .najdiBrezSoglasjaStarejseOd(zdaj.minusDays(DNI_ZA_SOGLASJE_SKRBNIKA));
+                .najdiBrezSoglasjaStarejseOd(zdaj.minusDays(DNI_ZA_SOGLASJE_SKRBNIKA))
+                .stream().filter(this::obnovaUstavljena).toList();
         // kode najprej: enota dela mora vedeti zanje, ne le baza (ON DELETE CASCADE)
         for (Uporabnik u : brezNaslova) {
             kodaRepozitorij.deleteAll(kodaRepozitorij.findByRacunId(u.getId()));
@@ -73,6 +83,17 @@ public class CiscenjeRacunovStoritev {
                     + "{} neplacanih registracij.", racuni, kode, neplacane);
         }
         return racuni;
+    }
+
+    private boolean obnovaUstavljena(Uporabnik u) {
+        try {
+            narocnine.odstraniNarocninoPredIzbrisom(u);
+            return true;
+        } catch (RuntimeException e) {
+            dnevnik.error("Ciscenje: racuna {} ne brisem, ker obnove narocnine v Stripu ni bilo "
+                    + "mogoce ustaviti: {}", u.getId(), e.getMessage());
+            return false;
+        }
     }
 
     /* Dnevno ob 3.45, za odbitkom za neaktivnost (3.15) - takrat nihce
