@@ -67,6 +67,13 @@ glavno() {
 	echo "    napak (ERROR) v dnevniku zadnjih 10 min: $NAPAK"
 	if [ "$NAPAK" != "0" ]; then
 		dc logs --since 10m test-app 2>&1 | grep ' ERROR ' | head -5
+		# Commit z napakami ob zagonu ni "preizkusen": v-produkcijo.sh ga ne sme
+		# spustiti naprej samo zato, ker se je aplikacija zagnala.
+		if [ "${TURNIRKO_TEST_KLJUB_NAPAKAM:-0}" != 1 ]; then
+			echo "NAPAKA: aplikacija tece, a dnevnik ima napake; commit NI oznacen kot preizkusen." >&2
+			echo "        Ce so napake pricakovane: TURNIRKO_TEST_KLJUB_NAPAKAM=1 bash $TEST/skripte/test/objavi.sh" >&2
+			exit 1
+		fi
 	fi
 
 	printf '%s\n%s\n' "$SHA" "$(date '+%F %T')" > "$TEST/.zadnja-objava"
