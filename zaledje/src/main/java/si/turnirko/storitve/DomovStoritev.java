@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -171,10 +172,26 @@ public class DomovStoritev {
                 .toList();
     }
 
+    /* Najvec lig iz parametra zahtevka. Pot je javna in vsaka liga pomeni poln
+       izracun lestvice, zato dolzina seznama ne sme biti v rokah odjemalca:
+       brez meje bi en zahtevek z nekaj sto id-ji sprozil nekaj sto izracunov.
+       Izbor racuna steje nekaj lig; presezek tiho odpade, kot neobstojece lige. */
+    static final int NAJVEC_LIG_V_ZAHTEVKU = 40;
+
+    /* Izbor iz zahtevka brez ponovitev in praznih vrednosti, najvec
+       NAJVEC_LIG_V_ZAHTEVKU, v prvotnem vrstnem redu. */
+    static List<Long> omejiIzbor(List<Long> idji) {
+        return idji.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .limit(NAJVEC_LIG_V_ZAHTEVKU)
+                .toList();
+    }
+
     /* Vrstni red sledi izboru, neobstojece lige tiho odpadejo. */
     private List<Liga> poIzboru(List<Long> idji) {
         List<Liga> lige = new ArrayList<>();
-        for (Long id : idji) {
+        for (Long id : omejiIzbor(idji)) {
             ligaRepozitorij.findById(id).ifPresent(lige::add);
         }
         return lige;
