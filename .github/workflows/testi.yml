@@ -1,0 +1,71 @@
+# Samodejni dokaz pred objavo (pregled kakovosti, nov. 2026).
+#
+# Slika za streznik se gradi z -DskipTests (Dockerfile), zato do zdaj nic ni
+# pognalo testov, razen ce se je kdo spomnil. Ta tok jih pozene ob vsakem
+# pushu na vejo test (delovna veja) in main (preverjeno stanje):
+#   - zaledje: vsi testi (mvnw test) na vgrajenem PostgreSQL, brez Dockerja;
+#   - vmesnik: preverba tipov in gradnja (npm run build = tsc --noEmit + vite build).
+#
+# Rdec tok pomeni: tega commita ne povisuj v produkcijo. Stanje je vidno na
+# GitHubu ob commitu (zelena kljukica ali rdec kriz) in v zavihku Actions.
+#
+# Java 21 in Node 22 sta isti razlicici kot pri gradnji slike (Dockerfile,
+# pom.xml: frontend-maven-plugin), da tok preverja to, kar gre na streznik.
+
+name: Testi
+
+on:
+  push:
+    branches: [test, main]
+  pull_request:
+  workflow_dispatch:
+
+# Nov push na isto vejo prekine starejsi tek: velja samo zadnje stanje.
+concurrency:
+  group: testi-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zaledje:
+    name: Zaledje (testi)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      # mvnw v repozitoriju nima izvrsilne pravice, zato prek sh (kot Dockerfile)
+      - name: Testi zaledja
+        working-directory: zaledje
+        run: sh ./mvnw -B test
+      - name: Porocila testov ob napaki
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: porocila-testov
+          path: zaledje/target/surefire-reports
+          retention-days: 7
+
+  vmesnik:
+    name: Vmesnik (tipi in gradnja)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: vmesnik/package-lock.json
+      - name: Odvisnosti
+        working-directory: vmesnik
+        run: npm ci
+      - name: Preverba tipov in gradnja
+        working-directory: vmesnik
+        run: npm run build
