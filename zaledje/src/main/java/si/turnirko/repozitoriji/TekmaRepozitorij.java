@@ -373,14 +373,39 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
 
     /* Vse odigrane POSAMICNE turnirske tekme enega igralca (v obeh slotih),
        najnovejse prve - za profil igralca. Nalozeno je vse, kar bere DTO:
-       turnir, dogodek, oba igralca in njuna kluba ob prijavi. */
+       turnir, dogodek, oba igralca in njuna kluba ob prijavi.
+
+       DVA koraka (nov. 2026): poizvedba z vsemi stiki je za enega igralca
+       zdruzila vse tekme z vsemi stranmi in sele nato obdrzala njegove (~67 ms
+       na kopiji produkcije; PostgreSQL pri toliko stikih vrstnega reda ne
+       preureja). Najprej zato id-ji tekem, v katerih igralec sploh nastopa
+       (idjiTekemIgralca - namenoma sirsi izbor), nato ista poizvedba kot prej,
+       omejena nanje. Merila ostanejo v drugi poizvedbi, zato je izid isti. */
+    default List<Tekma> najdiZaIgralca(Long idIgralec) {
+        List<Long> idji = idjiTekemIgralca(idIgralec);
+        return idji.isEmpty() ? List.of() : najdiZaIgralcaMed(idIgralec, idji);
+    }
+
+    /* Id-ji VSEH tekem, v katerih je igralec na eni od strani - kot igralec
+       ali soigralec para, ne glede na stanje, izid in disciplino. Izbor za
+       drugi korak poizvedb profila, ne rezultat sam. */
+    @Query("""
+            SELECT t.id FROM Tekma t
+            WHERE t.prijava1.id IN (SELECT p.id FROM Prijava p
+                                    WHERE p.igralec.id = :idIgralec OR p.igralec2.id = :idIgralec)
+               OR t.prijava2.id IN (SELECT p.id FROM Prijava p
+                                    WHERE p.igralec.id = :idIgralec OR p.igralec2.id = :idIgralec)
+            """)
+    List<Long> idjiTekemIgralca(Long idIgralec);
+
     @Query("""
             SELECT t FROM Tekma t
             JOIN FETCH t.dogodek d JOIN FETCH d.turnir
             JOIN FETCH t.prijava1 p1 JOIN FETCH p1.igralec i1 LEFT JOIN FETCH i1.klub
             JOIN FETCH t.prijava2 p2 JOIN FETCH p2.igralec i2 LEFT JOIN FETCH i2.klub
             LEFT JOIN FETCH t.zmagovalec
-            WHERE t.status = si.turnirko.modeli.StatusTekme.KONCANA
+            WHERE t.id IN :idji
+              AND t.status = si.turnirko.modeli.StatusTekme.KONCANA
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.POSAMICNO
@@ -388,19 +413,25 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
               AND (p1.igralec.id = :idIgralec OR p2.igralec.id = :idIgralec)
             ORDER BY t.id DESC
             """)
-    List<Tekma> najdiZaIgralca(Long idIgralec);
+    List<Tekma> najdiZaIgralcaMed(Long idIgralec, java.util.Collection<Long> idji);
 
     /* Vse odigrane tekme DVOJIC, v katerih je igralec nastopil - v katerem
        koli od stirih mest (nosilec ali soigralec na eni ali drugi strani).
        Za razdelek "Dvojice" na profilu; v posamicno bilanco in rating te tekme
-       ne stejejo. */
+       ne stejejo. V dveh korakih, kot najdiZaIgralca. */
+    default List<Tekma> najdiDvojiceZaIgralca(Long idIgralec) {
+        List<Long> idji = idjiTekemIgralca(idIgralec);
+        return idji.isEmpty() ? List.of() : najdiDvojiceZaIgralcaMed(idIgralec, idji);
+    }
+
     @Query("""
             SELECT t FROM Tekma t
             JOIN FETCH t.dogodek d JOIN FETCH d.turnir
             JOIN FETCH t.prijava1 p1 JOIN FETCH p1.igralec i1 LEFT JOIN FETCH p1.igralec2 s1
             JOIN FETCH t.prijava2 p2 JOIN FETCH p2.igralec i2 LEFT JOIN FETCH p2.igralec2 s2
             LEFT JOIN FETCH t.zmagovalec
-            WHERE t.status = si.turnirko.modeli.StatusTekme.KONCANA
+            WHERE t.id IN :idji
+              AND t.status = si.turnirko.modeli.StatusTekme.KONCANA
               AND (t.izidTip IS NULL OR t.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
               AND d.disciplina = si.turnirko.modeli.Disciplina.DVOJICE
@@ -409,7 +440,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
                 OR i2.id = :idIgralec OR s2.id = :idIgralec)
             ORDER BY t.id DESC
             """)
-    List<Tekma> najdiDvojiceZaIgralca(Long idIgralec);
+    List<Tekma> najdiDvojiceZaIgralcaMed(Long idIgralec, java.util.Collection<Long> idji);
 
     /* Atomarno vpise udelezenca v slot 1, a samo ce je slot se prazen.
        Vrne 1, ce je vpis uspel. */

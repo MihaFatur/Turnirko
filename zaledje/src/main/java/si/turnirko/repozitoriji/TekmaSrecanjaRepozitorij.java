@@ -127,7 +127,25 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
     List<Long> nasprotniki(@Param("id") Long id);
 
     /* Vse odigrane POSAMICNE ligaske tekme enega igralca (doma ali v gosteh),
-       najnovejse prve - za profil igralca. */
+       najnovejse prve - za profil igralca.
+
+       DVA koraka (nov. 2026), kot TekmaRepozitorij.najdiZaIgralca: poizvedba
+       s trinajstimi stiki je za enega igralca zdruzila vse ligaske tekme z
+       vsem (~114 ms na kopiji produkcije). Najprej id-ji tekem, v katerih
+       igralec nastopa (ena tabela), nato ista poizvedba, omejena nanje. */
+    default List<TekmaSrecanja> najdiPosamicneZaIgralca(Long idIgralec) {
+        List<Long> idji = idjiPosamicnihIgralca(idIgralec);
+        return idji.isEmpty() ? List.of() : najdiPosamicneZaIgralcaMed(idIgralec, idji);
+    }
+
+    /* Izbor za drugi korak: tekme, v katerih je igralec doma ali v gosteh.
+       Stanje in tip preveri druga poizvedba. */
+    @Query("""
+            SELECT t.id FROM TekmaSrecanja t
+            WHERE t.igralecDomaci.id = :idIgralec OR t.igralecGost.id = :idIgralec
+            """)
+    List<Long> idjiPosamicnihIgralca(@Param("idIgralec") Long idIgralec);
+
     @Query("""
             SELECT t FROM TekmaSrecanja t
             JOIN FETCH t.srecanje s LEFT JOIN FETCH s.liga
@@ -136,13 +154,15 @@ public interface TekmaSrecanjaRepozitorij extends JpaRepository<TekmaSrecanja, L
             JOIN FETCH s.ekipaGost eg LEFT JOIN FETCH eg.klub
             JOIN FETCH t.igralecDomaci id LEFT JOIN FETCH id.klub
             JOIN FETCH t.igralecGost ig LEFT JOIN FETCH ig.klub
-            WHERE t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
+            WHERE t.id IN :idji
+              AND t.tip = si.turnirko.modeli.TipTekmeSrecanja.POSAMICNA
               AND t.status = si.turnirko.modeli.StatusTekmeSrecanja.KONCANA
               AND t.zmagovalecStran IS NOT NULL
               AND (t.igralecDomaci.id = :idIgralec OR t.igralecGost.id = :idIgralec)
             ORDER BY t.id DESC
             """)
-    List<TekmaSrecanja> najdiPosamicneZaIgralca(@Param("idIgralec") Long idIgralec);
+    List<TekmaSrecanja> najdiPosamicneZaIgralcaMed(@Param("idIgralec") Long idIgralec,
+                                                   @Param("idji") java.util.Collection<Long> idji);
 
     /* Odigrane ligaske DVOJICE, v katerih je igralec nastopil (kot eden od
        para). Ne stejejo v rating ne v osebne zmage, so pa svoj sklop profila. */
