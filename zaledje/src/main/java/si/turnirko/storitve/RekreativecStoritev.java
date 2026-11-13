@@ -14,10 +14,12 @@
    tekmovalnih tekem je stvar zgodovine, ki se ne more zmanjsati, hranjenje pa
    bi zahtevalo se eno polje, ki ga mora ponovni preracun obnoviti.
 
-   Izpeljava tece ob vsakem ogledu lestvice in profila, zato mora biti poceni:
+   Izpeljavo potrebujeta vsak ogled lestvice in profila, zato mora biti poceni:
    poizvedba iz dnevnika bere samo pokrivni indeks (V30, glej
-   RatingZgodovinaRepozitorij.tekmovalnihTekem). Klicatelj naj jo sprozi
-   ENKRAT za vse igralce, ki jih potrebuje - vsak klic prebere ves dnevnik. */
+   RatingZgodovinaRepozitorij.tekmovalnihTekem) in prebere ves dnevnik, njen
+   izid pa se od nov. 2026 hrani v predpomnilniku, dokler ga zapis v bazo ne
+   razveljavi (PredpomnilnikBranja). V transakciji, ki pise, se steje sproti -
+   tam naj jo klicatelj sprozi ENKRAT za vse igralce, ki jih potrebuje. */
 package si.turnirko.storitve;
 
 import java.util.Collection;
@@ -45,19 +47,24 @@ public class RekreativecStoritev {
             List.of(RavenTekmovanja.URADNO, RavenTekmovanja.KLUBSKO);
 
     private final RatingZgodovinaRepozitorij zgodovinaRepozitorij;
+    private final PredpomnilnikBranja predpomnilnik;
 
-    public RekreativecStoritev(RatingZgodovinaRepozitorij zgodovinaRepozitorij) {
+    public RekreativecStoritev(RatingZgodovinaRepozitorij zgodovinaRepozitorij,
+                               PredpomnilnikBranja predpomnilnik) {
         this.zgodovinaRepozitorij = zgodovinaRepozitorij;
+        this.predpomnilnik = predpomnilnik;
     }
 
     /* Med danimi igralci vrne tiste, ki so (se) rekreativci. */
     @Transactional(readOnly = true)
     public Set<Long> rekreativci(Collection<Long> idjiIgralcev) {
-        Map<Long, Integer> tekmovalnih = new HashMap<>();
-        for (Object[] r : zgodovinaRepozitorij.tekmovalnihTekem(
-                RatingStanje.SISTEM_TURNIRKO, TEKMOVALNE)) {
-            tekmovalnih.put(((Number) r[0]).longValue(), ((Number) r[1]).intValue());
-        }
+        /* Stetje cez ves dnevnik je najdrazji del lestvice in profila (na
+           kopiji produkcije ~130 ms od ~470 ms profila), odgovor pa je za
+           vse zahtevke isti, dokler se dnevnik ne spremeni - zato pride iz
+           predpomnilnika. Zastavica ostane IZPELJANA in se ne hrani v bazi:
+           vsak zapis v bazo predpomnilnik razveljavi (PredpomnilnikBranja). */
+        Map<Long, Integer> tekmovalnih = predpomnilnik.vrni(
+                "tekmovalnih-tekem", null, this::prestejTekmovalne);
         Set<Long> rekreativci = new HashSet<>();
         for (Long id : idjiIgralcev) {
             if (tekmovalnih.getOrDefault(id, 0) < PRAG_TEKEM) {
@@ -65,5 +72,15 @@ public class RekreativecStoritev {
             }
         }
         return rekreativci;
+    }
+
+    /* Stevilo tekmovalnih tekem po igralcu; kdor jih nima, v mapi ni. */
+    private Map<Long, Integer> prestejTekmovalne() {
+        Map<Long, Integer> tekmovalnih = new HashMap<>();
+        for (Object[] r : zgodovinaRepozitorij.tekmovalnihTekem(
+                RatingStanje.SISTEM_TURNIRKO, TEKMOVALNE)) {
+            tekmovalnih.put(((Number) r[0]).longValue(), ((Number) r[1]).intValue());
+        }
+        return Map.copyOf(tekmovalnih);
     }
 }

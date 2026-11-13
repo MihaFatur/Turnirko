@@ -34,15 +34,18 @@ public class PovzetkiStoritev {
     private final PrijavaRepozitorij prijavaRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
     private final TurnirRepozitorij turnirRepozitorij;
+    private final PredpomnilnikBranja predpomnilnik;
 
     public PovzetkiStoritev(DogodekRepozitorij dogodekRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
                             TekmaRepozitorij tekmaRepozitorij,
-                            TurnirRepozitorij turnirRepozitorij) {
+                            TurnirRepozitorij turnirRepozitorij,
+                            PredpomnilnikBranja predpomnilnik) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
+        this.predpomnilnik = predpomnilnik;
     }
 
     /* Stevci enega dogodka: prijavljenih, odigranih tekem, vseh tekem. */
@@ -54,9 +57,14 @@ public class PovzetkiStoritev {
        ni - klicatelj naj uporabi Stevci.PRAZNI. */
     @Transactional(readOnly = true)
     public Map<Long, TurnirDto.Stevci> zaVseTurnirje() {
-        return stevci(dogodekRepozitorij.stejPoTurnirjih(),
-                tekmaRepozitorij.stejPoTurnirjih(),
-                prijavaRepozitorij.stejPoTurnirjih(Prijava.StatusPrijave.ODJAVLJEN));
+        /* Seznam turnirjev je za vse gledalce isti in presteje vse tekme in
+           prijave, zato pride iz predpomnilnika, dokler ga zapis v bazo ne
+           razveljavi (PredpomnilnikBranja). Razlicica je dan: zreb pred
+           datumom turnirja je "V pripravi" samo do tega dne. */
+        return predpomnilnik.vrni("stevci-turnirjev", PotekLige.danes(),
+                () -> Map.copyOf(stevci(dogodekRepozitorij.stejPoTurnirjih(),
+                        tekmaRepozitorij.stejPoTurnirjih(),
+                        prijavaRepozitorij.stejPoTurnirjih(Prijava.StatusPrijave.ODJAVLJEN))));
     }
 
     /* Stevci iz vrstic treh skupinskih poizvedb. Seznam turnirjev poda vrstice
@@ -109,10 +117,12 @@ public class PovzetkiStoritev {
        potrebovala svojo. */
     @Transactional(readOnly = true)
     public Map<Long, TurnirDto.Potek> potekiVsehTurnirjev() {
-        return poteki(tekmaRepozitorij.zadnjaKolaPoDogodkih(),
-                tekmaRepozitorij.neodigranaKolaPoDogodkih(),
-                prijavaRepozitorij.zmagovalciPoTurnirjih(),
-                tekmaRepozitorij.najdiZadnjeVsakegaTurnirja());
+        // iz predpomnilnika, kot stevci (zaVseTurnirje)
+        return predpomnilnik.vrni("poteki-turnirjev", PotekLige.danes(),
+                () -> Map.copyOf(poteki(tekmaRepozitorij.zadnjaKolaPoDogodkih(),
+                        tekmaRepozitorij.neodigranaKolaPoDogodkih(),
+                        prijavaRepozitorij.zmagovalciPoTurnirjih(),
+                        tekmaRepozitorij.najdiZadnjeVsakegaTurnirja())));
     }
 
     /* Besedno stanje enega turnirja (za njegovo stran) - iste poizvedbe,

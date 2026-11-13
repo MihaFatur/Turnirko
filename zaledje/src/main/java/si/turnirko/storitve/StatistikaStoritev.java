@@ -24,7 +24,9 @@ import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import si.turnirko.dto.DvobojDto;
 import si.turnirko.dto.LestvicaIgralcaDto;
@@ -75,6 +77,10 @@ public class StatistikaStoritev {
     private final TekmaRepozitorij tekmaRepozitorij;
     private final TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij;
     private final SpremembeRatingaStoritev spremembeRatinga;
+    private final PredpomnilnikBranja predpomnilnik;
+    /* Bralna transakcija za izracun, ki ga sprozi predpomnilnik (pridruzi se
+       zunanji, ce ta obstaja - kot @Transactional(readOnly = true)). */
+    private final TransactionTemplate branje;
 
     /* Vir nakljucja je zamenljiv, da je zreb para v testu ponovljiv -
        isto kot pri zrebu tekmovanja (ZrebStoritev.nastaviNakljucje). */
@@ -87,7 +93,9 @@ public class StatistikaStoritev {
                               TekmaRepozitorij tekmaRepozitorij,
                               TekmaSrecanjaRepozitorij tekmaSrecanjaRepozitorij,
                               SpremembeRatingaStoritev spremembeRatinga,
-                              RekreativecStoritev rekreativecStoritev) {
+                              RekreativecStoritev rekreativecStoritev,
+                              PredpomnilnikBranja predpomnilnik,
+                              PlatformTransactionManager transakcije) {
         this.igralecRepozitorij = igralecRepozitorij;
         this.ratingStanjeRepozitorij = ratingStanjeRepozitorij;
         this.ratingZgodovinaRepozitorij = ratingZgodovinaRepozitorij;
@@ -96,6 +104,9 @@ public class StatistikaStoritev {
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
         this.spremembeRatinga = spremembeRatinga;
         this.rekreativecStoritev = rekreativecStoritev;
+        this.predpomnilnik = predpomnilnik;
+        this.branje = new TransactionTemplate(transakcije);
+        this.branje.setReadOnly(true);
     }
 
     void nastaviNakljucje(Random nakljucje) {
@@ -109,9 +120,20 @@ public class StatistikaStoritev {
 
     /* Globalna lestvica aktivnih igralcev: najprej po ratingu (padajoce),
        potem po zmagah, potem abecedno. Igralci brez ratinga (se niso igrali)
-       so na dnu. */
-    @Transactional(readOnly = true)
+       so na dnu.
+
+       Lestvica je za vse gledalce ista in sesteje vso zgodovino (~94 tisoc
+       tekem, na kopiji produkcije ~300 ms), zato pride iz predpomnilnika,
+       dokler je zapis v bazo ne razveljavi (PredpomnilnikBranja). Razlicica
+       je dan: starostni pas tece po sezoni in se ob polnoci lahko premakne.
+       Transakcija se odpre sele ob izracunu - zadetek ne vzame povezave z
+       bazo, cakajoci na izracun drugega pa je ne drzi. */
     public List<LestvicaIgralcaDto> globalnaLestvica() {
+        return predpomnilnik.vrni("lestvica", LocalDate.now(),
+                () -> branje.execute(stanje -> izracunajLestvico()));
+    }
+
+    private List<LestvicaIgralcaDto> izracunajLestvico() {
         LocalDateTime zdaj = LocalDateTime.now();
         List<Igralec> vsi = igralecRepozitorij.najdiAktivne();
         /* Kdo je z javne lestvice skrit (18 mesecev brez tekme). Tak igralec z
@@ -189,7 +211,8 @@ public class StatistikaStoritev {
                     premik, v.spremembaRatinga(), v.spol(), v.starostniPas(),
                     v.potekRatinga(), v.idjiLig(), v.rekreativec()));
         }
-        return zPremikom;
+        // seznam si delijo vsi zahtevki (predpomnilnik): nespremenljiv
+        return List.copyOf(zPremikom);
     }
 
     /* Najprej po ratingu (padajoce), potem po zmagah, potem abecedno po
@@ -441,10 +464,10 @@ public class StatistikaStoritev {
        aktivna igralca: prazen semafor je manj skodljiv od napake. */
     @Transactional(readOnly = true)
     public NakljucniParDto nakljucniPar() {
-        Set<Long> zTekmo = new LinkedHashSet<>(tekmaRepozitorij.idjiZOdigranoTekmo());
-        zTekmo.addAll(tekmaSrecanjaRepozitorij.idjiZOdigranoTekmo());
-
-        List<Long> kandidati = new ArrayList<>(zTekmo);
+        /* Kdo ima odigrano tekmo, je za vse zahtevke isto in stane dva prehoda
+           cez vse tekme (~240 ms na kopiji produkcije), zato pride iz
+           predpomnilnika. Zreb sam ostane ob vsakem klicu: mesa se kopija. */
+        List<Long> kandidati = new ArrayList<>(kandidatiZaPar());
         Collections.shuffle(kandidati, nakljucje);
 
         for (int i = 0; i < kandidati.size() && i < POSKUSOV_ZREBA; i++) {
@@ -457,6 +480,21 @@ public class StatistikaStoritev {
             }
         }
         return parBrezMedsebojnih();
+    }
+
+    /* Kandidati zreba, iz predpomnilnika (vidno v paketu zaradi testa
+       razveljavitve). */
+    List<Long> kandidatiZaPar() {
+        return predpomnilnik.vrni("igralci-z-odigrano-tekmo", null, this::igralciZOdigranoTekmo);
+    }
+
+    /* Aktivni igralci z vsaj eno odigrano posamicno tekmo, turnirsko ali
+       ligasko, v vrstnem redu poizvedb (od njega je odvisen ponovljiv zreb v
+       testu). */
+    private List<Long> igralciZOdigranoTekmo() {
+        Set<Long> zTekmo = new LinkedHashSet<>(tekmaRepozitorij.idjiZOdigranoTekmo());
+        zTekmo.addAll(tekmaSrecanjaRepozitorij.idjiZOdigranoTekmo());
+        return List.copyOf(zTekmo);
     }
 
     /* Zasilni izhod zreba: dva razlicna aktivna igralca, ki morda nista nikoli

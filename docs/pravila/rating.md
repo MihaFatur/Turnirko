@@ -212,6 +212,29 @@
     potrebuje (profil ga je prej klical dvakrat). Test načrta za SQLite je
     odšel s prenovo baze; v PostgreSQL se meri na kopiji produkcije
     (`docs/PRENOVA-BAZE.md`, razdelek 9).
+  - **Lestvica, uvrstitev na profilu, kandidati naključnega para in seznam
+    turnirjev pridejo iz predpomnilnika** (`PredpomnilnikBranja`, nov. 2026,
+    najdba C1 pregleda kakovosti): so izpeljanke čez vso zgodovino, ki jih
+    gledalec odpira ob vsakem obisku (na kopiji produkcije lestvica 297 → 14 ms,
+    seznam turnirjev 236 → 12 ms). Zastavica rekreativca ostane izpeljana in
+    neshranjena v bazi; predpomni se samo izid štetja. Pravila, ki jih ne razbij:
+    - **Razveljavi ga VSAK zapis v bazo**, ne seznam »pomembnih« mest: vsak
+      stavek, ki ga Hibernate pošlje bazi in ni branje, ob potrditvi svoje
+      transakcije poveča rod (`PredpomnilnikNastavitve`, `StatementInspector`).
+      Nova storitev, ki piše, zato ne rabi vedeti, da predpomnilnik obstaja.
+    - **V transakciji, ki sme pisati, se ne uporablja** (ne bere in ne polni):
+      ta vidi svoje nepotrjene zapise. Zato so testi z `@Transactional`
+      nedotaknjeni, test predpomnilnika pa namenoma ni `@Transactional`
+      (`PredpomnilnikJavnihPotiTest`).
+    - **Zapisa mimo Hibernata ne vidi** (`JdbcTemplate`, popravek v bazi na roko,
+      uvoz v drugem procesu). Za to je veljavnost vnosa
+      (`turnirko.predpomnilnik.veljavnost`, privzeto 5 minut; `PT0S` ga izklopi).
+      Po ročnem posegu v bazo je stanje največ toliko staro, ali pa aplikacijo
+      znova zaženi.
+    - **Vanj sodi samo, kar je za vse zahtevke isto.** Kar je odvisno od računa
+      ali vloge (vidnost turnirjev, domača stran po meri), se računa sproti.
+      Vrednost, odvisna od dneva (status »V pripravi«, starostni pas), nosi dan
+      kot različico.
   - **Lestvica šteje zmage in poraze iz ŠTEVILK, ne iz entitet**
     (`izidiVsehOdigranih`, `izidiVsehOdigranihPosamicnih`): ~94 tisoč tekem ob
     vsakem ogledu, potrebni pa so samo trije id-ji na tekmo. Nalaganje tekem s

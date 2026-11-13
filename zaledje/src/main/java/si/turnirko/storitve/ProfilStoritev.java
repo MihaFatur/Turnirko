@@ -78,6 +78,7 @@ public class ProfilStoritev {
     private final DostopDoProfila dostop;
     private final RekreativecStoritev rekreativecStoritev;
     private final PrijavaRepozitorij prijavaRepozitorij;
+    private final PredpomnilnikBranja predpomnilnik;
 
     public ProfilStoritev(IgralecRepozitorij igralecRepozitorij,
                           TekmaRepozitorij tekmaRepozitorij,
@@ -88,7 +89,8 @@ public class ProfilStoritev {
                           NizSrecanjaRepozitorij nizSrecanjaRepozitorij,
                           DostopDoProfila dostop,
                           RekreativecStoritev rekreativecStoritev,
-                          PrijavaRepozitorij prijavaRepozitorij) {
+                          PrijavaRepozitorij prijavaRepozitorij,
+                          PredpomnilnikBranja predpomnilnik) {
         this.igralecRepozitorij = igralecRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.tekmaSrecanjaRepozitorij = tekmaSrecanjaRepozitorij;
@@ -99,6 +101,7 @@ public class ProfilStoritev {
         this.dostop = dostop;
         this.rekreativecStoritev = rekreativecStoritev;
         this.prijavaRepozitorij = prijavaRepozitorij;
+        this.predpomnilnik = predpomnilnik;
     }
 
     /* Ena odigrana posamicna tekma, prevedena v pogled lastnika profila.
@@ -432,7 +435,12 @@ public class ProfilStoritev {
        ceprav med spoloma ni niti ene obracunane tekme. */
     private ProfilDto.Uvrstitev uvrstitev(Igralec igralec, Integer rating) {
         LocalDateTime zdaj = LocalDateTime.now();
-        List<Object[]> vsi = stanjeRepozitorij.vsiRatingi(RatingStanje.SISTEM_TURNIRKO);
+        /* Ratingi VSEH igralcev so za vsak profil isti, zato pridejo iz
+           predpomnilnika (razveljavi ga vsak zapis v bazo, glej
+           PredpomnilnikBranja); enako stetje tekmovalnih tekem v
+           RekreativecStoritev. Vrstice si delijo vsi zahtevki - samo branje. */
+        List<Object[]> vsi = predpomnilnik.vrni("ratingi-vseh-igralcev", null,
+                () -> List.copyOf(stanjeRepozitorij.vsiRatingi(RatingStanje.SISTEM_TURNIRKO)));
 
         /* Skupina gledanega igralca; kdor ratinga nima, ni v nobeni. Gledani je
            v istem klicu kot vsi ostali (in ne posebej), ker vsak klic prebere
