@@ -128,6 +128,28 @@ class PremiumDokazTest extends IntegracijskiTest {
         assertEquals(new PremiumDokazDto(3, false), dokaz.dokaz());
     }
 
+    /* Isto merilo velja pri stetju PO KLUBU (stetje je od nov. 2026 poizvedba
+       COUNT, vsaka pot ima svojo): potekla in preklicana brez datuma v klubu ne
+       stejeta, preizkus ni placnik, placnik drugega kluba ni soigralec. */
+    @Test
+    void stetjePoKlubuStejeSamoVeljavnePlacnikeTegaKluba() {
+        Klub moj = klub("Savinja");
+        Klub drug = klub("Maribor");
+        placnik(moj, StatusNarocnine.AKTIVNA, null);
+        placnik(moj, StatusNarocnine.PREKLICANA, LocalDateTime.now().plusDays(10));
+        placnik(moj, StatusNarocnine.PREKLICANA, LocalDateTime.now().minusDays(1));
+        placnik(moj, StatusNarocnine.PREKLICANA, null);
+        placnik(moj, StatusNarocnine.PREIZKUS, LocalDateTime.now().plusDays(10));
+        placnik(drug, StatusNarocnine.AKTIVNA, null);
+        prijava(brezPaketa(moj));
+
+        assertEquals(new PremiumDokazDto(3, false), dokaz.dokaz(),
+                "v klubu veljata dva (pod mejo), skupaj trije");
+
+        placnik(moj, StatusNarocnine.AKTIVNA, null);
+        assertEquals(new PremiumDokazDto(3, true), dokaz.dokaz());
+    }
+
     @Test
     void potJeJavnaInNosiSamoStevilo() throws Exception {
         Klub klub = klub("Savinja");

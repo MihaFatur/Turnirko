@@ -109,8 +109,7 @@ public class PreizkusPremiumStoritev {
 
     /* Obvestila o koncu preizkusa; vrne stevilo poslanih. Vsak preizkus dobi
        najvec eno, ko je do konca DNI_PRED_KONCEM dni ali manj. Potek obdobja
-       je bil v SQLite besedilo, zato ga primerjamo tu in ne v poizvedbi (kot
-       NarocninaRepozitorij.najdiPremiumIgralce). */
+       je bil v SQLite besedilo, zato ga primerjamo tu in ne v poizvedbi. */
     @Transactional
     public int posljiOpomnike(LocalDateTime zdaj) {
         List<Narocnina> preizkusi = narocninaRepozitorij

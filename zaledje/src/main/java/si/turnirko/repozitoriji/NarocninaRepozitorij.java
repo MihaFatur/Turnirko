@@ -1,6 +1,7 @@
 /* Dostop do narocnin (ena vrstica na uporabnika - glej Narocnina). */
 package si.turnirko.repozitoriji;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,23 +20,36 @@ public interface NarocninaRepozitorij extends JpaRepository<Narocnina, Long> {
     /* Preizkusi, ki obvestila o koncu se niso dobili (PreizkusPremiumStoritev). */
     List<Narocnina> findByStatusAndOpomnikPoslanObIsNull(StatusNarocnine status);
 
-    /* Narocnine igralcev s Premium, ki lahko se veljajo (AKTIVNA ali PREKLICANA;
-       ali je preklicana res se veljavna, presodi Narocnina.jeVeljavna - potek
-       obdobja je bil v SQLite besedilo, zato ga ne primerjamo v poizvedbi). Igralec
-       in klub sta nalozena vnaprej: klub je potreben za stetje po klubih, LEVI
-       join pa zato, ker racun brez povezanega igralca ali igralec brez kluba ne
-       smeta izpasti iz skupnega stevila. */
+    /* Koliko igralcev Premium ZDAJ placuje - stetje v bazi namesto nalaganja
+       vseh narocnin (oglas ga vprasa ob vsakem prikazu). Stejeta samo stanji
+       placnika, po merilu Narocnina.jeVeljavna: AKTIVNA vedno, PREKLICANA do
+       konca placanega obdobja (brez datuma ne). Preizkus ni placnik. Racun
+       brez povezanega igralca ali igralec brez kluba v skupnem stevilu ostane
+       (stik na igralca ima samo stetje po klubu). */
     @Query("""
-            select n from Narocnina n
-              join fetch n.uporabnik u
-              left join fetch u.igralec i
-              left join fetch i.klub
+            select count(n) from Narocnina n
+              join n.uporabnik u
             where n.paket = si.turnirko.modeli.Paket.PREMIUM
               and u.vloga = si.turnirko.modeli.Vloga.IGRALEC
-              and n.status in (si.turnirko.modeli.StatusNarocnine.AKTIVNA,
-                               si.turnirko.modeli.StatusNarocnine.PREKLICANA)
+              and (n.status = si.turnirko.modeli.StatusNarocnine.AKTIVNA
+                   or (n.status = si.turnirko.modeli.StatusNarocnine.PREKLICANA
+                       and n.trenutnoObdobjeDo > :zdaj))
             """)
-    List<Narocnina> najdiPremiumIgralce();
+    long prestejVeljavnePremiumIgralce(LocalDateTime zdaj);
+
+    /* Isto samo za racune, katerih igralec je v danem klubu. */
+    @Query("""
+            select count(n) from Narocnina n
+              join n.uporabnik u
+              join u.igralec i
+            where n.paket = si.turnirko.modeli.Paket.PREMIUM
+              and u.vloga = si.turnirko.modeli.Vloga.IGRALEC
+              and i.klub.id = :idKluba
+              and (n.status = si.turnirko.modeli.StatusNarocnine.AKTIVNA
+                   or (n.status = si.turnirko.modeli.StatusNarocnine.PREKLICANA
+                       and n.trenutnoObdobjeDo > :zdaj))
+            """)
+    long prestejVeljavnePremiumIgralceKluba(Long idKluba, LocalDateTime zdaj);
 
     /* Vse narocnine skupaj z racunom - en poizvedba za administratorjev seznam
        racunov. Brez join fetch bi vsak racun sprozil svojo poizvedbo za uporabnika. */

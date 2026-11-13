@@ -19,7 +19,6 @@
 package si.turnirko.storitve;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import si.turnirko.dto.PremiumDokazDto;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Klub;
-import si.turnirko.modeli.Narocnina;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
 
@@ -48,22 +46,20 @@ public class PremiumDokazStoritev {
 
     @Transactional(readOnly = true)
     public PremiumDokazDto dokaz() {
+        /* Steje baza (COUNT) in ne aplikacija: oglas vprasa ob vsakem prikazu,
+           nalaganje vseh narocnin z racuni, igralci in klubi pa raste s
+           stevilom placnikov. */
         LocalDateTime zdaj = LocalDateTime.now();
-        List<Narocnina> veljavne = narocninaRepozitorij.najdiPremiumIgralce().stream()
-                .filter(n -> n.jeVeljavna(zdaj))
-                .toList();
-
         Long idKluba = klubPrijavljenega();
         if (idKluba != null) {
-            long izKluba = veljavne.stream()
-                    .filter(n -> idKluba.equals(idKlubaRacuna(n.getUporabnik())))
-                    .count();
+            long izKluba = narocninaRepozitorij.prestejVeljavnePremiumIgralceKluba(idKluba, zdaj);
             if (izKluba >= NAJMANJ) {
                 return new PremiumDokazDto((int) izKluba, true);
             }
         }
-        if (veljavne.size() >= NAJMANJ) {
-            return new PremiumDokazDto(veljavne.size(), false);
+        long vseh = narocninaRepozitorij.prestejVeljavnePremiumIgralce(zdaj);
+        if (vseh >= NAJMANJ) {
+            return new PremiumDokazDto((int) vseh, false);
         }
         return PremiumDokazDto.PRAZEN;
     }
