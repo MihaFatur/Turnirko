@@ -5,7 +5,9 @@ package si.turnirko.storitve;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 
 import org.springframework.stereotype.Service;
@@ -85,10 +87,10 @@ public class IgralciStoritev {
     private <T> List<T> izpis(BiFunction<Igralec, RatingStanje, T> vOblika) {
         List<Igralec> igralci = igralecRepozitorij.najdiAktivne();
         List<Long> idji = igralci.stream().map(Igralec::getId).toList();
-        List<RatingStanje> ratingi = ratingStanjeRepozitorij
-                .findByIgralecIdInAndSistem(idji, RatingStanje.SISTEM_TURNIRKO);
+        Map<Long, RatingStanje> ratingi = poIgralcu(ratingStanjeRepozitorij
+                .findByIgralecIdInAndSistem(idji, RatingStanje.SISTEM_TURNIRKO));
         return igralci.stream()
-                .map(igralec -> vOblika.apply(igralec, najdiStanje(ratingi, igralec.getId())))
+                .map(igralec -> vOblika.apply(igralec, ratingi.get(igralec.getId())))
                 .toList();
     }
 
@@ -125,10 +127,10 @@ public class IgralciStoritev {
                         .thenComparing(Zadetek::igralec, Igralec.PO_ABECEDI))
                 .limit(NAJVEC_PODOBNIH)
                 .toList();
-        List<RatingStanje> ratingi = ratingiZadetkov(zadetki);
+        Map<Long, RatingStanje> ratingi = ratingiZadetkov(zadetki);
         return zadetki.stream()
                 .map(z -> new PodobenIgralecJavniDto(
-                        javniDto(z.igralec(), najdiStanje(ratingi, z.igralec().getId())),
+                        javniDto(z.igralec(), ratingi.get(z.igralec().getId())),
                         z.ujemanje(), z.igralec().isArhiviran()))
                 .toList();
     }
@@ -148,10 +150,10 @@ public class IgralciStoritev {
                         .thenComparing(Zadetek::igralec, Igralec.PO_ABECEDI))
                 .limit(NAJVEC_PODOBNIH)
                 .toList();
-        List<RatingStanje> ratingi = ratingiZadetkov(zadetki);
+        Map<Long, RatingStanje> ratingi = ratingiZadetkov(zadetki);
         return zadetki.stream()
                 .map(z -> new PodobenIgralecDto(
-                        dto(z.igralec(), najdiStanje(ratingi, z.igralec().getId())),
+                        dto(z.igralec(), ratingi.get(z.igralec().getId())),
                         z.ujemanje(), z.datum(), z.igralec().isArhiviran()))
                 .toList();
     }
@@ -172,13 +174,13 @@ public class IgralciStoritev {
         return zadetki;
     }
 
-    private List<RatingStanje> ratingiZadetkov(List<Zadetek> zadetki) {
+    private Map<Long, RatingStanje> ratingiZadetkov(List<Zadetek> zadetki) {
         if (zadetki.isEmpty()) {
-            return List.of();
+            return Map.of();
         }
-        return ratingStanjeRepozitorij.findByIgralecIdInAndSistem(
+        return poIgralcu(ratingStanjeRepozitorij.findByIgralecIdInAndSistem(
                 zadetki.stream().map(z -> z.igralec().getId()).toList(),
-                RatingStanje.SISTEM_TURNIRKO);
+                RatingStanje.SISTEM_TURNIRKO));
     }
 
     /* Obstojec igralec, ki se ujema z vpisom; datum je izpolnjen samo v
@@ -280,11 +282,16 @@ public class IgralciStoritev {
                 .orElse(null);
     }
 
-    private RatingStanje najdiStanje(List<RatingStanje> ratingi, Long idIgralca) {
-        return ratingi.stream()
-                .filter(r -> r.getIgralec().getId().equals(idIgralca))
-                .findFirst()
-                .orElse(null);
+    /* Ratingi po id-ju igralca. Seznam se zlozi v mapo ENKRAT: iskanje po
+       seznamu za vsakega igralca posebej je bilo kvadratno in javni seznam ga
+       je placal ob vsakem obisku. Vidno v paketu, ker isto potrebuje cistka
+       duplikatov. Pri vec stanjih istega igralca obvelja prvo, kot prej. */
+    static Map<Long, RatingStanje> poIgralcu(List<RatingStanje> ratingi) {
+        Map<Long, RatingStanje> mapa = HashMap.newHashMap(ratingi.size());
+        for (RatingStanje stanje : ratingi) {
+            mapa.putIfAbsent(stanje.getIgralec().getId(), stanje);
+        }
+        return mapa;
     }
 
     private Igralec najdiIgralca(Long id) {

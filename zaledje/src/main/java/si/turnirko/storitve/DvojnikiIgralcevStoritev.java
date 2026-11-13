@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import jakarta.persistence.EntityManager;
@@ -85,8 +86,9 @@ public class DvojnikiIgralcevStoritev {
             idji.add(par.a().getId());
             idji.add(par.b().getId());
         }
-        List<RatingStanje> ratingi = idji.isEmpty() ? List.of()
-                : ratingStanjeRepozitorij.findByIgralecIdInAndSistem(idji, RatingStanje.SISTEM_TURNIRKO);
+        Map<Long, RatingStanje> ratingi = idji.isEmpty() ? Map.of()
+                : IgralciStoritev.poIgralcu(
+                        ratingStanjeRepozitorij.findByIgralecIdInAndSistem(idji, RatingStanje.SISTEM_TURNIRKO));
 
         return pari.stream()
                 .map(par -> sestavi(par, ratingi))
@@ -139,7 +141,7 @@ public class DvojnikiIgralcevStoritev {
         return PodobnostImen.primerjajDatum(a.getDatumRojstva(), b.getDatumRojstva());
     }
 
-    private static DvojnikIgralcaDto sestavi(Par par, List<RatingStanje> ratingi) {
+    private static DvojnikIgralcaDto sestavi(Par par, Map<Long, RatingStanje> ratingi) {
         IgralecDto a = dto(par.a(), ratingi);
         IgralecDto b = dto(par.b(), ratingi);
         // levi je tisti z vec tekmami, pri enakem z manjsim id-jem
@@ -149,11 +151,8 @@ public class DvojnikiIgralcevStoritev {
         return new DvojnikIgralcaDto(kljuc(a.id(), b.id()), levi, desni, par.ujemanje(), par.datum());
     }
 
-    private static IgralecDto dto(Igralec igralec, List<RatingStanje> ratingi) {
-        RatingStanje stanje = ratingi.stream()
-                .filter(r -> r.getIgralec().getId().equals(igralec.getId()))
-                .findFirst()
-                .orElse(null);
+    private static IgralecDto dto(Igralec igralec, Map<Long, RatingStanje> ratingi) {
+        RatingStanje stanje = ratingi.get(igralec.getId());
         return IgralecDto.iz(igralec,
                 stanje != null ? stanje.getVrednost() : null,
                 stanje != null ? stanje.getStTekem() : 0);
