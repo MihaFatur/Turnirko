@@ -81,10 +81,9 @@ public class TurnirjiKontroler {
 
     @GetMapping("/{id}")
     public TurnirDto najdi(@PathVariable Long id) {
-        Map<Long, TurnirDto.Potek> poteki = povzetkiStoritev.potekiVsehTurnirjev();
         return turnirRepozitorij.najdiSKrajem(id)
                 .map(t -> TurnirDto.iz(t, povzetkiStoritev.zaTurnir(id),
-                        poteki.getOrDefault(id, TurnirDto.Potek.PRAZEN)))
+                        povzetkiStoritev.potekTurnirja(id)))
                 .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + id + " ne obstaja."));
     }
 
@@ -132,9 +131,8 @@ public class TurnirjiKontroler {
     @PutMapping("/{id}")
     public TurnirDto uredi(@PathVariable Long id, @Valid @RequestBody TurnirVnos vnos) {
         Turnir turnir = turnirjiStoritev.urediTurnir(id, vnos);
-        Map<Long, TurnirDto.Potek> poteki = povzetkiStoritev.potekiVsehTurnirjev();
         return TurnirDto.iz(turnir, povzetkiStoritev.zaTurnir(id),
-                poteki.getOrDefault(id, TurnirDto.Potek.PRAZEN));
+                povzetkiStoritev.potekTurnirja(id));
     }
 
     @PostMapping("/{id}/dogodki")

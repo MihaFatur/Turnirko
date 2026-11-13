@@ -34,6 +34,18 @@ public interface DogodekRepozitorij extends JpaRepository<Dogodek, Long> {
             """)
     List<Object[]> stejPoTurnirjih();
 
+    /* Isto za EN turnir (njegova stran): najvec ena vrstica. Stran turnirja je
+       prej prestela dogodke vseh turnirjev in obdrzala eno vrstico. */
+    @Query("""
+            SELECT d.turnir.id, COUNT(d),
+                   SUM(CASE WHEN d.status = si.turnirko.modeli.StatusTekmovanja.V_TEKU THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN d.status = si.turnirko.modeli.StatusTekmovanja.PRIPRAVA THEN 1 ELSE 0 END)
+            FROM Dogodek d
+            WHERE d.turnir.id = :idTurnir
+            GROUP BY d.turnir.id
+            """)
+    List<Object[]> stejZaTurnir(Long idTurnir);
+
     /* Roki prijave dogodkov, ki se prijave zbirajo (PRIPRAVA): [idTurnir, rok].
        Skalarna projekcija in ne MIN(): najzgodnejsi rok izbere klicatelj, ker
        aggregat nad datumom je v SQLite vrnil besedilo, ne LocalDate. */

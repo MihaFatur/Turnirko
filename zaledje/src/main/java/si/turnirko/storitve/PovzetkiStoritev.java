@@ -54,10 +54,20 @@ public class PovzetkiStoritev {
        ni - klicatelj naj uporabi Stevci.PRAZNI. */
     @Transactional(readOnly = true)
     public Map<Long, TurnirDto.Stevci> zaVseTurnirje() {
-        Map<Long, long[]> dogodki = vVrstice(dogodekRepozitorij.stejPoTurnirjih(), 3);
-        Map<Long, long[]> tekme = vVrstice(tekmaRepozitorij.stejPoTurnirjih(), 2);
-        Map<Long, long[]> prijave = vVrstice(
-                prijavaRepozitorij.stejPoTurnirjih(Prijava.StatusPrijave.ODJAVLJEN), 1);
+        return stevci(dogodekRepozitorij.stejPoTurnirjih(),
+                tekmaRepozitorij.stejPoTurnirjih(),
+                prijavaRepozitorij.stejPoTurnirjih(Prijava.StatusPrijave.ODJAVLJEN));
+    }
+
+    /* Stevci iz vrstic treh skupinskih poizvedb. Seznam turnirjev poda vrstice
+       vseh turnirjev, stran turnirja samo svoje (zaTurnir) - sestevanje je
+       eno, da si vrstica v seznamu in stran turnirja ne moreta nasprotovati. */
+    private Map<Long, TurnirDto.Stevci> stevci(List<Object[]> vrsticeDogodkov,
+                                               List<Object[]> vrsticeTekem,
+                                               List<Object[]> vrsticePrijav) {
+        Map<Long, long[]> dogodki = vVrstice(vrsticeDogodkov, 3);
+        Map<Long, long[]> tekme = vVrstice(vrsticeTekem, 2);
+        Map<Long, long[]> prijave = vVrstice(vrsticePrijav, 1);
         Set<Long> zrebaniPrihodnji = prihodnjiZrebi();
 
         Map<Long, TurnirDto.Stevci> povzetki = new HashMap<>();
@@ -81,10 +91,16 @@ public class PovzetkiStoritev {
         return new HashSet<>(turnirRepozitorij.idjiZrebanihPrihodnjih(PotekLige.danes()));
     }
 
-    /* Stevci enega turnirja (za njegovo stran). */
+    /* Stevci enega turnirja (za njegovo stran). Poizvedbe so iste kot za
+       seznam, le omejene na ta turnir: stran enega turnirja je prej sestela
+       dogodke, tekme in prijave VSEH turnirjev (nov. 2026, izmerjeno na
+       kopiji produkcije: GET /turnirji/{id} 224 ms za 574 znakov odgovora). */
     @Transactional(readOnly = true)
     public TurnirDto.Stevci zaTurnir(Long idTurnir) {
-        return zaVseTurnirje().getOrDefault(idTurnir, TurnirDto.Stevci.PRAZNI);
+        return stevci(dogodekRepozitorij.stejZaTurnir(idTurnir),
+                tekmaRepozitorij.stejZaTurnir(idTurnir),
+                prijavaRepozitorij.stejZaTurnir(idTurnir, Prijava.StatusPrijave.ODJAVLJEN))
+                .getOrDefault(idTurnir, TurnirDto.Stevci.PRAZNI);
     }
 
     /* Besedno stanje vseh turnirjev, po id-ju turnirja: kje se turnir igra,
@@ -93,16 +109,39 @@ public class PovzetkiStoritev {
        potrebovala svojo. */
     @Transactional(readOnly = true)
     public Map<Long, TurnirDto.Potek> potekiVsehTurnirjev() {
+        return poteki(tekmaRepozitorij.zadnjaKolaPoDogodkih(),
+                tekmaRepozitorij.neodigranaKolaPoDogodkih(),
+                prijavaRepozitorij.zmagovalciPoTurnirjih(),
+                tekmaRepozitorij.najdiZadnjeVsakegaTurnirja());
+    }
+
+    /* Besedno stanje enega turnirja (za njegovo stran) - iste poizvedbe,
+       omejene na ta turnir, in isto sestavljanje kot za seznam. */
+    @Transactional(readOnly = true)
+    public TurnirDto.Potek potekTurnirja(Long idTurnir) {
+        return poteki(tekmaRepozitorij.zadnjaKolaTurnirja(idTurnir),
+                tekmaRepozitorij.neodigranaKolaTurnirja(idTurnir),
+                prijavaRepozitorij.imenaZmagovalcevTurnirja(idTurnir),
+                tekmaRepozitorij.najdiZadnjoTurnirja(idTurnir))
+                .getOrDefault(idTurnir, TurnirDto.Potek.PRAZEN);
+    }
+
+    private Map<Long, TurnirDto.Potek> poteki(List<Object[]> vrsticeZadnjihKol,
+                                              List<Object[]> vrsticeNeodigranih,
+                                              List<Object[]> vrsticeZmagovalcev,
+                                              List<Tekma> zadnjeTekme) {
         Map<Long, Integer> zadnjaKola = new HashMap<>();
-        for (Object[] v : tekmaRepozitorij.zadnjaKolaPoDogodkih()) {
+        for (Object[] v : vrsticeZadnjihKol) {
             zadnjaKola.put(((Number) v[0]).longValue(), ((Number) v[1]).intValue());
         }
 
         /* Turnir z vec dogodki je hkrati v vec fazah; kot "fazo turnirja"
            vzamemo tisto, ki ima najvec se neodigranih tekem - to je delo, ki
-           v dvorani prav zdaj tece. */
+           v dvorani prav zdaj tece. Ob enakem stevilu odloci nizji id dogodka
+           in nato faza: vrstni red vrstic skupinske poizvedbe ni dolocen,
+           seznam turnirjev in stran turnirja pa morata izbrati isto. */
         Map<Long, Kandidat> faze = new HashMap<>();
-        for (Object[] v : tekmaRepozitorij.neodigranaKolaPoDogodkih()) {
+        for (Object[] v : vrsticeNeodigranih) {
             Long idTurnir = ((Number) v[0]).longValue();
             Long idDogodek = ((Number) v[1]).longValue();
             SistemTekmovanja sistem = (SistemTekmovanja) v[2];
@@ -110,17 +149,18 @@ public class PovzetkiStoritev {
             int kolo = ((Number) v[4]).intValue();
             long tekem = ((Number) v[5]).longValue();
 
-            String opis = opisFaze(sistem, faza, kolo, zadnjaKola.get(idDogodek));
+            Kandidat kandidat = new Kandidat(
+                    opisFaze(sistem, faza, kolo, zadnjaKola.get(idDogodek)), tekem, idDogodek, faza);
             Kandidat najboljsi = faze.get(idTurnir);
-            if (najboljsi == null || tekem > najboljsi.tekem()) {
-                faze.put(idTurnir, new Kandidat(opis, tekem));
+            if (najboljsi == null || kandidat.predKandidatom(najboljsi)) {
+                faze.put(idTurnir, kandidat);
             }
         }
 
         // Zmagovalec dogodka dvojic je PAR - izpisemo obe imeni
         // ("Ana Novak / Eva Zajc"), sicer bi polovica zmagovalcev izginila.
         Map<Long, String> zmagovalci = new HashMap<>();
-        for (Object[] v : prijavaRepozitorij.zmagovalciPoTurnirjih()) {
+        for (Object[] v : vrsticeZmagovalcev) {
             // ekipni dogodek: zmagovalec je ekipa (ime in priimek sta prazna)
             String ime = v[1] == null ? String.valueOf(v[5]) : v[1] + " " + v[2];
             if (v[3] != null) {
@@ -130,7 +170,7 @@ public class PovzetkiStoritev {
         }
 
         Map<Long, String> zadnjiIzidi = new HashMap<>();
-        for (Tekma t : tekmaRepozitorij.najdiZadnjeVsakegaTurnirja()) {
+        for (Tekma t : zadnjeTekme) {
             zadnjiIzidi.put(t.getDogodek().getTurnir().getId(),
                     t.getPrijava1().prikazaniPriimek() + " "
                             + t.getDobljeniNizi1() + ":" + t.getDobljeniNizi2() + " "
@@ -150,7 +190,18 @@ public class PovzetkiStoritev {
     }
 
     /* Faza enega dogodka in koliko tekem jo se caka (vec = bolj "glavna"). */
-    private record Kandidat(String opis, long tekem) {}
+    private record Kandidat(String opis, long tekem, long idDogodek, FazaTekme faza) {
+
+        boolean predKandidatom(Kandidat drugi) {
+            if (tekem != drugi.tekem) {
+                return tekem > drugi.tekem;
+            }
+            if (idDogodek != drugi.idDogodek) {
+                return idDogodek < drugi.idDogodek;
+            }
+            return faza.compareTo(drugi.faza) < 0;
+        }
+    }
 
     /* Kako se faza imenuje v vrstici turnirja. Izlocilni del se imenuje po
        oddaljenosti od finala, krozni in skupinski pa po zaporedju kol -

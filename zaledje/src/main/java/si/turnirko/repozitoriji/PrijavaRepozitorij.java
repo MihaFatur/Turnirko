@@ -107,6 +107,14 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             """)
     List<Object[]> stejPoTurnirjih(Prijava.StatusPrijave odjavljen);
 
+    /* Isto za EN turnir (njegova stran): najvec ena vrstica. */
+    @Query("""
+            SELECT p.dogodek.turnir.id, COUNT(p) FROM Prijava p
+            WHERE p.status <> :odjavljen AND p.dogodek.turnir.id = :idTurnir
+            GROUP BY p.dogodek.turnir.id
+            """)
+    List<Object[]> stejZaTurnir(Long idTurnir, Prijava.StatusPrijave odjavljen);
+
     /* Isto po dogodkih enega turnirja: [idDogodek, prijav]. */
     @Query("""
             SELECT p.dogodek.id, COUNT(p) FROM Prijava p
@@ -130,6 +138,18 @@ public interface PrijavaRepozitorij extends JpaRepository<Prijava, Long> {
             ORDER BY p.dogodek.id, p.id
             """)
     List<Object[]> zmagovalciPoTurnirjih();
+
+    /* Isto za EN turnir (njegova stran), v istem vrstnem redu. */
+    @Query("""
+            SELECT p.dogodek.turnir.id, i.ime, i.priimek, i2.ime, i2.priimek,
+                   COALESCE(e.ime, CONCAT(ek.ime, ' ', e.zaporedna)) FROM Prijava p
+            LEFT JOIN p.igralec i
+            LEFT JOIN p.igralec2 i2
+            LEFT JOIN p.ekipa e LEFT JOIN e.klub ek
+            WHERE p.koncnoMesto = 1 AND p.dogodek.turnir.id = :idTurnir
+            ORDER BY p.dogodek.id, p.id
+            """)
+    List<Object[]> imenaZmagovalcevTurnirja(Long idTurnir);
 
     /* Zmagovalci (1. mesto) posameznih dogodkov ENEGA turnirja, z imenom
        dogodka - za vrstico "Prvi naslov" na zavihku statistike. Pri dvojicah

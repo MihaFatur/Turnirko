@@ -83,7 +83,31 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
     /* Zadnja dejansko odigrana tekma VSAKEGA turnirja (najvisji id v turnirju),
        z obema stranema - vrstica turnirja pokaze "Vrhovnik 3:1 Kramar".
        Dvojice stejejo (gre za potek turnirja, ne za statistiko igralca),
-       zato je nalozen tudi drugi clan para. */
+       zato je nalozen tudi drugi clan para.
+
+       DVA koraka in ne ena poizvedba s podpoizvedbo: s 14 stiki PostgreSQL
+       vrstnega reda stikov ne preureja vec (join_collapse_limit), zato je
+       najprej zdruzil VSE tekme z vsemi stranmi in sele nato obdrzal iskane
+       (izmerjeno na kopiji produkcije, nov. 2026: ~120 ms, tudi za en sam
+       turnir). Id-ji so znani v nekaj milisekundah, tekme po id-ju pa gredo
+       po primarnem kljucu. */
+    default List<Tekma> najdiZadnjeVsakegaTurnirja() {
+        List<Long> idji = idjiZadnjihOdigranihPoTurnirjih();
+        return idji.isEmpty() ? List.of() : najdiSStranema(idji);
+    }
+
+    @Query("""
+            SELECT MAX(z.id) FROM Tekma z
+            WHERE z.status = si.turnirko.modeli.StatusTekme.KONCANA
+              AND (z.izidTip IS NULL OR z.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
+                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
+              AND z.prijava1 IS NOT NULL AND z.prijava2 IS NOT NULL
+            GROUP BY z.dogodek.turnir.id
+            """)
+    List<Long> idjiZadnjihOdigranihPoTurnirjih();
+
+    /* Tekme po id-jih z obema stranema (igralca, soigralca, ekipi), dogodkom
+       in turnirjem. */
     @Query("""
             SELECT t FROM Tekma t
             JOIN FETCH t.dogodek d JOIN FETCH d.turnir
@@ -92,15 +116,50 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.igralec2
             LEFT JOIN FETCH p2.ekipa e2 LEFT JOIN FETCH e2.klub
             LEFT JOIN FETCH t.zmagovalec
-            WHERE t.id IN (
-                SELECT MAX(z.id) FROM Tekma z
-                WHERE z.status = si.turnirko.modeli.StatusTekme.KONCANA
-                  AND (z.izidTip IS NULL OR z.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
-                                                          si.turnirko.modeli.IzidTekme.PREDAJA))
-                  AND z.prijava1 IS NOT NULL AND z.prijava2 IS NOT NULL
-                GROUP BY z.dogodek.turnir.id)
+            WHERE t.id IN :idji
             """)
-    List<Tekma> najdiZadnjeVsakegaTurnirja();
+    List<Tekma> najdiSStranema(java.util.Collection<Long> idji);
+
+    /* Naslednje poizvedbe so iste kot zgoraj, le za EN turnir (njegova
+       stran). Stran turnirja je prej sestela vse turnirje (~60 tisoc tekem) in
+       obdrzala eno vrstico. Merila morajo ostati enaka kot v poizvedbah za
+       vse turnirje - stran turnirja in vrstica v seznamu morata reci isto
+       (varuje PovzetkiEnegaTurnirjaTest). */
+    @Query("""
+            SELECT t.dogodek.turnir.id, COUNT(t),
+                   SUM(CASE WHEN t.status = si.turnirko.modeli.StatusTekme.KONCANA THEN 1 ELSE 0 END)
+            FROM Tekma t
+            WHERE t.dogodek.turnir.id = :idTurnir
+            GROUP BY t.dogodek.turnir.id
+            """)
+    List<Object[]> stejZaTurnir(Long idTurnir);
+
+    @Query("""
+            SELECT t.dogodek.turnir.id, t.dogodek.id, t.dogodek.sistemTekmovanja, t.faza,
+                   MIN(t.kolo), COUNT(t)
+            FROM Tekma t
+            WHERE t.status <> si.turnirko.modeli.StatusTekme.KONCANA
+              AND t.dogodek.turnir.id = :idTurnir
+            GROUP BY t.dogodek.turnir.id, t.dogodek.id, t.dogodek.sistemTekmovanja, t.faza
+            """)
+    List<Object[]> neodigranaKolaTurnirja(Long idTurnir);
+
+    // zadnja kola dogodkov enega turnirja: zadnjaKolaTurnirja spodaj (deli jo statistika)
+
+    default List<Tekma> najdiZadnjoTurnirja(Long idTurnir) {
+        Long id = idZadnjeOdigraneTurnirja(idTurnir);
+        return id == null ? List.of() : najdiSStranema(List.of(id));
+    }
+
+    @Query("""
+            SELECT MAX(z.id) FROM Tekma z
+            WHERE z.status = si.turnirko.modeli.StatusTekme.KONCANA
+              AND (z.izidTip IS NULL OR z.izidTip IN (si.turnirko.modeli.IzidTekme.IGRANO,
+                                                      si.turnirko.modeli.IzidTekme.PREDAJA))
+              AND z.prijava1 IS NOT NULL AND z.prijava2 IS NOT NULL
+              AND z.dogodek.turnir.id = :idTurnir
+            """)
+    Long idZadnjeOdigraneTurnirja(Long idTurnir);
 
     /* Isto po dogodkih enega turnirja: [idDogodek, vseh tekem, odigranih]. */
     @Query("""
