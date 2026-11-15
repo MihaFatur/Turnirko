@@ -63,6 +63,18 @@ public class CakajocaRegistracija {
     @Column(name = "ustvarjena_ob", nullable = false, updatable = false)
     private LocalDateTime ustvarjenaOb;
 
+    /* Placilo je prispelo, racun pa (se) ni nastal (V65). Vrstica s placilom se
+       pri nocnem ciscenju ne izbrise: je edina sled placnika v nasi bazi.
+       Seja je Stripova (cs_...), razlog ime PlacilaStoritev.Zastoj. */
+    @Column(name = "placano_ob")
+    private LocalDateTime placanoOb;
+
+    @Column(name = "stripe_seja_id")
+    private String stripeSejaId;
+
+    @Column(name = "razlog_zastoja")
+    private String razlogZastoja;
+
     protected CakajocaRegistracija() {}
 
     public CakajocaRegistracija(String zeton, String ime, String priimek, Long idKlub, String email,
@@ -93,6 +105,19 @@ public class CakajocaRegistracija {
     public LocalDate getDatumRojstva() { return datumRojstva; }
     public String getEmailSkrbnika() { return emailSkrbnika; }
     public LocalDateTime getUstvarjenaOb() { return ustvarjenaOb; }
+
+    public LocalDateTime getPlacanoOb() { return placanoOb; }
+    public String getStripeSejaId() { return stripeSejaId; }
+    public String getRazlogZastoja() { return razlogZastoja; }
+
+    /* Cas prvega placila ostane: Stripe isti dogodek dostavi veckrat. */
+    public void zabeleziZastoj(String idSeje, String razlog, LocalDateTime ob) {
+        if (placanoOb == null) {
+            placanoOb = ob;
+        }
+        stripeSejaId = idSeje;
+        razlogZastoja = razlog;
+    }
 
     public Long getIdKoda() { return idKoda; }
     public void setIdKoda(Long idKoda) { this.idKoda = idKoda; }

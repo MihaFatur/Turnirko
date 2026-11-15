@@ -88,9 +88,23 @@
   (`registracija`), paket, cikel in cenovni pas; e-pošta gre kot `customer_email`, ker
   je račun potrebuje. Podatki obrazca plačljive registracije (zgoščeno geslo, datum
   rojstva, e-pošta skrbnika, ime, klub) čakajo na plačilo v naši bazi; webhook jih
-  najde po žetonu, iz njih ustvari račun in vrstico zbriše (tudi če račun ne more
-  nastati). Neplačane pobriše `CiscenjeRacunovStoritev` po 4 dneh (seja 24 ur +
-  Stripovi ponovni poskusi webhooka do 3 dni). Novega podatka v metapodatke ne dodajaj
+  najde po žetonu, iz njih ustvari račun in vrstico zbriše. Neplačane pobriše
+  `CiscenjeRacunovStoritev` po 4 dneh (seja 24 ur + Stripovi ponovni poskusi
+  webhooka do 3 dni).
+  **Plačilo, iz katerega ni nastalo nič, ne sme ostati samo vrstica v dnevniku**
+  (V65, 15. 11. 2026, najdba E1 pregleda kakovosti; `PlacilaStoritev.Zastoj`):
+  admin dobi e-pošto s Stripovo sejo in razlogom (`ObvestiloAdminuStoritev.placiloBrezRacuna`,
+  `SporociloOPlacilu`, naslov `turnirko.posta.admin`). Štirje primeri: čakajoče
+  registracije ni več, naslov je med plačilom zasedel potrjen račun, plačana
+  nadgradnja izbrisanega računa, obdelava dogodka pade z napako (pošta ob DRUGI
+  padli obdelavi iste seje, ker je prva lahko prehodna; Stripe ponovi čez nekaj
+  minut). Čakajoča registracija s prejetim plačilom (`placano_ob`) **ostane** in je
+  čiščenje ne pobriše; pri padli obdelavi se oznaka zapiše v svoji transakciji, ker
+  se transakcija obdelave razveljavi (zato `obdelajDogodek` nima `@Transactional`,
+  ampak `TransactionTemplate`). Tako vrstico odstrani šele webhook, ko račun nastane,
+  ali admin ročno (zaslona za to ni). E-naslova plačnika v dnevnik ne piši: v
+  dnevniku je samo oznaka seje. Testa: `PlaciloBrezRacunaTest`,
+  `PlaciloPadlaObdelavaTest` (brez `@Transactional`). Novega podatka v metapodatke ne dodajaj
   brez tega premisleka; varuje `PlacilaStoritevTest.vStripeGreSamoZeton`. Postopek
   preklopa v živo je v `docs/NAROCNINE-V-ZIVO.md`.
 

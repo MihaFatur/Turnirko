@@ -27,6 +27,7 @@ import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.posta.PostaStoritev;
 import si.turnirko.posta.SporociloAdminu;
+import si.turnirko.posta.SporociloOPlacilu;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
 
 @Service
@@ -87,5 +88,16 @@ public class ObvestiloAdminuStoritev {
                 razlog.besedilo,
                 u.getUstvarjenOb() == null ? LocalDate.now() : u.getUstvarjenOb().toLocalDate(),
                 koren + "/racuni")));
+    }
+
+    /* Stripe je placilo potrdil, v aplikaciji pa iz njega ni nastalo nic
+       (PlacilaStoritev). Vrne false, ce naslov admina ni nastavljen: klicalec
+       takrat ve, da je edina sled njegov zapis v dnevniku. */
+    public boolean placiloBrezRacuna(SporociloOPlacilu.Placilo placilo) {
+        if (prejemnik.isEmpty()) {
+            return false;
+        }
+        posta.poslji(prejemnik, SporociloOPlacilu.sestavi(placilo));
+        return true;
     }
 }

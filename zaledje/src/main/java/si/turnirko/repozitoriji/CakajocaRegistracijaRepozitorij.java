@@ -28,9 +28,11 @@ public interface CakajocaRegistracijaRepozitorij extends JpaRepository<CakajocaR
 
     /* Registracije, ki do meje niso dobile placila (opuscen nakup) - nocno
        ciscenje jih pobrise, da zgosceno geslo in datum rojstva ne ostaneta v
-       bazi brez racuna. Masovni izbris gre mimo enote dela (glej
+       bazi brez racuna. Vrstica s prejetim placilom (V65) ostane: racun po
+       placilu ni nastal in je edina sled placnika, dokler je admin ne uredi.
+       Masovni izbris gre mimo enote dela (glej
        PotrditvenaKodaRepozitorij.pobrisiPotekle). */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("DELETE FROM CakajocaRegistracija r WHERE r.ustvarjenaOb < :meja")
+    @Query("DELETE FROM CakajocaRegistracija r WHERE r.ustvarjenaOb < :meja AND r.placanoOb IS NULL")
     int pobrisiStarejseOd(LocalDateTime meja);
 }

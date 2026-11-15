@@ -9,7 +9,9 @@
    tekem se ne dotakne, ker nepotrjen racun z njimi ni bil nikoli povezan.
    Cakajoca registracija (placljiv paket, V48), ki placila ni dobila v 4 dneh,
    je opuscen nakup: Stripova seja potece v 24 urah, ponovni poskusi dostave
-   webhooka trajajo do 3 dni, kasneje placilo ne pride vec. */
+   webhooka trajajo do 3 dni, kasneje placilo ne pride vec. Vrstica, za katero
+   je placilo PRISPELO, racun pa ni nastal (V65, placano_ob), ostane: je edina
+   sled placnika, dokler admin placila ne uredi (PlacilaStoritev.Zastoj). */
 package si.turnirko.storitve;
 
 import java.time.LocalDateTime;

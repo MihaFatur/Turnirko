@@ -18,7 +18,13 @@
    Webhook je EDINI vir resnice o stanju narocnine (obdelajDogodek): uspeh
    checkouta jo ustvari, kasnejsi customer.subscription.* in
    invoice.payment_failed jo posodabljajo. Stripova dostava je "vsaj enkrat",
-   zato je obdelava idempotentna po stripe_narocnina_id. */
+   zato je obdelava idempotentna po stripe_narocnina_id.
+
+   Placilo, iz katerega v aplikaciji ni nastalo nic (Zastoj), ne sme ostati
+   samo vrstica v dnevniku: admin dobi e-posto s Stripovo sejo in razlogom
+   (ObvestiloAdminuStoritev), cakajoca registracija s prejetim placilom pa
+   ostane v bazi (V65) in je nocno ciscenje ne pobrise. Naslova placnika v
+   dnevnik ne pisemo - tam je samo seja, po kateri se placilo najde v Stripu. */
 package si.turnirko.storitve;
 
 import java.security.SecureRandom;
@@ -26,13 +32,17 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.stripe.Stripe;
 import com.stripe.exception.EventDataObjectDeserializationException;
@@ -61,6 +71,7 @@ import si.turnirko.modeli.Paket;
 import si.turnirko.modeli.StatusNarocnine;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
+import si.turnirko.posta.SporociloOPlacilu;
 import si.turnirko.repozitoriji.CakajocaRegistracijaRepozitorij;
 import si.turnirko.repozitoriji.NarocninaRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
@@ -85,6 +96,31 @@ public class PlacilaStoritev {
 
     private static final SecureRandom NAKLJUCJE = new SecureRandom();
 
+    /* Zakaj iz potrjenega placila ni nastalo nic. Ime gre v
+       cakajoca_registracija.razlog_zastoja, besedilo v e-posto adminu. */
+    enum Zastoj {
+        NI_CAKAJOCE("Čakajoče registracije s tem žetonom ni več (potekla je ali pa je seja starejša od"
+                + " uvedbe žetonov), zato računa ni iz česa ustvariti."),
+        NASLOV_ZASEDEN("E-naslov je med plačilom zasedel drug potrjen račun (ali pa je bil račun s tem"
+                + " naslovom zavrnjen), zato novi račun ni nastal. Plačane naročnine aplikacija ne obesi na"
+                + " obstoječi račun sama."),
+        RACUNA_NI_VEC("Plačana je nadgradnja računa, ki ne obstaja več (izbrisan med plačilom)."),
+        NAPAKA_OBDELAVE("Obdelava plačila je že drugič padla z napako. Stripe dogodek ponavlja do 3 dni;"
+                + " če napaka ostane, račun oziroma paket ne bo nastal. Če se medtem uredi samo, je to"
+                + " sporočilo brezpredmetno: preveri, ali ima račun plačnika paket.");
+
+        final String besedilo;
+
+        Zastoj(String besedilo) {
+            this.besedilo = besedilo;
+        }
+    }
+
+    /* Prva padla obdelava je lahko prehodna (zaklep, Stripe ne odgovori), zato
+       admina obvestimo sele ob drugi za isto sejo - Stripe ponovi po nekaj
+       minutah. */
+    private static final int PADCEV_DO_OBVESTILA = 2;
+
     private final String webhookSkrivnost;
     private final String vrniNaKoren;
 
@@ -100,6 +136,15 @@ public class PlacilaStoritev {
     private final KodePopustaStoritev kodePopusta;
     private final Zaklepi zaklepi;
     private final PodporaKlubaStoritev podporaKluba;
+    private final ObvestiloAdminuStoritev obvestiloAdminu;
+    private final TransactionTemplate transakcija;
+    private final TransactionTemplate novaTransakcija;
+
+    /* Stevec padlih obdelav po seji: Stripe isti dogodek ponavlja do 3 dni in
+       vsaka ponovitev ne sme biti novo sporocilo adminu. V pomnilniku, ker gre
+       samo za zadrzevanje ponovitev (po ponovnem zagonu steje znova) - trajna
+       sled je vrstica cakajoce registracije in e-posta. */
+    private final ConcurrentMap<String, Integer> padleObdelave = new ConcurrentHashMap<>();
 
     public PlacilaStoritev(
             @Value("${turnirko.stripe.tajni-kljuc:}") String tajniKljuc,
@@ -116,7 +161,9 @@ public class PlacilaStoritev {
             RacunDnevnikStoritev racunDnevnik,
             KodePopustaStoritev kodePopusta,
             Zaklepi zaklepi,
-            PodporaKlubaStoritev podporaKluba) {
+            PodporaKlubaStoritev podporaKluba,
+            ObvestiloAdminuStoritev obvestiloAdminu,
+            PlatformTransactionManager upravljalecTransakcij) {
         Stripe.apiKey = tajniKljuc;
         this.webhookSkrivnost = webhookSkrivnost;
         this.vrniNaKoren = vrniNaKoren;
@@ -132,6 +179,10 @@ public class PlacilaStoritev {
         this.kodePopusta = kodePopusta;
         this.zaklepi = zaklepi;
         this.podporaKluba = podporaKluba;
+        this.obvestiloAdminu = obvestiloAdminu;
+        this.transakcija = new TransactionTemplate(upravljalecTransakcij);
+        this.novaTransakcija = new TransactionTemplate(upravljalecTransakcij);
+        this.novaTransakcija.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     // ---------- Zacetek placila: nova registracija ----------
@@ -334,7 +385,11 @@ public class PlacilaStoritev {
 
     // ---------- Webhook ----------
 
-    @Transactional
+    /* Transakcija je tu izrecna (ne @Transactional): ko obdelava pade, se
+       razveljavi vse, tudi morebitna oznaka na cakajoci registraciji - zato jo
+       zabeleziPadloObdelavo zapise v SVOJI transakciji, potem ko je ta ze
+       koncana. Napaka gre naprej, da Stripe dobi odgovor, ki ni 2xx, in
+       dogodek ponovi. */
     public void obdelajDogodek(String telo, String podpis) {
         Event event;
         try {
@@ -342,6 +397,15 @@ public class PlacilaStoritev {
         } catch (SignatureVerificationException e) {
             throw new NeveljavenVnosIzjema("Neveljaven podpis Stripe webhooka.");
         }
+        try {
+            transakcija.executeWithoutResult(stanje -> obdelaj(event));
+        } catch (RuntimeException napaka) {
+            zabeleziPadloObdelavo(event, napaka);
+            throw napaka;
+        }
+    }
+
+    private void obdelaj(Event event) {
         /* Stripe isti dogodek lahko dostavi dvakrat hkrati: preverba "ze
            obdelano" in zapis morata teci eden za drugim. Dogodkov je malo, zato
            en zaklep za vse. */
@@ -373,24 +437,29 @@ public class PlacilaStoritev {
         Optional<CakajocaRegistracija> najdena = Optional.ofNullable(prazenVNull(meta.get(M_ZETON)))
                 .flatMap(cakajoce::findByZeton);
         if (najdena.isEmpty()) {
-            dnevnik.warn("Placilo seje {} ({}) je uspelo, a racun ni nastal (cakajoce registracije "
-                    + "ni vec - potekla ali seja izpred V48) - potrebna rocna obravnava.",
-                    session.getId(), session.getCustomerEmail());
+            javiZastoj(Zastoj.NI_CAKAJOCE, session, meta.get(M_PAKET), session.getCustomerEmail(), null, null);
             return;
         }
         CakajocaRegistracija c = najdena.get();
+        if (Zastoj.NASLOV_ZASEDEN.name().equals(c.getRazlogZastoja())) {
+            return; // ponovljena dostava: racun ne more nastati, admin to ze ve
+        }
         RegistracijaVnos racun = new RegistracijaVnos(
                 c.getIme(), c.getPriimek(), c.getIdKlub(), c.getEmail(), "placano-preko-stripe",
                 c.isOrganizator(), c.getDatumRojstva(), c.getEmailSkrbnika(), null, c.isNavijac());
 
         Optional<Uporabnik> nastal = registracija.registrirajPoPlacilu(racun, c.getGesloHash());
-        // podatki so zdaj v racunu ali pa racuna ne bo - kopija ne ostane
-        cakajoce.delete(c);
         if (nastal.isEmpty()) {
-            dnevnik.warn("Placilo za {} je uspelo, a racun ni nastal (naslov je medtem "
-                    + "postal neuporaben) - potrebna rocna obravnava.", c.getEmail());
+            /* Racuna ne bo, placilo pa je prispelo: vrstica ostane (ciscenje
+               placane ne pobrise) in admin dobi posto. Prej se je tu izbrisala
+               in placnik je ostal brez sledi. */
+            c.zabeleziZastoj(session.getId(), Zastoj.NASLOV_ZASEDEN.name(), LocalDateTime.now());
+            cakajoce.save(c);
+            javiZastoj(Zastoj.NASLOV_ZASEDEN, session, meta.get(M_PAKET), c.getEmail(), c.getId(), null);
             return;
         }
+        // podatki so zdaj v racunu - kopija ne ostane
+        cakajoce.delete(c);
         if (c.getIdKoda() != null) {
             kodePopusta.zabeleziUporaboPoPlacilu(nastal.get(), c.getIdKoda());
         }
@@ -407,8 +476,8 @@ public class PlacilaStoritev {
         Long idUporabnik = Long.valueOf(meta.get(M_ID_UPORABNIK));
         Uporabnik u = uporabnikRepozitorij.findById(idUporabnik).orElse(null);
         if (u == null) {
-            dnevnik.warn("Nadgradnja za racun {}, ki ne obstaja vec - placilo ostane brez ucinka v aplikaciji.",
-                    idUporabnik);
+            javiZastoj(Zastoj.RACUNA_NI_VEC, session, meta.get(M_PAKET), session.getCustomerEmail(), null,
+                    "račun št. " + idUporabnik);
             return;
         }
         Paket paket = Paket.valueOf(meta.get(M_PAKET));
@@ -439,6 +508,64 @@ public class PlacilaStoritev {
         zapisiObdobje(n, session.getSubscription());
         narocninaRepozitorij.save(n);
         racunDnevnik.zabelezi(u.getId(), RacunDnevnikStoritev.opisPlacila(paket, ciklus));
+    }
+
+    // ---------- Placilo brez ucinka ----------
+
+    /* Sled placila, iz katerega ni nastalo nic: zapis v dnevnik (brez naslova
+       placnika) in e-posta adminu. Posta gre po potrditvi transakcije
+       (PostaStoritev), neuspeh posiljanja pa obdelave ne ustavi. */
+    private void javiZastoj(Zastoj zastoj, Session session, String paket, String emailPlacnika,
+                            Long idCakajoce, String podrobnost) {
+        boolean obvescen = obvestiloAdminu.placiloBrezRacuna(new SporociloOPlacilu.Placilo(
+                zastoj.besedilo, session.getId(), session.getSubscription(), session.getCustomer(), paket,
+                emailPlacnika, idCakajoce, podrobnost));
+        dnevnik.error("Placilo seje {} je uspelo, v aplikaciji pa iz njega ni nastalo nic ({}) - potrebna "
+                + "rocna obravnava. Admin {}.", session.getId(), zastoj,
+                obvescen ? "je obvescen po e-posti" : "NI obvescen (turnirko.posta.admin je prazen)");
+    }
+
+    /* Obdelava dogodka je padla in njena transakcija je razveljavljena. Za
+       placilo (zakljucena seja nasega namena) v novi transakciji oznacimo
+       cakajoco registracijo kot placano - sicer bi jo ciscenje po 4 dneh
+       pobrisalo, ceprav Stripe placilo ima - in ob ponovitvi obvestimo admina.
+       Nic od tega ne sme prekriti prvotne napake, zato se lastne napake samo
+       zapisejo. */
+    private void zabeleziPadloObdelavo(Event event, RuntimeException napaka) {
+        try {
+            if (!"checkout.session.completed".equals(event.getType())) {
+                return;
+            }
+            Session session = (Session) objekt(event);
+            Map<String, String> meta = session.getMetadata() == null ? Map.of() : session.getMetadata();
+            String namen = meta.get(M_NAMEN);
+            if (!NAMEN_REGISTRACIJA.equals(namen) && !NAMEN_NADGRADNJA.equals(namen)) {
+                return;
+            }
+            // sporocilo izjeme lahko nosi osebni podatek (npr. krsitev enolicnosti z naslovom), vrsta ne
+            String vrsta = napaka.getClass().getSimpleName();
+            int padcev = padleObdelave.merge(session.getId(), 1, Integer::sum);
+            dnevnik.error("Obdelava placila seje {} je padla ({}, {}. poskus) - Stripe jo ponovi.",
+                    session.getId(), vrsta, padcev);
+            novaTransakcija.executeWithoutResult(stanje -> {
+                CakajocaRegistracija c = NAMEN_REGISTRACIJA.equals(namen)
+                        ? Optional.ofNullable(prazenVNull(meta.get(M_ZETON))).flatMap(cakajoce::findByZeton)
+                                .orElse(null)
+                        : null;
+                if (c != null) {
+                    c.zabeleziZastoj(session.getId(), Zastoj.NAPAKA_OBDELAVE.name(), LocalDateTime.now());
+                    cakajoce.save(c);
+                }
+                if (padcev == PADCEV_DO_OBVESTILA) {
+                    javiZastoj(Zastoj.NAPAKA_OBDELAVE, session, meta.get(M_PAKET),
+                            c != null ? c.getEmail() : session.getCustomerEmail(),
+                            c == null ? null : c.getId(), "napaka: " + vrsta);
+                }
+            });
+        } catch (RuntimeException druga) {
+            dnevnik.error("Padle obdelave placila ni bilo mogoce zabeleziti ({}).",
+                    druga.getClass().getSimpleName());
+        }
     }
 
     private void ustvariNarocnino(Uporabnik uporabnik, String customerId, String subscriptionId,

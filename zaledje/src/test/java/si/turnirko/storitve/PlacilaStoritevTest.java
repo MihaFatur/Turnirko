@@ -153,7 +153,8 @@ class PlacilaStoritevTest {
 
     /* Placilo brez cakajoce registracije (potekla ali seja izpred V48) ne
        ustvari nicesar in Stripu ne vrne napake - ponovni poskusi ne bi
-       pomagali, potrebna je rocna obravnava (opozorilo v dnevniku). */
+       pomagali, potrebna je rocna obravnava (e-posta adminu, glej
+       PlaciloBrezRacunaTest). */
     @Test
     void placiloBrezCakajoceRegistracijeNeUstvariRacuna() {
         String telo = dogodekRegistracija("evt_4", "cs_4", "cus_4", "sub_4", "ni-ga",
