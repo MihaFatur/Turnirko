@@ -15,6 +15,9 @@
      to izloci tudi uvozeno zgodovino brez casa vnosa);
    - kolo se ni obdelano (obvestilo_kola) in nobeno novejse kolo lige se ni
      bilo obdelano - kolo, ki se dopolni za novejsim, se preskoci.
+   Obdelano je kolo sele, ko so ga dobili vsi prejemniki ali so poskusi dostave
+   izcrpani (dostava_obvestila, V66): neuspela dostava se ponovi ob naslednjem
+   zagonu, a samo tistim, ki kola se niso dobili.
    Vec zrelih kol iste lige naenkrat (po izpadu streznika) da eno sporocilo
    za najnovejse; starejsa se zabelezijo kot preskocena.
 
@@ -71,7 +74,7 @@ import si.turnirko.modeli.TekmaSrecanja;
 import si.turnirko.modeli.TipTekmeSrecanja;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
-import si.turnirko.posta.PostaStoritev;
+import si.turnirko.posta.SporocilaPoste;
 import si.turnirko.posta.SporociloKola;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.LigaRepozitorij;
@@ -114,7 +117,7 @@ public class ObvestilaPoKoluStoritev {
     private final LestvicaLigeStoritev lestvicaLigeStoritev;
     private final NarocninaStoritev narocnina;
     private final LastnistvoStoritev lastnistvo;
-    private final PostaStoritev posta;
+    private final DostavaObvestilStoritev dostava;
     private final String koren;
 
     public ObvestilaPoKoluStoritev(SrecanjeRepozitorij srecanjeRepozitorij,
@@ -129,7 +132,7 @@ public class ObvestilaPoKoluStoritev {
                                    LestvicaLigeStoritev lestvicaLigeStoritev,
                                    NarocninaStoritev narocnina,
                                    LastnistvoStoritev lastnistvo,
-                                   PostaStoritev posta,
+                                   DostavaObvestilStoritev dostava,
                                    @Value("${turnirko.stripe.vrni-na}") String koren) {
         this.srecanjeRepozitorij = srecanjeRepozitorij;
         this.ligaRepozitorij = ligaRepozitorij;
@@ -143,7 +146,7 @@ public class ObvestilaPoKoluStoritev {
         this.lestvicaLigeStoritev = lestvicaLigeStoritev;
         this.narocnina = narocnina;
         this.lastnistvo = lastnistvo;
-        this.posta = posta;
+        this.dostava = dostava;
         this.koren = koren;
     }
 
@@ -160,17 +163,19 @@ public class ObvestilaPoKoluStoritev {
         poslji(LocalDateTime.now(SLOVENIJA));
     }
 
-    /* Obdela vse zrele kole; vrne stevilo poslanih sporocil. */
+    /* Obdela vse zrele kole; vrne stevilo sporocil, oddanih v dostavo
+       (DostavaObvestilStoritev - ta jih poslje po potrditvi te transakcije in
+       vsakega prejemnika zabelezi sele po odgovoru streznika poste). */
     @Transactional
     public int poslji(LocalDateTime zdaj) {
-        int poslanih = 0;
+        int oddanih = 0;
         for (Long idLiga : srecanjeRepozitorij.ligeZVnosomOd(zdaj.minus(SVEZE))) {
-            poslanih += obdelajLigo(idLiga, zdaj);
+            oddanih += obdelajLigo(idLiga, zdaj);
         }
-        if (poslanih > 0) {
-            dnevnik.info("Obvestila po kolu: {} sporocil.", poslanih);
+        if (oddanih > 0) {
+            dnevnik.info("Obvestila po kolu: {} sporocil oddanih v dostavo.", oddanih);
         }
-        return poslanih;
+        return oddanih;
     }
 
     private int obdelajLigo(Long idLiga, LocalDateTime zdaj) {
@@ -204,9 +209,24 @@ public class ObvestilaPoKoluStoritev {
         if (najnovejse < zadnjeObdelano) {
             return 0;
         }
-        int poslanih = posljiKolo(liga, najnovejse, poKolih.get(najnovejse), redna, zdaj);
-        obvestiloKolaRepozitorij.save(new ObvestiloKola(idLiga, najnovejse, ob, poslanih, false));
-        return poslanih;
+        DostavaObvestilStoritev.Kljuc kljuc = DostavaObvestilStoritev.Kljuc.kolo(idLiga, najnovejse);
+        if (dostava.vTeku(kljuc)) {
+            return 0; // dostava iz prejsnjega zagona se tece
+        }
+        Map<Long, Prejemnik> prejemniki = prejemniki(liga);
+        int oddanih = dostava.oddaj(kljuc, pripraviKolo(liga, najnovejse, poKolih.get(najnovejse), redna, zdaj,
+                prejemniki, dostava.cakajo(kljuc, prejemniki.keySet())));
+        /* Kolo je obdelano sele, ko nihce vec ne caka (poslano ali izcrpani
+           poskusi) - prej se je zapisalo, se preden je posta sploh odsla, in
+           neuspela dostava je pomenila, da kolo ne gre nikoli vec. Pravi
+           streznik posilja po potrditvi te transakcije, zato kolo zapre
+           naslednji zagon opravila; do takrat se pripravi samo za tiste, ki
+           cakajo. */
+        if (!dostava.vTeku(kljuc) && dostava.cakajo(kljuc, prejemniki.keySet()).isEmpty()) {
+            obvestiloKolaRepozitorij.save(
+                    new ObvestiloKola(idLiga, najnovejse, ob, dostava.poslanih(kljuc), false));
+        }
+        return oddanih;
     }
 
     static boolean zrelo(List<Srecanje> kolo, LocalDateTime zdaj) {
@@ -236,35 +256,41 @@ public class ObvestilaPoKoluStoritev {
                 .findFirst().orElse(null);
     }
 
-    private int posljiKolo(Liga liga, int kolo, List<Srecanje> srecanja, List<Srecanje> redna,
-                           LocalDateTime zdaj) {
-        Map<Long, Uporabnik> igralci = new LinkedHashMap<>();
+    /* Prejemnik kola in zakaj ga dobi. */
+    private record Prejemnik(Uporabnik racun, SporociloKola.Razlog razlog) {}
+
+    /* Racuni, ki kolo dobijo: najprej igralci lige, nato spremljevalci, vsak enkrat. */
+    private Map<Long, Prejemnik> prejemniki(Liga liga) {
+        Map<Long, Prejemnik> prejemniki = new LinkedHashMap<>();
         for (Uporabnik u : uporabnikRepozitorij.najdiIgralceLige(liga.getId())) {
             if (primeren(u) && u.getStatus() == StatusRacuna.POTRJEN) {
-                igralci.put(u.getId(), u);
+                prejemniki.put(u.getId(), new Prejemnik(u, SporociloKola.Razlog.IGRA));
             }
         }
-        Map<Long, Uporabnik> spremljevalci = new LinkedHashMap<>();
         for (Uporabnik u : uporabnikRepozitorij.najdiSpremljevalceLige(liga.getId())) {
-            if (primeren(u) && !igralci.containsKey(u.getId())) {
-                spremljevalci.put(u.getId(), u);
+            if (primeren(u)) {
+                prejemniki.putIfAbsent(u.getId(), new Prejemnik(u, SporociloKola.Razlog.SPREMLJA));
             }
         }
-        if (igralci.isEmpty() && spremljevalci.isEmpty()) {
-            return 0;
-        }
+        return prejemniki;
+    }
 
+    /* Sporocila za prejemnike, ki kola se niso dobili (cakajo). */
+    private List<DostavaObvestilStoritev.Posiljka> pripraviKolo(Liga liga, int kolo, List<Srecanje> srecanja,
+            List<Srecanje> redna, LocalDateTime zdaj, Map<Long, Prejemnik> prejemniki, Set<Long> cakajo) {
+        if (cakajo.isEmpty()) {
+            return List.of();
+        }
         Skupno skupno = skupno(liga, kolo, srecanja, redna);
-        int poslanih = 0;
-        for (Uporabnik u : igralci.values()) {
-            poslji(u, SporociloKola.Razlog.IGRA, skupno, srecanja, kolo, zdaj);
-            poslanih++;
+        List<DostavaObvestilStoritev.Posiljka> posiljke = new ArrayList<>();
+        for (Prejemnik p : prejemniki.values()) {
+            Uporabnik u = p.racun();
+            if (cakajo.contains(u.getId())) {
+                posiljke.add(new DostavaObvestilStoritev.Posiljka(u.getId(), u.getUporabniskoIme(),
+                        sestavi(u, p.razlog(), skupno, srecanja, kolo, zdaj)));
+            }
         }
-        for (Uporabnik u : spremljevalci.values()) {
-            poslji(u, SporociloKola.Razlog.SPREMLJA, skupno, srecanja, kolo, zdaj);
-            poslanih++;
-        }
-        return poslanih;
+        return posiljke;
     }
 
     static boolean primeren(Uporabnik u) {
@@ -285,8 +311,8 @@ public class ObvestilaPoKoluStoritev {
                 PotekLige.izracunaj(termini, PotekLige.danes()));
     }
 
-    private void poslji(Uporabnik u, SporociloKola.Razlog razlog, Skupno s, List<Srecanje> srecanja,
-                        int kolo, LocalDateTime zdaj) {
+    private SporocilaPoste.Besedilo sestavi(Uporabnik u, SporociloKola.Razlog razlog, Skupno s,
+                                            List<Srecanje> srecanja, int kolo, LocalDateTime zdaj) {
         if (u.getZetonOdjave() == null) {
             u.setZetonOdjave(novZeton());
         }
@@ -309,7 +335,7 @@ public class ObvestilaPoKoluStoritev {
         String odjavaApi = koren + "/api/v1/obvestila/odjava?z=" + u.getZetonOdjave();
         SporociloKola.Prejemnik p = new SporociloKola.Prejemnik(
                 razlog, osebno, vrsticaPremium(u, zdaj), odjava, odjavaApi, koren);
-        posta.poslji(u.getUporabniskoIme(), SporociloKola.sestavi(k, p));
+        return SporociloKola.sestavi(k, p);
     }
 
     private static SporociloKola.Izid izid(Srecanje s, Set<Long> mojeEkipe) {

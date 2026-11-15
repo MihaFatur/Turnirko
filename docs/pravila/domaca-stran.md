@@ -197,6 +197,22 @@
     razveljavitvi zapisnika ne gre znova. Več zrelih kol hkrati → sporočilo samo za
     najnovejše, starejša `preskoceno`; kolo, ki se dopolni za že obdelanim novejšim,
     se preskoči.
+  - **Kolo je obdelano šele, ko ga dobijo vsi** (V66, 15. 11. 2026, najdba E2 pregleda
+    kakovosti; `DostavaObvestilStoritev`, tabela `dostava_obvestila`; enako velja za
+    e-pošto po turnirju). Opravilo sporočila samo pripravi in odda; dostava teče po
+    potrditvi transakcije na svojem izvajalcu (`obvestilaIzvajalec`, ena nit), sinhrono
+    (`PosiljateljPoste.dostavi` vrne `IzidDostave`), in vsakega prejemnika zapiše **po**
+    odgovoru strežnika pošte. Zavrnjeno sporočilo je poskus (po 4 obupamo), izpad
+    strežnika se ne šteje nikomur in po 3 zaporednih dostavo prekine. Dokler kdo čaka,
+    vrstice v `obvestilo_kola` ni in naslednji zagon pošlje **samo tistim brez zapisa**;
+    na pravem strežniku zato kolo zapre šele naslednji zagon opravila (uro pozneje).
+    Ne vračaj zapisa `ObvestiloKola` v isto transakcijo kot oddajo: prav to je bila
+    napaka (neuspela dostava = kolo nikoli več). Meja: če se aplikacija ustavi med
+    odgovorom strežnika in zapisom, dobi ta en prejemnik sporočilo dvakrat.
+    Kode za prijavo gredo po drugem izvajalcu (`postaIzvajalec`), ki polne vrste ne
+    zavrne več (`CallerRunsPolicy`). Testi: `ObvestilaPoKoluTest` (dostava),
+    `DostavaObvestilPoPotrditviTest` (pot s pravim strežnikom, brez `@Transactional`),
+    `SmtpPosiljateljDostavaTest` (lažni SMTP), `PostaNastavitveTest`.
   - **Komu**: računi z igralcem v kadru lige (`najdiIgralceLige`, potrjeni) in računi,
     ki ligo spremljajo, vsak enkrat; aktiven, potrjen naslov (in skrbnik),
     `uporabnik.obvestila_po_kolu` = 1 (privzeto). Igralec dobi svoje tekme vseh

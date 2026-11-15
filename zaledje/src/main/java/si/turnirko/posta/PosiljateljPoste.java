@@ -15,6 +15,15 @@ public interface PosiljateljPoste {
         poslji(prejemnik, besedilo.zadeva(), besedilo.telo());
     }
 
+    /* Sinhrona dostava z izidom, za mnozicna obvestila (DostavaObvestilStoritev):
+       klicalec pocaka na odgovor streznika in prejemnika zapise kot urejenega
+       sele po njem. Brez ponavljanja - ponovi klicalec ob naslednjem zagonu
+       opravila. Kanal, ki ne more odpovedati (dnevnik), sporocilo samo odda. */
+    default IzidDostave dostavi(String prejemnik, SporocilaPoste.Besedilo besedilo) {
+        poslji(prejemnik, besedilo);
+        return IzidDostave.POSLANO;
+    }
+
     /* Ali naj PostaStoritev posiljanje odlozi do potrditve transakcije. Pravi
        kanali da (koda za razveljavljen racun ne sme ven); testni pomnilnik ne,
        ker testna transakcija nikoli ne potrdi in bi sporocilo ostalo neposlano. */

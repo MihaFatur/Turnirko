@@ -189,6 +189,43 @@ class OsebniKoledarInObvestiloTurnirjaTest extends IntegracijskiTest {
         assertTrue(posta.vsa().isEmpty());
     }
 
+    /* Najdba E2 (V66): zavrnjena dostava ne sme pomeniti, da sporocila o turnirju
+       ni nikoli vec. Turnir ostane neobdelan, naslednji zagon poslje samo
+       tistemu, ki ga se nima. */
+    @Test
+    void zavrnjenaDostavaPoTurnirjuSePonoviBrezPodvojitve() {
+        Dogodek dogodek = pripraviDogodek(4);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Tekma tekma = tekmaRepozitorij.findAll().stream()
+                .filter(t -> t.getDogodek().getId().equals(dogodek.getId()) && t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                .findFirst().orElseThrow();
+        tekmaStoritev.vnesiRezultat(tekma.getId(), new VnosRezultata(null, 3, 1, null, null));
+        Igralec zmagovalec = tekmaRepozitorij.findById(tekma.getId()).orElseThrow().getPrijava1().getIgralec();
+        Turnir turnir = dogodek.getTurnir();
+        turnir.setStatus(StatusTekmovanja.ZAKLJUCEN);
+        turnir.setDatumZacetka(LocalDate.now().minusDays(1));
+        turnir.setDatumKonca(LocalDate.now().minusDays(1));
+        turnirRepozitorij.save(turnir);
+        for (String naslov : List.of("prvi@test.si", "drugi@test.si")) {
+            prijava(navijac(naslov, StatusNarocnine.AKTIVNA));
+            spremljani.spremljaj(zmagovalec.getId());
+        }
+
+        posta.zavrni("prvi@test.si");
+        assertEquals(2, obvestilaPoTurnirju.poslji(LocalDateTime.now()), "oddani obe sporocili");
+        assertTrue(posta.zadnje("prvi@test.si").isEmpty());
+        assertTrue(posta.zadnje("drugi@test.si").isPresent());
+
+        posta.pocisti(); // streznik naslov spet sprejme
+        assertEquals(1, obvestilaPoTurnirju.poslji(LocalDateTime.now()), "samo tistemu, ki caka");
+        assertTrue(posta.zadnje("prvi@test.si").isPresent());
+        assertTrue(posta.zadnje("drugi@test.si").isEmpty(), "kdor je sporocilo dobil, ga ne dobi se enkrat");
+
+        posta.pocisti();
+        assertEquals(0, obvestilaPoTurnirju.poslji(LocalDateTime.now()), "turnir je zdaj obdelan");
+        assertTrue(posta.vsa().isEmpty());
+    }
+
     @Test
     void staZakljucenTurnirNiNovicaInNezakljucenSeNeObdela() {
         Dogodek stari = pripraviDogodek(2);

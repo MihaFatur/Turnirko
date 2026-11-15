@@ -45,8 +45,8 @@ import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.SpremljanIgralec;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
+import si.turnirko.posta.SporocilaPoste;
 import si.turnirko.posta.SporociloTurnirja;
-import si.turnirko.posta.PostaStoritev;
 import si.turnirko.repozitoriji.ObvestiloTurnirjaRepozitorij;
 import si.turnirko.repozitoriji.SpremljanIgralecRepozitorij;
 import si.turnirko.repozitoriji.UporabnikRepozitorij;
@@ -70,7 +70,7 @@ public class ObvestilaPoTurnirjuStoritev {
     private final UporabnikRepozitorij uporabnikRepozitorij;
     private final ProfilStoritev profilStoritev;
     private final NarocninaStoritev narocnina;
-    private final PostaStoritev posta;
+    private final DostavaObvestilStoritev dostava;
     private final String koren;
 
     public ObvestilaPoTurnirjuStoritev(ObvestiloTurnirjaRepozitorij obvestila,
@@ -79,7 +79,7 @@ public class ObvestilaPoTurnirjuStoritev {
                                        UporabnikRepozitorij uporabnikRepozitorij,
                                        ProfilStoritev profilStoritev,
                                        NarocninaStoritev narocnina,
-                                       PostaStoritev posta,
+                                       DostavaObvestilStoritev dostava,
                                        @Value("${turnirko.stripe.vrni-na}") String koren) {
         this.obvestila = obvestila;
         this.spremljani = spremljani;
@@ -87,7 +87,7 @@ public class ObvestilaPoTurnirjuStoritev {
         this.uporabnikRepozitorij = uporabnikRepozitorij;
         this.profilStoritev = profilStoritev;
         this.narocnina = narocnina;
-        this.posta = posta;
+        this.dostava = dostava;
         this.koren = koren.endsWith("/") ? koren.substring(0, koren.length() - 1) : koren;
     }
 
@@ -103,26 +103,44 @@ public class ObvestilaPoTurnirjuStoritev {
         }
     }
 
-    /* Obdela zakljucene turnirje, ki jih se ni; vrne stevilo poslanih sporocil. */
+    /* Obdela zakljucene turnirje, ki jih se ni; vrne stevilo sporocil, oddanih v
+       dostavo (DostavaObvestilStoritev).
+
+       Turnir je obdelan sele, ko so sporocilo dobili vsi prejemniki ali so
+       poskusi dostave izcrpani (dostava_obvestila, V66). Prej se je zapisal, se
+       preden je posta odsla, in neuspela dostava je pomenila, da sporocila ni
+       nikoli vec. Pravi streznik posilja po potrditvi te transakcije, zato
+       turnir zapre naslednji zagon opravila. */
     @Transactional
     public int poslji(LocalDateTime zdaj) {
         LocalDate danes = zdaj.toLocalDate();
-        int poslanih = 0;
+        int oddanih = 0;
         for (Turnir t : obvestila.neobdelani(danes.minusDays(DNI_NAZAJ), danes)) {
-            int n = obdelaj(t, zdaj);
-            obvestila.save(new ObvestiloTurnirja(t.getId(), zdaj, n));
-            poslanih += n;
+            DostavaObvestilStoritev.Kljuc kljuc = DostavaObvestilStoritev.Kljuc.turnir(t.getId());
+            if (dostava.vTeku(kljuc)) {
+                continue; // dostava iz prejsnjega zagona se tece
+            }
+            Priprava priprava = pripravi(t, kljuc);
+            oddanih += dostava.oddaj(kljuc, priprava.posiljke());
+            if (!dostava.vTeku(kljuc) && dostava.cakajo(kljuc, priprava.prejemniki()).isEmpty()) {
+                obvestila.save(new ObvestiloTurnirja(t.getId(), zdaj, dostava.poslanih(kljuc)));
+            }
         }
-        return poslanih;
+        return oddanih;
     }
 
-    private int obdelaj(Turnir t, LocalDateTime zdaj) {
+    /* Vsi prejemniki turnirja in sporocila za tiste, ki ga se niso dobili. */
+    private record Priprava(Set<Long> prejemniki, List<DostavaObvestilStoritev.Posiljka> posiljke) {}
+
+    private Priprava pripravi(Turnir t, DostavaObvestilStoritev.Kljuc kljuc) {
+        Set<Long> prejemniki = new LinkedHashSet<>();
+        List<DostavaObvestilStoritev.Posiljka> posiljke = new ArrayList<>();
         Set<Long> nastopili = new LinkedHashSet<>();
         nastopili.addAll(obvestila.igralciPrijav(t.getId(), Prijava.StatusPrijave.ODJAVLJEN));
         nastopili.addAll(obvestila.soigralciPrijav(t.getId(), Prijava.StatusPrijave.ODJAVLJEN));
         nastopili.addAll(obvestila.igralciKadra(t.getId()));
         if (nastopili.isEmpty()) {
-            return 0;
+            return new Priprava(prejemniki, posiljke);
         }
 
         // racun -> igralci, ki jih spremlja in so nastopili (vrstni red spremljanja)
@@ -135,7 +153,8 @@ public class ObvestilaPoTurnirjuStoritev {
         SporociloTurnirja.Turnir turnir = new SporociloTurnirja.Turnir(
                 t.getId(), t.getIme(), t.getDatumKonca() != null ? t.getDatumKonca() : t.getDatumZacetka(),
                 kraj(t));
-        int poslanih = 0;
+        // racun -> igralci z nastopom; kdo od njih sporocila se nima, pove sele evidenca dostave
+        Map<Uporabnik, List<SporociloTurnirja.Igralec>> zaRacun = new LinkedHashMap<>();
         for (Map.Entry<Long, List<Long>> vnos : poRacunu.entrySet()) {
             Uporabnik u = uporabnikRepozitorij.findById(vnos.getKey()).orElse(null);
             if (u == null || !ObvestilaPoKoluStoritev.primeren(u) || !narocnina.imaSirokoSpremljanje(u)) {
@@ -149,10 +168,18 @@ public class ObvestilaPoTurnirjuStoritev {
             if (igralci.isEmpty()) {
                 continue;
             }
-            poslji(u, turnir, igralci);
-            poslanih++;
+            prejemniki.add(u.getId());
+            zaRacun.put(u, igralci);
         }
-        return poslanih;
+        Set<Long> cakajo = dostava.cakajo(kljuc, prejemniki);
+        for (Map.Entry<Uporabnik, List<SporociloTurnirja.Igralec>> vnos : zaRacun.entrySet()) {
+            Uporabnik u = vnos.getKey();
+            if (cakajo.contains(u.getId())) {
+                posiljke.add(new DostavaObvestilStoritev.Posiljka(u.getId(), u.getUporabniskoIme(),
+                        sestavi(u, turnir, vnos.getValue())));
+            }
+        }
+        return new Priprava(prejemniki, posiljke);
     }
 
     /* Racuni, ki igralca spremljajo ali ga imajo v druzini (V59): zapisi (racun, igralec),
@@ -195,14 +222,15 @@ public class ObvestilaPoTurnirjuStoritev {
                 idIgralec, profil.glava().polnoIme(), profil.glava().klub(), vrstice, tekme));
     }
 
-    private void poslji(Uporabnik u, SporociloTurnirja.Turnir turnir, List<SporociloTurnirja.Igralec> igralci) {
+    private SporocilaPoste.Besedilo sestavi(Uporabnik u, SporociloTurnirja.Turnir turnir,
+                                            List<SporociloTurnirja.Igralec> igralci) {
         if (u.getZetonOdjave() == null) {
             u.setZetonOdjave(novZeton());
         }
         SporociloTurnirja.Prejemnik prejemnik = new SporociloTurnirja.Prejemnik(
                 koren + "/odjava-obvestil?z=" + u.getZetonOdjave(),
                 koren + "/api/v1/obvestila/odjava?z=" + u.getZetonOdjave(), koren);
-        posta.poslji(u.getUporabniskoIme(), SporociloTurnirja.sestavi(turnir, igralci, prejemnik));
+        return SporociloTurnirja.sestavi(turnir, igralci, prejemnik);
     }
 
     private static String kraj(Turnir t) {

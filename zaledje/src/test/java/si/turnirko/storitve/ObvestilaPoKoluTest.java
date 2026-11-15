@@ -210,6 +210,86 @@ class ObvestilaPoKoluTest extends IntegracijskiTest {
                 .contains("Premium imaš brez plačila do"));
     }
 
+    // ---------- dostava (najdba E2, V66) ----------
+
+    /* Streznik poste enemu prejemniku sporocilo zavrne. Prej je bilo kolo ze
+       zapisano kot obdelano in ta prejemnik ga ni dobil nikoli. Zdaj kolo
+       ostane odprto, naslednji zagon poslje SAMO njemu (drugi ne dobi se
+       enkrat) in kolo se zapre, ko nihce vec ne caka. */
+    @Test
+    void zavrnjenaDostavaSePonoviSamoTistemuKiKolaNiDobil() {
+        Liga l = pripraviLigo(2, true, LocalDateTime.now(SLOVENIJA).minusDays(1));
+        racun("ana@test.si", l.kadri().get(0).get(0));
+        Uporabnik spremlja = racun("gledalec@test.si", null);
+        spremljanaLigaRepozitorij.save(new SpremljanaLiga(spremlja.getId(), l.id()));
+        odigraj(l, srecanjaKola(l, 1).get(0), "3:1", "3:0", "3:2", "1:3", "0:3");
+        ObvestiloKola.Kljuc kolo = new ObvestiloKola.Kljuc(l.id(), 1);
+
+        posta.zavrni("ana@test.si");
+        assertEquals(2, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(3)), "oddani obe sporocili");
+        assertTrue(posta.zadnje("ana@test.si").isEmpty());
+        assertTrue(posta.zadnje("gledalec@test.si").isPresent());
+        assertTrue(obvestiloKolaRepozitorij.findById(kolo).isEmpty(),
+                "kolo ni obdelano, dokler ga en prejemnik se caka");
+
+        posta.pocisti(); // streznik naslov spet sprejme
+        assertEquals(1, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(4)), "samo tistemu, ki caka");
+        assertTrue(posta.zadnje("ana@test.si").orElseThrow().zadeva().contains("1. kolo"));
+        assertTrue(posta.zadnje("gledalec@test.si").isEmpty(), "kdor je kolo dobil, ga ne dobi se enkrat");
+        assertEquals(2, obvestiloKolaRepozitorij.findById(kolo).orElseThrow().getPrejemnikov());
+
+        posta.pocisti();
+        assertEquals(0, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(5)));
+        assertTrue(posta.vsa().isEmpty());
+    }
+
+    /* Trajno zavrnjen naslov ne sme drzati kola odprtega v nedogled: po
+       NAJVEC_POSKUSOV zavrnitvah obupamo in kolo se zapre brez njega. */
+    @Test
+    void trajnoZavrnjenNaslovPoIzcrpanihPoskusihNeZadrziKola() {
+        Liga l = pripraviLigo(2, true, LocalDateTime.now(SLOVENIJA).minusDays(1));
+        racun("ana@test.si", l.kadri().get(0).get(0));
+        odigraj(l, srecanjaKola(l, 1).get(0), "3:1", "3:0", "3:2", "1:3", "0:3");
+        ObvestiloKola.Kljuc kolo = new ObvestiloKola.Kljuc(l.id(), 1);
+        posta.zavrni("ana@test.si");
+
+        for (int poskus = 1; poskus <= DostavaObvestilStoritev.NAJVEC_POSKUSOV; poskus++) {
+            assertTrue(obvestiloKolaRepozitorij.findById(kolo).isEmpty(), "pred poskusom " + poskus);
+            assertEquals(1, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(2 + poskus)));
+        }
+
+        ObvestiloKola obdelano = obvestiloKolaRepozitorij.findById(kolo).orElseThrow();
+        assertEquals(0, obdelano.getPrejemnikov());
+        assertEquals(0, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(10)), "nic vec poskusov");
+        assertTrue(posta.vsa().isEmpty());
+    }
+
+    /* Streznik poste ne dela: to ni krivda prejemnikov, zato se ne steje kot
+       poskus in kolo pocaka, kolikor je treba. Ko streznik spet dela, dobi vsak
+       eno sporocilo. */
+    @Test
+    void izpadStreznikaPosteNeStejeKotPoskusInKoloPocaka() {
+        Liga l = pripraviLigo(2, true, LocalDateTime.now(SLOVENIJA).minusDays(1));
+        racun("ana@test.si", l.kadri().get(0).get(0));
+        Uporabnik spremlja = racun("gledalec@test.si", null);
+        spremljanaLigaRepozitorij.save(new SpremljanaLiga(spremlja.getId(), l.id()));
+        odigraj(l, srecanjaKola(l, 1).get(0), "3:1", "3:0", "3:2", "1:3", "0:3");
+        ObvestiloKola.Kljuc kolo = new ObvestiloKola.Kljuc(l.id(), 1);
+
+        posta.kanalNeDela(true);
+        for (int ura = 0; ura < DostavaObvestilStoritev.NAJVEC_POSKUSOV + 2; ura++) {
+            assertEquals(2, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(3 + ura)));
+        }
+        assertTrue(posta.vsa().isEmpty());
+        assertTrue(obvestiloKolaRepozitorij.findById(kolo).isEmpty(), "kolo caka na streznik poste");
+
+        posta.kanalNeDela(false);
+        assertEquals(2, obvestila.poslji(LocalDateTime.now(SLOVENIJA).plusHours(12)));
+        assertEquals(1, posta.vsa().stream().filter(s -> s.prejemnik().equals("ana@test.si")).count());
+        assertEquals(1, posta.vsa().stream().filter(s -> s.prejemnik().equals("gledalec@test.si")).count());
+        assertEquals(2, obvestiloKolaRepozitorij.findById(kolo).orElseThrow().getPrejemnikov());
+    }
+
     /* Odjava iz e-poste z zetonom (brez prijave) obvestila izklopi; neznan
        zeton je 404. Nastavitev racuna nato pove, da so izklopljena, in jih
        vklopi nazaj. */

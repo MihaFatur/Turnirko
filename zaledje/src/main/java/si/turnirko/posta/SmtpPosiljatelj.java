@@ -4,7 +4,11 @@
    cakati na tuj streznik - v dvorani je povezava pocasna, streznik poste pa
    vcasih odgovori sele po sekundah. Neuspeh se poskusi se dvakrat z odmikom,
    nato se zapise v dnevnik; naslov prejemnika je v dnevniku zakrit, ker je
-   osebni podatek. */
+   osebni podatek.
+
+   Mnozicna obvestila (po kolu, po turnirju) gredo po drugi poti: dostavi() je
+   sinhrona in vrne izid, klice pa jo DostavaObvestilStoritev na svojem
+   izvajalcu. */
 package si.turnirko.posta;
 
 import org.slf4j.Logger;
@@ -13,6 +17,9 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.mail.MailException;
+import org.springframework.mail.MailParseException;
+import org.springframework.mail.MailPreparationException;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -20,6 +27,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import jakarta.mail.MessagingException;
+import jakarta.mail.SendFailedException;
 import jakarta.mail.internet.MimeMessage;
 
 @Component
@@ -80,29 +88,76 @@ public class SmtpPosiljatelj implements PosiljateljPoste {
             poslji(prejemnik, b.zadeva(), b.telo());
             return;
         }
-        MimeMessage sporocilo = posiljatelj.createMimeMessage();
+        MimeMessage sporocilo;
         try {
-            MimeMessageHelper pomocnik = new MimeMessageHelper(sporocilo, b.html() != null, "UTF-8");
-            pomocnik.setFrom(od);
-            if (!odgovor.isBlank()) {
-                pomocnik.setReplyTo(odgovor);
-            }
-            pomocnik.setTo(prejemnik);
-            pomocnik.setSubject(b.zadeva());
-            if (b.html() != null) {
-                pomocnik.setText(b.telo(), b.html());
-            } else {
-                pomocnik.setText(b.telo());
-            }
-            for (var glava : b.glave().entrySet()) {
-                sporocilo.addHeader(glava.getKey(), glava.getValue());
-            }
+            sporocilo = sestavi(prejemnik, b);
         } catch (MessagingException napaka) {
             dnevnik.warn("E-poste \"{}\" za {} ni bilo mogoce sestaviti: {}",
                     b.zadeva(), zakrij(prejemnik), napaka.getMessage());
             return;
         }
         posljiSPoskusi(prejemnik, b.zadeva(), () -> posiljatelj.send(sporocilo));
+    }
+
+    /* Sinhrona dostava mnozicnega obvestila (brez @Async in brez ponavljanja:
+       klicalec je ze v ozadju in ponovi ob naslednjem zagonu opravila). Izid
+       pove, ali je streznik sporocilo sprejel - po njem se prejemnik zapise kot
+       urejen (DostavaObvestilStoritev). */
+    @Override
+    public IzidDostave dostavi(String prejemnik, SporocilaPoste.Besedilo b) {
+        try {
+            posiljatelj.send(sestavi(prejemnik, b));
+            return IzidDostave.POSLANO;
+        } catch (MessagingException napaka) {
+            dnevnik.warn("E-poste \"{}\" za {} ni bilo mogoce sestaviti: {}",
+                    b.zadeva(), zakrij(prejemnik), napaka.getMessage());
+            return IzidDostave.ZAVRNJENO;
+        } catch (MailException napaka) {
+            IzidDostave izid = razvrsti(napaka);
+            dnevnik.warn("E-posta \"{}\" za {} ni sla ({}): {}", b.zadeva(), zakrij(prejemnik),
+                    izid == IzidDostave.KANAL_NE_DELA ? "streznik poste ne dela" : "zavrnjena",
+                    napaka.getMessage());
+            return izid;
+        }
+    }
+
+    /* Zavrnjeno je samo sporocilo, ki ga je streznik prejel in nanj odgovoril z
+       zavrnitvijo (SendFailedException: naslov, vsebina, omejitev) ali ki ga ni
+       mogoce pripraviti. Vse drugo - ni povezave, prijava ne uspe, povezava se
+       pretrga - je izpad kanala: ne steje se prejemniku in dostava se prekine.
+       V dvomu izpad: napacno pripisan poskus bi prejemnika po nekaj urah
+       izlocil, napacno pripisan izpad pa samo odlozi na naslednjo uro. */
+    static IzidDostave razvrsti(MailException napaka) {
+        if (napaka instanceof MailSendException posiljanje) {
+            var vzroki = posiljanje.getFailedMessages().values();
+            boolean zavrnjeno = !vzroki.isEmpty()
+                    && vzroki.stream().allMatch(v -> v instanceof SendFailedException);
+            return zavrnjeno ? IzidDostave.ZAVRNJENO : IzidDostave.KANAL_NE_DELA;
+        }
+        if (napaka instanceof MailParseException || napaka instanceof MailPreparationException) {
+            return IzidDostave.ZAVRNJENO;
+        }
+        return IzidDostave.KANAL_NE_DELA;
+    }
+
+    private MimeMessage sestavi(String prejemnik, SporocilaPoste.Besedilo b) throws MessagingException {
+        MimeMessage sporocilo = posiljatelj.createMimeMessage();
+        MimeMessageHelper pomocnik = new MimeMessageHelper(sporocilo, b.html() != null, "UTF-8");
+        pomocnik.setFrom(od);
+        if (!odgovor.isBlank()) {
+            pomocnik.setReplyTo(odgovor);
+        }
+        pomocnik.setTo(prejemnik);
+        pomocnik.setSubject(b.zadeva());
+        if (b.html() != null) {
+            pomocnik.setText(b.telo(), b.html());
+        } else {
+            pomocnik.setText(b.telo());
+        }
+        for (var glava : b.glave().entrySet()) {
+            sporocilo.addHeader(glava.getKey(), glava.getValue());
+        }
+        return sporocilo;
     }
 
     private void posljiSPoskusi(String prejemnik, String zadeva, Runnable poslji) {
