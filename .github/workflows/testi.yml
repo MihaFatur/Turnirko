@@ -4,7 +4,10 @@
 # pognalo testov, razen ce se je kdo spomnil. Ta tok jih pozene ob vsakem
 # pushu na vejo test (delovna veja) in main (preverjeno stanje):
 #   - zaledje: vsi testi (mvnw test) na vgrajenem PostgreSQL, brez Dockerja;
-#   - vmesnik: preverba tipov in gradnja (npm run build = tsc --noEmit + vite build).
+#   - vmesnik: testi cistih funkcij in meje napak (npm test = vitest), pravila
+#     React Hooks (npm run lint = eslint; napaka je samo rules-of-hooks,
+#     opozorila toka ne ustavijo) ter preverba tipov in gradnja
+#     (npm run build = tsc --noEmit + vite build).
 #
 # Rdec tok pomeni: tega commita ne povisuj v produkcijo. Stanje je vidno na
 # GitHubu ob commitu (zelena kljukica ali rdec kriz) in v zavihku Actions.
@@ -53,7 +56,7 @@ jobs:
           retention-days: 7
 
   vmesnik:
-    name: Vmesnik (tipi in gradnja)
+    name: Vmesnik (testi, lint, gradnja)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -66,6 +69,12 @@ jobs:
       - name: Odvisnosti
         working-directory: vmesnik
         run: npm ci
+      - name: Testi vmesnika
+        working-directory: vmesnik
+        run: npm test
+      - name: Pravila React Hooks
+        working-directory: vmesnik
+        run: npm run lint
       - name: Preverba tipov in gradnja
         working-directory: vmesnik
         run: npm run build
