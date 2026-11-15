@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react
 import { App } from './App'
 import { NapakaStreznika } from './api/odjemalec'
 import { AvtentikacijaPonudnik } from './avtentikacija/AvtentikacijaKontekst'
+import { MejaNapak } from './komponente/MejaNapak'
 import { PremiumOglasPonudnik } from './komponente/PremiumOglasKontekst'
 /* Lokalno vgrajene pisave sistema (brez zunanjih klicev - deluje tudi brez
    interneta v dvorani; DESIGN.md nalaga druzine, ne nacina dostave).
@@ -47,14 +48,18 @@ const odjemalecPoizvedb = new QueryClient({
 
 createRoot(document.getElementById('koren')!).render(
   <StrictMode>
-    <QueryClientProvider client={odjemalecPoizvedb}>
-      <BrowserRouter>
-        <AvtentikacijaPonudnik>
-          <PremiumOglasPonudnik>
-            <App />
-          </PremiumOglasPonudnik>
-        </AvtentikacijaPonudnik>
-      </BrowserRouter>
-    </QueryClientProvider>
+    {/* Zadnja obramba pred belim zaslonom: strani za tisk (brez postavitve) in
+        napaka v sami glavi. Vsebino strani varuje notranja meja v Postavitev. */}
+    <MejaNapak celaStran>
+      <QueryClientProvider client={odjemalecPoizvedb}>
+        <BrowserRouter>
+          <AvtentikacijaPonudnik>
+            <PremiumOglasPonudnik>
+              <App />
+            </PremiumOglasPonudnik>
+          </AvtentikacijaPonudnik>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </MejaNapak>
   </StrictMode>,
 )

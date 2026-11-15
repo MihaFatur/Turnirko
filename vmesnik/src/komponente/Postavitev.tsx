@@ -45,6 +45,7 @@ import {
   IkonaVec,
 } from './IkoneNavigacije'
 import { Maskota } from './Maskota'
+import { MejaNapak } from './MejaNapak'
 import { UporabniskiMeni } from './UporabniskiMeni'
 import { UvodnaAnimacija } from './UvodnaAnimacija'
 
@@ -288,7 +289,11 @@ export function Postavitev() {
         )}
 
         <main className={'vsebina' + (jeTelefon ? ' vsebina--telefon' : '')}>
-          <Outlet />
+          {/* Izjema med izrisom strani ostane v vsebini: glava in navigacija
+              stojita naprej, prehod na drugo stran mejo ponastavi. */}
+          <MejaNapak ponastaviOb={naslov}>
+            <Outlet />
+          </MejaNapak>
         </main>
 
         {jeTelefon && (
