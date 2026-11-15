@@ -126,7 +126,8 @@ function useJePovezan(): boolean {
 }
 
 export function Postavitev() {
-  const { uporabnik, jeAdmin, jeOrganizator } = useAvtentikacija()
+  const { uporabnik, jeAdmin, jeOrganizator, prijavaPotekla, zapriObvestiloPoteka } =
+    useAvtentikacija()
   const povezan = useJePovezan()
   const jeTelefon = useTelefon()
   const { pathname: naslov } = useLocation()
@@ -285,6 +286,24 @@ export function Postavitev() {
             <span className="brez-povezave__pojasnilo">
               — prikazano je zadnje stanje, ki ga je naprava uspela naložiti.
             </span>
+          </div>
+        )}
+
+        {/* Strežnik je zavrnil poverilnice prijavljenega (osrednja obravnava 401
+            v api/odjemalec.ts): uporabnik je spet gost in mora to izvedeti,
+            sicer bi mu urejevalska dejanja brez besede izginila. */}
+        {prijavaPotekla && (
+          <div className="brez-povezave brez-povezave--z-dejanjem" role="status">
+            <span>
+              Prijava ne velja več{' '}
+              <span className="brez-povezave__pojasnilo">
+                — geslo je bilo spremenjeno ali pa je račun izklopljen. Stran gledaš kot gost;
+                prijavi se znova.
+              </span>
+            </span>
+            <button type="button" className="gumb gumb--majhen" onClick={zapriObvestiloPoteka}>
+              Zapri
+            </button>
           </div>
         )}
 

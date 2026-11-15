@@ -16,6 +16,23 @@ export function nastaviPoverilnice(osnovaBase64: string | null) {
   poverilnice = osnovaBase64
 }
 
+/* Kaj se zgodi, ko strežnik poverilnice zavrne (401 na zahtevi, ki jih je
+   nosila): geslo je bilo spremenjeno ali račun izklopljen, zavihek pa je ostal
+   odprt. Poslušalca nastavi avtentikacijski kontekst, ki uporabnika vrne v
+   stanje gosta.
+
+   Zakaj osrednje in ne v vsaki poizvedbi: strežnik šteje vsako zahtevo z
+   napačnimi poverilnicami kot neuspelo prijavo (PrijavaDogodki) in po desetih
+   račun s tega naslova IP za 15 minut zavrača s 429 (OmejitevPrijavFilter) -
+   tudi njegovega lastnika z novim, pravilnim geslom. Zavihek, ki je glavo
+   pošiljal naprej (stran turnirja se osvežuje na 15 s), je to blokado
+   obnavljal, dokler je bil odprt. */
+let obNeveljavnih: (() => void) | null = null
+
+export function obNeveljavnihPoverilnicah(poslusalec: (() => void) | null) {
+  obNeveljavnih = poslusalec
+}
+
 export class NapakaStreznika extends Error {
   constructor(
     /* HTTP koda odgovora (400, 404, 409 ...). */
@@ -42,7 +59,9 @@ async function zahteva<T>(pot: string, metoda: string, telo?: unknown): Promise<
   const obrazec = telo instanceof FormData
   const glave: Record<string, string> = {}
   if (telo !== undefined && !obrazec) glave['Content-Type'] = 'application/json'
-  if (poverilnice) glave['Authorization'] = `Basic ${poverilnice}`
+  /* Poverilnice te zahteve: ob odgovoru so lahko v modulu že druge. */
+  const poslane = poverilnice
+  if (poslane) glave['Authorization'] = `Basic ${poslane}`
 
   const odgovor = await fetch(OSNOVNA_POT + pot, {
     method: metoda,
@@ -51,6 +70,25 @@ async function zahteva<T>(pot: string, metoda: string, telo?: unknown): Promise<
   })
 
   if (!odgovor.ok) {
+    /* Zavrnjene poverilnice se zavržejo ENKRAT: primerjava s trenutnimi
+       poskrbi, da več hkratnih zahtev (stran naloži deset poizvedb naenkrat)
+       poslušalca ne pokliče desetkrat in da pozen odgovor stare zahteve ne
+       odnese poverilnic, s katerimi se je uporabnik medtem prijavil znova.
+       Z zavrnjenimi poverilnicami ni nobenega ponovnega poskusa: naslednje
+       zahteve gredo brez glave, kot gost. 401 brez poslanih poverilnic je
+       gost na zaščiteni poti in ostane navadna napaka. */
+    if (odgovor.status === 401 && poslane !== null) {
+      if (poslane === poverilnice) {
+        poverilnice = null
+        obNeveljavnih?.()
+      }
+      /* Branje se ENKRAT ponovi brez glave: javna stran (turnir, lestvica) se
+         tako gledalcu izriše takoj, namesto da bi obstala pri »nimaš pravic«.
+         Zanke ni - ponovitev poverilnic ne nosi, zato sem ne pride več - in
+         strežnik je ne šteje kot neuspelo prijavo. Pisanja ne ponavljamo:
+         brez prijave ga strežnik zavrne. */
+      if (metoda === 'GET' && poverilnice === null) return zahteva<T>(pot, metoda)
+    }
     let naslov = 'Napaka'
     let podrobnost = `Strežnik je vrnil napako ${odgovor.status}.`
     try {

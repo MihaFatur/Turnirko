@@ -8,10 +8,10 @@
    Igralec se prijavi z e-pošto. Dokler naslova ne potrdi s kodo in dokler
    račun ni povezan z zapisom igralca (samodejno ali admin), je `status` CAKA
    in `idIgralec` prazen — takrat še nima dostopa do svojega profila. */
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { nastaviPoverilnice } from '../api/odjemalec'
+import { nastaviPoverilnice, obNeveljavnihPoverilnicah } from '../api/odjemalec'
 import { authApi } from '../api/zahteve'
 import type { UporabnikDto } from '../api/tipi'
 
@@ -54,6 +54,11 @@ interface Avtentikacija {
   ) => boolean
   /* Med začetnim preverjanjem shranjenih poverilnic. */
   nalaganje: boolean
+  /* Strežnik je sredi dela zavrnil poverilnice prijavljenega (geslo spremenjeno,
+     račun izklopljen): uporabnik je spet gost, postavitev mu to pove. Ugasne ga
+     nova prijava ali `zapriObvestiloPoteka`. */
+  prijavaPotekla: boolean
+  zapriObvestiloPoteka: () => void
   /* Vrne profil, da okno za prijavo ve, ali naslov še čaka na kodo. */
   prijava: (uporabniskoIme: string, geslo: string) => Promise<UporabnikDto>
   /* Ponovno prebere profil prijavljenega (npr. po vpisu kode). */
@@ -72,6 +77,37 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
   const [uporabnik, nastaviUporabnika] = useState<UporabnikDto | null>(null)
   const [nalaganje, nastaviNalaganje] = useState(true)
   const odjemalec = useQueryClient()
+  const [prijavaPotekla, nastaviPrijavaPotekla] = useState(false)
+  /* Ali je v tem zavihku kdo prijavljen (ref, ker ga bere poslušalec iz
+     odjemalca in ne izris). */
+  const prijavljen = useRef(false)
+  /* Med poskusom prijave je 401 napačno geslo, ne potek prijave. */
+  const poskusPrijave = useRef(false)
+
+  function nastaviPrijavljenega(profil: UporabnikDto) {
+    prijavljen.current = true
+    nastaviUporabnika(profil)
+  }
+
+  /* Osrednja obravnava 401 (glej api/odjemalec.ts): poverilnice prijavljenega
+     ne veljajo več. Odjemalec jih je že zavrgel; tu se počisti še shramba in
+     stanje, poizvedbe pa se osvežijo kot gost - javne strani se tako vrnejo
+     same, namesto da bi vsaka kazala »nimaš pravic«.
+
+     Registriran je PRED preverbo ob zagonu (vrstni red učinkov). Zavrnjen
+     poskus prijave in zavrnjene shranjene poverilnice ob zagonu NISTA potek
+     prijave: takrat še nihče ni prijavljen in sporočilo pokaže klicatelj. */
+  useEffect(() => {
+    obNeveljavnihPoverilnicah(() => {
+      if (!prijavljen.current || poskusPrijave.current) return
+      prijavljen.current = false
+      sessionStorage.removeItem(KLJUC_SHRAMBE)
+      nastaviUporabnika(null)
+      nastaviPrijavaPotekla(true)
+      odjemalec.invalidateQueries()
+    })
+    return () => obNeveljavnihPoverilnicah(null)
+  }, [odjemalec])
 
   /* Ob zagonu preveri shranjene poverilnice. */
   useEffect(() => {
@@ -83,7 +119,7 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     nastaviPoverilnice(shranjene)
     authApi
       .jaz()
-      .then((profil) => nastaviUporabnika(profil))
+      .then((profil) => nastaviPrijavljenega(profil))
       .catch(() => {
         nastaviPoverilnice(null)
         sessionStorage.removeItem(KLJUC_SHRAMBE)
@@ -94,9 +130,11 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
   async function prijava(uporabniskoIme: string, geslo: string): Promise<UporabnikDto> {
     const osnova = vBase64(`${uporabniskoIme}:${geslo}`)
     nastaviPoverilnice(osnova)
+    poskusPrijave.current = true
     try {
       const profil = await authApi.jaz()
-      nastaviUporabnika(profil)
+      nastaviPrijavljenega(profil)
+      nastaviPrijavaPotekla(false)
       sessionStorage.setItem(KLJUC_SHRAMBE, osnova)
       // po prijavi osveži vse poglede (nekateri prikažejo dodatne možnosti)
       odjemalec.invalidateQueries()
@@ -105,6 +143,8 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
       nastaviPoverilnice(null)
       sessionStorage.removeItem(KLJUC_SHRAMBE)
       throw napaka
+    } finally {
+      poskusPrijave.current = false
     }
   }
 
@@ -114,17 +154,20 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     if (!sessionStorage.getItem(KLJUC_SHRAMBE)) return
     try {
       const profil = await authApi.jaz()
-      nastaviUporabnika(profil)
+      nastaviPrijavljenega(profil)
       odjemalec.invalidateQueries()
     } catch {
-      /* poverilnice ne veljajo več - stanje ostane, odjava jo počisti */
+      /* Zavrnjene poverilnice (401) je že obravnaval poslušalec zgoraj; pri
+         drugi napaki (izpad povezave) stanje ostane, kot je. */
     }
   }
 
   function odjava() {
+    prijavljen.current = false
     nastaviPoverilnice(null)
     sessionStorage.removeItem(KLJUC_SHRAMBE)
     nastaviUporabnika(null)
+    nastaviPrijavaPotekla(false)
     odjemalec.invalidateQueries()
   }
 
@@ -168,6 +211,8 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     mojIdIgralec: jeIgralec ? uporabnik!.idIgralec : null,
     smemUrejati,
     nalaganje,
+    prijavaPotekla,
+    zapriObvestiloPoteka: () => nastaviPrijavaPotekla(false),
     prijava,
     osvezi,
     odjava,

@@ -342,6 +342,31 @@ textarea:focus-visible,
   font-weight: 400;
 }
 
+/* Trak z gumbom (»Prijava ne velja več« · Zapri): besedilo levo, gumb desno,
+   na ozkem zaslonu gumb pod besedilom. Gumb je v barvah traku, kot pri .napaka. */
+.brez-povezave--z-dejanjem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  flex-wrap: wrap;
+}
+
+.brez-povezave .gumb {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-color: var(--barva-negativna);
+  color: var(--barva-negativna-tekst);
+  font-size: var(--tip-drobno);
+  flex: none;
+}
+
+.brez-povezave .gumb:hover:not(:disabled) {
+  background: var(--barva-negativna);
+  border-color: var(--barva-negativna);
+  color: var(--barva-bela);
+}
+
 .glava__logotip {
   grid-area: logotip;
   display: flex;
