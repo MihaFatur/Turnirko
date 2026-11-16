@@ -85,13 +85,16 @@ export function zacetekPodaljska(d: number, drugo: number): boolean {
    - 1 je lahko začetek 10, zato se 11 zapiše samo v prazen stolpec; prejšnja
      vrednost ostane, da brisanje 11 v 1 ne prepiše drugega stolpca;
    - dvomestni vpis 11 in več pomeni, da je zmagal ta stolpec, zato se ostanek 11
-     iz prejšnjega samodejnega vpisa izbriše (drugi ne more imeti 11). */
+     iz prejšnjega samodejnega vpisa izbriše, razen kadar 11 s tem vpisom tvori
+     veljaven niz. To je natanko 13:11 (podaljšek z razliko 2). Brez te izjeme se je
+     pri 11:13 ob vpisu 13 v drugi stolpec prepisal prvi stolpec s praznim, ker je bil
+     11 sam videti kot samodejni ostanek, čeprav ga je vnašalec vpisal sam. */
 export function drugaTocka(vpis: string, drugo: string): string {
   if (vpis === '') return drugo
   if (vpis === '1') return drugo === '' ? '11' : drugo
   if (vpis === '10') return '12'
   if (vpis.length === 1) return zacetekPodaljska(Number(vpis), Number(drugo)) ? drugo : '11'
-  return drugo === '11' ? '' : drugo
+  return drugo === '11' && !veljavenNiz(Number(vpis), 11) ? '' : drugo
 }
 
 /* Drugi igralec ima samodejno preostanek nizov, ko je vpisan prvi (in obratno):

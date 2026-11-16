@@ -182,6 +182,11 @@
     se z drugim stolpcem ujema v podaljšku (`zacetekPodaljska`: 19:21, 25:23);
     prej je prepisala prvi stolpec z 11 in podaljškov nad 21:19 ni bilo mogoče
     vnesti.
+    Druga stran istega pravila (`drugaTocka`): prva števka »1« napolni drugi
+    stolpec z 11, dvomestni vpis pa ta samodejni ostanek izbriše. **Izjema je
+    13**, ker je 13:11 veljaven podaljšek: brez nje je vpis 11:13 (11 levo, nato
+    13 desno) pobrisal vpisanih 11. Preverja ga `veljavenNiz(vpis, 11)`, test je
+    `TockeNizov.test.ts`.
   - **Po mreži se hodi s puščicami**: levo/desno med stranema in čez konec
     vrstice (samo z roba vpisa, da ostane mogoče postaviti kazalec sredi
     dvomestne številke), gor/dol po istem stolpcu, `Backspace` iz praznega
