@@ -20,12 +20,20 @@
    - 5. do 8. nosilec se zrebajo na svoje osmine - cetrtfinale;
    - 9. do 16., 17. do 32. ... enako po pasovih, ki se podvajajo.
 
-   Izlocilni del po skupinah:
+   Izlocilni del po skupinah (22. clen PST, Priloga C):
    - zmagovalci skupin so nosilci 1..N (zmagovalec skupine A je 1. nosilec)
      in se zrebajo po zgornjem pravilu pasov;
+   - NEPOLN zadnji pas zmagovalcev se zreba na VSA mesta svojega pasu: pri
+     5 skupinah gre zmagovalec E na eno od mest 5.-8. (dve zgoraj, dve
+     spodaj), ne vedno na mesto 5. nosilca (tako je bilo do 16. 11. 2026 in
+     E1 je bil zato vedno v zgornji polovici, E2 vedno v spodnji);
    - drugouvrsceni se zrebajo na preostala mesta, vsak v NASPROTNO polovico
      od zmagovalca svoje skupine: igralca iz iste skupine se tako lahko
      srecata sele v finalu;
+   - prosta mesta (mreza ni polna) so v vsaki polovici enako stevilna, ker
+     ima vsaka polovica enako igralcev. Znotraj polovice jih dobijo najprej
+     zmagovalci po nosilskem vrstnem redu - prosti krog gre za zmagovalcem,
+     kamorkoli je izzreban - preostala pa izzrebani drugouvrsceni;
    - iz tega samo od sebe sledi, da zmagovalec skupine v 1. kolu nikoli ne
      igra z drugim zmagovalcem skupine - ali je prost ali igra
      drugouvrscenega iz druge skupine.
@@ -162,16 +170,21 @@ public class NosilciStoritev {
 
     /* Nosilska mesta izlocilnega dela po skupinah. Oba seznama sta po
        skupinah: zmagovalci.get(i) in drugi.get(i) sta iz iste skupine,
-       skupina 0 (A) je najmocnejsa.
+       skupina 0 (A) je najmocnejsa. drugi.get(i) je lahko null (skupina
+       drugouvrscenega nima).
 
-       drugi.get(i) je lahko prazen (null): skupina z manj igralci (npr. tri
-       namesto stirih) drugouvrscenega za ta zreb nima. SV_REGIJA isto metodo
-       uporabi za tolazilni zreb, kjer sta "zmagovalec" in "drugi" tretje- in
-       cetrtouvrsceni. Seznam, ki ga vrne, ima toliko nosilcev, kolikor je
-       udelezencev. */
+       Vrne seznam po nosilskih mestih DOLZINE CELE MREZE: null je prosto
+       mesto. Za razliko od vMrezo prosta mesta niso nujno najvisje stevilke,
+       ker prosti krog gre za izzrebanim zmagovalcem (glej uvod). */
     public List<Prijava> vMrezoIzSkupin(List<Prijava> zmagovalci, List<Prijava> drugi) {
         int stDrugih = (int) drugi.stream().filter(java.util.Objects::nonNull).count();
         int velikostMreze = najblizjaPotencaDve(zmagovalci.size() + stDrugih);
+        if (velikostMreze <= 2) {
+            // ena skupina: zmagovalec na vrh, drugouvrsceni na dno, zreba ni
+            List<Prijava> nosilci = new ArrayList<>(zmagovalci);
+            drugi.stream().filter(java.util.Objects::nonNull).forEach(nosilci::add);
+            return nosilci;
+        }
         int[] indeksMesta = indeksiNosilskihMest(velikostMreze);
 
         List<Prijava> najboljsi = null;
@@ -277,48 +290,123 @@ public class NosilciStoritev {
         return kazen + klubskihTrkovVPrvemKolu(nosilci, velikostMreze);
     }
 
+    /* En nakljucni zreb izlocilnega dela po skupinah; vrne seznam dolzine
+       mreze po nosilskih mestih (null = prosto mesto). */
     private List<Prijava> enZrebIzSkupin(List<Prijava> zmagovalci, List<Prijava> drugi,
                                          int velikostMreze, int[] indeksMesta) {
         int stSkupin = zmagovalci.size();
-        int stDrugih = (int) drugi.stream().filter(java.util.Objects::nonNull).count();
-        Prijava[] nosilci = new Prijava[stSkupin + stDrugih];
+        int polovicaMreze = velikostMreze / 2;
+        Prijava[] nosilci = new Prijava[velikostMreze];
+        boolean[] zasedeno = new boolean[velikostMreze + 1]; // igralec ali prosto mesto
 
-        // zmagovalci skupin na nosilska mesta 1..N, premesani po pasovih
-        List<Integer> skupinaNaMestu = premesajPasove(zaporedje(stSkupin));
-        boolean[] zmagovalecJeZgoraj = new boolean[stSkupin];
-        for (int mesto = 1; mesto <= stSkupin; mesto++) {
-            int skupina = skupinaNaMestu.get(mesto - 1);
-            nosilci[mesto - 1] = zmagovalci.get(skupina);
-            zmagovalecJeZgoraj[skupina] = jeZgornjaPolovica(indeksMesta, mesto, velikostMreze);
+        /* 1. Zmagovalci po pasovih. Pas se zreba na VSA svoja mesta, tudi ce
+           zmagovalcev ni dovolj, da bi ga napolnili (5 skupin: E1 na eno od
+           mest 5.-8.). Premesana mesta pasu in prvih k od njih je enakomerno
+           nakljucna izbira k mest. */
+        int[] mestoZmagovalca = new int[stSkupin];
+        for (int[] pas : pasovi(stSkupin)) {
+            int prvoMesto = pas[0] + 1;
+            int zadnjeMesto = Math.min(pas[0] < 2 ? prvoMesto : 2 * pas[0], velikostMreze);
+            List<Integer> mestaPasu = new ArrayList<>();
+            for (int mesto = prvoMesto; mesto <= zadnjeMesto; mesto++) {
+                mestaPasu.add(mesto);
+            }
+            Collections.shuffle(mestaPasu, nakljucje);
+            for (int skupina = pas[0]; skupina < pas[1]; skupina++) {
+                int mesto = mestaPasu.get(skupina - pas[0]);
+                nosilci[mesto - 1] = zmagovalci.get(skupina);
+                zasedeno[mesto] = true;
+                mestoZmagovalca[skupina] = mesto;
+            }
         }
 
-        // preostala nosilska mesta, locena po polovicah mreze
+        // 2. polovica vsakega drugouvrscenega: nasprotna od zmagovalca skupine
+        boolean[] drugiZgoraj = new boolean[stSkupin];
+        int[] igralcevZgorajSpodaj = new int[2];
+        for (int skupina = 0; skupina < stSkupin; skupina++) {
+            boolean zmagovalecZgoraj = jeZgornjaPolovica(indeksMesta, mestoZmagovalca[skupina], velikostMreze);
+            igralcevZgorajSpodaj[zmagovalecZgoraj ? 0 : 1]++;
+            if (drugi.get(skupina) != null) {
+                drugiZgoraj[skupina] = !zmagovalecZgoraj;
+                igralcevZgorajSpodaj[drugiZgoraj[skupina] ? 0 : 1]++;
+            }
+        }
+        uravnoteziPolovici(drugi, drugiZgoraj, igralcevZgorajSpodaj, polovicaMreze);
+
+        /* 3. Prosta mesta. V polovici jih je toliko, kolikor ostane po
+           igralcih (ker ima vsaka polovica enako igralcev, je tudi prostih
+           mest enako). Najprej jih dobijo zmagovalci po nosilskem vrstnem
+           redu - prosto je mesto nasproti njih v 1. kolu - nato izzrebani
+           pari brez zmagovalca, kjer bo drugouvrsceni prost. */
+        for (int polovica = 0; polovica < 2; polovica++) {
+            boolean zgornja = polovica == 0;
+            int prostih = polovicaMreze - igralcevZgorajSpodaj[polovica];
+            for (int skupina = 0; skupina < stSkupin && prostih > 0; skupina++) {
+                int mesto = mestoZmagovalca[skupina];
+                int nasproti = velikostMreze + 1 - mesto;
+                if (jeZgornjaPolovica(indeksMesta, mesto, velikostMreze) == zgornja && !zasedeno[nasproti]) {
+                    zasedeno[nasproti] = true;
+                    prostih--;
+                }
+            }
+            List<Integer> prazniPari = new ArrayList<>();
+            for (int mesto = 1; mesto <= polovicaMreze; mesto++) {
+                if (jeZgornjaPolovica(indeksMesta, mesto, velikostMreze) == zgornja
+                        && !zasedeno[mesto] && !zasedeno[velikostMreze + 1 - mesto]) {
+                    prazniPari.add(mesto);
+                }
+            }
+            Collections.shuffle(prazniPari, nakljucje);
+            for (int i = 0; i < prazniPari.size() && prostih > 0; i++, prostih--) {
+                zasedeno[velikostMreze + 1 - prazniPari.get(i)] = true;
+            }
+        }
+
+        // 4. drugouvrsceni na preostala mesta svoje polovice
         List<Integer> zgoraj = new ArrayList<>();
         List<Integer> spodaj = new ArrayList<>();
-        for (int mesto = stSkupin + 1; mesto <= nosilci.length; mesto++) {
-            (jeZgornjaPolovica(indeksMesta, mesto, velikostMreze) ? zgoraj : spodaj).add(mesto);
+        for (int mesto = 1; mesto <= velikostMreze; mesto++) {
+            if (!zasedeno[mesto]) {
+                (jeZgornjaPolovica(indeksMesta, mesto, velikostMreze) ? zgoraj : spodaj).add(mesto);
+            }
         }
         Collections.shuffle(zgoraj, nakljucje);
         Collections.shuffle(spodaj, nakljucje);
-
-        /* Drugouvrsceni v nasprotno polovico od zmagovalca svoje skupine.
-           Mest je v vsaki polovici natanko toliko, kolikor jih pravilo
-           zahteva: nosilski mesti 2k-1 in 2k sta vedno v razlicnih polovicah,
-           zato se zmagovalci in drugouvrsceni po polovicah izidejo. */
         for (int skupina : premesano(zaporedje(stSkupin))) {
             Prijava drugouvrsceni = drugi.get(skupina);
             if (drugouvrsceni == null) {
                 continue; // skupina drugouvrscenega nima
             }
-            List<Integer> polovica = zmagovalecJeZgoraj[skupina] ? spodaj : zgoraj;
+            List<Integer> polovica = drugiZgoraj[skupina] ? zgoraj : spodaj;
             if (polovica.isEmpty()) {
-                // ob manjkajocih drugouvrscenih polovici nista vec uravnotezeni:
-                // pravilo popusti in igralec gre v drugo polovico
-                polovica = polovica == spodaj ? zgoraj : spodaj;
+                polovica = polovica == zgoraj ? spodaj : zgoraj; // varovalka, glej uravnoteziPolovici
             }
             nosilci[vzemiMesto(polovica, drugouvrsceni, nosilci, velikostMreze) - 1] = drugouvrsceni;
         }
         return new ArrayList<>(Arrays.asList(nosilci));
+    }
+
+    /* Polovica mreze ne sme imeti vec igralcev, kot je mest (polovicaMreze),
+       in ne manj kot polovico toliko - sicer bi dve prosti mesti stali skupaj.
+       Kadar ima vsaka skupina drugouvrscenega, ima vsaka polovica natanko
+       toliko igralcev, kolikor je skupin, in se nic ne premakne. Le ob
+       manjkajocih drugouvrscenih pravilo nasprotne polovice popusti. */
+    private void uravnoteziPolovici(List<Prijava> drugi, boolean[] drugiZgoraj,
+                                    int[] igralcevZgorajSpodaj, int polovicaMreze) {
+        for (int skupina : premesano(zaporedje(drugi.size()))) {
+            if (drugi.get(skupina) == null) {
+                continue;
+            }
+            int iz = drugiZgoraj[skupina] ? 0 : 1;
+            int v = 1 - iz;
+            boolean prevec = igralcevZgorajSpodaj[iz] > polovicaMreze;
+            boolean premalo = 2 * igralcevZgorajSpodaj[v] < polovicaMreze;
+            if ((prevec || premalo) && igralcevZgorajSpodaj[v] < polovicaMreze) {
+                drugiZgoraj[skupina] = !drugiZgoraj[skupina];
+                igralcevZgorajSpodaj[iz]--;
+                igralcevZgorajSpodaj[v]++;
+            }
+        }
     }
 
     /* Vzame (in odstrani) nosilsko mesto iz ponujenih. Prednost ima mesto,

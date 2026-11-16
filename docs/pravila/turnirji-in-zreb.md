@@ -66,13 +66,28 @@
     dobijo najvišji nosilci in se dve nikoli ne srečata.
   - **Izločilni del po skupinah**: zmagovalec skupine A je 1. nosilec, B 2. …
     — skupine so nastale iz pasov, zato je njihov vrstni red hkrati vrstni
-    red nosilcev. Drugouvrščeni se žrebajo na preostala mesta, vsak v
+    red nosilcev. **Nepoln zadnji pas zmagovalcev se žreba na vsa mesta
+    svojega pasu** (Priloga C PST): pri 5 skupinah gre E1 na eno od mest
+    5.–8. (dve zgoraj, dve spodaj). Do 16. 11. 2026 je pas obsegal le toliko
+    mest, kolikor je bilo zmagovalcev, zato je bil E1 vedno na mestu 5.
+    nosilca (zgoraj) in E2 vedno spodaj (1. OT Muta); enako pri 3 skupinah
+    (C1 vedno spodaj) in 7 skupinah. **Prosti krog gre za zmagovalcem**:
+    vsaka polovica ima enako igralcev, zato enako prostih mest; v polovici
+    jih dobijo najprej zmagovalci po nosilskem vrstnem redu, preostale
+    izžrebani drugouvrščeni. `vMrezoIzSkupin` zato vrne seznam dolžine cele
+    mreže (`null` = prosto), ne le udeležencev. Odločitve lastnika (16. 11.):
+    klubska ločitev v 1. kolu izločilnega dela **ostane** (čeprav PST 22.
+    člen omejitev ne predvideva), v skupinah tudi; nosilci skupin ostanejo
+    **fiksni** (3. v C, 4. v D …, ne žreb po 21. členu). Testi:
+    `ZrebNosilciTest` (`petSkupinZmagovalecEPadeVObePolovici` …).
+    Drugouvrščeni se žrebajo na preostala mesta, vsak v
     **nasprotno polovico** od zmagovalca svoje skupine, zato se soigralca iz
     iste skupine srečata šele v **finalu**. Iz tega samo od sebe sledi, da
     zmagovalec skupine v 1. kolu nikoli ne igra z drugim zmagovalcem skupine
-    (ali je prost ali igra drugouvrščenega). Da polovici vzideta natanko,
-    poskrbi lastnost mreže: nosilski mesti 2k−1 in 2k sta vedno v **različnih**
-    polovicah — ne dodajaj “varovalke”, ki bi to štela drugače.
+    (ali je prost ali igra drugouvrščenega). Polovici vzideta natanko, ker
+    ima vsaka skupina drugouvrščenega: v vsaki polovici je toliko igralcev,
+    kolikor je skupin. `uravnoteziPolovici` premakne drugouvrščenega le, ko
+    kateri skupini drugouvrščeni manjka.
   - **Klubska ločitev** (v 1. kolu mreže in znotraj skupine) je **mehko**
     pravilo: če je igralcev enega kluba preveč, se ji ni mogoče izogniti.
     Zato žreb ni iskanje po pravilih, ampak več naključnih poskusov, med

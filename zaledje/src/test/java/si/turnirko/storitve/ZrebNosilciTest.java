@@ -7,6 +7,7 @@
 package si.turnirko.storitve;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -313,6 +315,172 @@ class ZrebNosilciTest extends IntegracijskiTest {
                             && zmagovalciSkupin.contains(tekma.getPrijava2().getId()),
                     "dva zmagovalca skupin v 1. kolu: " + opis(tekma));
         }
+    }
+
+    /* 1. OT Muta (nov 2026): pri 5 skupinah je bil zmagovalec E vedno na mestu
+       5. nosilca (zgoraj), njegov drugouvrsceni pa zato vedno spodaj. Pas
+       5.-8. se mora zrebati na vsa stiri mesta (Priloga C PST, model 16). */
+    @Test
+    void zmagovalecNepolnegaPasuSeZrebaNaVsaMestaPasu() {
+        Dogodek dogodek = pripraviJakostniDogodek(10, SistemTekmovanja.IZLOCILNI);
+        List<Prijava> poJakosti = izborStoritev.vrstniRed(dogodek.getId());
+        List<Prijava> zmagovalci = poJakosti.subList(0, 5);
+        List<Prijava> drugi = poJakosti.subList(5, 10);
+        Prijava e1 = zmagovalci.get(4);
+        Prijava e2 = drugi.get(4);
+
+        Set<Integer> mestaE1 = new HashSet<>();
+        int e1Zgoraj = 0;
+        int ponovitev = 400;
+        for (int i = 0; i < ponovitev; i++) {
+            List<Prijava> nosilci = nosilciStoritev.vMrezoIzSkupin(zmagovalci, drugi);
+            assertEquals(16, nosilci.size(), "seznam ima vsa mesta mreze, prosta so null");
+            mestaE1.add(nosilci.indexOf(e1) + 1);
+
+            Prijava[] mreza = ZrebStoritev.mestaIzSeeda(nosilci);
+            boolean zgoraj = polozaj(mreza, e1) < 8;
+            assertNotEquals(zgoraj, polozaj(mreza, e2) < 8, "E1 in E2 v nasprotnih polovicah");
+            if (zgoraj) {
+                e1Zgoraj++;
+            }
+        }
+        assertEquals(Set.of(5, 6, 7, 8), mestaE1, "zmagovalec E na katerokoli mesto 5.-8.");
+        assertTrue(e1Zgoraj > ponovitev * 0.4 && e1Zgoraj < ponovitev * 0.6,
+                "zmagovalec E pade zgoraj priblizno v polovici zrebov, ne " + e1Zgoraj + "/" + ponovitev);
+    }
+
+    /* 5 skupin: 10 igralcev v mrezi 16, 6 prostih krogov. Dobi jih vseh pet
+       zmagovalcev, kamorkoli so izzrebani, in en drugouvrsceni - ta je
+       izzreban, zato ga sme dobiti vsak, tudi drugouvrsceni skupine B (prej
+       ga ni mogel nikoli). */
+    @Test
+    void prostiKrogGreZaZmagovalcemSkupine() {
+        Dogodek dogodek = pripraviJakostniDogodek(10, SistemTekmovanja.IZLOCILNI);
+        List<Prijava> poJakosti = izborStoritev.vrstniRed(dogodek.getId());
+        List<Prijava> zmagovalci = poJakosti.subList(0, 5);
+        List<Prijava> drugi = poJakosti.subList(5, 10);
+
+        Set<Long> drugiSProstim = new HashSet<>();
+        for (int i = 0; i < 300; i++) {
+            Prijava[] mreza = ZrebStoritev.mestaIzSeeda(nosilciStoritev.vMrezoIzSkupin(zmagovalci, drugi));
+            for (Prijava zmagovalec : zmagovalci) {
+                assertNull(mreza[polozaj(mreza, zmagovalec) ^ 1],
+                        "zmagovalec skupine je v 1. kolu prost");
+            }
+            List<Prijava> prosti = drugi.stream().filter(p -> mreza[polozaj(mreza, p) ^ 1] == null).toList();
+            assertEquals(1, prosti.size(), "6 prostih krogov: 5 zmagovalcev in en drugouvrsceni");
+            drugiSProstim.add(prosti.get(0).getId());
+        }
+        assertEquals(drugi.stream().map(Prijava::getId).collect(java.util.stream.Collectors.toSet()),
+                drugiSProstim, "prosti krog med drugouvrscenimi je izzreban - lahko ga dobi vsak");
+    }
+
+    /* Pravila izlocilnega dela po skupinah za 2 do 12 skupin. */
+    @Test
+    void izlocilniDelPoSkupinahZaVsaStevilaSkupin() {
+        Dogodek dogodek = pripraviJakostniDogodek(24, SistemTekmovanja.IZLOCILNI);
+        List<Prijava> poJakosti = izborStoritev.vrstniRed(dogodek.getId());
+
+        for (int stSkupin = 2; stSkupin <= 12; stSkupin++) {
+            List<Prijava> zmagovalci = poJakosti.subList(0, stSkupin);
+            List<Prijava> drugi = poJakosti.subList(stSkupin, 2 * stSkupin);
+            int velikost = NosilciStoritev.najblizjaPotencaDve(2 * stSkupin);
+            List<int[]> pasovi = NosilciStoritev.pasovi(stSkupin);
+            int[] zadnjiPas = pasovi.get(pasovi.size() - 1);
+            Set<Boolean> polovicaZadnjega = new HashSet<>();
+
+            for (int ponovitev = 0; ponovitev < 60; ponovitev++) {
+                List<Prijava> nosilci = nosilciStoritev.vMrezoIzSkupin(zmagovalci, drugi);
+                Prijava[] mreza = ZrebStoritev.mestaIzSeeda(nosilci);
+                String opis = stSkupin + " skupin: ";
+                assertEquals(velikost, mreza.length, opis + "velikost mreze");
+                assertEquals(2 * stSkupin, Arrays.stream(mreza).filter(java.util.Objects::nonNull).count(),
+                        opis + "vsak udelezenec je v mrezi");
+
+                // zmagovalec na mestu svojega pasu, polni pas zasede vsa svoja mesta
+                for (int[] pas : pasovi) {
+                    int prvo = pas[0] + 1;
+                    int zadnje = pas[0] < 2 ? prvo : 2 * pas[0];
+                    for (int rang = pas[0]; rang < pas[1]; rang++) {
+                        int mesto = nosilci.indexOf(zmagovalci.get(rang)) + 1;
+                        assertTrue(mesto >= prvo && mesto <= zadnje,
+                                opis + "zmagovalec " + (rang + 1) + " na mestu " + mesto);
+                    }
+                }
+
+                int[] prostihPoPolovicah = new int[2];
+                for (int poz = 0; poz < velikost; poz += 2) {
+                    assertFalse(mreza[poz] == null && mreza[poz + 1] == null, opis + "dve prosti mesti skupaj");
+                    if (mreza[poz] == null || mreza[poz + 1] == null) {
+                        prostihPoPolovicah[poz < velikost / 2 ? 0 : 1]++;
+                    }
+                    assertFalse(zmagovalci.contains(mreza[poz]) && zmagovalci.contains(mreza[poz + 1]),
+                            opis + "zmagovalca skupin v 1. kolu");
+                }
+                assertEquals(prostihPoPolovicah[0], prostihPoPolovicah[1], opis + "prosti krogi po polovicah");
+
+                for (int skupina = 0; skupina < stSkupin; skupina++) {
+                    int zmagovalec = polozaj(mreza, zmagovalci.get(skupina));
+                    assertEquals(koloSrecanja(zmagovalec, polozaj(mreza, drugi.get(skupina))),
+                            Integer.numberOfTrailingZeros(velikost), opis + "soigralca iz skupine sele v finalu");
+                }
+
+                // v polovici gre prosti krog najprej zmagovalcem po nosilskem vrstnem redu
+                for (int polovica = 0; polovica < 2; polovica++) {
+                    boolean drugiProst = false;
+                    for (Prijava p : drugi) {
+                        int poz = polozaj(mreza, p);
+                        drugiProst |= (poz < velikost / 2 ? 0 : 1) == polovica && mreza[poz ^ 1] == null;
+                    }
+                    boolean brezProstega = false;
+                    for (Prijava z : zmagovalci) {
+                        int poz = polozaj(mreza, z);
+                        if ((poz < velikost / 2 ? 0 : 1) != polovica) {
+                            continue;
+                        }
+                        boolean prost = mreza[poz ^ 1] == null;
+                        assertFalse(prost && brezProstega,
+                                opis + "visji nosilec igra, nizji v isti polovici je prost");
+                        brezProstega |= !prost;
+                        assertFalse(drugiProst && !prost, opis + "drugouvrsceni prost pred zmagovalcem");
+                    }
+                }
+                Prijava zadnji = zmagovalci.get(zadnjiPas[1] - 1);
+                polovicaZadnjega.add(polozaj(mreza, zadnji) < velikost / 2);
+            }
+            if (zadnjiPas[0] >= 2) { // pri dveh skupinah je zadnji 2. nosilec - ta je vedno spodaj
+                assertEquals(Set.of(true, false), polovicaZadnjega,
+                        stSkupin + " skupin: zadnji zmagovalec mora pasti v obe polovici");
+            }
+        }
+    }
+
+    /* Celoten potek kot na 1. OT Muta: 20 igralcev, 5 skupin, nato izlocilni
+       del. Zmagovalec E pade v obe polovici, vedno je prost, drugouvrsceni
+       skupine E je v nasprotni polovici. */
+    @Test
+    void petSkupinZmagovalecEPadeVObePolovici() {
+        Dogodek dogodek = pripraviJakostniDogodek(20, SistemTekmovanja.SKUPINE_IZLOCILNI);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        odigrajSkupineTakoDaZmagaMocnejsi(dogodek.getId());
+        List<List<Prijava>> skupine = poSkupinah(dogodek);
+        assertEquals(5, skupine.size(), "20 igralcev -> 5 skupin");
+        Prijava e1 = skupine.get(4).get(0);
+        Prijava e2 = skupine.get(4).get(1);
+
+        Set<Boolean> polovice = new HashSet<>();
+        for (int seme = 0; seme < 16; seme++) {
+            zrebStoritev.nastaviNakljucje(new Random(seme));
+            izlocilniZrebStoritev.izvediZreb(dogodek.getId());
+
+            Prijava[] mreza = mrezaPrvegaKola(dogodek.getId());
+            assertEquals(16, mreza.length);
+            int polozajE1 = polozaj(mreza, e1);
+            assertNull(mreza[polozajE1 ^ 1], "zmagovalec E je v 1. kolu prost");
+            assertNotEquals(polozajE1 < 8, polozaj(mreza, e2) < 8, "E1 in E2 v nasprotnih polovicah");
+            polovice.add(polozajE1 < 8);
+        }
+        assertEquals(Set.of(true, false), polovice, "zmagovalec E pade enkrat zgoraj, enkrat spodaj");
     }
 
     // ------------------------------------------------------------------
