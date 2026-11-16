@@ -271,5 +271,43 @@
   Krogca ni, ker velja radij 0.
 - **Iskanje na telefonu fokusira polje v istem dotiku** (`IskanjeTelefona`:
   `flushSync` + `focus()`): Safari na iOS sicer tipkovnice ne odpre.
-- Preverba pred zaključkom dela: `cd vmesnik && npm run build` (tsc + vite).
+- **Preverba pred zaključkom dela (od 16. 11. 2026 tri, ne ena):**
+  `cd vmesnik`, nato `npm test` (vitest), `npm run lint` (eslint) in
+  `npm run build` (tsc + vite). Iste tri požene CI
+  (`.github/workflows/testi.yml`).
+  - **Testi stojijo ob kodi** (`ime.test.ts` ob `ime.ts`), okolje je `node`;
+    test komponente si DOM zahteva sam s komentarjem
+    `// @vitest-environment jsdom` na vrhu datoteke in izrisuje z
+    `createRoot` + `act` (brez dodatne testne knjižnice). Testne DTO-je dela
+    `src/testi/tovarna.ts`. Testni tek ima trden časovni pas
+    (`Europe/Ljubljana`, `vite.config.ts`), da je izid enak lokalno in v CI.
+  - **Sprememba čiste funkcije v `src/pomozno/` gre s testom.** Znana napaka,
+    ki je naloga ne popravlja, se zapiše kot `it.fails` z razlago: test je
+    zelen, dokler napaka obstaja, in pade, ko jo kdo popravi (takrat `.fails`
+    odstrani). Tako sta zapisani sklanjanje `terminiKola.sklon` (»21 srečanje«)
+    in iskanje črke »đ«.
+  - **Linter ima namenoma samo pravili React Hooks**: `rules-of-hooks` je
+    napaka (ustavi CI), `exhaustive-deps` opozorilo. Obstoječih opozoril ne
+    popravljaj na zalogo; širših naborov pravil ne vklapljaj brez odločitve.
+- **Napaka med izrisom ne sme pustiti belega zaslona** (`komponente/MejaNapak`,
+  16. 11. 2026): ena meja stoji okoli `<Outlet />` v `Postavitev` (glava in
+  navigacija ostaneta, prehod na drugo pot jo ponastavi), druga okoli cele
+  aplikacije v `main.tsx` (strani za tisk). Meja v DOM ne doda ničesar, dokler
+  napake ni. Za napake pri branju podatkov je še naprej `NapakaPoizvedbe`.
+- **401 se obravnava na enem mestu** (`api/odjemalec.ts`, 16. 11. 2026): ko
+  strežnik zavrne poverilnice, ki jih je zahteva nosila, jih odjemalec zavrže
+  enkrat, `AvtentikacijaKontekst` uporabnika vrne v stanje gosta in
+  `Postavitev` pokaže trak »Prijava ne velja več«. Branje (GET) se enkrat
+  ponovi brez glave, pisanje ne. Z zavrnjenimi poverilnicami ne sme oditi
+  nobena naslednja zahteva: strežnik vsako šteje kot neuspelo prijavo in po
+  desetih račun s tega naslova IP 15 minut zavrača s 429. Strani 401 ne
+  obravnavajo same.
+- **Neuspela osvežitev ne zamenja strani** (`prikazStrani` v
+  `pomozno/osvezevanje.ts`, 16. 11. 2026): stran, ki se osvežuje sama, najprej
+  vpraša, ali podatki so, in šele nato, ali je napaka. Prehodna napaka (izpad,
+  5xx, 408, 429) pusti zadnje podatke in nad njimi pokaže
+  `komponente/OpozoriloOsvezitve`; celostranski nadomestek ostane ob prvem
+  nalaganju in ob trajni napaki (404, 410, 401, 403). Vzorec nosijo strani
+  dogodka, turnirja, lige in srečanja; nova stran z `refetchInterval` naj ga
+  uporabi in ne piše `if (poizvedba.error) return …` pred preverbo podatkov.
 
