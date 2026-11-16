@@ -32,6 +32,7 @@ import { PokroviteljiTrak } from '../komponente/PokroviteljiTrak'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { OpozoriloOsvezitve } from '../komponente/OpozoriloOsvezitve'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
 import { NastavitveZanimivosti } from '../komponente/NastavitveZanimivosti'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
@@ -47,7 +48,7 @@ import {
   sklonSkupin,
   sklonTekmovanj,
 } from '../pomozno/oblikovanje'
-import { intervalOsvezevanja } from '../pomozno/osvezevanje'
+import { intervalOsvezevanja, prikazStrani } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 import { PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
@@ -129,9 +130,12 @@ export function TurnirStran() {
 
   useNaslovStrani(turnir.data?.ime)
 
-  if (turnir.isLoading) return <p className="obvestilo">Nalaganje …</p>
-  if (turnir.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
-  if (turnir.error) return <NapakaPoizvedbe poizvedba={turnir} kaj="turnirja" />
+  /* Neuspela OSVEŽITEV ne zamenja strani: podatki, ki so že na zaslonu,
+     ostanejo, napako pove OpozoriloOsvezitve (pravilo: prikazStrani). */
+  const prikaz = prikazStrani(turnir)
+  if (prikaz === 'nalaganje') return <p className="obvestilo">Nalaganje …</p>
+  if (prikaz === 'brez-povezave') return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (prikaz === 'napaka') return <NapakaPoizvedbe poizvedba={turnir} kaj="turnirja" />
   if (!turnir.data) return <p className="obvestilo">Tega turnirja ni (več).</p>
   const podatki = turnir.data!
   /* Organizator sme upravljati svoj (ali klubski) turnir, admin vse - razen
@@ -484,6 +488,7 @@ export function TurnirStran() {
 
   return (
     <section>
+      <OpozoriloOsvezitve poizvedba={turnir} />
       <Link to="/turnirji" className="povezava-nazaj">← Vsi turnirji</Link>
 
       <div className="stran-glava">

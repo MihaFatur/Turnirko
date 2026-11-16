@@ -44,6 +44,7 @@ import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { PreimenovanjeEkipe, PreimenujEkipoOkno } from '../komponente/PreimenovanjeEkipe'
 import { PrehodiOkno } from '../komponente/PrehodiOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { OpozoriloOsvezitve } from '../komponente/OpozoriloOsvezitve'
 import { RocniZrebOkno } from '../komponente/RocniZrebOkno'
 import { POJASNILO_ROCNEGA_ZREBA, ZrebOblacek } from '../komponente/ZrebOblacek'
 import { NastavitveZanimivosti } from '../komponente/NastavitveZanimivosti'
@@ -65,7 +66,7 @@ import { zabeleziOgledLige } from '../pomozno/ogledaneLige'
 import { useSpremljanjeLig } from '../pomozno/spremljaneLige'
 import { KOLO_BREZ_TERMINA, opisPrestavitve, terminKola, vKolih } from '../pomozno/prestavitve'
 import { odigranihTekemLige, PRAG_ZANIMIVOSTI } from '../pomozno/zanimivosti'
-import { intervalOsvezevanja } from '../pomozno/osvezevanje'
+import { intervalOsvezevanja, prikazStrani } from '../pomozno/osvezevanje'
 import { useTelefon } from '../pomozno/telefon'
 
 /* Faza tekmovanja v ligi: redni del (lestvica) ali končnica (serije) - izbira
@@ -223,9 +224,12 @@ export function LigaStran() {
     if (Number.isInteger(idLiga) && idLiga > 0) zabeleziOgledLige(idLiga)
   }, [idLiga])
 
-  if (liga.isLoading) return <p className="obvestilo">Nalaganje …</p>
-  if (liga.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
-  if (liga.error) return <NapakaPoizvedbe poizvedba={liga} kaj="lige" />
+  /* Neuspela OSVEŽITEV ne zamenja strani: podatki, ki so že na zaslonu,
+     ostanejo, napako pove OpozoriloOsvezitve (pravilo: prikazStrani). */
+  const prikaz = prikazStrani(liga)
+  if (prikaz === 'nalaganje') return <p className="obvestilo">Nalaganje …</p>
+  if (prikaz === 'brez-povezave') return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (prikaz === 'napaka') return <NapakaPoizvedbe poizvedba={liga} kaj="lige" />
   if (!liga.data) return <p className="obvestilo">Te lige ni (več).</p>
 
   const l = liga.data
@@ -778,6 +782,7 @@ export function LigaStran() {
 
   return (
     <section className="liga">
+      <OpozoriloOsvezitve poizvedba={liga} />
       <div>
         <Link to="/lige" className="povezava-nazaj">← Lige</Link>
 

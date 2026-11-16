@@ -352,7 +352,8 @@ textarea:focus-visible,
   flex-wrap: wrap;
 }
 
-.brez-povezave .gumb {
+.brez-povezave .gumb,
+.opozorilo-osvezitve .gumb {
   min-height: 36px;
   padding: 8px 12px;
   border-color: var(--barva-negativna);
@@ -361,7 +362,8 @@ textarea:focus-visible,
   flex: none;
 }
 
-.brez-povezave .gumb:hover:not(:disabled) {
+.brez-povezave .gumb:hover:not(:disabled),
+.opozorilo-osvezitve .gumb:hover:not(:disabled) {
   background: var(--barva-negativna);
   border-color: var(--barva-negativna);
   color: var(--barva-bela);
@@ -3467,6 +3469,38 @@ td.nizi-okno__niz--dobljen {
   background: var(--barva-negativna);
   border-color: var(--barva-negativna);
   color: var(--barva-bela);
+}
+
+/* Osvežitev ni uspela, podatki pa so že na zaslonu (OpozoriloOsvezitve): ozka
+   mono vrstica nad vsebino strani, ne polno polje napake - stran pod njo je še
+   vedno berljiva in to mora ostati glavno. Razmik do vsebine da gap sekcije. */
+.opozorilo-osvezitve {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r2);
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-left: 4px solid var(--barva-negativna);
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.opozorilo-osvezitve__pojasnilo {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+}
+
+/* Na dotik ima gumb v traku polno zadetkovno površino (DESIGN.md: 44 px). */
+@media (pointer: coarse) {
+  .brez-povezave .gumb,
+  .opozorilo-osvezitve .gumb {
+    min-height: 44px;
+  }
 }
 
 /* Vidno samo bralniku zaslona: naslovi strani, ki jih maketa ne kaze, in

@@ -23,6 +23,7 @@ import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { EkipaLigeOkno } from '../komponente/EkipaLigeOkno'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { OpozoriloOsvezitve } from '../komponente/OpozoriloOsvezitve'
 import { NiziTekmeOkno } from '../komponente/NiziTekmeOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { obTipki } from '../komponente/TekmaKartica'
@@ -38,7 +39,7 @@ import {
   vrsticeZaIzid,
   type VrsticaNiza,
 } from '../komponente/TockeNizov'
-import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
+import { intervalOsvezevanja, jeVZivo, prikazStrani, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 
@@ -99,9 +100,12 @@ export function SrecanjeStran() {
         : `${zaNaslov.domaci} – ${zaNaslov.gost}`,
   )
 
-  if (podrobno.isLoading) return <p className="obvestilo">Nalaganje …</p>
-  if (podrobno.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
-  if (podrobno.error) return <NapakaPoizvedbe poizvedba={podrobno} kaj="srečanja" />
+  /* Neuspela OSVEŽITEV ne zamenja strani: podatki, ki so že na zaslonu,
+     ostanejo, napako pove OpozoriloOsvezitve (pravilo: prikazStrani). */
+  const prikaz = prikazStrani(podrobno)
+  if (prikaz === 'nalaganje') return <p className="obvestilo">Nalaganje …</p>
+  if (prikaz === 'brez-povezave') return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (prikaz === 'napaka') return <NapakaPoizvedbe poizvedba={podrobno} kaj="srečanja" />
   if (!podrobno.data) return <p className="obvestilo">Tega srečanja ni (več).</p>
 
   const p = podrobno.data
@@ -143,6 +147,7 @@ export function SrecanjeStran() {
 
   return (
     <section className="srecanje">
+      <OpozoriloOsvezitve poizvedba={podrobno} />
       <div>
         {s.idDogodek != null ? (
           <Link to={`/dogodki/${s.idDogodek}`} className="povezava-nazaj">← {k.dogodek ?? 'Dogodek'}</Link>

@@ -73,6 +73,7 @@ import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { KoncnaRazvrstitev } from '../komponente/KoncnaRazvrstitev'
 import { Mreza, kolaMreze } from '../komponente/Mreza'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { OpozoriloOsvezitve } from '../komponente/OpozoriloOsvezitve'
 import {
   PodnavigacijaDogodka,
   type PogledDogodka,
@@ -112,7 +113,7 @@ import {
   sklonPrijavljenih,
   sklonSkupin,
 } from '../pomozno/oblikovanje'
-import { intervalOsvezevanja, jeVZivo, uraOsvezitve } from '../pomozno/osvezevanje'
+import { intervalOsvezevanja, jeVZivo, prikazStrani, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 import { type VrsticaUdelezenca } from '../pomozno/udelezenci'
@@ -193,9 +194,12 @@ export function DogodekStran() {
 
   /* isLoading, ne isPending: ustavljena poizvedba (brez povezave) ali napaka
      ne smeta obviseti v večnem "Nalaganje …". */
-  if (mreza.isLoading) return <p className="obvestilo">Nalaganje …</p>
-  if (mreza.isPaused) return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
-  if (mreza.error) return <NapakaPoizvedbe poizvedba={mreza} kaj="dogodka" />
+  /* Neuspela OSVEŽITEV ne zamenja strani: podatki, ki so že na zaslonu,
+     ostanejo, napako pove OpozoriloOsvezitve (pravilo: prikazStrani). */
+  const prikaz = prikazStrani(mreza)
+  if (prikaz === 'nalaganje') return <p className="obvestilo">Nalaganje …</p>
+  if (prikaz === 'brez-povezave') return <p className="obvestilo">Ni povezave — počakaj na signal.</p>
+  if (prikaz === 'napaka') return <NapakaPoizvedbe poizvedba={mreza} kaj="dogodka" />
   if (!mreza.data) return <p className="obvestilo">Tega dogodka ni (več).</p>
   const podatki = mreza.data!
   const dogodek = podatki.dogodek
@@ -323,6 +327,7 @@ export function DogodekStran() {
 
   return (
     <section>
+      <OpozoriloOsvezitve poizvedba={mreza} />
       {jeTelefon ? (
         <>
           <GlavaDejanja>
