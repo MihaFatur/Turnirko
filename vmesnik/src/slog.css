@@ -2674,6 +2674,117 @@ input[type='radio'] {
   margin-top: var(--r2);
 }
 
+/* Prijava več igralcev naenkrat (okni v HitraPrijavaOkna). */
+.dodajanje__hitro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  margin-top: var(--r2);
+}
+
+/* Namig tipkovnice pod iskalnikom; stoji ves čas, da seznam ob prvi črki
+   ne poskoči. */
+.dodajanje__namig {
+  margin: calc(-1 * var(--r1) + 4px) 0 var(--r1);
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-telo);
+  color: var(--barva-crnilo-3);
+}
+
+/* Vrstica, ki jo Enter v iskalniku obkljuka - ista barva kot označeni
+   predlog iskalnega izbirnika. */
+.seznam-izbire__oznacen > label {
+  background: var(--barva-glavna-mehko);
+}
+
+/* --- Okni Prilepi seznam imen / Prenesi z drugega dogodka --- */
+.hitra-prijava__vnos {
+  font-family: var(--pisava-mono);
+  font-size: var(--tip-drobno);
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.hitra-prijava__povzetek {
+  margin: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-2);
+}
+
+/* En drsnik za vse skupine pregleda: gumb Prijavi pod njim ostane viden
+   tudi pri seznamu štiridesetih imen. */
+.hitra-prijava__pregled {
+  max-height: min(56vh, 520px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--r3);
+  border-top: 1px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+  padding: var(--r2) 0;
+}
+
+.hitra-prijava__glava {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r2);
+}
+
+.hitra-prijava__glava .podnaslov-sekcije {
+  margin: 0;
+}
+
+.hitra-prijava__seznam {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hitra-prijava__vrstica {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: var(--tip-telo);
+}
+
+.hitra-prijava__vrstica--kljukica {
+  cursor: pointer;
+}
+
+/* Vrstica z izbiro: prilepljeno besedilo nad izbirnim seznamom. */
+.hitra-prijava__vrstica--izbira {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--r1);
+}
+
+.hitra-prijava__vir {
+  font: 400 var(--tip-drobno) / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-2);
+  overflow-wrap: anywhere;
+}
+
+.hitra-prijava__priblizno {
+  display: block;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-negativna-tekst);
+}
+
+.hitra-prijava__opomba {
+  margin: 0;
+  padding-top: var(--r1);
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
 /* Par pri dvojicah: polji igralcev in gumb pod naslovom plosce. */
 .sestavljanje-para {
   margin-top: var(--r2);

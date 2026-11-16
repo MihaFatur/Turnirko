@@ -98,6 +98,49 @@
   - Števca »N od M na voljo« na telefonu **ni**: v vrsti bi bil tretji del in
     izbor razvrstitve bi stisnil v »Razvrsti: P ▾«. Koliko jih ostane, pove
     gumb v oknu z merili.
+  - **Iskanje se po kljukici in po prijavi samo izprazni** (zahteva lastnika,
+    16. 11. 2026): vpiši ime → obkljukaj → vpiši naslednje. Kazalec ostane v
+    iskalniku. Odkljukanje iskanja ne izprazni, ker je to popravek in ne
+    naslednji igralec. Filtri ostanejo. Po prijavi se na telefonu kazalec v
+    iskalnik ne vrne, ker bi sam od sebe odprl tipkovnico.
+    Cena: več igralcev iz istega iskanja (brata Novak) zahteva ponovno
+    iskanje.
+  - **Tipkovnica v iskalniku** (16. 11. 2026): puščici ↑↓ premikata oznako
+    po seznamu, Enter obkljuka označenega. **Kadar iskanju ustreza en sam
+    igralec, je označen sam.** Pri več zadetkih brez puščice Enter ne naredi
+    nič: seznam je razvrščen po priimku, ratingu ali klubu, ne po ujemanju, zato
+    bi bil »prvi zadetek« naključen. Oznaka je id igralca, ne indeks. Namig
+    pod iskalnikom stoji ves čas (na telefonu samo za bralnik), da seznam ob
+    prvi črki ne poskoči.
+  - **Prijava več igralcev naenkrat** (`komponente/HitraPrijavaOkna.tsx`,
+    logika `pomozno/hitraPrijava.ts` s testi; 16. 11. 2026). Gumba nad
+    iskalnikom odpreta dve okni. Obe se končata s **pregledom in gumbom
+    »Prijavi izbrane (N)«**. Okno nikoli ne prijavlja na slepo, ker bi
+    napačno prepoznan igralec stal v žrebu. Prijava iz okna ima svojo
+    zahtevo: izbora na strani ne pobriše, iz njega vzame le prijavljene.
+    - **»Prilepi seznam imen«**: vsak igralec v svoji vrstici. Ločilo je
+      samo nova vrstica: vejica je del »Novak, Ana«, podpičje pa je ločilo
+      stolpcev v slovenskem Excelu. Vrstica sme nositi še številko, klub in
+      letnik. **Natančno**: v vrstici so VSE besede imena in priimka (brez
+      šumnikov, ločila so presledki, vezaj tudi); ob več takih zmaga
+      najdaljše ime (Ana Marija ≠ Ana). **Približno**, samo če natančno ne
+      najde nikogar: vsaka beseda vrstice (brez številk) je začetek besede
+      imena (»Novak A.«); tak zadetek je obkljukan, a označen »Približno«.
+      Več kandidatov → izbere organizator (največ 8 v izboru, pravo število
+      se izpiše). Ničesar ne ugibamo: okrajšano ime s klubom ostane »ni v
+      šifrantu«. Isti igralec v dveh vrsticah se prijavi enkrat. Pregled
+      gre po vrsti: za izbiro, ni v šifrantu, najdeni, ne bodo prijavljeni
+      (že prijavljen, ne ustreza kategoriji po spolu, ponovljen).
+    - **»Prenesi z drugega dogodka«**: privzeto prvi drug dogodek istega
+      turnirja s prijavami. Drug turnir se izbere z iskalnim izbirnikom,
+      prazno polje ponudi ta turnir in zadnje turnirje s prijavami. Ekipni
+      dogodki niso vir (prijava je ekipa). Prenesejo se oba igralca para in
+      noben odjavljen, vsi možni so privzeto obkljukani. **Pari se ne
+      prenesejo**: pri dvojicah jih organizator sestavi znova.
+    - Kdo sme na dogodek, odloča ena funkcija (`oviraPrijave`) za seznam in
+      za obe okni.
+    - **Ni preverjeno**: pravi Excel in Outlook (preverjeno s prilepljenim
+      besedilom s tabulatorji), šifrant s tisoč igralci.
 - **Zavihki dogodka na telefonu tečejo po vrsti tekmovanja** (`pogledi` v
   `DogodekStran`, odločitev lastnika, okt 2026): Skupine (privzeto) ·
   Izločilni del · Razvrstitev · Udeleženci. Zavihek »Razvrstitev« (končna

@@ -28,7 +28,7 @@
    Vnos rezultata je mogoč samo administratorju (oz. lastniku turnirja) in ne
    pri uvoženem dogodku - vir resnice je tam zveza (strežnik mutacije zavrne).
    Končana tekma z vpisanimi točkami pa vsakemu gledalcu odpre okno z nizi. */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -44,7 +44,6 @@ import type {
 } from '../api/tipi'
 import {
   OZNAKE_FORMAT,
-  OZNAKE_PASU_KRATKO,
   OZNAKE_SISTEM_KRATKO,
   OZNAKE_SPOL_KATEGORIJA,
   OZNAKE_STAROSTNI_PAS,
@@ -64,6 +63,11 @@ import {
   type SkupinaFiltra,
 } from '../komponente/Filtri'
 import { DogodekObrazecOkno } from '../komponente/DogodekObrazecOkno'
+import {
+  PrenosPrijavOkno,
+  PrilepiSeznamOkno,
+  podrobnostIgralca,
+} from '../komponente/HitraPrijavaOkna'
 import { GlavaDejanja, GlavaNaslov, useNazaj } from '../komponente/GlavaTelefona'
 import { IskalniIzbirnik, type MoznostIzbirnika } from '../komponente/IskalniIzbirnik'
 import { IskalnikSeznama } from '../komponente/IskanjeSeznama'
@@ -94,6 +98,7 @@ import { UdelezenciPogled } from '../komponente/UdelezenciPogled'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
+import { oviraPrijave } from '../pomozno/hitraPrijava'
 import {
   type Bilanca,
   bilancePrijav,
@@ -1484,43 +1489,72 @@ function DodajanjeIgralcev({
   const igralci = useQuery({ queryKey: ['igralci'], queryFn: igralciApi.seznam })
   const [izbrani, nastaviIzbrane] = useState<Set<number>>(new Set())
   const [iskanje, nastaviIskanje] = useState('')
+  const iskalnik = useRef<HTMLInputElement>(null)
   const jeTelefon = useTelefon()
+
+  /* Organizator prijavlja igralce enega za drugim: vpiše ime, obkljuka,
+     vpiše naslednje. Zato se iskanje po kljukici in po prijavi izprazni,
+     kazalec pa ostane v iskalniku - brez tega je moral vsako ime najprej
+     ročno pobrisati (zahteva lastnika, 16. 11. 2026). */
+  function zacniNovoIskanje(sKazalcem: boolean) {
+    nastaviIskanje('')
+    if (sKazalcem) iskalnik.current?.focus()
+  }
 
   const prijavljanje = useMutation({
     mutationFn: (idji: number[]) => dogodkiApi.prijaviIgralce(idDogodka, idji),
     onSuccess: () => {
       nastaviIzbrane(new Set())
+      /* Na telefonu bi kazalec v iskalniku sam od sebe odprl tipkovnico, tudi
+         ko je organizator z dodajanjem končal. */
+      zacniNovoIskanje(!jeTelefon)
       osvezi()
     },
   })
 
+  /* Okni »Prilepi seznam imen« in »Prenesi z drugega dogodka«. Prijava iz
+     okna ima svojo zahtevo: izbora na strani ne pobriše, iz njega vzame le
+     igralce, ki jih je okno pravkar prijavilo. */
+  const [okno, nastaviOkno] = useState<'seznam' | 'prenos' | null>(null)
+  const prijavljanjeIzOkna = useMutation({
+    mutationFn: (idji: number[]) => dogodkiApi.prijaviIgralce(idDogodka, idji),
+    onSuccess: (_odgovor, idji) => {
+      const prijavljeni = new Set(idji)
+      nastaviIzbrane((prej) => new Set([...prej].filter((id) => !prijavljeni.has(id))))
+      nastaviOkno(null)
+      osvezi()
+    },
+  })
+  function odpriOkno(vrsta: 'seznam' | 'prenos') {
+    prijavljanjeIzOkna.reset()
+    nastaviOkno(vrsta)
+  }
+
   /* Na voljo so igralci, ki na ta dogodek se nimajo aktivne prijave in ki po
-     spolu ustrezajo kategoriji dogodka. Odjavljeni (ODJAVLJEN) se spet
-     pojavijo - ponovna prijava aktivira njihov obstojeci zapis.
+     spolu ustrezajo kategoriji dogodka (`oviraPrijave`). Odjavljeni
+     (ODJAVLJEN) se spet pojavijo - ponovna prijava aktivira njihov obstojeci
+     zapis.
 
      Pri dvojicah je treba pogledati OBA igralca prijave: soigralec para nima
      svoje vrstice (ta je ob povezavi izginila), pa vendar že nastopa.
 
      Kategorija MESANO in KDORKOLI po spolu ne omejujeta - pri mešanih
      dvojicah je pravilo o sestavi PARA in ga preveri povezava para. */
-  const naVoljo = useMemo(() => {
-    if (!igralci.data) return []
+  const ovira = useMemo(() => {
     const zePrijavljeni = new Set(
       podatki.prijave
         .filter((prijava) => prijava.status !== 'ODJAVLJEN')
-        .flatMap((prijava) =>
-          prijava.idIgralca2 !== null
-            ? [prijava.idIgralca, prijava.idIgralca2]
-            : [prijava.idIgralca],
-        ),
+        .flatMap((prijava) => [prijava.idIgralca, prijava.idIgralca2])
+        .filter((id): id is number => id !== null),
     )
-    return igralci.data.filter((igralec) => {
-      if (zePrijavljeni.has(igralec.id)) return false
-      if (podatki.dogodek.spolKategorija === 'MOSKI') return igralec.spol === 'MOSKI'
-      if (podatki.dogodek.spolKategorija === 'ZENSKE') return igralec.spol === 'ZENSKI'
-      return true
-    })
-  }, [igralci.data, podatki])
+    const spolKategorija = podatki.dogodek.spolKategorija
+    return (igralec: IgralecDto) => oviraPrijave(igralec, zePrijavljeni, spolKategorija)
+  }, [podatki])
+
+  const naVoljo = useMemo(
+    () => (igralci.data ?? []).filter((igralec) => ovira(igralec) === null),
+    [igralci.data, ovira],
+  )
 
   /* Iskanje po imenu in priimku (brez šumnikov, po besedah): "krizan" najde
      Križana, "novak ana" pa Novak Ano ne glede na vrstni red vpisanega. */
@@ -1548,16 +1582,67 @@ function DodajanjeIgralcev({
       : naVoljo.filter((igralec) => izbrani.has(igralec.id) && !vidni.has(igralec.id))
 
   function preklopi(idIgralca: number) {
+    const dodajam = !izbrani.has(idIgralca)
     nastaviIzbrane((prejsnji) => {
       const novi = new Set(prejsnji)
       if (novi.has(idIgralca)) novi.delete(idIgralca)
       else novi.add(idIgralca)
       return novi
     })
+    /* Samo ob kljukici med iskanjem: odkljukanje je popravek, ne naslednji
+       igralec. Obkljukani ostane viden - če ga prazno iskanje ne pokaže, gre
+       med »Izbrane zunaj seznama«. Tipkovnica je ob iskanju že odprta, zato
+       kazalec ostane v iskalniku tudi na telefonu. */
+    if (dodajam && iskanje.trim() !== '') zacniNovoIskanje(true)
+    nastaviOznacenega(null)
+  }
+
+  /* Tipkovnica v iskalniku: puščici premikata oznako po seznamu, Enter
+     obkljuka označenega - roka ostane na tipkovnici (»kriz« Enter, »zupan«
+     Enter …). Kadar iskanju ustreza en sam igralec, je označen sam od sebe.
+     Pri več zadetkih brez puščice Enter ne naredi nič: seznam je razvrščen po
+     priimku/ratingu/klubu in ne po ujemanju, zato bi prvi zadetek bil
+     naključen. Oznaka je id igralca, ne indeks, da ob osvežitvi seznama ne
+     skoči na drugega. */
+  const [oznacenId, nastaviOznacenega] = useState<number | null>(null)
+  const oznacen =
+    oznacenId !== null && vidni.has(oznacenId)
+      ? oznacenId
+      : iskanje.trim() !== '' && naZaslonu.length === 1
+        ? naZaslonu[0].id
+        : null
+
+  useEffect(() => {
+    if (oznacen === null) return
+    document.getElementById(`dodajanje-${oznacen}`)?.scrollIntoView({ block: 'nearest' })
+  }, [oznacen])
+
+  function obTipki(dogodek: KeyboardEvent<HTMLInputElement>) {
+    if (dogodek.key === 'ArrowDown' || dogodek.key === 'ArrowUp') {
+      dogodek.preventDefault()
+      if (naZaslonu.length === 0) return
+      const indeks = naZaslonu.findIndex((igralec) => igralec.id === oznacen)
+      const naslednji =
+        indeks === -1
+          ? 0
+          : dogodek.key === 'ArrowDown'
+            ? Math.min(indeks + 1, naZaslonu.length - 1)
+            : Math.max(indeks - 1, 0)
+      nastaviOznacenega(naZaslonu[naslednji].id)
+      return
+    }
+    if (dogodek.key === 'Enter' && oznacen !== null) {
+      dogodek.preventDefault()
+      preklopi(oznacen)
+    }
   }
 
   const vrstica = (igralec: IgralecDto) => (
-    <li key={igralec.id}>
+    <li
+      key={igralec.id}
+      id={`dodajanje-${igralec.id}`}
+      className={igralec.id === oznacen ? 'seznam-izbire__oznacen' : undefined}
+    >
       <label>
         <input
           type="checkbox"
@@ -1566,11 +1651,7 @@ function DodajanjeIgralcev({
         />
         <span>
           {igralec.ime} {igralec.priimek}
-          <span className="seznam-izbire__podrobnost">
-            {igralec.klub?.ime ?? 'brez kluba'}
-            {igralec.starostniPas !== null && ` · ${OZNAKE_PASU_KRATKO[igralec.starostniPas]}`}
-            {igralec.rating !== null && ` · rating ${igralec.rating}`}
-          </span>
+          <span className="seznam-izbire__podrobnost">{podrobnostIgralca(igralec)}</span>
         </span>
       </label>
     </li>
@@ -1604,18 +1685,42 @@ function DodajanjeIgralcev({
 
       {naVoljo.length > 0 && (
         <>
+          {/* Več igralcev naenkrat: iz prilepljenega seznama ali z drugega
+              dogodka. Gumba stojita nad iskalnikom, ker sta pri večjem
+              turnirju prva pot, iskanje po enega pa dopolnilo. */}
+          <div className="dodajanje__hitro">
+            <button type="button" className="gumb gumb--majhen" onClick={() => odpriOkno('seznam')}>
+              Prilepi seznam imen
+            </button>
+            <button type="button" className="gumb gumb--majhen" onClick={() => odpriOkno('prenos')}>
+              Prenesi z drugega dogodka
+            </button>
+          </div>
+
           {/* Iskalnik stoji NAD krmili in čez vso širino: pri tisoč igralcih je
               to prvo, kar organizator naredi, filtri pa so drugo. */}
           <label className="dodajanje__iskanje">
             <span className="samo-za-bralnik">Išči po imenu ali priimku</span>
             <input
+              ref={iskalnik}
               className="iskalnik"
               type="search"
               value={iskanje}
-              onChange={(dogodek) => nastaviIskanje(dogodek.target.value)}
+              onChange={(dogodek) => {
+                nastaviIskanje(dogodek.target.value)
+                nastaviOznacenega(null)
+              }}
+              onKeyDown={obTipki}
               placeholder="Išči po imenu ali priimku"
+              aria-describedby="dodajanje-namig"
             />
           </label>
+          {/* Na telefonu puščic ni; Enter (»Išči« na tipkovnici) pri enem
+              zadetku vseeno obkljuka. Namig stoji ves čas, da se seznam ob
+              prvi vtipkani črki ne premakne. */}
+          <p id="dodajanje-namig" className={jeTelefon ? 'samo-za-bralnik' : 'dodajanje__namig'}>
+            Enter obkljuka označenega igralca, puščici ↑ ↓ premikata oznako.
+          </p>
 
           <KrmilaSeznama
             stanje={filtri}
@@ -1671,6 +1776,24 @@ function DodajanjeIgralcev({
           )}
         </>
       )}
+
+      {okno !== null && igralci.data && (() => {
+        const skupno = {
+          igralci: igralci.data,
+          ovira,
+          prijava: {
+            prijavi: (idji: number[]) => prijavljanjeIzOkna.mutate(idji),
+            poteka: prijavljanjeIzOkna.isPending,
+            napaka: prijavljanjeIzOkna.error,
+          },
+          onZapri: () => nastaviOkno(null),
+        }
+        return okno === 'seznam' ? (
+          <PrilepiSeznamOkno {...skupno} />
+        ) : (
+          <PrenosPrijavOkno {...skupno} idDogodka={idDogodka} idTurnir={podatki.dogodek.idTurnir} />
+        )
+      })()}
     </div>
   )
 }
