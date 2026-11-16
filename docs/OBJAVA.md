@@ -445,7 +445,13 @@ baze** - tako kot prej nad kopijo datoteke SQLite:
    builtin BUILTIN_LOCALE 'C.UTF-8' TEMPLATE template0;`) in jo obnovi:
    `pg_restore -d turnirko --no-owner <kopija.dump>`.
 3. V mapi `zaledje` pozeni ukaz nad lokalno bazo, na primer popravek:
-   `./mvnw spring-boot:run -Dspring-boot.run.profiles=popravek "-Dspring-boot.run.arguments=--spring.datasource.url=jdbc:postgresql://localhost:5432/turnirko --spring.datasource.username=postgres"`.
+   `./mvnw spring-boot:run -Dspring-boot.run.profiles=popravek "-Dspring-boot.run.arguments=--spring.datasource.url=jdbc:postgresql://localhost:5432/turnirko --spring.datasource.username=postgres --turnirko.popravek.potrdi-bazo=localhost:5432/turnirko"`.
+   `popravek` brise in znova pise zgodovino in rating, zato se brez
+   `--turnirko.popravek.potrdi-bazo=<streznik>:<vrata>/<baza>` **ne zazene**:
+   vrednost se mora ujemati z bazo, na katero je dejansko povezan (napaka ob
+   zagonu izpise pravi naslov). V profilu `splet`, torej na strezniku, se ne
+   zazene niti s potrditvijo (`VarovalkaBaze`). Po preklopu na PostgreSQL ukaz
+   se ni bil zagnan: najprej ga preizkusi na kopiji, ki je ne potrebujes.
 4. Popravljeno bazo shrani (`pg_dump -Fc turnirko > popravljena.dump`), jo
    prenesi na streznik in obnovi s `./skripte/obnovi-bazo.sh popravljena.dump`.
 

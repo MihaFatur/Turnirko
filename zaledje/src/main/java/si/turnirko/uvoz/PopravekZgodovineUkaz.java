@@ -22,13 +22,27 @@
        PopravkiStupe, dvojcka) - ista preslikava kot na strani /uvoz,
     5. rating: popoln preracun.
 
-   Zaganja se nad KOPIJO baze (nikoli nad delujoco aplikacijo):
+   Zaganja se nad KOPIJO baze (nikoli nad delujoco aplikacijo), na domacem
+   racunalniku (postopek: docs/OBJAVA.md, "Ukazi nad bazo"):
 
      cd zaledje
      mvnw spring-boot:run -Dspring-boot.run.profiles=popravek
-       -Dspring-boot.run.arguments="--spring.datasource.url=jdbc:sqlite:<kopija.db>"
+       "-Dspring-boot.run.arguments=--spring.datasource.url=jdbc:postgresql://localhost:5432/turnirko
+        --spring.datasource.username=postgres
+        --turnirko.popravek.potrdi-bazo=localhost:5432/turnirko"
 
-   Ob koncu se aplikacija ustavi sama. */
+   VAROVALKA (nov 2026, VarovalkaBaze): ukaz brise in znova pise zgodovino in
+   rating, zazene pa se z istim programom in povezavo kot aplikacija. Brez
+   izrecne potrditve turnirko.popravek.potrdi-bazo, ki se ujema z dejansko
+   povezavo (streznik:vrata/baza), in v profilu "splet" (streznik) se ne
+   zazene - preverba je prvi korak, pred vsakim zapisom.
+
+   Ob koncu se aplikacija ustavi sama.
+
+   Po preklopu na PostgreSQL (2. 11. 2026) ukaz NI bil ponovno zagnan: napisan
+   in preizkusen je bil nad SQLite. Preden ga kdo uporabi, naj ga preizkusi na
+   kopiji; predlog pregleda kakovosti je, da se skupaj z UvozUkaz umakne iz
+   glavne slike (faza 6 prenove baze). */
 package si.turnirko.uvoz;
 
 import java.io.IOException;
@@ -41,6 +55,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import javax.sql.DataSource;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
@@ -52,6 +68,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -158,7 +176,16 @@ public class PopravekZgodovineUkaz implements ApplicationRunner {
     private final EntityManager em;
     private final TransactionTemplate transakcija;
     private final ConfigurableApplicationContext kontekst;
+    private final DataSource podatkovniVir;
+    private final Environment okolje;
     private final ObjectMapper json = new ObjectMapper();
+
+    /* Ime nastavitve, s katero se zagon potrdi (glej uvod in VarovalkaBaze). */
+    static final String POTRDITEV = "turnirko.popravek.potrdi-bazo";
+
+    /* Naslov baze (streznik:vrata/baza), nad katero je zagon izrecno potrjen. */
+    @Value("${" + POTRDITEV + ":}")
+    String potrjenaBaza;
 
     @Value("${turnirko.popravek.stara-mapa:../../uvoz-stara-ntzs/pretvorjeno-20261001}")
     private String mapaStare;
@@ -192,7 +219,8 @@ public class PopravekZgodovineUkaz implements ApplicationRunner {
                                  NizSrecanjaRepozitorij nizSrecanjaRepozitorij, ZunanjaPovezavaRepozitorij povezave,
                                  UvozZagonRepozitorij zagoni, RazvrstitevStoritev razvrstitev,
                                  UvozStupeStoritev uvozStupe, PreracunRatingaStoritev preracun, EntityManager em,
-                                 PlatformTransactionManager upravitelj, ConfigurableApplicationContext kontekst) {
+                                 PlatformTransactionManager upravitelj, ConfigurableApplicationContext kontekst,
+                                 DataSource podatkovniVir, Environment okolje) {
         this.klubRepozitorij = klubRepozitorij;
         this.igralecRepozitorij = igralecRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
@@ -216,10 +244,13 @@ public class PopravekZgodovineUkaz implements ApplicationRunner {
         this.em = em;
         this.transakcija = new TransactionTemplate(upravitelj);
         this.kontekst = kontekst;
+        this.podatkovniVir = podatkovniVir;
+        this.okolje = okolje;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        zahtevajPotrjenoBazo();
         UvozPorocilo porocilo = new UvozPorocilo();
         try {
             izvedi(porocilo);
@@ -232,6 +263,21 @@ public class PopravekZgodovineUkaz implements ApplicationRunner {
         if (ustaviObKoncu) {
             System.exit(SpringApplication.exit(kontekst, () -> 0));
         }
+    }
+
+    /* Prvi korak, pred vsakim zapisom: zagon mora biti izrecno potrjen za bazo,
+       na katero je ukaz dejansko povezan, in ne sme teci na strezniku. Napaka
+       ustavi zagon aplikacije z izhodno kodo, ki ni 0. */
+    void zahtevajPotrjenoBazo() {
+        String dejanska = VarovalkaBaze.naslovBaze(podatkovniVir);
+        try {
+            VarovalkaBaze.zahtevajPotrditev("Popravek zgodovine", POTRDITEV, potrjenaBaza, dejanska,
+                    okolje.acceptsProfiles(Profiles.of(VarovalkaBaze.PROFIL_STREZNIKA)));
+        } catch (IllegalStateException zavrnitev) {
+            dnevnik.error(zavrnitev.getMessage());
+            throw zavrnitev;
+        }
+        dnevnik.warn("Popravek zgodovine je potrjen za bazo {} in bo brisal ter znova pisal zgodovino.", dejanska);
     }
 
     private void izvedi(UvozPorocilo porocilo) {
