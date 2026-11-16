@@ -22,6 +22,7 @@
    rating, jih mora izpustiti, sicer isti dvoboj steje dvakrat. */
 package si.turnirko.repozitoriji;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -441,6 +442,17 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             ORDER BY t.id DESC
             """)
     List<Tekma> najdiDvojiceZaIgralcaMed(Long idIgralec, java.util.Collection<Long> idji);
+
+    /* Oznaci (ali odznaci, ob = null) tekme DOGODKA kot "listek natisnjen".
+       Skupinska posodobitev: ne poveca verzije tekme, zato ne zavrne vnosa
+       rezultata, ki tece hkrati. Tuji id-ji (druga tekmovanja) ne zadanejo
+       nicesar, ker je pogoj tudi dogodek. Vrne stevilo tekem. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Tekma t SET t.listekNatisnjenOb = :ob
+            WHERE t.dogodek.id = :idDogodek AND t.id IN :idjiTekem
+            """)
+    int nastaviListekNatisnjen(Long idDogodek, Collection<Long> idjiTekem, LocalDateTime ob);
 
     /* Atomarno vpise udelezenca v slot 1, a samo ce je slot se prazen.
        Vrne 1, ce je vpis uspel. */

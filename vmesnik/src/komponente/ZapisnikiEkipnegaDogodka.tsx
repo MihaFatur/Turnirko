@@ -26,8 +26,10 @@ import {
   privzetaOblika,
   shraniOblikoZapisnika,
 } from '../pomozno/oblikaZapisnika'
+import type { SklopListkov } from '../pomozno/listki'
 import { sklonZapisnikov } from '../pomozno/oblikovanje'
 import { EkipniZapisnikTurnirko } from './EkipniZapisnikTurnirko'
+import { IzbiraListkov, PotrditevTiska, type Izbira } from './IzbiraListkov'
 import { IzbirnikObrazca } from './IzbirnikObrazca'
 import { SporociloNapake } from './SporociloNapake'
 import { ZapisnikEkipnegaDvoboja } from './ZapisnikEkipnegaDvoboja'
@@ -59,16 +61,21 @@ export function ZapisnikiEkipnegaDogodka({
   dogodek,
   imeTurnirja,
   logotipTurnirja,
-  idjiSrecanj,
+  sklopi,
+  izbira,
 }: {
   dogodek: DogodekDto
   imeTurnirja: string | null
   /* Logotip turnirja (V54) za glavo Turnirkovega zapisnika. */
   logotipTurnirja: SlikaDto | null
-  /* Srecanja tekem, za katere ima smisel natisniti zapisnik, v vrstnem redu
-     tiska. */
-  idjiSrecanj: number[]
+  /* Pripravljene tekme s srecanjem, po sklopih (skupina, zreb ...). */
+  sklopi: SklopListkov[]
+  /* Izbira tekem za tisk in sled tiska (skupna posamicnim listkom). */
+  izbira: Izbira
 }) {
+  /* Srecanja izbranih tekem, v vrstnem redu tiska. Tekma brez srecanja zapisnika
+     nima (ListkiStran jo ze izlocil). */
+  const idjiSrecanj = izbira.izbraniListki.flatMap((l) => (l.tekma.idSrecanje !== null ? [l.tekma.idSrecanje] : []))
   const srecanja = useQueries({
     queries: idjiSrecanj.map((id) => ({
       queryKey: ['srecanje', id],
@@ -116,7 +123,7 @@ export function ZapisnikiEkipnegaDogodka({
           ← Nazaj na dogodek
         </Link>
         <span className="listki-orodja__stevec">
-          {idjiSrecanj.length} {sklonZapisnikov(idjiSrecanj.length)}
+          {idjiSrecanj.length} {sklonZapisnikov(idjiSrecanj.length)} za tisk
         </span>
         <IzbirnikObrazca
           oblika={oblika}
@@ -137,10 +144,11 @@ export function ZapisnikiEkipnegaDogodka({
         <button
           className="gumb gumb--glavni"
           disabled={idjiSrecanj.length === 0 || !nalozeno}
-          onClick={() => window.print()}
+          onClick={izbira.natisni}
         >
-          Natisni
+          Natisni izbrane ({idjiSrecanj.length})
         </button>
+        <PotrditevTiska izbira={izbira} vrsta="zapisnik" />
       </div>
 
       <div
@@ -168,13 +176,23 @@ export function ZapisnikiEkipnegaDogodka({
           )}
         </header>
 
-        {napaka ? (
-          <SporociloNapake napaka={napaka} />
-        ) : idjiSrecanj.length === 0 ? (
+        {sklopi.length === 0 ? (
           <p className="obvestilo zaslon-samo">
             Ni pripravljenih ekipnih tekem za tiskanje. Zapisnik se ustvari za tekmo, kjer
             sta znani obe ekipi in še ni odigrana.
           </p>
+        ) : (
+          <IzbiraListkov sklopi={sklopi} izbira={izbira} vrsta="zapisnik" />
+        )}
+
+        {napaka ? (
+          <SporociloNapake napaka={napaka} />
+        ) : idjiSrecanj.length === 0 ? (
+          sklopi.length > 0 && (
+            <p className="obvestilo zaslon-samo">
+              Nobena tekma ni izbrana. Izberi tekme, katerih zapisnike želiš natisniti.
+            </p>
+          )
         ) : !nalozeno ? (
           <p className="obvestilo zaslon-samo">Nalaganje …</p>
         ) : lezeci ? (

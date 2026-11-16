@@ -39,6 +39,9 @@ export interface ListekPodatki {
   miza: number | null
   stran1: StranListka
   stran2: StranListka
+  /* Prazen listek: imena igralcev in skupino oz. fazo sodnik dopise z roko
+     (organizator natisne zalogo listkov, ko igralcev se ne pozna). */
+  prazno?: boolean
 }
 
 export function Listek({ podatki }: { podatki: ListekPodatki }) {
@@ -64,8 +67,11 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
       <div className="listek__kontekst">
         {podatki.dogodek && <Polje oznaka="Dogodek" vrednost={podatki.dogodek} sirok />}
         <Polje oznaka="Kategorija" vrednost={podatki.kategorija} sirok />
-        {/* Skupinska tekma: »Skupina A  2. kolo«; tekma mreže: »Faza  Polfinale«. */}
-        {podatki.skupina ? (
+        {/* Skupinska tekma: »Skupina A  2. kolo«; tekma mreže: »Faza  Polfinale«.
+            Prazen listek ima črto za »Skupina A, 2. kolo« ali »Polfinale«. */}
+        {podatki.prazno ? (
+          <Polje oznaka="Faza" vrednost="" sirok prazno />
+        ) : podatki.skupina ? (
           <>
             <Polje oznaka="Skupina" vrednost={podatki.skupina} poudarjeno />
             <Polje oznaka={null} vrednost={podatki.faza} poudarjeno />
@@ -135,6 +141,7 @@ function Polje({
   vrednost,
   sirok = false,
   poudarjeno = false,
+  prazno = false,
 }: {
   /* null: vrednost stoji brez oznake, desno od prejšnjega polja (kolo ob skupini). */
   oznaka: string | null
@@ -142,6 +149,8 @@ function Polje({
   /* Vrednost zavzame ostalo vrstico (dogodek, kategorija). */
   sirok?: boolean
   poudarjeno?: boolean
+  /* Prazna črta za ročni vpis namesto besedila. */
+  prazno?: boolean
 }) {
   const dolga = sirok && !poudarjeno && vrednost.length > NAJDALJSE_PRI_OBICAJNI_VELIKOSTI
   return (
@@ -153,6 +162,7 @@ function Polje({
           (sirok ? ' listek__vrednost--sirok' : '') +
           (oznaka === null ? ' listek__vrednost--drugo' : '') +
           (poudarjeno ? ' listek__vrednost--poudarjeno' : '') +
+          (prazno ? ' listek__vrednost--prazno' : '') +
           (dolga ? ' listek__vrednost--dolga' : '')
         }
       >
@@ -168,8 +178,8 @@ function Ime({ ime }: { ime: string }) {
   const igralci = ime.split(' / ')
   return (
     <span className={'listek__ime' + (igralci.length > 1 ? ' listek__ime--par' : '')}>
-      {igralci.map((igralec) => (
-        <span key={igralec} className="listek__ime-vrstica">
+      {igralci.map((igralec, i) => (
+        <span key={i} className="listek__ime-vrstica">
           {igralec}
         </span>
       ))}

@@ -454,6 +454,9 @@ export interface TekmaDto {
      mesta); prazno, kadar je stran vpisan igralec ali pride iz poraženca. */
   idIzvorZmagovalca1: number | null
   idIzvorZmagovalca2: number | null
+  /* Kdaj je organizator potrdil tisk listka (ekipnega zapisnika) te tekme;
+     null = še ni natisnjen. Samo opomnik: tekma se zaradi tega ne spremeni. */
+  listekNatisnjenOb: string | null
 }
 
 /* Ena vrstica lestvice (krožni sistem ali skupina).

@@ -29,6 +29,7 @@ import si.turnirko.dto.IzborDto;
 import si.turnirko.dto.KaderIgralecDto;
 import si.turnirko.dto.KaderVnos;
 import si.turnirko.dto.KrogDto;
+import si.turnirko.dto.ListkiNatisnjeniVnos;
 import si.turnirko.dto.MrezaDto;
 import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.ParVnos;
@@ -60,6 +61,7 @@ import si.turnirko.repozitoriji.TekmaRepozitorij;
 import si.turnirko.storitve.EkipeDogodkaStoritev;
 import si.turnirko.storitve.IzborStoritev;
 import si.turnirko.storitve.IzlocilniZrebStoritev;
+import si.turnirko.storitve.ListkiStoritev;
 import si.turnirko.storitve.RazvrstitevStoritev;
 import si.turnirko.storitve.SkupineStoritev;
 import si.turnirko.storitve.SpremembeRatingaStoritev;
@@ -88,6 +90,7 @@ public class DogodkiKontroler {
     private final EkipeDogodkaStoritev ekipeDogodka;
     private final SvRegijaStoritev svRegija;
     private final IzlocilniZrebStoritev izlocilniZrebStoritev;
+    private final ListkiStoritev listkiStoritev;
 
     public DogodkiKontroler(DogodekRepozitorij dogodekRepozitorij,
                             PrijavaRepozitorij prijavaRepozitorij,
@@ -103,7 +106,8 @@ public class DogodkiKontroler {
                             TekmaStoritev tekmaStoritev,
                             EkipeDogodkaStoritev ekipeDogodka,
                             SvRegijaStoritev svRegija,
-                            IzlocilniZrebStoritev izlocilniZrebStoritev) {
+                            IzlocilniZrebStoritev izlocilniZrebStoritev,
+                            ListkiStoritev listkiStoritev) {
         this.dogodekRepozitorij = dogodekRepozitorij;
         this.prijavaRepozitorij = prijavaRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
@@ -119,6 +123,7 @@ public class DogodkiKontroler {
         this.ekipeDogodka = ekipeDogodka;
         this.svRegija = svRegija;
         this.izlocilniZrebStoritev = izlocilniZrebStoritev;
+        this.listkiStoritev = listkiStoritev;
     }
 
     /* Celotna slika dogodka: podatki, prijave, mreza in - glede na sistem -
@@ -446,5 +451,14 @@ public class DogodkiKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void izlocilniMesta(@PathVariable Long id, @Valid @RequestBody RocniMestaVnos vnos) {
         izlocilniZrebStoritev.rocniZreb(id, vnos.idjiPoMestih());
+    }
+
+    /* Sled tiska: organizator potrdi, da je listke (ekipne zapisnike) teh tekem
+       natisnil - ali oznako odstrani (natisnjeno = false). Samo opomnik, tekme
+       ne spremeni. */
+    @PutMapping("/{id}/listki/natisnjeno")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void listkiNatisnjeni(@PathVariable Long id, @Valid @RequestBody ListkiNatisnjeniVnos vnos) {
+        listkiStoritev.oznaci(id, vnos.idjiTekem(), vnos.natisnjeno());
     }
 }

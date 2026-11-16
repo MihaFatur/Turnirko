@@ -1,6 +1,7 @@
 /* Tekma - izpis za prikaz mreze. */
 package si.turnirko.dto;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import si.turnirko.modeli.FazaTekme;
@@ -53,7 +54,10 @@ public record TekmaDto(
            prazno, kadar je stran vpisan igralec ali pride iz porazenca. Vmesnik iz
            tega narise povezave drevesa za vsa mesta. */
         Long idIzvorZmagovalca1,
-        Long idIzvorZmagovalca2
+        Long idIzvorZmagovalca2,
+        /* Kdaj je organizator potrdil tisk listka te tekme; prazno = se ni
+           natisnjen. Vmesnik po tem loci "se za natisniti" od "ze na mizi". */
+        LocalDateTime listekNatisnjenOb
 ) {
 
     /* Udelezenec tekme (stran 1 ali 2) - igralec, PAR ali EKIPA.
@@ -120,7 +124,8 @@ public record TekmaDto(
                 tekma.getRazponOd(),
                 tekma.getRazponDo(),
                 tekma.getVlogaIzvora1() == VlogaIzvora.ZMAGOVALEC ? tekma.getIdIzvorTekma1() : null,
-                tekma.getVlogaIzvora2() == VlogaIzvora.ZMAGOVALEC ? tekma.getIdIzvorTekma2() : null
+                tekma.getVlogaIzvora2() == VlogaIzvora.ZMAGOVALEC ? tekma.getIdIzvorTekma2() : null,
+                tekma.getListekNatisnjenOb()
         );
     }
 }

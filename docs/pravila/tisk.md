@@ -5,15 +5,33 @@
 
 - **Listki tekem** (natisljivi zapisniki): dve strani, obe **namenoma zunaj
   `Postavitve`** (brez navigacije), da je natis čist; tiska brskalnik
-  (`window.print`) — **brez zaledja in nove sheme**, listek je le pogled na
-  podatke, ki že obstajajo:
-  - `ListkiStran` (`/dogodki/:id/listki`) — turnirski dogodek; natisne
+  (`window.print`). Listek je pogled na podatke, ki že obstajajo; **edino, kar
+  se zraven shrani, je sled tiska** (glej »Sled tiska« spodaj, V67):
+  - `ListkiStran` (`/dogodki/:id/listki`) — turnirski dogodek; ponudi
     **pripravljene tekme** (oba igralca znana, status `PRIPRAVLJENA`/`V_IGRI`;
     prosti prehodi in `CAKA` odpadejo sami) kot posamične **sodniške listke**
     (`komponente/Listek`, normaliziran `ListekPodatki`), narejene po papirnati
     predlogi lastnika (okt 2026). Povezava »Listki za tiskanje« na
     `DogodekStran` se pokaže organizatorju ob `V_TEKU`. Turnir ima le to eno
-    predlogo (ni izbire). Pravila, ki jih ne razbij:
+    predlogo (ni izbire). **Kaj se natisne, izbere organizator** (nov 2026,
+    `komponente/IzbiraListkov`, logika v `pomozno/listki.ts`):
+    - **Listki tekem**: privzeto **vsi še nenatisnjeni**. Hitra izbira
+      (»Vsi še nenatisnjeni«, po en gumb na sklop, »Počisti izbiro«) NADOMESTI
+      izbiro; pod njo je seznam sklopov s kljukico pri vsaki tekmi in tri-stanjsko
+      kljukico sklopa. **Sklop** = skupina (»Skupina A«), žreb SV regije (»Skupina 2 ·
+      Tolažilni žreb«), »Glavni žreb«, »Tekma za 3. mesto«; krožni sistem brez
+      skupin se deli po kolih. Tako gredo vse še nenatisnjene, samo tolažilni žreb,
+      ali štiri ročno izbrane tekme. Natisnjene so v seznamu privzeto skrite
+      (»Pokaži tudi že natisnjene«), da jih ni treba iskati; z »Odznači« se oznaka
+      odstrani, z izrecno kljukico se natisnjena tekma natisne znova.
+    - **Prazni listki**: število od 1 do 120 (`steviloPraznih`), natisnjena sta
+      turnir in kategorija (`ListekPodatki.prazno`: imena, »Faza« in miza so črte
+      za ročni vpis; dvojice imajo dve vrstici za imena). Prazni listki se ne
+      beležijo kot natisnjeni.
+    - **Predogled** pod izbiro je natanko to, kar gre na papir: tiskata se samo
+      izbrani listki (zaslonski del je `zaslon-samo`). Natis se ne spremeni, če je
+      izbrano vse.
+    - Pravila, ki jih ne razbij:
     - **Listek je tabela, v kateri ima vsak igralec SVOJ stolpec**: ime je
       glava stolpca, pod njim znački »Prvi servis« in »Timeout« (kvadratek, v
       katerega sodnik zapiše križ), nato po ena celica za vsak niz in
@@ -60,12 +78,35 @@
     - **Ekipna tekma turnirja** nima lige in zato nima predloge
       (`varianta = null`): podnaslov je ime dogodka, vrstica »Turnir«, brez
       delegata. Ura 00:00 pomeni »ura ni določena« in ostane prazno polje.
-    - **Ekipni dogodek** natisne vse pripravljene tekme naenkrat: isti naslov
+    - **Ekipni dogodek** natisne izbrane pripravljene tekme: isti naslov
       `/dogodki/:id/listki` (`ListkiStran` ga za `disciplina === 'EKIPNO'`
       preda `ZapisnikiEkipnegaDogodka`), vsak zapisnik na svoj list
       (`.zapisnik-stran`, `break-before: page`); podatke bere iz poizvedbe
       srečanja, ki jo deli s stranjo srečanja. Tekma brez srečanja (prenesen
-      izid, še nedoločen nasprotnik) odpade.
+      izid, še nedoločen nasprotnik) odpade. **Izbira in sled tiska sta ista kot
+      pri posamičnih listkih** (`useIzbiraListkov` in `IzbiraListkov` ju
+      delita; oznaka je na tekmi, ne na srečanju). **Praznih ekipnih zapisnikov
+      ni** (obrazec se sestavi iz obstoječega srečanja; pred postavo ga da
+      stran srečanja).
+    - **Sled tiska** (V67, `tekma.listek_natisnjen_ob`, `ListkiStoritev`,
+      `PUT /api/v1/dogodki/{id}/listki/natisnjeno` z `{idjiTekem, natisnjeno}`):
+      - **Oznaka se zapiše šele po potrditvi organizatorja**, ne ob kliku
+        »Natisni«: brskalnik ne pove, ali je tisk stekel (okno za tisk se da
+        preklicati). Po `window.print()` se v lepljivi orodni vrstici pokaže
+        »Si natisnil N listkov?« (Da / Ne); le »Da« kliče zaledje
+        (`PotrditevTiska`). Po potrditvi se izbira vrne na privzetek (vsi še
+        nenatisnjeni).
+      - **Oznaka je samo opomnik**: ne spremeni statusa ne rezultata, listek se da
+        natisniti znova. Shranjena je na STREŽNIKU (vidijo jo vsi organizatorji in
+        vse naprave), zato jo piše samo lastnik turnirja ali admin
+        (`LastnistvoStoritev.preveriTurnirPoDogodku`); uvoženo tekmovanje je samo za
+        branje, gost listke samo natisne (brez vprašanja po tisku in brez
+        »Odznači«).
+      - **Skupinska posodobitev (`nastaviListekNatisnjen`) NE poveča `@Version`
+        tekme** — zato oznaka ne zavrne hkratnega vnosa rezultata. Ne zamenjaj je z
+        `save()` entitete. Tuji id-ji (druga tekmovanja) ne zadanejo nič, ker je
+        pogoj tudi dogodek.
+      - Zaledje: `ListkiNatisnjeniTest`; vmesnik: `pomozno/listki.test.ts`.
     - **2 ali 3 zapisniki na list** (izbirnik »Na list« na strani ekipnega
       dogodka, izbira ostane v `localStorage['turnirko-zapisnikov-na-list']`):
       list je steber 190 × 276 mm (`.zapisnik-list`), zapisnik v svoji rezi

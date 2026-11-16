@@ -238,6 +238,10 @@ export const dogodkiApi = {
   izlocilniZreb: (id: number) => api.objavi<TekmaDto[]>(`/dogodki/${id}/izlocilni/zreb`),
   izlocilniMesta: (id: number, idjiPoMestih: (number | null)[]) =>
     api.posodobi<void>(`/dogodki/${id}/izlocilni/mesta`, { idjiPoMestih }),
+  /* Sled tiska: listke (ekipne zapisnike) teh tekem je organizator natisnil
+     (natisnjeno = true) ali oznako odstrani (false). Tekme ne spremeni. */
+  oznaciListke: (id: number, idjiTekem: number[], natisnjeno: boolean) =>
+    api.posodobi<void>(`/dogodki/${id}/listki/natisnjeno`, { idjiTekem, natisnjeno }),
 
   /* Ekipni dogodek: prijava je ekipa s kadrom. Igralec sme biti v kadru ene
      same ekipe dogodka (preveri strežnik). */

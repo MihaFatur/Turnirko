@@ -14965,6 +14965,7 @@ a.ekipa-okno__srecanje:hover {
   top: 0;
   z-index: 5;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--r2);
   padding: var(--r2) var(--r5);
@@ -15014,6 +15015,182 @@ a.ekipa-okno__srecanje:hover {
 /* Opozorilo pod naslovom (zaslon): pomanjsan obrazec je tesen za pisanje. */
 .listki-naslov__opozorilo {
   color: var(--barva-negativna);
+}
+
+/* ---------- Izbira listkov in sled tiska (samo zaslon) ----------
+   Vprasanje po tisku stoji v lepljivi orodni vrstici, da ga organizator vidi,
+   ko se vrne iz okna za tisk. Izbirnik (hitra izbira, vrsta listkov) je obstojeci
+   .izbirnik; seznam tekem je navadna vrsta kljukic. */
+
+.listki-potrditev {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r1) var(--r3);
+  padding: var(--r2);
+  border: 2px solid var(--barva-crnilo);
+  background: var(--barva-polnilo);
+}
+
+.listki-potrditev__vprasanje {
+  margin: 0;
+  font: 700 var(--tip-uvod) / 1.2 var(--pisava-display);
+}
+
+.listki-potrditev__pojasnilo {
+  flex: 1 1 18rem;
+  margin: 0;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
+}
+
+.listki-potrditev__gumbi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+}
+
+.listki-nacin {
+  margin-bottom: var(--r3);
+}
+
+.listki-izbira {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  margin-bottom: var(--r4);
+  padding: var(--r3);
+  border: 1px solid var(--barva-crta);
+}
+
+.listki-stran--ekipni > .listki-izbira,
+.listki-stran--ekipni > .listki-nacin {
+  align-self: stretch;
+}
+
+.listki-izbira__naslov {
+  margin: 0;
+  font: 800 var(--tip-h3) / 1.1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.listki-izbira__povzetek,
+.listki-izbira__pojasnilo {
+  margin: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.listki-izbira__pojasnilo {
+  max-width: 64ch;
+  font: 400 15px / 1.45 var(--pisava-telo);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.listki-izbira__prazni {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--r2);
+}
+
+.listki-izbira__seznam {
+  max-height: 60vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.listki-izbira__sklop {
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.listki-izbira__glava {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  min-height: 44px;
+  padding: 0 var(--r1);
+  background: var(--barva-polnilo);
+  cursor: pointer;
+}
+
+.listki-izbira__sklop-naslov {
+  font: 800 var(--tip-telo) / 1.2 var(--pisava-display);
+  letter-spacing: -0.01em;
+}
+
+.listki-izbira__sklop-stevilo {
+  margin-left: auto;
+  font: 500 var(--tip-mono) / 1.2 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  color: var(--barva-crnilo-3);
+}
+
+.listki-izbira__vrstica {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  padding-right: var(--r1);
+  border-top: 1px solid var(--barva-crta);
+}
+
+.listki-izbira__tekma {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--r1);
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px var(--r1);
+  cursor: pointer;
+}
+
+.listki-izbira__besedilo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.listki-izbira__imena {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.listki-izbira__meta {
+  font: 500 var(--tip-mono) / 1.3 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+/* Ze natisnjena tekma: bledo, da je ne mesamo s tistimi, ki cakajo na tisk. */
+.listki-izbira__vrstica--natisnjena .listki-izbira__imena {
+  font-weight: 400;
+  color: var(--barva-crnilo-3);
+}
+
+/* Telefon: panel brez odvecnih odmikov, da imena tekem ne lomijo vsake vrstice. */
+@media (max-width: 600px) {
+  .listki-izbira {
+    padding: var(--r2) var(--r1);
+  }
+
+  .listki-stran {
+    padding-left: var(--r2);
+    padding-right: var(--r2);
+  }
+}
+
+.listki-predogled {
+  margin: 0 0 var(--r2);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
 }
 
 .listki-stran {
@@ -15196,6 +15373,13 @@ a.ekipa-okno__srecanje:hover {
 .listek__vrednost--poudarjeno {
   font: 800 10pt / 1.1 var(--pisava-display);
   letter-spacing: -0.01em;
+}
+
+/* Prazen listek: crta za rocni vpis (faza, skupina) namesto besedila. */
+.listek__vrednost--prazno {
+  align-self: end;
+  min-height: 4.6mm;
+  border-bottom: 0.35mm solid #000;
 }
 
 .listek__tabela {

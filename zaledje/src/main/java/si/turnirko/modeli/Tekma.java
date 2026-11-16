@@ -100,6 +100,12 @@ public class Tekma {
     @Column(name = "predviden_zacetek")
     private LocalDateTime predvidenZacetek;
 
+    /* Kdaj je organizator potrdil, da je listek (ekipni zapisnik) te tekme
+       natisnil (V67); prazno = se ni. Samo sled za organizatorja: na potek
+       tekme ne vpliva, listek se da natisniti znova. */
+    @Column(name = "listek_natisnjen_ob")
+    private LocalDateTime listekNatisnjenOb;
+
     /* PRENESEN IZID (V28): tekma finalne skupine, ki se ne igra znova, ampak
        prevzame izid dvoboja iz predtekmovalne skupine (PST 14. clen). Nosi
        kazalec na prvotno tekmo in kopijo njenega izida - kopija sluzi lestvici
@@ -202,6 +208,9 @@ public class Tekma {
 
     public LocalDateTime getPredvidenZacetek() { return predvidenZacetek; }
     public void setPredvidenZacetek(LocalDateTime predvidenZacetek) { this.predvidenZacetek = predvidenZacetek; }
+
+    public LocalDateTime getListekNatisnjenOb() { return listekNatisnjenOb; }
+    public void setListekNatisnjenOb(LocalDateTime listekNatisnjenOb) { this.listekNatisnjenOb = listekNatisnjenOb; }
 
     public Long getIdPrenesena() { return idPrenesena; }
     public void setIdPrenesena(Long idPrenesena) { this.idPrenesena = idPrenesena; }

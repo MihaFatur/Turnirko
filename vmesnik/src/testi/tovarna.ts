@@ -78,6 +78,8 @@ export function tekma(
     miza: null,
     spremembaElo1: null,
     spremembaElo2: null,
+    idZreb: null,
+    listekNatisnjenOb: null,
     ...polja,
   } as TekmaDto
 }
