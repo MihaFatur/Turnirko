@@ -34,7 +34,16 @@ public class PrijavaDogodki {
         String naslov = naslov(prijava);
         if (prijava.getName() != null) {
             omejevalnik.zabelezi(OmejevalnikPoskusov.kljucPrijave(prijava.getName()));
-            omejevalnik.zabelezi(OmejevalnikPoskusov.kljucPrijave(prijava.getName(), naslov));
+            // Nizka meja (racun z naslova) steje RAZLICNA gesla: zastarele poverilnice,
+            // ki jih zavihek v sunku ~10 hkratnih zahtev ponavlja, so en poskus; sicer bi
+            // sunek zaklenil lastnika, ki je geslo spremenil drugje. Skupna meja racuna in
+            // meja naslova steteta vsako zavrnitev (BCrypt stane ob vsaki).
+            String kljucRacunaZNaslova = OmejevalnikPoskusov.kljucPrijave(prijava.getName(), naslov);
+            if (prijava.getCredentials() instanceof String geslo) {
+                omejevalnik.zabeleziRazlicenPoskus(kljucRacunaZNaslova, geslo, OmejitevPrijavFilter.OKNO);
+            } else {
+                omejevalnik.zabelezi(kljucRacunaZNaslova);
+            }
         }
         omejevalnik.zabelezi(OmejevalnikPoskusov.kljucNaslovaPrijave(naslov));
     }

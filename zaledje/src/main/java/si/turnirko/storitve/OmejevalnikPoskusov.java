@@ -9,12 +9,20 @@
    oknom hkrati (npr. 1 na minuto IN 5 na uro). */
 package si.turnirko.storitve;
 
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.Base64;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -30,6 +38,16 @@ public class OmejevalnikPoskusov {
     private static final int NAJVEC_ZAPISOV = 500;
 
     private final Map<String, Deque<Instant>> dogodki = new ConcurrentHashMap<>();
+
+    /* Odtisi ze stetih poskusov po kljucu (glej zabeleziRazlicenPoskus). */
+    private final Map<String, Map<String, Instant>> videniPoskusi = new ConcurrentHashMap<>();
+    private final byte[] kljucOdtisa = nakljucniKljuc();
+
+    private static byte[] nakljucniKljuc() {
+        byte[] kljuc = new byte[32];
+        new SecureRandom().nextBytes(kljuc);
+        return kljuc;
+    }
 
     /* Kljuci za neuspele prijave - sestavlja jih ta razred, da filter prijave,
        poslusalec dogodkov in ponastavitev gesla govorijo o istem stevcu. */
@@ -87,9 +105,47 @@ public class OmejevalnikPoskusov {
         return true;
     }
 
+    /* Zabelezi dogodek za kljuc, a samo, ce istega poskusa v oknu za ta kljuc se
+       nismo steli. Za ugibanje gesla: ponovitev ISTEGA napacnega gesla ne pove
+       nicesar novega (ugibanje pomeni razlicna gesla), pomeni pa zastarele
+       poverilnice, ki jih je stran poslala v sunku ~10 hkratnih zahtev, in tak
+       sunek ne sme zakleniti lastnika. Vrne true, ce je bil dogodek zabelezen.
+       Poskus se hrani samo kot HMAC s nakljucnim kljucem, ki zivi le v tem
+       procesu: geslo ni v pomnilniku v obliki, iz katere bi ga bilo mogoce
+       prebrati, odtis pa zunaj procesa nima nobene vrednosti. */
+    public boolean zabeleziRazlicenPoskus(String kljuc, String poskus, Duration okno) {
+        String odtis = odtis(poskus);
+        Instant zdaj = Instant.now();
+        Map<String, Instant> videni = videniPoskusi.computeIfAbsent(kljuc, k -> new HashMap<>());
+        boolean novo;
+        synchronized (videni) {
+            Instant prej = videni.get(odtis);
+            novo = prej == null || prej.isBefore(zdaj.minus(okno));
+            if (novo) {
+                videni.put(odtis, zdaj);
+                odstraniStareOdtise(videni, zdaj);
+            }
+        }
+        if (novo) {
+            zabelezi(kljuc);
+        }
+        return novo;
+    }
+
+    private String odtis(String poskus) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(kljucOdtisa, "HmacSHA256"));
+            return Base64.getEncoder().encodeToString(mac.doFinal(poskus.getBytes(StandardCharsets.UTF_8)));
+        } catch (GeneralSecurityException napaka) {
+            throw new IllegalStateException("HmacSHA256 ni na voljo", napaka);
+        }
+    }
+
     /* Pozabi vse dogodke kljuca (npr. po uspesni prijavi). */
     public void pocisti(String kljuc) {
         dogodki.remove(kljuc);
+        videniPoskusi.remove(kljuc);
     }
 
     /* Pozabi vse stevce prijave racuna - skupnega in z vseh naslovov IP.
@@ -97,11 +153,24 @@ public class OmejevalnikPoskusov {
     public void pocistiPrijaveRacuna(String prijavnoIme) {
         String kljuc = kljucPrijave(prijavnoIme);
         dogodki.keySet().removeIf(k -> k.equals(kljuc) || k.startsWith(kljuc + "|"));
+        videniPoskusi.keySet().removeIf(k -> k.equals(kljuc) || k.startsWith(kljuc + "|"));
     }
 
     /* Pozabi vse - za teste, ki isti naslov registrirajo veckrat zapored. */
     public void pocistiVse() {
         dogodki.clear();
+        videniPoskusi.clear();
+    }
+
+    /* Odtisi starejsi od najdaljsega okna so brez pomena; ob prevelikem stevilu
+       gre najstarejsi (isto zgornjo mejo kot dogodki). */
+    private static void odstraniStareOdtise(Map<String, Instant> videni, Instant zdaj) {
+        Instant meja = zdaj.minus(NAJDALJSE_OKNO);
+        videni.values().removeIf(t -> t.isBefore(meja));
+        while (videni.size() > NAJVEC_ZAPISOV) {
+            videni.entrySet().stream().min(Map.Entry.comparingByValue())
+                    .ifPresent(najstarejsi -> videni.remove(najstarejsi.getKey()));
+        }
     }
 
     private static void odstraniStare(Deque<Instant> vrsta, Instant zdaj) {
@@ -121,6 +190,13 @@ public class OmejevalnikPoskusov {
             synchronized (vrsta) {
                 odstraniStare(vrsta, zdaj);
                 return vrsta.isEmpty();
+            }
+        });
+        videniPoskusi.entrySet().removeIf(vnos -> {
+            Map<String, Instant> videni = vnos.getValue();
+            synchronized (videni) {
+                videni.values().removeIf(t -> t.isBefore(zdaj.minus(NAJDALJSE_OKNO)));
+                return videni.isEmpty();
             }
         });
     }

@@ -42,7 +42,12 @@
     prijava števca računa pobriše (`PrijavaDogodki`), novo geslo s kodo vse
     (`pocistiPrijaveRacuna`). Meja samo po računu bi bila vrata za nagajanje
     (desetkrat napačno geslo zaklene tuj račun), zato je nizka meja vezana na
-    par račun + IP. Odgovor registracije za zaseden naslov stane enako
+    par račun + IP. Ta meja šteje **različna** napačna gesla: ponovitev istega
+    gesla v 15 minutah je en poskus (`zabeleziRazlicenPoskus`, odtis HMAC z
+    ključem, ki živi le v procesu; gesla ni v pomnilniku ne v dnevniku), ker
+    zavihek z zastarelimi poverilnicami pošlje sunek ~10 hkratnih zahtev in bi
+    sicer zaklenil lastnika, ki je geslo spremenil drugje. Skupna meja računa in
+    meja naslova štejeta VSAKO zavrnitev (vsaka stane BCrypt). Odgovor registracije za zaseden naslov stane enako
     (BCrypt se izračuna vedno). Testi, ki isti naslov registrirajo večkrat,
     kličejo `pocistiVse()`.
   - **Pošta gre ven šele po potrditvi transakcije** (`PostaStoritev`), sicer
