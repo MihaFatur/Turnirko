@@ -8,6 +8,7 @@ import type { KlubDto, KrajDto } from '../api/tipi'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 export function SifrantiStran() {
   return (
@@ -69,7 +70,10 @@ function KlubiPlosca() {
   return (
     <div>
       <div className="naslovna-vrstica">
-        <h2>Klubi</h2>
+        <h2>
+          Klubi
+          <Namig clanek="admin-sifranti" />
+        </h2>
         {klubi.data && (
           <span className="sekcija__meta">
             {klubi.data.length} {klubovTekst(klubi.data.length)}
@@ -219,7 +223,10 @@ function KrajiPlosca() {
   return (
     <div>
       <div className="naslovna-vrstica">
-        <h2>Kraji</h2>
+        <h2>
+          Kraji
+          <Namig clanek="admin-sifranti" />
+        </h2>
         {kraji.data && (
           <span className="sekcija__meta">
             {kraji.data.length} {krajevTekst(kraji.data.length)}

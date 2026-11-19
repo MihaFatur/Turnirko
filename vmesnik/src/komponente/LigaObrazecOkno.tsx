@@ -34,6 +34,8 @@ import {
 import { StevilskoPolje } from './StevilskoPolje'
 import { TerminiPolja } from './TerminiPolja'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
+import { OznakaZNamigom } from '../pomoc/OznakaZNamigom'
 
 interface Lastnosti {
   /* Podana liga = urejanje; brez nje se ustvari nova. */
@@ -236,16 +238,20 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         </label>
 
         <div className="obrazec__vrstica">
-          <label className="obrazec__polje">
-            <span>Format srečanja</span>
-            <select value={format} onChange={(d) => zamenjajFormat(d.target.value as FormatSrecanja)}>
+          <div className="obrazec__polje">
+            <OznakaZNamigom za="polje-format-lige" oznaka="Format srečanja" clanek="format-srecanja" />
+            <select
+              id="polje-format-lige"
+              value={format}
+              onChange={(d) => zamenjajFormat(d.target.value as FormatSrecanja)}
+            >
               {(Object.keys(OZNAKE_FORMAT) as FormatSrecanja[])
                 .filter((f) => !FORMATI_SAMO_TURNIR.includes(f) || f === format)
                 .map((f) => (
                   <option key={f} value={f}>{OZNAKE_FORMAT[f]}</option>
                 ))}
             </select>
-          </label>
+          </div>
           <label className="obrazec__polje">
             <span>Nizi (prvi do)</span>
             {/* Prikazano je, do koliko dobljenih nizov se igra; zaledje in
@@ -263,14 +269,19 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         </p>
 
         <div className="obrazec__vrstica">
-          <label className="obrazec__polje">
-            <span>Konec srečanja</span>
-            <select value={konecVeljaven} disabled={fiksni !== undefined}
+          <div className="obrazec__polje">
+            <OznakaZNamigom
+              za="polje-konec-srecanja"
+              oznaka="Konec srečanja"
+              clanek="liga-nova"
+              razdelek="konec-srecanja"
+            />
+            <select id="polje-konec-srecanja" value={konecVeljaven} disabled={fiksni !== undefined}
               onChange={(d) => nastaviKonec(d.target.value as KonecSrecanja)}>
               <option value="VSE">Odigrajo se vse tekme</option>
               <option value="PRAG">Konča se pri pragu zmag</option>
             </select>
-          </label>
+          </div>
           {konecVeljaven === 'PRAG' && (
             <label className="obrazec__polje">
               <span>Prag zmag (največ {tekme.length})</span>
@@ -302,7 +313,10 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
         />
 
         <fieldset className="obrazec__skupina">
-          <legend>Končnica</legend>
+          <legend>
+            Končnica
+            <Namig clanek="koncnica" />
+          </legend>
           <div className="obrazec__vrstica">
             <label className="obrazec__polje">
               <span>Po rednem delu</span>
@@ -374,11 +388,14 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           </select>
         </label>
         <OpisRavniTekmovanja />
-        <label className="obrazec__polje obrazec__polje--stikalo">
-          <input type="checkbox" checked={enakomerna}
-            onChange={(d) => nastaviEnakomerno(d.target.checked)} />
-          <span>Enakomerna razvrstitev ekip (žreb po parih)</span>
-        </label>
+        <div className="vrsta-z-namigom">
+          <label className="obrazec__polje obrazec__polje--stikalo">
+            <input type="checkbox" checked={enakomerna}
+              onChange={(d) => nastaviEnakomerno(d.target.checked)} />
+            <span>Enakomerna razvrstitev ekip (žreb po parih)</span>
+          </label>
+          <Namig clanek="razpored" razdelek="enakomerna" />
+        </div>
         <p className="namig">
           {enakomerna
             ? 'Ekipe pred žrebom razvrstiš po moči (na strani lige, pod »Ekipe«). Žreb jih zveže v pare — prva zgornje polovice s prvo spodnje in tako naprej — vsak par pa v vsakem krogu igra proti istemu nasprotnemu paru: ena ekipa proti močnejši, druga proti šibkejši. Sezona se za vsak par konča z njunim medsebojnim srečanjem.'
@@ -402,7 +419,10 @@ export function LigaObrazecOkno({ liga, onZapri, onShranjeno }: Lastnosti) {
           </p>
         ) : (
           <section>
-            <p className="podnaslov-sekcije">Piramida in prehodi</p>
+            <p className="podnaslov-sekcije">
+              Piramida in prehodi
+              <Namig clanek="prehodi" />
+            </p>
             <PrehodiPolja
               stanje={prehodi}
               nastavi={nastaviPrehode}

@@ -11,6 +11,7 @@ import { NavLink } from 'react-router-dom'
 
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { OZNAKE_VLOGA } from '../api/tipi'
+import { usePomocNeobvezno } from '../pomoc/PomocKontekst'
 import { ObvestilaOkno } from './ObvestilaOkno'
 import { PrijavaOkno } from './PrijavaOkno'
 
@@ -18,6 +19,7 @@ type PrijavaNacin = 'prijava' | 'koda'
 
 export function UporabniskiMeni() {
   const { uporabnik, odjava } = useAvtentikacija()
+  const pomoc = usePomocNeobvezno()
   const [odprt, nastaviOdprt] = useState(false)
   const [prijavaNacin, nastaviPrijavaNacin] = useState<PrijavaNacin | null>(null)
   const [obvestilaOdprta, nastaviObvestilaOdprta] = useState(false)
@@ -139,6 +141,30 @@ export function UporabniskiMeni() {
           >
             Obvestila
           </button>
+
+          {/* Pomoč za organizatorje: navodila in stikalo za gumbe »?« (izkušen
+              organizator jih ne potrebuje več; stran Pomoč ostane vedno). */}
+          {pomoc?.vidna && (
+            <>
+              <NavLink
+                to="/pomoc"
+                role="menuitem"
+                className="uporabnik-meni__postavka"
+                onClick={() => nastaviOdprt(false)}
+              >
+                Pomoč
+              </NavLink>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={pomoc.namigiVklopljeni}
+                className="uporabnik-meni__postavka"
+                onClick={() => pomoc.nastaviNamige(!pomoc.namigiVklopljeni)}
+              >
+                Namigi »?« ob funkcijah: {pomoc.namigiVklopljeni ? 'vklopljeni' : 'izklopljeni'}
+              </button>
+            </>
+          )}
 
           {/* Admin plačilnega paketa nima, navijač je brezplačen. */}
           {uporabnik.vloga !== 'ADMIN' && (

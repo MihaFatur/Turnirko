@@ -26,6 +26,7 @@ import {
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 import { StevilskoPolje } from './StevilskoPolje'
+import { OznakaZNamigom } from '../pomoc/OznakaZNamigom'
 
 type Lastnosti = {
   idTurnirja: number
@@ -214,16 +215,20 @@ export function DogodekObrazecOkno({
             {spolKategorija === 'MESANO' && ' Vsak par mora sestavljati en moški in ena ženska.'}
           </p>
         ) : (
-          <label className="obrazec__polje">
-            <span>Sistem tekmovanja *</span>
-            <select value={sistem} onChange={(d) => nastaviSistem(d.target.value as SistemTekmovanja)}>
+          <div className="obrazec__polje">
+            <OznakaZNamigom za="polje-sistem-dogodka" oznaka="Sistem tekmovanja *" clanek="sistemi" />
+            <select
+              id="polje-sistem-dogodka"
+              value={sistem}
+              onChange={(d) => nastaviSistem(d.target.value as SistemTekmovanja)}
+            >
               {Object.entries(OZNAKE_SISTEM).map(([vrednost, oznaka]) => (
                 <option key={vrednost} value={vrednost}>
                   {oznaka}
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         )}
 
         {ekipno && (

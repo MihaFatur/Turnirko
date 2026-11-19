@@ -133,6 +133,7 @@ function ListkiZreba({
 
   return (
     <ZrebOkvir
+      pomoc="zreb-skupin-tisk"
       nazaj={nazaj}
       nazajOznaka={nazajOznaka}
       naslov={naslov}

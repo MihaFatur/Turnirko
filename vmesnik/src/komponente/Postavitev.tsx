@@ -82,6 +82,9 @@ const povezave: Povezava[] = [
   { pot: '/sifranti', oznaka: 'Šifranti', samoAdmin: true },
   { pot: '/uvoz', oznaka: 'Uvoz NTZS', samoAdmin: true },
   { pot: '/rating', oznaka: 'Rating', samoAdmin: true },
+  /* Navodila za organizatorje (16. 11. 2026): zadnja, ker niso cilj dneva,
+     ampak pomoč, ko kaj ni jasno. Na telefonu so v predalu »Več«. */
+  { pot: '/pomoc', oznaka: 'Pomoč', samoUrejevalec: true },
 ]
 
 /* Prve stiri postavke spodnje vrstice so iste za vse - to so poti, po katerih
@@ -499,6 +502,11 @@ function PredalVec({ jeAdmin, onZapri }: { jeAdmin: boolean; onZapri: () => void
               <span className="predal__kontekst">Preračun</span>
             </NavLink>
           )}
+
+          <NavLink to="/pomoc" className="predal__postavka" onClick={onZapri}>
+            Pomoč
+            <span className="predal__kontekst">Navodila</span>
+          </NavLink>
         </div>
 
         <p className="predal__opomba">

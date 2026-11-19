@@ -23,6 +23,7 @@ import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { PotrditvenoOkno } from './PotrditvenoOkno'
 import { PreimenujEkipoOkno } from './PreimenovanjeEkipe'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   dogodek: DogodekDto
@@ -62,7 +63,10 @@ export function EkipeDogodka({ dogodek, smem, dejanje }: Lastnosti) {
   return (
     <div>
       <div className="naslovna-vrstica">
-        <h2>{smem && !koncan ? 'Ekipe in kadri' : 'Ekipe'}</h2>
+        <h2>
+          {smem && !koncan ? 'Ekipe in kadri' : 'Ekipe'}
+          {smem && <Namig clanek="ekipni-dogodek" />}
+        </h2>
         <span className="sekcija__meta">
           {seznam.length} {sklonEkip(seznam.length)}
           {potrebno > 0 && ` · ${potrebno} ${sklonIgralcev(potrebno)} za mizo`}

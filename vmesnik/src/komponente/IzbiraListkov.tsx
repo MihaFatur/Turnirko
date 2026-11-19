@@ -25,6 +25,7 @@ import {
 } from '../pomozno/listki'
 import { sklonListkov, sklonZapisnikov } from '../pomozno/oblikovanje'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 /* Listek posamicne tekme ali ekipni zapisnik: razlikujeta se samo besedi. */
 export type VrstaListka = 'listek' | 'zapisnik'
@@ -167,7 +168,10 @@ export function IzbiraListkov({
 
   return (
     <section className="listki-izbira zaslon-samo" aria-label={`Izbira ${mnozina}`}>
-      <h2 className="listki-izbira__naslov">Kaj natisniti</h2>
+      <h2 className="listki-izbira__naslov">
+        Kaj natisniti
+        <Namig clanek="listki" />
+      </h2>
 
       <div className="izbirnik listki-izbira__hitra" role="group" aria-label="Hitra izbira">
         <button

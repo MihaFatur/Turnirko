@@ -44,6 +44,7 @@ import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { PregledProfilnihSlik } from '../komponente/PregledProfilnihSlik'
 import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import { letnica, oblikujDatum, sklonTekem, zVelikoZacetnico } from '../pomozno/oblikovanje'
 import { useTelefon } from '../pomozno/telefon'
 
@@ -1190,7 +1191,10 @@ function CistkaDuplikatov({
   return (
     <div>
       <div className="kartoteka__naslovna">
-        <h2 className="kartoteka__naslov">Čistka duplikatov</h2>
+        <h2 className="kartoteka__naslov">
+          Čistka duplikatov
+          <Namig clanek="admin-igralci" razdelek="cistka" />
+        </h2>
         <button type="button" className="kartoteka__meta" onClick={onNazaj}>
           ← Nazaj na seznam
         </button>

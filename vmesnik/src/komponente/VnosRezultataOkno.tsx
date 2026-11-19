@@ -36,6 +36,8 @@ import { ModalnoOkno } from './ModalnoOkno'
 import { PotrditevPopravka } from './PotrditevPopravka'
 import { SporociloNapake } from './SporociloNapake'
 import { StevilskoPolje } from './StevilskoPolje'
+import { Namig } from '../pomoc/Namig'
+import { OznakaZNamigom } from '../pomoc/OznakaZNamigom'
 import {
   TockeNizov,
   dopolniDrugi,
@@ -330,6 +332,7 @@ export function VnosRezultataOkno({
         {!samoBrezIgre && (
           <span className="modal__namig"> (najboljši od {steviloNizov} nizov)</span>
         )}
+        <Namig clanek={popravek ? 'popravek-rezultata' : 'vnos-rezultata'} />
       </p>
       {samoBrezIgre && !popravek && (
         <p className="namig">
@@ -345,9 +348,15 @@ export function VnosRezultataOkno({
       )}
 
       <form className="obrazec" onSubmit={obOddaji}>
-        <label className="obrazec__polje">
-          <span>Način zaključka</span>
+        <div className="obrazec__polje">
+          <OznakaZNamigom
+            za="polje-nacin-zakljucka"
+            oznaka="Način zaključka"
+            clanek="vnos-rezultata"
+            razdelek="brez-igre"
+          />
           <select
+            id="polje-nacin-zakljucka"
             value={izidTip}
             onChange={(dogodek) => nastaviIzidTip(dogodek.target.value as IzidTekme)}
           >
@@ -357,7 +366,7 @@ export function VnosRezultataOkno({
               </option>
             ))}
           </select>
-        </label>
+        </div>
 
         {prepisMozen && (
           <>
@@ -404,14 +413,17 @@ export function VnosRezultataOkno({
               </label>
             </div>
 
-            <label className="obrazec__potrditev">
-              <input
-                type="checkbox"
-                checked={vnasamTocke}
-                onChange={(dogodek) => nastaviVnasamTocke(dogodek.target.checked)}
-              />
-              <span>Vnesi tudi točke po nizih</span>
-            </label>
+            <div className="vrsta-z-namigom">
+              <label className="obrazec__potrditev">
+                <input
+                  type="checkbox"
+                  checked={vnasamTocke}
+                  onChange={(dogodek) => nastaviVnasamTocke(dogodek.target.checked)}
+                />
+                <span>Vnesi tudi točke po nizih</span>
+              </label>
+              <Namig clanek="tocke-po-nizih" />
+            </div>
 
             {vnasamTocke && odigranihNizov > 0 && (
               <TockeNizov

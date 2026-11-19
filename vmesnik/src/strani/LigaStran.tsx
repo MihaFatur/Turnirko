@@ -51,6 +51,7 @@ import { NastavitveZanimivosti } from '../komponente/NastavitveZanimivosti'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TerminiOkno } from '../komponente/TerminiOkno'
+import { Namig } from '../pomoc/Namig'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import {
   danesIso,
@@ -1613,6 +1614,7 @@ function UstvariKvalifikacije({
             <button type="button" className="gumb gumb--majhen" onClick={() => onUstvari(m)}>
               Ustvari kvalifikacije
             </button>
+            <Namig clanek="kvalifikacije" />
           </div>
         )
       })}
@@ -2490,6 +2492,7 @@ function PravilaOkno({
           <button type="button" className="gumb gumb--majhen" onClick={onUredi}>
             Uredi pravila
           </button>
+          <Namig clanek="liga-nova" razdelek="urejanje" />
         </div>
       )}
       {smemUrejatiPrehode && (
@@ -2497,6 +2500,7 @@ function PravilaOkno({
           <button type="button" className="gumb gumb--majhen" onClick={onUrediPrehode}>
             Uredi prehode
           </button>
+          <Namig clanek="prehodi" />
         </div>
       )}
       <dl className="opis-mreza">
@@ -2703,7 +2707,10 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
   return (
     <div>
       <div className="naslovna-vrstica">
-        <h2>Ekipe</h2>
+        <h2>
+          Ekipe
+          <Namig clanek="ekipe-kader" />
+        </h2>
         <span className="sekcija__meta">{steviloEkip} od najmanj 2</span>
       </div>
 
@@ -2854,6 +2861,7 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
         >
           Generiraj razpored
         </button>
+        <Namig clanek="razpored" razdelek="zreb" />
         {/* Drugi način žreba in ne nastavitev prvega: pare je določil človek.
             Liga, ki se je doslej vodila na roke, ima razpored že razposlan
             igralcem in naključni žreb bi ga zavrgel. */}
@@ -2864,6 +2872,7 @@ function EkipeUredi({ liga, onUrediPravila }: { liga: LigaDto; onUrediPravila: (
         >
           Vpiši razpored ročno
         </button>
+        <Namig clanek="razpored" razdelek="rocno" />
         <button className="gumb gumb--majhen" onClick={onUrediPravila}>
           Uredi pravila
         </button>

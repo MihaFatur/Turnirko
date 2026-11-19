@@ -105,6 +105,7 @@ function ListMreze({
 
   return (
     <ZrebOkvir
+      pomoc="zreb-mreze-tisk"
       nazaj={nazaj}
       nazajOznaka={nazajOznaka}
       naslov={naslov}

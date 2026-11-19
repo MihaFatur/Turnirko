@@ -37,6 +37,7 @@ import { Napredek, PalicaMobi } from '../komponente/Napredek'
 import { NastavitveZanimivosti } from '../komponente/NastavitveZanimivosti'
 import { ZanimivostiTekmovanja } from '../komponente/ZanimivostiTekmovanja'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import { StatusMobi, ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import {
   oblikujObdobje,
@@ -458,7 +459,10 @@ export function TurnirStran() {
         {pogled === 'DOGODKI' && (
           <div>
             <div className="naslovna-mobi">
-              <h2>Kategorije</h2>
+              <h2>
+                Kategorije
+                <Namig clanek="kategorija-nova" />
+              </h2>
               {dogodki.data && dogodki.data.length > 0 && (
                 <span className="naslovna-mobi__stevec">{dogodki.data.length}</span>
               )}
@@ -557,6 +561,7 @@ export function TurnirStran() {
             )}
             {smem && podatki.status !== 'ZAKLJUCEN' && !vsiDogodkiZakljuceni && (
               <span className="stran-glava__pogoj">
+                <Namig clanek="zakljucek-turnirja" />
                 Mogoče šele, ko so zaključeni vsi dogodki
               </span>
             )}
@@ -596,7 +601,10 @@ export function TurnirStran() {
 
       <div hidden={pogled !== 'DOGODKI'}>
         <div className="naslovna-vrstica">
-          <h2>Dogodki</h2>
+          <h2>
+            Dogodki
+            <Namig clanek="kategorija-nova" />
+          </h2>
           {dogodki.data && dogodki.data.length > 0 && (
             <span className="sekcija__meta">
               {dogodki.data.length} {sklonTekmovanj(dogodki.data.length)}

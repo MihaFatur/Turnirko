@@ -28,6 +28,7 @@ import { oblikujDatum, sklonPrijav } from '../pomozno/oblikovanje'
 import { IskalniIzbirnik, type MoznostIzbirnika } from './IskalniIzbirnik'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 /* Prijava iz okna: ista zahteva kot gumb »Prijavi izbrane«, a svoje stanje,
    da okno ne pobriše izbora na strani. */
@@ -145,6 +146,7 @@ export function PrilepiSeznamOkno({ igralci, ovira, prijava, onZapri }: SkupneLa
   if (!pregled) {
     return (
       <ModalnoOkno naslov="Prilepi seznam imen" srednje onZapri={onZapri}>
+        <div className="modal-pomoc"><Namig clanek="prijave" razdelek="seznam" /></div>
         <p className="modal__podnaslov">
           Vsak igralec v svoji vrstici. Prilepiš lahko stolpec iz Excela ali kar sporočilo s
           prijavami: številke, klub in letnik v vrstici ne motijo.
@@ -386,6 +388,7 @@ export function PrenosPrijavOkno({
 
   return (
     <ModalnoOkno naslov="Prenesi z drugega dogodka" srednje onZapri={onZapri}>
+      <div className="modal-pomoc"><Namig clanek="prijave" razdelek="prenos" /></div>
       <p className="modal__podnaslov">
         Izberi dogodek, s katerega prevzameš igralce. Pregledaš jih, preden jih prijaviš.
       </p>

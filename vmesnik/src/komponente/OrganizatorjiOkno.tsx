@@ -16,6 +16,7 @@ import { IskalniIzbirnik } from './IskalniIzbirnik'
 import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   vrsta: 'liga' | 'turnir'
@@ -85,6 +86,7 @@ export function OrganizatorjiOkno({ vrsta, id, ime, onZapri }: Lastnosti) {
 
   return (
     <ModalnoOkno srednje naslov="Organizatorji" podnaslov={ime} onZapri={onZapri}>
+      <div className="modal-pomoc"><Namig clanek="admin-organizatorji" /></div>
       <div className="obrazec organizatorji-okno">
         <p className="organizatorji-okno__uvod">
           Kdo od organizatorjev lahko ureja to {tekmovanje} in ali se mu šteje v omejitve

@@ -5,6 +5,7 @@
 import type { NacinPopravka, NaslednjiDelPopravka, PopravekPredogledDto } from '../api/tipi'
 import { OZNAKE_IZID } from '../api/tipi'
 import { sklonTekem } from '../pomozno/oblikovanje'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   predogled: PopravekPredogledDto
@@ -93,6 +94,8 @@ export function PotrditevPopravka({ predogled, nacin, naIzbiro }: Lastnosti) {
   /* Dogodek spet teče, kadar mu izbira vzame izide. */
   const odpreDogodek =
     predogled.dogodekZakljucen && (nacin === 'IZBRISI_IZIDE' || nacin === 'PODRI_NASLEDNJI_DEL')
+  /* Izbira o naslednjem delu skupine ima v pomoči svoj razdelek. */
+  const jeIzbiraSkupine = predogled.izbire.includes('PODRI_NASLEDNJI_DEL')
 
   return (
     <div className="popravek">
@@ -156,7 +159,10 @@ export function PotrditevPopravka({ predogled, nacin, naIzbiro }: Lastnosti) {
 
       {predogled.izbire.length > 0 && (
         <fieldset className="popravek__izbire">
-          <legend>Kaj naj se zgodi?</legend>
+          <legend>
+            Kaj naj se zgodi?
+            <Namig clanek="popravek-rezultata" razdelek={jeIzbiraSkupine ? 'skupina' : 'zmagovalec'} />
+          </legend>
           {predogled.izbire.map((izbira) => {
             const { naslov, opis } = opisIzbire(izbira, del)
             return (

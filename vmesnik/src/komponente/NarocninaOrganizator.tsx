@@ -39,6 +39,7 @@ import {
 } from '../pomozno/organizatorPregled'
 import { useTelefon } from '../pomozno/telefon'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
+import { Namig } from '../pomoc/Namig'
 import { ZnakTurnirko } from './Postavitev'
 import { useVrnitevSPlacila, type Obvestilo } from './useVrnitevSPlacila'
 
@@ -553,6 +554,7 @@ function PogledNarocnine({
             <span className="narocnina__naslov-nad">Naročnina</span>
             <span className="narocnina__naslov-ime">{imeStrani}</span>
           </h1>
+          <Namig clanek="narocnina-organizatorja" />
         </div>
 
         <div className="narocnina__glava-stanje">

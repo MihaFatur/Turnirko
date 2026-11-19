@@ -12,6 +12,7 @@ import { imePrijave } from '../api/tipi'
 import type { MrezaDto } from '../api/tipi'
 import { RocnaMrezaOkno, type Udelezenec } from './RocnaMrezaOkno'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 /* Igralci po id-ju prijave za okno mreze: ime, mesto v skupini in klub. */
 export function udelezenciPoId(podatki: MrezaDto): Map<number, Udelezenec> {
@@ -89,7 +90,10 @@ export function IzlocilniZrebDel({
 
   return (
     <section className="izlocilni-zreb" aria-label="Izločilni del">
-      <p className="podnaslov-sekcije">Izločilni del</p>
+      <p className="podnaslov-sekcije">
+        Izločilni del
+        <Namig clanek="izlocilni-del" />
+      </p>
       <p className="obvestilo">
         {zreban
           ? 'Izločilni del je žreban, prva tekma še ni začeta. Razporeditev lahko še popraviš.'

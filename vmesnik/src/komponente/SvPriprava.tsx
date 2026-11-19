@@ -23,6 +23,7 @@ import type { MrezaDto, SvNivoDto } from '../api/tipi'
 import { sklonIgralcev, sklonSkupin, sklonVelikihSkupin } from '../pomozno/oblikovanje'
 import { RAVNI_ZREBA, imeRavni, imeRavniZaIzbiro, opisRazpona } from '../pomozno/svRegija'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import { StevilskoPolje } from './StevilskoPolje'
 import { SvSkupineOkno } from './SvSkupineOkno'
 
@@ -142,7 +143,10 @@ export function SvPriprava({
   return (
     <div className="sv-priprava">
       <div className="naslovna-vrstica">
-        <h2>Skupine</h2>
+        <h2>
+          Skupine
+          <Namig clanek="sv-regija" />
+        </h2>
         <span className="sekcija__meta">
           {sv.nivoji.length} {sklonVelikihSkupin(sv.nivoji.length)}
         </span>

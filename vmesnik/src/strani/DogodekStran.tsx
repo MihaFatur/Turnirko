@@ -96,6 +96,7 @@ import { TekmaKartica, type KlikTekme } from '../komponente/TekmaKartica'
 import { TekmeSeznam } from '../komponente/TekmeSeznam'
 import { UdelezenciPogled } from '../komponente/UdelezenciPogled'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
+import { Namig } from '../pomoc/Namig'
 import { ZnackaStatusa, ZnackaVNaslovu } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
 import { oviraPrijave } from '../pomozno/hitraPrijava'
@@ -481,9 +482,12 @@ export function DogodekStran() {
             </div>
             <div className="naslovna-vrstica__desno">
               {smem && dogodek.dejanskiStatus === 'V_TEKU' && (
-                <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
-                  {ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'}
-                </Link>
+                <>
+                  <Link to={`/dogodki/${idDogodka}/listki`} className="gumb">
+                    {ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'}
+                  </Link>
+                  <Namig clanek={ekipno ? 'zapisnik-tisk' : 'listki'} />
+                </>
               )}
               {zaTiskSkupin && (
                 <Link to={`/dogodki/${idDogodka}/zreb-skupin`} className="gumb">
@@ -496,9 +500,12 @@ export function DogodekStran() {
                 </Link>
               )}
               {zaIzpisRezultatov && (
-                <Link to={`/dogodki/${idDogodka}/izpis`} className="gumb">
-                  Natisni rezultate
-                </Link>
+                <>
+                  <Link to={`/dogodki/${idDogodka}/izpis`} className="gumb">
+                    Natisni rezultate
+                  </Link>
+                  <Namig clanek="izpis-rezultatov" />
+                </>
               )}
               <ZnackaStatusa status={dogodek.status} />
               {/* Žreb je dejanje, ki dogodek požene - zato stoji ob znački
@@ -515,6 +522,7 @@ export function DogodekStran() {
                   {zreb.isPending ? 'Žrebam …' : 'Izvedi žreb'}
                 </button>
               )}
+              {smem && vPripravi && <Namig clanek="zreb" />}
               {smem && vPripravi && (
                 <button className="gumb" onClick={() => nastaviUrejamDogodek(true)}>
                   Uredi dogodek
@@ -529,6 +537,9 @@ export function DogodekStran() {
                   {vPripravi ? 'Ročni vpis skupin' : 'Popravi skupine'}
                 </button>
               )}
+              {smem && imaRocneSkupine && (vPripravi || popravljivo) && (
+                <Namig clanek="rocni-zreb" razdelek={vPripravi ? undefined : 'popravek'} />
+              )}
               {smem && sistem === 'IZLOCILNI' && (vPripravi || popravljivo) && (
                 <button
                   className="gumb"
@@ -537,6 +548,9 @@ export function DogodekStran() {
                 >
                   {vPripravi ? 'Ročna mreža' : 'Popravi mrežo'}
                 </button>
+              )}
+              {smem && sistem === 'IZLOCILNI' && (vPripravi || popravljivo) && (
+                <Namig clanek="rocni-zreb" razdelek={vPripravi ? 'mreza' : 'popravek'} />
               )}
               {/* Ura zadnjega odgovora strežnika: brez nje gledalec ne ve, ali
                   stoji rezultat ali njegova povezava. */}
@@ -977,7 +991,10 @@ function Priprava({
       {izbor ? (
         <div>
           <div className="naslovna-vrstica">
-            <h2>Jakostni vrstni red</h2>
+            <h2>
+              Jakostni vrstni red
+              <Namig clanek="nosilci" razdelek={izbor.crtaReza ? 'crta-reza' : undefined} />
+            </h2>
             <span className="sekcija__meta">
               {aktivnePrijave.length}{' '}
               {ekipno ? sklonEkip(aktivnePrijave.length) : sklonPrijavljenih(aktivnePrijave.length)}
@@ -1111,7 +1128,10 @@ function SestavljanjePar({
 
       <div className="plosca">
         <div className="naslovna-vrstica">
-          <h2 className="sekcija__naslov--manjsi">Poveži v par</h2>
+          <h2 className="sekcija__naslov--manjsi">
+            Poveži v par
+            <Namig clanek="dvojice" />
+          </h2>
           {brezPara.length > 0 && (
             <span className="sekcija__meta">{brezPara.length} brez soigralca</span>
           )}
@@ -1663,7 +1683,10 @@ function DodajanjeIgralcev({
   return (
     <div className="plosca">
       <div className="naslovna-vrstica">
-        <h2 className="sekcija__naslov--manjsi">Dodaj igralce</h2>
+        <h2 className="sekcija__naslov--manjsi">
+          Dodaj igralce
+          <Namig clanek="prijave" />
+        </h2>
         <button
           className="gumb"
           disabled={izbrani.size === 0 || prijavljanje.isPending}

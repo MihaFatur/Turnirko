@@ -32,6 +32,7 @@ import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { LikNaPalici } from '../komponente/MaskotaPrizori'
 import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { Namig } from '../pomoc/Namig'
 import { ZnackaStatusa } from '../komponente/Znacka'
 import { oblikujCeno, oblikujDanMesec, oblikujDatum } from '../pomozno/oblikovanje'
 import {
@@ -232,7 +233,10 @@ function KolofonPaketa({
     <div className="org-pregled__paket">
       <div className="org-pregled__paket-glava">
         <div className="org-pregled__paket-vrsta">
-          <span className="org-pregled__paket-oznaka">Moj paket</span>
+          <span className="org-pregled__paket-oznaka">
+            Moj paket
+            <Namig clanek="nadzorna-plosca" />
+          </span>
           <span className={'znacka ' + (paket ? 'znacka--uspeh' : 'znacka--opozorilo')}>
             {paket ? 'Aktiven' : 'Ni aktiven'}
           </span>

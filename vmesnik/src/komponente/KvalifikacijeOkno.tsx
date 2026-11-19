@@ -18,6 +18,7 @@ import { OZNAKE_NACINA_KVALIFIKACIJ, RAZPORED_FORMATA } from '../api/tipi'
 import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   visja: LigaDto
@@ -36,6 +37,10 @@ export function KvalifikacijeOkno({ visja, nizja, onZapri }: Lastnosti) {
 
   return (
     <ModalnoOkno naslov="Ustvari kvalifikacije" podnaslov={`${visja.ime} – ${nizja.ime}`} onZapri={onZapri}>
+      <p className="namig vrsta-z-namigom">
+        Kako nastanejo pari in kateri način izbrati
+        <Namig clanek="kvalifikacije" />
+      </p>
       {predlog.isPending && <p className="obvestilo">Nalaganje …</p>}
       <NapakaPoizvedbe poizvedba={predlog} kaj="kvalifikacij" />
       {predlog.data && (

@@ -28,6 +28,7 @@ import { NiziTekmeOkno } from '../komponente/NiziTekmeOkno'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { obTipki } from '../komponente/TekmaKartica'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import { SpremembaRatinga } from '../komponente/SpremembaRatinga'
 import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import {
@@ -220,6 +221,7 @@ export function SrecanjeStran() {
             <Link to={`/srecanja/${idSrecanje}/listki`} className="gumb">
               Zapisnik za tisk
             </Link>
+            <Namig clanek="zapisnik-tisk" />
           </div>
         )}
       </div>
@@ -301,6 +303,7 @@ function RazveljavitevZapisnika({ srecanje }: { srecanje: SrecanjeDto }) {
       >
         {razveljavi.isPending ? 'Razveljavljam …' : 'Razveljavi zapisnik'}
       </button>
+      <Namig clanek="razveljavitev-zapisnika" />
       {razveljavi.error && <SporociloNapake napaka={razveljavi.error} />}
       {potrjujem && (
         <PotrditvenoOkno
@@ -1021,6 +1024,7 @@ function RezultatOkno({
             <button type="button" className="gumb gumb--majhen" onClick={onMenjava}>
               Menjava igralcev
             </button>
+            <Namig clanek="zapisnik-srecanja" razdelek="menjava" />
           </div>
         )}
 
@@ -1156,7 +1160,10 @@ function PostavaUredi({ podrobno }: { podrobno: SrecanjePodrobnoDto }) {
   return (
     <div>
       <div className="naslovna-vrstica">
-        <h2>Postava</h2>
+        <h2>
+          Postava
+          <Namig clanek="zapisnik-srecanja" razdelek="postava" />
+        </h2>
         <span className="sekcija__meta">Določi jo pred prvim rezultatom</span>
       </div>
       <div className="postava">

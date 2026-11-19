@@ -10,6 +10,7 @@
 import { danKratica, kratkoDatum, prestej, srecanjTekst } from '../pomozno/terminiKola'
 import { StevilskiKorak } from './StevilskiKorak'
 import { StevilskoPolje } from './StevilskoPolje'
+import { Namig } from '../pomoc/Namig'
 
 const NAJVEC_DNI = 365
 /* Predogled pokaže prva tri kola, ne glede na to, koliko jih liga ima. */
@@ -54,7 +55,10 @@ export function TerminiPolja({
 
   return (
     <div role="group" aria-label="Termini kol" className="obrazec__skupina termini__obrazec">
-      <span className="termini__obrazec-naslov">Termini kol</span>
+      <span className="termini__obrazec-naslov">
+        Termini kol
+        <Namig clanek="termini-kol" />
+      </span>
 
       <div className="termini__obrazec-blok">
         <span className="oznaka-polja">Kdaj je prvo kolo</span>
@@ -102,7 +106,10 @@ export function TerminiPolja({
       </div>
 
       <div className={'termini__obrazec-blok' + onemogocen}>
-        <span className="oznaka-polja">Srečanj vsake ekipe na kolo</span>
+        <span className="oznaka-polja">
+          Srečanj vsake ekipe na kolo
+          <Namig clanek="ure-kola" />
+        </span>
         <div className="termini__obrazec-vrstica">
           <StevilskiKorak vrednost={srecanj} najmanj={1} najvec={10}
             naSpremembo={naSrecanj}

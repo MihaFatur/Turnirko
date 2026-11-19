@@ -35,6 +35,7 @@ import type {
 import { OZNAKE_IZIDA_UVOZA } from '../api/tipi'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import { oblikujDatum, oblikujObdobje } from '../pomozno/oblikovanje'
 
 export function UvozStran() {
@@ -70,7 +71,10 @@ export function UvozStran() {
       </div>
 
       <div className="naslovna-vrstica">
-        <h2>Tekmovanja</h2>
+        <h2>
+          Tekmovanja
+          <Namig clanek="admin-uvoz" />
+        </h2>
         <div className="naslovna-vrstica__desno">
           {dogodki.data && (
             <span className="sekcija__meta">

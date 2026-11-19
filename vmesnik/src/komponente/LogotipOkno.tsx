@@ -27,6 +27,7 @@ import {
 import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   vrsta: 'liga' | 'turnir'
@@ -157,6 +158,7 @@ export function LogotipOkno({ vrsta, id, ime, logotip, onZapri }: Lastnosti) {
 
   return (
     <ModalnoOkno srednje naslov="Logotip" podnaslov={ime} onZapri={onZapri}>
+      <div className="modal-pomoc"><Namig clanek="logotip" /></div>
       <form
         className="obrazec logotip-okno"
         onSubmit={(d) => {

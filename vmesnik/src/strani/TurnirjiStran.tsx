@@ -42,6 +42,8 @@ import { ModalnoOkno } from '../komponente/ModalnoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { Napredek, PalicaMobi } from '../komponente/Napredek'
 import { OpisRavniTekmovanja } from '../komponente/OpisRavniTekmovanja'
+import { Namig } from '../pomoc/Namig'
+import { OznakaZNamigom } from '../pomoc/OznakaZNamigom'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
@@ -428,9 +430,12 @@ export function TurnirjiStran() {
           {((turnirji.data && vsi.length > 0) || smeUstvarjati) && (
             <div className="naslovna-vrstica__desno naslovna-vrstica__desno--iskanje">
               {smeUstvarjati && (
-                <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
-                  + Nov turnir
-                </button>
+                <>
+                  <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
+                    + Nov turnir
+                  </button>
+                  <Namig clanek="vodic-turnir" />
+                </>
               )}
               {turnirji.data && vsi.length > 0 && (
                 <IskalnikSeznama
@@ -697,9 +702,15 @@ export function TurnirObrazecOkno({
           />
         </label>
 
-        <label className="obrazec__polje">
-          <span>Raven tekmovanja</span>
+        <div className="obrazec__polje">
+          <OznakaZNamigom
+            za="polje-raven-turnirja"
+            oznaka="Raven tekmovanja"
+            clanek="turnir-nov"
+            razdelek="raven"
+          />
           <select
+            id="polje-raven-turnirja"
             value={raven}
             onChange={(dogodek) => nastaviRaven(dogodek.target.value as RavenTekmovanja)}
           >
@@ -707,7 +718,7 @@ export function TurnirObrazecOkno({
               <option key={r} value={r}>{OZNAKE_RAVEN[r]}</option>
             ))}
           </select>
-        </label>
+        </div>
         <OpisRavniTekmovanja />
 
         {kraji.data?.length === 0 && (

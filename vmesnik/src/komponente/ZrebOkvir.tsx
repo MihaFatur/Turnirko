@@ -10,6 +10,7 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 
 /* A4 pri 96 dpi: pokončno 210 mm = 793,7 px, ležeče 297 mm = 1122,5 px. */
@@ -31,6 +32,7 @@ export function ZrebOkvir({
   izbira,
   orodja,
   navodilo,
+  pomoc,
   children,
 }: {
   nazaj: string
@@ -56,6 +58,8 @@ export function ZrebOkvir({
   orodja?: ReactNode
   /* Navodilo za tisk nad listi; samo na zaslonu. */
   navodilo?: ReactNode
+  /* Članek pomoči za gumb »?« ob števcu (samo organizator in admin). */
+  pomoc?: string
   children: ReactNode
 }) {
   useNaslovStrani(naslov)
@@ -87,6 +91,7 @@ export function ZrebOkvir({
         </Link>
         {izbira}
         <span className="listki-orodja__stevec">{stevec}</span>
+        {pomoc && <Namig clanek={pomoc} />}
         {orodja}
         <button
           className="gumb gumb--glavni"

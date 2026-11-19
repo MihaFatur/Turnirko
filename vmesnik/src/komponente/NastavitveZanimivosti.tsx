@@ -13,6 +13,7 @@ import type { PostavkaZanimivosti } from '../api/tipi'
 import { NASLOVI_RAZDELKOV } from '../pomozno/zanimivosti'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   vrsta: 'turnir' | 'liga'
@@ -65,7 +66,10 @@ export function NastavitveZanimivosti({ vrsta, id }: Lastnosti) {
       onToggle={(e) => nastaviOdprto(e.currentTarget.open)}
     >
       <summary className="zanimivosti-nastavitve__glava">
-        <span className="zanimivosti-nastavitve__naslov">Kaj vidijo ostali</span>
+        <span className="zanimivosti-nastavitve__naslov">
+          Kaj vidijo ostali
+          <Namig clanek="zanimivosti" razdelek="skrij" />
+        </span>
         <span className="zanimivosti-nastavitve__meta">
           {povzetek}{' '}
           <span aria-hidden="true">{odprto ? '▴' : '▾'}</span>

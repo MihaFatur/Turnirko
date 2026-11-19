@@ -29,6 +29,7 @@ import { oblikujUro } from '../pomozno/oblikovanje'
 import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   liga: LigaDto
@@ -204,6 +205,7 @@ export function RocniZrebOkno({ liga, ekipe, onZapri, onShranjeno }: Lastnosti) 
       <p className="obvestilo">
         {/* »Prva / druga« in ne »leva / desna«: na telefonu sta izbirnika eden
             pod drugim in leva-desna razlaga tam ne bi držala. */}
+        <Namig clanek="razpored" razdelek="rocno" />{' '}
         Vpiši razpored, kot je bil izžreban. V vrstici je prva ekipa domača,
         druga gostujoča.{' '}
         {ure

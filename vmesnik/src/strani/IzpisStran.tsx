@@ -134,6 +134,7 @@ export function IzpisStran({ samoRazvrstitev = false }: { samoRazvrstitev?: bool
 
   return (
     <ZrebOkvir
+      pomoc="izpis-rezultatov"
       nazaj={`/dogodki/${idDogodka}`}
       nazajOznaka="← Nazaj na dogodek"
       naslov={dogodek ? `${samoRazvrstitev ? 'Končna razvrstitev' : 'Rezultati'} · ${dogodek.ime}` : null}

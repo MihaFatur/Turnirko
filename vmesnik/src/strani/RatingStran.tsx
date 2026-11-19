@@ -17,6 +17,7 @@ import { ratingApi } from '../api/zahteve'
 import type { NeaktivnostPorociloDto, PreracunPorociloDto } from '../api/tipi'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import { oblikujDatum, oblikujStevilo, sklonTekem, sklonTock } from '../pomozno/oblikovanje'
 
 /* Meja preračuna iz poročila. Preračun od začetka jo vrne kot 1. 1. 1900
@@ -81,7 +82,10 @@ export function RatingStran() {
 
       <div className="plosca">
         <div className="naslovna-vrstica">
-          <h2>Ponovni preračun</h2>
+          <h2>
+            Ponovni preračun
+            <Namig clanek="admin-rating" />
+          </h2>
         </div>
 
         <p className="namig">

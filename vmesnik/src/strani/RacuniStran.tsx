@@ -26,6 +26,7 @@ import { DostopiKarton } from '../komponente/DostopiKarton'
 import { DruzineNapis, DruzineOkno } from '../komponente/DruzineOkno'
 import { KodePopustaOkno } from '../komponente/KodePopustaOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 import {
   CRKE_KAZALA,
   type FilterRacunov,
@@ -391,7 +392,10 @@ function Kartoteka({
     return (
       <div className="dostopi-kartoteka" data-dostopi="kartoteka-seznam">
         <div className="dostopi-kartoteka__naslov">
-          <h2>Kartoteka</h2>
+          <h2>
+            Kartoteka
+            <Namig clanek="admin-dostopi" />
+          </h2>
           <span className="dostopi-kartoteka__naslov-desno">
             <span className="dostopi-meta">
               {ujemanje} od {vsi.length}
@@ -399,6 +403,7 @@ function Kartoteka({
             <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onKode}>
               Kode za popust
             </button>
+            <Namig clanek="admin-kode" />
             <button type="button" className="dostopi-gumb dostopi-gumb--okvir" onClick={onDruzine}>
               <DruzineNapis />
             </button>

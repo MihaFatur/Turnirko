@@ -15,6 +15,7 @@ import { analiziraj, meraLogotipa, naloziVPlatno, pripravi, urlSlike } from '../
 import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 /* Meja strežnika (PokroviteljiStoritev.NAJVEC). */
 export const NAJVEC_POKROVITELJEV = 8
@@ -44,6 +45,7 @@ export function PokroviteljiOkno({ vrsta, id, ime, onZapri }: Lastnosti) {
 
   return (
     <ModalnoOkno srednje naslov="Pokrovitelji" podnaslov={ime} onZapri={onZapri}>
+      <div className="modal-pomoc"><Namig clanek="pokrovitelji" /></div>
       <NapakaPoizvedbe poizvedba={trenutni} kaj="pokroviteljev" />
       {trenutni.data && <Urejevalnik vrsta={vrsta} id={id} zacetni={trenutni.data} onZapri={onZapri} />}
     </ModalnoOkno>

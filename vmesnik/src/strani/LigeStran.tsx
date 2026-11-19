@@ -52,6 +52,7 @@ import { GlavaDejanja } from '../komponente/GlavaTelefona'
 import { IskalnikSeznama, IskanjeTelefona } from '../komponente/IskanjeSeznama'
 import { LigaObrazecOkno } from '../komponente/LigaObrazecOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
+import { Namig } from '../pomoc/Namig'
 import { PalicaMobi } from '../komponente/Napredek'
 import { StatusMobi, ZnackaStatusa } from '../komponente/Znacka'
 import { besedeIskanja, ustrezaBesedam } from '../pomozno/iskanje'
@@ -301,9 +302,12 @@ export function LigeStran() {
           {(vse.length > 0 || smeUstvarjati) && (
             <div className="naslovna-vrstica__desno naslovna-vrstica__desno--iskanje">
               {smeUstvarjati && (
-                <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
-                  + Nova liga
-                </button>
+                <>
+                  <button className="gumb gumb--glavni" onClick={() => nastaviOdprtObrazec(true)}>
+                    + Nova liga
+                  </button>
+                  <Namig clanek="vodic-liga" />
+                </>
               )}
               {vse.length > 0 && (
                 <IskalnikSeznama

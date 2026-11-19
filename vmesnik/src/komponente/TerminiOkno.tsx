@@ -58,6 +58,7 @@ import { ModalnoOkno } from './ModalnoOkno'
 import { SrecanjaPoKolih } from './SrecanjaPoKolih'
 import { StevilskoPolje } from './StevilskoPolje'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   liga: LigaDto
@@ -256,6 +257,7 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
   return (
     <ModalnoOkno srednje naslov="Termini kol" podnaslov={`${liga.ime} · ${liga.sezona ?? ''}`.trim()} onZapri={onZapri}>
       <form className="obrazec" onSubmit={obOddaji}>
+        <div className="vrsta-z-namigom">
         <div className="izbirnik termini__zavihki" role="tablist" aria-label="Prikaz terminov">
           <button type="button" role="tab" id="termini-zavihek-datumi"
             aria-selected={zavihek === 'datumi'} aria-controls="termini-plosca-datumi"
@@ -269,6 +271,8 @@ export function TerminiOkno({ liga, srecanja, onZapri, onShranjeno }: Lastnosti)
             onClick={() => nastaviZavihek('srecanja')}>
             Srečanja po kolih{prestavljena.length > 0 ? ` (${prestavljena.length})` : ''}
           </button>
+        </div>
+        <Namig clanek={zavihek === 'datumi' ? 'termini-kol' : 'prestavitve'} />
         </div>
 
         <div role="tabpanel" id="termini-plosca-srecanja" aria-labelledby="termini-zavihek-srecanja"

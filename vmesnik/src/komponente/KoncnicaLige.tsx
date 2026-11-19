@@ -22,6 +22,7 @@ import { ModalnoOkno } from './ModalnoOkno'
 import { NapakaPoizvedbe } from './NapakaPoizvedbe'
 import { PotrditvenoOkno } from './PotrditvenoOkno'
 import { SporociloNapake } from './SporociloNapake'
+import { Namig } from '../pomoc/Namig'
 
 interface Lastnosti {
   liga: LigaDto
@@ -59,7 +60,10 @@ export function KoncnicaLige({ liga, smem }: Lastnosti) {
   return (
     <div className="koncnica">
       <div className="naslovna-vrstica">
-        <h2>{kval ? 'Kvalifikacije' : 'Končnica'}</h2>
+        <h2>
+          {kval ? 'Kvalifikacije' : 'Končnica'}
+          <Namig clanek={kval ? 'kvalifikacije' : 'koncnica'} />
+        </h2>
         <span className="sekcija__meta">
           {kval
             ? `${serije.length} ${parTekst(serije.length)} · ${k.zmagZaSerijo === 1 ? 'ena tekma' : `serija do ${k.zmagZaSerijo} zmag`}`

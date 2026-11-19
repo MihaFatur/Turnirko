@@ -449,6 +449,7 @@ Trdo prepovedano; nič od tega ne sme priti v vmesnik.
    (tudi lik ob palici paketa v organizatorskem pregledu);
    tretja: risbe v oglasu »Igralec Premium«, razdelek 5c; četrta: isti lik s
    tablo na strani »Kako deluje« (`/o-ratingu`), razdelek 5d.*
+   *Peta izjema (ikona): okrogel gumb »?« pomoči za organizatorje, razdelek 5j.*
 10. **`color: inherit` na obarvani podlagi** — barvo besedila zapiši izrecno.
 11. **Novi razredi za obstoječ vzorec.** Najprej poglej razdelek 4.
 12. **Animacije stanja »zaradi lepšega«.** Dovoljen je samo `transition` barve
@@ -821,6 +822,30 @@ Preverjanje: stran `/dogodki/:id` z lažnim zaledjem. Merilo je prototip
 0,5 px, piksli 0 % v vseh stanjih iz predaje (priprava, v teku, zaključen; posamezniki,
 dvojice, ekipe; odprt meni, filter kluba; namizje 1280 in telefon 388 px). Ciljni posnetki iz
 predaje niso ponovljivi na piksel (črta 3 px je v njih široka 2 px, vrstice 1–2 px drugje).
+
+### 5j. Izjema: gumb »?« in pomoč za organizatorje (november 2026)
+
+Odločitev lastnika (16. 11. 2026): ob funkcijah organizatorja stoji okrogel
+gumb »?« (Lucide `circle-help`, 18 px v polju 22 px, poteza 1.75,
+`currentColor`: mirno `--barva-crnilo-3`, ob prehodu in odprt modra). Zadetkovna
+površina je 44 px prek `::after`, zato gumb ne premakne postavitve. To je edina
+ikona ob besedilu v vsebini; ne uporabljaj je za nič drugega.
+
+- **Vidita ga samo organizator in admin** z vklopljenimi namigi (stikalo v
+  meniju z imenom). Gledalec ga nikoli ne vidi — zaslon uporabnika št. 1 ostane
+  nespremenjen.
+- **Oblaček, predal in stran so oglati** po ostalih pravilih: 1 px obroba, 3 px
+  črta na vrhu (predal: na levem robu), brez sence in radija. Oblaček je na
+  telefonu spodnji list; predal je na namizju 460 px ob desnem robu in NI
+  modalen (stran pod njim ostane uporabna), na telefonu pokrije zaslon.
+- **Gumb ne sme stati v `<label>`** (bil bi krmilo, ki ga oznaka poimenuje).
+  Polje obrazca z gumbom zgradi `pomoc/OznakaZNamigom` (`<div class="obrazec__polje">`
+  + `<label htmlFor>`); v naslovu sekcije gre gumb v `<h2>` za besedilo.
+- **Narisani prikazi** (`.sh-*`, `pomoc/sheme/`) so makete in sheme v hišnih
+  barvah, ne posnetki zaslona: modra = dejanje, zelena = napredovanje, rjasta =
+  izguba. Poudarek škatle je 3 px notranja črta na levem robu (`box-shadow: inset`
+  zato, da ne premakne vsebine — to ni senca). Pod 360 px širine prikaza (poizvedba
+  vsebnika) gredo vrstice s puščico v stolpec.
 
 ---
 

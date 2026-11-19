@@ -34,6 +34,8 @@ import { UvozStran } from './strani/UvozStran'
 import { NarocninaStran } from './strani/NarocninaStran'
 import { OrganizatorskiPregledStran } from './strani/OrganizatorskiPregledStran'
 import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStran'
+import { PomocStran } from './strani/PomocStran'
+import { PomocPonudnik } from './pomoc/PomocKontekst'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
    pokaže obvestilo, gosta pa preusmeri na lestvico. */
@@ -150,12 +152,16 @@ const KoncnaRazvrstitevPosnetki = import.meta.env.DEV
   ? lazy(() => import('./dev/KoncnaRazvrstitevPosnetki'))
   : null
 const IzpisSvrPosnetki = import.meta.env.DEV ? lazy(() => import('./dev/IzpisSvrPosnetki')) : null
+const PomocShemePosnetki = import.meta.env.DEV ? lazy(() => import('./dev/PomocShemePosnetki')) : null
 const IzpisSvrStranPosnetki = import.meta.env.DEV
   ? lazy(() => import('./dev/IzpisSvrPosnetki').then((m) => ({ default: m.IzpisSvrStran })))
   : null
 
 export function App() {
   return (
+    /* Ponudnik pomoči je nad vsemi potmi: gumb »?« deluje tudi na straneh za
+       tisk (zunaj Postavitve), predal pa ostane odprt ob menjavi strani. */
+    <PomocPonudnik>
     <Routes>
       {PosnetkiOkna && (
         <Route path="/dev/posnetki"
@@ -168,6 +174,10 @@ export function App() {
       {KoncnaRazvrstitevPosnetki && (
         <Route path="/dev/koncna-razvrstitev"
           element={<Suspense fallback={null}><KoncnaRazvrstitevPosnetki /></Suspense>} />
+      )}
+      {PomocShemePosnetki && (
+        <Route path="/dev/pomoc-sheme"
+          element={<Suspense fallback={null}><PomocShemePosnetki /></Suspense>} />
       )}
       {IzpisSvrPosnetki && (
         <Route path="/dev/izpis-svr"
@@ -250,8 +260,26 @@ export function App() {
             </SamoAdmin>
           }
         />
+        {/* Navodila za organizatorje (odločitev lastnika: gledalec jih ne vidi). */}
+        <Route
+          path="/pomoc"
+          element={
+            <SamoUrejevalec>
+              <PomocStran />
+            </SamoUrejevalec>
+          }
+        />
+        <Route
+          path="/pomoc/:clanek"
+          element={
+            <SamoUrejevalec>
+              <PomocStran />
+            </SamoUrejevalec>
+          }
+        />
         <Route path="*" element={<StranNeObstaja />} />
       </Route>
     </Routes>
+    </PomocPonudnik>
   )
 }
