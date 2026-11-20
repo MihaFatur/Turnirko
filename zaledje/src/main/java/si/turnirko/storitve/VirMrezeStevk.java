@@ -22,6 +22,8 @@ public class VirMrezeStevk {
 
     private static final Logger log = LoggerFactory.getLogger(VirMrezeStevk.class);
     static final String VGRAJENA = "/branje/stevke.bin";
+    /* Oznaka naucene mreze je PREDPONA_UCENE + id zapisa v mreza_stevk. */
+    public static final String PREDPONA_UCENE = "ucena-";
 
     public record Nalozena(MrezaStevk mreza, String oznaka) {}
 
@@ -38,7 +40,7 @@ public class VirMrezeStevk {
             var zapis = repozitorij.findFirstBySprejetaTrueOrderByIdDesc();
             if (zapis.isPresent()) {
                 trenutna.set(new Nalozena(MrezaStevk.preberi(new ByteArrayInputStream(zapis.get().getUtezi())),
-                        "ucena-" + zapis.get().getId()));
+                        PREDPONA_UCENE + zapis.get().getId()));
                 return;
             }
         } catch (IOException | RuntimeException e) {
@@ -60,6 +62,19 @@ public class VirMrezeStevk {
 
     public Nalozena trenutna() {
         return trenutna.get();
+    }
+
+    /* Id zapisa v mreza_stevk, ki ga bralnik uporablja; null za vgrajeno. */
+    public Long idTrenutne() {
+        Nalozena n = trenutna.get();
+        if (n == null || !n.oznaka().startsWith(PREDPONA_UCENE)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(n.oznaka().substring(PREDPONA_UCENE.length()));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     public void nastavi(MrezaStevk mreza, String oznaka) {

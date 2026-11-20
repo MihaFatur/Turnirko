@@ -2,6 +2,8 @@
 
 > Organizator s telefonom fotografira izpolnjen sodniški listek, Turnirko prebere točke in predlaga izid, organizator ga potrdi.
 > Nastalo 19. 11. 2026 po naročilu lastnika. Migracija V68.
+> Načrt nadaljnjega dela (merjenje, natančnost, vadnica, postaja za zajem s škatlo):
+> `docs/NACRT-BRANJE-LISTKOV.md`.
 
 - **Zakaj:** na turnirju sta morala biti dva organizatorja, ker prepisovanje listkov v
   Turnirko traja predolgo. Sodniki in igralci pri mizi telefona nimajo (QR pri mizi
@@ -54,9 +56,110 @@
   je razrez ne razdeli na pravo število števk, se preskoči. Pri listku brez kode se smer
   stolpcev izbere po ujemanju z mrežo.
 - Nočno (`turnirko.branje-listkov.ucenje-urnik`, 3.50): ob vsaj 200 novih števkah se
-  kopija dotrenira (števke listkov ×4 + izbor MNIST); petina števk je preizkusnih. Nova
+  kopija dotrenira (števke listkov ×4 + izbor MNIST). Preizkusne so vse števke vsakega
+  petega **listka** (`jePreizkusna`, po `id_branje`), ne vsaka peta števka: ista
+  pisava ne sme biti v obeh delih. Pod 50 preizkusnimi števkami se učenje odloži brez
+  zapisa. Nova
   razlica (`mreza_stevk`) se **sprejme samo, če na preizkusnih števkah ne bere slabše
   in na MNIST ne nazaduje za več kot 1 %**. `VirMrezeStevk` naloži zadnjo sprejeto.
+
+## Sprejem fotografije in dvojniki (F0, 20. 11. 2026)
+
+- `sprejmi` teče v treh korakih: (1) dostop in omejitev hitrosti v kratki transakciji,
+  (2) dekodiranje **zunaj transakcije**, (3) zapis v kratki transakciji. Dekodiranje
+  torej ne drži povezave z bazo in ga ne more sprožiti nihče brez pravice (test
+  `dostopSePreveriPredDekodiranjem`).
+- Meja prejete fotografije je 6000 px in 20 Mpx (`NAJVEC_STRANICA_VHODA`,
+  `NAJVEC_PIKSLOV_VHODA`; splošna meja slik je 40 Mpx). Dovoli nepomanjšano 16-Mpx
+  fotografijo telefona; 20 Mpx zasede ob dekodiranju ~140 MB.
+- Največ 2 hkratni dekodiranji (pravični semafor), en uporabnik pa največ eno
+  (pas 64 semaforjev po id uporabnika): organizator z več hkratnimi zahtevami tako
+  ne zasede obeh. Naslednja zahteva čaka skupaj do 10 s, nato dobi **503 z
+  `Retry-After: 5`** (`ZasedenoIzjema`) in ne shrani ničesar. Vrsta brez signala in
+  postaja odgovor 503 ponovita, 4xx pa ne.
+- Izvajalec branja (`BranjeListkovNastavitve`): 2 niti, vrsta 10.000 nalog (samo id-ji),
+  polna vrsta nalogo **zavrne** in zapiše v dnevnik. Nikoli `CallerRunsPolicy`: naloga
+  se odda iz `afterCommit`, kjer so viri potrjene transakcije še vezani na nit, in
+  zapis branja bi tiho izginil. Iz `afterCommit` se v bazo ne piše.
+- **Dvojniki** (isti listek fotografiran večkrat): ko branje s tekmo po QR kodi
+  konča, med odprtimi branji te tekme ostane eno, najnovejše uspešno prebrano, sicer
+  najnovejše. Ostala dobijo stanje ZAVRZENO z razlogom »Nadomeščeno z novejšo
+  fotografijo istega listka.«. Potrditev zapre še ostale odprte fotografije iste
+  tekme. Upoštevajo se samo branja, pri katerih je tekmo določila **koda**. Če ostane
+  starejša (novejša ni bila prebrana), ima novejša razlog »…velja starejša fotografija«.
+- Napaka pri zapisu predloga konča v NAPAKA (nikoli ne obvisi v V_VRSTI). Branje, ki je
+  V_VRSTI dlje kot 2 minuti (npr. zavrnjeno ob polni vrsti), ima v DTO `obviselo` in
+  gumb »Preberi znova«. Čas računa strežnik (aplikacija nima nastavljenega `TZ`).
+- Zaključek branja, potrditev, zavrženje in ponovno branje tečejo pod istim zaklepom
+  v pomnilniku (`zakljucevanje`), vsak v svoji transakciji, ki se potrdi pred
+  sprostitvijo zaklepa. Tako se hkrati zaključeni fotografiji vidita in potrditev ter
+  zaključek ne prepišeta drug drugemu stanja (`branje_listka` nima stolpca verzije).
+  Zaklep se vzame pred transakcijo (čakajoča nit ne drži povezave z bazo).
+  Aplikacija teče v enem primerku; ob več primerkih bi potrebovali zaklep v bazi.
+
+## Meritev (F1, 20. 11. 2026, V69)
+
+- **Sled pregleda** (`branje_listka`): ob potrditvi se zapišejo `pripravljen` (ali bi
+  bil predlog ponujen za en dotik: `predlog(..., zKontrolo=false)` z opozorili tekme,
+  brez kontrole, izračunan PRED vpisom izida; pri tekmi, izbrani ročno, predlog
+  kandidata), `cas_pregleda_ms` in `nacin_potrditve`
+  (`EN_DOTIK` = gumb v vrsti, `OBRAZEC` = okno). Čas meri vmesnik
+  (`casPregleda` v `pomozno/branjeListkov.ts`): od poznejšega od prvega prikaza listka
+  in zadnje potrditve ali zavrženja na strani, zato je pri listkih drug za drugim to
+  čas na listek; »Preberi znova« čas prikaza ponastavi. Strežnik sprejme
+  0–3.600.000 ms, drugače shrani `null` in potrditve ne zavrne. Čas šteje tudi pri
+  neuspelem branju, vpisanem ročno.
+- **Naključna kontrola** (`kontrola`): v `obdelaj` dobi predlog, ki bi bil ponujen za
+  en dotik (`predlog(...)` z opozorili tekme), z verjetnostjo
+  `turnirko.branje-listkov.kontrola` (privzeto 0,05; v testih 0) oznako kontrole.
+  Seznam ga pokaže z opozorilom `KONTROLA` in brez »Potrdi«; organizator ga pregleda
+  v celoti. Kontrola ostane tudi po »Preberi znova« (sicer bi se ji organizator
+  izognil). Najprej žreb, šele nato predlog (poizvedbe tečejo pod zaklepom). Ista
+  populacija kot `pripravljen`, zato je ocena tihih napak iz kontrol primerljiva.
+  Nastavitev izven 0–1 obvelja kot najbližja meja, NaN kot 0.
+- **Celice** (`MeritevBranja`, čist izračun): prav/narobe × zanesljiva/za pregled. Za
+  pregled je negotova celica in obe celici niza z opozorilom (neprebrana celica,
+  neveljaven niz); prazne vrstice za zadnjim nizom se ne štejejo (predlog jih
+  izpusti). Manjkajoča ali odvečna vrstica je tiha napaka celice. Rezultat se meri samo,
+  če je prebran, ali če tock po nizih ni (tedaj odloča). Listek s kodo se primerja v
+  natisnjeni smeri, ostali v smeri z več pravilnimi celicami (pri slabem branju
+  to napake rahlo podceni; listki brez kode so redki). Posebni izidi se ne merijo.
+- **Tiha napaka listka** = `pripravljen` in vsaj ena napačna celica. Pri potrditvah z
+  enim dotikom je ne vidimo; nepristranska ocena je iz kontrol (`kontrolZNapako` /
+  `kontrol`). Stran meritev pokaže »premalo podatkov«, dokler ni 200 kontrol ali
+  opažene napake.
+- **Statistika** (`GET /api/v1/branje-listkov/meritev?od=&do=&idTurnir=`, samo admin,
+  pravilo v `VarnostneNastavitve` PRED splošnim pravilom branja): obdobje po datumu
+  nastanka (ura strežnika), oba dneva vključno, privzeto zadnjih 365 dni, leta
+  2020–2100 (sicer 400); največ
+  20.000 branj (projekcija `VrsticaMeritveBranja`, brez entitet), sicer 400. Skupaj,
+  po turnirjih in po mrežah (neuspela branja nimajo mreže). Čas: mediana in p90 po
+  metodi najbližjega ranga. Stran `/branje-listkov/meritev` (povezava na strani branja
+  samo za admina).
+- **Zlati nabor** (`zlati_listek`, `ZlatiNabor`): po potrditvi (izvajalec učenja,
+  `UcenjeIzListkov.zabelezi`) poravnan listek PNG v sivinah, ohranjene **samo celice s
+  točkami**, in to samo notranjost, ki jo bere razrez (brez `RazrezCelice.ODMIK` ob
+  črti: ime, napisano čez črto, ne pride v nabor); v celici se odšteje raven papirja, ki jo vzame razrez
+  (`RazrezCelice.papir`), in kar je pod 0,06, je belo. Maska razreza se zato ne
+  spremeni razen zaokrožitve na 1/255 tik ob pragu (test
+  `bralnikNadNaboromBereEnakoKotNadFotografijo`), slika ima ~15 kB.
+  Zraven lega celic, potrjen izid v stolpcih listka, število nizov in mreža. Samo
+  izid IGRANO s točkami po nizih, listek s kodo (smer, izbrana po ujemanju z mrežo,
+  bi resnico prilagodila bralniku) in največ 9 vrstic; največ 5000, vzorec po naključnem
+  ključu (ostanejo najmanjši; enakomeren vzorec brez števca). Napaka nabora ne
+  izgubi števk (te so zapisane prej). `id_branje` je samo v bazi (UNIQUE, SET NULL),
+  izvoz ga ne vsebuje. Zlati listek ostane tudi po izbrisu branja ali turnirja; ob
+  poznejšem popravku izida se resnica (še) ne popravi - to naredi F6.1. Kar je pred
+  celicami (poravnava, črte), se na naboru ne da meriti.
+- **Meritev nabora** (`MeritevNabora`): trenutni bralnik od celic naprej
+  (`LokalniBralnikListka.beri`) nad vsakim listkom, ista merila. Admin jo sproži
+  (`POST /api/v1/branje-listkov/nabor/meritev`), teče v svoji niti z nizko prednostjo,
+  vedno ena (409, če že teče); rezultat je v pomnilniku do ponovnega zagona (napaka,
+  tudi `Error`, konča v stanju z razlogom, ne »merim«). »Brez napake« v naboru je
+  listek brez napačne celice, tudi Rezultata (strožje od »brez popravka«). `izmeri`
+  je sinhrona za F2/F6. Zip (`GET /api/v1/branje-listkov/nabor/zip`) se piše
+  neposredno v odgovor (ne asinhrono), pravica se preveri pred prvim bajtom; zadnja
+  datoteka `konec.txt` s številom listkov pove, da prenos ni bil prekinjen.
 
 ## Dostop, hramba, merilo
 
@@ -64,6 +167,17 @@
   `true`, `TURNIRKO_BRANJE_SAMO_ADMIN`), samo admin.
 - Fotografija ostane 30 dni po turnirju (`OpravilaBranjaListkov`, 4.35), vrstica branja
   ostane. Omejitev 120 fotografij na 10 minut na uporabnika.
+- Hramba učenja (isto nočno opravilo): `stevka_listka` največ 200.000 najnovejših,
+  `mreza_stevk` 20 najnovejših sprejetih in 10 zavrnjenih; mreža, ki jo bralnik
+  uporablja (`VirMrezeStevk.idTrenutne`), ostane vedno.
+- Zlati nabor: največ 5000 listkov (`ZlatiNabor.NAJVEC`, ~75 MB), brez roka, ker
+  nima imen (odločitev lastnika 20. 11. 2026); vzorec se obdrži ob vsakem zapisu.
+- Stran zasebnosti (`PogojiStran.tsx`, 2.2 in 2.7) opisuje fotografije listkov: obdela
+  jih samo strežnik, vidita jih organizator in upravljavec, izbrišejo se 30 dni po
+  tekmovanju, za učenje in merjenje ostanejo izrezane številke brez imen (števke in
+  pri delu listkov celice s točkami). Besedilo je lastnik potrdil 20. 11. 2026. Ob
+  spremembi hrambe ali
+  dostopa posodobi tudi to besedilo.
 - Merilo natančnosti: `popravljeno` ob potrditvi; stran kaže »brez popravka N od M«.
 - Preverjeno na simuliranih fotografijah (`SimuliraneFotografijeTest`: števke iz
   preizkusnega MNIST na posnetku pravega listka, zasuk, perspektiva, svetloba, šum,

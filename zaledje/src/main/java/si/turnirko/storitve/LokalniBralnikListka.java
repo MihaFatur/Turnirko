@@ -28,6 +28,7 @@ import si.turnirko.branje.MrezaStevk;
 import si.turnirko.branje.PoravnavaListka;
 import si.turnirko.branje.RazlagaListka;
 import si.turnirko.branje.RazrezCelice;
+import si.turnirko.branje.Temnost;
 
 @Component
 public class LokalniBralnikListka implements BralnikListka {
@@ -46,6 +47,9 @@ public class LokalniBralnikListka implements BralnikListka {
     /* Razrez celic listka: vsebina vsake celice (za branje in za ucenje iz potrditev). */
     public record Izrez(List<RazrezCelice.Vsebina[]> nizi, RazrezCelice.Vsebina[] rezultat) {}
 
+    /* Listek v stalnih koordinatah in njegove celice (pred razrezom). */
+    public record Poravnan(Temnost slika, CeliceListka.Tabela tabela) {}
+
     @Override
     public boolean jeNastavljen() {
         return vir.trenutna() != null;
@@ -57,22 +61,48 @@ public class LokalniBralnikListka implements BralnikListka {
         if (nalozena == null) {
             throw new NapakaBranjaListka("Branje listkov na tem strežniku ni nastavljeno (manjka mreža števk).");
         }
-        Izrez izrez = izrezi(jpeg);
+        return new Branje(beri(izrezi(jpeg), nalozena.mreza()), nalozena.oznaka());
+    }
+
+    /* Branje od celic naprej: mreza stevk in pravila. Isto tece nad zlatim
+       naborom (MeritevNabora), zato sta meritvi primerljivi. */
+    public static PrebranListek beri(Izrez izrez, MrezaStevk mreza) {
         List<RazlagaListka.Vrstica> vrstice = new ArrayList<>();
         for (RazrezCelice.Vsebina[] v : izrez.nizi()) {
-            vrstice.add(new RazlagaListka.Vrstica(porazdelitev(v[0], nalozena.mreza()), porazdelitev(v[1], nalozena.mreza())));
+            vrstice.add(new RazlagaListka.Vrstica(porazdelitev(v[0], mreza), porazdelitev(v[1], mreza)));
         }
         RazlagaListka.Izid izid = RazlagaListka.razlozi(vrstice,
-                porazdelitev(izrez.rezultat()[0], nalozena.mreza()), porazdelitev(izrez.rezultat()[1], nalozena.mreza()));
+                porazdelitev(izrez.rezultat()[0], mreza), porazdelitev(izrez.rezultat()[1], mreza));
         List<PrebranListek.Niz> nizi = izid.nizi().stream()
                 .map(n -> new PrebranListek.Niz(n.levo(), n.desno(), n.negotovoLevo(), n.negotovoDesno()))
                 .toList();
-        PrebranListek listek = new PrebranListek(true, null, null, null, false, null, null, nizi,
+        return new PrebranListek(true, null, null, null, false, null, null, nizi,
                 izid.rezultatLevo(), izid.rezultatDesno(), izid.negotovRezultat(), "NI", null, izid.opomba());
-        return new Branje(listek, nalozena.oznaka());
     }
 
     public Izrez izrezi(byte[] jpeg) {
+        return izrezi(poravnaj(jpeg));
+    }
+
+    /* Razrez vseh celic poravnanega listka. */
+    public static Izrez izrezi(Poravnan poravnan) {
+        Temnost slika = poravnan.slika();
+        CeliceListka.Tabela tabela = poravnan.tabela();
+        List<RazrezCelice.Vsebina[]> nizi = new ArrayList<>();
+        for (CeliceListka.Vrstica v : tabela.nizi()) {
+            nizi.add(new RazrezCelice.Vsebina[] {
+                    RazrezCelice.razrezi(slika, v.levo()),
+                    RazrezCelice.razrezi(slika, v.desno())});
+        }
+        RazrezCelice.Vsebina[] rezultat = {
+                RazrezCelice.razrezi(slika, tabela.rezultat().levo()),
+                RazrezCelice.razrezi(slika, tabela.rezultat().desno())};
+        return new Izrez(nizi, rezultat);
+    }
+
+    /* QR koda, poravnava in iskanje celic; ob neuspehu NapakaBranjaListka z
+       navodilom za organizatorja. */
+    public Poravnan poravnaj(byte[] jpeg) {
         BufferedImage slika;
         try {
             slika = ImageIO.read(new ByteArrayInputStream(jpeg));
@@ -95,16 +125,7 @@ public class LokalniBralnikListka implements BralnikListka {
             throw new NapakaBranjaListka("Na fotografiji ni mogoče najti celic za točke. "
                     + "Fotografiraj listek od zgoraj, ostro in brez sence čez tabelo.");
         }
-        List<RazrezCelice.Vsebina[]> nizi = new ArrayList<>();
-        for (CeliceListka.Vrstica v : tabela.nizi()) {
-            nizi.add(new RazrezCelice.Vsebina[] {
-                    RazrezCelice.razrezi(poravnan.slika(), v.levo()),
-                    RazrezCelice.razrezi(poravnan.slika(), v.desno())});
-        }
-        RazrezCelice.Vsebina[] rezultat = {
-                RazrezCelice.razrezi(poravnan.slika(), tabela.rezultat().levo()),
-                RazrezCelice.razrezi(poravnan.slika(), tabela.rezultat().desno())};
-        return new Izrez(nizi, rezultat);
+        return new Poravnan(poravnan.slika(), tabela);
     }
 
     /* Verjetnost vsake vrednosti celice (0-99) in prazne celice, cez vse razlage

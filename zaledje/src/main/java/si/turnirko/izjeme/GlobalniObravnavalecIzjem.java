@@ -8,8 +8,10 @@ import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -42,6 +44,14 @@ public class GlobalniObravnavalecIzjem {
     @ExceptionHandler(PrevecZahtevIzjema.class)
     ProblemDetail prevecZahtev(PrevecZahtevIzjema izjema) {
         return sestavi(HttpStatus.TOO_MANY_REQUESTS, "Prevec zahtev", izjema.getMessage());
+    }
+
+    /* Streznik je zaseden (omejeno stevilo hkratnih obdelav) - poskusi znova. */
+    @ExceptionHandler(ZasedenoIzjema.class)
+    ResponseEntity<ProblemDetail> zasedeno(ZasedenoIzjema izjema) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(izjema.getCezSekund()))
+                .body(sestavi(HttpStatus.SERVICE_UNAVAILABLE, "Streznik je zaseden", izjema.getMessage()));
     }
 
     /* Napake anotacij @NotBlank, @NotNull ... na DTO-jih. */

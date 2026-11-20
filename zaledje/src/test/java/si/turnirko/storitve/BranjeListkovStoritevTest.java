@@ -13,7 +13,11 @@
    - branje sme lastnik turnirja ali admin, in dokler je vklopljen preizkus
      (samo-admin), samo admin;
    - fotografija se izbrise 30 dni po turnirju, vrstica ostane;
-   - branja, ki jih je prekinil ponovni zagon, postanejo napaka. */
+   - branja, ki jih je prekinil ponovni zagon, postanejo napaka;
+   - dostop se preveri PRED dekodiranjem, prevelika fotografija se zavrne, cez
+     mejo hkratnih dekodiranj zahteva dobi »zasedeno« in ne shrani nicesar;
+   - med fotografijami istega listka ostane odprta ena (najnovejsa uspesno
+     prebrana), potrditev zapre ostale. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +32,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -60,11 +65,14 @@ import si.turnirko.dto.PotrditevBranjaVnos;
 import si.turnirko.dto.PredlogIzidaDto;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.izjeme.DomenskaIzjema;
+import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
+import si.turnirko.izjeme.ZasedenoIzjema;
 import si.turnirko.modeli.BranjeListka;
 import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.IzidTekme;
+import si.turnirko.modeli.NacinPotrditve;
 import si.turnirko.modeli.PrepoznavaTekme;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.SlikaBranjaListka;
@@ -143,6 +151,7 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
     @AfterEach
     void pocisti() {
         storitev.nastaviSamoAdmin(true);
+        storitev.nastaviDelezKontrole(0);
         SecurityContextHolder.clearContext();
     }
 
@@ -345,7 +354,232 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
         assertTrue(po.getNapaka().contains("ponovni zagon"));
     }
 
+    // ---------- Utrditev (F0, docs/NACRT-BRANJE-LISTKOV.md) ----------
+
+    @Test
+    void prevelikaFotografijaSeZavrnePredDekodiranjem() throws IOException {
+        // 5000 x 4100 = 20,5 Mpx: pod splosno mejo slik (40 Mpx), nad mejo fotografije listka
+        NeveljavenVnosIzjema napaka = assertThrows(NeveljavenVnosIzjema.class,
+                () -> storitev.sprejmi(idTurnirja(), png(5000, 4100)));
+        assertTrue(napaka.getMessage().contains("prevelika"), napaka.getMessage());
+        assertTrue(branjaRepozitorij.findAll().isEmpty());
+        assertEquals(BranjeListkovStoritev.HKRATNIH_DEKODIRANJ, storitev.semaforDekodiranja().availablePermits(),
+                "dovoljenje za dekodiranje se vrne tudi po napaki");
+    }
+
+    @Test
+    void zasedenoDekodiranjeVrneZasedenoInNeShraniNicesar() throws Exception {
+        byte[] slika = fotografija("TK:" + tekma.getId());
+        storitev.nastaviCakanjeNaDekodiranje(Duration.ofMillis(50));
+        storitev.semaforDekodiranja().acquire(BranjeListkovStoritev.HKRATNIH_DEKODIRANJ);
+        try {
+            ZasedenoIzjema napaka = assertThrows(ZasedenoIzjema.class, () -> storitev.sprejmi(idTurnirja(), slika));
+            assertEquals(BranjeListkovStoritev.PONOVI_CEZ_SEKUND, napaka.getCezSekund());
+            assertTrue(branjaRepozitorij.findAll().isEmpty(), "zasedena zahteva ne shrani nicesar");
+        } finally {
+            storitev.semaforDekodiranja().release(BranjeListkovStoritev.HKRATNIH_DEKODIRANJ);
+            storitev.nastaviCakanjeNaDekodiranje(BranjeListkovStoritev.CAKANJE_NA_DEKODIRANJE);
+        }
+        assertNotNull(storitev.sprejmi(idTurnirja(), slika).id(), "ko je dovoljenje prosto, gre skozi");
+        assertEquals(BranjeListkovStoritev.HKRATNIH_DEKODIRANJ, storitev.semaforDekodiranja().availablePermits());
+    }
+
+    @Test
+    void enUporabnikZasedeNajvecEnoDekodiranje() throws Exception {
+        byte[] slika = fotografija("TK:" + tekma.getId());
+        Long idPrvega = uporabnikRepozitorij.findByUporabniskoIme("admin-branje@test").orElseThrow().getId();
+        Uporabnik drugi = racun("admin-drugi@test", Vloga.ADMIN);
+        int n = 0;
+        while (storitev.pasUporabnika(drugi.getId()) == storitev.pasUporabnika(idPrvega)) {
+            drugi = racun("admin-drugi-" + (++n) + "@test", Vloga.ADMIN);
+        }
+        storitev.nastaviCakanjeNaDekodiranje(Duration.ofMillis(50));
+        // prvi uporabnik ze dekodira (njegov pas je zaseden)
+        storitev.pasUporabnika(idPrvega).acquire();
+        try {
+            assertThrows(ZasedenoIzjema.class, () -> storitev.sprejmi(idTurnirja(), slika));
+            assertEquals(BranjeListkovStoritev.HKRATNIH_DEKODIRANJ, storitev.semaforDekodiranja().availablePermits(),
+                    "cakajoca zahteva istega uporabnika ne zasede skupnega dovoljenja");
+            prijava(drugi.getUporabniskoIme(), "ROLE_ADMIN");
+            assertNotNull(storitev.sprejmi(idTurnirja(), slika).id(), "drugi uporabnik ni blokiran");
+        } finally {
+            storitev.pasUporabnika(idPrvega).release();
+            storitev.nastaviCakanjeNaDekodiranje(BranjeListkovStoritev.CAKANJE_NA_DEKODIRANJE);
+        }
+    }
+
+    @Test
+    void dvojnikiNeZaprejoBranjaBrezKode() throws IOException {
+        // odprto branje iste tekme, ki ni bila ugotovljena po kodi (organizator jo se potrdi)
+        BranjeListka poImenih = shraniBranje(dogodek.getTurnir(), LocalDateTime.now().minusMinutes(1));
+        poImenih.setStanje(StanjeBranja.PREBRANO);
+        poImenih.setTekma(tekma);
+        poImenih.setPrepoznava(PrepoznavaTekme.IMENA);
+        branjaRepozitorij.save(poImenih);
+
+        bralnik.naslednji = prepis(null, null, new int[][] {{11, 7}, {11, 9}, {11, 5}}, 3, 0);
+        Long poKodi = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(poKodi);
+
+        assertEquals(StanjeBranja.PREBRANO, branjaRepozitorij.findById(poImenih.getId()).orElseThrow().getStanje());
+        assertEquals(StanjeBranja.PREBRANO, branjaRepozitorij.findById(poKodi).orElseThrow().getStanje());
+    }
+
+    @Test
+    void dostopSePreveriPredDekodiranjem() {
+        racun("tujec-dekodiranje@test", Vloga.ORGANIZATOR);
+        storitev.nastaviSamoAdmin(false);
+        prijava("tujec-dekodiranje@test", "ROLE_ORGANIZATOR");
+        // neveljavna slika: ce bi se dekodirala pred preverbo dostopa, bi bila napaka 400, ne 403
+        assertThrows(PrepovedanoIzjema.class, () -> storitev.sprejmi(idTurnirja(), new byte[] {1, 2, 3}));
+        assertEquals(BranjeListkovStoritev.HKRATNIH_DEKODIRANJ, storitev.semaforDekodiranja().availablePermits());
+    }
+
+    @Test
+    void novejsaFotografijaIstegaListkaNadomestiStarejso() throws IOException {
+        bralnik.naslednji = prepis(null, null, new int[][] {{11, 7}, {11, 9}, {11, 5}}, 3, 0);
+        Long prva = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(prva);
+        PredlogIzidaDto predlog = branje(prva).predlog();
+        Long druga = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(druga);
+
+        BranjeListka starejsa = branjaRepozitorij.findById(prva).orElseThrow();
+        assertEquals(StanjeBranja.ZAVRZENO, starejsa.getStanje());
+        assertEquals(BranjeListkovStoritev.NADOMESCENO, starejsa.getNapaka());
+        assertEquals(StanjeBranja.PREBRANO, branje(druga).stanje());
+        DomenskaIzjema napaka = assertThrows(DomenskaIzjema.class,
+                () -> storitev.potrdi(prva, new PotrditevBranjaVnos(null, vnos(predlog))));
+        assertTrue(napaka.getMessage().contains("nadomestila"), napaka.getMessage());
+    }
+
+    @Test
+    void neuspelaNovejsaFotografijaNeNadomestiPrebrane() throws IOException {
+        bralnik.naslednji = prepis(null, null, new int[][] {{11, 7}, {11, 9}, {11, 5}}, 3, 0);
+        Long prva = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(prva);
+        bralnik.napaka = new BralnikListka.NapakaBranjaListka("Fotografija je zamegljena.");
+        Long druga = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(druga);
+
+        assertEquals(StanjeBranja.PREBRANO, branje(prva).stanje(), "uspesno prebrana ostane");
+        BranjeListka zaprta = branjaRepozitorij.findById(druga).orElseThrow();
+        assertEquals(StanjeBranja.ZAVRZENO, zaprta.getStanje());
+        assertEquals(BranjeListkovStoritev.VELJA_STAREJSA, zaprta.getNapaka(), "razlog pove, da velja starejsa");
+    }
+
+    @Test
+    void obviseloBranjeSeSmePrebratiZnova() {
+        BranjeListka sveze = shraniBranje(dogodek.getTurnir(), LocalDateTime.now());
+        BranjeListka obviselo = shraniBranje(dogodek.getTurnir(), LocalDateTime.now().minusMinutes(5));
+        assertFalse(branje(sveze.getId()).obviselo());
+        assertTrue(branje(obviselo.getId()).obviselo());
+        assertThrows(DomenskaIzjema.class, () -> storitev.znova(sveze.getId()), "branje, ki se se bere, ne");
+        assertEquals(StanjeBranja.V_VRSTI, storitev.znova(obviselo.getId()).stanje());
+    }
+
+    @Test
+    void potrditevZapreDrugeOdprteFotografijeIsteTekme() throws IOException {
+        bralnik.naslednji = prepis(null, null, new int[][] {{11, 7}, {11, 9}, {11, 5}}, 3, 0);
+        Long prva = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(prva);
+        // druga odprta fotografija iste tekme (npr. obe zakljuceni hkrati)
+        BranjeListka druga = shraniBranje(dogodek.getTurnir(), LocalDateTime.now());
+        druga.setStanje(StanjeBranja.NAPAKA);
+        druga.setTekma(tekma);
+        druga.setPrepoznava(PrepoznavaTekme.KODA);
+        branjaRepozitorij.save(druga);
+
+        storitev.potrdi(prva, new PotrditevBranjaVnos(null, vnos(branje(prva).predlog())));
+        BranjeListka zaprta = branjaRepozitorij.findById(druga.getId()).orElseThrow();
+        assertEquals(StanjeBranja.ZAVRZENO, zaprta.getStanje());
+        assertEquals(BranjeListkovStoritev.POTRJENO_DRUGJE, zaprta.getNapaka());
+    }
+
     // ---------- Pomozno ----------
+
+    @Test
+    void kontrolaNiZaEnDotikInPotrditevZapiseSledPregleda() throws IOException {
+        // nastavitev nad 1 obvelja kot 1: vsak pripravljen predlog je kontrola
+        storitev.nastaviDelezKontrole(7);
+        bralnik.naslednji = prepis(ime(tekma.getPrijava1()), ime(tekma.getPrijava2()),
+                new int[][] {{11, 7}, {9, 11}, {11, 5}, {11, 8}}, 3, 1);
+        Long id = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(id);
+
+        BranjeListkaDto b = eno();
+        assertTrue(b.kontrola());
+        assertFalse(b.predlog().pripravljen(), "kontrola ni ponujena za en dotik");
+        assertTrue(b.predlog().opozorila().contains(BranjeListkovStoritev.KONTROLA));
+
+        // ponovno branje kontrole ne odstrani (organizator se ji ne more izogniti)
+        storitev.nastaviDelezKontrole(0);
+        storitev.znova(id);
+        storitev.obdelaj(id);
+        b = eno();
+        assertTrue(b.kontrola());
+
+        BranjeListkaDto potrjeno = storitev.potrdi(id,
+                new PotrditevBranjaVnos(null, vnos(b.predlog()), 4200L, NacinPotrditve.OBRAZEC));
+        assertEquals(Boolean.FALSE, potrjeno.popravljeno());
+        BranjeListka zapis = branjaRepozitorij.findById(id).orElseThrow();
+        assertTrue(zapis.isKontrola());
+        assertEquals(Boolean.TRUE, zapis.getPripravljen(), "brez kontrole bi bil ponujen za en dotik");
+        assertEquals(4200, zapis.getCasPregledaMs());
+        assertEquals(NacinPotrditve.OBRAZEC, zapis.getNacinPotrditve());
+    }
+
+    @Test
+    void nepripravljenPredlogNiKontrolaInNesmiselenCasSeNeZapise() throws IOException {
+        storitev.nastaviDelezKontrole(1);
+        // imeni se ne ujemata s tekmo: predlog ni pripravljen, kontrola bi bila brez pomena
+        bralnik.naslednji = prepis("Peter Petek", "Jure Jurič", new int[][] {{11, 7}, {11, 9}, {11, 5}}, 3, 0);
+        Long id = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(id);
+        BranjeListkaDto b = eno();
+        assertFalse(b.kontrola());
+
+        storitev.potrdi(id, new PotrditevBranjaVnos(null, vnos(b.predlog()), 3_600_001L, NacinPotrditve.EN_DOTIK));
+        BranjeListka zapis = branjaRepozitorij.findById(id).orElseThrow();
+        assertNull(zapis.getCasPregledaMs(), "nad uro je pozabljeno okno");
+        assertEquals(NacinPotrditve.EN_DOTIK, zapis.getNacinPotrditve());
+        // z opozorilom o imenih predlog ni bil ponujen za en dotik
+        assertEquals(Boolean.FALSE, zapis.getPripravljen());
+
+        // druga tekma (prva ima izid ze vpisan, kar bi kontrolo izkljucilo samo)
+        Tekma druga = tekmeDogodka(dogodek.getId()).stream()
+                .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA && !t.getId().equals(tekma.getId()))
+                .findFirst().orElseThrow();
+        storitev.nastaviDelezKontrole(Double.NaN);
+        bralnik.naslednji = prepis(null, null, new int[][] {{11, 7}, {11, 9}, {11, 5}}, 3, 0);
+        Long brezKontrole = storitev.sprejmi(idTurnirja(), fotografija("TK:" + druga.getId())).id();
+        storitev.obdelaj(brezKontrole);
+        BranjeListkaDto bk = branje(brezKontrole);
+        assertTrue(bk.predlog().pripravljen(), bk.predlog().opozorila().toString());
+        assertFalse(bk.kontrola(), "NaN je 0");
+    }
+
+    @Test
+    void casPregledaZunajMejSeNeZapise() {
+        assertNull(BranjeListkovStoritev.casPregleda(null));
+        assertNull(BranjeListkovStoritev.casPregleda(-1L));
+        assertEquals(0, BranjeListkovStoritev.casPregleda(0L));
+        assertEquals(3_600_000, BranjeListkovStoritev.casPregleda(3_600_000L));
+        assertNull(BranjeListkovStoritev.casPregleda(3_600_001L));
+    }
+
+    private BranjeListkaDto branje(Long id) {
+        return storitev.seznam(idTurnirja()).branja().stream()
+                .filter(b -> b.id().equals(id)).findFirst().orElseThrow();
+    }
+
+    /* PNG dane velikosti (dvobarvni, zato majhna datoteka). */
+    private static byte[] png(int sirina, int visina) throws IOException {
+        BufferedImage slika = new BufferedImage(sirina, visina, BufferedImage.TYPE_BYTE_BINARY);
+        ByteArrayOutputStream izhod = new ByteArrayOutputStream();
+        ImageIO.write(slika, "png", izhod);
+        return izhod.toByteArray();
+    }
 
     private Long idTurnirja() {
         return dogodek.getTurnir().getId();

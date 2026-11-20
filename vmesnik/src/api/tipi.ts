@@ -3253,6 +3253,10 @@ export interface BranjeListkaDto {
   prebranoDesno: string | null
   napaka: string | null
   popravljeno: boolean | null
+  /* V vrsti predolgo (obviselo): sme se prebrati znova. */
+  obviselo: boolean
+  /* Naključna kontrola (V69): predlog ni za en dotik, pregleda se v celoti. */
+  kontrola: boolean
 }
 
 export interface BranjaTurnirjaDto {
@@ -3266,7 +3270,72 @@ export interface StanjeBranjaListkovDto {
   razlog: string | null
 }
 
+/* Način potrditve za meritev (V69): gumb v vrsti ali okno z obrazcem. */
+export type NacinPotrditve = 'EN_DOTIK' | 'OBRAZEC'
+
 export interface PotrditevBranjaVnos {
   idTekme: number | null
   izid: VnosRezultata
+  /* Sled pregleda za meritev: koliko časa je organizator porabil za listek. */
+  casPregledaMs?: number | null
+  nacin?: NacinPotrditve | null
+}
+
+/* Meritev branja listkov (F1, samo admin); pomen števil v MeritevBranjaDto.java. */
+export interface CeliceMeritve {
+  pravZanesljive: number
+  pravNegotove: number
+  narobeNegotove: number
+  narobeZanesljive: number
+}
+
+export interface CasiMeritve {
+  izmerjenih: number
+  mediana: number | null
+  p90: number | null
+  enDotik: number
+  medianaEnDotik: number | null
+  obrazec: number
+  medianaObrazec: number | null
+}
+
+export interface SkupinaMeritve {
+  oznaka: string
+  idTurnir: number | null
+  datum: string | null
+  branj: number
+  prebranih: number
+  neuspelih: number
+  potrjenih: number
+  brezPopravka: number
+  pripravljenih: number
+  izmerjenih: number
+  tihihNapak: number
+  kontrol: number
+  kontrolZNapako: number
+  celice: CeliceMeritve
+  casi: CasiMeritve
+}
+
+export interface MeritevBranjaDto {
+  od: string
+  doDatuma: string
+  idTurnir: number | null
+  skupaj: SkupinaMeritve
+  poTurnirjih: SkupinaMeritve[]
+  poMrezah: SkupinaMeritve[]
+}
+
+/* Zlati nabor in zadnja meritev bralnika nad njim. */
+export interface StanjeNaboraDto {
+  listkov: number
+  najvec: number
+  tece: boolean
+  obdelanih: number
+  vseh: number
+  zacetek: string | null
+  konec: string | null
+  mreza: string | null
+  rezultat: SkupinaMeritve | null
+  napaka: string | null
 }

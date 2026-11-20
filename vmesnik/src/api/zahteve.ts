@@ -5,8 +5,10 @@ import { api } from './odjemalec'
 import type {
   BranjaTurnirjaDto,
   BranjeListkaDto,
+  MeritevBranjaDto,
   PotrditevBranjaVnos,
   StanjeBranjaListkovDto,
+  StanjeNaboraDto,
   IzlocilniPredlogDto,
   RocniClanVnos,
   SkupinePredlogDto,
@@ -317,6 +319,21 @@ export const branjeListkovApi = {
     api.objavi<BranjeListkaDto>(`/branja-listkov/${id}/potrdi`, vnos),
   zavrzi: (id: number) => api.objavi<void>(`/branja-listkov/${id}/zavrzi`),
   znova: (id: number) => api.objavi<BranjeListkaDto>(`/branja-listkov/${id}/znova`),
+}
+
+/* Meritev branja in zlati nabor (F1, samo admin). */
+export const meritevBranjaApi = {
+  meritev: (od: string | null, doDatuma: string | null, idTurnir: number | null) => {
+    const p = new URLSearchParams()
+    if (od) p.set('od', od)
+    if (doDatuma) p.set('do', doDatuma)
+    if (idTurnir !== null) p.set('idTurnir', String(idTurnir))
+    const niz = p.toString()
+    return api.vrni<MeritevBranjaDto>(`/branje-listkov/meritev${niz ? `?${niz}` : ''}`)
+  },
+  nabor: () => api.vrni<StanjeNaboraDto>('/branje-listkov/nabor'),
+  izmeriNabor: () => api.objavi<StanjeNaboraDto>('/branje-listkov/nabor/meritev'),
+  zipNabora: () => api.vrniDatoteko('/branje-listkov/nabor/zip'),
 }
 
 export const igralciApi = {

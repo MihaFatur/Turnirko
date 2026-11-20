@@ -62,6 +62,14 @@ const V_STEVILKAH: [string, string][] = [
     'Po zakonu',
     'Izdani računi za plačila: toliko časa, kot zahtevajo davčni predpisi, tudi po izbrisu računa.',
   ],
+  [
+    '30 dni',
+    'Fotografije sodniških listkov po tekmovanju (listek, vnesen pozneje, 30 dni po vnosu).',
+  ],
+  [
+    'Brez roka',
+    'Izrezane številke s točkami za učenje in merjenje branja, brez imen; število je omejeno, odvečne se sproti brišejo.',
+  ],
   ['Kratek čas', 'Dnevnik zahtev z naslovi IP, nato se prepiše.'],
   ['Ostane', 'Rezultati tekmovanj kot zapis zgodovine tekmovanja.'],
 ]
@@ -201,6 +209,15 @@ const ZASEBNOST: Tocka[] = [
         <strong>Datum rojstva ni javen</strong>: uporablja se le za starostno kategorijo in
         za ločevanje igralcev z enakim imenom. Podlaga je zakoniti interes vodenja javne
         zgodovine tekmovanj.
+        <br />
+        Organizator lahko izpolnjen sodniški listek fotografira, da Turnirko prebere točke.
+        Fotografijo, na kateri sta imeni igralcev, obdela samo strežnik Turnirka, brez zunanjih
+        storitev. Vidita jo le organizator tekmovanja in upravljavec, izbriše pa se 30 dni po
+        tekmovanju (listek, vnesen pozneje, 30 dni po vnosu). Prebrane točke ostanejo pri tekmi
+        kot del njenega zapisa. Za boljše branje in za merjenje njegove natančnosti hranimo
+        izrezane ročno napisane številke s točkami (posamezne števke, pri delu listkov pa vse
+        celice s točkami skupaj); imen ne vsebujejo, njihovo število je omejeno in odvečne se
+        sproti brišejo.
       </>
     ),
   },
@@ -275,7 +292,9 @@ const ZASEBNOST: Tocka[] = [
       <>
         Račun, katerega e-pošta ni potrjena, se izbriše po 48 urah; račun mlajšega od 15 let
         brez soglasja skrbnika po 30 dneh. Podatki registracije s plačljivim paketom, ki ni
-        bila plačana, se izbrišejo po 4 dneh. Račun izbrišemo na tvojo zahtevo. Izdane račune za
+        bila plačana, se izbrišejo po 4 dneh. Fotografije sodniških listkov se izbrišejo 30 dni
+        po tekmovanju oziroma po vnosu, če je listek vnesen pozneje. Račun izbrišemo na tvojo
+        zahtevo. Izdane račune za
         plačila hranimo toliko časa, kot zahtevajo davčni predpisi, tudi po izbrisu računa.
         Rezultati tekmovanj ostanejo kot zapis zgodovine tekmovanja.
       </>
@@ -645,8 +664,9 @@ function Okvir({
   return (
     <div className={'pogoji__okvir' + (stevilke ? ' pogoji__okvir--stevilke' : '')}>
       <div className="pogoji__oznaka pogoji__okvir-naslov">{naslov}</div>
+      {/* ključ je vrstica cela: ista oznaka (»30 dni«) se lahko ponovi */}
       {vrstice.map(([kljuc, vrednost]) => (
-        <div key={kljuc} className="pogoji__okvir-vrstica">
+        <div key={kljuc + vrednost} className="pogoji__okvir-vrstica">
           <span className="pogoji__okvir-kljuc">{kljuc}</span>
           <span className="pogoji__okvir-vrednost">{vrednost}</span>
         </div>

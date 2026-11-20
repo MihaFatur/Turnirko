@@ -86,6 +86,7 @@ export const REZULTATI: Clanek[] = [
           'Na listku je zapisan izid brez boja, predaja ali diskvalifikacija.',
           'Tekma ima izid že vpisan (listek je bil fotografiran dvakrat).',
           'Zapis je nepopoln: niz manjka, tekma nima zmagovalca (predaja, brez boja) — take izide vpišeš sam.',
+          'Naključna kontrola: približno vsak dvajseti listek, ki bi ga sicer potrdil z enim dotikom, pregledaš v celoti in primerjaš vse številke s fotografijo. Tako Turnirko izmeri, kako pogosto se zmoti, ne da bi to opazil.',
         ],
       },
       {
@@ -101,11 +102,21 @@ export const REZULTATI: Clanek[] = [
           'Listek poravnajo trije črni kvadrati v vogalih in QR koda. Listki, natisnjeni pred to funkcijo, jih nimajo — natisni nove ([Listki za tiskanje](listki)). Imen Turnirko ne bere: tekmo pove koda.',
       },
       {
+        tip: 'nasvet',
+        besedilo:
+          'Isti listek lahko fotografiraš znova (npr. če je bila prva fotografija zamegljena). Velja novejša fotografija, starejša se umakne iz vrste z oznako »Nadomeščeno«. Če novejše ni bilo mogoče prebrati, ostane prebrana starejša.',
+      },
+      {
         tip: 'razdelek',
         id: 'ucenje',
         naslov: 'Turnirko se uči iz tvojih potrditev',
         kratko:
           'Števke potrjenih listkov (samo številke, brez imen) se shranijo. Ponoči se bralnik na njih dotrenira in bere pisavo vaših sodnikov vedno bolje. Vse teče na Turnirkovem strežniku in je brezplačno.',
+      },
+      {
+        tip: 'odstavek',
+        besedilo:
+          'Ob potrditvi se zabeleži tudi, ali si listek potrdil z enim dotikom ali v oknu in koliko časa si porabil zanj. Iz tega se meri, ali branje res prihrani delo.',
       },
       {
         tip: 'nasvet',

@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,24 +53,46 @@ public class UcenjeIzListkov {
     static final int NAJMANJ_NOVIH = 200;
     /* Zgornja meja stevk v enem ucenju (noc ostane kratka). */
     static final int NAJVEC_STEVK = 60_000;
+    /* Pod toliko preizkusnimi stevkami primerjava stare in nove mreze ni zanesljiva. */
+    static final int NAJMANJ_PREIZKUSNIH = 50;
+    /* Hramba: stevk (784 B) najvec toliko, ~160 MB; ucenje vzame le najnovejsih
+       NAJVEC_STEVK, starejse so samo zgodovina. */
+    static final int NAJVEC_SHRANJENIH = 200_000;
+    /* Hramba naucenih razlicic (~320 kB vsaka): sprejete za morebitno vrnitev,
+       zavrnjene za pregled, zakaj ucenje ni uspelo. */
+    static final int SPREJETIH_V_HRAMBI = 20;
+    static final int ZAVRNJENIH_V_HRAMBI = 10;
+
+    /* Preizkusni del (petina): stevke istega listka (isti pisec, ista luc) so
+       vedno v istem delu - sicer bi mreza pisavo, na kateri se uci, videla tudi
+       pri preizkusu in bi bila natancnost videti boljsa, kot je. Stevka brez
+       listka (vadnica, preizkus) se deli po svojem id. Razdelitev je stalna:
+       vsak peti listek po id, tudi med listki istega turnirja. */
+    static boolean jePreizkusna(StevkaListka s) {
+        long kljuc = s.getIdBranje() != null ? s.getIdBranje() : s.getId();
+        return Math.floorMod(kljuc, 5L) == 0;
+    }
 
     private final StevkaListkaRepozitorij stevke;
     private final MrezaStevkRepozitorij mreze;
     private final SlikaBranjaListkaRepozitorij slike;
     private final LokalniBralnikListka bralnik;
     private final VirMrezeStevk vir;
+    private final ZlatiNabor zlatiNabor;
     private final Executor izvajalec;
     private final TransactionTemplate transakcija;
 
     public UcenjeIzListkov(StevkaListkaRepozitorij stevke, MrezaStevkRepozitorij mreze,
                            SlikaBranjaListkaRepozitorij slike, LokalniBralnikListka bralnik,
-                           VirMrezeStevk vir, @Qualifier("branjeListkovIzvajalec") Executor izvajalec,
+                           VirMrezeStevk vir, ZlatiNabor zlatiNabor,
+                           @Qualifier("branjeListkovIzvajalec") Executor izvajalec,
                            PlatformTransactionManager upraviteljTransakcij) {
         this.stevke = stevke;
         this.mreze = mreze;
         this.slike = slike;
         this.bralnik = bralnik;
         this.vir = vir;
+        this.zlatiNabor = zlatiNabor;
         this.izvajalec = izvajalec;
         this.transakcija = new TransactionTemplate(upraviteljTransakcij);
     }
@@ -78,10 +101,10 @@ public class UcenjeIzListkov {
 
     /* Po potrditvi (ko je izid v bazi) razreze fotografijo in zapise stevke.
        obrnjeno: levi stolpec listka je prijava 2; null = ni znano (prazen listek). */
-    public void poPotrditvi(Long idBranja, VnosRezultata izid, Boolean obrnjeno) {
+    public void poPotrditvi(Long idBranja, VnosRezultata izid, Boolean obrnjeno, int steviloNizov, String model) {
         Runnable delo = () -> {
             try {
-                zabelezi(idBranja, izid, obrnjeno);
+                zabelezi(idBranja, izid, obrnjeno, steviloNizov, model);
             } catch (RuntimeException e) {
                 log.warn("Stevk potrjenega listka {} ni bilo mogoce zabeleziti", idBranja, e);
             }
@@ -90,16 +113,27 @@ public class UcenjeIzListkov {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    izvajalec.execute(delo);
+                    oddaj(idBranja, delo);
                 }
             });
         } else {
-            izvajalec.execute(delo);
+            oddaj(idBranja, delo);
         }
     }
 
-    /* Vrne stevilo zapisanih stevk. */
-    public int zabelezi(Long idBranja, VnosRezultata izid, Boolean obrnjeno) {
+    /* Polna vrsta izvajalca nalogo zavrne (BranjeListkovNastavitve): izid je ze
+       potrjen, izgubijo se le stevke tega listka za ucenje. */
+    private void oddaj(Long idBranja, Runnable delo) {
+        try {
+            izvajalec.execute(delo);
+        } catch (RejectedExecutionException e) {
+            log.warn("Stevke potrjenega listka {} niso bile zabelezene: vrsta branja je polna", idBranja);
+        }
+    }
+
+    /* Vrne stevilo zapisanih stevk. Listek gre (morda) se v zlati nabor:
+       steviloNizov je stevilo nizov tekme ob potrditvi, model mreza, ki je brala. */
+    public int zabelezi(Long idBranja, VnosRezultata izid, Boolean obrnjeno, int steviloNizov, String model) {
         if (izid.izidTip() != null && izid.izidTip() != IzidTekme.IGRANO) {
             return 0;
         }
@@ -108,12 +142,13 @@ public class UcenjeIzListkov {
         if (fotografija == null || nalozena == null) {
             return 0;
         }
-        LokalniBralnikListka.Izrez izrez;
+        LokalniBralnikListka.Poravnan poravnan;
         try {
-            izrez = bralnik.izrezi(fotografija);
+            poravnan = bralnik.poravnaj(fotografija);
         } catch (BralnikListka.NapakaBranjaListka e) {
             return 0;
         }
+        LokalniBralnikListka.Izrez izrez = LokalniBralnikListka.izrezi(poravnan);
         List<NizVnos> nizi = izid.nizi() == null ? List.of() : izid.nizi();
         List<StevkaListka> zapis;
         if (obrnjeno != null) {
@@ -127,6 +162,16 @@ public class UcenjeIzListkov {
             zapis = prav1 == prav2 ? List.of() : prav1 > prav2 ? naravnost : obrat;
         }
         transakcija.executeWithoutResult(s -> stevke.saveAll(zapis));
+        // v zlati nabor samo listek z znano smerjo (koda): smer, izbrana po ujemanju
+        // z mrezo, bi resnico prilagodila bralniku in meritev olepsala
+        if (obrnjeno != null) {
+            // stevke so ze zapisane; napaka nabora ne sme izgubiti njih
+            try {
+                zlatiNabor.zapisi(idBranja, poravnan, MeritevBranja.resnica(izid, obrnjeno), steviloNizov, model);
+            } catch (RuntimeException e) {
+                log.warn("Listek {} ni bil zapisan v zlati nabor", idBranja, e);
+            }
+        }
         return zapis.size();
     }
 
@@ -203,8 +248,14 @@ public class UcenjeIzListkov {
         List<UcenjeStevk.Vzorec> preizkusni = new ArrayList<>();
         for (StevkaListka s : vse) {
             UcenjeStevk.Vzorec v = new UcenjeStevk.Vzorec(s.getSlika(), s.getVrednost());
-            // stalna razdelitev (po id): ista stevka je vedno v istem delu
-            (Math.floorMod(s.getId() * 2654435761L, 5) == 0 ? preizkusni : ucni).add(v);
+            (jePreizkusna(s) ? preizkusni : ucni).add(v);
+        }
+        if (preizkusni.size() < NAJMANJ_PREIZKUSNIH) {
+            // brez dovolj preizkusnih stevk nove mreze ni mogoce pravicno primerjati s staro;
+            // zapisa ni, zato se ucenje poskusi znova, ko listkov pride vec
+            log.info("Ucenje mreze stevk odlozeno: {} preizkusnih stevk (najmanj {})",
+                    preizkusni.size(), NAJMANJ_PREIZKUSNIH);
+            return null;
         }
         List<UcenjeStevk.Vzorec> izbor = beri("/branje/mnist-izbor.bin.gz");
         List<UcenjeStevk.Vzorec> mnistPreizkus = beri("/branje/mnist-preizkus.bin.gz");
@@ -232,11 +283,28 @@ public class UcenjeIzListkov {
         MrezaStevkZapis zapis = transakcija.execute(s -> mreze.save(new MrezaStevkZapis(utezi.toByteArray(),
                 vse.size(), (float) prej, (float) potem, sprejeta, LocalDateTime.now())));
         if (sprejeta) {
-            vir.nastavi(nova, "ucena-" + zapis.getId());
+            vir.nastavi(nova, VirMrezeStevk.PREDPONA_UCENE + zapis.getId());
         }
         log.info("Ucenje mreze stevk: {} stevk listkov, natancnost {} -> {} (MNIST {} -> {}), {}",
                 vse.size(), prej, potem, mnistPrej, mnistPotem, sprejeta ? "sprejeta" : "zavrnjena");
         return zapis;
+    }
+
+    // ---------- Hramba ----------
+
+    /* Pocisti stare stevke in razlicice mreze (nocno, OpravilaBranjaListkov).
+       Vrne {izbrisanih stevk, izbrisanih razlicic}. */
+    public int[] pocisti() {
+        return pocisti(NAJVEC_SHRANJENIH, SPREJETIH_V_HRAMBI, ZAVRNJENIH_V_HRAMBI);
+    }
+
+    int[] pocisti(int najvecStevk, int sprejetih, int zavrnjenih) {
+        // razlicica, ki jo bralnik ta trenutek uporablja, ostane ne glede na starost
+        Long trenutna = vir.idTrenutne();
+        long ohrani = trenutna == null ? -1 : trenutna;
+        return transakcija.execute(s -> new int[] {
+                stevke.izbrisiRazenNajnovejsih(najvecStevk),
+                mreze.izbrisiStarejse(true, sprejetih, ohrani) + mreze.izbrisiStarejse(false, zavrnjenih, ohrani)});
     }
 
     private static List<UcenjeStevk.Vzorec> beri(String vir) {

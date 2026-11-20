@@ -37,6 +37,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -53,9 +57,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import si.turnirko.dto.BranjaTurnirjaDto;
 import si.turnirko.dto.BranjeListkaDto;
@@ -72,8 +73,10 @@ import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.izjeme.PrevecZahtevIzjema;
+import si.turnirko.izjeme.ZasedenoIzjema;
 import si.turnirko.modeli.BranjeListka;
 import si.turnirko.modeli.IzidTekme;
+import si.turnirko.modeli.NacinPotrditve;
 import si.turnirko.modeli.PrepoznavaTekme;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.Skupina;
@@ -97,13 +100,23 @@ public class BranjeListkovStoritev {
 
     private static final Logger log = LoggerFactory.getLogger(BranjeListkovStoritev.class);
 
-    private static final ObjectMapper JSON = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
     /* Daljsa stranica shranjene fotografije. Stevke na listku (105 x 99 mm, cez
        ves posnetek) so pri 2000 px visoke ~70 px, QR koda ima ~8 px na modul;
-       vec samo podrazi klic modela. */
+       vec samo podaljsa branje in poveca bazo. */
     static final int NAJVEC_STRANICA = 2000;
+    /* Meja PREJETE fotografije. Brskalnik jo pomanjsa na 2000 px, postaja na
+       ~2600 px; meja dovoli se nepomanjsano 16-Mpx fotografijo telefona
+       (4624 x 3472), vec pa ne: dekodiranje 20 Mpx zasede ~140 MB pomnilnika,
+       splosna meja slik (40 Mpx) bi ga zasedla dvakrat toliko. */
+    static final int NAJVEC_STRANICA_VHODA = 6000;
+    static final long NAJVEC_PIKSLOV_VHODA = 20_000_000L;
+    /* Hkrati dekodirane fotografije: testni vsebnik ima 1 GB pomnilnika, dve
+       veliki sliki hkrati ga se ne ogrozita. Naslednja zahteva pocaka do
+       CAKANJE_NA_DEKODIRANJE, nato dobi 503 s ponovitvijo cez nekaj sekund. */
+    static final int HKRATNIH_DEKODIRANJ = 2;
+    static final int PASOV_UPORABNIKOV = 64;
+    static final Duration CAKANJE_NA_DEKODIRANJE = Duration.ofSeconds(10);
+    static final int PONOVI_CEZ_SEKUND = 5;
     /* Vsako branje stane: ena fotografija na 5 s je hitrejse, kot organizator
        sploh prinasa listke, zato meja ustavi le zanko ali zlorabo. */
     static final int NAJVEC_V_OKNU = 120;
@@ -114,6 +127,18 @@ public class BranjeListkovStoritev {
     static final int ZADNJIH_ZAKLJUCENIH = 30;
     /* Listek brez kode: toliko tekem, ki cakajo na izid, je ponujenih za izbiro. */
     static final int NAJVEC_IZBIRE = 200;
+    /* Razlog zaprtja branja, ki ga je nadomestila novejsa fotografija istega listka. */
+    static final String NADOMESCENO = "Nadomeščeno z novejšo fotografijo istega listka.";
+    /* Razlog zaprtja novejse neuspele fotografije, ko je starejsa istega listka prebrana. */
+    static final String VELJA_STAREJSA = "Fotografije ni bilo mogoče prebrati; velja starejša fotografija istega listka.";
+    /* Branje, ki je tako dolgo V_VRSTI, je obviselo (npr. zavrnjeno ob polni vrsti) in se sme prebrati znova. */
+    static final Duration OBVISELO_PO = Duration.ofMinutes(2);
+    /* Razlog zaprtja odprtega branja, ko je bila tekma potrjena z drugo fotografijo. */
+    static final String POTRJENO_DRUGJE = "Tekma je bila potrjena z drugo fotografijo istega listka.";
+    /* Opozorilo nakljucne kontrole (V69): predlog je videti zanesljiv, pa se pregleda v celoti. */
+    static final String KONTROLA = "Naključna kontrola: primerjaj vse številke s fotografijo.";
+    /* Cas pregleda nad uro je pozabljeno okno, ne pregled (meritev ga ne zapise). */
+    static final long NAJVEC_CAS_PREGLEDA_MS = 3_600_000L;
 
     private final BranjeListkaRepozitorij branjaRepozitorij;
     private final SlikaBranjaListkaRepozitorij slikeRepozitorij;
@@ -127,6 +152,26 @@ public class BranjeListkovStoritev {
     private final Executor izvajalec;
     private final TransactionTemplate transakcija;
     private boolean samoAdmin;
+    /* Delez pripravljenih predlogov, ki postanejo nakljucna kontrola (0-1). */
+    private double delezKontrole;
+    /* Dovoljenja za dekodiranje (HKRATNIH_DEKODIRANJ). */
+    private final Semaphore dekodiranje = new Semaphore(HKRATNIH_DEKODIRANJ, true);
+    /* Zakljucek branja (zapis predloga ali napake), potrditev, zavrzenje in
+       ponovno branje tecejo po eno naenkrat, da se dvojniki istega listka
+       zanesljivo vidijo (zapriDvojnike) in si spremembe ne prepisejo. */
+    private final Object zakljucevanje = new Object();
+    /* Pas semaforjev po uporabniku: fotografije enega uporabnika se dekodirajo
+       ena za drugo, zato en organizator z vec hkratnimi zahtevami zasede najvec
+       eno od HKRATNIH_DEKODIRANJ dovoljenj in drugi niso blokirani. Pas namesto
+       slovarja po uporabniku: nic ni treba pospravljati; dva uporabnika v istem
+       pasu se le pocakata. */
+    private final Semaphore[] poUporabnikih = new Semaphore[PASOV_UPORABNIKOV];
+    {
+        for (int i = 0; i < PASOV_UPORABNIKOV; i++) {
+            poUporabnikih[i] = new Semaphore(1, true);
+        }
+    }
+    private Duration cakanjeNaDekodiranje = CAKANJE_NA_DEKODIRANJE;
 
     public BranjeListkovStoritev(BranjeListkaRepozitorij branjaRepozitorij,
                                  SlikaBranjaListkaRepozitorij slikeRepozitorij,
@@ -139,7 +184,8 @@ public class BranjeListkovStoritev {
                                  UcenjeIzListkov ucenje,
                                  @Qualifier("branjeListkovIzvajalec") Executor izvajalec,
                                  PlatformTransactionManager upraviteljTransakcij,
-                                 @Value("${turnirko.branje-listkov.samo-admin:true}") boolean samoAdmin) {
+                                 @Value("${turnirko.branje-listkov.samo-admin:true}") boolean samoAdmin,
+                                 @Value("${turnirko.branje-listkov.kontrola:0.05}") double delezKontrole) {
         this.branjaRepozitorij = branjaRepozitorij;
         this.slikeRepozitorij = slikeRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
@@ -152,11 +198,28 @@ public class BranjeListkovStoritev {
         this.izvajalec = izvajalec;
         this.transakcija = new TransactionTemplate(upraviteljTransakcij);
         this.samoAdmin = samoAdmin;
+        nastaviDelezKontrole(delezKontrole);
     }
 
     /* Samo za teste: preizkus organizatorja brez lastnega konteksta Springa. */
     void nastaviSamoAdmin(boolean samoAdmin) {
         this.samoAdmin = samoAdmin;
+    }
+
+    /* Delez kontrol; nastavitev izven 0-1 obvelja kot najblizja meja, NaN kot 0. */
+    void nastaviDelezKontrole(double delez) {
+        this.delezKontrole = Double.isNaN(delez) ? 0 : Math.clamp(delez, 0.0, 1.0);
+    }
+
+    /* Samo za teste: kratko cakanje, da preizkus zasedenosti ne traja 10 s. */
+    void nastaviCakanjeNaDekodiranje(Duration cakanje) {
+        this.cakanjeNaDekodiranje = cakanje;
+    }
+
+    /* Samo za teste: semafor dekodiranja (prek metode, ker je storitev posrednik
+       Springa in polja posrednika so prazna). */
+    Semaphore semaforDekodiranja() {
+        return dekodiranje;
     }
 
     // ---------- Dostop ----------
@@ -189,21 +252,79 @@ public class BranjeListkovStoritev {
 
     // ---------- Sprejem fotografije ----------
 
-    @Transactional
+    /* Sprejem v treh korakih, da dekodiranje (najdrazji del, do ~140 MB
+       pomnilnika) ne drzi povezave z bazo in ga ne more sproziti nihce brez
+       pravice:
+       1. dostop in omejitev hitrosti (kratka transakcija);
+       2. dekodiranje in pomanjsanje brez transakcije, najvec
+          HKRATNIH_DEKODIRANJ hkrati;
+       3. zapis branja in fotografije (kratka transakcija); branje gre v vrsto
+          sele po potrditvi zapisa. */
     public BranjeListkaDto sprejmi(Long idTurnir, byte[] vsebina) {
-        Uporabnik jaz = preveriDostop(idTurnir);
-        LocalDateTime zdaj = LocalDateTime.now();
-        if (branjaRepozitorij.countByNalozilIdAndUstvarjenoObAfter(jaz.getId(), zdaj.minus(OKNO)) >= NAJVEC_V_OKNU) {
-            throw new PrevecZahtevIzjema("Preveč fotografij v kratkem času. Počakaj nekaj minut.");
-        }
-        BufferedImage slika = ObdelavaSlik.pomanjsaj(ObdelavaSlik.preberi(vsebina), NAJVEC_STRANICA);
-        ObdelavaSlik.Zapis zapis = ObdelavaSlik.zapisiFotografijo(slika);
+        Long idUporabnika = transakcija.execute(s -> {
+            Uporabnik jaz = preveriDostop(idTurnir);
+            if (branjaRepozitorij.countByNalozilIdAndUstvarjenoObAfter(jaz.getId(),
+                    LocalDateTime.now().minus(OKNO)) >= NAJVEC_V_OKNU) {
+                throw new PrevecZahtevIzjema("Preveč fotografij v kratkem času. Počakaj nekaj minut.");
+            }
+            return jaz.getId();
+        });
+        ObdelavaSlik.Zapis zapis = pripraviFotografijo(vsebina, idUporabnika);
+        return transakcija.execute(s -> {
+            Uporabnik jaz = preveriDostop(idTurnir);
+            BranjeListka branje = branjaRepozitorij.save(
+                    new BranjeListka(turnirRepozitorij.getReferenceById(idTurnir), jaz, LocalDateTime.now()));
+            slikeRepozitorij.save(new SlikaBranjaListka(branje.getId(), zapis.vsebina(), zapis.sirina(), zapis.visina()));
+            vVrsto(branje.getId());
+            return dto(branje, Map.of(), Map.of(), List.of());
+        });
+    }
 
-        BranjeListka branje = branjaRepozitorij.save(
-                new BranjeListka(turnirRepozitorij.getReferenceById(idTurnir), jaz, zdaj));
-        slikeRepozitorij.save(new SlikaBranjaListka(branje.getId(), zapis.vsebina(), zapis.sirina(), zapis.visina()));
-        vVrsto(branje.getId());
-        return dto(branje, Map.of(), Map.of(), List.of());
+    /* Dekodira, pomanjsa in znova zapise fotografijo (brez metapodatkov). Cez
+       mejo hkratnih dekodiranj zahteva pocaka; ce predolgo, dobi 503 in jo
+       odjemalec ponovi - bolje kot da bi vec velikih slik hkrati izcrpalo
+       pomnilnik streznika. */
+    private ObdelavaSlik.Zapis pripraviFotografijo(byte[] vsebina, Long idUporabnika) {
+        long rok = System.nanoTime() + cakanjeNaDekodiranje.toNanos();
+        Semaphore pas = pasUporabnika(idUporabnika);
+        if (!dobi(pas, rok)) {
+            throw zasedeno();
+        }
+        try {
+            if (!dobi(dekodiranje, rok)) {
+                throw zasedeno();
+            }
+            try {
+                BufferedImage slika = ObdelavaSlik.pomanjsaj(
+                        ObdelavaSlik.preberi(vsebina, NAJVEC_STRANICA_VHODA, NAJVEC_PIKSLOV_VHODA), NAJVEC_STRANICA);
+                return ObdelavaSlik.zapisiFotografijo(slika);
+            } finally {
+                dekodiranje.release();
+            }
+        } finally {
+            pas.release();
+        }
+    }
+
+    /* Dovoljenje do skupnega roka (pas uporabnika in skupni semafor skupaj ne
+       cakata dlje kot cakanjeNaDekodiranje). */
+    private static boolean dobi(Semaphore semafor, long rok) {
+        try {
+            return semafor.tryAcquire(Math.max(0, rok - System.nanoTime()), TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private static ZasedenoIzjema zasedeno() {
+        return new ZasedenoIzjema("Strežnik ravno obdeluje druge fotografije. Poskusi znova čez nekaj sekund.",
+                PONOVI_CEZ_SEKUND);
+    }
+
+    /* Pas uporabnika (vidno testu prek metode - storitev je posrednik Springa). */
+    Semaphore pasUporabnika(Long idUporabnika) {
+        return poUporabnikih[Math.floorMod(idUporabnika, PASOV_UPORABNIKOV)];
     }
 
     /* Branje gre na izvajalca sele po potrditvi transakcije - prej ga nit v
@@ -213,11 +334,23 @@ public class BranjeListkovStoritev {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    izvajalec.execute(() -> obdelaj(idBranja));
+                    oddaj(idBranja);
                 }
             });
         } else {
+            oddaj(idBranja);
+        }
+    }
+
+    /* Polna vrsta nalogo zavrne (BranjeListkovNastavitve). Pisati v bazo tu ne
+       smemo (klic iz afterCommit bi se pridruzil ze potrjeni transakciji), zato
+       branje ostane V_VRSTI; ob naslednjem zagonu postane napaka, ki jo
+       organizator prebere znova. Pri vrsti 10.000 se to v praksi ne zgodi. */
+    private void oddaj(Long idBranja) {
+        try {
             izvajalec.execute(() -> obdelaj(idBranja));
+        } catch (RejectedExecutionException e) {
+            log.error("Branje listka {} ni slo v vrsto: vrsta branja je polna", idBranja);
         }
     }
 
@@ -257,17 +390,78 @@ public class BranjeListkovStoritev {
             return;
         }
 
-        transakcija.executeWithoutResult(s -> {
-            BranjeListka branje = branjaRepozitorij.findById(idBranja).orElse(null);
-            if (branje == null || branje.getStanje() != StanjeBranja.V_VRSTI) {
-                return;
+        try {
+            synchronized (zakljucevanje) {
+                transakcija.executeWithoutResult(s -> {
+                    BranjeListka branje = branjaRepozitorij.findById(idBranja).orElse(null);
+                    if (branje == null || branje.getStanje() != StanjeBranja.V_VRSTI) {
+                        return;
+                    }
+                    prepoznajTekmo(branje, vhod.idTurnir(), kode, prepis.listek());
+                    branje.setPrebrano(vJson(prepis.listek()));
+                    branje.setModel(prepis.model());
+                    branje.setStanje(StanjeBranja.PREBRANO);
+                    branje.setPrebranoOb(LocalDateTime.now());
+                    // kontrola ostane tudi po »Preberi znova«: sicer bi se ji organizator
+                    // lahko izognil in ocena ne bi bila vec nepristranska
+                    branje.setKontrola(branje.isKontrola() || jeKontrola(branje, prepis.listek()));
+                    zapriDvojnike(branje);
+                });
             }
-            prepoznajTekmo(branje, vhod.idTurnir(), kode, prepis.listek());
-            branje.setPrebrano(vJson(prepis.listek()));
-            branje.setModel(prepis.model());
-            branje.setStanje(StanjeBranja.PREBRANO);
-            branje.setPrebranoOb(LocalDateTime.now());
-        });
+        } catch (RuntimeException e) {
+            // brez tega bi branje ostalo V_VRSTI (»se bere«) do ponovnega zagona
+            log.error("Zapis branja listka {} ni uspel", idBranja, e);
+            zapisiNapako(idBranja, "Branje ni uspelo. Poskusi znova.", kode);
+        }
+    }
+
+    /* Nakljucna kontrola: pripravljen predlog (videti zanesljiv) z verjetnostjo
+       delezKontrole ni ponujen za en dotik. Ker je izbira nakljucna, popravki pri
+       kontrolah nepristransko ocenijo, kako pogosto ima zanesljiv predlog napako,
+       ki je organizator pri potrditvi z enim dotikom ne bi opazil. Najprej zreb,
+       sele nato predlog (poizvedbe), saj tece pod zaklepom zakljucevanje. */
+    private boolean jeKontrola(BranjeListka branje, PrebranListek listek) {
+        if (delezKontrole <= 0 || branje.getTekma() == null || listek == null) {
+            return false;
+        }
+        return ThreadLocalRandom.current().nextDouble() < delezKontrole
+                && predlog(branje, listek, branje.getTekma(), false).pripravljen();
+    }
+
+    /* Isti listek je lahko fotografiran veckrat (ponovljen posnetek; postaja ga
+       zajame znova, ko ga organizator vstavi se enkrat). Med odprtimi branji iste
+       tekme po kodi ostane eno: najnovejse uspesno prebrano, sicer najnovejse.
+       Ostala se zaprejo kot nadomescena - organizator potrdi eno, drugo ne visi
+       v vrsti z opozorilom »izid ze vpisan«. Potrjenih se ne dotakne.
+       Klice se samo pod zaklepom zakljucevanje: dve niti, ki hkrati zakljucita
+       dve fotografiji istega listka, bi se sicer zgresili (vsaka ne vidi se
+       nepotrjene druge) in obe bi ostali odprti. Aplikacija tece v enem
+       primerku, zato zadosca zaklep v pomnilniku. */
+    private void zapriDvojnike(BranjeListka branje) {
+        if (branje.getTekma() == null || branje.getPrepoznava() != PrepoznavaTekme.KODA) {
+            return;
+        }
+        // samo branja po kodi: tekmo, ugotovljeno drugace, je treba se potrditi
+        List<BranjeListka> odprta = branjaRepozitorij.findByTekmaIdAndStanjeIn(branje.getTekma().getId(),
+                List.of(StanjeBranja.PREBRANO, StanjeBranja.NAPAKA)).stream()
+                .filter(b -> b.getPrepoznava() == PrepoznavaTekme.KODA)
+                .toList();
+        if (odprta.size() < 2) {
+            return;
+        }
+        Long ostane = odprta.stream()
+                .max(Comparator.comparing((BranjeListka b) -> b.getStanje() == StanjeBranja.PREBRANO)
+                        .thenComparing(BranjeListka::getId))
+                .orElseThrow().getId();
+        LocalDateTime zdaj = LocalDateTime.now();
+        for (BranjeListka b : odprta) {
+            if (!b.getId().equals(ostane)) {
+                b.setStanje(StanjeBranja.ZAVRZENO);
+                // novejsa neuspela fotografija se umakne prebrani starejsi - razlog to pove
+                b.setNapaka(b.getId() > ostane ? VELJA_STAREJSA : NADOMESCENO);
+                b.setZakljucenoOb(zdaj);
+            }
+        }
     }
 
     private static List<Long> preberiKode(byte[] jpeg) {
@@ -320,9 +514,14 @@ public class BranjeListkovStoritev {
     }
 
     private void zapisiNapako(Long idBranja, String sporocilo, List<Long> kode) {
-        transakcija.executeWithoutResult(s -> branjaRepozitorij.findById(idBranja)
-                .filter(b -> b.getStanje() == StanjeBranja.V_VRSTI)
-                .ifPresent(b -> oznaciNapako(b, sporocilo, kode)));
+        synchronized (zakljucevanje) {
+            transakcija.executeWithoutResult(s -> branjaRepozitorij.findById(idBranja)
+                    .filter(b -> b.getStanje() == StanjeBranja.V_VRSTI)
+                    .ifPresent(b -> {
+                        oznaciNapako(b, sporocilo, kode);
+                        zapriDvojnike(b);
+                    }));
+        }
     }
 
     /* Ob napaki bralnika se tekma po kodi vseeno zapise: organizator lahko izid
@@ -425,12 +624,23 @@ public class BranjeListkovStoritev {
         return new BranjeListkaDto(b.getId(), b.getStanje(), b.getUstvarjenoOb(), b.getPrebranoOb(),
                 b.getSlikaIzbrisanaOb() == null, b.getPrepoznava(), tekma, predlog, kandidati,
                 listek == null ? null : listek.imeLevo(), listek == null ? null : listek.imeDesno(),
-                b.getNapaka(), b.getPopravljeno());
+                b.getNapaka(), b.getPopravljeno(), jeObviselo(b), b.isKontrola());
+    }
+
+    private static boolean jeObviselo(BranjeListka b) {
+        return b.getStanje() == StanjeBranja.V_VRSTI
+                && b.getUstvarjenoOb().isBefore(LocalDateTime.now().minus(OBVISELO_PO));
     }
 
     /* Predlog v straneh tekme z opozorili, ki jih pozna samo streznik: izid je ze
        vpisan, imena na listku niso imena tekme, na posnetku je vec listkov. */
     private PredlogIzidaDto predlog(BranjeListka b, PrebranListek listek, Tekma t) {
+        return predlog(b, listek, t, true);
+    }
+
+    /* zKontrolo = false: predlog, kot bi bil brez nakljucne kontrole (ali je ponujen
+       za en dotik, za kontrolo in meritev). */
+    private PredlogIzidaDto predlog(BranjeListka b, PrebranListek listek, Tekma t, boolean zKontrolo) {
         boolean poKodi = b.getPrepoznava() == PrepoznavaTekme.KODA;
         boolean obrnjeno = !poKodi && jeObrnjeno(listek, t);
         PredlogIzidaDto osnova = PredlogIzidaListka.sestavi(listek, t.getSteviloNizov(), obrnjeno);
@@ -446,6 +656,9 @@ public class BranjeListkovStoritev {
         }
         if (b.getStanje() == StanjeBranja.PREBRANO && b.getNapaka() != null) {
             dodatna.add(b.getNapaka());
+        }
+        if (zKontrolo && b.getStanje() == StanjeBranja.PREBRANO && b.isKontrola()) {
+            dodatna.add(KONTROLA);
         }
         if (dodatna.isEmpty()) {
             return osnova;
@@ -463,13 +676,41 @@ public class BranjeListkovStoritev {
 
     // ---------- Potrditev, zavrnitev, ponovno branje ----------
 
-    @Transactional
+    /* Potrditev, zavrzenje in ponovno branje spremenijo stanje branj iste tekme
+       kot zakljucek branja (zapriDvojnike), zato tecejo pod istim zaklepom in
+       vsaka v svoji transakciji, ki se potrdi PRED sprostitvijo zaklepa. Sicer
+       bi potrditev in hkrati zakljuceno branje iste tekme drug drugemu prepisala
+       stanje (branje nima stolpca verzije). Zaklep se vzame pred transakcijo,
+       zato nit, ki nanj caka, ne drzi povezave z bazo. */
     public BranjeListkaDto potrdi(Long idBranja, PotrditevBranjaVnos vnos) {
+        synchronized (zakljucevanje) {
+            return transakcija.execute(s -> potrdiPodZaklepom(idBranja, vnos));
+        }
+    }
+
+    public void zavrzi(Long idBranja) {
+        synchronized (zakljucevanje) {
+            transakcija.executeWithoutResult(s -> zavrziPodZaklepom(idBranja));
+        }
+    }
+
+    /* Isto fotografijo prebere se enkrat (napaka povezave, ali slab prepis). */
+    public BranjeListkaDto znova(Long idBranja) {
+        synchronized (zakljucevanje) {
+            return transakcija.execute(s -> znovaPodZaklepom(idBranja));
+        }
+    }
+
+    private BranjeListkaDto potrdiPodZaklepom(Long idBranja, PotrditevBranjaVnos vnos) {
         BranjeListka branje = najdi(idBranja);
         preveriDostop(branje.getTurnir().getId());
         if (branje.getStanje() != StanjeBranja.PREBRANO && branje.getStanje() != StanjeBranja.NAPAKA) {
             throw new DomenskaIzjema(branje.getStanje() == StanjeBranja.V_VRSTI
                     ? "Listek se še bere. Počakaj nekaj sekund."
+                    : NADOMESCENO.equals(branje.getNapaka())
+                    ? "To fotografijo je nadomestila novejša fotografija istega listka. Potrdi tisto."
+                    : VELJA_STAREJSA.equals(branje.getNapaka())
+                    ? "Te fotografije ni bilo mogoče prebrati; velja starejša fotografija istega listka. Potrdi tisto."
                     : "To branje je že zaključeno.");
         }
         Long idTekme = vnos.idTekme() != null ? vnos.idTekme()
@@ -488,6 +729,11 @@ public class BranjeListkovStoritev {
         PredlogIzidaDto predlog = listek == null ? null
                 : PredlogIzidaListka.sestavi(listek, tekma.getSteviloNizov(),
                         prepoznava != PrepoznavaTekme.KODA && jeObrnjeno(listek, tekma));
+        // ali je bil predlog ponujen za en dotik (z opozorili tekme, brez kontrole) - pred
+        // vpisom izida, ki bi dodal opozorilo »izid ze vpisan«; tekmo, izbrano rocno,
+        // je organizator videl s predlogom kandidata (brez opozoril tekme)
+        Boolean ponujen = listek == null ? null
+                : izbranaRocno ? predlog.pripravljen() : predlog(branje, listek, tekma, false).pripravljen();
 
         tekmaStoritev.vnesiRezultat(idTekme, vnos.izid());
 
@@ -500,14 +746,28 @@ public class BranjeListkovStoritev {
         branje.setZakljucenoOb(LocalDateTime.now());
         branje.setPotrjeno(vJson(vnos.izid()));
         branje.setPopravljeno(predlog == null || !jeEnako(predlog, vnos.izid()));
+        // sled pregleda za meritev (V69)
+        branje.setPripravljen(ponujen);
+        branje.setCasPregledaMs(casPregleda(vnos.casPregledaMs()));
+        branje.setNacinPotrditve(vnos.nacin());
+        // ostale odprte fotografije istega listka (po kodi) nimajo vec pomena
+        for (BranjeListka drugo : branjaRepozitorij.findByTekmaIdAndStanjeIn(idTekme,
+                List.of(StanjeBranja.PREBRANO, StanjeBranja.NAPAKA))) {
+            if (!drugo.getId().equals(idBranja) && drugo.getPrepoznava() == PrepoznavaTekme.KODA) {
+                drugo.setStanje(StanjeBranja.ZAVRZENO);
+                drugo.setNapaka(POTRJENO_DRUGJE);
+                drugo.setZakljucenoOb(LocalDateTime.now());
+            }
+        }
         // bralnik se uci iz potrjenega izida; smer stolpcev je znana samo pri listku s kodo
-        ucenje.poPotrditvi(idBranja, vnos.izid(), prepoznava == PrepoznavaTekme.KODA ? Boolean.FALSE : null);
+        int steviloNizov = vnos.izid().steviloNizov() != null ? vnos.izid().steviloNizov() : tekma.getSteviloNizov();
+        ucenje.poPotrditvi(idBranja, vnos.izid(), prepoznava == PrepoznavaTekme.KODA ? Boolean.FALSE : null,
+                steviloNizov, branje.getModel());
         Tekma koncana = tekmaRepozitorij.najdiZVsem(idTekme).orElse(tekma);
         return dto(branje, Map.of(idTekme, koncana), oznakeSkupin(List.of(koncana)), List.of());
     }
 
-    @Transactional
-    public void zavrzi(Long idBranja) {
+    private void zavrziPodZaklepom(Long idBranja) {
         BranjeListka branje = najdi(idBranja);
         preveriDostop(branje.getTurnir().getId());
         if (!branje.getStanje().jeOdprto()) {
@@ -517,12 +777,13 @@ public class BranjeListkovStoritev {
         branje.setZakljucenoOb(LocalDateTime.now());
     }
 
-    /* Isto fotografijo prebere se enkrat (napaka povezave, ali slab prepis). */
-    @Transactional
-    public BranjeListkaDto znova(Long idBranja) {
+    private BranjeListkaDto znovaPodZaklepom(Long idBranja) {
         BranjeListka branje = najdi(idBranja);
         preveriDostop(branje.getTurnir().getId());
-        if (branje.getStanje() != StanjeBranja.NAPAKA && branje.getStanje() != StanjeBranja.PREBRANO) {
+        // obviselo branje (V_VRSTI dlje kot OBVISELO_PO, npr. zavrnjeno ob polni vrsti) se sme
+        // ponoviti; ce je vseeno se v vrsti, ga drugi obdelaj preskoci (preveri V_VRSTI)
+        boolean obviselo = jeObviselo(branje);
+        if (branje.getStanje() != StanjeBranja.NAPAKA && branje.getStanje() != StanjeBranja.PREBRANO && !obviselo) {
             throw new DomenskaIzjema("To branje se ne da ponoviti.");
         }
         if (branje.getSlikaIzbrisanaOb() != null) {
@@ -578,6 +839,11 @@ public class BranjeListkovStoritev {
     }
 
     // ---------- Pomozno ----------
+
+    /* Cas pregleda, kot ga je izmeril vmesnik; nesmiselen se ne zapise (null). */
+    static Integer casPregleda(Long ms) {
+        return ms == null || ms < 0 || ms > NAJVEC_CAS_PREGLEDA_MS ? null : ms.intValue();
+    }
 
     private static boolean nimaImen(PrebranListek listek) {
         return (listek.imeLevo() == null || listek.imeLevo().isBlank())
@@ -657,18 +923,10 @@ public class BranjeListkovStoritev {
     }
 
     private static String vJson(Object vrednost) {
-        try {
-            return JSON.writeValueAsString(vrednost);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(e);
-        }
+        return JsonBranja.zapisi(vrednost);
     }
 
     private static PrebranListek izJson(String json) {
-        try {
-            return JSON.readValue(json, PrebranListek.class);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Zapis branja ni berljiv.", e);
-        }
+        return JsonBranja.preberi(json, PrebranListek.class);
     }
 }

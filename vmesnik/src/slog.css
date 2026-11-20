@@ -32275,3 +32275,192 @@ html.uvod-tece {
   min-height: 44px;
   max-width: 100%;
 }
+
+/* Povezava na meritev branja (samo admin) pod merilom strani branja. */
+.branje__meritev {
+  align-self: start;
+  margin-top: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
+/* ---------- Meritev branja listkov (F1, samo admin; docs/NACRT-BRANJE-LISTKOV.md) ----------
+   Merila kot vrstice zapisnika: oznaka, velika stevilka in cilj (dosezen zeleno,
+   ni dosezen rjasto), pod njimi razlaga. Brez kartic in senc; tabele so navadne
+   .tabela v ovoju, ki se na telefonu pomika vodoravno. */
+.meritev-branja {
+  display: flex;
+  flex-direction: column;
+}
+
+.meritev-branja .stran-glava {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.meritev-branja__filtri {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 220px));
+  gap: 12px;
+  align-items: end;
+  margin-top: var(--r3);
+}
+
+.meritev-branja__turnir {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--r1);
+  margin: 0;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-2);
+}
+
+.meritev-branja__razdelek {
+  margin: var(--r4) 0 0;
+  padding-bottom: var(--r1);
+  border-bottom: 3px solid var(--barva-crnilo);
+  font: 800 var(--tip-h3) / 1.1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.meritev-branja__podnaslov {
+  margin: var(--r3) 0 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.meritev-branja__merila {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meritev-branja__merilo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'oznaka vrednost'
+    'cilj cilj'
+    'podrobnost podrobnost';
+  column-gap: var(--r2);
+  row-gap: 4px;
+  padding: var(--r2) 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+@media (min-width: 768px) {
+  .meritev-branja__merilo {
+    grid-template-columns: 14rem 9rem minmax(0, 1fr);
+    grid-template-areas:
+      'oznaka vrednost cilj'
+      'oznaka vrednost podrobnost';
+  }
+}
+
+.meritev-branja__oznaka {
+  grid-area: oznaka;
+  align-self: center;
+  font-weight: 600;
+}
+
+.meritev-branja__vrednost {
+  grid-area: vrednost;
+  align-self: center;
+  font: 800 var(--tip-h3) / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.meritev-branja__cilj {
+  grid-area: cilj;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.meritev-branja__cilj--dosezen {
+  color: var(--barva-poudarek-tekst);
+}
+
+.meritev-branja__cilj--ni {
+  color: var(--barva-negativna-tekst);
+}
+
+.meritev-branja__podrobnost {
+  grid-area: podrobnost;
+  font-size: var(--tip-drobno);
+  line-height: 1.5;
+  color: var(--barva-crnilo-3);
+}
+
+.tabela th.meritev-branja__desno,
+.meritev-branja__stevilo {
+  text-align: right;
+}
+
+.meritev-branja__stevilo {
+  font-family: var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.meritev-branja__stevilo--tiha {
+  color: var(--barva-negativna-tekst);
+  font-weight: 600;
+}
+
+.meritev-branja__pojasnilo {
+  font: 400 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.meritev-branja__izbira {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--barva-glavna-tekst);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.meritev-branja__datum {
+  display: block;
+  font-size: var(--tip-drobno);
+  color: var(--barva-crnilo-3);
+}
+
+.meritev-branja__nabor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  margin-top: var(--r2);
+}
+
+.meritev-branja__nabor > .gumb--majhen {
+  align-self: start;
+}
+
+.meritev-branja__besedilo {
+  margin: 0;
+  max-width: 70ch;
+  line-height: 1.5;
+}
+
+.meritev-branja__gumbi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+}

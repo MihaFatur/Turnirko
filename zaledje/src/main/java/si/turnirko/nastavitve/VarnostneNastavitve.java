@@ -194,6 +194,10 @@ public class VarnostneNastavitve {
                         // nastavitev obvestil po kolu je osebna kot izbor lig (pred
                         // splosnim "GET je javen")
                         .requestMatchers("/api/v1/obvestila").authenticated()
+                        // meritev branja in zlati nabor (V69) samo za admina - pred splosnim
+                        // pravilom branja listkov spodaj
+                        .requestMatchers("/api/v1/branje-listkov/meritev", "/api/v1/branje-listkov/nabor",
+                                "/api/v1/branje-listkov/nabor/**").hasRole("ADMIN")
                         // branje listkov (V68): fotografije in predlogi izidov samo za prijavljene
                         // (lastnika turnirja in admina preveri storitev), tudi GET
                         .requestMatchers("/api/v1/branje-listkov/**", "/api/v1/branja-listkov/**",

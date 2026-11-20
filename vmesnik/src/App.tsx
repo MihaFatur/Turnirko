@@ -36,6 +36,7 @@ import { OrganizatorskiPregledStran } from './strani/OrganizatorskiPregledStran'
 import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStran'
 import { PomocStran } from './strani/PomocStran'
 import { BranjeListkovStran } from './strani/BranjeListkovStran'
+import { MeritevBranjaStran } from './strani/MeritevBranjaStran'
 import { PomocPonudnik } from './pomoc/PomocKontekst'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
@@ -285,6 +286,15 @@ export function App() {
             <SamoUrejevalec>
               <BranjeListkovStran />
             </SamoUrejevalec>
+          }
+        />
+        {/* Meritev branja listkov in zlati nabor (V69, samo admin). */}
+        <Route
+          path="/branje-listkov/meritev"
+          element={
+            <SamoAdmin>
+              <MeritevBranjaStran />
+            </SamoAdmin>
           }
         />
         <Route path="*" element={<StranNeObstaja />} />

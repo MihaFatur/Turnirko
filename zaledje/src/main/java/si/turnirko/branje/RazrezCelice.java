@@ -33,14 +33,31 @@ public final class RazrezCelice {
 
     private static final Vsebina PRAZNA = new Vsebina(true, List.of());
 
-    public static Vsebina razrezi(Temnost listek, CeliceListka.Celica c) {
-        int odmik = 4;
-        int x0 = c.x0() + odmik;
-        int y0 = c.y0() + odmik;
-        int w = c.sirina() - 2 * odmik;
-        int h = c.visina() - 2 * odmik;
+    /* Odmik od roba celice: crta tabele in njen rob ne gresta v razrez (tudi ne v
+       zlati nabor, ZlatiNabor.slikaCelic). */
+    public static final int ODMIK = 4;
+    /* Delez notranjosti celice, ki je zagotovo papir (percentil ravni papirja). */
+    private static final double PERCENTIL_PAPIRJA = 0.35;
+
+    /* Temnost papirja v celici, kot jo vzame razrez; NaN, ce je celica premajhna.
+       Zlati nabor jo odsteje, da se papir shrani kot cisto belo (ZlatiNabor). */
+    public static float papir(Temnost listek, CeliceListka.Celica c) {
+        float[] d = notranjost(listek, c);
+        if (d == null) {
+            return Float.NaN;
+        }
+        Arrays.sort(d);
+        return d[(int) (d.length * PERCENTIL_PAPIRJA)];
+    }
+
+    /* Temnost notranjosti celice brez roba; null, ce je celica premajhna. */
+    private static float[] notranjost(Temnost listek, CeliceListka.Celica c) {
+        int x0 = c.x0() + ODMIK;
+        int y0 = c.y0() + ODMIK;
+        int w = c.sirina() - 2 * ODMIK;
+        int h = c.visina() - 2 * ODMIK;
         if (w < 10 || h < 10) {
-            return PRAZNA;
+            return null;
         }
         float[] d = new float[w * h];
         for (int y = 0; y < h; y++) {
@@ -48,9 +65,19 @@ public final class RazrezCelice {
                 d[y * w + x] = listek.vrni(x0 + x, y0 + y);
             }
         }
+        return d;
+    }
+
+    public static Vsebina razrezi(Temnost listek, CeliceListka.Celica c) {
+        float[] d = notranjost(listek, c);
+        if (d == null) {
+            return PRAZNA;
+        }
+        int w = c.sirina() - 2 * ODMIK;
+        int h = c.visina() - 2 * ODMIK;
         float[] urejeno = d.clone();
         Arrays.sort(urejeno);
-        float papir = urejeno[(int) (urejeno.length * 0.35)];
+        float papir = urejeno[(int) (urejeno.length * PERCENTIL_PAPIRJA)];
         float crnilo = urejeno[Math.min(urejeno.length - 1, (int) (urejeno.length * 0.995))];
         if (crnilo - papir < 0.18f) {
             return PRAZNA;

@@ -76,6 +76,35 @@ export function razdeliVrsto(branja: BranjeListkaDto[]) {
   }
 }
 
+/* Sled pregleda za meritev (V69): čas od trenutka, ko je organizator predlog
+   lahko začel pregledovati, do potrditve. To je poznejši od dveh trenutkov:
+   predlog se je prvič pokazal na strani ali pa je organizator potrdil ali zavrgel
+   prejšnji listek. Pri listkih, ki jih potrjuje drugega za drugim, je to čas na
+   listek; čakanje, ko je fotografiral naslednje, ni štet. Časi so iz
+   performance.now() (ne skačejo ob premiku ure). Brez prikaza ni meritve. */
+export function casPregleda(prikazan: number | undefined, zadnjaAkcija: number | null, zdaj: number): number | null {
+  if (prikazan === undefined) return null
+  const od = zadnjaAkcija === null ? prikazan : Math.max(prikazan, zadnjaAkcija)
+  return Math.max(0, Math.round(zdaj - od))
+}
+
+/* Delež za stran meritev: »80 %« ali »–«, ko ni od česa. */
+export function odstotek(del: number, celota: number): string {
+  if (celota <= 0) return '–'
+  const p = (100 * del) / celota
+  return `${p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1).replace('.', ',')} %`
+}
+
+/* Čas pregleda za stran meritev: »4,2 s« ali »–«. */
+export function trajanje(ms: number | null): string {
+  if (ms === null) return '–'
+  if (ms >= 59_950) {
+    const sekund = Math.round(ms / 1000)
+    return `${Math.floor(sekund / 60)} min ${sekund % 60} s`
+  }
+  return `${(ms / 1000).toFixed(1).replace('.', ',')} s`
+}
+
 /* Telefonska fotografija ima 12 Mpx in več; strežnik jo hrani do 2000 px, toliko
    je dovolj za števke in QR kodo (BranjeListkovStoritev.NAJVEC_STRANICA). Manjša
    gre hitreje po mobilnem omrežju v dvorani. createImageBitmap upošteva zasuk iz

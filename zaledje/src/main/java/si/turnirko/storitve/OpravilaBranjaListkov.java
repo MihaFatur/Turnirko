@@ -1,5 +1,6 @@
 /* Opravila branja listkov, ki tecejo brez organizatorja:
-   - vsako noc izbrise fotografije, starejse od 30 dni po turnirju;
+   - vsako noc izbrise fotografije, starejse od 30 dni po turnirju, ter stevke
+     in razlicice mreze cez mejo hrambe (UcenjeIzListkov.pocisti);
    - ob zagonu oznaci branja, ki jih je prekinil ponovni zagon.
 
    Loceno od BranjeListkovStoritev, ker @Scheduled in @EventListener metode
@@ -24,16 +25,31 @@ public class OpravilaBranjaListkov {
     private static final ZoneId LJUBLJANA = ZoneId.of("Europe/Ljubljana");
 
     private final BranjeListkovStoritev storitev;
+    private final UcenjeIzListkov ucenje;
 
-    public OpravilaBranjaListkov(BranjeListkovStoritev storitev) {
+    public OpravilaBranjaListkov(BranjeListkovStoritev storitev, UcenjeIzListkov ucenje) {
         this.storitev = storitev;
+        this.ucenje = ucenje;
     }
 
     @Scheduled(cron = "${turnirko.branje-listkov.ciscenje:0 35 4 * * *}", zone = "Europe/Ljubljana")
     public void izbrisiStareSlike() {
-        int izbrisanih = storitev.izbrisiStareSlike(LocalDate.now(LJUBLJANA));
-        if (izbrisanih > 0) {
-            log.info("Branje listkov: izbrisanih {} fotografij, starejsih od 30 dni po turnirju", izbrisanih);
+        // dve neodvisni opravili: napaka enega ne ustavi drugega in se ne izgubi
+        try {
+            int izbrisanih = storitev.izbrisiStareSlike(LocalDate.now(LJUBLJANA));
+            if (izbrisanih > 0) {
+                log.info("Branje listkov: izbrisanih {} fotografij, starejsih od 30 dni po turnirju", izbrisanih);
+            }
+        } catch (RuntimeException e) {
+            log.error("Branje listkov: brisanje starih fotografij ni uspelo", e);
+        }
+        try {
+            int[] hramba = ucenje.pocisti();
+            if (hramba[0] > 0 || hramba[1] > 0) {
+                log.info("Branje listkov: hramba izbrisala {} stevk in {} razlicic mreze", hramba[0], hramba[1]);
+            }
+        } catch (RuntimeException e) {
+            log.error("Branje listkov: hramba ucenja ni uspela", e);
         }
     }
 

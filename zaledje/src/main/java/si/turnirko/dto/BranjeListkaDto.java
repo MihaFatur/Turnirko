@@ -26,7 +26,11 @@ public record BranjeListkaDto(
         String prebranoLevo,
         String prebranoDesno,
         String napaka,
-        Boolean popravljeno
+        Boolean popravljeno,
+        // V_VRSTI dlje kot nekaj minut (npr. zavrnjeno ob polni vrsti): sme se prebrati znova
+        boolean obviselo,
+        // nakljucna kontrola (V69): predlog ni za en dotik, organizator ga pregleda v celoti
+        boolean kontrola
 ) {
 
     /* Tekma z imenom dogodka in oznako skupine (za izpis »U15 · Skupina B · 2. kolo»). */

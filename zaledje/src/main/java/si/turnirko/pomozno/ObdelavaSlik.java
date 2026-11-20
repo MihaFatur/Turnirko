@@ -75,6 +75,12 @@ public final class ObdelavaSlik {
     /* Prebere PNG ali JPEG in vrne sliko v ARGB. Vse ostalo (GIF, BMP, SVG,
        besedilo, prevelike meri) zavrne z razlago. */
     public static BufferedImage preberi(byte[] vsebina) {
+        return preberi(vsebina, NAJVEC_STRANICA, NAJVEC_PIKSLOV);
+    }
+
+    /* Kot preberi(vsebina), s strozjo mejo meri: klicatelj, ki sliko takoj
+       pomanjsa (fotografija listka), pomnilnika za vec ne potrebuje. */
+    public static BufferedImage preberi(byte[] vsebina, int najvecStranica, long najvecPikslov) {
         if (vsebina == null || vsebina.length == 0) {
             throw new NeveljavenVnosIzjema("Datoteka je prazna.");
         }
@@ -95,10 +101,11 @@ public final class ObdelavaSlik {
                 bralec.setInput(vhod, true, true);
                 int sirina = bralec.getWidth(0);
                 int visina = bralec.getHeight(0);
-                if (sirina > NAJVEC_STRANICA || visina > NAJVEC_STRANICA
-                        || (long) sirina * visina > NAJVEC_PIKSLOV) {
+                if (sirina > najvecStranica || visina > najvecStranica
+                        || (long) sirina * visina > najvecPikslov) {
                     throw new NeveljavenVnosIzjema("Slika je prevelika (" + sirina + " × " + visina
-                            + " px). Pomanjšaj jo pod " + NAJVEC_STRANICA + " px.");
+                            + " px). Pomanjšaj jo pod " + najvecStranica + " px in "
+                            + najvecPikslov / 1_000_000 + " milijonov pik.");
                 }
                 if (Math.max(sirina, visina) < NAJMANJ_STRANICA) {
                     throw new NeveljavenVnosIzjema("Slika je premajhna (" + sirina + " × " + visina

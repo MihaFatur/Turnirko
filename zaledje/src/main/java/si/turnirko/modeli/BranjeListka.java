@@ -78,6 +78,21 @@ public class BranjeListka {
     @Column(name = "slika_izbrisana_ob")
     private LocalDateTime slikaIzbrisanaOb;
 
+    /* Nakljucna kontrola (V69): predlog ni ponujen za en dotik, pregleda se v celoti. */
+    @Column(name = "kontrola", nullable = false)
+    private boolean kontrola;
+
+    /* Ali je bil predlog ob potrditvi pripravljen za en dotik; null = pred V69. */
+    @Column(name = "pripravljen")
+    private Boolean pripravljen;
+
+    @Column(name = "cas_pregleda_ms")
+    private Integer casPregledaMs;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nacin_potrditve")
+    private NacinPotrditve nacinPotrditve;
+
     protected BranjeListka() {}
 
     public BranjeListka(Turnir turnir, Uporabnik nalozil, LocalDateTime ustvarjenoOb) {
@@ -112,4 +127,12 @@ public class BranjeListka {
     public void setZakljucenoOb(LocalDateTime zakljucenoOb) { this.zakljucenoOb = zakljucenoOb; }
     public LocalDateTime getSlikaIzbrisanaOb() { return slikaIzbrisanaOb; }
     public void setSlikaIzbrisanaOb(LocalDateTime slikaIzbrisanaOb) { this.slikaIzbrisanaOb = slikaIzbrisanaOb; }
+    public boolean isKontrola() { return kontrola; }
+    public void setKontrola(boolean kontrola) { this.kontrola = kontrola; }
+    public Boolean getPripravljen() { return pripravljen; }
+    public void setPripravljen(Boolean pripravljen) { this.pripravljen = pripravljen; }
+    public Integer getCasPregledaMs() { return casPregledaMs; }
+    public void setCasPregledaMs(Integer casPregledaMs) { this.casPregledaMs = casPregledaMs; }
+    public NacinPotrditve getNacinPotrditve() { return nacinPotrditve; }
+    public void setNacinPotrditve(NacinPotrditve nacinPotrditve) { this.nacinPotrditve = nacinPotrditve; }
 }

@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest'
 import type { BranjeListkaDto, PredlogIzidaDto } from '../api/tipi'
 import { veljavenNiz } from '../komponente/TockeNizov'
 import {
+  casPregleda,
   celiceZaPregled,
   dobljeniIzTock,
+  odstotek,
   povzetekNizov,
   razdeliVrsto,
+  trajanje,
   vnosIzPredloga,
   vrsticeIzPredloga,
 } from './branjeListkov'
@@ -85,5 +88,37 @@ describe('branje listkov', () => {
     expect(zaPotrditev.map((x) => x.id)).toEqual([2, 4])
     expect(berem.map((x) => x.id)).toEqual([3])
     expect(zakljucena.map((x) => x.id)).toEqual([1])
+  })
+})
+
+describe('sled pregleda (V69)', () => {
+  it('čas teče od prikaza ali od zadnje potrditve, kar je pozneje', () => {
+    expect(casPregleda(1000, null, 5200)).toBe(4200)
+    // organizator je med tem potrdil drug listek: čakanje ni šteto
+    expect(casPregleda(1000, 4000, 5200)).toBe(1200)
+    // predlog se je pokazal po zadnji potrditvi
+    expect(casPregleda(4500, 4000, 5200)).toBe(700)
+  })
+
+  it('brez prikaza ni meritve, negativen čas je nič', () => {
+    expect(casPregleda(undefined, 4000, 5200)).toBeNull()
+    expect(casPregleda(6000, null, 5200)).toBe(0)
+  })
+})
+
+describe('oblika meritev', () => {
+  it('odstotek', () => {
+    expect(odstotek(8, 10)).toBe('80 %')
+    expect(odstotek(1, 200)).toBe('0,5 %')
+    expect(odstotek(0, 5)).toBe('0 %')
+    expect(odstotek(3, 0)).toBe('–')
+  })
+
+  it('trajanje', () => {
+    expect(trajanje(4200)).toBe('4,2 s')
+    expect(trajanje(125_000)).toBe('2 min 5 s')
+    expect(trajanje(119_600)).toBe('2 min 0 s')
+    expect(trajanje(59_960)).toBe('1 min 0 s')
+    expect(trajanje(null)).toBe('–')
   })
 })

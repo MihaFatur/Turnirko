@@ -10,7 +10,7 @@
    oknu z fotografijo nad istim obrazcem kot ročni vnos (VnosRezultataOkno).
    Branje samo nikoli ne zapiše izida - šele potrditev, po isti poti kot ročni
    vnos (docs/pravila/branje-listkov.md). */
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -19,16 +19,19 @@ import { imeUdelezenca } from '../api/tipi'
 import type {
   BranjeListkaDto,
   KandidatListkaDto,
+  NacinPotrditve,
   PredlogIzidaDto,
   TekmaListkaDto,
   VnosRezultata,
 } from '../api/tipi'
 import { branjeListkovApi, turnirjiApi } from '../api/zahteve'
+import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import { useNazaj } from '../komponente/GlavaTelefona'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
 import { Namig } from '../pomoc/Namig'
 import {
+  casPregleda,
   celiceZaPregled,
   pomanjsajFotografijo,
   razdeliVrsto,
@@ -72,6 +75,19 @@ export function BranjeListkovStran() {
   /* Fotografija, ki jo je telefon pravkar posnel, se ne prenaša nazaj s strežnika. */
   const [predogledi, nastaviPredoglede] = useState<Record<number, string>>({})
   const [pregled, nastaviPregled] = useState<Pregled | null>(null)
+  const { jeAdmin } = useAvtentikacija()
+
+  /* Sled pregleda (meritev, V69): kdaj se je predlog prvič pokazal in kdaj je
+     organizator nazadnje potrdil ali zavrgel listek (glej casPregleda). */
+  const prikazanOb = useRef(new Map<number, number>())
+  const zadnjaAkcija = useRef<number | null>(null)
+  const sledPregleda = (id: number, nacin: NacinPotrditve) => ({
+    casPregledaMs: casPregleda(prikazanOb.current.get(id), zadnjaAkcija.current, performance.now()),
+    nacin,
+  })
+  const oznaciAkcijo = () => {
+    zadnjaAkcija.current = performance.now()
+  }
 
   const kljucBranj = ['turnir', idTurnirja, 'branja-listkov']
   const branja = useQuery({
@@ -122,21 +138,40 @@ export function BranjeListkovStran() {
     datoteke.forEach((d) => void poslji(d))
   }
 
+  /* Potrditev z enim dotikom (gumb v vrsti); okno potrjuje prek VnosRezultataOkno. */
   const potrditev = useMutation({
     mutationFn: ({ b, vnos, idTekme }: { b: BranjeListkaDto; vnos: VnosRezultata; idTekme: number | null }) =>
-      branjeListkovApi.potrdi(b.id, { idTekme, izid: vnos }),
-    onSuccess: osvezi,
+      branjeListkovApi.potrdi(b.id, { idTekme, izid: vnos, ...sledPregleda(b.id, 'EN_DOTIK') }),
+    onSuccess: () => {
+      oznaciAkcijo()
+      osvezi()
+    },
   })
   const zavrzenje = useMutation({
     mutationFn: (b: BranjeListkaDto) => branjeListkovApi.zavrzi(b.id),
-    onSuccess: osvezi,
+    onSuccess: () => {
+      oznaciAkcijo()
+      osvezi()
+    },
   })
   const ponovitev = useMutation({
     mutationFn: (b: BranjeListkaDto) => branjeListkovApi.znova(b.id),
-    onSuccess: osvezi,
+    onSuccess: (_odgovor, b) => {
+      // novo branje: čas pregleda šteje od novega prikaza, ne od prvega
+      prikazanOb.current.delete(b.id)
+      osvezi()
+    },
   })
 
   const vrsta = useMemo(() => razdeliVrsto(branja.data?.branja ?? []), [branja.data])
+
+  // prvi prikaz vsakega listka, ki čaka na organizatorja (tudi neuspelo branje, vpisano ročno)
+  useEffect(() => {
+    const zdaj = performance.now()
+    for (const b of vrsta.zaPotrditev) {
+      if (!prikazanOb.current.has(b.id)) prikazanOb.current.set(b.id, zdaj)
+    }
+  }, [vrsta])
 
   /* Po potrditvi v oknu se odpre naslednji prebrani listek s tekmo - organizator
      ima listke v roki po vrsti in jih potrjuje drugega za drugim. */
@@ -190,6 +225,11 @@ export function BranjeListkovStran() {
               Brez popravka {branja.data.brezPopravka} od {branja.data.potrjenih} potrjenih
             </p>
           )}
+          {jeAdmin && (
+            <Link to={`/branje-listkov/meritev?idTurnir=${idTurnirja}`} className="branje__meritev">
+              Meritev branja →
+            </Link>
+          )}
           <SporociloNapake napaka={branja.error ?? potrditev.error ?? zavrzenje.error ?? ponovitev.error} />
 
           {(posiljanja.length > 0 || vrsta.berem.length > 0) && (
@@ -221,7 +261,17 @@ export function BranjeListkovStran() {
                   <li key={b.id} className="branje-vrsta">
                     <Slicica url={predogledi[b.id] ?? null} id={b.id} />
                     <div className="branje-vrsta__telo">
-                      <p className="branje-vrsta__stanje">Berem listek …</p>
+                      {b.obviselo ? (
+                        <>
+                          <p className="branje-vrsta__napaka">Branje se je zataknilo.</p>
+                          <button type="button" className="gumb gumb--majhen"
+                            disabled={ponovitev.isPending} onClick={() => ponovitev.mutate(b)}>
+                            Preberi znova
+                          </button>
+                        </>
+                      ) : (
+                        <p className="branje-vrsta__stanje">Berem listek …</p>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -287,10 +337,12 @@ export function BranjeListkovStran() {
             branjeListkovApi.potrdi(pregled.branje.id, {
               idTekme: pregled.tekma.tekma.id,
               izid: vnos,
+              ...sledPregleda(pregled.branje.id, 'OBRAZEC'),
             })
           }
           onShranjeno={() => {
             const potrjen = pregled.branje.id
+            oznaciAkcijo()
             osvezi()
             // okno se zapre samo (onZapri), naslednji se odpre takoj za njim
             queueMicrotask(() => odpriNaslednjega(potrjen))
