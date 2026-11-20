@@ -166,6 +166,7 @@ export function TockeNizov({
   priimek2,
   sklicPolj,
   naVrh,
+  zaPregled,
 }: {
   vrstice: VrsticaNiza[]
   nastaviVrstice: (posodobi: (prejsnje: VrsticaNiza[]) => VrsticaNiza[]) => void
@@ -177,7 +178,12 @@ export function TockeNizov({
   sklicPolj?: RefObject<(HTMLInputElement | null)[]>
   /* Puščica gor z zgornje vrstice gre v obrazcu na polje nad istim stolpcem. */
   naVrh?: (stolpec: 0 | 1) => void
+  /* Polja, ki jih mora organizator pogledati (branje listka: negotova ali
+     neprebrana celica); mesto = niz × 2 + stran. */
+  zaPregled?: ReadonlySet<number>
 }) {
+  const razred = (mesto: number) =>
+    zaPregled?.has(mesto) ? 'obrazec__niz-polje--pregled' : undefined
   /* Polja v enem samem seznamu (niz × stran), da je premik »naprej« povsod
      isti korak: konec vrstice se nadaljuje v naslednji vrstici. */
   const notranjaPolja = useRef<(HTMLInputElement | null)[]>([])
@@ -268,6 +274,7 @@ export function TockeNizov({
             }}
             najvec={99}
             placeholder="11"
+            className={razred(indeks * 2)}
             aria-label={`${indeks + 1}. niz — ${priimek1}`}
             vrednost={niz.tocke1}
             naSpremembo={(vrednost) => spremeni(indeks * 2, vrednost)}
@@ -280,6 +287,7 @@ export function TockeNizov({
             }}
             najvec={99}
             placeholder="7"
+            className={razred(indeks * 2 + 1)}
             aria-label={`${indeks + 1}. niz — ${priimek2}`}
             vrednost={niz.tocke2}
             naSpremembo={(vrednost) => spremeni(indeks * 2 + 1, vrednost)}

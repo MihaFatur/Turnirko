@@ -30,6 +30,7 @@ import { OrganizatorjiOkno } from '../komponente/OrganizatorjiOkno'
 import { PokroviteljiOkno } from '../komponente/PokroviteljiOkno'
 import { PokroviteljiTrak } from '../komponente/PokroviteljiTrak'
 import { MeniDejanj } from '../komponente/MeniDejanj'
+import { useBranjeListkovNaVoljo } from '../pomozno/useBranjeListkov'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { OpozoriloOsvezitve } from '../komponente/OpozoriloOsvezitve'
@@ -68,6 +69,7 @@ export function TurnirStran() {
   const odjemalec = useQueryClient()
   const { smemUrejati, jeAdmin } = useAvtentikacija()
   const jeTelefon = useTelefon()
+  const branjeNaVoljo = useBranjeListkovNaVoljo()
   useNazaj('/turnirji', 'Turnirji')
 
   const turnir = useQuery({
@@ -152,6 +154,9 @@ export function TurnirStran() {
   /* Žreb skupin za vrata dvorane: ponujen, ko ima vsaj ena kategorija
      izžrebane skupine in teče. */
   const zaTiskSkupin = seUreja && (dogodki.data ?? []).some(imaZrebanoSkupine)
+  /* Branje listkov s fotografije: ko vsaj ena kategorija teče (docs/pravila/branje-listkov.md). */
+  const zaBranjeListkov =
+    seUreja && branjeNaVoljo && (dogodki.data ?? []).some((d) => d.dejanskiStatus === 'V_TEKU')
   /* Žreb izločilnega dela: čisti izločilni dogodek v teku mrežo že ima, pri
      skupinah jo pokaže šele naložena mreža. */
   const zaTiskMreze =
@@ -304,6 +309,16 @@ export function TurnirStran() {
                       onClick={zapri}
                     >
                       Izločilni žreb za tiskanje
+                    </Link>
+                  )}
+                  {zaBranjeListkov && (
+                    <Link
+                      to={`/turnirji/${idTurnirja}/branje-listkov`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Branje listkov
                     </Link>
                   )}
                   <button
@@ -533,6 +548,11 @@ export function TurnirStran() {
             {zaTiskMreze && (
               <Link to={`/turnirji/${idTurnirja}/zreb-mreze`} className="gumb">
                 Izločilni žreb za tiskanje
+              </Link>
+            )}
+            {zaBranjeListkov && (
+              <Link to={`/turnirji/${idTurnirja}/branje-listkov`} className="gumb">
+                Branje listkov
               </Link>
             )}
             {smemLogotip && (

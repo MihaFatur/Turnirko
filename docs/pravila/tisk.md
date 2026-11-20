@@ -38,6 +38,9 @@
       rezultat (dobljeni nizi, debelejša obroba). Vse vrstice delijo
       `--listek-stolpci`, zato so točke vedno natanko pod imenom tistega, ki jih
       je dosegel. Dvopičje v sredinskem žlebu bere vrstico kot »11 : 7«.
+    - **Oznake za branje s fotografije** (V68, `docs/pravila/branje-listkov.md`): trije
+      črni kvadrati 4 mm v vogalih in QR koda tekme 13 mm zgoraj desno na STALNIH mestih
+      (`GeometrijaListka.java` jih pozna) — ob premiku spremeni oboje.
     - Vsebina: znamka (`ZnakTurnirko` + »Turnirko«) in prazna črta »Miza št.«
       (številka se izpiše, če je že dodeljena), nato Dogodek (= turnir, kot ga
       igralci poznajo), Kategorija (ime dogodka; spol in starost se dodata samo,

@@ -16,6 +16,7 @@
    urejata ListkiStran in razdelek 16 v slog.css. */
 import type { CSSProperties } from 'react'
 
+import { natisnjenaKoda, potQr, vsebinaQr } from '../pomozno/kodaListka'
 import { ZnakTurnirko } from './Postavitev'
 
 /* Ena stran listka: igralec ali dvojica. */
@@ -37,6 +38,9 @@ export interface ListekPodatki {
   steviloNizov: number
   /* Stevilka mize; null izpise prazno crto za rocni vpis. */
   miza: number | null
+  /* Id tekme za QR kodo in natisnjeno stevilko (branje listka s fotografije);
+     null pri praznem listku, ki tekme se nima. */
+  idTekme: number | null
   stran1: StranListka
   stran2: StranListka
   /* Prazen listek: imena igralcev in skupino oz. fazo sodnik dopise z roko
@@ -52,33 +56,45 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
       className={'listek' + (podatki.steviloNizov > 5 ? ' listek--gosto' : '')}
       style={{ '--nizov': podatki.steviloNizov } as CSSProperties}
     >
-      <header className="listek__glava">
-        <span className="listek__znamka">
-          <ZnakTurnirko velikost={18} />
-          Turnirko
-        </span>
-        {/* Kadar miza se ni dodeljena, ostane crta za rocni vpis. */}
-        <span className="listek__miza">
-          Miza št.
-          <span className="listek__vpis">{podatki.miza !== null ? podatki.miza : ''}</span>
-        </span>
-      </header>
+      {/* Oznake za branje s fotografije: tri črni kvadrati v vogalih (zgoraj levo,
+          spodaj levo, spodaj desno) in QR koda zgoraj desno stojijo na STALNIH
+          mestih listka (mm). Strežnik po njih fotografijo poravna in najde celice
+          (si.turnirko.branje.GeometrijaListka) - ob premiku spremeni oboje. */}
+      <Oznaka kje="zl" />
+      <Oznaka kje="sl" />
+      <Oznaka kje="sd" />
+      {podatki.idTekme !== null && <KodaTekme idTekme={podatki.idTekme} />}
 
-      <div className="listek__kontekst">
-        {podatki.dogodek && <Polje oznaka="Dogodek" vrednost={podatki.dogodek} sirok />}
-        <Polje oznaka="Kategorija" vrednost={podatki.kategorija} sirok />
-        {/* Skupinska tekma: »Skupina A  2. kolo«; tekma mreže: »Faza  Polfinale«.
-            Prazen listek ima črto za »Skupina A, 2. kolo« ali »Polfinale«. */}
-        {podatki.prazno ? (
-          <Polje oznaka="Faza" vrednost="" sirok prazno />
-        ) : podatki.skupina ? (
-          <>
-            <Polje oznaka="Skupina" vrednost={podatki.skupina} poudarjeno />
-            <Polje oznaka={null} vrednost={podatki.faza} poudarjeno />
-          </>
-        ) : (
-          <Polje oznaka="Faza" vrednost={podatki.faza} poudarjeno sirok />
-        )}
+      {/* Vrh listka: glava in kontekst; desno je prostor za kodo tekme. */}
+      <div className={'listek__vrh' + (podatki.idTekme !== null ? ' listek__vrh--koda' : '')}>
+        <header className="listek__glava">
+          <span className="listek__znamka">
+            <ZnakTurnirko velikost={18} />
+            Turnirko
+          </span>
+          {/* Kadar miza se ni dodeljena, ostane crta za rocni vpis. */}
+          <span className="listek__miza">
+            Miza št.
+            <span className="listek__vpis">{podatki.miza !== null ? podatki.miza : ''}</span>
+          </span>
+        </header>
+
+        <div className="listek__kontekst">
+          {podatki.dogodek && <Polje oznaka="Dogodek" vrednost={podatki.dogodek} sirok />}
+          <Polje oznaka="Kategorija" vrednost={podatki.kategorija} sirok />
+          {/* Skupinska tekma: »Skupina A  2. kolo«; tekma mreže: »Faza  Polfinale«.
+              Prazen listek ima črto za »Skupina A, 2. kolo« ali »Polfinale«. */}
+          {podatki.prazno ? (
+            <Polje oznaka="Faza" vrednost="" sirok prazno />
+          ) : podatki.skupina ? (
+            <>
+              <Polje oznaka="Skupina" vrednost={podatki.skupina} poudarjeno />
+              <Polje oznaka={null} vrednost={podatki.faza} poudarjeno />
+            </>
+          ) : (
+            <Polje oznaka="Faza" vrednost={podatki.faza} poudarjeno sirok />
+          )}
+        </div>
       </div>
 
       <div className="listek__tabela">
@@ -128,6 +144,35 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
         </span>
       </footer>
     </article>
+  )
+}
+
+/* Poln črn kvadrat 4 x 4 mm. Vektorski lik, ker se rob ali ozadje zaokrožita na
+   cele pike zaslona (v sredini ostane bela pika) in ozadja brskalnik ne natisne. */
+function Oznaka({ kje }: { kje: 'zl' | 'sl' | 'sd' }) {
+  return (
+    <svg className={`listek__kot listek__kot--${kje}`} viewBox="0 0 1 1" aria-hidden="true">
+      <rect width="1" height="1" />
+    </svg>
+  )
+}
+
+/* QR koda tekme in njena številka. Organizator listek po tekmi fotografira, strežnik
+   po kodi ve, katera tekma je na njem (branje listkov, docs/pravila/branje-listkov.md). */
+function KodaTekme({ idTekme }: { idTekme: number }) {
+  const { velikost, pot } = potQr(vsebinaQr(idTekme))
+  return (
+    <span className="listek__koda">
+      <svg
+        className="listek__qr"
+        viewBox={`0 0 ${velikost} ${velikost}`}
+        shapeRendering="crispEdges"
+        aria-hidden="true"
+      >
+        <path d={pot} />
+      </svg>
+      <span className="listek__stevilka">{natisnjenaKoda(idTekme)}</span>
+    </span>
   )
 }
 

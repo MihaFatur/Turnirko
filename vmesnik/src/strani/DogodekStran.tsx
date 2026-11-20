@@ -122,6 +122,7 @@ import {
 import { intervalOsvezevanja, jeVZivo, prikazStrani, uraOsvezitve } from '../pomozno/osvezevanje'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
+import { useBranjeListkovNaVoljo } from '../pomozno/useBranjeListkov'
 import { type VrsticaUdelezenca } from '../pomozno/udelezenci'
 import { imaMrezoZaTisk } from '../pomozno/zrebMreze'
 import { imaZrebanoSkupine } from '../pomozno/zrebSkupin'
@@ -132,6 +133,7 @@ export function DogodekStran() {
   const odjemalec = useQueryClient()
   const navigiraj = useNavigate()
   const { jeAdmin, smemUrejati } = useAvtentikacija()
+  const branjeNaVoljo = useBranjeListkovNaVoljo()
   const jeTelefon = useTelefon()
 
   /* Med tekmovanjem se mreža osvežuje sama - gledalec v dvorani ne sme biti
@@ -221,6 +223,8 @@ export function DogodekStran() {
   /* Kontrole sledijo dejanskemu stanju, napis (status) pa gledalcu: po zrebu, pred
      datumom turnirja, so prijave zaprte, zreb pa je se popravljiv. */
   const vPripravi = dogodek.dejanskiStatus === 'PRIPRAVA'
+  /* Branje listkov s fotografije velja za ves turnir; ekipna tekma nima listka. */
+  const zaBranjeListkov = smem && branjeNaVoljo && !ekipno && dogodek.dejanskiStatus === 'V_TEKU'
   const aktivnePrijave = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
   /* Zadržek pove strežnik (npr. zadnja skupina bi imela enega igralca),
      da vmesnik ne podvaja pravil razreza. */
@@ -421,6 +425,16 @@ export function DogodekStran() {
                       {ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'}
                     </Link>
                   )}
+                  {zaBranjeListkov && (
+                    <Link
+                      to={`/turnirji/${dogodek.idTurnir}/branje-listkov`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Branje listkov
+                    </Link>
+                  )}
                   {zaTiskSkupin && (
                     <Link
                       to={`/dogodki/${idDogodka}/zreb-skupin`}
@@ -488,6 +502,11 @@ export function DogodekStran() {
                   </Link>
                   <Namig clanek={ekipno ? 'zapisnik-tisk' : 'listki'} />
                 </>
+              )}
+              {zaBranjeListkov && (
+                <Link to={`/turnirji/${dogodek.idTurnir}/branje-listkov`} className="gumb">
+                  Branje listkov
+                </Link>
               )}
               {zaTiskSkupin && (
                 <Link to={`/dogodki/${idDogodka}/zreb-skupin`} className="gumb">

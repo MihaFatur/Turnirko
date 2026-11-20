@@ -3,6 +3,10 @@
 
 import { api } from './odjemalec'
 import type {
+  BranjaTurnirjaDto,
+  BranjeListkaDto,
+  PotrditevBranjaVnos,
+  StanjeBranjaListkovDto,
   IzlocilniPredlogDto,
   RocniClanVnos,
   SkupinePredlogDto,
@@ -296,6 +300,23 @@ export const tekmeApi = {
   /* Kaj bi popravek naredil; nič se ne zapiše. */
   predogledPopravka: (id: number, vnos: VnosRezultata) =>
     api.objavi<PopravekPredogledDto>(`/tekme/${id}/rezultat/predogled`, vnos),
+}
+
+/* Branje sodniških listkov s fotografije (V68). Branje samo predlaga izid;
+   v tekmo ga zapiše šele potrdi (ista pot kot ročni vnos). */
+export const branjeListkovApi = {
+  stanje: () => api.vrni<StanjeBranjaListkovDto>('/branje-listkov/stanje'),
+  seznam: (idTurnir: number) => api.vrni<BranjaTurnirjaDto>(`/turnirji/${idTurnir}/branja-listkov`),
+  nalozi: (idTurnir: number, jpeg: Blob) => {
+    const obrazec = new FormData()
+    obrazec.append('slika', jpeg, 'listek.jpg')
+    return api.objavi<BranjeListkaDto>(`/turnirji/${idTurnir}/branja-listkov`, obrazec)
+  },
+  slika: (id: number) => api.vrniDatoteko(`/branja-listkov/${id}/slika`),
+  potrdi: (id: number, vnos: PotrditevBranjaVnos) =>
+    api.objavi<BranjeListkaDto>(`/branja-listkov/${id}/potrdi`, vnos),
+  zavrzi: (id: number) => api.objavi<void>(`/branja-listkov/${id}/zavrzi`),
+  znova: (id: number) => api.objavi<BranjeListkaDto>(`/branja-listkov/${id}/znova`),
 }
 
 export const igralciApi = {

@@ -50,7 +50,75 @@ export const REZULTATI: Clanek[] = [
           'Gledalci vidijo rezultat takoj. Stran kategorije med igro sama osvežuje mrežo in lestvice; čas zadnje osvežitve stoji ob statusu (»Osveženo ob …«).',
       },
     ],
-    povezani: ['tocke-po-nizih', 'popravek-rezultata', 'odstop'],
+    povezani: ['tocke-po-nizih', 'popravek-rezultata', 'odstop', 'branje-listkov'],
+  },
+  {
+    id: 'branje-listkov',
+    naslov: 'Branje listkov s fotografije',
+    poglavje: 'rezultati',
+    kratko:
+      'Izpolnjen sodniški listek fotografiraš s telefonom, Turnirko prebere točke in predlaga izid. Ti ga pogledaš in potrdiš — izid se zapiše šele s tvojo potrditvijo.',
+    kljucne: ['fotografija', 'slika', 'kamera', 'telefon', 'umetna inteligenca', 'AI', 'QR', 'koda', 'branje', 'skeniraj'],
+    vsebina: [
+      { tip: 'kje', pot: ['Turnir', 'Branje listkov'] },
+      {
+        tip: 'koraki',
+        postavke: [
+          'Odpri **Branje listkov** na strani turnirja ali kategorije (vidno, ko kategorija teče).',
+          'Ko sodnik prinese listek, pritisni **Fotografiraj listek** in ga posnemi od zgoraj, da sta na sliki cela tabela in QR koda v desnem kotu. En listek na fotografijo.',
+          'Takoj lahko fotografiraš naslednjega: branje teče v ozadju nekaj sekund, listek se nato pojavi pod **Za potrditev**.',
+          'Listek brez opozoril potrdiš z **Potrdi**. Pri drugih odpri **Preglej**: nad obrazcem je fotografija, rjasto obarvane številke primerjaj s papirjem in po potrebi popravi, nato **Potrdi izid**.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'preverbe',
+        naslov: 'Kdaj Turnirko listka ne potrdi sam',
+        kratko:
+          'Predlog z opozorilom ali negotovo številko moraš pregledati. Turnirko preveri pravila niza, število dobljenih nizov in ali se točke ujemajo s celico »Rezultat«.',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          'Številka je bila popravljena, prečrtana ali težko berljiva (rjasto obarvana).',
+          'Niz ni veljaven (npr. 11:10) ali tekma nima zmagovalca s pravim številom nizov.',
+          'Točke dajo drug izid, kot ga je sodnik zapisal v celico **Rezultat**.',
+          'Na listku je zapisan izid brez boja, predaja ali diskvalifikacija.',
+          'Tekma ima izid že vpisan (listek je bil fotografiran dvakrat).',
+          'Zapis je nepopoln: niz manjka, tekma nima zmagovalca (predaja, brez boja) — take izide vpišeš sam.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'tekma',
+        naslov: 'Kako Turnirko ve, katera tekma je na listku',
+        kratko:
+          'Po QR kodi in številki tekme (T-…), ki sta na vsakem natisnjenem listku. Pri praznem listku (brez kode) tekmo izbereš sam s seznama tekem, ki čakajo na izid.',
+      },
+      {
+        tip: 'odstavek',
+        besedilo:
+          'Listek poravnajo trije črni kvadrati v vogalih in QR koda. Listki, natisnjeni pred to funkcijo, jih nimajo — natisni nove ([Listki za tiskanje](listki)). Imen Turnirko ne bere: tekmo pove koda.',
+      },
+      {
+        tip: 'razdelek',
+        id: 'ucenje',
+        naslov: 'Turnirko se uči iz tvojih potrditev',
+        kratko:
+          'Števke potrjenih listkov (samo številke, brez imen) se shranijo. Ponoči se bralnik na njih dotrenira in bere pisavo vaših sodnikov vedno bolje. Vse teče na Turnirkovem strežniku in je brezplačno.',
+      },
+      {
+        tip: 'nasvet',
+        besedilo:
+          'Na vrhu strani vidiš, koliko potrjenih listkov je bilo prebranih brez popravka. Če branje ne uspe, pritisni **Preberi znova** ali izid vpiši ročno ob fotografiji.',
+      },
+      {
+        tip: 'pazi',
+        besedilo:
+          'Branje listkov je v preizkusu. Če povezave **Branje listkov** ne vidiš, za tvoj račun še ni vklopljeno. Fotografije se po 30 dneh od turnirja izbrišejo.',
+      },
+    ],
+    povezani: ['vnos-rezultata', 'listki', 'popravek-rezultata'],
   },
   {
     id: 'tocke-po-nizih',

@@ -55,7 +55,7 @@ export const TISK: Clanek[] = [
           'V oknu za tisk mora biti papir A4 in merilo 100 % (ne »Prilagodi strani«). Pri drugem merilu se listki zamaknejo glede na črte za rez.',
       },
     ],
-    povezani: ['zreb-skupin-tisk', 'vodic-dan-turnirja'],
+    povezani: ['zreb-skupin-tisk', 'vodic-dan-turnirja', 'branje-listkov'],
   },
   {
     id: 'zreb-skupin-tisk',

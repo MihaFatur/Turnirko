@@ -3194,3 +3194,79 @@ export interface NeaktivnostPorociloDto {
   zapisanihOdbitkov: number
   odbitihTock: number
 }
+
+/* ---------- Branje listkov s fotografije (V68, docs/pravila/branje-listkov.md) ---------- */
+
+export type StanjeBranja = 'V_VRSTI' | 'PREBRANO' | 'NAPAKA' | 'POTRJENO' | 'ZAVRZENO'
+
+/* Kako je branje našlo tekmo: koda na listku, prebrana imena, izbral organizator. */
+export type PrepoznavaTekme = 'KODA' | 'IMENA' | 'ROCNO'
+
+/* Točke niza v straneh tekme (1 = udelezenec1); null = celice ni bilo mogoče
+   prebrati. Negotova celica je bila popravljena, prečrtana ali težko berljiva. */
+export interface NizPredlogaDto {
+  tocke1: number | null
+  tocke2: number | null
+  negotovo1: boolean
+  negotovo2: boolean
+  neveljaven: boolean
+}
+
+/* Predlog izida iz listka. pripravljen = brez opozoril in negotovih celic,
+   potrdi se lahko z enim dotikom. */
+export interface PredlogIzidaDto {
+  izidTip: IzidTekme
+  dobljeniNizi1: number | null
+  dobljeniNizi2: number | null
+  zmagovalecStran: 1 | 2 | null
+  nizi: NizPredlogaDto[]
+  opozorila: string[]
+  pripravljen: boolean
+}
+
+export interface TekmaListkaDto {
+  tekma: TekmaDto
+  idDogodka: number
+  imeDogodka: string
+  oznakaSkupine: string | null
+}
+
+/* Tekma, ki bi lahko bila na listku (tekma ni bila prepoznana sama). */
+export interface KandidatListkaDto {
+  tekma: TekmaListkaDto
+  obrnjeno: boolean
+  predlog: PredlogIzidaDto
+}
+
+export interface BranjeListkaDto {
+  id: number
+  stanje: StanjeBranja
+  ustvarjenoOb: string
+  prebranoOb: string | null
+  imaSliko: boolean
+  prepoznava: PrepoznavaTekme | null
+  tekma: TekmaListkaDto | null
+  predlog: PredlogIzidaDto | null
+  kandidati: KandidatListkaDto[]
+  /* Imeni, kot ju je prebral bralnik (pove, zakaj tekma ni najdena). */
+  prebranoLevo: string | null
+  prebranoDesno: string | null
+  napaka: string | null
+  popravljeno: boolean | null
+}
+
+export interface BranjaTurnirjaDto {
+  branja: BranjeListkaDto[]
+  potrjenih: number
+  brezPopravka: number
+}
+
+export interface StanjeBranjaListkovDto {
+  omogoceno: boolean
+  razlog: string | null
+}
+
+export interface PotrditevBranjaVnos {
+  idTekme: number | null
+  izid: VnosRezultata
+}

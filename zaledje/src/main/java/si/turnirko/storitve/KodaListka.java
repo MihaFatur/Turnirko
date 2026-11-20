@@ -1,0 +1,129 @@
+/* Koda tekme na sodniskem listku: QR koda in natisnjena stevilka ob njej.
+
+   QR koda nosi »TK:<id tekme>« (alfanumericni nacin QR: velike crke, stevke in
+   dvopicje, zato je koda majhna - verzija 1 ali 2 - in berljiva tudi na
+   stisnjenem listku). Natisnjena stevilka »T-<id>« je za cloveka in za bralnika,
+   ce QR na fotografiji ni berljiva (zamegljena, prepognjen vogal).
+
+   Koda tekmo doloci deterministicno: brez nje bi jo moral bralnik ugibati po
+   imenih, kar pri istem paru v dveh kategorijah ni mogoce. Zato je QR prva pot,
+   natisnjena stevilka druga, imena sele tretja (UjemanjeTekmeListka).
+
+   Razred ne pozna baze ne Springa. Vmesnik zapise isto kodo
+   (vmesnik/src/pomozno/kodaListka.ts) - ob spremembi zapisa spremeni oba. */
+package si.turnirko.storitve;
+
+import java.awt.image.BufferedImage;
+import java.util.EnumMap;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.GlobalHistogramBinarizer;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.multi.qrcode.QRCodeMultiReader;
+
+import si.turnirko.pomozno.ObdelavaSlik;
+
+public final class KodaListka {
+
+    /* QR: »TK:48213«; natisnjeno: »T-48213«. Bralnik vrne natisnjeno, kakor jo
+       vidi (lahko s presledkom ali brez vezaja), zato je vzorec za branje ohlapen. */
+    private static final Pattern QR = Pattern.compile("^TK:(\\d{1,12})$");
+    private static final Pattern NATISNJENA = Pattern.compile("T\\s*[-–:]?\\s*(\\d{1,12})");
+
+    /* Telefonska fotografija ima tudi po pomanjsanju v brskalniku do 2000 px; QR
+       je na listku ~14 mm, torej dovolj velika tudi v manjsi razlicici, ki se
+       prebere hitreje in z manj sumom. */
+    private static final int MANJSA_STRANICA = 1200;
+
+    private KodaListka() {}
+
+    public static String vsebinaQr(long idTekme) {
+        return "TK:" + idTekme;
+    }
+
+    public static String natisnjena(long idTekme) {
+        return "T-" + idTekme;
+    }
+
+    /* Id tekme iz natisnjene stevilke, kot jo je prebral bralnik. */
+    public static Optional<Long> izNatisnjene(String zapis) {
+        if (zapis == null) {
+            return Optional.empty();
+        }
+        Matcher m = NATISNJENA.matcher(zapis.toUpperCase());
+        return m.find() ? Optional.of(Long.parseLong(m.group(1))) : Optional.empty();
+    }
+
+    /* Vse razlicne kode tekem, ki jih je mogoce prebrati s slike. Prazno, ce kode
+       ni; vec kot ena pomeni dva listka na eni fotografiji (organizator je
+       namenoma omejen na enega, ker manjse stevke pomenijo vec napak).
+
+       Poskusi se nekaj razlicic, ker telefonska fotografija ni skener: polna in
+       manjsa slika, dva nacina dvobarvne pretvorbe (HybridBinarizer za neenakomerno
+       svetlobo v dvorani, GlobalHistogram za mehko izostreno). */
+    public static List<Long> preberiQr(BufferedImage slika) {
+        return najdi(slika).stream().map(NajdenaKoda::idTekme).distinct().toList();
+    }
+
+    /* Prebrana koda tekme in sredisca njenih treh iskalnih vzorcev v koordinatah
+       fotografije: [spodaj levo, zgoraj levo, zgoraj desno] (vrstni red ZXing).
+       Bralnik po njih poravna listek (PoravnavaListka). */
+    public record NajdenaKoda(long idTekme, double[][] tocke) {}
+
+    public static List<NajdenaKoda> najdi(BufferedImage slika) {
+        Map<Long, NajdenaKoda> najdene = new java.util.LinkedHashMap<>();
+        BufferedImage manjsa = ObdelavaSlik.pomanjsaj(slika, MANJSA_STRANICA);
+        for (BufferedImage razlicica : List.of(slika, manjsa)) {
+            double merilo = (double) slika.getWidth() / razlicica.getWidth();
+            LuminanceSource vir = new BufferedImageLuminanceSource(razlicica);
+            for (BinaryBitmap bitna : List.of(
+                    new BinaryBitmap(new HybridBinarizer(vir)),
+                    new BinaryBitmap(new GlobalHistogramBinarizer(vir)))) {
+                for (Result zadetek : beri(bitna)) {
+                    Matcher m = QR.matcher(zadetek.getText().trim());
+                    if (!m.matches()) {
+                        continue;
+                    }
+                    long id = Long.parseLong(m.group(1));
+                    var tocke = zadetek.getResultPoints();
+                    double[][] t = tocke == null || tocke.length < 3 ? null : new double[][] {
+                            {tocke[0].getX() * merilo, tocke[0].getY() * merilo},
+                            {tocke[1].getX() * merilo, tocke[1].getY() * merilo},
+                            {tocke[2].getX() * merilo, tocke[2].getY() * merilo}};
+                    najdene.putIfAbsent(id, new NajdenaKoda(id, t));
+                }
+                if (!najdene.isEmpty()) {
+                    return List.copyOf(najdene.values());
+                }
+            }
+        }
+        return List.copyOf(najdene.values());
+    }
+
+    private static List<Result> beri(BinaryBitmap bitna) {
+        Map<DecodeHintType, Object> namigi = new EnumMap<>(DecodeHintType.class);
+        namigi.put(DecodeHintType.POSSIBLE_FORMATS, List.of(BarcodeFormat.QR_CODE));
+        namigi.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+        try {
+            return List.of(new QRCodeMultiReader().decodeMultiple(bitna, namigi));
+        } catch (NotFoundException e) {
+            return List.of();
+        } catch (RuntimeException e) {
+            // ZXing ob poskodovani kodi vcasih vrze tudi kaj drugega; koda je tedaj neberljiva
+            return List.of();
+        }
+    }
+}

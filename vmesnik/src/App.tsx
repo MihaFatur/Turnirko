@@ -35,6 +35,7 @@ import { NarocninaStran } from './strani/NarocninaStran'
 import { OrganizatorskiPregledStran } from './strani/OrganizatorskiPregledStran'
 import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStran'
 import { PomocStran } from './strani/PomocStran'
+import { BranjeListkovStran } from './strani/BranjeListkovStran'
 import { PomocPonudnik } from './pomoc/PomocKontekst'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
@@ -274,6 +275,15 @@ export function App() {
           element={
             <SamoUrejevalec>
               <PomocStran />
+            </SamoUrejevalec>
+          }
+        />
+        {/* Branje listkov s fotografije (V68); kdo sme, odloči strežnik. */}
+        <Route
+          path="/turnirji/:id/branje-listkov"
+          element={
+            <SamoUrejevalec>
+              <BranjeListkovStran />
             </SamoUrejevalec>
           }
         />

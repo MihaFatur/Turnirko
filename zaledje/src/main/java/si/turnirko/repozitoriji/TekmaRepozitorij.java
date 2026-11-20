@@ -203,6 +203,39 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             """)
     Optional<Tekma> najdiZVsem(Long id);
 
+    /* Vec tekem z vsem, kar potrebuje DTO (seznam branj listkov). */
+    @Query("""
+            SELECT DISTINCT t FROM Tekma t
+            JOIN FETCH t.dogodek d JOIN FETCH d.turnir
+            LEFT JOIN FETCH t.prijava1 p1 LEFT JOIN FETCH p1.igralec LEFT JOIN FETCH p1.klubObPrijavi
+            LEFT JOIN FETCH p1.igralec2 LEFT JOIN FETCH p1.klubObPrijavi2
+            LEFT JOIN FETCH p1.ekipa e1 LEFT JOIN FETCH e1.klub
+            LEFT JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.klubObPrijavi
+            LEFT JOIN FETCH p2.igralec2 LEFT JOIN FETCH p2.klubObPrijavi2
+            LEFT JOIN FETCH p2.ekipa e2 LEFT JOIN FETCH e2.klub
+            LEFT JOIN FETCH t.zmagovalec
+            WHERE t.id IN :idji
+            """)
+    List<Tekma> najdiZVsemPoIdjih(@Param("idji") Collection<Long> idji);
+
+    /* Posamicne tekme turnirja, ki so na vrsti in cakajo na izid (oba znana),
+       v dogodkih v teku: kandidati za listek, ki nima berljive kode. Ekipne tekme
+       odpadejo - njihov izid nastane iz zapisnika srecanja, ne iz listka. */
+    @Query("""
+            SELECT t FROM Tekma t
+            JOIN FETCH t.dogodek d JOIN FETCH d.turnir
+            JOIN FETCH t.prijava1 p1 LEFT JOIN FETCH p1.igralec LEFT JOIN FETCH p1.klubObPrijavi
+            LEFT JOIN FETCH p1.igralec2 LEFT JOIN FETCH p1.klubObPrijavi2
+            JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.klubObPrijavi
+            LEFT JOIN FETCH p2.igralec2 LEFT JOIN FETCH p2.klubObPrijavi2
+            WHERE d.turnir.id = :idTurnir
+              AND d.status = si.turnirko.modeli.StatusTekmovanja.V_TEKU
+              AND d.disciplina <> si.turnirko.modeli.Disciplina.EKIPNO
+              AND t.status IN (si.turnirko.modeli.StatusTekme.PRIPRAVLJENA,
+                               si.turnirko.modeli.StatusTekme.V_IGRI)
+            """)
+    List<Tekma> cakajoceNaListekZaTurnir(@Param("idTurnir") Long idTurnir);
+
     /* Tekme enega zreba sistema SV_REGIJA (brez nalaganja udelezencev). */
     List<Tekma> findByIdZreb(Long idZreb);
 

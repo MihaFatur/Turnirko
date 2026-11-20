@@ -167,6 +167,7 @@ Preden spreminjaš področje, preberi ustrezni dokument v `docs/pravila/`.
 | Vmesnik splošno: oblikovni sistem, barve, pisave, navigacija, telefon, filtri, izbira z vpisom, sklanjanje, preverba builda | `docs/pravila/vmesnik.md` |
 | Vmesnik turnirjev in lig: stopničke, udeleženci, zavihki, klik na tekmo, zapisnik, lestvica in glava lige | `docs/pravila/vmesnik-tekmovanja.md` |
 | Natisljivi listki tekem in skupin, žreb mreže za tisk, izpis rezultatov | `docs/pravila/tisk.md` |
+| Branje listkov s fotografije: oznake in QR na listku, mreža števk, učenje iz potrditev | `docs/pravila/branje-listkov.md` |
 | Pomoč za organizatorje: gumbi »?«, predal, /pomoc, vsebina navodil (posodobi jo ob vsaki spremembi funkcije organizatorja) | `docs/pravila/pomoc.md` |
 | Objava na splet: Docker, Umami, profil splet, predogled povezave, ikone, baza in vloge, HSTS, skrivnosti | `docs/pravila/objava.md` |
 

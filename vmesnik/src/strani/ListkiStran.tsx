@@ -137,6 +137,7 @@ export function ListkiStran() {
         faza: '',
         steviloNizov: dogodek.privzetoSteviloNizov,
         miza: null,
+        idTekme: null,
         stran1: { ime },
         stran2: { ime },
         prazno: true,
@@ -281,6 +282,7 @@ function podatkiListka(l: PripravljenListek, imeTurnirja: string | null, dogodek
     faza: l.faza,
     steviloNizov: l.tekma.steviloNizov,
     miza: l.tekma.miza,
+    idTekme: l.tekma.id,
     stran1: { ime: imeUdelezenca(l.tekma.udelezenec1) ?? '—' },
     stran2: { ime: imeUdelezenca(l.tekma.udelezenec2) ?? '—' },
   }

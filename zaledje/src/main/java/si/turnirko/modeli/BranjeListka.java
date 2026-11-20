@@ -1,0 +1,115 @@
+/* Eno branje sodniskega listka s fotografije (V68).
+
+   Branje je PREDLOG izida in njegova sled, ne izid: v tekmo se zapise sele,
+   ko ga organizator potrdi (BranjeListkovStoritev.potrdi -> TekmaStoritev).
+   Fotografija je v SlikaBranjaListka, da je seznam branj ne nalaga. */
+package si.turnirko.modeli;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "branje_listka")
+public class BranjeListka {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_turnir", nullable = false)
+    private Turnir turnir;
+
+    /* Prepoznana (ali izbrana) tekma; prazna, dokler je ni. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_tekma")
+    private Tekma tekma;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stanje", nullable = false)
+    private StanjeBranja stanje = StanjeBranja.V_VRSTI;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "prepoznava")
+    private PrepoznavaTekme prepoznava;
+
+    /* JSON bralnika (PrebranListek), surovo. */
+    @Column(name = "prebrano")
+    private String prebrano;
+
+    /* JSON potrjenega izida (VnosRezultata). */
+    @Column(name = "potrjeno")
+    private String potrjeno;
+
+    /* Ali je organizator pred potrditvijo kaj spremenil - merilo natancnosti. */
+    @Column(name = "popravljeno")
+    private Boolean popravljeno;
+
+    @Column(name = "napaka")
+    private String napaka;
+
+    @Column(name = "model")
+    private String model;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_nalozil")
+    private Uporabnik nalozil;
+
+    @Column(name = "ustvarjeno_ob", nullable = false)
+    private LocalDateTime ustvarjenoOb;
+
+    @Column(name = "prebrano_ob")
+    private LocalDateTime prebranoOb;
+
+    @Column(name = "zakljuceno_ob")
+    private LocalDateTime zakljucenoOb;
+
+    @Column(name = "slika_izbrisana_ob")
+    private LocalDateTime slikaIzbrisanaOb;
+
+    protected BranjeListka() {}
+
+    public BranjeListka(Turnir turnir, Uporabnik nalozil, LocalDateTime ustvarjenoOb) {
+        this.turnir = turnir;
+        this.nalozil = nalozil;
+        this.ustvarjenoOb = ustvarjenoOb;
+    }
+
+    public Long getId() { return id; }
+    public Turnir getTurnir() { return turnir; }
+    public Tekma getTekma() { return tekma; }
+    public void setTekma(Tekma tekma) { this.tekma = tekma; }
+    public StanjeBranja getStanje() { return stanje; }
+    public void setStanje(StanjeBranja stanje) { this.stanje = stanje; }
+    public PrepoznavaTekme getPrepoznava() { return prepoznava; }
+    public void setPrepoznava(PrepoznavaTekme prepoznava) { this.prepoznava = prepoznava; }
+    public String getPrebrano() { return prebrano; }
+    public void setPrebrano(String prebrano) { this.prebrano = prebrano; }
+    public String getPotrjeno() { return potrjeno; }
+    public void setPotrjeno(String potrjeno) { this.potrjeno = potrjeno; }
+    public Boolean getPopravljeno() { return popravljeno; }
+    public void setPopravljeno(Boolean popravljeno) { this.popravljeno = popravljeno; }
+    public String getNapaka() { return napaka; }
+    public void setNapaka(String napaka) { this.napaka = napaka; }
+    public String getModel() { return model; }
+    public void setModel(String model) { this.model = model; }
+    public Uporabnik getNalozil() { return nalozil; }
+    public LocalDateTime getUstvarjenoOb() { return ustvarjenoOb; }
+    public LocalDateTime getPrebranoOb() { return prebranoOb; }
+    public void setPrebranoOb(LocalDateTime prebranoOb) { this.prebranoOb = prebranoOb; }
+    public LocalDateTime getZakljucenoOb() { return zakljucenoOb; }
+    public void setZakljucenoOb(LocalDateTime zakljucenoOb) { this.zakljucenoOb = zakljucenoOb; }
+    public LocalDateTime getSlikaIzbrisanaOb() { return slikaIzbrisanaOb; }
+    public void setSlikaIzbrisanaOb(LocalDateTime slikaIzbrisanaOb) { this.slikaIzbrisanaOb = slikaIzbrisanaOb; }
+}

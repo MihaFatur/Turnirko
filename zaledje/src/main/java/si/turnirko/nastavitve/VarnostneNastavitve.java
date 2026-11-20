@@ -194,6 +194,10 @@ public class VarnostneNastavitve {
                         // nastavitev obvestil po kolu je osebna kot izbor lig (pred
                         // splosnim "GET je javen")
                         .requestMatchers("/api/v1/obvestila").authenticated()
+                        // branje listkov (V68): fotografije in predlogi izidov samo za prijavljene
+                        // (lastnika turnirja in admina preveri storitev), tudi GET
+                        .requestMatchers("/api/v1/branje-listkov/**", "/api/v1/branja-listkov/**",
+                                "/api/v1/turnirji/*/branja-listkov").authenticated()
                         // podpora klubu (V61): izbira kluba in popust organizatorja sta osebna
                         .requestMatchers("/api/v1/podpora-kluba", "/api/v1/podpora-kluba/**").authenticated()
                         // potisna obvestila (V60): vpis naprave, izpis in preizkus so osebni (paket

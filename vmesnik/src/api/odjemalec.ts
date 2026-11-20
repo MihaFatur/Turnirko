@@ -53,7 +53,9 @@ export function opisNapake(napaka: unknown): string {
   return 'Prišlo je do nepričakovane napake.'
 }
 
-async function zahteva<T>(pot: string, metoda: string, telo?: unknown): Promise<T> {
+/* datoteka: odgovor je datoteka (fotografija listka), ne JSON. Slika za <img>
+   ne more iti po naslovu, ker brskalnik glave Authorization ne pošlje. */
+async function zahteva<T>(pot: string, metoda: string, telo?: unknown, datoteka = false): Promise<T> {
   /* Obrazec z datoteko (nalaganje slike) gre kot multipart: mejo med deli
      zapiše brskalnik sam v Content-Type, zato glave ne smemo postaviti. */
   const obrazec = telo instanceof FormData
@@ -87,7 +89,7 @@ async function zahteva<T>(pot: string, metoda: string, telo?: unknown): Promise<
          Zanke ni - ponovitev poverilnic ne nosi, zato sem ne pride več - in
          strežnik je ne šteje kot neuspelo prijavo. Pisanja ne ponavljamo:
          brez prijave ga strežnik zavrne. */
-      if (metoda === 'GET' && poverilnice === null) return zahteva<T>(pot, metoda)
+      if (metoda === 'GET' && poverilnice === null) return zahteva<T>(pot, metoda, undefined, datoteka)
     }
     let naslov = 'Napaka'
     let podrobnost = `Strežnik je vrnil napako ${odgovor.status}.`
@@ -103,11 +105,13 @@ async function zahteva<T>(pot: string, metoda: string, telo?: unknown): Promise<
 
   /* 204 No Content (npr. arhiviranje) nima telesa. */
   if (odgovor.status === 204) return undefined as T
+  if (datoteka) return odgovor.blob() as Promise<T>
   return odgovor.json() as Promise<T>
 }
 
 export const api = {
   vrni: <T>(pot: string) => zahteva<T>(pot, 'GET'),
+  vrniDatoteko: (pot: string) => zahteva<Blob>(pot, 'GET', undefined, true),
   objavi: <T>(pot: string, telo?: unknown) => zahteva<T>(pot, 'POST', telo),
   posodobi: <T>(pot: string, telo: unknown) => zahteva<T>(pot, 'PUT', telo),
   /* Večina brisanj vrne 204 brez telesa; umik preklopa naročnine vrne
