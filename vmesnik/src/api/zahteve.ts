@@ -9,6 +9,9 @@ import type {
   PotrditevBranjaVnos,
   StanjeBranjaListkovDto,
   StanjeNaboraDto,
+  SeznamVadnicDto,
+  VadnicaDto,
+  VadnicaPodrobnoDto,
   IzlocilniPredlogDto,
   RocniClanVnos,
   SkupinePredlogDto,
@@ -334,6 +337,20 @@ export const meritevBranjaApi = {
   nabor: () => api.vrni<StanjeNaboraDto>('/branje-listkov/nabor'),
   izmeriNabor: () => api.objavi<StanjeNaboraDto>('/branje-listkov/nabor/meritev'),
   zipNabora: () => api.vrniDatoteko('/branje-listkov/nabor/zip'),
+}
+
+/* Vadnica števk (F3, samo admin). */
+export const vadnicaApi = {
+  seznam: () => api.vrni<SeznamVadnicDto>('/vadnice'),
+  nalozi: (jpeg: Blob) => {
+    const obrazec = new FormData()
+    obrazec.append('slika', jpeg, 'vadnica.jpg')
+    return api.objavi<VadnicaDto>('/vadnice', obrazec)
+  },
+  podrobno: (id: number) => api.vrni<VadnicaPodrobnoDto>(`/vadnice/${id}`),
+  slika: (id: number) => api.vrniDatoteko(`/vadnice/${id}/slika`),
+  odobri: (id: number, izlocene: number[]) => api.objavi<VadnicaDto>(`/vadnice/${id}/odobri`, { izlocene }),
+  izbrisi: (id: number) => api.izbrisi(`/vadnice/${id}`),
 }
 
 export const igralciApi = {

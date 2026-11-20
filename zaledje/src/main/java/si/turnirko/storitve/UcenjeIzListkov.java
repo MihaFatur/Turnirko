@@ -65,11 +65,13 @@ public class UcenjeIzListkov {
 
     /* Preizkusni del (petina): stevke istega listka (isti pisec, ista luc) so
        vedno v istem delu - sicer bi mreza pisavo, na kateri se uci, videla tudi
-       pri preizkusu in bi bila natancnost videti boljsa, kot je. Stevka brez
-       listka (vadnica, preizkus) se deli po svojem id. Razdelitev je stalna:
-       vsak peti listek po id, tudi med listki istega turnirja. */
+       pri preizkusu in bi bila natancnost videti boljsa, kot je. Enako list
+       vadnice: en list je en pisec. Stevka brez listka in lista (izbrisano
+       branje) se deli po svojem id. Razdelitev je stalna: vsak peti listek
+       (list) po id, tudi med listki istega turnirja. */
     static boolean jePreizkusna(StevkaListka s) {
-        long kljuc = s.getIdBranje() != null ? s.getIdBranje() : s.getId();
+        long kljuc = s.getIdBranje() != null ? s.getIdBranje()
+                : s.getIdVadnica() != null ? s.getIdVadnica() : s.getId();
         return Math.floorMod(kljuc, 5L) == 0;
     }
 
@@ -196,29 +198,44 @@ public class UcenjeIzListkov {
     /* Stevke celice dobijo oznake, ce je razrez z ustreznim stevilom stevk med razlagami. */
     private static void dodaj(List<StevkaListka> zapis, Long idBranja, RazrezCelice.Vsebina celica, int vrednost,
                               MrezaStevk mreza, LocalDateTime zdaj) {
-        if (celica.prazna()) {
+        List<float[]> vhodi = stevkeCelice(celica, vrednost);
+        if (vhodi == null) {
             return;
         }
         String stevke = String.valueOf(vrednost);
+        for (int i = 0; i < vhodi.size(); i++) {
+            int prava = stevke.charAt(i) - '0';
+            zapis.add(new StevkaListka(idBranja, UcenjeStevk.vBajte(vhodi.get(i)), prava,
+                    mrezaPrav(mreza, vhodi.get(i), prava), zdaj));
+        }
+    }
+
+    /* Vhodi mreze za stevke znane vrednosti v celici, po vrsti od leve: razlaga
+       razreza z ustreznim stevilom stevk (najverjetnejsa taka). null, ce je celica
+       prazna ali razrez ne da toliko stevk (npr. »11« v eni potezi brez reza).
+       Isto pravilo velja za vadnico (BranjeVadnice). */
+    static List<float[]> stevkeCelice(RazrezCelice.Vsebina celica, int vrednost) {
+        if (celica.prazna()) {
+            return null;
+        }
+        int dolzina = String.valueOf(vrednost).length();
         RazrezCelice.Razlaga ustrezna = celica.razlage().stream()
-                .filter(r -> r.stevke().size() == stevke.length())
+                .filter(r -> r.stevke().size() == dolzina)
                 .max(java.util.Comparator.comparingDouble(RazrezCelice.Razlaga::verjetnost))
                 .orElse(null);
-        if (ustrezna == null) {
-            return;
-        }
-        for (int i = 0; i < stevke.length(); i++) {
-            int prava = stevke.charAt(i) - '0';
-            float[] vhod = ustrezna.stevke().get(i).vhod();
-            float[] p = mreza.verjetnosti(vhod, 1);
-            int najboljsa = 0;
-            for (int o = 1; o < p.length; o++) {
-                if (p[o] > p[najboljsa]) {
-                    najboljsa = o;
-                }
+        return ustrezna == null ? null : ustrezna.stevke().stream().map(RazrezCelice.Stevka::vhod).toList();
+    }
+
+    /* Ali mreza stevko ze zdaj prebere prav (najverjetnejsa vrednost). */
+    static boolean mrezaPrav(MrezaStevk mreza, float[] vhod, int prava) {
+        float[] p = mreza.verjetnosti(vhod, 1);
+        int najboljsa = 0;
+        for (int o = 1; o < p.length; o++) {
+            if (p[o] > p[najboljsa]) {
+                najboljsa = o;
             }
-            zapis.add(new StevkaListka(idBranja, UcenjeStevk.vBajte(vhod), prava, najboljsa == prava, zdaj));
         }
+        return najboljsa == prava;
     }
 
     // ---------- Nocno ucenje ----------
@@ -240,7 +257,7 @@ public class UcenjeIzListkov {
         }
         LocalDateTime zadnje = mreze.findFirstByOrderByIdDesc().map(MrezaStevkZapis::getUstvarjenoOb)
                 .orElse(LocalDateTime.of(2000, 1, 1, 0, 0));
-        if (stevke.countByUstvarjenoObAfter(zadnje) < NAJMANJ_NOVIH) {
+        if (stevke.countByOdobrenoTrueAndUstvarjenoObAfter(zadnje) < NAJMANJ_NOVIH) {
             return null;
         }
         List<StevkaListka> vse = transakcija.execute(s -> stevke.najnovejse(PageRequest.of(0, NAJVEC_STEVK)));

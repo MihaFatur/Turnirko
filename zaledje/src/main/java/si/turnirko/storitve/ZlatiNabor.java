@@ -118,11 +118,15 @@ public class ZlatiNabor {
 
     /* Poravnan listek v sivinah, ohranjene samo celice (papir v njih belo). */
     static byte[] slikaCelic(LokalniBralnikListka.Poravnan poravnan) {
-        Temnost t = poravnan.slika();
+        return slikaCelic(poravnan.slika(), vse(poravnan.tabela()));
+    }
+
+    /* Isto za poljubne celice (tudi okenca lista vadnice, VadnicaStoritev). */
+    static byte[] slikaCelic(Temnost t, List<CeliceListka.Celica> celice) {
         BufferedImage slika = new BufferedImage(t.sirina, t.visina, BufferedImage.TYPE_BYTE_GRAY);
         byte[] piksli = ((DataBufferByte) slika.getRaster().getDataBuffer()).getData();
         Arrays.fill(piksli, (byte) 255);
-        for (CeliceListka.Celica c : vse(poravnan.tabela())) {
+        for (CeliceListka.Celica c : celice) {
             float papir = RazrezCelice.papir(t, c);
             if (Float.isNaN(papir)) {
                 continue;     // premajhno za razrez: tudi bralnik jo vidi prazno

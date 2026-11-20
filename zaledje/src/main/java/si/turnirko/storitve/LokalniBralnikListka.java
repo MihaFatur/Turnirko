@@ -118,6 +118,12 @@ public class LokalniBralnikListka implements BralnikListka {
         try {
             poravnan = PoravnavaListka.poravnaj(slika, qr);
         } catch (PoravnavaListka.NapakaPoravnave e) {
+            // list vadnice ima drugacno postavitev; pove se, kam sodi (samo ob neuspehu,
+            // da obicajno branje ne bere QR dvakrat)
+            if (kode.isEmpty() && !KodaListka.najdiVadnico(slika).isEmpty()) {
+                throw new NapakaBranjaListka("To je list vadnice števk, ne listek tekme. "
+                        + "Fotografiraj ga na strani Vadnica števk.");
+            }
             throw new NapakaBranjaListka(e.getMessage());
         }
         CeliceListka.Tabela tabela = CeliceListka.najdi(poravnan.slika());

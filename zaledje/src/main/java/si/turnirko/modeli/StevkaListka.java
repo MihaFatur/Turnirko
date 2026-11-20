@@ -1,6 +1,10 @@
-/* Stevka potrjenega listka (V68): 28 x 28 sivin in vrednost, ki jo je potrdil
-   organizator. Brez imen in brez fotografije - samo okence s stevilko. Na teh
-   se mreza stevk nocno dotrenira (UcenjeIzListkov). */
+/* Stevka za ucenje (V68): 28 x 28 sivin in prava vrednost. Brez imen in brez
+   fotografije - samo okence s stevilko. Na teh se mreza stevk nocno dotrenira
+   (UcenjeIzListkov).
+
+   Vir je potrjen listek (idBranje; vrednost je potrdil organizator) ali list
+   vadnice stevk (idVadnica, V70; vrednost je vrstica lista, okence je celica).
+   Stevke vadnice gredo v ucenje sele po odobritvi admina (odobreno). */
 package si.turnirko.modeli;
 
 import java.time.LocalDateTime;
@@ -23,6 +27,13 @@ public class StevkaListka {
     @Column(name = "id_branje")
     private Long idBranje;
 
+    @Column(name = "id_vadnica")
+    private Long idVadnica;
+
+    /* Okence lista vadnice (vrstica * 10 + stolpec); pri listku null. */
+    @Column(name = "celica")
+    private Short celica;
+
     @Column(name = "slika", nullable = false, updatable = false)
     private byte[] slika;
 
@@ -31,6 +42,9 @@ public class StevkaListka {
 
     @Column(name = "mreza_prav", nullable = false)
     private boolean mrezaPrav;
+
+    @Column(name = "odobreno", nullable = false)
+    private boolean odobreno = true;
 
     @Column(name = "ustvarjeno_ob", nullable = false)
     private LocalDateTime ustvarjenoOb;
@@ -45,10 +59,23 @@ public class StevkaListka {
         this.ustvarjenoOb = ustvarjenoOb;
     }
 
+    /* Stevka lista vadnice: do odobritve ni v ucenju. */
+    public static StevkaListka zVadnice(Long idVadnica, int celica, byte[] slika, int vrednost, boolean mrezaPrav,
+                                        LocalDateTime ustvarjenoOb) {
+        StevkaListka s = new StevkaListka(null, slika, vrednost, mrezaPrav, ustvarjenoOb);
+        s.idVadnica = idVadnica;
+        s.celica = (short) celica;
+        s.odobreno = false;
+        return s;
+    }
+
     public Long getId() { return id; }
     public Long getIdBranje() { return idBranje; }
+    public Long getIdVadnica() { return idVadnica; }
+    public Short getCelica() { return celica; }
     public byte[] getSlika() { return slika; }
     public int getVrednost() { return vrednost; }
     public boolean isMrezaPrav() { return mrezaPrav; }
+    public boolean isOdobreno() { return odobreno; }
     public LocalDateTime getUstvarjenoOb() { return ustvarjenoOb; }
 }

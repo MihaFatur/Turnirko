@@ -32279,11 +32279,18 @@ html.uvod-tece {
 /* Povezava na meritev branja (samo admin) pod merilom strani branja. */
 .branje__meritev {
   align-self: start;
-  margin-top: var(--r1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1) var(--r3);
+  margin: var(--r1) 0 0;
   font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--barva-glavna-tekst);
+}
+
+.branje__meritev a {
+  color: inherit;
 }
 
 /* ---------- Meritev branja listkov (F1, samo admin; docs/NACRT-BRANJE-LISTKOV.md) ----------
@@ -32463,4 +32470,342 @@ html.uvod-tece {
   display: flex;
   flex-wrap: wrap;
   gap: var(--r1);
+}
+
+/* ---------- Vadnica stevk (nacrt F3) ----------
+   List A4 pokoncno, natisnjen brez robov (@page listki): oznake, QR in okenca so
+   postavljeni absolutno v mm iz istih stevil kot v zaledju (GeometrijaVadnice,
+   pomozno/vadnica.ts). Crno-bel ne glede na temo, kot sodniski listek. */
+
+.listki-stran--vadnica {
+  max-width: none;
+  page: listki;
+}
+
+.vadnica-tisk__stevilo {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.vadnica-tisk__stevilo input {
+  width: 5.5em;
+}
+
+.vadnica-list {
+  position: relative;
+  box-sizing: border-box;
+  flex: none;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  outline: 1px solid var(--barva-crnilo-3);
+  font-family: var(--pisava-telo);
+}
+
+.vadnica-list__kot {
+  position: absolute;
+  display: block;
+  width: 6mm;
+  height: 6mm;
+  fill: #000;
+}
+
+.vadnica-list__qr {
+  position: absolute;
+  display: block;
+  fill: #000;
+}
+
+.vadnica-list__oznaka {
+  position: absolute;
+  text-align: center;
+  font: 600 8pt / 1 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Glava med oznako zgoraj levo in kodo QR (mirna cona kode: 4 mm). */
+.vadnica-list__glava {
+  position: absolute;
+  left: 24mm;
+  top: 9mm;
+  width: 144mm;
+}
+
+.vadnica-list__znamka {
+  display: flex;
+  align-items: center;
+  gap: 1.6mm;
+  font: 800 11pt / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.vadnica-list .logo-znak__poteza,
+.vadnica-list .logo-znak__poteza--glavna {
+  fill: #000;
+}
+
+.vadnica-list .logo-znak__poteza--izid {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.vadnica-list__naslov {
+  margin: 2.5mm 0 1.5mm;
+  font: 800 17pt / 1.05 var(--pisava-display);
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.vadnica-list__navodilo {
+  margin: 0;
+  font: 400 9pt / 1.35 var(--pisava-telo);
+}
+
+/* Vzorec: stevilka, ki jo oseba prepise, levo od okenc (ne v okencu). */
+.vadnica-list__vzorec {
+  position: absolute;
+  left: 20mm;
+  width: 14mm;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font: 800 15pt / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+/* Okenca: ena risba SVG cez cel list (enote = mm), crta 0,45 mm (na listku
+   0,3): na fotografiji A4 je manj px na mm in tanjsa crta se raztrga v pike
+   (CeliceVadnice). */
+.vadnica-list__okenca {
+  position: absolute;
+  inset: 0;
+  width: 210mm;
+  height: 297mm;
+  fill: none;
+  stroke: #000;
+  stroke-width: 0.45;
+}
+
+.vadnica-list__noga {
+  position: absolute;
+  left: 24mm;
+  top: 270mm;
+  width: 162mm;
+  font: 500 7pt / 1.3 var(--pisava-mono);
+  letter-spacing: 0.04em;
+}
+
+/* Stran Vadnica stevk (admin): tisk, fotografiranje, pregled. */
+.vadnica {
+  display: grid;
+  gap: var(--r4);
+}
+
+.vadnica__korak {
+  display: grid;
+  gap: var(--r2);
+  padding-top: var(--r3);
+  border-top: 2px solid var(--barva-crnilo);
+}
+
+.vadnica__korak h2 {
+  margin: 0;
+  font: 800 var(--tip-h3) / 1.15 var(--pisava-display);
+  letter-spacing: -0.01em;
+}
+
+.vadnica__korak p {
+  margin: 0;
+  max-width: 64ch;
+}
+
+.vadnica__vrsta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--r2);
+}
+
+.vadnica__polje {
+  display: grid;
+  gap: var(--r1);
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.vadnica__polje input {
+  width: 7em;
+}
+
+.vadnica__datoteka {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vadnica__fotografiraj {
+  position: relative;
+}
+
+.vadnica__sporocila {
+  display: grid;
+  gap: var(--r1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vadnica__sporocilo {
+  padding: var(--r1) var(--r2);
+  border-left: 3px solid var(--barva-crnilo-3);
+}
+
+.vadnica__sporocilo--napaka {
+  border-left-color: var(--barva-negativna);
+  color: var(--barva-negativna);
+}
+
+.vadnica__sporocilo--uspeh {
+  border-left-color: var(--barva-poudarek);
+}
+
+.vadnica__listi {
+  width: 100%;
+}
+
+.vadnica__listi td,
+.vadnica__listi th {
+  white-space: nowrap;
+}
+
+.vadnica__stevilo {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Pregled lista: vrstica = vzorec + stevke po okencih. */
+.vadnica-pregled {
+  display: grid;
+  gap: var(--r3);
+}
+
+.vadnica-pregled__povzetek {
+  margin: 0;
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.vadnica-pregled__vrstice {
+  display: grid;
+  gap: var(--r2);
+}
+
+.vadnica-pregled__vrstica {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr);
+  align-items: start;
+  gap: var(--r2);
+  padding-bottom: var(--r2);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.vadnica-pregled__vzorec {
+  font: 800 var(--tip-h3) / 1 var(--pisava-display);
+  text-align: right;
+  padding-top: 6px;
+}
+
+.vadnica-pregled__okenca {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vadnica-pregled__okence {
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--barva-crta);
+}
+
+.vadnica-pregled__stevka {
+  position: relative;
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid transparent;
+  background: #fff;
+  cursor: pointer;
+}
+
+.vadnica-pregled__stevka canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* Mreza jo zdaj bere drugace: najprej jo preveri. */
+.vadnica-pregled__stevka--drugace {
+  border-color: var(--barva-negativna-srednje);
+}
+
+.vadnica-pregled__stevka--izlocena canvas {
+  opacity: 0.25;
+}
+
+.vadnica-pregled__stevka--izlocena::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(45deg, transparent 46%, var(--barva-negativna) 46% 54%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, var(--barva-negativna) 46% 54%, transparent 54%);
+}
+
+.vadnica-pregled__stevka:focus-visible {
+  outline: 2px solid var(--barva-crnilo);
+  outline-offset: 1px;
+}
+
+.vadnica-pregled__dejanja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r2);
+}
+
+.vadnica-pregled__slika {
+  display: block;
+  width: 100%;
+  max-width: 210mm;
+  border: 1px solid var(--barva-crta);
+  background: #fff;
+}
+
+@media print {
+  .vadnica-list {
+    zoom: 1 !important;
+    outline: none;
+    break-inside: avoid;
+  }
+
+  .vadnica-list + .vadnica-list {
+    break-before: page;
+  }
 }

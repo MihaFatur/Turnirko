@@ -112,9 +112,9 @@ export function trajanje(ms: number | null): string {
    nima metapodatkov (kraj, naprava). */
 export const NAJVEC_STRANICA = 2000
 
-export async function pomanjsajFotografijo(datoteka: Blob): Promise<Blob> {
+export async function pomanjsajFotografijo(datoteka: Blob, najvecStranica = NAJVEC_STRANICA): Promise<Blob> {
   const slika = await createImageBitmap(datoteka)
-  const k = Math.min(1, NAJVEC_STRANICA / Math.max(slika.width, slika.height))
+  const k = Math.min(1, najvecStranica / Math.max(slika.width, slika.height))
   const platno = document.createElement('canvas')
   platno.width = Math.round(slika.width * k)
   platno.height = Math.round(slika.height * k)

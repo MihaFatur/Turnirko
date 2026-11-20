@@ -243,7 +243,7 @@ class SimuliraneFotografijeTest {
     }
 
     /* Narise stevko (obrezano na crnilo) z visino »visina«; vrne njeno sirino. */
-    private static double narisiStevko(BufferedImage slika, byte[] mnist, double x, double y, double visina) {
+    static double narisiStevko(BufferedImage slika, byte[] mnist, double x, double y, double visina) {
         int minX = 28;
         int maxX = -1;
         int minY = 28;
@@ -289,12 +289,17 @@ class SimuliraneFotografijeTest {
     /* Fotografija telefona: listek v platnu 2000 x 1500 na mizi, zasukan, s
        perspektivo, svetlobnim prelivom, sumom (po zelji zamegljen) in JPEG 85 %. */
     static byte[] fotografija(BufferedImage listek, Random r, Pogoji pogoji) throws IOException {
-        int W = 2000;
-        int H = 1500;
+        return fotografija(listek, r, pogoji, 2000, 1500, 950, 300);
+    }
+
+    /* Platno W x H; sirina lista na sliki je sirinaOd + do razpon px (list A4
+       vadnice je pokoncen: VadnicaTest). */
+    static byte[] fotografija(BufferedImage listek, Random r, Pogoji pogoji, int W, int H,
+                              double sirinaOd, double razpon) throws IOException {
         double w = listek.getWidth();
         double h = listek.getHeight();
         // organizator posname cel listek: zasede vecino slike, a ne cez rob
-        double sirina = 950 + r.nextDouble() * 300;
+        double sirina = sirinaOd + r.nextDouble() * razpon;
         double visina = sirina * h / w;
         double kot = Math.toRadians((r.nextDouble() * 2 - 1) * pogoji.kot());
         double cx = W / 2.0 + (r.nextDouble() - 0.5) * 150;

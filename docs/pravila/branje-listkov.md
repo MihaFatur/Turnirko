@@ -161,6 +161,62 @@
   neposredno v odgovor (ne asinhrono), pravica se preveri pred prvim bajtom; zadnja
   datoteka `konec.txt` s številom listkov pove, da prenos ni bil prekinjen.
 
+## Vadnica števk (F3, 20. 11. 2026, V70)
+
+Hladen začetek učenja: označene števke slovenske pisave, preden pride dovolj pravih
+listkov. Vse je **samo za admina** (`/api/v1/vadnice/**` v `VarnostneNastavitve`,
+storitev preveri še enkrat; strani `/vadnica`, `/vadnica/tisk`, `/vadnica/:id`).
+
+- **List** (A4 pokončno, `ListVadnice.tsx` ↔ `GeometrijaVadnice`): oznake 6 × 6 mm
+  (središča 15/15, 15/282, 195/282 mm), QR 22 mm na (173, 9) z vsebino
+  `TKV:<različica>:<id lista>`, 14 vrstic (0–9, 10–13) po 10 okenc 14 × 10 mm (x 38 +
+  16·j, y 46 + 16·i). Okenca so ena risba SVG v mm s črto 0,45 mm: obroba CSS bi se
+  pri tisku zaokrožila na 0,26 mm, tanka črta pa se na fotografiji raztrga. Polja za
+  ime ni. Ob spremembi lista spremeni oboje in povečaj `RAZLICICA` (vmesnik in
+  zaledje); list stare različice bralnik zavrne. Natis: `@page listki` (A4, rob 0),
+  preverjeno v PDF na 0,1 mm.
+- **Id lista izbere brskalnik** ob tisku (`noviIdjiListov`: deset mest, kripto
+  naključno; koda ostane različica 1 z 21 moduli, na katero računa postavitev). List z
+  enega okolja (test) zato velja tudi na drugem (produkcija); strežnik zapis lista
+  ustvari šele ob prvi fotografiji. »Nove kode« da nove id-je, že natisnjeni ostanejo
+  veljavni. Listov se ne fotokopira (en list = en pisec).
+- **Branje** (`BranjeVadnice`, `POST /api/v1/vadnice`): fotografija do 3200 px
+  (vmesnik pomanjša; ~11 px/mm), dekodiranje in branje pod isto mejo hkratnih
+  dekodiranj kot listki (`BranjeListkovStoritev.podDekodiranjem`). Koda QR je obvezna
+  (brez nje lista ni mogoče pripisati piscu). Poravnava je ista kot pri listku z drugo
+  `Postavitev` (`najvecOdmikQr` 40 mm namesto 15). Okenca (`CeliceVadnice`): vsak rob
+  je črta, najbližja pričakovani legi v pasu ±12 px (sosednje okence je 20 px stran),
+  pokritost ≥ 35 % srednjih treh petin z 1 px tolerance; črta, zlita s števko (širša
+  od 10 px), se odreže le v debelini črte, sicer bi »1« ob levem robu izginila in iz
+  »10« bi nastala razpolovljena ničla (napaka, ujeta v simulaciji). Vrnjena celica je
+  notranjost minus `RazrezCelice.ODMIK`, zato razrez začne takoj za črto. Vrednost ni
+  prebrana, ampak je vrstica; števke dobijo oznake po istem pravilu kot potrjen listek
+  (`UcenjeIzListkov.stevkeCelice`): dvomestno število mora razrez dati kot dve števki,
+  sicer se okence preskoči. Prazen list (0 števk) → 400. Listek tekme na strani vadnice
+  in list vadnice na strani branja dobita razlago, kam sodita.
+- **Hramba**: tabela `vadnica` (id iz QR, PNG poravnanega lista s samimi okenci kot pri
+  zlatem naboru, ~0,4 MB, števci) in števke v `stevka_listka` (`id_vadnica`, `celica`,
+  `odobreno = false`; CHECK: števka je z listka ali z lista, ne obojega). Fotografija se
+  ne hrani. Nova fotografija istega **neodobrenega** lista zamenja prejšnjo (števke se
+  ne podvojijo); odobren list se znova ne prebere (409, najprej ga izbriši).
+- **Pregled in odobritev** (`/vadnica/:id`): števke po vrsticah, obrobljene tiste, ki
+  jih mreža bere drugače; klik izloči. `POST /api/v1/vadnice/{id}/odobri {izlocene}`
+  (največ 400 id-jev) izbriše samo izločene števke TEGA lista (poizvedba je omejena na
+  list), ostalim nastavi `odobreno` in čas na čas odobritve, da štejejo kot nove za
+  nočno učenje; odobritev je pogojna (`odobrena = false`), druga hkratna dobi 409. Vse
+  izločene → 409 (list se izbriše). Izbris lista izbriše njegove števke (že naučena
+  mreža ostane).
+- **Učenje**: `najnovejse` in štetje novih števk vzameta samo `odobreno = true`
+  (zastrupitev: neodobrena števka nikoli ne gre v učenje). Preizkusni del se deli po
+  listu (`jePreizkusna`: id branja, sicer id lista, sicer id števke), en list je ves
+  učni ali ves preizkusni. Hramba 200.000 števk velja tudi za vadnico (števec
+  `vadnica.stevk` se ob tem ne popravi).
+- **Preverjeno**: `VadnicaTest` (posnetek lista iz brezglavega Chroma
+  `resources/branje/vadnica-list.png` + števke MNIST, telefon 2400 × 3200): običajne
+  fotografije 180 števk iz 140 okenc, mreža prav 97–99 %; zahtevne (zasuk do 20°,
+  perspektiva, zamegljenost) prav tako vsa okenca; vsako okence najdeno ≤ 1 mm od
+  natisnjenega roba. **Na pravi pisavi in pravem tisku še ni preverjeno.**
+
 ## Dostop, hramba, merilo
 
 - Lastnik turnirja ali admin; dokler je `turnirko.branje-listkov.samo-admin` (privzeto

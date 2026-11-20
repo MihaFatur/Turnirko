@@ -42,6 +42,8 @@ public final class KodaListka {
        vidi (lahko s presledkom ali brez vezaja), zato je vzorec za branje ohlapen. */
     private static final Pattern QR = Pattern.compile("^TK:(\\d{1,12})$");
     private static final Pattern NATISNJENA = Pattern.compile("T\\s*[-–:]?\\s*(\\d{1,12})");
+    /* List vadnice stevk: »TKV:<razlicica postavitve>:<id lista>« (vadnica.ts v vmesniku). */
+    private static final Pattern QR_VADNICE = Pattern.compile("^TKV:(\\d{1,3}):(\\d{1,12})$");
 
     /* Telefonska fotografija ima tudi po pomanjsanju v brskalniku do 2000 px; QR
        je na listku ~14 mm, torej dovolj velika tudi v manjsi razlicici, ki se
@@ -83,9 +85,35 @@ public final class KodaListka {
        Bralnik po njih poravna listek (PoravnavaListka). */
     public record NajdenaKoda(long idTekme, double[][] tocke) {}
 
+    /* Prebrana koda lista vadnice stevk (razlicica postavitve, id lista) in
+       sredisca iskalnih vzorcev kot pri NajdenaKoda. */
+    public record KodaVadnice(int razlicica, long idLista, double[][] tocke) {}
+
     public static List<NajdenaKoda> najdi(BufferedImage slika) {
-        Map<Long, NajdenaKoda> najdene = new java.util.LinkedHashMap<>();
-        BufferedImage manjsa = ObdelavaSlik.pomanjsaj(slika, MANJSA_STRANICA);
+        Map<Long, NajdenaKoda> poId = new java.util.LinkedHashMap<>();
+        for (Zadetek z : najdi(slika, QR, MANJSA_STRANICA)) {
+            long id = Long.parseLong(z.skupine().group(1));
+            poId.putIfAbsent(id, new NajdenaKoda(id, z.tocke()));
+        }
+        return List.copyOf(poId.values());
+    }
+
+    /* Kode vadnice na fotografiji. List A4 je vecji od listka, zato je tudi
+       manjsa razlicica slike vecja (QR ostane dovolj velika). */
+    public static List<KodaVadnice> najdiVadnico(BufferedImage slika) {
+        return najdi(slika, QR_VADNICE, 2 * MANJSA_STRANICA).stream()
+                .map(z -> new KodaVadnice(Integer.parseInt(z.skupine().group(1)),
+                        Long.parseLong(z.skupine().group(2)), z.tocke()))
+                .toList();
+    }
+
+    private record Zadetek(Matcher skupine, double[][] tocke) {}
+
+    /* Vse razlicne kode z danim vzorcem (po vsebini); prva razlicica slike, ki
+       kaj najde, zadosca. */
+    private static List<Zadetek> najdi(BufferedImage slika, Pattern vzorec, int manjsaStranica) {
+        Map<String, Zadetek> najdene = new java.util.LinkedHashMap<>();
+        BufferedImage manjsa = ObdelavaSlik.pomanjsaj(slika, manjsaStranica);
         for (BufferedImage razlicica : List.of(slika, manjsa)) {
             double merilo = (double) slika.getWidth() / razlicica.getWidth();
             LuminanceSource vir = new BufferedImageLuminanceSource(razlicica);
@@ -93,17 +121,17 @@ public final class KodaListka {
                     new BinaryBitmap(new HybridBinarizer(vir)),
                     new BinaryBitmap(new GlobalHistogramBinarizer(vir)))) {
                 for (Result zadetek : beri(bitna)) {
-                    Matcher m = QR.matcher(zadetek.getText().trim());
+                    String besedilo = zadetek.getText().trim();
+                    Matcher m = vzorec.matcher(besedilo);
                     if (!m.matches()) {
                         continue;
                     }
-                    long id = Long.parseLong(m.group(1));
                     var tocke = zadetek.getResultPoints();
                     double[][] t = tocke == null || tocke.length < 3 ? null : new double[][] {
                             {tocke[0].getX() * merilo, tocke[0].getY() * merilo},
                             {tocke[1].getX() * merilo, tocke[1].getY() * merilo},
                             {tocke[2].getX() * merilo, tocke[2].getY() * merilo}};
-                    najdene.putIfAbsent(id, new NajdenaKoda(id, t));
+                    najdene.putIfAbsent(besedilo, new Zadetek(m, t));
                 }
                 if (!najdene.isEmpty()) {
                     return List.copyOf(najdene.values());

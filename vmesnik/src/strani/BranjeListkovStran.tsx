@@ -226,9 +226,10 @@ export function BranjeListkovStran() {
             </p>
           )}
           {jeAdmin && (
-            <Link to={`/branje-listkov/meritev?idTurnir=${idTurnirja}`} className="branje__meritev">
-              Meritev branja →
-            </Link>
+            <p className="branje__meritev">
+              <Link to={`/branje-listkov/meritev?idTurnir=${idTurnirja}`}>Meritev branja →</Link>{' '}
+              <Link to="/vadnica">Vadnica števk →</Link>
+            </p>
           )}
           <SporociloNapake napaka={branja.error ?? potrditev.error ?? zavrzenje.error ?? ponovitev.error} />
 

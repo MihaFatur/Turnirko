@@ -9,7 +9,9 @@
 
    Katera oznaka je katera, pove geometrija, ne lega na sliki: oglisce L-ja je
    tocka s pravim kotom, smer pa doloci predznak vektorskega produkta (fotografija
-   ni zrcaljena). Zato listek prebere tudi narobe obrnjeno fotografijo. */
+   ni zrcaljena). Zato listek prebere tudi narobe obrnjeno fotografijo.
+
+   Ista poravnava velja za list vadnice stevk; mesta oznak in QR da Postavitev. */
 package si.turnirko.branje;
 
 import java.awt.image.BufferedImage;
@@ -18,9 +20,6 @@ import java.util.List;
 
 public final class PoravnavaListka {
 
-    /* Razdalji med oznakami v mm (oglisce spodaj levo). */
-    private static final double DOLZINA_NAVPIK = GeometrijaListka.SPODAJ_LEVO[1] - GeometrijaListka.ZGORAJ_LEVO[1];
-    private static final double DOLZINA_VODORAVNO = GeometrijaListka.SPODAJ_DESNO[0] - GeometrijaListka.SPODAJ_LEVO[0];
     private static final int NAJVEC_KANDIDATOV = 24;
 
     private PoravnavaListka() {}
@@ -38,6 +37,10 @@ public final class PoravnavaListka {
     /* qrTocke: sredisca iskalnih vzorcev [spodaj levo, zgoraj levo, zgoraj desno]
        ali null, ce QR kode ni. */
     public static PoravnanListek poravnaj(BufferedImage fotografija, double[][] qrTocke) {
+        return poravnaj(fotografija, qrTocke, Postavitev.LISTEK);
+    }
+
+    public static PoravnanListek poravnaj(BufferedImage fotografija, double[][] qrTocke, Postavitev p) {
         Temnost d = Temnost.iz(fotografija);
         int okno = Math.max(15, Math.max(d.sirina, d.visina) / 20);
         boolean[] maska = d.crnilo(okno, 0.12f, 0.2f);
@@ -51,7 +54,7 @@ public final class PoravnavaListka {
                 .limit(NAJVEC_KANDIDATOV)
                 .toList();
 
-        Temnost.Komponenta[] oznake = izberiOznake(kandidati, qrTocke);
+        Temnost.Komponenta[] oznake = izberiOznake(kandidati, qrTocke, p);
         if (oznake == null) {
             throw new NapakaPoravnave("Na fotografiji ni mogoče najti oznak v vogalih listka. "
                     + "Fotografiraj cel listek od zgoraj, da se vidijo trije črni kvadrati.");
@@ -60,22 +63,22 @@ public final class PoravnavaListka {
                 {oznake[0].cx(), oznake[0].cy()},
                 {oznake[1].cx(), oznake[1].cy()},
                 {oznake[2].cx(), oznake[2].cy()}};
-        double[][] listek = {GeometrijaListka.ZGORAJ_LEVO, GeometrijaListka.SPODAJ_LEVO, GeometrijaListka.SPODAJ_DESNO};
+        double[][] listek = {p.zgorajLevo(), p.spodajLevo(), p.spodajDesno()};
 
         Preslikava afina = Preslikava.afina(listek, slika);
         Preslikava preslikava = afina;
         boolean perspektiva = false;
         if (qrTocke != null && afina != null) {
-            double merilo = merilo(slika);
-            double[] napoved = afina.uporabi(GeometrijaListka.QR_ZGORAJ_DESNO[0], GeometrijaListka.QR_ZGORAJ_DESNO[1]);
-            // QR je ista koda samo, ce lezi priblizno tam, kjer jo listek predvideva (sicer je
-            // tuja). Afina napoved se pri nagnjenem telefonu zmoti za nekaj mm, zato meja 15 mm.
-            if (razdalja(napoved, qrTocke[2]) < 15 * merilo) {
+            double merilo = merilo(slika, p);
+            double[] qrZd = p.qrZgorajDesno();
+            double[] napoved = afina.uporabi(qrZd[0], qrZd[1]);
+            // QR je ista koda samo, ce lezi priblizno tam, kjer jo list predvideva (sicer je
+            // tuja). Afina napoved se pri nagnjenem telefonu zmoti za nekaj mm (Postavitev).
+            if (razdalja(napoved, qrTocke[2]) < p.najvecOdmikQr() * merilo) {
                 Preslikava h = Preslikava.homografija(
-                        new double[][] {GeometrijaListka.ZGORAJ_LEVO, GeometrijaListka.SPODAJ_LEVO,
-                                GeometrijaListka.SPODAJ_DESNO, GeometrijaListka.QR_ZGORAJ_DESNO},
+                        new double[][] {p.zgorajLevo(), p.spodajLevo(), p.spodajDesno(), qrZd},
                         new double[][] {slika[0], slika[1], slika[2], qrTocke[2]});
-                if (h != null && soglasa(h, qrTocke, merilo)) {
+                if (h != null && soglasa(h, qrTocke, merilo, p)) {
                     preslikava = h;
                     perspektiva = true;
                 }
@@ -84,15 +87,18 @@ public final class PoravnavaListka {
         if (preslikava == null) {
             throw new NapakaPoravnave("Listka na fotografiji ni mogoče poravnati. Fotografiraj ga znova.");
         }
-        return new PoravnanListek(prerisi(d, preslikava), perspektiva);
+        return new PoravnanListek(prerisi(d, preslikava, p), perspektiva);
     }
 
     /* Trojica oznak (zgoraj levo, spodaj levo, spodaj desno), ki najbolje ustreza
-       obliki L listka; null, ce je ni. */
-    static Temnost.Komponenta[] izberiOznake(List<Temnost.Komponenta> kandidati, double[][] qrTocke) {
+       obliki L lista; null, ce je ni. */
+    static Temnost.Komponenta[] izberiOznake(List<Temnost.Komponenta> kandidati, double[][] qrTocke, Postavitev p) {
         Temnost.Komponenta[] najboljse = null;
         double najmanjsaNapaka = Double.MAX_VALUE;
-        double pricakovanoRazmerje = DOLZINA_NAVPIK / DOLZINA_VODORAVNO;
+        double dolzinaNavpik = dolzinaNavpik(p);
+        double dolzinaVodoravno = dolzinaVodoravno(p);
+        double pricakovanoRazmerje = dolzinaNavpik / dolzinaVodoravno;
+        double[] qrZd = p.qrZgorajDesno();
         int n = kandidati.size();
         for (int b = 0; b < n; b++) {
             Temnost.Komponenta sl = kandidati.get(b);
@@ -121,9 +127,9 @@ public final class PoravnavaListka {
                     if (Math.abs(kos) > 0.3 || vektorski <= 0 || Math.abs(razmerje - 1) > 0.2) {
                         continue;
                     }
-                    // velikost oznake mora ustrezati razdalji med njimi (4 mm proti 85 mm)
-                    double pxNaMm = (lu / DOLZINA_NAVPIK + lv / DOLZINA_VODORAVNO) / 2;
-                    double pricakovanaPloscina = Math.pow(GeometrijaListka.STRANICA_OZNAKE * pxNaMm, 2);
+                    // velikost oznake mora ustrezati razdalji med njimi (na listku 4 mm proti 85 mm)
+                    double pxNaMm = (lu / dolzinaNavpik + lv / dolzinaVodoravno) / 2;
+                    double pricakovanaPloscina = Math.pow(p.stranicaOznake() * pxNaMm, 2);
                     double napaka = Math.abs(kos) + Math.abs(razmerje - 1);
                     boolean ustrezne = true;
                     for (Temnost.Komponenta k : new Temnost.Komponenta[] {zl, sl, sd}) {
@@ -138,12 +144,11 @@ public final class PoravnavaListka {
                         continue;
                     }
                     if (qrTocke != null) {
-                        Preslikava p = Preslikava.afina(
-                                new double[][] {GeometrijaListka.ZGORAJ_LEVO, GeometrijaListka.SPODAJ_LEVO,
-                                        GeometrijaListka.SPODAJ_DESNO},
+                        Preslikava afina = Preslikava.afina(
+                                new double[][] {p.zgorajLevo(), p.spodajLevo(), p.spodajDesno()},
                                 new double[][] {{zl.cx(), zl.cy()}, {sl.cx(), sl.cy()}, {sd.cx(), sd.cy()}});
-                        if (p != null) {
-                            double[] q = p.uporabi(GeometrijaListka.QR_ZGORAJ_DESNO[0], GeometrijaListka.QR_ZGORAJ_DESNO[1]);
+                        if (afina != null) {
+                            double[] q = afina.uporabi(qrZd[0], qrZd[1]);
                             napaka += razdalja(q, qrTocke[2]) / pxNaMm / 10;
                         }
                     }
@@ -159,25 +164,37 @@ public final class PoravnavaListka {
 
     /* Homografija velja, ce napove tudi ostala iskalna vzorca QR (sicer je bila
        tocka zgoraj desno prebrana narobe). */
-    private static boolean soglasa(Preslikava h, double[][] qrTocke, double merilo) {
-        double[] spodajLevo = h.uporabi(GeometrijaListka.QR_SPODAJ_LEVO[0], GeometrijaListka.QR_SPODAJ_LEVO[1]);
-        double[] zgorajLevo = h.uporabi(GeometrijaListka.QR_ZGORAJ_LEVO[0], GeometrijaListka.QR_ZGORAJ_LEVO[1]);
+    private static boolean soglasa(Preslikava h, double[][] qrTocke, double merilo, Postavitev p) {
+        double[] sl = p.qrSpodajLevo();
+        double[] zl = p.qrZgorajLevo();
+        double[] spodajLevo = h.uporabi(sl[0], sl[1]);
+        double[] zgorajLevo = h.uporabi(zl[0], zl[1]);
         return razdalja(spodajLevo, qrTocke[0]) < 3 * merilo && razdalja(zgorajLevo, qrTocke[1]) < 3 * merilo;
     }
 
+    /* Razdalji med oznakami v mm (oglisce spodaj levo). */
+    private static double dolzinaNavpik(Postavitev p) {
+        return p.spodajLevo()[1] - p.zgorajLevo()[1];
+    }
+
+    private static double dolzinaVodoravno(Postavitev p) {
+        return p.spodajDesno()[0] - p.spodajLevo()[0];
+    }
+
     /* px na mm iz razdalj med oznakami. */
-    private static double merilo(double[][] oznake) {
-        return (razdalja(oznake[0], oznake[1]) / DOLZINA_NAVPIK + razdalja(oznake[1], oznake[2]) / DOLZINA_VODORAVNO) / 2;
+    private static double merilo(double[][] oznake, Postavitev p) {
+        return (razdalja(oznake[0], oznake[1]) / dolzinaNavpik(p)
+                + razdalja(oznake[1], oznake[2]) / dolzinaVodoravno(p)) / 2;
     }
 
     private static double razdalja(double[] a, double[] b) {
         return Math.hypot(a[0] - b[0], a[1] - b[1]);
     }
 
-    private static Temnost prerisi(Temnost vir, Preslikava listekVSliko) {
+    private static Temnost prerisi(Temnost vir, Preslikava listekVSliko, Postavitev postavitev) {
         int r = GeometrijaListka.PX_NA_MM;
-        Temnost cilj = new Temnost((int) Math.round(GeometrijaListka.SIRINA * r),
-                (int) Math.round(GeometrijaListka.VISINA * r));
+        Temnost cilj = new Temnost((int) Math.round(postavitev.sirina() * r),
+                (int) Math.round(postavitev.visina() * r));
         for (int y = 0; y < cilj.visina; y++) {
             for (int x = 0; x < cilj.sirina; x++) {
                 double[] p = listekVSliko.uporabi((x + 0.5) / r, (y + 0.5) / r);

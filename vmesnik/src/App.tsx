@@ -37,6 +37,9 @@ import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStra
 import { PomocStran } from './strani/PomocStran'
 import { BranjeListkovStran } from './strani/BranjeListkovStran'
 import { MeritevBranjaStran } from './strani/MeritevBranjaStran'
+import { VadnicaStran } from './strani/VadnicaStran'
+import { VadnicaPregledStran } from './strani/VadnicaPregledStran'
+import { VadnicaTiskStran } from './strani/VadnicaTiskStran'
 import { PomocPonudnik } from './pomoc/PomocKontekst'
 
 /* Ovoj, ki stran razkrije samo administratorju; med preverjanjem prijave
@@ -204,6 +207,15 @@ export function App() {
       <Route path="/dogodki/:id/razvrstitev-tisk" element={<IzpisStran samoRazvrstitev />} />
       {/* Sezonski zapisnik igralca za tisk (paket Navijač): ena sezona na listu A4. */}
       <Route path="/igralci/:id/sezona" element={<SezonskiZapisnikStran />} />
+      {/* Listi vadnice števk za tisk (V70, samo admin), brez navigacije. */}
+      <Route
+        path="/vadnica/tisk"
+        element={
+          <SamoAdmin>
+            <VadnicaTiskStran />
+          </SamoAdmin>
+        }
+      />
       <Route element={<Postavitev />}>
         <Route index element={<DomacaStran />} />
         <Route path="/turnirji" element={<TurnirjiStran />} />
@@ -286,6 +298,23 @@ export function App() {
             <SamoUrejevalec>
               <BranjeListkovStran />
             </SamoUrejevalec>
+          }
+        />
+        {/* Vadnica števk: fotografiranje in pregled listov (V70, samo admin). */}
+        <Route
+          path="/vadnica"
+          element={
+            <SamoAdmin>
+              <VadnicaStran />
+            </SamoAdmin>
+          }
+        />
+        <Route
+          path="/vadnica/:id"
+          element={
+            <SamoAdmin>
+              <VadnicaPregledStran />
+            </SamoAdmin>
           }
         />
         {/* Meritev branja listkov in zlati nabor (V69, samo admin). */}

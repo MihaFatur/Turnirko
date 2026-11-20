@@ -198,6 +198,8 @@ public class VarnostneNastavitve {
                         // pravilom branja listkov spodaj
                         .requestMatchers("/api/v1/branje-listkov/meritev", "/api/v1/branje-listkov/nabor",
                                 "/api/v1/branje-listkov/nabor/**").hasRole("ADMIN")
+                        // vadnica stevk (V70): liste fotografira in odobri admin, tudi GET
+                        .requestMatchers("/api/v1/vadnice", "/api/v1/vadnice/**").hasRole("ADMIN")
                         // branje listkov (V68): fotografije in predlogi izidov samo za prijavljene
                         // (lastnika turnirja in admina preveri storitev), tudi GET
                         .requestMatchers("/api/v1/branje-listkov/**", "/api/v1/branja-listkov/**",

@@ -3339,3 +3339,35 @@ export interface StanjeNaboraDto {
   rezultat: SkupinaMeritve | null
   napaka: string | null
 }
+
+/* Vadnica števk (V70, samo admin): list A4, ki ga izpolni ena oseba. */
+export interface VadnicaDto {
+  id: number
+  stevk: number
+  praznih: number
+  preskocenih: number
+  odobrena: boolean
+  ustvarjenoOb: string
+  odobrenoOb: string | null
+}
+
+export interface SeznamVadnicDto {
+  listi: VadnicaDto[]
+  /* Odobrene števke vadnice, ki gredo v nočno učenje. */
+  stevkVUcenju: number
+}
+
+/* Števka lista za pregled: okence (vrstica × 10 + stolpec), prava vrednost,
+   sivine 28 × 28 (base64), ali jo mreža že zdaj bere prav. */
+export interface StevkaVadniceDto {
+  id: number
+  okence: number
+  vrednost: number
+  slika: string
+  mrezaPrav: boolean
+}
+
+export interface VadnicaPodrobnoDto {
+  list: VadnicaDto
+  stevke: StevkaVadniceDto[]
+}

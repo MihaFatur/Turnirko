@@ -529,9 +529,10 @@ preveri ob začetku vsake faze (razdelek 2).
 
 | Faza | Stanje | Datum | Commit |
 |---|---|---|---|
-| F0 | narejeno, ni commitano | 20. 11. 2026 | — |
-| F1 | narejeno, ni commitano | 20. 11. 2026 | — |
-| F2–F9 | načrtovano | — | — |
+| F0 | narejeno, na testu | 20. 11. 2026 | `d774ce0` |
+| F1 | narejeno, na testu | 20. 11. 2026 | `d774ce0` |
+| F3 | narejeno (lastnik: »kar zdaj naredi vadnico«, pred F2) | 20. 11. 2026 | — |
+| F2, F4–F9 | načrtovano | — | — |
 
 **F0 — odstopanja od načrta in dodatno:**
 - Meja fotografije je 6000 px / 20 Mpx (ne 4096 / 16 Mpx). Pri 16 Mpx bi bila zavrnjena
@@ -621,3 +622,34 @@ preveri ob začetku vsake faze (razdelek 2).
     p90 4,0 s); meritev nabora 2 listkov; zip z `konec.txt` in brez povezave na
     branje; shranjena slika ima samo ročno napisane številke; brez napak v konzoli
     in dnevniku, brez vodoravnega pomikanja.
+
+**F3 — odstopanja od načrta in dodatno** (lastnik je vadnico zahteval pred F2, da jo
+deli že zdaj; migracija V70):
+- **Id lista izbere brskalnik** ob tisku (deset naključnih mest), ne `POST
+  /api/v1/vadnice` s strežniškimi id-ji: list, natisnjen na testnem okolju, tako velja
+  tudi v produkciji (baza testa se ob osvežitvi prepiše), tisk ne potrebuje strežnika.
+  Zapis lista nastane ob prvi fotografiji. Meja *n* ≤ 50 velja za stran tiska.
+- **Samo admin** (načrt: admin ali organizator): branje je še samo za admina, liste
+  deli lastnik. Ko se izklopi `samo-admin` (F9.3), se vadnica odpre organizatorjem.
+- **Brez stolpca `vir`** v `stevka_listka`: vir je `id_vadnica` (ni NULL) ali
+  `id_branje`; CHECK prepove oboje. Dodana `celica` (okence) za pregled po vrsticah.
+- **Shrani se poravnan list s samimi okenci** (kot zlati nabor, ~0,4 MB), da se števke
+  ob boljšem razrezu (F2.3) izrežejo znova; fotografija se ne hrani.
+- **Odobritev nastavi čas števk na čas odobritve**, da štejejo kot nove za nočno
+  učenje (meja 200 novih števk).
+- Simulacija je ujela dve napaki iskanja okenc, preden je šel list v tisk: tanka črta
+  (CSS 0,3/0,4 mm se pri tisku zaokroži na 0,26 mm) se na fotografiji raztrga, poteza
+  »1« ob robu pa je polna, zato je bralnik »1« vzel za rob in jo odrezal (iz »10« je
+  nastala razpolovljena ničla z oznakama 1 in 0 — zastrupljen učni primer). Popravek:
+  okenca so SVG s črto 0,45 mm, rob je črta, najbližja pričakovani legi, zlita črta se
+  odreže le v debelini črte; test preveri lego vseh okenc.
+- Pomoč: vadnica je samo za admina, zato nima članka (pravilo pomoči velja za funkcije
+  organizatorja); navodila so na strani sami.
+- Preverjeno:
+  - `VadnicaTest` (8), `VadnicaDostopTest` (2), `vadnica.test.ts` (5);
+  - pravo zaledje s testno bazo (pg18), brezglavi Chrome: tisk 2 listov (PDF: dve strani
+    A4, oznake in okenca na 0,1 mm natančno), na telefonu (390 px) fotografija
+    simuliranega lista → »180 števk, čaka na pregled«, fotografija listka tekme →
+    »To je listek tekme«; pregled po vrsticah, izločitev dveh števk, odobritev →
+    178 števk v učenju, ponovna odobritev 409; shranjena slika ima samo okenca;
+    brez napak v konzoli in brez vodoravnega pomikanja.

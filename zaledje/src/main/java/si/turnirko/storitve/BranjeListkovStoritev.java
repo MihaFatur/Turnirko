@@ -42,6 +42,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
@@ -285,6 +286,13 @@ public class BranjeListkovStoritev {
        odjemalec ponovi - bolje kot da bi vec velikih slik hkrati izcrpalo
        pomnilnik streznika. */
     private ObdelavaSlik.Zapis pripraviFotografijo(byte[] vsebina, Long idUporabnika) {
+        return podDekodiranjem(idUporabnika, () -> ObdelavaSlik.zapisiFotografijo(ObdelavaSlik.pomanjsaj(
+                ObdelavaSlik.preberi(vsebina, NAJVEC_STRANICA_VHODA, NAJVEC_PIKSLOV_VHODA), NAJVEC_STRANICA)));
+    }
+
+    /* Delo z veliko sliko pod mejo hkratnih dekodiranj. Meja je skupna listkom in
+       vadnici stevk (VadnicaStoritev), ker si delita pomnilnik streznika. */
+    <T> T podDekodiranjem(Long idUporabnika, Supplier<T> delo) {
         long rok = System.nanoTime() + cakanjeNaDekodiranje.toNanos();
         Semaphore pas = pasUporabnika(idUporabnika);
         if (!dobi(pas, rok)) {
@@ -295,9 +303,7 @@ public class BranjeListkovStoritev {
                 throw zasedeno();
             }
             try {
-                BufferedImage slika = ObdelavaSlik.pomanjsaj(
-                        ObdelavaSlik.preberi(vsebina, NAJVEC_STRANICA_VHODA, NAJVEC_PIKSLOV_VHODA), NAJVEC_STRANICA);
-                return ObdelavaSlik.zapisiFotografijo(slika);
+                return delo.get();
             } finally {
                 dekodiranje.release();
             }
