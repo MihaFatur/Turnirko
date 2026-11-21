@@ -4,7 +4,11 @@
 
    Vir je potrjen listek (idBranje; vrednost je potrdil organizator) ali list
    vadnice stevk (idVadnica, V70; vrednost je vrstica lista, okence je celica).
-   Stevke vadnice gredo v ucenje sele po odobritvi admina (odobreno). */
+   Stevke vadnice gredo v ucenje sele po odobritvi admina (odobreno).
+
+   popravljena (V72, F6.2): celico je organizator izrecno popravil ali vpisal
+   (bralnik je prebral drugo ali nic) ali jo je popravil poznejsi popravek izida.
+   Taka oznaka je mocna - prav tam se je mreza zmotila - in pri ucenju steje dvojno. */
 package si.turnirko.modeli;
 
 import java.time.LocalDateTime;
@@ -30,7 +34,9 @@ public class StevkaListka {
     @Column(name = "id_vadnica")
     private Long idVadnica;
 
-    /* Okence lista vadnice (vrstica * 10 + stolpec); pri listku null. */
+    /* Okence lista vadnice (vrstica * 10 + stolpec); pri listku celica listka
+       (UcenjeIzListkov.celicaListka: niz * 2 + stolpec, rezultat 100 + stolpec, V72),
+       pri starejsih stevkah listkov null. */
     @Column(name = "celica")
     private Short celica;
 
@@ -45,6 +51,9 @@ public class StevkaListka {
 
     @Column(name = "odobreno", nullable = false)
     private boolean odobreno = true;
+
+    @Column(name = "popravljena", nullable = false)
+    private boolean popravljena;
 
     @Column(name = "ustvarjeno_ob", nullable = false)
     private LocalDateTime ustvarjenoOb;
@@ -78,4 +87,17 @@ public class StevkaListka {
     public boolean isMrezaPrav() { return mrezaPrav; }
     public boolean isOdobreno() { return odobreno; }
     public LocalDateTime getUstvarjenoOb() { return ustvarjenoOb; }
+    public boolean isPopravljena() { return popravljena; }
+
+    /* Mocna oznaka (F6.2), nastavi se pred zapisom. */
+    public StevkaListka popravljena(boolean popravljena) {
+        this.popravljena = popravljena;
+        return this;
+    }
+
+    /* Celica listka (F6.1), nastavi se pred zapisom. */
+    public StevkaListka celica(int celica) {
+        this.celica = (short) celica;
+        return this;
+    }
 }

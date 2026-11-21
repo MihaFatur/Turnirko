@@ -779,8 +779,9 @@ public class BranjeListkovStoritev {
         }
         // bralnik se uci iz potrjenega izida; smer stolpcev je znana samo pri listku s kodo
         int steviloNizov = vnos.izid().steviloNizov() != null ? vnos.izid().steviloNizov() : tekma.getSteviloNizov();
+        // celice, ki jih je organizator popravil (ali vpisal namesto bralnika), so mocne oznake (F6.2)
         ucenje.poPotrditvi(idBranja, vnos.izid(), prepoznava == PrepoznavaTekme.KODA ? Boolean.FALSE : null,
-                steviloNizov, branje.getModel());
+                steviloNizov, branje.getModel(), PopravljeneCelice.izPredloga(predlog, vnos.izid()));
         Tekma koncana = tekmaRepozitorij.najdiZVsem(idTekme).orElse(tekma);
         return dto(branje, Map.of(idTekme, koncana), oznakeSkupin(List.of(koncana)), List.of());
     }

@@ -15,6 +15,9 @@ import {
   izrezCelice,
   jeZanesljiv,
   slogIzreza,
+  delez,
+  prejPotem,
+  stanjeRazlicice,
 } from './branjeListkov'
 
 function predlog(polja: Partial<PredlogIzidaDto> = {}): PredlogIzidaDto {
@@ -166,5 +169,24 @@ describe('oblika meritev', () => {
     expect(trajanje(119_600)).toBe('2 min 0 s')
     expect(trajanje(59_960)).toBe('1 min 0 s')
     expect(trajanje(null)).toBe('–')
+  })
+})
+
+describe('mreža števk (F6)', () => {
+  it('deleže zapiše z vejico, manjkajoče s pomišljajem', () => {
+    expect(delez(0.9743)).toBe('97,4 %')
+    expect(delez(null)).toBe('–')
+    expect(prejPotem(0.95, 0.9612)).toBe('95,0 % → 96,1 %')
+    expect(prejPotem(0.95, null)).toBe('–')
+  })
+
+  it('stanje različice: prekinjena, zavrnjena, umaknjena, v uporabi', () => {
+    const r = { id: 3, sprejeta: true, prekinjena: false, umaknjenaOb: null }
+    expect(stanjeRazlicice(r, 3)).toBe('v-uporabi')
+    expect(stanjeRazlicice(r, 5)).toBe('sprejeta')
+    expect(stanjeRazlicice(r, null)).toBe('sprejeta')
+    expect(stanjeRazlicice({ ...r, umaknjenaOb: '2026-11-22T10:00:00' }, null)).toBe('umaknjena')
+    expect(stanjeRazlicice({ ...r, sprejeta: false }, 3)).toBe('zavrnjena')
+    expect(stanjeRazlicice({ ...r, sprejeta: false, prekinjena: true }, null)).toBe('prekinjena')
   })
 })

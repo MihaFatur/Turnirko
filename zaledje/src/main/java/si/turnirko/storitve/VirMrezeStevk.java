@@ -1,6 +1,7 @@
-/* Mreza stevk, ki jo bralnik trenutno uporablja: zadnja sprejeta iz nocnega
-   ucenja (mreza_stevk), brez nje vgrajena (resources/branje/stevke.bin, naucena
-   na MNIST). Zamenja se v trenutku, ko ucenje sprejme novo razlicico. */
+/* Mreza stevk, ki jo bralnik trenutno uporablja: zadnja sprejeta iz ucenja, ki je
+   admin ni umaknil (mreza_stevk, »Vrni prejsnjo«, F6.4), brez nje vgrajena
+   (resources/branje/stevke.bin, naucena na MNIST). Zamenja se v trenutku, ko ucenje
+   sprejme novo razlicico ali admin vrne prejsnjo. */
 package si.turnirko.storitve;
 
 import java.io.ByteArrayInputStream;
@@ -37,7 +38,7 @@ public class VirMrezeStevk {
     @PostConstruct
     void nalozi() {
         try {
-            var zapis = repozitorij.findFirstBySprejetaTrueOrderByIdDesc();
+            var zapis = repozitorij.findFirstBySprejetaTrueAndUmaknjenaObIsNullOrderByIdDesc();
             if (zapis.isPresent()) {
                 trenutna.set(new Nalozena(MrezaStevk.preberi(new ByteArrayInputStream(zapis.get().getUtezi())),
                         PREDPONA_UCENE + zapis.get().getId()));

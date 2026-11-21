@@ -177,3 +177,27 @@ export function slogIzreza(p: Pravokotnik, sirina: number, visina: number, rob =
     aspectRatio: `${w} / ${h}`,
   }
 }
+
+/* Delež 0-1 kot »97,4 %« (zgodovina mreže števk, F6.4); null je »–«. */
+export function delez(d: number | null): string {
+  return d === null ? '–' : `${(d * 100).toFixed(1).replace('.', ',')} %`
+}
+
+/* Prej → potem; prekinjeno ali neizmerjeno »–«. */
+export function prejPotem(prej: number | null, potem: number | null): string {
+  if (prej === null || potem === null) return '–'
+  return `${delez(prej)} → ${delez(potem)}`
+}
+
+export type StanjeRazlicice = 'v-uporabi' | 'sprejeta' | 'umaknjena' | 'zavrnjena' | 'prekinjena'
+
+/* Kaj se je z različico mreže zgodilo, za značko v zgodovini. */
+export function stanjeRazlicice(
+  r: { id: number; sprejeta: boolean; prekinjena: boolean; umaknjenaOb: string | null },
+  vUporabi: number | null,
+): StanjeRazlicice {
+  if (r.prekinjena) return 'prekinjena'
+  if (!r.sprejeta) return 'zavrnjena'
+  if (r.umaknjenaOb) return 'umaknjena'
+  return r.id === vUporabi ? 'v-uporabi' : 'sprejeta'
+}

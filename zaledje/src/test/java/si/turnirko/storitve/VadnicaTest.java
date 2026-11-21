@@ -225,7 +225,7 @@ class VadnicaTest extends IntegracijskiTest {
         for (long id : new long[] {1_000_000_005L, 1_000_000_007L}) {
             for (int okence = 0; okence < 20; okence++) {
                 StevkaListka s = StevkaListka.zVadnice(id, okence, new byte[784], okence % 10, true, zdaj);
-                assertEquals(id % 5 == 0, UcenjeIzListkov.jePreizkusna(s), "list " + id + ", okence " + okence);
+                assertEquals(id % 5 == 0, UcenjeMreze.jePreizkusna(s), "list " + id + ", okence " + okence);
             }
         }
     }

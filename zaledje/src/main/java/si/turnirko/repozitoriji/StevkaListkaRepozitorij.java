@@ -18,6 +18,19 @@ public interface StevkaListkaRepozitorij extends JpaRepository<StevkaListka, Lon
        zadnjim ucenjem. */
     long countByOdobrenoTrueAndUstvarjenoObAfter(LocalDateTime od);
 
+    long countByOdobrenoTrue();
+
+    boolean existsByIdBranje(Long idBranje);
+
+    /* Stevke potrjenih listkov (popravek izida tekme, F6.1). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM StevkaListka s WHERE s.idBranje = :idBranje")
+    int izbrisiBranje(@Param("idBranje") Long idBranje);
+
+    /* Celice listka, ki so bile mocne oznake (organizator jih je popravil ob potrditvi). */
+    @Query("SELECT DISTINCT s.celica FROM StevkaListka s WHERE s.idBranje = :idBranje AND s.popravljena = true AND s.celica IS NOT NULL")
+    List<Short> mocneCelice(@Param("idBranje") Long idBranje);
+
     /* Najnovejse odobrene stevke (ucenje vzame zgornjo mejo, da noc ostane
        kratka). Neodobrene stevke vadnice v ucenje ne gredo. Po casu (pri vadnici je
        to cas odobritve), ne po id: list, fotografiran davno in odobren danes, je nov. */

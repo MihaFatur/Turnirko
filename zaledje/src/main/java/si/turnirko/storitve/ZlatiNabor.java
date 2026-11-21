@@ -221,19 +221,44 @@ public class ZlatiNabor {
 
     /* Vsak listek nabora po vrsti, po straneh (v pomnilniku je ena stran). */
     public void zaVsak(Consumer<ZlatiListek> delo) {
+        zaVsak(Integer.MAX_VALUE, delo);
+    }
+
+    /* Prvih najvec listkov po id. Ker je nabor nakljucen vzorec, je tudi to
+       nakljucen vzorec - in pri sprejemu mreze (F6.3) vedno isti, dokler se nabor
+       ne spremeni, zato sta meritvi stare in nove mreze primerljivi. */
+    public void zaVsak(int najvec, Consumer<ZlatiListek> delo) {
         long zadnji = 0;
-        while (true) {
+        int obdelanih = 0;
+        while (obdelanih < najvec) {
             long od = zadnji;
+            int velikost = Math.min(STRAN, najvec - obdelanih);
             List<ZlatiListek> stran = transakcija.execute(s ->
-                    repozitorij.findByIdGreaterThanOrderByIdAsc(od, PageRequest.of(0, STRAN)));
+                    repozitorij.findByIdGreaterThanOrderByIdAsc(od, PageRequest.of(0, velikost)));
             if (stran == null || stran.isEmpty()) {
                 return;
             }
             for (ZlatiListek z : stran) {
                 delo.accept(z);
                 zadnji = z.getId();
+                obdelanih++;
             }
         }
+    }
+
+    /* Popravek izida tekme (F6.1): listek ostane v naboru z novo resnico (v
+       stolpcih listka), ali se izbrise, ce resnica == null (popravek je listek
+       postavil pod vprasaj, npr. potrjen je bil k napacni tekmi). Vrne, ali je bil
+       listek v naboru. */
+    public boolean popravi(Long idBranja, MeritevBranja.Resnica resnica) {
+        return Boolean.TRUE.equals(transakcija.execute(s -> repozitorij.findByIdBranje(idBranja).map(z -> {
+            if (resnica == null || resnica.nizi().isEmpty()) {
+                repozitorij.delete(z);
+            } else {
+                z.setResnica(JsonBranja.zapisi(resnica));
+            }
+            return true;
+        }).orElse(false)));
     }
 
     /* Izvoz za lokalne meritve: zip s PNG in JSON vsakega listka. Brez id branja,

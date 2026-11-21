@@ -93,14 +93,40 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
 - Ob potrditvi `UcenjeIzListkov.poPotrditvi` (po commitu) znova razreže fotografijo in
   shrani števke s potrjeno vrednostjo (`stevka_listka`, 28 × 28, brez imen). Celica, ki
   je razrez ne razdeli na pravo število števk, se preskoči. Pri listku brez kode se smer
-  stolpcev izbere po ujemanju z mrežo.
-- Nočno (`turnirko.branje-listkov.ucenje-urnik`, 3.50): ob vsaj 200 novih števkah se
-  kopija dotrenira (števke listkov ×4 + izbor MNIST). Preizkusne so vse števke vsakega
-  petega **listka** (`jePreizkusna`, po `id_branje`), ne vsaka peta števka: ista
-  pisava ne sme biti v obeh delih. Pod 50 preizkusnimi števkami se učenje odloži brez
-  zapisa. Nova
-  razlica (`mreza_stevk`) se **sprejme samo, če na preizkusnih števkah ne bere slabše
-  in na MNIST ne nazaduje za več kot 1 %**. `VirMrezeStevk` naloži zadnjo sprejeto.
+  stolpcev izbere po ujemanju z mrežo. Listek se zapiše samo enkrat (`existsByIdBranje`).
+- **Celica in močna oznaka (F6.2, V72):** vsaka števka listka nosi celico listka
+  (`celica` = niz × 2 + stolpec, rezultat 100 + stolpec). Celica, v kateri se potrjena
+  vrednost razlikuje od predloga bralnika (tudi neprebrana), je `popravljena = true`
+  (`PopravljeneCelice.izPredloga`, v straneh tekme) in pri učenju šteje dvojno. Brez
+  predloga (branje ni uspelo) ni močnih oznak.
+- **Popravek izida (F6.1):** `TekmaStoritev.popraviRezultat` objavi `IzidTekmePopravljen`;
+  `UcenjeIzListkov.obPopravkuIzida` (po commitu, v izvajalcu branja) za vsak potrjen
+  listek tekme primerja potrjeni izid z novim po celicah. Do 2 spremenjeni celici:
+  števke se zapišejo znova z novim izidom (spremenjene celice in prejšnje močne so
+  močne), resnica v zlatem naboru se popravi. Več kot 2, drugo število nizov ali poseben
+  izid: listek je bil verjetno potrjen k napačni tekmi - števke in vnos v zlatem naboru
+  se samo izbrišejo. Brez fotografije (30 dni) se ob spremembi števke izbrišejo, resnica
+  nabora se popravi. Zapis ob potrditvi in ob popravku tečeta pod istim zaklepom
+  (`zapisovanje`); če je popravek prehitel potrditev, potrditev ne zapiše ničesar.
+- **Učenje (`UcenjeMreze`, F6):** nočno (`turnirko.branje-listkov.ucenje-urnik`, 3.50) ali
+  z »Uči zdaj« (admin, stran Meritev branja), ob vsaj 200 novih števkah od zadnjega
+  učenja (tudi ročno: ponavljanje na istih števkah bi novo mrežo prej ali slej po
+  naključju »izboljšalo« na istem preizkusnem delu). Kopija se dotrenira (števke ×4,
+  močne še ×4, + izbor MNIST). Preizkusne so vse števke vsakega petega **listka ali lista
+  vadnice** (`jePreizkusna`), ne vsaka peta števka: ista pisava ne sme biti v obeh
+  delih. Pod 50 preizkusnimi števkami se učenje odloži brez zapisa.
+- **Sprejem (F6.3):** nova različica (`mreza_stevk`) se sprejme samo, če (1) na
+  preizkusnih števkah ne bere slabše, (2) na zlatem naboru (prvih 400 listkov, če jih je
+  vsaj 20) nima več napačnih celic in (3) na MNIST ne nazaduje za več kot 1 odstotno
+  točko. Razlog zavrnitve se zapiše (`razlog`), z vsemi meritvami, načinom in trajanjem.
+- **Meje (F6.5):** hkrati teče največ eno učenje (zastavica; vrnitev prejšnje vzame isto),
+  »Uči zdaj« ima premor 10 min. Učenje (2 niti) se po 30 min prekine: zapis brez uteži
+  (`razlog` »Prekinjeno …«), mreža ostane stara. Ob ustavitvi strežnika se nič ne zapiše.
+  Zaklepa v bazi ni: aplikacija teče v enem vsebniku, zaklep v bazi bi do 30 min držal
+  povezavo.
+- **»Vrni prejšnjo« (F6.4):** različica v uporabi dobi `umaknjena_ob`; `VirMrezeStevk`
+  naloži zadnjo sprejeto neumaknjeno (ali vgrajeno). Umaknjena ostane v zgodovini in
+  se ne vrne sama. Med učenjem ni mogoča (409).
 
 ## Sprejem fotografije in dvojniki (F0, 20. 11. 2026)
 

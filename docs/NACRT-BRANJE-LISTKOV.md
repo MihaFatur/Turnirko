@@ -529,12 +529,13 @@ preveri ob začetku vsake faze (razdelek 2).
 
 | Faza | Stanje | Datum | Commit |
 |---|---|---|---|
-| F0 | narejeno, na testu | 20. 11. 2026 | `d774ce0` |
-| F1 | narejeno, na testu | 20. 11. 2026 | `d774ce0` |
-| F3 | narejeno, na testu (lastnik: »kar zdaj naredi vadnico«, pred F2) | 20. 11. 2026 | `794470f` |
-| F2 (2.1, 2.2, 2.5–2.7) | narejeno, ni commitano; 2.3, 2.4 in umeritev β po prvem turnirju | 21. 11. 2026 | — |
-| F4 | narejeno, ni commitano | 21. 11. 2026 | — |
-| F5–F9 | načrtovano | — | — |
+| F0 | v produkciji od 21. 11. 2026 | 20. 11. 2026 | `d774ce0` |
+| F1 | v produkciji od 21. 11. 2026 | 20. 11. 2026 | `d774ce0` |
+| F3 | v produkciji od 21. 11. 2026 (lastnik: »kar zdaj naredi vadnico«, pred F2; 20 listov, ~3500 števk odobrenih 21. 11.) | 20. 11. 2026 | `794470f` |
+| F2 (2.1, 2.2, 2.5–2.7) | v produkciji; 2.3, 2.4 in umeritev β po prvem turnirju | 21. 11. 2026 | `7cd3289` |
+| F4 | v produkciji | 21. 11. 2026 | `7cd3289` |
+| F6 | narejeno, ni commitano (lastnik: generalka + F6 + F5, 21. 11.) | 21. 11. 2026 | — |
+| F5, F7–F9 | načrtovano | — | — |
 
 **F0 — odstopanja od načrta in dodatno:**
 - Meja fotografije je 6000 px / 20 Mpx (ne 4096 / 16 Mpx). Pri 16 Mpx bi bila zavrnjena
@@ -752,3 +753,47 @@ na zlatem naboru po prvem turnirju):
     »Potrdi vse zanesljive (2)« potrdi oba (vrsta prazna, oba 3 : 1 med zaključenimi).
     Popravljeno ob preverbi: gumb--majhen je glavnemu gumbu vzel barvo besedila
     (lasten razred `branje__potrdi-vse`); desni izrez pod povečanim levim stoji desno.
+
+**F6 — odstopanja od načrta in dodatno** (21. 11. 2026, V72; lastnik je po 20
+odobrenih vadnicah izbral generalko, F6 in F5):
+- **Učenje je ločeno v `UcenjeMreze`** (nočno, »Uči zdaj«, vrnitev, hramba, sprejem);
+  `UcenjeIzListkov` samo zbira števke (potrditev, popravek izida).
+- **Zaklep samo v pomnilniku** (zastavica `tece`, ne v bazi): aplikacija teče v enem
+  vsebniku, zaklep v bazi bi do 30 min držal povezavo iz bazena. Vrnitev prejšnje vzame
+  isto zastavico, zato se ne more prepletati s sprejemom nove mreže. Premor 10 min med
+  zagoni velja tudi po nočnem učenju.
+- **»Uči zdaj« potrebuje enako novih števk (200) kot nočno:** ponovni zagoni na istih
+  števkah bi z izbiranjem po šumu prej ali slej »premagali« staro mrežo na istem
+  preizkusnem delu. Brez dovolj števk gumb pove, koliko jih manjka.
+- **Popravek izida → dogodek** `IzidTekmePopravljen` (Spring, po commitu), da storitev
+  tekme ne pozna branja listkov. Edina pot, ki spremeni izid končane posamične tekme, je
+  `popraviRezultat` (izbris izidov pozneje igranih tekem pri zamenjavi zmagovalca oznak
+  NE spremeni: papir tistih listkov ostane, kar je bil). Popravek, ki spremeni več kot 2
+  celici (ali število nizov, poseben izid), pomeni drug listek: števke se samo izbrišejo.
+- **Števka listka ima celico** (stolpec `celica` iz V70): popravek izida zato ohrani
+  močne oznake iz potrditve in pozna celice, ki jih je spremenil.
+- **Zlati nabor pri sprejemu:** prvih 400 listkov (nabor je naključen vzorec, zato tudi
+  to; pri isti velikosti nabora vedno isti listki), odloča od 20 listkov naprej; merilo
+  so napačne celice (stara in nova mreža na istih listkih).
+- **Stran:** mreža in učenje sta na vrhu strani Meritev branja (veljata za vse turnirje),
+  vadnica ima povezavo nanjo. Članka pomoči ni (samo admin, pravilo pomoči velja za
+  funkcije organizatorja).
+- **Znani vrzeli (pregled /code-review, sprejeto):** (1) popravek oznak teče kot naloga v
+  pomnilniku po commitu: ponovni zagon strežnika v tisti sekundi pusti napačne oznake
+  (redko, samo kakovost učenja); (2) popravek upošteva vsa potrjena branja tekme, tudi
+  listek pred zamenjavo zmagovalca z izbrisom izidov - njegove (pravilne) števke se
+  izbrišejo. Obe vodita kvečjemu v izgubo učnih števk, nikoli v napačen izid.
+- Preverjeno:
+  - zaledje 1449 testov (+12): `UcenjeMrezeTest` (11: zapis z meritvami, zgodovina brez
+    uteži, razlogi zavrnitve, zlati nabor pri sprejemu, prekinitev, delitev, odlog,
+    vrnitev prejšnje + nalaganje ob zagonu, »Uči zdaj« pove zakaj + zaklep, samo admin,
+    hramba), `UcenjeIzListkovTest` (močne oznake in celice, razlika po celicah,
+    popravek izida zapiše oznake znova + zlati nabor, popravek na drug listek izbriše),
+    `MeritevBranjaDostopTest` (gost 401, organizator 403 na novih poteh); vmesnik 332
+    testov, lint 0 napak, gradnja;
+  - pravo zaledje s testno bazo (pg18, V72 uveljavljena), brezglavi Chrome na 390 px in
+    1280 px: »Uči zdaj« (909 števk, 19 s) → različica zavrnjena z razlogom »Na
+    preizkusnih števkah slabša: 100,00 % → 99,39 %«, mreža ostala vgrajena, gumb v
+    premoru; sprejeta različica se naloži ob zagonu, »Vrni prejšnjo« s potrditvijo →
+    vgrajena, različica »Umaknjena«; brez napak v konzoli in brez vodoravnega pomikanja
+    (zgodovina je zato seznam, ne tabela s sedmimi stolpci).

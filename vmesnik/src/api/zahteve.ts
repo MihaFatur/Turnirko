@@ -6,6 +6,7 @@ import type {
   BranjaTurnirjaDto,
   BranjeListkaDto,
   MeritevBranjaDto,
+  MrezeStevkDto,
   PotrditevBranjaVnos,
   StanjeBranjaListkovDto,
   StanjeNaboraDto,
@@ -341,6 +342,10 @@ export const meritevBranjaApi = {
   nabor: () => api.vrni<StanjeNaboraDto>('/branje-listkov/nabor'),
   izmeriNabor: () => api.objavi<StanjeNaboraDto>('/branje-listkov/nabor/meritev'),
   zipNabora: () => api.vrniDatoteko('/branje-listkov/nabor/zip'),
+  /* Mreža števk in učenje (F6). */
+  mreze: () => api.vrni<MrezeStevkDto>('/branje-listkov/mreze'),
+  uciZdaj: () => api.objavi<MrezeStevkDto>('/branje-listkov/mreze/uci'),
+  vrniPrejsnjo: () => api.objavi<MrezeStevkDto>('/branje-listkov/mreze/vrni'),
 }
 
 /* Vadnica števk (F3, samo admin). */

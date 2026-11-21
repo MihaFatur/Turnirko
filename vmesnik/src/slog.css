@@ -32546,6 +32546,101 @@ html.uvod-tece {
   gap: var(--r1);
 }
 
+/* Mreza stevk in ucenje (F6.4): stanje, gumba, zgodovina razlicic. */
+.mreze-stevk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  margin-top: var(--r2);
+}
+
+.mreze-stevk p {
+  margin: 0;
+}
+
+.mreze-stevk__potrditev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  padding: var(--r2);
+  border-left: 3px solid var(--barva-negativna-tekst);
+  background: var(--barva-negativna-mehko);
+}
+
+.mreze-stevk__zgodovina {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mreze-stevk__razlicica {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+  padding: var(--r2) 0;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.mreze-stevk__glava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r1);
+}
+
+.mreze-stevk__ime {
+  font-weight: 700;
+}
+
+/* Tri meritve: na telefonu vrstica za vrstico (oznaka levo, vrednost desno),
+   na sirsem zaslonu v treh stolpcih. */
+.mreze-stevk__meritve {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--r1) var(--r3);
+  max-width: 48rem;
+  margin: 0;
+}
+
+.mreze-stevk__meritve > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r1);
+}
+
+.mreze-stevk__meritve dt {
+  color: var(--barva-crnilo-3);
+  font-size: var(--tip-drobno);
+}
+
+.mreze-stevk__meritve dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mreze-stevk__razlog {
+  font-size: var(--tip-drobno);
+  color: var(--barva-negativna-tekst);
+}
+
+.mreze-stevk__stanje--v-uporabi {
+  background: var(--barva-glavna-polna);
+  color: var(--barva-na-glavni);
+}
+
+.mreze-stevk__stanje--sprejeta {
+  background: var(--barva-poudarek-mehko);
+  color: var(--barva-poudarek-tekst);
+}
+
+.mreze-stevk__stanje--zavrnjena,
+.mreze-stevk__stanje--prekinjena {
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+}
+
 /* ---------- Vadnica stevk (nacrt F3) ----------
    List A4 pokoncno, natisnjen brez robov (@page listki): oznake, QR in okenca so
    postavljeni absolutno v mm iz istih stevil kot v zaledju (GeometrijaVadnice,

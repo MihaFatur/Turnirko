@@ -1,6 +1,7 @@
 package si.turnirko.repozitoriji;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,8 @@ import si.turnirko.modeli.ZlatiListek;
 public interface ZlatiListekRepozitorij extends JpaRepository<ZlatiListek, Long> {
 
     boolean existsByIdBranje(Long idBranje);
+
+    Optional<ZlatiListek> findByIdBranje(Long idBranje);
 
     /* Koliko listkov ima manjsi kljuc: novi listek, ki bi bil izven vzorca, se ne zapise. */
     long countByKljucLessThan(double kljuc);

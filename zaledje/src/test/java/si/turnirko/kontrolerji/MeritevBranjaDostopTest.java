@@ -54,7 +54,8 @@ class MeritevBranjaDostopTest {
     private static final String ADMIN = "admin-meritev@test.si";
     private static final String ORGANIZATOR = "organizator-meritev@test.si";
     private static final String[] POTI = {
-            "/api/v1/branje-listkov/meritev", "/api/v1/branje-listkov/nabor", "/api/v1/branje-listkov/nabor/zip"};
+            "/api/v1/branje-listkov/meritev", "/api/v1/branje-listkov/nabor", "/api/v1/branje-listkov/nabor/zip",
+            "/api/v1/branje-listkov/mreze"};
 
     @Autowired MockMvc mockMvc;
     @Autowired UporabnikRepozitorij uporabnikRepozitorij;
@@ -107,8 +108,25 @@ class MeritevBranjaDostopTest {
             mockMvc.perform(get(pot)).andExpect(status().isUnauthorized());
             mockMvc.perform(get(pot).header("Authorization", basic(ORGANIZATOR))).andExpect(status().isForbidden());
         }
-        mockMvc.perform(post("/api/v1/branje-listkov/nabor/meritev").header("Authorization", basic(ORGANIZATOR)))
-                .andExpect(status().isForbidden());
+        for (String pot : List.of("/api/v1/branje-listkov/nabor/meritev", "/api/v1/branje-listkov/mreze/uci",
+                "/api/v1/branje-listkov/mreze/vrni")) {
+            mockMvc.perform(post(pot)).andExpect(status().isUnauthorized());
+            mockMvc.perform(post(pot).header("Authorization", basic(ORGANIZATOR))).andExpect(status().isForbidden());
+        }
+    }
+
+    /* F6.4: admin vidi mrezo v uporabi in zgodovino; brez novih stevk »Uci zdaj«
+       pove zakaj (409), z vgrajeno mrezo »Vrni prejsnjo« tudi. */
+    @Test
+    void adminVidiMrezeInDobiRazlogZavrnitve() throws Exception {
+        String admin = basic(ADMIN);
+        mockMvc.perform(get("/api/v1/branje-listkov/mreze").header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.uciSe").value(false))
+                .andExpect(jsonPath("$.najmanjNovih").value(200))
+                .andExpect(jsonPath("$.razlicice").isArray());
+        mockMvc.perform(post("/api/v1/branje-listkov/mreze/vrni").header("Authorization", admin))
+                .andExpect(status().isConflict());
     }
 
     /* F4: fotografija listka tekme (GET pod /tekme, ki je sicer javen) in poravnan

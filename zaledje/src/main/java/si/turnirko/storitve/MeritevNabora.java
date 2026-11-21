@@ -16,6 +16,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 
 import org.slf4j.Logger;
@@ -26,6 +27,7 @@ import jakarta.annotation.PreDestroy;
 
 import si.turnirko.branje.MrezaStevk;
 import si.turnirko.branje.PogostostNizov;
+import si.turnirko.branje.UcenjeStevk;
 import si.turnirko.dto.MeritevBranjaDto;
 import si.turnirko.dto.StanjeNaboraDto;
 import si.turnirko.izjeme.DomenskaIzjema;
@@ -123,9 +125,20 @@ public class MeritevNabora {
     /* Meritev dane mreze nad celotnim naborom (sinhrono). Listek, ki ga ni
        mogoce nalozi (poskodovan zapis), se preskoci in zapise v dnevnik. */
     public MeritevBranjaDto.Skupina izmeri(MrezaStevk mreza, IntConsumer napredek) {
+        return izmeri(mreza, Integer.MAX_VALUE, () -> false, napredek);
+    }
+
+    /* Prvih najvec listkov nabora (sprejem mreze, F6.3). prekini se vprasa pred
+       vsakim listkom; ob true meritev vrze UcenjeStevk.Prekinjeno. */
+    public MeritevBranjaDto.Skupina izmeri(MrezaStevk mreza, int najvec, BooleanSupplier prekini,
+                                           IntConsumer napredek) {
         MeritevBranja.Zbirnik zbirnik = new MeritevBranja.Zbirnik("Zlati nabor", null, null);
         int[] stevec = {0};
-        nabor.zaVsak(z -> {
+        nabor.zaVsak(najvec, z -> {
+            // najprej prekini: pri sprejemu mreze je to tudi ustavitev streznika (UcenjeMreze)
+            if (prekini.getAsBoolean()) {
+                throw new UcenjeStevk.Prekinjeno();
+            }
             if (Thread.currentThread().isInterrupted()) {
                 throw new IllegalStateException("Meritev je bila prekinjena.");
             }

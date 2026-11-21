@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +63,7 @@ public class TekmaStoritev {
     private final SvRegijaStoritev svRegija;
     private final PoslediceIzidaStoritev poslediceIzida;
     private final Zaklepi zaklepi;
+    private final ApplicationEventPublisher dogodki;
 
     public TekmaStoritev(TekmaRepozitorij tekmaRepozitorij,
                          NizRepozitorij nizRepozitorij,
@@ -76,7 +78,8 @@ public class TekmaStoritev {
                          PreracunRatingaStoritev preracunRatinga,
                          SvRegijaStoritev svRegija,
                          PoslediceIzidaStoritev poslediceIzida,
-                         Zaklepi zaklepi) {
+                         Zaklepi zaklepi,
+                         ApplicationEventPublisher dogodki) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.nizRepozitorij = nizRepozitorij;
         this.dogodekRepozitorij = dogodekRepozitorij;
@@ -91,6 +94,7 @@ public class TekmaStoritev {
         this.svRegija = svRegija;
         this.poslediceIzida = poslediceIzida;
         this.zaklepi = zaklepi;
+        this.dogodki = dogodki;
     }
 
     /* Vnese koncni rezultat tekme in sprozi vse posledice.
@@ -221,6 +225,8 @@ public class TekmaStoritev {
         if (steje || pobrisanihObracunov > 0) {
             preracunRatinga.preracunajPoPopravku(RatingStoritev.casTurnirskeTekme(tekma));
         }
+        // branje listkov popravi oznake stevk listkov te tekme (F6.1), sele po potrditvi
+        dogodki.publishEvent(new IzidTekmePopravljen(idTekme));
         // preracun izprazni sejo, odgovor pa bere igralce tekme
         return najdiTekmo(idTekme);
     }

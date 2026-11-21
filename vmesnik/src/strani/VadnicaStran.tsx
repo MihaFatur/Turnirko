@@ -157,8 +157,11 @@ export function VadnicaStran() {
         <h2>V učenju</h2>
         <p>
           {seznam.data ? seznam.data.stevkVUcenju : '–'} števk z {odobreni.length}{' '}
-          {odobreni.length === 1 ? 'odobrenega lista' : 'odobrenih listov'}. Učenje teče vsako noč,
-          ko je novih števk vsaj 200; nova mreža se sprejme samo, če bere bolje.
+          {odobreni.length === 1 ? 'odobrenega lista' : 'odobrenih listov'}. Učenje teče vsako noč ob 3.50,
+          ko je novih števk vsaj 200, ali takoj z »Uči zdaj«; nova mreža se sprejme samo, če ne bere slabše.
+        </p>
+        <p>
+          <Link to="/branje-listkov/meritev">Mreža števk in učenje →</Link>
         </p>
         {odobreni.length > 0 && <TabelaListov listi={odobreni} />}
       </div>

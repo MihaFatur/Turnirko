@@ -68,6 +68,9 @@ public class ZlatiListek {
     public byte[] getSlika() { return slika; }
     public String getCelice() { return celice; }
     public String getResnica() { return resnica; }
+
+    /* Popravek izida tekme popravi tudi resnico listka v naboru (F6.1). */
+    public void setResnica(String resnica) { this.resnica = resnica; }
     public int getSteviloNizov() { return steviloNizov; }
     public String getModel() { return model; }
     public double getKljuc() { return kljuc; }

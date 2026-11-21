@@ -1,5 +1,6 @@
-/* Meritev branja listkov in zlati nabor (nacrt F1, samo admin). Pot je zaprta
-   za ostale vloge ze v VarnostneNastavitve, storitev preveri se enkrat. */
+/* Meritev branja listkov, zlati nabor (nacrt F1) in ucenje mreze stevk (F6), samo
+   admin. Pot je zaprta za ostale vloge ze v VarnostneNastavitve, storitev preveri
+   se enkrat. */
 package si.turnirko.kontrolerji;
 
 import java.io.IOException;
@@ -17,9 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletResponse;
 
 import si.turnirko.dto.MeritevBranjaDto;
+import si.turnirko.dto.MrezeStevkDto;
 import si.turnirko.dto.StanjeNaboraDto;
 import si.turnirko.storitve.MeritevBranjaStoritev;
 import si.turnirko.storitve.MeritevNabora;
+import si.turnirko.storitve.UcenjeMreze;
 import si.turnirko.storitve.ZlatiNabor;
 
 @RestController
@@ -28,11 +31,14 @@ public class MeritevBranjaKontroler {
     private final MeritevBranjaStoritev meritev;
     private final MeritevNabora meritevNabora;
     private final ZlatiNabor nabor;
+    private final UcenjeMreze ucenje;
 
-    public MeritevBranjaKontroler(MeritevBranjaStoritev meritev, MeritevNabora meritevNabora, ZlatiNabor nabor) {
+    public MeritevBranjaKontroler(MeritevBranjaStoritev meritev, MeritevNabora meritevNabora, ZlatiNabor nabor,
+                                  UcenjeMreze ucenje) {
         this.meritev = meritev;
         this.meritevNabora = meritevNabora;
         this.nabor = nabor;
+        this.ucenje = ucenje;
     }
 
     @GetMapping("/api/v1/branje-listkov/meritev")
@@ -51,6 +57,24 @@ public class MeritevBranjaKontroler {
     @PostMapping("/api/v1/branje-listkov/nabor/meritev")
     public StanjeNaboraDto izmeriNabor() {
         return meritevNabora.zazeni();
+    }
+
+    /* Mreza v uporabi, tekoce ucenje in zgodovina razlicic (F6.4). */
+    @GetMapping("/api/v1/branje-listkov/mreze")
+    public MrezeStevkDto mreze() {
+        return ucenje.stanje();
+    }
+
+    /* »Uci zdaj«: ucenje v ozadju; 409, ce ze tece, je v premoru ali je stevk premalo. */
+    @PostMapping("/api/v1/branje-listkov/mreze/uci")
+    public MrezeStevkDto uciZdaj() {
+        return ucenje.uciZdaj();
+    }
+
+    /* »Vrni prejsnjo«: umakne razlicico v uporabi. */
+    @PostMapping("/api/v1/branje-listkov/mreze/vrni")
+    public MrezeStevkDto vrniPrejsnjo() {
+        return ucenje.vrniPrejsnjo();
     }
 
     /* Zip zlatega nabora za lokalne meritve. Pravica se preveri PRED zacetkom

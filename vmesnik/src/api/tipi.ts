@@ -3353,6 +3353,47 @@ export interface StanjeNaboraDto {
   napaka: string | null
 }
 
+/* Ena različica mreže števk v zgodovini učenja (F6.4). Natančnosti so deleži 0-1:
+   preizkusne števke (niso bile v učenju), zlati nabor (celice celih listkov) in
+   MNIST (splošne oblike). natancnost je null pri prekinjenem učenju. */
+export interface RazlicicaMrezeDto {
+  id: number
+  ustvarjenoOb: string
+  nacin: 'NOC' | 'ROCNO'
+  vzorcev: number
+  preizkusnih: number | null
+  natancnostPrej: number
+  natancnost: number | null
+  mnistPrej: number | null
+  mnist: number | null
+  zlatih: number | null
+  zlatiPrej: number | null
+  zlati: number | null
+  trajanjeMs: number | null
+  sprejeta: boolean
+  prekinjena: boolean
+  razlog: string | null
+  umaknjenaOb: string | null
+}
+
+/* Mreža števk v uporabi, tekoče učenje in zgodovina (F6.4, samo admin). */
+export interface MrezeStevkDto {
+  /* id različice v uporabi; null = vgrajena (naučena samo na MNIST) */
+  vUporabi: number | null
+  uciSe: boolean
+  ucenjeOd: string | null
+  nacinUcenja: 'NOC' | 'ROCNO' | null
+  sporocilo: string | null
+  sporociloOb: string | null
+  novihStevk: number
+  najmanjNovih: number
+  stevkVUcenju: number
+  stevkVadnice: number
+  /* pred tem časom »Uči zdaj« ni mogoč (premor med zagoni) */
+  uciZdajOd: string | null
+  razlicice: RazlicicaMrezeDto[]
+}
+
 /* Vadnica števk (V70, samo admin): list A4, ki ga izpolni ena oseba. */
 export interface VadnicaDto {
   id: number

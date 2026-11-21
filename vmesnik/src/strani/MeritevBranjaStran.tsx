@@ -1,5 +1,8 @@
 /* Meritev branja listkov (načrt F1, samo admin; docs/NACRT-BRANJE-LISTKOV.md).
 
+   Na vrhu je mreža števk z zgodovino učenja, »Uči zdaj« in »Vrni prejšnjo« (F6,
+   komponente/MrezeStevk) - velja za vse turnirje, zato pred izbiro obdobja.
+
    Ali branje drži merila za uvedbo (razdelek 1 načrta): listki brez popravka,
    tihe napake (ocena iz naključnih kontrol), čas na listek, neuspeli zajemi.
    Pod tem celice potrjenih listkov (prav/narobe × zanesljiva/za pregled), isto po
@@ -15,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SkupinaMeritve, StanjeNaboraDto } from '../api/tipi'
 import { meritevBranjaApi } from '../api/zahteve'
 import { useNazaj } from '../komponente/GlavaTelefona'
+import { MrezeStevk } from '../komponente/MrezeStevk'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { odstotek, trajanje } from '../pomozno/branjeListkov'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
@@ -101,6 +105,11 @@ export function MeritevBranjaStran() {
         </div>
       </div>
 
+      {/* mreža in učenje veljata za vse turnirje, zato pred izbiro obdobja (F6.4) */}
+      <h2 className="meritev-branja__razdelek">Mreža števk</h2>
+      <MrezeStevk />
+
+      <h2 className="meritev-branja__razdelek">Branja v obdobju</h2>
       <div className="meritev-branja__filtri">
         <label className="obrazec__polje">
           <span>Od</span>

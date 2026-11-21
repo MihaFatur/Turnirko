@@ -31,6 +31,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -202,9 +203,22 @@ public final class UcenjeStevk {
 
     // ---------- Ucenje ----------
 
+    /* Ucenje je bilo prekinjeno (casovna meja, F6.5); mreza je delno naucena in se zavrze. */
+    public static final class Prekinjeno extends RuntimeException {
+        public Prekinjeno() {
+            super("Ucenje mreze stevk je bilo prekinjeno.");
+        }
+    }
+
     /* Mini-paketi po 64, Adam, popacenje vsakega vzorca. Uci na »niti« nitih. */
     public static void uci(MrezaStevk mreza, List<Vzorec> vzorci, int epoh, float korak, int niti, long seme,
                            Consumer<String> dnevnik) {
+        uci(mreza, vzorci, epoh, korak, niti, seme, dnevnik, () -> false);
+    }
+
+    /* Isto; prekini se vprasa pred vsakim paketom in ob true ucenje vrze Prekinjeno. */
+    public static void uci(MrezaStevk mreza, List<Vzorec> vzorci, int epoh, float korak, int niti, long seme,
+                           Consumer<String> dnevnik, BooleanSupplier prekini) {
         int paket = 64;
         Random r = new Random(seme);
         Adam adam = new Adam(mreza, korak);
@@ -221,6 +235,9 @@ public final class UcenjeStevk {
                 Collections.shuffle(vrsta, r);
                 double izguba = 0;
                 for (int z = 0; z < vrsta.size(); z += paket) {
+                    if (prekini.getAsBoolean()) {
+                        throw new Prekinjeno();
+                    }
                     int konec = Math.min(vrsta.size(), z + paket);
                     List<Future<Double>> opravila = new ArrayList<>();
                     for (int t = 0; t < niti; t++) {
@@ -252,6 +269,8 @@ public final class UcenjeStevk {
                     dnevnik.accept(String.format("epoha %d: izguba %.4f", e + 1, izguba / vrsta.size()));
                 }
             }
+        } catch (Prekinjeno e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Ucenje mreze stevk ni uspelo.", e);
         } finally {

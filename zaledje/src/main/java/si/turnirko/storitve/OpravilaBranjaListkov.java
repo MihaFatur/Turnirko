@@ -1,6 +1,6 @@
 /* Opravila branja listkov, ki tecejo brez organizatorja:
    - vsako noc izbrise fotografije, starejse od 30 dni po turnirju, ter stevke
-     in razlicice mreze cez mejo hrambe (UcenjeIzListkov.pocisti);
+     in razlicice mreze cez mejo hrambe (UcenjeMreze.pocisti);
    - ob zagonu oznaci branja, ki jih je prekinil ponovni zagon;
    - ob zagonu in vsako noc prebere pogostost izidov nizov (PogostostNizovStoritev).
 
@@ -26,10 +26,10 @@ public class OpravilaBranjaListkov {
     private static final ZoneId LJUBLJANA = ZoneId.of("Europe/Ljubljana");
 
     private final BranjeListkovStoritev storitev;
-    private final UcenjeIzListkov ucenje;
+    private final UcenjeMreze ucenje;
     private final PogostostNizovStoritev pogostost;
 
-    public OpravilaBranjaListkov(BranjeListkovStoritev storitev, UcenjeIzListkov ucenje,
+    public OpravilaBranjaListkov(BranjeListkovStoritev storitev, UcenjeMreze ucenje,
                                  PogostostNizovStoritev pogostost) {
         this.storitev = storitev;
         this.ucenje = ucenje;
