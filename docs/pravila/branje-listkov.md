@@ -35,16 +35,55 @@
    v obliki L se izbere po geometriji (pravi kot, razmerje 85 : 87, predznak vektorskega
    produkta), zato je vseeno, kako je listek obrnjen. S QR je preslikava homografija
    (popravi perspektivo), brez nje afina. Izhod: listek pri 10 px/mm.
+   **Trojica, ki ne ustreza QR** (napoved iskalnega vzorca zgoraj desno dlje od
+   `najvecOdmikQr`), se zavrže (F2.6): ko prst zakrije oznako, je »tretja oznaka«
+   nekaj drugega in poravnava bi bila napačna. Takrat **rezervna poravnava**: trije
+   iskalni vzorci QR so točke na znanih mestih, afina napoved iz njih pokaže, kje
+   iskati oznake (krog 25 % razdalje od QR), z vsaj dvema oznakama je točk pet in
+   homografija po najmanjših kvadratih se mora z vsemi ujemati na 1 mm.
 3. `CeliceListka`: celice se poiščejo po črtah (navpična lega se spreminja s številom
    nizov); pas brez navpičnih robov (okvirčka pod imeni) ni celica. Zadnja celica je
-   Rezultat. Ob neuspehu še enkrat z blažjim pragom.
+   Rezultat. Ob neuspehu še enkrat z blažjim pragom. **Črte in celice se iščejo v
+   vsakem stolpcu posebej** (toleranca ±2 px) in se nato povežejo v vrstice po
+   bližini središča (≤ 1,2 mm), ker sta stolpca prepognjenega listka lahko zamaknjena
+   ali nagnjena drug proti drugemu (F2.6).
 4. `RazrezCelice`: črnilo → komponente → skupine po stolpcih → razlage (ena ali dve
    števki, z verjetnostjo); števka v obliki MNIST (20 × 20, težišče v sredini 28 × 28).
+   **Popravljena celica** (F2.5: delež črnila > 0,12, več kot tri skupine potez ali
+   zapis čez več kot 35 % širine celice; navaden zapis sega do ~28 %) je vedno
+   negotova, listek dobi opombo »Popravljena celica (2. niz). Preveri jo.«, njene
+   števke ne gredo v učenje. Celica z več kot 40 deli se ne obdeluje naprej
+   (varnost) in je popravljena. Vadnica tega pravila nima (ozka okenca, slabe
+   števke izloči admin).
 5. `MrezaStevk` (LeNet, ~80.000 uteži, čista Java) da verjetnost števk (temperatura 1,5).
+   **Petkratno branje** (F2.2, `VecBranj`): izvirnik, premik ±1 px, zasuk ±4°;
+   verjetnosti se povprečijo.
 6. `RazlagaListka`: Viterbi po vrsticah izbere najverjetnejši **veljaven** izid
    (veljaven niz, konec tekme, prazne vrstice po odločitvi, celica Rezultat);
    naprej-nazaj da zaupanje celice. Celica je negotova pod 0,8 ali kadar so pravila
    preglasila mrežo. Imen in zapisov »b.b.« ne bere: posebni izidi so nepopolna tekma.
+   **Pogostost izidov iz zgodovine** (F2.1, `PogostostNizov`): vsak veljaven niz je
+   utežen s (P(niz) / povprečni P(11:a))^β, β = `turnirko.branje-listkov.beta`
+   (privzeto 0,5; 0 = brez zgodovine). Celica je negotova tudi, kadar bi brez
+   zgodovine izbrali drugo vrednost (odločila je zgodovina, ne pisava). Opomba
+   »slabo se ujemajo s pravili« se meri brez zgodovine. Pogostost prešteje
+   `PogostostNizovStoritev` ob zagonu in vsako noč (ena poizvedba GROUP BY nad
+   `niz` in `tekma`: samo `IGRANO` + `KONCANA`, turnir z znanim datumom, veljavni
+   nizi, brez osebnih podatkov); pod 2000 nizi velja vgrajena porazdelitev (kopija
+   produkcije 20. 11. 2026: 200.287 nizov; 11:7, 11:8, 11:9 po 13,6 %, 11:0 0,6 %,
+   12:10 6,2 %). Glajenje: 100 navideznih nizov vgrajene oblike, zato redek izid
+   nikoli ni nemogoč. β zunaj 0–1 se ob zagonu zamenja s privzeto (opozorilo v dnevniku).
+   Meritev zlatega nabora uporablja **vgrajeno** pogostost (meritvi dveh mrež na različna
+   dneva morata biti primerljivi).
+7. `PredlogIzidaListka`: število prebranih vrstic nizov se mora ujemati s številom nizov
+   tekme (toliko jih listek natisne); sicer opozorilo — bralnik vrstice ni našel in je
+   npr. zadnji niz vzel za Rezultat (prst čez celico Rezultata).
+
+**Meritev bralnika:** vsaka sprememba se meri s `SimulacijaBralnikaPoskus` (tri
+ravni simulacije + vsaka težava tretje ravni posebej, `-Dzgodovina=true` za tekme
+po pogostosti iz zgodovine). Sprememba, ki poslabša katerokoli merilo, se ne
+sprejme. Tretja raven (`NEUGODNO`, F2.7): prepognjen listek, prst čez eno oznako,
+prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
 
 ## Učenje
 
@@ -160,6 +199,31 @@
   je sinhrona za F2/F6. Zip (`GET /api/v1/branje-listkov/nabor/zip`) se piše
   neposredno v odgovor (ne asinhrono), pravica se preveri pred prvim bajtom; zadnja
   datoteka `konec.txt` s številom listkov pove, da prenos ni bil prekinjen.
+
+## Pregled in potrditev (F4, 21. 11. 2026, V71)
+
+- Ob branju se shrani **poravnan listek** (sivine, 10 px/mm, JPEG ~50–100 kB) v
+  `branje_listka_slika.poravnana` in **lega celic** v `branje_listka.celice`
+  (JSON `CeliceListkaDto`, samo številke). Ponovno branje oboje zamenja; brez
+  poravnave ni izrezov. Poravnana slika gre z isto vrstico kot fotografija, zato jo
+  izbriše isto nočno brisanje po 30 dneh; DTO izrezov ne vrne, ko je fotografija
+  izbrisana.
+- `GET /api/v1/branja-listkov/{id}/poravnana` (isti dostop kot fotografija) in
+  `GET /api/v1/tekme/{id}/listek` (zadnje potrjeno branje tekme s fotografijo;
+  lastnik turnirja tekme ali admin; v varnostni verigi `authenticated`, čeprav je
+  GET pod `/tekme`). Glave `image/jpeg`, `Cache-Control: no-store, private`.
+- Vmesnik: v oknu pregleda je pod vsako vrstico točk vrstica izrezov iz ene slike
+  (CSS ozadje v odstotkih, ena zahteva); negotova celica je čez vso širino z rjastim
+  robom. `BranjeListkaDto.obrnjeno` pove, kateri stolpec listka je udeleženec 1.
+- Vrsta: zanesljivi listki (`jeZanesljiv`: prebrano, tekma, predlog pripravljen) na
+  vrhu, nato ostali, v skupini po času; koda `T-…` v vsaki vrstici. **Potrdi vse
+  zanesljive** (od dveh naprej) zaporedno kliče potrditev; ob prvi napaki se ustavi.
+  Čas pregleda se razdeli na potrjene listke. Kontrola ni nikoli pripravljena, zato
+  je nikoli ne potrdi skupaj.
+- Vrsta se osvežuje vsake 3 s (med branjem 1,5 s), samo dokler je stran vidna.
+- Okno s točkami po nizih ima za organizatorja turnirja in admina gumb **Listek**
+  (kadar je branje listkov vklopljeno); brez fotografije pokaže »Za to tekmo ni
+  fotografije listka«.
 
 ## Vadnica števk (F3, 20. 11. 2026, V70)
 

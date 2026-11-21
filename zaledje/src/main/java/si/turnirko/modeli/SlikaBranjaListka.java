@@ -25,6 +25,11 @@ public class SlikaBranjaListka {
     @Column(name = "visina", nullable = false)
     private int visina;
 
+    /* Listek, poravnan v stalne koordinate (F4.1, V71): JPEG v sivinah, iz njega
+       vmesnik izreze celice. null pred branjem ali ce poravnava ni uspela. */
+    @Column(name = "poravnana")
+    private byte[] poravnana;
+
     protected SlikaBranjaListka() {}
 
     public SlikaBranjaListka(Long idBranje, byte[] vsebina, int sirina, int visina) {
@@ -38,4 +43,6 @@ public class SlikaBranjaListka {
     public byte[] getVsebina() { return vsebina; }
     public int getSirina() { return sirina; }
     public int getVisina() { return visina; }
+    public byte[] getPoravnana() { return poravnana; }
+    public void setPoravnana(byte[] poravnana) { this.poravnana = poravnana; }
 }

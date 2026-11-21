@@ -36,6 +36,13 @@ public final class PredlogIzidaListka {
         }
 
         List<PrebranListek.Niz> vrstice = new ArrayList<>(listek.niziAliPrazno());
+        // Listek ima natisnjenih toliko vrstic, kolikor nizov ima tekma. Manj ali vec
+        // prebranih vrstic pomeni, da bralnik vrstice ni nasel (prst ali senca cez
+        // celico) in je npr. zadnji niz vzel za Rezultat - ne sme iti mimo tiho.
+        if (listek.jeListek() && !vrstice.isEmpty() && vrstice.size() != steviloNizov) {
+            opozorila.add("Prebranih je " + vrstice.size() + " vrstic nizov, listek tekme jih ima " + steviloNizov
+                    + ". Preveri nize in rezultat.");
+        }
         // prazne vrstice na koncu so neodigrani nizi (tekma 3:0 na listku za 5 nizov)
         while (!vrstice.isEmpty() && jePrazna(vrstice.getLast())) {
             vrstice.removeLast();

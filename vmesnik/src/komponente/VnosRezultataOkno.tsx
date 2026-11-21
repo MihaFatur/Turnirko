@@ -68,6 +68,8 @@ interface Lastnosti {
   shrani?: (vnos: VnosRezultata) => Promise<unknown>
   /* Vsebina nad obrazcem: fotografija listka in opozorila bralnika. */
   nadObrazcem?: ReactNode
+  /* Izrez celice z listka pod vsako vrstico tock (branje listka, F4.1). */
+  izrezCelice?: (mesto: number) => ReactNode
   naslov?: string
 }
 
@@ -88,6 +90,7 @@ export function VnosRezultataOkno({
   predlog,
   shrani,
   nadObrazcem,
+  izrezCelice,
   naslov,
 }: Lastnosti) {
   /* Prepis števila nizov za to tekmo (privzeto kar je določil dogodek). Pri popravku
@@ -502,6 +505,7 @@ export function VnosRezultataOkno({
                 sklicPolj={sklici.sklicTock}
                 naVrh={sklici.naVrh}
                 zaPregled={zaPregled}
+                izrez={izrezCelice}
               />
             )}
           </>

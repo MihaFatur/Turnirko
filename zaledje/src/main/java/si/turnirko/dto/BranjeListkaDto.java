@@ -30,7 +30,11 @@ public record BranjeListkaDto(
         // V_VRSTI dlje kot nekaj minut (npr. zavrnjeno ob polni vrsti): sme se prebrati znova
         boolean obviselo,
         // nakljucna kontrola (V69): predlog ni za en dotik, organizator ga pregleda v celoti
-        boolean kontrola
+        boolean kontrola,
+        // lega celic na poravnanem listku za izrez ob poljih (F4.1); null brez slike
+        CeliceListkaDto celice,
+        // levi stolpec listka je udelezenec 2 prepoznane tekme (listek brez kode)
+        boolean obrnjeno
 ) {
 
     /* Tekma z imenom dogodka in oznako skupine (za izpis »U15 · Skupina B · 2. kolo»). */

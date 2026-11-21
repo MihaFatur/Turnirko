@@ -15,7 +15,15 @@ public interface BralnikListka {
     Branje preberi(byte[] jpeg);
 
     /* Prepis in razlicica mreze, ki je brala (merilo natancnosti po razlicicah). */
-    record Branje(PrebranListek listek, String model) {}
+    record Branje(PrebranListek listek, String model, Poravnava poravnava) {
+        public Branje(PrebranListek listek, String model) {
+            this(listek, model, null);
+        }
+    }
+
+    /* Poravnan listek (JPEG v sivinah) in lega celic na njem za izrez ob poljih
+       pregleda (F4.1); null, ce bralnik listka ni poravnal. */
+    record Poravnava(byte[] jpeg, si.turnirko.dto.CeliceListkaDto celice) {}
 
     /* Napaka branja, ki jo organizator vidi ob fotografiji. */
     class NapakaBranjaListka extends RuntimeException {

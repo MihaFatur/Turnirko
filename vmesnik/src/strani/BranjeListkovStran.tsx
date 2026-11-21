@@ -10,7 +10,7 @@
    oknu z fotografijo nad istim obrazcem kot ročni vnos (VnosRezultataOkno).
    Branje samo nikoli ne zapiše izida - šele potrditev, po isti poti kot ročni
    vnos (docs/pravila/branje-listkov.md). */
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -18,6 +18,7 @@ import { opisNapake } from '../api/odjemalec'
 import { imeUdelezenca } from '../api/tipi'
 import type {
   BranjeListkaDto,
+  CeliceListkaDto,
   KandidatListkaDto,
   NacinPotrditve,
   PredlogIzidaDto,
@@ -33,10 +34,14 @@ import { Namig } from '../pomoc/Namig'
 import {
   casPregleda,
   celiceZaPregled,
+  izrezCelice,
+  jeZanesljiv,
   pomanjsajFotografijo,
   razdeliVrsto,
+  slogIzreza,
   vnosIzPredloga,
 } from '../pomozno/branjeListkov'
+import { natisnjenaKoda } from '../pomozno/kodaListka'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
 
@@ -52,6 +57,8 @@ interface Pregled {
   branje: BranjeListkaDto
   tekma: TekmaListkaDto
   predlog: PredlogIzidaDto | null
+  /* Levi stolpec listka je udeleženec 2 te tekme (za izrez celic ob poljih). */
+  obrnjeno: boolean
 }
 
 let naslednjiKljuc = 1
@@ -94,12 +101,14 @@ export function BranjeListkovStran() {
     queryKey: kljucBranj,
     queryFn: () => branjeListkovApi.seznam(idTurnirja),
     enabled: omogoceno,
-    /* Dokler se kaj bere, vsaki 1,5 s (branje traja nekaj sekund); sicer na 10 s,
-       ker isti turnir lahko vodita dva organizatorja z dvema telefonoma. */
+    /* Dokler se kaj bere, vsaki 1,5 s (branje traja nekaj sekund); sicer na 3 s
+       (F4.5): isti turnir lahko vodita dva organizatorja, listki pa pridejo tudi s
+       postaje. Samo dokler je stran vidna - skrit zavihek ne sprašuje (privzeto
+       refetchIntervalInBackground: false). */
     refetchInterval: (poizvedba) =>
       posiljanja.length > 0 || poizvedba.state.data?.branja.some((b) => b.stanje === 'V_VRSTI')
         ? 1500
-        : 10_000,
+        : 3000,
   })
 
   const jeTelefon = useTelefon()
@@ -164,6 +173,29 @@ export function BranjeListkovStran() {
   })
 
   const vrsta = useMemo(() => razdeliVrsto(branja.data?.branja ?? []), [branja.data])
+  const zanesljivi = vrsta.zaPotrditev.filter(jeZanesljiv)
+
+  /* »Potrdi vse zanesljive« (F4.2): zaporedne potrditve po isti poti kot en dotik
+     (vsaka svoja transakcija in preverba na strežniku). Ob prvi napaki se ustavi
+     in jo pokaže; potrjeni ostanejo potrjeni. Čas pregleda se razdeli na listke. */
+  const potrditevVseh = useMutation({
+    mutationFn: async (listki: BranjeListkaDto[]) => {
+      const zdaj = performance.now()
+      for (const b of listki) {
+        const cas = casPregleda(prikazanOb.current.get(b.id), zadnjaAkcija.current, zdaj)
+        await branjeListkovApi.potrdi(b.id, {
+          idTekme: null,
+          izid: vnosIzPredloga(b.predlog!),
+          casPregledaMs: cas === null ? null : Math.round(cas / listki.length),
+          nacin: 'EN_DOTIK',
+        })
+      }
+    },
+    onSettled: () => {
+      oznaciAkcijo()
+      osvezi()
+    },
+  })
 
   // prvi prikaz vsakega listka, ki čaka na organizatorja (tudi neuspelo branje, vpisano ročno)
   useEffect(() => {
@@ -179,7 +211,11 @@ export function BranjeListkovStran() {
     const naslednji = vrsta.zaPotrditev.find(
       (b) => b.id !== potrjen && b.stanje === 'PREBRANO' && b.tekma !== null,
     )
-    nastaviPregled(naslednji ? { branje: naslednji, tekma: naslednji.tekma!, predlog: naslednji.predlog } : null)
+    nastaviPregled(
+      naslednji
+        ? { branje: naslednji, tekma: naslednji.tekma!, predlog: naslednji.predlog, obrnjeno: naslednji.obrnjeno }
+        : null,
+    )
   }
 
   if (stanje.isPending) return <p className="obvestilo">Nalaganje …</p>
@@ -231,7 +267,9 @@ export function BranjeListkovStran() {
               <Link to="/vadnica">Vadnica števk →</Link>
             </p>
           )}
-          <SporociloNapake napaka={branja.error ?? potrditev.error ?? zavrzenje.error ?? ponovitev.error} />
+          <SporociloNapake
+            napaka={branja.error ?? potrditev.error ?? potrditevVseh.error ?? zavrzenje.error ?? ponovitev.error}
+          />
 
           {(posiljanja.length > 0 || vrsta.berem.length > 0) && (
             <>
@@ -280,9 +318,21 @@ export function BranjeListkovStran() {
             </>
           )}
 
-          <h2 className="branje__razdelek">
-            Za potrditev{vrsta.zaPotrditev.length > 0 ? ` (${vrsta.zaPotrditev.length})` : ''}
-          </h2>
+          <div className="branje__razdelek-glava">
+            <h2 className="branje__razdelek">
+              Za potrditev{vrsta.zaPotrditev.length > 0 ? ` (${vrsta.zaPotrditev.length})` : ''}
+            </h2>
+            {zanesljivi.length >= 2 && (
+              <button
+                type="button"
+                className="gumb gumb--glavni branje__potrdi-vse"
+                disabled={potrditev.isPending || potrditevVseh.isPending}
+                onClick={() => potrditevVseh.mutate(zanesljivi)}
+              >
+                {potrditevVseh.isPending ? 'Potrjujem …' : `Potrdi vse zanesljive (${zanesljivi.length})`}
+              </button>
+            )}
+          </div>
           {vrsta.zaPotrditev.length === 0 ? (
             <p className="namig">
               {branja.isPending ? 'Nalaganje …' : 'Ni listkov, ki bi čakali na potrditev.'}
@@ -294,8 +344,8 @@ export function BranjeListkovStran() {
                   key={b.id}
                   branje={b}
                   predogled={predogledi[b.id] ?? null}
-                  zaseden={potrditev.isPending || zavrzenje.isPending || ponovitev.isPending}
-                  onPreglej={(tekma, predlog) => nastaviPregled({ branje: b, tekma, predlog })}
+                  zaseden={potrditev.isPending || potrditevVseh.isPending || zavrzenje.isPending || ponovitev.isPending}
+                  onPreglej={(tekma, predlog, obrnjeno) => nastaviPregled({ branje: b, tekma, predlog, obrnjeno })}
                   onPotrdi={(predlog) => potrditev.mutate({ b, vnos: vnosIzPredloga(predlog), idTekme: null })}
                   onZavrzi={() => zavrzenje.mutate(b)}
                   onZnova={() => ponovitev.mutate(b)}
@@ -334,6 +384,11 @@ export function BranjeListkovStran() {
           predlog={pregled.predlog ?? undefined}
           nadObrazcem={<PregledListka branje={pregled.branje} tekma={pregled.tekma}
             predlog={pregled.predlog} predogled={predogledi[pregled.branje.id] ?? null} />}
+          izrezCelice={
+            pregled.branje.celice && pregled.branje.imaSliko
+              ? izreziListka(pregled.branje.id, pregled.branje.celice, pregled.obrnjeno, pregled.predlog)
+              : undefined
+          }
           shrani={(vnos) =>
             branjeListkovApi.potrdi(pregled.branje.id, {
               idTekme: pregled.tekma.tekma.id,
@@ -368,7 +423,7 @@ function VrsticaZaPotrditev({
   branje: BranjeListkaDto
   predogled: string | null
   zaseden: boolean
-  onPreglej: (tekma: TekmaListkaDto, predlog: PredlogIzidaDto | null) => void
+  onPreglej: (tekma: TekmaListkaDto, predlog: PredlogIzidaDto | null, obrnjeno: boolean) => void
   onPotrdi: (predlog: PredlogIzidaDto) => void
   onZavrzi: () => void
   onZnova: () => void
@@ -386,12 +441,16 @@ function VrsticaZaPotrditev({
         className="branje-vrsta__slika"
         aria-label="Preglej listek"
         disabled={!tekma}
-        onClick={() => tekma && onPreglej(tekma, predlog)}
+        onClick={() => tekma && onPreglej(tekma, predlog, branje.obrnjeno)}
       >
         <Slicica url={predogled} id={branje.imaSliko ? branje.id : undefined} />
       </button>
       <div className="branje-vrsta__telo">
-        {tekma && <p className="branje-vrsta__kategorija">{opisTekme(tekma)}</p>}
+        {tekma && (
+          <p className="branje-vrsta__kategorija">
+            <span className="branje-vrsta__koda">{natisnjenaKoda(tekma.tekma.id)}</span> {opisTekme(tekma)}
+          </p>
+        )}
         {tekma && <p className="branje-vrsta__imena">{imeTekme(tekma)}</p>}
 
         {branje.stanje === 'NAPAKA' && <p className="branje-vrsta__napaka">{branje.napaka}</p>}
@@ -421,7 +480,7 @@ function VrsticaZaPotrditev({
             </p>
             {branje.napaka && <p className="branje-vrsta__napaka">{branje.napaka}</p>}
             {branje.kandidati.length > 0 ? (
-              <IzbiraTekme kandidati={branje.kandidati} onIzberi={(k) => onPreglej(k.tekma, k.predlog)} />
+              <IzbiraTekme kandidati={branje.kandidati} onIzberi={(k) => onPreglej(k.tekma, k.predlog, k.obrnjeno)} />
             ) : (
               <p className="branje-vrsta__namig">
                 Med tekmami, ki čakajo na izid, ni teh imen. Vpiši izid na strani kategorije.
@@ -439,7 +498,7 @@ function VrsticaZaPotrditev({
           )}
           {tekma && (
             <button type="button" className="gumb gumb--majhen" disabled={zaseden}
-              onClick={() => onPreglej(tekma, predlog)}>
+              onClick={() => onPreglej(tekma, predlog, branje.obrnjeno)}>
               {branje.stanje === 'NAPAKA' ? 'Vpiši ročno' : 'Preglej'}
             </button>
           )}
@@ -605,6 +664,55 @@ function Fotografija({ url, id }: { url: string | null; id?: number }) {
   })
   const vir = url ?? (slika.data ? naslovSlike(slika.data) : null)
   return vir ? <img src={vir} alt="Fotografija listka" /> : <span className="branje-vrsta__brez-slike" />
+}
+
+/* Izrezi celic ob poljih obrazca (F4.1): vse iz ene poravnane slike listka (ena
+   zahteva), vsak izrez je ozadje z odstotki. Negotove celice (za pregled) so
+   povečane čez celo širino pod poljema. */
+function izreziListka(
+  id: number,
+  celice: CeliceListkaDto,
+  obrnjeno: boolean,
+  predlog: PredlogIzidaDto | null,
+): (mesto: number) => ReactNode {
+  const zaPregled = predlog ? celiceZaPregled(predlog) : new Set<number>()
+  return function Izrez(mesto: number) {
+    const p = izrezCelice(celice, mesto, obrnjeno)
+    if (!p) return null
+    return (
+      <IzrezCelice key={mesto} id={id} slog={slogIzreza(p, celice.sirina, celice.visina)}
+        povecan={zaPregled.has(mesto)} desno={mesto % 2 === 1} />
+    )
+  }
+}
+
+function IzrezCelice({
+  id,
+  slog,
+  povecan,
+  desno,
+}: {
+  id: number
+  slog: ReturnType<typeof slogIzreza>
+  povecan: boolean
+  /* Desna stran tekme ostane desno, tudi ko je levi izrez povečan čez vrstico. */
+  desno: boolean
+}) {
+  const slika = useQuery({
+    queryKey: ['branje-poravnana', id],
+    queryFn: () => branjeListkovApi.poravnana(id),
+    staleTime: Infinity,
+    retry: false,
+  })
+  if (!slika.data) return <span className="izrez-celice izrez-celice--prazen" />
+  return (
+    <span
+      role="img"
+      aria-label="Celica z listka"
+      className={'izrez-celice' + (povecan ? ' izrez-celice--povecan' : desno ? ' izrez-celice--desno' : '')}
+      style={{ ...slog, backgroundImage: `url(${naslovSlike(slika.data)})` }}
+    />
+  )
 }
 
 function imeTekme(t: TekmaListkaDto): string {

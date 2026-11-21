@@ -85,4 +85,13 @@ public interface BranjeListkaRepozitorij extends JpaRepository<BranjeListka, Lon
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE BranjeListka b SET b.slikaIzbrisanaOb = :ob WHERE b.id IN :idji")
     int oznaciIzbrisaneSlike(@Param("idji") List<Long> idji, @Param("ob") LocalDateTime ob);
+
+    /* Zadnje potrjeno branje tekme, ki ima se fotografijo (F4.4, »Listek« v oknu tekme). */
+    @Query("""
+            SELECT b.id FROM BranjeListka b
+            WHERE b.tekma.id = :idTekme AND b.stanje = :stanje AND b.slikaIzbrisanaOb IS NULL
+            ORDER BY b.id DESC
+            """)
+    List<Long> zSlikoZaTekmo(@Param("idTekme") Long idTekme, @Param("stanje") si.turnirko.modeli.StanjeBranja stanje,
+                             org.springframework.data.domain.Pageable stran);
 }

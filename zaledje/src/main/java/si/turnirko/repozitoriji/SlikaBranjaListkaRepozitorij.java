@@ -14,4 +14,8 @@ public interface SlikaBranjaListkaRepozitorij extends JpaRepository<SlikaBranjaL
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM SlikaBranjaListka s WHERE s.idBranje IN :idji")
     int izbrisi(@Param("idji") List<Long> idji);
+
+    /* Samo poravnan listek (F4.1), brez nalaganja fotografije; null, ce ga ni. */
+    @Query("SELECT s.poravnana FROM SlikaBranjaListka s WHERE s.idBranje = :id")
+    byte[] poravnana(@Param("id") Long id);
 }

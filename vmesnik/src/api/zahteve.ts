@@ -318,6 +318,10 @@ export const branjeListkovApi = {
     return api.objavi<BranjeListkaDto>(`/turnirji/${idTurnir}/branja-listkov`, obrazec)
   },
   slika: (id: number) => api.vrniDatoteko(`/branja-listkov/${id}/slika`),
+  /* Listek, poravnan v stalne koordinate (F4.1): iz njega se izrežejo celice. */
+  poravnana: (id: number) => api.vrniDatoteko(`/branja-listkov/${id}/poravnana`),
+  /* Fotografija potrjenega listka tekme (F4.4), samo organizator turnirja in admin. */
+  listekTekme: (idTekme: number) => api.vrniDatoteko(`/tekme/${idTekme}/listek`),
   potrdi: (id: number, vnos: PotrditevBranjaVnos) =>
     api.objavi<BranjeListkaDto>(`/branja-listkov/${id}/potrdi`, vnos),
   zavrzi: (id: number) => api.objavi<void>(`/branja-listkov/${id}/zavrzi`),

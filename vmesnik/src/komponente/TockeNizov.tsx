@@ -10,7 +10,7 @@
    po zaključenem nizu premakne naprej. Po mreži se da hoditi s puščicami, tudi
    ko je polje samodejno napolnjeno. Priimka v glavi povesta, čigav je stolpec —
    brez njiju je »11 : 7« brez pomena, dokler se vnašalec ne spomni, kdo je bil prvi. */
-import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react'
+import { Fragment, useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 
 import type { NizVnos } from '../api/tipi'
 import { StevilskoPolje } from './StevilskoPolje'
@@ -167,6 +167,7 @@ export function TockeNizov({
   sklicPolj,
   naVrh,
   zaPregled,
+  izrez,
 }: {
   vrstice: VrsticaNiza[]
   nastaviVrstice: (posodobi: (prejsnje: VrsticaNiza[]) => VrsticaNiza[]) => void
@@ -181,6 +182,9 @@ export function TockeNizov({
   /* Polja, ki jih mora organizator pogledati (branje listka: negotova ali
      neprebrana celica); mesto = niz × 2 + stran. */
   zaPregled?: ReadonlySet<number>
+  /* Izrez celice z listka pod vrstico (branje listka, F4.1): za mesto vrne sliko
+     celice ali null. Vrstica izrezov stoji pod obema poljema niza. */
+  izrez?: (mesto: number) => ReactNode
 }) {
   const razred = (mesto: number) =>
     zaPregled?.has(mesto) ? 'obrazec__niz-polje--pregled' : undefined
@@ -266,7 +270,8 @@ export function TockeNizov({
       {/* Vrstica niza je samo ovoj za ključ — stolpce določa mreža okrog nje
           (display: contents), da priimka v glavi stojita nad svojim poljem. */}
       {vrstice.map((niz, indeks) => (
-        <div className="obrazec__niz-vrsta" key={indeks}>
+        <Fragment key={indeks}>
+        <div className="obrazec__niz-vrsta">
           <span className="obrazec__niz-oznaka">{indeks + 1}. niz</span>
           <StevilskoPolje
             ref={(polje) => {
@@ -294,6 +299,13 @@ export function TockeNizov({
             onKeyDown={(dogodek) => obTipki(dogodek, indeks * 2 + 1)}
           />
         </div>
+        {izrez && (
+          <div className="obrazec__niz-izrezi">
+            {izrez(indeks * 2)}
+            {izrez(indeks * 2 + 1)}
+          </div>
+        )}
+        </Fragment>
       ))}
     </div>
   )

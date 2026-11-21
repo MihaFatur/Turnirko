@@ -177,7 +177,7 @@ public class UcenjeIzListkov {
         return zapis.size();
     }
 
-    private static List<StevkaListka> oznaci(Long idBranja, LokalniBralnikListka.Izrez izrez, List<NizVnos> nizi,
+    static List<StevkaListka> oznaci(Long idBranja, LokalniBralnikListka.Izrez izrez, List<NizVnos> nizi,
                                              VnosRezultata izid, boolean obrnjeno, MrezaStevk mreza) {
         List<StevkaListka> zapis = new ArrayList<>();
         LocalDateTime zdaj = LocalDateTime.now();
@@ -195,9 +195,16 @@ public class UcenjeIzListkov {
         return zapis;
     }
 
-    /* Stevke celice dobijo oznake, ce je razrez z ustreznim stevilom stevk med razlagami. */
+    /* Stevke celice dobijo oznake, ce je razrez z ustreznim stevilom stevk med
+       razlagami. Popravljena celica (precrtano in prepisano, F2.5) ne gre v ucenje:
+       razrez v njej zajame tudi precrtano vrednost. Vadnica tega pravila nima
+       (okenca so ozka in dvomestno stevilo sega cez vecino okenca; slabe stevke
+       izloci admin pri pregledu). */
     private static void dodaj(List<StevkaListka> zapis, Long idBranja, RazrezCelice.Vsebina celica, int vrednost,
                               MrezaStevk mreza, LocalDateTime zdaj) {
+        if (celica.popravljena()) {
+            return;
+        }
         List<float[]> vhodi = stevkeCelice(celica, vrednost);
         if (vhodi == null) {
             return;

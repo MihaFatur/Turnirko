@@ -48,6 +48,10 @@ public class BranjeListka {
     @Column(name = "prebrano")
     private String prebrano;
 
+    /* Lega celic na poravnanem listku (F4.1, V71): JSON CeliceListkaDto. */
+    @Column(name = "celice")
+    private String celice;
+
     /* JSON potrjenega izida (VnosRezultata). */
     @Column(name = "potrjeno")
     private String potrjeno;
@@ -110,6 +114,8 @@ public class BranjeListka {
     public PrepoznavaTekme getPrepoznava() { return prepoznava; }
     public void setPrepoznava(PrepoznavaTekme prepoznava) { this.prepoznava = prepoznava; }
     public String getPrebrano() { return prebrano; }
+    public String getCelice() { return celice; }
+    public void setCelice(String celice) { this.celice = celice; }
     public void setPrebrano(String prebrano) { this.prebrano = prebrano; }
     public String getPotrjeno() { return potrjeno; }
     public void setPotrjeno(String potrjeno) { this.potrjeno = potrjeno; }

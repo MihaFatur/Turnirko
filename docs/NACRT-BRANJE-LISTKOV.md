@@ -531,8 +531,10 @@ preveri ob začetku vsake faze (razdelek 2).
 |---|---|---|---|
 | F0 | narejeno, na testu | 20. 11. 2026 | `d774ce0` |
 | F1 | narejeno, na testu | 20. 11. 2026 | `d774ce0` |
-| F3 | narejeno (lastnik: »kar zdaj naredi vadnico«, pred F2) | 20. 11. 2026 | — |
-| F2, F4–F9 | načrtovano | — | — |
+| F3 | narejeno, na testu (lastnik: »kar zdaj naredi vadnico«, pred F2) | 20. 11. 2026 | `794470f` |
+| F2 (2.1, 2.2, 2.5–2.7) | narejeno, ni commitano; 2.3, 2.4 in umeritev β po prvem turnirju | 21. 11. 2026 | — |
+| F4 | narejeno, ni commitano | 21. 11. 2026 | — |
+| F5–F9 | načrtovano | — | — |
 
 **F0 — odstopanja od načrta in dodatno:**
 - Meja fotografije je 6000 px / 20 Mpx (ne 4096 / 16 Mpx). Pri 16 Mpx bi bila zavrnjena
@@ -653,3 +655,100 @@ deli že zdaj; migracija V70):
     »To je listek tekme«; pregled po vrsticah, izločitev dveh števk, odobritev →
     178 števk v učenju, ponovna odobritev 409; shranjena slika ima samo okenca;
     brez napak v konzoli in brez vodoravnega pomikanja.
+
+**F2 — odstopanja od načrta in dodatno** (21. 11. 2026; narejeni koraki 2.1, 2.2,
+2.5, 2.6, 2.7, kot jih načrt zahteva pred prvim turnirjem; 2.3 in 2.4 ter umeritev β
+na zlatem naboru po prvem turnirju):
+- **2.7 najprej**, da je vsak naslednji korak izmerjen: tretja raven `NEUGODNO`
+  (prepognjen listek z zamikom in senco ob pregibu, prst čez eno oznako, 5 %
+  prečrtanih in prepisanih celic, polovica enic z nosom in prečrtanih sedmic) in
+  `SimulacijaBralnikaPoskus` (120 listkov na raven, tretja raven še po vsaki težavi
+  posebej; ni v zbirki testov, teče nekaj minut). Tekme simulacije po pogostosti iz
+  zgodovine (`-Dzgodovina=true`), sicer bi bila pogostost (2.1) merjena na
+  izmišljeni porazdelitvi.
+- **2.6:** trojica oznak, ki ne ustreza QR, se zavrže — prej je bralnik ob prstu
+  čez oznako izbral drug »kvadrat« in listek napačno poravnal (vseh 120 listkov s
+  prstom neprebranih). Rezervna poravnava uporabi pet točk (dve oznaki + trije
+  iskalni vzorci QR), ne šest: s tremi oznakami ostane dosedanja homografija iz
+  štirih točk (brez spremembe za običajne listke). Namesto »lokalnega popravka po
+  črtah« se črte in celice iščejo v vsakem stolpcu posebej in povežejo po bližini.
+- **2.5:** meje popravljene celice so umerjene (`PopravljenaCelicaPoskus`): navaden
+  zapis sega čez največ 28 % širine celice, popravljen čez najmanj 36 % → meja
+  razpona 35 %; črnilo > 0,12 in več kot tri skupine potez za prepis čez vrednost.
+  Celica z več kot 40 deli se ne obdeluje naprej (varnost: združevanje skupin je
+  kubično) in je popravljena.
+- **2.1:** pogostost šteje `niz` tekem turnirjev (`tekma_srecanja` lige ni vključena;
+  listki so za turnirje). Vgrajena porazdelitev iz kopije produkcije, ker testna
+  baza in nove namestitve nizov nimajo.
+- **Časovna meja 5 s** iz varnostnega razdelka ni potrebna, dokler ni 2.3: petkratno
+  branje je omejeno (≤ 12 celic × 2 razlagi × 2 števki × 5 različic).
+- Meritev (120 listkov na raven, tekme po zgodovini; prej = commit `794470f`):
+
+  | Raven | prej: neprebranih / prav / tihe / brez popravka | F2 |
+  |---|---|---|
+  | običajne | 0 / 99,90 % / 0,10 % / 78 | 0 / 99,80 % / **0 %** / 81 |
+  | zahtevne | 0 / 99,03 % / 0,39 % / 26 | 0 / **99,23 %** / **0,19 %** / 28 |
+  | neugodne (vse težave) | **60** / 91,6 % / 1,00 % / 0 | **1** / 93,7 % / **0,30 %** / 2 |
+  | samo prst | **120** / — | **4** / 99,5 % / 0 % / 33 |
+  | samo pregib | 0 / 97,4 % / 0,72 % / 24 | 0 / 97,5 % / 0,72 % / 24 |
+  | samo popravki | 0 / 94,6 % / 0,51 % / 19 | 0 / 95,6 % / 0,40 % / 20 |
+  | samo evropske | 0 / 98,0 % / 0,41 % / 0 | enako |
+
+  Po korakih (brez enega koraka, ostalo F2): brez zgodovine (β = 0) zahtevne 98,94 %
+  in tihe 0,29 %, neugodne 90,0 %; brez petkratnega branja zahtevne 99,03 % in tihe
+  0,39 %, neugodne tihe 0,70 %. Petkratno branje pri običajnih eno tiho napako
+  spremeni v označeno in eno pravilno celico v označeno napako (1 od ~980 celic).
+  Na 400 listkih (običajne / zahtevne, z njim : brez): prav 99,85 % : 99,82 % in
+  99,01 % : 98,99 %, tihe 0 % : 0,03 % in 0,18 % : 0,21 %, brez popravka 269 : 260 in
+  118 : 121 (razlika v šumu). Čas branja listka zaporedno 0,39 s (meja 1 s).
+  **Izbira β** (120 listkov, prav / tihe; običajne · zahtevne · neugodne):
+
+  | β | tekme po zgodovini | vsi izidi enako pogosti |
+  |---|---|---|
+  | 0 | 99,80/0 · 98,94/0,29 · 90,0/0,30 | 99,70/0 · 98,50/0,10 · 91,2/0,62 |
+  | 0,3 | 99,80/0 · 99,23/0,29 · 93,2/0,30 | 99,60/0 · 98,30/0,10 · 91,9/0,62 |
+  | **0,5** | 99,80/0 · 99,23/**0,19** · **93,7**/0,30 | 99,60/0 · 98,40/0,10 · 92,4/0,82 |
+
+  Na resničnih tekmah je 0,5 najboljša v vseh merilih; na izmišljeni enakomerni
+  porazdelitvi (redki 11:0, 11:1 so tam pogosti) je za 1 celico slabša in vse te
+  napake so označene. Privzeta ostane 0,5, umeri se na zlatem naboru.
+  Neprebrani listki s prstom: prst čez
+  rob same tabele (spodnji desni kot) – sporočilo zdaj omeni tudi prst.
+- **Ostaja odprto (pravi listki, generalka):**
+  - **evropska enica in sedmica**: mreža MNIST enico z nosom bere kot 7; pravila
+    vrednost popravijo, a celico označijo (0 od 120 listkov brez popravka, ko so vse
+    enice evropske). Rešitev je učenje iz vadnice (F3), ne bralnik.
+  - **prepognjen listek**: tihe napake ostanejo 0,72 % (4 od 120 listkov), ko
+    zapis leži na črti upognjene tabele in se stolpec zamakne za vrstico. Ali je to
+    v dvorani težava, pokažejo pravi prepognjeni listki; potem lokalni popravek po
+    črtah (2.4).
+  - umeritev β na zlatem naboru (F1) po prvem turnirju.
+
+**F4 — odstopanja od načrta in dodatno** (21. 11. 2026, V71):
+- **Izrez ni ob polju, ampak pod vrstico niza:** stolpca točk v obrazcu sta široka
+  4,5 rem (~70 px), celica listka je 35 mm — izrez ob polju bi imel števke visoke
+  ~10 px. Zato je pod vsako vrstico pas čez vso širino obrazca z izrezoma obeh
+  celic, negotova celica čez vso širino (~6 px/mm).
+- **Lega celic v `branje_listka.celice`**, ne v `prebrano`: seznam jo potrebuje
+  brez nalaganja slik, `PrebranListek` pa ostane zapis bralnika.
+- **Gumb »Listek« se pokaže vsem urejevalcem turnirja**, ko je branje vklopljeno;
+  ali fotografija obstaja, pove šele klik (brez dodatne poizvedbe ob vsakem oknu).
+- **»Potrdi vse zanesljive« od dveh listkov naprej** (en listek ima svoj gumb).
+- Pregled F2 (/code-review) pred F4: predlog zdaj primerja število prebranih vrstic s
+  številom nizov tekme (prst čez celico Rezultat bi sicer zadnji niz tiho vzel za
+  Rezultat); meritev zlatega nabora uporablja vgrajeno pogostost; β zunaj 0–1 se
+  zavrne.
+- Preverjeno:
+  - zaledje: `BranjeListkovStoritevTest` (poravnava in lega celic, ponovno branje,
+    listek tekme: pred potrditvijo ni, lastnik in admin da, tuj organizator 403,
+    brez fotografije 404), `SimuliraneFotografijeTest.poravnanListekZaIzrezCelic`,
+    `MeritevBranjaDostopTest` (gost 401 na obeh poteh); vmesnik: izrez, ozadje,
+    vrstni red (`branjeListkov.test.ts`);
+  - pravo zaledje s testno bazo (pg18, V71 uveljavljena), brezglavi Chrome na 390 px
+    in 1280 px: dve simulirani fotografiji (T-3 zanesljiv, T-1 z negotovo celico) →
+    T-3 na vrhu, kode T-3 in T-1; pregled T-1 z osmimi izrezi, negotov povečan; T-3
+    potrjen z enim dotikom; v oknu tekme »Listek« pokaže fotografijo; brez napak v
+    konzoli in brez vodoravnega pomikanja; z dvema zanesljivima listkoma (T-3, T-1)
+    »Potrdi vse zanesljive (2)« potrdi oba (vrsta prazna, oba 3 : 1 med zaključenimi).
+    Popravljeno ob preverbi: gumb--majhen je glavnemu gumbu vzel barvo besedila
+    (lasten razred `branje__potrdi-vse`); desni izrez pod povečanim levim stoji desno.

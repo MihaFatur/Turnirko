@@ -25,10 +25,12 @@ import org.springframework.stereotype.Component;
 
 import si.turnirko.branje.CeliceListka;
 import si.turnirko.branje.MrezaStevk;
+import si.turnirko.branje.PogostostNizov;
 import si.turnirko.branje.PoravnavaListka;
 import si.turnirko.branje.RazlagaListka;
 import si.turnirko.branje.RazrezCelice;
 import si.turnirko.branje.Temnost;
+import si.turnirko.branje.VecBranj;
 
 @Component
 public class LokalniBralnikListka implements BralnikListka {
@@ -39,9 +41,27 @@ public class LokalniBralnikListka implements BralnikListka {
     private static final double TLA = 1e-6;
 
     private final VirMrezeStevk vir;
+    private final PogostostNizovStoritev pogostost;
+    /* Beta in veckratno branje, kadar pogostosti iz baze ni (meritve brez baze). */
+    private final double betaBrezBaze;
+    private final boolean vecBranj;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public LokalniBralnikListka(VirMrezeStevk vir, PogostostNizovStoritev pogostost) {
+        this(vir, pogostost, PogostostNizov.PRIVZETA_BETA, true);
+    }
+
+    /* Brez baze (testi, simulacija): vgrajena pogostost nizov, privzeta beta. */
     public LokalniBralnikListka(VirMrezeStevk vir) {
+        this(vir, null, PogostostNizov.PRIVZETA_BETA, true);
+    }
+
+    /* Za meritve posameznih korakov (SimulacijaBralnikaPoskus). */
+    LokalniBralnikListka(VirMrezeStevk vir, PogostostNizovStoritev pogostost, double betaBrezBaze, boolean vecBranj) {
         this.vir = vir;
+        this.pogostost = pogostost;
+        this.betaBrezBaze = betaBrezBaze;
+        this.vecBranj = vecBranj;
     }
 
     /* Razrez celic listka: vsebina vsake celice (za branje in za ucenje iz potrditev). */
@@ -61,23 +81,92 @@ public class LokalniBralnikListka implements BralnikListka {
         if (nalozena == null) {
             throw new NapakaBranjaListka("Branje listkov na tem strežniku ni nastavljeno (manjka mreža števk).");
         }
-        return new Branje(beri(izrezi(jpeg), nalozena.mreza()), nalozena.oznaka());
+        PogostostNizov p = pogostost == null ? PogostostNizov.VGRAJENA : pogostost.trenutna();
+        double beta = pogostost == null ? betaBrezBaze : pogostost.beta();
+        Poravnan poravnan = poravnaj(jpeg);
+        PrebranListek listek = beri(izrezi(poravnan), nalozena.mreza(), p, beta, vecBranj);
+        return new Branje(listek, nalozena.oznaka(), poravnava(poravnan));
     }
 
-    /* Branje od celic naprej: mreza stevk in pravila. Isto tece nad zlatim
-       naborom (MeritevNabora), zato sta meritvi primerljivi. */
+    /* Poravnan listek za izrez celic ob poljih pregleda (F4.1): sivine, JPEG ~100 kB.
+       Neuspeh zapisa slike ne pokvari branja - izrezov takrat ni. */
+    static Poravnava poravnava(Poravnan poravnan) {
+        Temnost t = poravnan.slika();
+        java.awt.image.BufferedImage slika = new java.awt.image.BufferedImage(t.sirina, t.visina,
+                java.awt.image.BufferedImage.TYPE_BYTE_GRAY);
+        byte[] piksli = ((java.awt.image.DataBufferByte) slika.getRaster().getDataBuffer()).getData();
+        for (int i = 0; i < piksli.length; i++) {
+            piksli[i] = (byte) (255 - Math.round(255 * Math.max(0f, Math.min(1f, t.t[i]))));
+        }
+        java.io.ByteArrayOutputStream izhod = new java.io.ByteArrayOutputStream();
+        try {
+            if (!ImageIO.write(slika, "jpeg", izhod)) {
+                return null;
+            }
+        } catch (IOException e) {
+            return null;
+        }
+        CeliceListka.Tabela tabela = poravnan.tabela();
+        List<int[]> nizi = new ArrayList<>();
+        for (CeliceListka.Vrstica v : tabela.nizi()) {
+            nizi.add(vrstica(v));
+        }
+        return new Poravnava(izhod.toByteArray(),
+                new si.turnirko.dto.CeliceListkaDto(t.sirina, t.visina, nizi, vrstica(tabela.rezultat())));
+    }
+
+    private static int[] vrstica(CeliceListka.Vrstica v) {
+        return new int[] {v.levo().x0(), v.levo().y0(), v.levo().x1(), v.levo().y1(),
+                v.desno().x0(), v.desno().y0(), v.desno().x1(), v.desno().y1()};
+    }
+
     public static PrebranListek beri(Izrez izrez, MrezaStevk mreza) {
+        return beri(izrez, mreza, PogostostNizov.VGRAJENA, PogostostNizov.PRIVZETA_BETA, true);
+    }
+
+    /* Branje od celic naprej: mreza stevk in pravila (s pogostostjo nizov). Isto
+       tece nad zlatim naborom (MeritevNabora), zato sta meritvi primerljivi. */
+    public static PrebranListek beri(Izrez izrez, MrezaStevk mreza, PogostostNizov pogostost, double beta) {
+        return beri(izrez, mreza, pogostost, beta, true);
+    }
+
+    static PrebranListek beri(Izrez izrez, MrezaStevk mreza, PogostostNizov pogostost, double beta, boolean vecBranj) {
         List<RazlagaListka.Vrstica> vrstice = new ArrayList<>();
         for (RazrezCelice.Vsebina[] v : izrez.nizi()) {
-            vrstice.add(new RazlagaListka.Vrstica(porazdelitev(v[0], mreza), porazdelitev(v[1], mreza)));
+            vrstice.add(new RazlagaListka.Vrstica(porazdelitev(v[0], mreza, vecBranj), porazdelitev(v[1], mreza, vecBranj)));
         }
-        RazlagaListka.Izid izid = RazlagaListka.razlozi(vrstice,
-                porazdelitev(izrez.rezultat()[0], mreza), porazdelitev(izrez.rezultat()[1], mreza));
-        List<PrebranListek.Niz> nizi = izid.nizi().stream()
-                .map(n -> new PrebranListek.Niz(n.levo(), n.desno(), n.negotovoLevo(), n.negotovoDesno()))
-                .toList();
+        RazlagaListka.Izid izid = RazlagaListka.razlozi(vrstice, porazdelitev(izrez.rezultat()[0], mreza, vecBranj),
+                porazdelitev(izrez.rezultat()[1], mreza, vecBranj), pogostost, beta);
+        // popravljena celica (precrtano in prepisano) je vedno negotova (F2.5)
+        List<PrebranListek.Niz> nizi = new ArrayList<>();
+        List<String> popravljene = new ArrayList<>();
+        for (int i = 0; i < izid.nizi().size(); i++) {
+            RazlagaListka.Niz n = izid.nizi().get(i);
+            boolean levo = izrez.nizi().get(i)[0].popravljena();
+            boolean desno = izrez.nizi().get(i)[1].popravljena();
+            if (levo || desno) {
+                popravljene.add((i + 1) + ". niz");
+            }
+            nizi.add(new PrebranListek.Niz(n.levo(), n.desno(), n.negotovoLevo() || levo, n.negotovoDesno() || desno));
+        }
+        boolean rezultatPopravljen = izrez.rezultat()[0].popravljena() || izrez.rezultat()[1].popravljena();
+        if (rezultatPopravljen) {
+            popravljene.add("rezultat");
+        }
         return new PrebranListek(true, null, null, null, false, null, null, nizi,
-                izid.rezultatLevo(), izid.rezultatDesno(), izid.negotovRezultat(), "NI", null, izid.opomba());
+                izid.rezultatLevo(), izid.rezultatDesno(), izid.negotovRezultat() || rezultatPopravljen, "NI", null,
+                opomba(izid.opomba(), popravljene));
+    }
+
+    /* Opomba razlage in seznam popravljenih celic v enem stavku za organizatorja. */
+    static String opomba(String opombaRazlage, List<String> popravljene) {
+        if (popravljene.isEmpty()) {
+            return opombaRazlage;
+        }
+        String o = popravljene.size() == 1
+                ? "Popravljena celica (" + popravljene.getFirst() + "). Preveri jo."
+                : "Popravljene celice (" + String.join(", ", popravljene) + "). Preveri jih.";
+        return opombaRazlage == null ? o : opombaRazlage + " " + o;
     }
 
     public Izrez izrezi(byte[] jpeg) {
@@ -129,14 +218,14 @@ public class LokalniBralnikListka implements BralnikListka {
         CeliceListka.Tabela tabela = CeliceListka.najdi(poravnan.slika());
         if (tabela == null) {
             throw new NapakaBranjaListka("Na fotografiji ni mogoče najti celic za točke. "
-                    + "Fotografiraj listek od zgoraj, ostro in brez sence čez tabelo.");
+                    + "Fotografiraj listek od zgoraj, ostro in brez sence ali prsta čez tabelo.");
         }
         return new Poravnan(poravnan.slika(), tabela);
     }
 
     /* Verjetnost vsake vrednosti celice (0-99) in prazne celice, cez vse razlage
        razreza: ena stevka ali dve (vodilna nicla pri tockah ne nastopi). */
-    static double[] porazdelitev(RazrezCelice.Vsebina vsebina, MrezaStevk mreza) {
+    static double[] porazdelitev(RazrezCelice.Vsebina vsebina, MrezaStevk mreza, boolean vecBranj) {
         double[] p = new double[RazlagaListka.VELIKOST];
         if (vsebina.prazna()) {
             p[RazlagaListka.PRAZNO] = 1;
@@ -144,13 +233,13 @@ public class LokalniBralnikListka implements BralnikListka {
         }
         for (RazrezCelice.Razlaga r : vsebina.razlage()) {
             if (r.stevke().size() == 1) {
-                float[] q = mreza.verjetnosti(r.stevke().getFirst().vhod(), TEMPERATURA);
+                float[] q = verjetnosti(mreza, r.stevke().getFirst().vhod(), vecBranj);
                 for (int v = 0; v <= 9; v++) {
                     p[v] += r.verjetnost() * q[v];
                 }
             } else if (r.stevke().size() == 2) {
-                float[] q1 = mreza.verjetnosti(r.stevke().get(0).vhod(), TEMPERATURA);
-                float[] q2 = mreza.verjetnosti(r.stevke().get(1).vhod(), TEMPERATURA);
+                float[] q1 = verjetnosti(mreza, r.stevke().get(0).vhod(), vecBranj);
+                float[] q2 = verjetnosti(mreza, r.stevke().get(1).vhod(), vecBranj);
                 for (int a = 1; a <= 9; a++) {
                     for (int b = 0; b <= 9; b++) {
                         p[10 * a + b] += r.verjetnost() * q1[a] * q2[b];
@@ -167,5 +256,10 @@ public class LokalniBralnikListka implements BralnikListka {
             p[i] /= vsota;
         }
         return p;
+    }
+
+    /* Verjetnosti stevke: petkratno branje (F2.2) ali eno. */
+    private static float[] verjetnosti(MrezaStevk mreza, float[] vhod, boolean vecBranj) {
+        return vecBranj ? VecBranj.verjetnosti(mreza, vhod, TEMPERATURA) : mreza.verjetnosti(vhod, TEMPERATURA);
     }
 }

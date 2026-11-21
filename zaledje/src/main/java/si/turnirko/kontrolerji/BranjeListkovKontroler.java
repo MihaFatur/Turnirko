@@ -60,6 +60,24 @@ public class BranjeListkovKontroler {
                 .body(storitev.slika(id));
     }
 
+    /* Poravnan listek (F4.1) za izrez celic ob poljih pregleda: isti dostop in glave kot fotografija. */
+    @GetMapping("/api/v1/branja-listkov/{id}/poravnana")
+    public ResponseEntity<byte[]> poravnana(@PathVariable Long id) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.noStore().cachePrivate())
+                .body(storitev.poravnana(id));
+    }
+
+    /* Fotografija listka tekme (F4.4) za organizatorja turnirja in admina. */
+    @GetMapping("/api/v1/tekme/{id}/listek")
+    public ResponseEntity<byte[]> listekTekme(@PathVariable Long id) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.noStore().cachePrivate())
+                .body(storitev.listekTekme(id));
+    }
+
     @PostMapping("/api/v1/branja-listkov/{id}/potrdi")
     public BranjeListkaDto potrdi(@PathVariable Long id, @Valid @RequestBody PotrditevBranjaVnos vnos) {
         return storitev.potrdi(id, vnos);

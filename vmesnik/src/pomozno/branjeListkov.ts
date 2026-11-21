@@ -3,7 +3,7 @@
 
    Predlog je že v straneh tekme (1 = udelezenec1), zato tu ni nič o tem, kateri
    stolpec listka je bil levi - to je strežnikova skrb (PredlogIzidaListka). */
-import type { BranjeListkaDto, PredlogIzidaDto, VnosRezultata } from '../api/tipi'
+import type { BranjeListkaDto, CeliceListkaDto, PredlogIzidaDto, VnosRezultata } from '../api/tipi'
 import type { VrsticaNiza } from '../komponente/TockeNizov'
 
 /* Vrstice za TockeNizov: neprebrana celica je prazno polje. */
@@ -64,13 +64,23 @@ export function dobljeniIzTock(vrstice: VrsticaNiza[], veljaven: (a: number, b: 
   return { prvi, drugi }
 }
 
-/* Razdelitev vrste: najprej, kar čaka na organizatorja (po vrsti fotografiranja,
-   kakor ima listke v roki), nato kar se še bere, nato zaključeno (najnovejše prvo). */
+/* Zanesljiv listek: prebran, s tekmo in s predlogom za en dotik (brez opozoril,
+   negotovih celic in kontrole - kontrola nikoli ni pripravljena). */
+export function jeZanesljiv(b: BranjeListkaDto): boolean {
+  return b.stanje === 'PREBRANO' && b.tekma !== null && b.predlog?.pripravljen === true
+}
+
+/* Razdelitev vrste: najprej, kar čaka na organizatorja - zanesljivi zgoraj (F4.3,
+   potrdijo se z enim dotikom), pod njimi negotovi, kontrole in napake; v vsaki
+   skupini po vrsti fotografiranja, kakor ima listke v roki -, nato kar se še
+   bere, nato zaključeno (najnovejše prvo). */
 export function razdeliVrsto(branja: BranjeListkaDto[]) {
   const poCasu = (a: BranjeListkaDto, b: BranjeListkaDto) =>
     a.ustvarjenoOb.localeCompare(b.ustvarjenoOb) || a.id - b.id
+  const poZanesljivosti = (a: BranjeListkaDto, b: BranjeListkaDto) =>
+    Number(jeZanesljiv(b)) - Number(jeZanesljiv(a)) || poCasu(a, b)
   return {
-    zaPotrditev: branja.filter((b) => b.stanje === 'PREBRANO' || b.stanje === 'NAPAKA').sort(poCasu),
+    zaPotrditev: branja.filter((b) => b.stanje === 'PREBRANO' || b.stanje === 'NAPAKA').sort(poZanesljivosti),
     berem: branja.filter((b) => b.stanje === 'V_VRSTI').sort(poCasu),
     zakljucena: branja.filter((b) => b.stanje === 'POTRJENO' || b.stanje === 'ZAVRZENO'),
   }
@@ -129,4 +139,41 @@ export async function pomanjsajFotografijo(datoteka: Blob, najvecStranica = NAJV
       0.88,
     ),
   )
+}
+
+/* Izrez celice ob polju (F4.1): pravokotnik celice na poravnanem listku za polje
+   na mestu »mesto« (niz × 2 + stran tekme, kot v TockeNizov). Pri obrnjenem
+   listku je stran 1 tekme desni stolpec listka. null, če celice ni (vrstica, ki
+   je bralnik ni našel). */
+export interface Pravokotnik {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+export function izrezCelice(celice: CeliceListkaDto, mesto: number, obrnjeno: boolean): Pravokotnik | null {
+  const vrstica = celice.nizi[Math.floor(mesto / 2)]
+  if (!vrstica || vrstica.length !== 8) return null
+  const stolpec = (mesto % 2 === 0) !== obrnjeno ? 0 : 1
+  const [x0, y0, x1, y1] = vrstica.slice(stolpec * 4, stolpec * 4 + 4)
+  return { x0, y0, x1, y1 }
+}
+
+/* CSS ozadja, ki iz ene slike (sirina × visina) pokaže samo pravokotnik z robom
+   »rob« px (da se vidi črta celice): velikost in lega v odstotkih, zato se izrez
+   raztegne na širino polja; razmerje stranic drži aspect-ratio. */
+export function slogIzreza(p: Pravokotnik, sirina: number, visina: number, rob = 6) {
+  const x0 = Math.max(0, p.x0 - rob)
+  const y0 = Math.max(0, p.y0 - rob)
+  const x1 = Math.min(sirina - 1, p.x1 + rob)
+  const y1 = Math.min(visina - 1, p.y1 + rob)
+  const w = x1 - x0 + 1
+  const h = y1 - y0 + 1
+  const lega = (z: number, del: number, celota: number) => (celota === del ? 0 : (z / (celota - del)) * 100)
+  return {
+    backgroundSize: `${(sirina / w) * 100}% ${(visina / h) * 100}%`,
+    backgroundPosition: `${lega(x0, w, sirina)}% ${lega(y0, h, visina)}%`,
+    aspectRatio: `${w} / ${h}`,
+  }
 }

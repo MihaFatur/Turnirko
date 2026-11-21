@@ -67,7 +67,7 @@ export const REZULTATI: Clanek[] = [
           'Odpri **Branje listkov** na strani turnirja ali kategorije (vidno, ko kategorija teče).',
           'Ko sodnik prinese listek, pritisni **Fotografiraj listek** in ga posnemi od zgoraj, da sta na sliki cela tabela in QR koda v desnem kotu. En listek na fotografijo.',
           'Takoj lahko fotografiraš naslednjega: branje teče v ozadju nekaj sekund, listek se nato pojavi pod **Za potrditev**.',
-          'Listek brez opozoril potrdiš z **Potrdi**. Pri drugih odpri **Preglej**: nad obrazcem je fotografija, rjasto obarvane številke primerjaj s papirjem in po potrebi popravi, nato **Potrdi izid**.',
+          'Zanesljivi listki (brez opozoril) so na vrhu vrste in jih potrdiš z **Potrdi** ali vse hkrati s **Potrdi vse zanesljive**. Pri drugih odpri **Preglej**: pod vsakim nizom je izrez celic z listka, negotova celica je povečana in rjasto obrobljena. Primerjaj, po potrebi popravi, nato **Potrdi izid**.',
         ],
       },
       {
@@ -80,7 +80,8 @@ export const REZULTATI: Clanek[] = [
       {
         tip: 'seznam',
         postavke: [
-          'Številka je bila popravljena, prečrtana ali težko berljiva (rjasto obarvana).',
+          'Številka je bila popravljena, prečrtana ali težko berljiva (rjasto obarvana). Pri prečrtani in prepisani celici je opomba »Popravljena celica«.',
+          'Turnirko ni našel vseh vrstic listka (npr. prst ali senca čez celico Rezultat).',
           'Niz ni veljaven (npr. 11:10) ali tekma nima zmagovalca s pravim številom nizov.',
           'Točke dajo drug izid, kot ga je sodnik zapisal v celico **Rezultat**.',
           'Na listku je zapisan izid brez boja, predaja ali diskvalifikacija.',
@@ -105,6 +106,11 @@ export const REZULTATI: Clanek[] = [
         tip: 'nasvet',
         besedilo:
           'Isti listek lahko fotografiraš znova (npr. če je bila prva fotografija zamegljena). Velja novejša fotografija, starejša se umakne iz vrste z oznako »Nadomeščeno«. Če novejše ni bilo mogoče prebrati, ostane prebrana starejša.',
+      },
+      {
+        tip: 'nasvet',
+        besedilo:
+          'Fotografijo potrjenega listka najdeš tudi pozneje: klikni končano tekmo in v oknu s točkami izberi **Listek** (30 dni po turnirju, nato se fotografija izbriše). Vidita jo samo organizator turnirja in administrator.',
       },
       {
         tip: 'razdelek',

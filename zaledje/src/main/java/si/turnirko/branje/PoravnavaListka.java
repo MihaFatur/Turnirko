@@ -56,8 +56,13 @@ public final class PoravnavaListka {
 
         Temnost.Komponenta[] oznake = izberiOznake(kandidati, qrTocke, p);
         if (oznake == null) {
-            throw new NapakaPoravnave("Na fotografiji ni mogoče najti oznak v vogalih listka. "
-                    + "Fotografiraj cel listek od zgoraj, da se vidijo trije črni kvadrati.");
+            // ena oznaka je zakrita (prst cez vogal) ali odrezana: QR + preostali dve (F2.6)
+            Preslikava rezervna = qrTocke == null ? null : rezervna(kandidati, qrTocke, p);
+            if (rezervna == null) {
+                throw new NapakaPoravnave("Na fotografiji ni mogoče najti oznak v vogalih listka. "
+                        + "Fotografiraj cel listek od zgoraj, da se vidijo trije črni kvadrati.");
+            }
+            return new PoravnanListek(prerisi(d, rezervna, p), true);
         }
         double[][] slika = {
                 {oznake[0].cx(), oznake[0].cy()},
@@ -149,7 +154,13 @@ public final class PoravnavaListka {
                                 new double[][] {{zl.cx(), zl.cy()}, {sl.cx(), sl.cy()}, {sd.cx(), sd.cy()}});
                         if (afina != null) {
                             double[] q = afina.uporabi(qrZd[0], qrZd[1]);
-                            napaka += razdalja(q, qrTocke[2]) / pxNaMm / 10;
+                            double odmik = razdalja(q, qrTocke[2]) / pxNaMm;
+                            // trojica, ki ne ustreza QR, je napacna (npr. prst cez
+                            // oznako, tretji »kvadrat« je nekaj drugega): rezervna poravnava
+                            if (odmik > p.najvecOdmikQr()) {
+                                continue;
+                            }
+                            napaka += odmik / 10;
                         }
                     }
                     if (napaka < najmanjsaNapaka) {
@@ -161,6 +172,66 @@ public final class PoravnavaListka {
         }
         return najboljse;
     }
+
+    /* Rezervna poravnava, ko trojice oznak ni: trije iskalni vzorci QR so tocke na
+       znanih mestih. Afina preslikava iz njih napove, kje so oznake (QR je majhen,
+       zato je napoved na drugem koncu lista netocna za nekaj mm - isce se v
+       sirokem krogu); ob napovedi se poiscejo oznake. Z vsaj dvema oznakama je tock
+       pet, dve od njih dalec od QR, in homografija po najmanjsih kvadratih se mora
+       z vsemi ujemati na NAJVEC_ODSTOPANJE mm (sicer je bila izbrana napacna
+       »oznaka«). null, ce poravnava ni zanesljiva. */
+    static Preslikava rezervna(List<Temnost.Komponenta> kandidati, double[][] qrTocke, Postavitev p) {
+        double[][] qrMm = {p.qrSpodajLevo(), p.qrZgorajLevo(), p.qrZgorajDesno()};
+        Preslikava izQr = Preslikava.afina(qrMm, qrTocke);
+        if (izQr == null) {
+            return null;
+        }
+        double pxNaMm = (razdalja(qrTocke[0], qrTocke[1]) + razdalja(qrTocke[1], qrTocke[2]))
+                / (razdalja(qrMm[0], qrMm[1]) + razdalja(qrMm[1], qrMm[2]));
+        double pricakovanaPloscina = Math.pow(p.stranicaOznake() * pxNaMm, 2);
+        List<double[]> izMm = new java.util.ArrayList<>(List.of(qrMm));
+        List<double[]> vSliko = new java.util.ArrayList<>(List.of(qrTocke));
+        List<Temnost.Komponenta> uporabljene = new java.util.ArrayList<>();
+        for (double[] mm : new double[][] {p.zgorajLevo(), p.spodajLevo(), p.spodajDesno()}) {
+            double[] napoved = izQr.uporabi(mm[0], mm[1]);
+            Temnost.Komponenta najblizja = null;
+            double najmanj = ISKANJE_OZNAKE * razdalja(mm, p.qrZgorajLevo()) * pxNaMm;
+            for (Temnost.Komponenta k : kandidati) {
+                double r = k.ploscina / pricakovanaPloscina;
+                double dd = Math.hypot(k.cx() - napoved[0], k.cy() - napoved[1]);
+                if (r >= 0.3 && r <= 2.5 && dd < najmanj && !uporabljene.contains(k)) {
+                    najmanj = dd;
+                    najblizja = k;
+                }
+            }
+            if (najblizja != null) {
+                uporabljene.add(najblizja);
+                izMm.add(mm);
+                vSliko.add(new double[] {najblizja.cx(), najblizja.cy()});
+            }
+        }
+        if (uporabljene.size() < 2) {
+            return null;
+        }
+        double[][] iz = izMm.toArray(new double[0][]);
+        double[][] v = vSliko.toArray(new double[0][]);
+        Preslikava h = Preslikava.homografijaNajmanjsihKvadratov(iz, v);
+        if (h == null) {
+            return null;
+        }
+        for (int i = 0; i < iz.length; i++) {
+            if (razdalja(h.uporabi(iz[i][0], iz[i][1]), v[i]) > NAJVEC_ODSTOPANJE * pxNaMm) {
+                return null;
+            }
+        }
+        return h;
+    }
+
+    /* Polmer iskanja oznake ob afini napovedi iz QR: delez razdalje od QR (napoved
+       iz majhne kode se z razdaljo in perspektivo telefona slabsa). */
+    private static final double ISKANJE_OZNAKE = 0.25;
+    /* Najvecje odstopanje tocke od rezervne homografije (mm). */
+    private static final double NAJVEC_ODSTOPANJE = 1.0;
 
     /* Homografija velja, ce napove tudi ostala iskalna vzorca QR (sicer je bila
        tocka zgoraj desno prebrana narobe). */

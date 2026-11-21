@@ -1,7 +1,8 @@
 /* Opravila branja listkov, ki tecejo brez organizatorja:
    - vsako noc izbrise fotografije, starejse od 30 dni po turnirju, ter stevke
      in razlicice mreze cez mejo hrambe (UcenjeIzListkov.pocisti);
-   - ob zagonu oznaci branja, ki jih je prekinil ponovni zagon.
+   - ob zagonu oznaci branja, ki jih je prekinil ponovni zagon;
+   - ob zagonu in vsako noc prebere pogostost izidov nizov (PogostostNizovStoritev).
 
    Loceno od BranjeListkovStoritev, ker @Scheduled in @EventListener metode
    klicejo transakcijsko metodo storitve PREK posrednika - klic znotraj istega
@@ -26,10 +27,13 @@ public class OpravilaBranjaListkov {
 
     private final BranjeListkovStoritev storitev;
     private final UcenjeIzListkov ucenje;
+    private final PogostostNizovStoritev pogostost;
 
-    public OpravilaBranjaListkov(BranjeListkovStoritev storitev, UcenjeIzListkov ucenje) {
+    public OpravilaBranjaListkov(BranjeListkovStoritev storitev, UcenjeIzListkov ucenje,
+                                 PogostostNizovStoritev pogostost) {
         this.storitev = storitev;
         this.ucenje = ucenje;
+        this.pogostost = pogostost;
     }
 
     @Scheduled(cron = "${turnirko.branje-listkov.ciscenje:0 35 4 * * *}", zone = "Europe/Ljubljana")
@@ -51,6 +55,7 @@ public class OpravilaBranjaListkov {
         } catch (RuntimeException e) {
             log.error("Branje listkov: hramba ucenja ni uspela", e);
         }
+        osveziPogostost();
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -58,6 +63,17 @@ public class OpravilaBranjaListkov {
         int prekinjenih = storitev.prekiniOstalaVVrsti();
         if (prekinjenih > 0) {
             log.warn("Branje listkov: {} branj je prekinil ponovni zagon", prekinjenih);
+        }
+        osveziPogostost();
+    }
+
+    /* Napaka ne ustavi drugih opravil; branje do naslednjega poskusa uporablja
+       zadnjo (ali vgrajeno) pogostost. */
+    private void osveziPogostost() {
+        try {
+            pogostost.osvezi();
+        } catch (RuntimeException e) {
+            log.error("Branje listkov: pogostosti izidov nizov ni bilo mogoce prebrati", e);
         }
     }
 }

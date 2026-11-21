@@ -14,6 +14,20 @@ public interface NizRepozitorij extends JpaRepository<Niz, Long> {
 
     List<Niz> findByTekmaIdOrderByZaporednaStAsc(Long idTekma);
 
+    /* Pogostost izidov nizov za branje listkov (PogostostNizovStoritev): vrstice
+       [tocke zmagovalca niza, tocke porazenca, stevilo]. Samo normalno odigrane in
+       koncane tekme turnirjev z znanim datumom (1. 1. 1900 je zapis »ni znan«);
+       veljavnost niza preveri klicatelj. Brez osebnih podatkov. */
+    @Query(value = """
+            SELECT GREATEST(n.tocke_1, n.tocke_2), LEAST(n.tocke_1, n.tocke_2), COUNT(*)
+            FROM niz n
+            JOIN tekma t ON t.id = n.id_tekma
+            JOIN dogodek d ON d.id = t.id_dogodek
+            JOIN turnir tu ON tu.id = d.id_turnir
+            WHERE t.izid_tip = 'IGRANO' AND t.status = 'KONCANA' AND tu.datum_zacetka > DATE '1900-01-01'
+            GROUP BY 1, 2
+            """, nativeQuery = true)
+    List<Object[]> pogostostIzidov();
 
     /* Nizi vec tekem hkrati - za statistiko tock na profilu igralca.
        Vrne vrstice [idTekme, tocke1, tocke2]; entitet ne vracamo, ker bi

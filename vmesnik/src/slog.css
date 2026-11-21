@@ -32041,6 +32041,80 @@ html.uvod-tece {
   letter-spacing: -0.02em;
 }
 
+/* Naslov »Za potrditev« z gumbom »Potrdi vse zanesljive« (F4.2) v isti vrstici. */
+.branje__razdelek-glava {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--r2);
+  margin: var(--r4) 0 0;
+  padding-bottom: var(--r1);
+  border-bottom: 3px solid var(--barva-crnilo);
+}
+
+/* glavni gumb v velikosti malega (gumb--majhen bi mu vzel barvo besedila) */
+.branje__potrdi-vse {
+  padding: 12px var(--r2);
+  font-size: var(--tip-drobno);
+}
+
+.branje__razdelek-glava .branje__razdelek {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Koda listka (T-…) v vsaki vrstici: organizator po njej najde listek v roki. */
+.branje-vrsta__koda {
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+/* Izrezi celic z listka pod vrstico tock (F4.1): vrstica cez vso mrezo, dva
+   izreza drug ob drugem; negotov izrez je cez vso sirino (povecan) z rjastim
+   robom, kot polje za pregled. */
+.obrazec__niz-izrezi {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r1);
+  margin-bottom: var(--r1);
+}
+
+.izrez-celice {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(50% - var(--r1) / 2);
+  background-color: #ffffff;
+  background-repeat: no-repeat;
+  border: 1px solid var(--barva-crta);
+}
+
+/* desni izrez pod svojim poljem, tudi sam v vrstici */
+.izrez-celice--desno {
+  margin-left: auto;
+}
+
+.izrez-celice--povecan {
+  flex-basis: 100%;
+  max-width: none;
+  border: 2px solid var(--barva-negativna);
+}
+
+.izrez-celice--prazen {
+  aspect-ratio: 5 / 1;
+  background: var(--barva-papir);
+}
+
+/* Fotografija listka tekme (F4.4) v oknu. */
+.listek-tekme__slika {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .branje__vrsta,
 .branje__zakljuceni {
   margin: 0;

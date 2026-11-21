@@ -202,8 +202,9 @@ public class VarnostneNastavitve {
                         .requestMatchers("/api/v1/vadnice", "/api/v1/vadnice/**").hasRole("ADMIN")
                         // branje listkov (V68): fotografije in predlogi izidov samo za prijavljene
                         // (lastnika turnirja in admina preveri storitev), tudi GET
+                        // fotografija listka tekme (F4.4) ni javna, ceprav je GET pod /tekme
                         .requestMatchers("/api/v1/branje-listkov/**", "/api/v1/branja-listkov/**",
-                                "/api/v1/turnirji/*/branja-listkov").authenticated()
+                                "/api/v1/turnirji/*/branja-listkov", "/api/v1/tekme/*/listek").authenticated()
                         // podpora klubu (V61): izbira kluba in popust organizatorja sta osebna
                         .requestMatchers("/api/v1/podpora-kluba", "/api/v1/podpora-kluba/**").authenticated()
                         // potisna obvestila (V60): vpis naprave, izpis in preizkus so osebni (paket

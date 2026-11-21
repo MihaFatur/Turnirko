@@ -88,7 +88,7 @@ class PredlogIzidaListkaTest {
     @Test
     void negotovaCelicaZadrziPredlog() {
         PredlogIzidaDto p = PredlogIzidaListka.sestavi(listek(2, 0,
-                new PrebranListek.Niz(11, 7, false, true), n(11, 4)), 3, false);
+                new PrebranListek.Niz(11, 7, false, true), n(11, 4), prazen()), 3, false);
         assertFalse(p.pripravljen());
         assertTrue(p.opozorila().isEmpty(), "negotovost ni opozorilo, je oznaka celice");
         assertTrue(p.nizi().getFirst().negotovo2());
@@ -156,6 +156,14 @@ class PredlogIzidaListkaTest {
         PredlogIzidaDto p = PredlogIzidaListka.sestavi(l, 3, false);
         assertFalse(p.pripravljen());
         assertTrue(vsebuje(p, "Opomba bralnika: Pripis ob 2. nizu."));
+    }
+
+    @Test
+    void manjkajocaVrsticaNiTiha() {
+        // bralnik ni nasel ene vrstice (prst cez celico Rezultata): zadnji niz je postal Rezultat
+        PredlogIzidaDto p = PredlogIzidaListka.sestavi(listek(1, 2, n(11, 7), n(9, 11), n(11, 5), n(5, 11)), 5, false);
+        assertFalse(p.pripravljen());
+        assertTrue(vsebuje(p, "Prebranih je 4 vrstic nizov, listek tekme jih ima 5"), p.opozorila().toString());
     }
 
     // ---------- Pomozno ----------

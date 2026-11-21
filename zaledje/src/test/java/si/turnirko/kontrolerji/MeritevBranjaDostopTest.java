@@ -111,6 +111,14 @@ class MeritevBranjaDostopTest {
                 .andExpect(status().isForbidden());
     }
 
+    /* F4: fotografija listka tekme (GET pod /tekme, ki je sicer javen) in poravnan
+       listek nista javna; lastnistvo turnirja preveri storitev (BranjeListkovStoritevTest). */
+    @Test
+    void listekTekmeInPoravnanListekNistaJavna() throws Exception {
+        mockMvc.perform(get("/api/v1/tekme/1/listek")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/branja-listkov/1/poravnana")).andExpect(status().isUnauthorized());
+    }
+
     @Test
     void adminVidiMeritevPoTurnirjihInMrezah() throws Exception {
         String admin = basic(ADMIN);

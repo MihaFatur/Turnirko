@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import si.turnirko.branje.MrezaStevk;
+import si.turnirko.branje.RazrezCelice;
 import si.turnirko.branje.UcenjeStevk;
 import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.VnosRezultata;
@@ -147,6 +149,30 @@ class UcenjeIzListkovTest extends IntegracijskiTest {
         stevke.saveAll(nove);
         assertNull(ucenje.uci(2, 1));
         assertEquals(0, mreze.count(), "odlozeno ucenje ne zapise razlicice");
+    }
+
+    /* F2.5: popravljena celica (precrtano in prepisano) ne da stevk za ucenje - razrez
+       v njej zajame tudi precrtano vrednost. */
+    @Test
+    void popravljenaCelicaNeGreVUcenje() {
+        RazrezCelice.Stevka s = new RazrezCelice.Stevka(new float[784]);
+        RazrezCelice.Vsebina dveStevki = new RazrezCelice.Vsebina(false,
+                List.of(new RazrezCelice.Razlaga(List.of(s, s), 1)), 0.05, 2, 0.3);
+        RazrezCelice.Vsebina popravljena = new RazrezCelice.Vsebina(false,
+                List.of(new RazrezCelice.Razlaga(List.of(s, s), 1)), 0.05, 2, 0.8);
+        RazrezCelice.Vsebina enaStevka = new RazrezCelice.Vsebina(false,
+                List.of(new RazrezCelice.Razlaga(List.of(s), 1)), 0.03, 1, 0.1);
+        LokalniBralnikListka.Izrez izrez = new LokalniBralnikListka.Izrez(List.of(
+                new RazrezCelice.Vsebina[] {dveStevki, enaStevka},
+                new RazrezCelice.Vsebina[] {popravljena, enaStevka}),
+                new RazrezCelice.Vsebina[] {enaStevka, enaStevka});
+        List<NizVnos> nizi = List.of(new NizVnos(11, 5), new NizVnos(11, 7));
+        VnosRezultata izid = new VnosRezultata(IzidTekme.IGRANO, 2, 0, null, nizi);
+        List<StevkaListka> zapis = UcenjeIzListkov.oznaci(1L, izrez, nizi, izid, false,
+                MrezaStevk.nakljucna(new Random(1)));
+        // 11 in 5 v prvem nizu, samo 7 v drugem (popravljena 11 izpade), rezultat 2 in 0
+        assertTrue(popravljena.popravljena());
+        assertEquals(6, zapis.size());
     }
 
     @Test

@@ -3257,6 +3257,19 @@ export interface BranjeListkaDto {
   obviselo: boolean
   /* Naključna kontrola (V69): predlog ni za en dotik, pregleda se v celoti. */
   kontrola: boolean
+  /* Lega celic na poravnanem listku za izrez ob poljih (F4.1); null brez slike. */
+  celice: CeliceListkaDto | null
+  /* Levi stolpec listka je udeleženec 2 prepoznane tekme (listek brez kode). */
+  obrnjeno: boolean
+}
+
+/* Celice na poravnanem listku (px slike sirina × visina, vključno z robom);
+   vrstica = [levo x0, y0, x1, y1, desno x0, y0, x1, y1] v stolpcih listka. */
+export interface CeliceListkaDto {
+  sirina: number
+  visina: number
+  nizi: number[][]
+  rezultat: number[]
 }
 
 export interface BranjaTurnirjaDto {

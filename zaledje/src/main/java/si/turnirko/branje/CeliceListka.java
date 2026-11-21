@@ -49,35 +49,24 @@ public final class CeliceListka {
         int od = (int) Math.round(GeometrijaListka.TABELA_OD * r);
         int doo = Math.min(listek.visina - 2, (int) Math.round(GeometrijaListka.TABELA_DO * r));
 
-        // vrstica je crta, ce je crnilo (z enim px tolerance navzgor in navzdol) cez vecino obeh stolpcev
-        boolean[] jeCrta = new boolean[listek.visina];
-        for (int y = Math.max(1, od); y < doo; y++) {
-            jeCrta[y] = pokritost(crnilo, w, y, levi) > pokritostCrte && pokritost(crnilo, w, y, desni) > pokritostCrte;
-        }
-        List<int[]> crte = new ArrayList<>();
-        for (int y = od; y < doo; y++) {
-            if (!jeCrta[y]) {
-                continue;
-            }
-            int z = y;
-            while (y + 1 < doo && jeCrta[y + 1]) {
-                y++;
-            }
-            crte.add(new int[] {z, y});
-        }
+        // Crte in celice vsakega stolpca posebej: na prepognjenem listku (F2.6) je
+        // desni stolpec lahko za nekaj px zamaknjen ali nagnjen proti levemu, zato
+        // ena vodoravna crta cez oba stolpca hkrati ne bi obstajala.
+        List<Celica> leve = celiceStolpca(crnilo, w, od, doo, levi, GeometrijaListka.LEVI_STOLPEC, r,
+                pokritostCrte, pokritostRoba);
+        List<Celica> desne = celiceStolpca(crnilo, w, od, doo, desni, GeometrijaListka.DESNI_STOLPEC, r,
+                pokritostCrte, pokritostRoba);
 
+        // vrstica = leva in desna celica z bliznjim srediscem (vrstice so vsaj 2,5 mm visoke)
         List<Vrstica> celice = new ArrayList<>();
-        for (int k = 0; k + 1 < crte.size(); k++) {
-            int y0 = crte.get(k)[1] + 1;
-            int y1 = crte.get(k + 1)[0] - 1;
-            int h = y1 - y0 + 1;
-            if (h < 2.5 * r || h > 12 * r) {
-                continue;
+        int j = 0;
+        for (Celica l : leve) {
+            while (j < desne.size() && sredina(desne.get(j)) < sredina(l) - NAJVEC_ZAMIK_STOLPCEV * r) {
+                j++;
             }
-            Celica l = celicaStolpca(crnilo, w, y0, y1, GeometrijaListka.LEVI_STOLPEC, r, pokritostRoba);
-            Celica d = celicaStolpca(crnilo, w, y0, y1, GeometrijaListka.DESNI_STOLPEC, r, pokritostRoba);
-            if (l != null && d != null) {
-                celice.add(new Vrstica(l, d));
+            if (j < desne.size() && Math.abs(sredina(desne.get(j)) - sredina(l)) <= NAJVEC_ZAMIK_STOLPCEV * r) {
+                celice.add(new Vrstica(l, desne.get(j)));
+                j++;
             }
         }
         if (celice.size() < 2) {
@@ -86,11 +75,57 @@ public final class CeliceListka {
         return new Tabela(List.copyOf(celice.subList(0, celice.size() - 1)), celice.getLast());
     }
 
-    private static double pokritost(boolean[] crnilo, int w, int y, int[] x) {
+    /* Najvecji navpicni zamik med levo in desno celico iste vrstice (mm). */
+    private static final double NAJVEC_ZAMIK_STOLPCEV = 1.2;
+    /* Toleranca crte navzgor in navzdol (px): nagnjena crta na prepognjenem listku. */
+    private static final int TOLERANCA_CRTE = 2;
+
+    private static double sredina(Celica c) {
+        return (c.y0() + c.y1()) / 2.0;
+    }
+
+    /* Celice enega stolpca od zgoraj navzdol: pasovi med zaporednima vodoravnima
+       crtama, ki imajo oba navpicna robova. */
+    private static List<Celica> celiceStolpca(boolean[] crnilo, int w, int od, int doo, int[] x, double[] stolpec, int r,
+                                              double pokritostCrte, double pokritostRoba) {
+        int t = TOLERANCA_CRTE;
+        List<int[]> crte = new ArrayList<>();
+        for (int y = Math.max(t, od); y < doo && y < crnilo.length / w - t; y++) {
+            if (pokritost(crnilo, w, y, x, t) <= pokritostCrte) {
+                continue;
+            }
+            int z = y;
+            while (y + 1 < doo && pokritost(crnilo, w, y + 1, x, t) > pokritostCrte) {
+                y++;
+            }
+            crte.add(new int[] {z, y});
+        }
+        List<Celica> celice = new ArrayList<>();
+        for (int k = 0; k + 1 < crte.size(); k++) {
+            // toleranca razsiri crto za t px na vsako stran: notranjost se zacne za njo
+            int y0 = crte.get(k)[1] + 1 - (t - 1);
+            int y1 = crte.get(k + 1)[0] - 1 + (t - 1);
+            int h = y1 - y0 + 1;
+            if (h < 2.5 * r || h > 12 * r) {
+                continue;
+            }
+            Celica c = celicaStolpca(crnilo, w, y0, y1, stolpec, r, pokritostRoba);
+            if (c != null) {
+                celice.add(c);
+            }
+        }
+        return celice;
+    }
+
+    /* Delez stolpca, ki ima v vrstici y (s toleranco t px navzgor in navzdol) crnilo. */
+    private static double pokritost(boolean[] crnilo, int w, int y, int[] x, int t) {
         int zadetkov = 0;
         for (int i = x[0]; i <= x[1]; i++) {
-            if (crnilo[(y - 1) * w + i] || crnilo[y * w + i] || crnilo[(y + 1) * w + i]) {
-                zadetkov++;
+            for (int d = -t; d <= t; d++) {
+                if (crnilo[(y + d) * w + i]) {
+                    zadetkov++;
+                    break;
+                }
             }
         }
         return (double) zadetkov / (x[1] - x[0] + 1);

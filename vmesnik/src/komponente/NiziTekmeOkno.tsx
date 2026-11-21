@@ -32,9 +32,12 @@ interface Lastnosti {
   /* Organizatorju je to okno tudi vhod v popravek: tu vidi, kaj je vpisano,
      in prav tu ugotovi, da je vpisano narobe. Gostu se gumb ne izriše. */
   onPopravi?: () => void
+  /* Fotografija potrjenega sodniškega listka (branje listkov, F4.4): samo
+     organizatorju turnirja in adminu, gostu se gumb ne izriše. */
+  onListek?: () => void
 }
 
-export function NiziTekmeOkno({ nadnaslov, strani, nizi, izidTip, onZapri, onPopravi }: Lastnosti) {
+export function NiziTekmeOkno({ nadnaslov, strani, nizi, izidTip, onZapri, onPopravi, onListek }: Lastnosti) {
   /* Predana tekma ima tocke samo do predaje - brez opombe bi zadnji niz
      izgledal kot napaka v vpisu. */
   const posebni = izidTip && izidTip !== 'IGRANO' ? OZNAKE_IZID[izidTip] : null
@@ -95,11 +98,18 @@ export function NiziTekmeOkno({ nadnaslov, strani, nizi, izidTip, onZapri, onPop
       </table>
       {nizi.length === 0 && <p className="namig">Točke po nizih niso vpisane.</p>}
       {posebni && <p className="namig">Tekma je končana z izidom »{posebni.toLowerCase()}«.</p>}
-      {onPopravi && (
+      {(onPopravi || onListek) && (
         <div className="obrazec__gumbi">
-          <button type="button" className="gumb" onClick={onPopravi}>
-            Popravi rezultat
-          </button>
+          {onListek && (
+            <button type="button" className="gumb" onClick={onListek}>
+              Listek
+            </button>
+          )}
+          {onPopravi && (
+            <button type="button" className="gumb" onClick={onPopravi}>
+              Popravi rezultat
+            </button>
+          )}
         </div>
       )}
     </ModalnoOkno>

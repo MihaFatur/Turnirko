@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PreDestroy;
 
 import si.turnirko.branje.MrezaStevk;
+import si.turnirko.branje.PogostostNizov;
 import si.turnirko.dto.MeritevBranjaDto;
 import si.turnirko.dto.StanjeNaboraDto;
 import si.turnirko.izjeme.DomenskaIzjema;
@@ -42,6 +43,7 @@ public class MeritevNabora {
     private final ZlatiNabor nabor;
     private final VirMrezeStevk vir;
     private final LastnistvoStoritev lastnistvo;
+    private final PogostostNizovStoritev pogostost;
     private final AtomicBoolean tece = new AtomicBoolean(false);
     private final AtomicInteger obdelanih = new AtomicInteger();
     private final AtomicReference<Zadnja> zadnja = new AtomicReference<>();
@@ -53,8 +55,10 @@ public class MeritevNabora {
         return t;
     });
 
-    public MeritevNabora(ZlatiNabor nabor, VirMrezeStevk vir, LastnistvoStoritev lastnistvo) {
+    public MeritevNabora(ZlatiNabor nabor, VirMrezeStevk vir, LastnistvoStoritev lastnistvo,
+                         PogostostNizovStoritev pogostost) {
         this.nabor = nabor;
+        this.pogostost = pogostost;
         this.vir = vir;
         this.lastnistvo = lastnistvo;
     }
@@ -126,7 +130,9 @@ public class MeritevNabora {
                 throw new IllegalStateException("Meritev je bila prekinjena.");
             }
             try {
-                zbirnik.dodaj(vzorec(ZlatiNabor.nalozi(z), mreza));
+                // vgrajena pogostost, ne nocno presteta: meritvi dveh mrez na razlicne dni
+                // morata biti primerljivi (sprejem mreze, F6); beta je nastavljena
+                zbirnik.dodaj(vzorec(ZlatiNabor.nalozi(z), mreza, PogostostNizov.VGRAJENA, pogostost.beta()));
             } catch (RuntimeException e) {
                 log.warn("Zlati listek {} ni berljiv in je izpuscen iz meritve", z.getId(), e);
             }
@@ -137,8 +143,10 @@ public class MeritevNabora {
 
     /* Listek nabora kot vzorec meritve. Popravek je vsaka napacna celica;
        pripravljen je predlog brez opozoril in negotovih celic. */
-    static MeritevBranja.Vzorec vzorec(ZlatiNabor.Nalozen n, MrezaStevk mreza) {
-        PrebranListek prebrano = LokalniBralnikListka.beri(LokalniBralnikListka.izrezi(n.poravnan()), mreza);
+    static MeritevBranja.Vzorec vzorec(ZlatiNabor.Nalozen n, MrezaStevk mreza, PogostostNizov pogostostNizov,
+                                       double beta) {
+        PrebranListek prebrano = LokalniBralnikListka.beri(LokalniBralnikListka.izrezi(n.poravnan()), mreza,
+                pogostostNizov, beta);
         MeritevBranja.Celice celice = MeritevBranja.primerjaj(prebrano, n.resnica());
         boolean pripravljen = PredlogIzidaListka.sestavi(prebrano, n.zapis().getSteviloNizov(), false).pripravljen();
         return new MeritevBranja.Vzorec(true, false, true, celice.narobe() > 0, pripravljen, false, null, null,

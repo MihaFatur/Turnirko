@@ -28,10 +28,29 @@ public final class RazrezCelice {
     /* Ena razlaga zapisa: stevke od leve proti desni in njena verjetnost. */
     public record Razlaga(List<Stevka> stevke, double verjetnost) {}
 
-    /* prazna = v celici ni zapisa; sicer razlage (vsota verjetnosti 1). */
-    public record Vsebina(boolean prazna, List<Razlaga> razlage) {}
+    /* prazna = v celici ni zapisa; sicer razlage (vsota verjetnosti 1).
+       crnilo = delez notranjosti celice s crnilom, skupin = skupine potez pred
+       zdruzevanjem, razpon = delez sirine celice od prve do zadnje poteze. */
+    public record Vsebina(boolean prazna, List<Razlaga> razlage, double crnilo, int skupin, double razpon) {
 
-    private static final Vsebina PRAZNA = new Vsebina(true, List.of());
+        /* Popravljena celica (F2.5): sodnik je vrednost precrtal ali prepisal in
+           napisal novo. Pozna se po nenavadno veliko crnila, po vec kot treh
+           skupinah potez ali po zapisu, ki se razteza cez vecino celice (ena
+           vrednost ima najvec dve stevki). Taka celica je vedno negotova, njene
+           stevke pa ne gredo v ucenje. */
+        public boolean popravljena() {
+            return !prazna && (crnilo > NAJVEC_CRNILA || skupin > 3 || razpon > NAJVEC_RAZPONA);
+        }
+    }
+
+    /* Najvec delov (komponent) celice, ki se se obdelajo (varnost: cas branja). */
+    static final int NAJVEC_DELOV = 40;
+
+    /* Meje popravljene celice, umerjene na simulaciji (PopravljenaCelicaPoskus). */
+    static final double NAJVEC_CRNILA = 0.12;
+    static final double NAJVEC_RAZPONA = 0.35;
+
+    private static final Vsebina PRAZNA = new Vsebina(true, List.of(), 0, 0, 0);
 
     /* Odmik od roba celice: crta tabele in njen rob ne gresta v razrez (tudi ne v
        zlati nabor, ZlatiNabor.slikaCelic). */
@@ -103,8 +122,25 @@ public final class RazrezCelice {
         if (skupaj < 25) {
             return PRAZNA;
         }
+        // Omejitev racunanja (zdruzevanje skupin je kubicno): celica z vec kot
+        // NAJVEC_DELOV deli je umazana ali precrtana - obdrzi najvecje dele, celica je
+        // popravljena (skupin = vseh delov).
+        int vsehDelov = deli.size();
+        if (vsehDelov > NAJVEC_DELOV) {
+            deli.sort(Comparator.comparingInt((Temnost.Komponenta k) -> k.ploscina).reversed());
+            deli = new ArrayList<>(deli.subList(0, NAJVEC_DELOV));
+        }
 
         List<List<Temnost.Komponenta>> skupine = zdruziPoStolpcih(deli);
+        int skupin = vsehDelov > NAJVEC_DELOV ? vsehDelov : skupine.size();
+        int levo = Integer.MAX_VALUE;
+        int desno = -1;
+        for (Temnost.Komponenta k : deli) {
+            levo = Math.min(levo, k.minX);
+            desno = Math.max(desno, k.maxX);
+        }
+        double delezCrnila = (double) skupaj / (w * h);
+        double razpon = (double) (desno - levo + 1) / w;
         while (skupine.size() > 2) {
             zdruziNajblizji(skupine);
         }
@@ -124,7 +160,7 @@ public final class RazrezCelice {
                 razlage.add(new Razlaga(razdeljeno, 1 - ena));
             }
         }
-        return new Vsebina(false, normaliziraj(razlage));
+        return new Vsebina(false, normaliziraj(razlage), delezCrnila, skupin, razpon);
     }
 
     /* Deli, ki se v vodoravni smeri prekrivajo (precka sedmice, odtrgan zgornji

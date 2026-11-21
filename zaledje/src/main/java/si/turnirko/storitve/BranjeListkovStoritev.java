@@ -51,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +62,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import si.turnirko.dto.BranjaTurnirjaDto;
 import si.turnirko.dto.BranjeListkaDto;
+import si.turnirko.dto.CeliceListkaDto;
 import si.turnirko.dto.BranjeListkaDto.KandidatListka;
 import si.turnirko.dto.BranjeListkaDto.TekmaListka;
 import si.turnirko.dto.NizVnos;
@@ -405,6 +407,11 @@ public class BranjeListkovStoritev {
                     }
                     prepoznajTekmo(branje, vhod.idTurnir(), kode, prepis.listek());
                     branje.setPrebrano(vJson(prepis.listek()));
+                    // poravnan listek za izrez celic ob poljih (F4.1); ob ponovnem branju se zamenja
+                    BralnikListka.Poravnava poravnava = prepis.poravnava();
+                    branje.setCelice(poravnava == null ? null : vJson(poravnava.celice()));
+                    slikeRepozitorij.findById(idBranja)
+                            .ifPresent(slika -> slika.setPoravnana(poravnava == null ? null : poravnava.jpeg()));
                     branje.setModel(prepis.model());
                     branje.setStanje(StanjeBranja.PREBRANO);
                     branje.setPrebranoOb(LocalDateTime.now());
@@ -627,10 +634,15 @@ public class BranjeListkovStoritev {
                     })
                     .toList();
         }
+        // izrezi celic samo, dokler fotografija obstaja (poravnana slika gre z njo)
+        CeliceListkaDto celice = b.getSlikaIzbrisanaOb() == null && b.getCelice() != null
+                ? JsonBranja.preberi(b.getCelice(), CeliceListkaDto.class) : null;
+        boolean obrnjeno = t != null && listek != null && b.getPrepoznava() != PrepoznavaTekme.KODA
+                && jeObrnjeno(listek, t);
         return new BranjeListkaDto(b.getId(), b.getStanje(), b.getUstvarjenoOb(), b.getPrebranoOb(),
                 b.getSlikaIzbrisanaOb() == null, b.getPrepoznava(), tekma, predlog, kandidati,
                 listek == null ? null : listek.imeLevo(), listek == null ? null : listek.imeDesno(),
-                b.getNapaka(), b.getPopravljeno(), jeObviselo(b), b.isKontrola());
+                b.getNapaka(), b.getPopravljeno(), jeObviselo(b), b.isKontrola(), celice, obrnjeno);
     }
 
     private static boolean jeObviselo(BranjeListka b) {
@@ -798,6 +810,7 @@ public class BranjeListkovStoritev {
         branje.setStanje(StanjeBranja.V_VRSTI);
         branje.setNapaka(null);
         branje.setPrebrano(null);
+        branje.setCelice(null);
         branje.setTekma(null);
         branje.setPrepoznava(null);
         vVrsto(branje.getId());
@@ -811,6 +824,33 @@ public class BranjeListkovStoritev {
         return slikeRepozitorij.findById(idBranja)
                 .map(SlikaBranjaListka::getVsebina)
                 .orElseThrow(() -> new NiNajdenoIzjema("Fotografija listka je bila izbrisana."));
+    }
+
+    /* Poravnan listek za izrez celic (F4.1): isti dostop kot fotografija. */
+    @Transactional(readOnly = true)
+    public byte[] poravnana(Long idBranja) {
+        BranjeListka branje = najdi(idBranja);
+        preveriDostop(branje.getTurnir().getId());
+        byte[] jpeg = branje.getSlikaIzbrisanaOb() == null ? slikeRepozitorij.poravnana(idBranja) : null;
+        if (jpeg == null) {
+            throw new NiNajdenoIzjema("Poravnanega listka ni.");
+        }
+        return jpeg;
+    }
+
+    /* Fotografija listka tekme (F4.4): zadnje potrjeno branje, dokler fotografija
+       obstaja. Samo organizator turnirja tekme in admin; javnost nikoli. */
+    @Transactional(readOnly = true)
+    public byte[] listekTekme(Long idTekme) {
+        Tekma tekma = tekmaRepozitorij.findById(idTekme)
+                .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
+        preveriDostop(tekma.getDogodek().getTurnir().getId());
+        Long idBranja = branjaRepozitorij.zSlikoZaTekmo(idTekme, StanjeBranja.POTRJENO, PageRequest.of(0, 1))
+                .stream().findFirst()
+                .orElseThrow(() -> new NiNajdenoIzjema("Za to tekmo ni fotografije listka."));
+        return slikeRepozitorij.findById(idBranja)
+                .map(SlikaBranjaListka::getVsebina)
+                .orElseThrow(() -> new NiNajdenoIzjema("Za to tekmo ni fotografije listka."));
     }
 
     private BranjeListka najdi(Long idBranja) {

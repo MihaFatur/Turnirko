@@ -96,6 +96,22 @@ class RazlagaListkaTest {
         assertEquals(12, izid.nizi().get(1).desno());
     }
 
+    @Test
+    void zgodovinaOdlociMedVeljavnimaNizomaInCelicoOznaciNegotovo() {
+        // mreza rahlo bolj verjame 11:1, a 11:7 je v zgodovini dvanajstkrat pogostejsi
+        double[] desno = verjetnosti(1, 0.55, 7, 0.45);
+        List<RazlagaListka.Vrstica> vrstice = List.of(
+                vrstica(gotovo(11), desno),
+                vrstica(gotovo(11), gotovo(4)),
+                vrstica(prazno(), prazno()));
+        RazlagaListka.Izid brez = RazlagaListka.razlozi(vrstice, prazno(), prazno(), PogostostNizov.VGRAJENA, 0);
+        assertEquals(1, brez.nizi().get(0).desno());
+        RazlagaListka.Izid z = RazlagaListka.razlozi(vrstice, prazno(), prazno(), PogostostNizov.VGRAJENA, 0.5);
+        assertEquals(7, z.nizi().get(0).desno());
+        assertTrue(z.nizi().get(0).negotovoDesno(), "odlocila je zgodovina, ne pisava");
+        assertFalse(z.nizi().get(1).negotovoDesno(), "jasna celica ostane gotova");
+    }
+
     // ---------- Pomozno ----------
 
     private static RazlagaListka.Vrstica vrstica(double[] levo, double[] desno) {

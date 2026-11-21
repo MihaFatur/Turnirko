@@ -44,8 +44,8 @@ public final class RazlagaListka {
     public record Izid(List<Niz> nizi, Integer rezultatLevo, Integer rezultatDesno,
                        boolean negotovRezultat, String opomba) {}
 
-    /* Izbira vrstice: prazna ali veljaven niz (levo, desno) z utezjo pogostosti. */
-    private record Moznost(int levo, int desno, double utez) {
+    /* Izbira vrstice: prazna ali veljaven niz (levo, desno). */
+    private record Moznost(int levo, int desno) {
         boolean prazna() {
             return levo == PRAZNO;
         }
@@ -59,24 +59,43 @@ public final class RazlagaListka {
 
     private static List<Moznost> moznosti() {
         List<Moznost> m = new ArrayList<>();
-        m.add(new Moznost(PRAZNO, PRAZNO, 1));
+        m.add(new Moznost(PRAZNO, PRAZNO));
         for (int a = 0; a <= 9; a++) {
-            m.add(new Moznost(11, a, 1));
-            m.add(new Moznost(a, 11, 1));
+            m.add(new Moznost(11, a));
+            m.add(new Moznost(a, 11));
         }
-        // podaljsek: pogostost pada z dolzino (13:11 je pogost, 25:23 redek)
-        for (int k = 12; k <= 40; k++) {
-            double u = k <= 14 ? 0.5 : k <= 18 ? 0.2 : 0.05;
-            m.add(new Moznost(k, k - 2, u));
-            m.add(new Moznost(k - 2, k, u));
+        for (int k = 12; k <= PogostostNizov.NAJVEC_PODALJSEK; k++) {
+            m.add(new Moznost(k, k - 2));
+            m.add(new Moznost(k - 2, k));
         }
         return List.copyOf(m);
+    }
+
+    /* Utez vsake moznosti po pogostosti v zgodovini (prazna vrstica 1; njeno
+       verjetnost doloca stanje tekme). */
+    private static double[] utezi(PogostostNizov pogostost, double beta) {
+        double[] u = new double[MOZNOSTI.size()];
+        for (int m = 0; m < u.length; m++) {
+            Moznost mo = MOZNOSTI.get(m);
+            u[m] = mo.prazna() ? 1 : pogostost.utez(Math.max(mo.levo(), mo.desno()), Math.min(mo.levo(), mo.desno()), beta);
+        }
+        return u;
     }
 
     /* Stanje: tekma tece (0), koncana (1) ali nepopolna (2), z dobljenimi nizi. */
     private record Stanje(int vrsta, int prvi, int drugi) {}
 
+    /* Z vgrajeno pogostostjo nizov in privzeto beto (testi, meritve brez baze). */
     public static Izid razlozi(List<Vrstica> vrstice, double[] rezultatLevo, double[] rezultatDesno) {
+        return razlozi(vrstice, rezultatLevo, rezultatDesno, PogostostNizov.VGRAJENA, PogostostNizov.PRIVZETA_BETA);
+    }
+
+    /* Najverjetnejsi veljaven izid; pogostost nizov iz zgodovine vstopi z beto
+       (0 = brez zgodovine). Celica je negotova tudi, ce bi brez zgodovine izbrali
+       drugo vrednost: tam je odlocila zgodovina, ne pisava, zato jo organizator
+       pogleda. */
+    public static Izid razlozi(List<Vrstica> vrstice, double[] rezultatLevo, double[] rezultatDesno,
+                               PogostostNizov pogostost, double beta) {
         int n = vrstice.size();
         int zaZmago = n / 2 + 1;
 
@@ -100,9 +119,9 @@ public final class RazlagaListka {
         }
         int S = stanja.size();
         int M = MOZNOSTI.size();
-        // prehod[s][m] = naslednje stanje ali -1; utez prehoda
+        // prehod[s][m] = naslednje stanje ali -1; osnova = utez prehoda brez pogostosti nizov
         int[][] prehod = new int[S][M];
-        double[][] utez = new double[S][M];
+        double[][] osnova = new double[S][M];
         for (int s = 0; s < S; s++) {
             Stanje st = stanja.get(s);
             for (int m = 0; m < M; m++) {
@@ -111,16 +130,17 @@ public final class RazlagaListka {
                 if (mo.prazna()) {
                     int cilj = st.vrsta() == 0 ? indeks.get(new Stanje(2, st.prvi(), st.drugi())) : s;
                     prehod[s][m] = cilj;
-                    utez[s][m] = st.vrsta() == 0 ? NEPOPOLNO : 1;
+                    osnova[s][m] = st.vrsta() == 0 ? NEPOPOLNO : 1;
                 } else if (st.vrsta() == 0) {
                     int a = st.prvi() + (mo.levaZmaga() ? 1 : 0);
                     int b = st.drugi() + (mo.levaZmaga() ? 0 : 1);
                     int vrsta = a == zaZmago || b == zaZmago ? 1 : 0;
                     prehod[s][m] = indeks.get(new Stanje(vrsta, a, b));
-                    utez[s][m] = mo.utez();
+                    osnova[s][m] = 1;
                 }
             }
         }
+        double[][] utez = utezPrehodov(osnova, utezi(pogostost, beta));
         double[][] oddaja = new double[n][M];
         for (int i = 0; i < n; i++) {
             for (int m = 0; m < M; m++) {
@@ -136,51 +156,18 @@ public final class RazlagaListka {
         }
         int zacetek = indeks.get(new Stanje(0, 0, 0));
 
-        // Viterbi (najverjetnejse zaporedje) v logaritmih
-        double[][] najbolje = new double[n + 1][S];
-        int[][] odkod = new int[n + 1][S];
-        int[][] izbira = new int[n + 1][S];
-        for (double[] v : najbolje) {
-            java.util.Arrays.fill(v, Double.NEGATIVE_INFINITY);
-        }
-        najbolje[0][zacetek] = 0;
-        for (int i = 0; i < n; i++) {
-            for (int s = 0; s < S; s++) {
-                if (najbolje[i][s] == Double.NEGATIVE_INFINITY) {
-                    continue;
-                }
-                for (int m = 0; m < M; m++) {
-                    int c = prehod[s][m];
-                    double w = utez[s][m] * oddaja[i][m];
-                    if (c < 0 || w <= 0) {
-                        continue;
-                    }
-                    double v = najbolje[i][s] + Math.log(w);
-                    if (v > najbolje[i + 1][c]) {
-                        najbolje[i + 1][c] = v;
-                        odkod[i + 1][c] = s;
-                        izbira[i + 1][c] = m;
-                    }
-                }
-            }
-        }
-        int konec = -1;
-        double najvec = Double.NEGATIVE_INFINITY;
-        for (int s = 0; s < S; s++) {
-            if (koncna[s] > 0 && najbolje[n][s] + Math.log(koncna[s]) > najvec) {
-                najvec = najbolje[n][s] + Math.log(koncna[s]);
-                konec = s;
-            }
-        }
-        if (konec < 0) {
+        double[] najvecOut = new double[1];
+        int[] pot = viterbi(prehod, utez, oddaja, koncna, zacetek, najvecOut);
+        if (pot == null) {
             return neodvisno(vrstice, rezultatLevo, rezultatDesno);
         }
-        int[] pot = new int[n];
-        int s = konec;
-        for (int i = n; i > 0; i--) {
-            pot[i - 1] = izbira[i][s];
-            s = odkod[i][s];
-        }
+        // ista razlaga brez zgodovine: kjer se razlikuje, je odlocila pogostost
+        double[] najvecBrez = beta == 0 ? najvecOut : new double[1];
+        int[] potBrezZgodovine = beta == 0 ? pot
+                : viterbi(prehod, utezPrehodov(osnova, utezi(pogostost, 0)), oddaja, koncna, zacetek, najvecBrez);
+        // koliko so morala pravila popraviti mrezo, se meri brez zgodovine (redek, a
+        // pravilno prebran podaljsek ni neujemanje s pravili)
+        double najvec = potBrezZgodovine == null ? najvecOut[0] : najvecBrez[0];
 
         // naprej-nazaj: robne verjetnosti celic cez vsa veljavna zaporedja
         double[][] naprej = new double[n + 1][S];
@@ -241,8 +228,11 @@ public final class RazlagaListka {
                 }
             }
             Vrstica v = vrstice.get(i);
-            boolean negLevo = robLevo < ZAUPANJE || najverjetnejsa(v.levo()) != izbrana.levo();
-            boolean negDesno = robDesno < ZAUPANJE || najverjetnejsa(v.desno()) != izbrana.desno();
+            Moznost brez = potBrezZgodovine == null ? null : MOZNOSTI.get(potBrezZgodovine[i]);
+            boolean negLevo = robLevo < ZAUPANJE || najverjetnejsa(v.levo()) != izbrana.levo()
+                    || brez == null || brez.levo() != izbrana.levo();
+            boolean negDesno = robDesno < ZAUPANJE || najverjetnejsa(v.desno()) != izbrana.desno()
+                    || brez == null || brez.desno() != izbrana.desno();
             nizi.add(izbrana.prazna()
                     ? new Niz(null, null, negLevo, negDesno)
                     : new Niz(izbrana.levo(), izbrana.desno(), negLevo, negDesno));
@@ -257,6 +247,72 @@ public final class RazlagaListka {
         String opomba = najvec - brezPravil < Math.log(1e-4)
                 ? "Številke na listku se slabo ujemajo s pravili. Preveri vse nize." : null;
         return new Izid(nizi, rez[0], rez[1], negotovRezultat(rezultatLevo, rezultatDesno), opomba);
+    }
+
+    /* utez[s][m] = osnova prehoda * utez moznosti m. */
+    private static double[][] utezPrehodov(double[][] osnova, double[] uteziMoznosti) {
+        double[][] u = new double[osnova.length][uteziMoznosti.length];
+        for (int s = 0; s < osnova.length; s++) {
+            for (int m = 0; m < uteziMoznosti.length; m++) {
+                u[s][m] = osnova[s][m] * uteziMoznosti[m];
+            }
+        }
+        return u;
+    }
+
+    /* Viterbi (najverjetnejse veljavno zaporedje) v logaritmih: indeksi moznosti
+       po vrsticah ali null, ce veljavnega zaporedja ni; najvecOut[0] = log verjetnosti. */
+    private static int[] viterbi(int[][] prehod, double[][] utez, double[][] oddaja, double[] koncna, int zacetek,
+                                 double[] najvecOut) {
+        int n = oddaja.length;
+        int S = prehod.length;
+        int M = MOZNOSTI.size();
+        double[][] najbolje = new double[n + 1][S];
+        int[][] odkod = new int[n + 1][S];
+        int[][] izbira = new int[n + 1][S];
+        for (double[] v : najbolje) {
+            java.util.Arrays.fill(v, Double.NEGATIVE_INFINITY);
+        }
+        najbolje[0][zacetek] = 0;
+        for (int i = 0; i < n; i++) {
+            for (int s = 0; s < S; s++) {
+                if (najbolje[i][s] == Double.NEGATIVE_INFINITY) {
+                    continue;
+                }
+                for (int m = 0; m < M; m++) {
+                    int c = prehod[s][m];
+                    double w = utez[s][m] * oddaja[i][m];
+                    if (c < 0 || w <= 0) {
+                        continue;
+                    }
+                    double v = najbolje[i][s] + Math.log(w);
+                    if (v > najbolje[i + 1][c]) {
+                        najbolje[i + 1][c] = v;
+                        odkod[i + 1][c] = s;
+                        izbira[i + 1][c] = m;
+                    }
+                }
+            }
+        }
+        int konec = -1;
+        double najvec = Double.NEGATIVE_INFINITY;
+        for (int s = 0; s < S; s++) {
+            if (koncna[s] > 0 && najbolje[n][s] + Math.log(koncna[s]) > najvec) {
+                najvec = najbolje[n][s] + Math.log(koncna[s]);
+                konec = s;
+            }
+        }
+        if (konec < 0) {
+            return null;
+        }
+        int[] pot = new int[n];
+        int s = konec;
+        for (int i = n; i > 0; i--) {
+            pot[i - 1] = izbira[i][s];
+            s = odkod[i][s];
+        }
+        najvecOut[0] = najvec;
+        return pot;
     }
 
     /* Rezultat celice: verjetnost, da je napisano w, ali da je celica prazna (ni izpolnjena). */

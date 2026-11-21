@@ -12,6 +12,9 @@ import {
   trajanje,
   vnosIzPredloga,
   vrsticeIzPredloga,
+  izrezCelice,
+  jeZanesljiv,
+  slogIzreza,
 } from './branjeListkov'
 
 function predlog(polja: Partial<PredlogIzidaDto> = {}): PredlogIzidaDto {
@@ -88,6 +91,49 @@ describe('branje listkov', () => {
     expect(zaPotrditev.map((x) => x.id)).toEqual([2, 4])
     expect(berem.map((x) => x.id)).toEqual([3])
     expect(zakljucena.map((x) => x.id)).toEqual([1])
+  })
+})
+
+describe('izrez celic in vrstni red (F4)', () => {
+  const celice = {
+    sirina: 1050,
+    visina: 990,
+    nizi: [[220, 400, 560, 470, 630, 400, 970, 470], [220, 480, 560, 550, 630, 480, 970, 550]],
+    rezultat: [220, 800, 560, 880, 630, 800, 970, 880],
+  }
+
+  it('izrez gre v stolpec listka, pri obrnjenem listku zamenjano', () => {
+    expect(izrezCelice(celice, 0, false)).toEqual({ x0: 220, y0: 400, x1: 560, y1: 470 })
+    expect(izrezCelice(celice, 3, false)).toEqual({ x0: 630, y0: 480, x1: 970, y1: 550 })
+    expect(izrezCelice(celice, 0, true)).toEqual({ x0: 630, y0: 400, x1: 970, y1: 470 })
+    expect(izrezCelice(celice, 4, false)).toBeNull()
+  })
+
+  it('ozadje pokaže samo izrez z robom', () => {
+    const slog = slogIzreza({ x0: 106, y0: 106, x1: 193, y1: 143 }, 1000, 1000)
+    // 100 × 50 px z robom 6: slika je 10- in 20-krat večja od izreza
+    expect(slog.backgroundSize).toBe('1000% 2000%')
+    expect(slog.aspectRatio).toBe('100 / 50')
+    expect(slog.backgroundPosition).toBe(`${(100 / 900) * 100}% ${(100 / 950) * 100}%`)
+  })
+
+  it('zanesljivi listki so na vrhu, sicer po času', () => {
+    const b = (id: number, ob: string, pripravljen: boolean | null) =>
+      ({
+        id,
+        stanje: 'PREBRANO',
+        ustvarjenoOb: ob,
+        tekma: pripravljen === null ? null : {},
+        predlog: pripravljen === null ? null : { pripravljen },
+      }) as unknown as BranjeListkaDto
+    const vrsta = razdeliVrsto([
+      b(1, '2026-11-21T10:01:00', false),
+      b(2, '2026-11-21T10:02:00', true),
+      b(3, '2026-11-21T10:03:00', null),
+      b(4, '2026-11-21T10:04:00', true),
+    ])
+    expect(vrsta.zaPotrditev.map((x) => x.id)).toEqual([2, 4, 1, 3])
+    expect(vrsta.zaPotrditev.filter(jeZanesljiv).map((x) => x.id)).toEqual([2, 4])
   })
 })
 

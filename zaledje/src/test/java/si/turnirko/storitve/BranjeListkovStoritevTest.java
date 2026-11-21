@@ -20,6 +20,7 @@
      prebrana), potrditev zapre ostale. */
 package si.turnirko.storitve;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -60,12 +61,14 @@ import com.google.zxing.qrcode.QRCodeWriter;
 
 import si.turnirko.dto.BranjaTurnirjaDto;
 import si.turnirko.dto.BranjeListkaDto;
+import si.turnirko.dto.CeliceListkaDto;
 import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.PotrditevBranjaVnos;
 import si.turnirko.dto.PredlogIzidaDto;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
+import si.turnirko.izjeme.NiNajdenoIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.izjeme.ZasedenoIzjema;
 import si.turnirko.modeli.BranjeListka;
@@ -103,6 +106,7 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
     static class TestniBralnik implements BralnikListka {
         PrebranListek naslednji;
         RuntimeException napaka;
+        Poravnava poravnava;
 
         @Override
         public boolean jeNastavljen() {
@@ -114,7 +118,7 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
             if (napaka != null) {
                 throw napaka;
             }
-            return new Branje(naslednji, "testni");
+            return new Branje(naslednji, "testni", poravnava);
         }
     }
 
@@ -131,6 +135,7 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
     void pripravi() {
         bralnik.naslednji = null;
         bralnik.napaka = null;
+        bralnik.poravnava = null;
         dogodek = pripraviDogodek(4);
         String[][] imena = {{"Ana", "Novak"}, {"Tim", "Kranjc"}, {"Luka", "Zupan"}, {"Nik", "Horvat"}};
         List<Prijava> prijave = prijavePoVrsti(dogodek.getId());
@@ -315,6 +320,66 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
 
         SecurityContextHolder.clearContext();
         assertFalse(storitev.stanje().omogoceno());
+    }
+
+    /* F4.1: poravnan listek in lega celic gresta v pregled; ponovno branje ju
+       zamenja (brez poravnave izrezov ni), izbris fotografije vzame tudi izreze. */
+    @Test
+    void poravnanListekInLegaCelicZaIzrez() throws IOException {
+        bralnik.naslednji = prepis(ime(tekma.getPrijava1()), ime(tekma.getPrijava2()),
+                new int[][] {{11, 7}, {9, 11}, {11, 5}, {11, 8}}, 3, 1);
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, 1, 2, 3};
+        int[] vrstica = {220, 400, 560, 470, 630, 400, 970, 470};
+        bralnik.poravnava = new BralnikListka.Poravnava(jpeg,
+                new CeliceListkaDto(1050, 990, List.of(vrstica, vrstica, vrstica, vrstica, vrstica), vrstica));
+        Long id = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tekma.getId())).id();
+        storitev.obdelaj(id);
+
+        BranjeListkaDto prebrano = eno();
+        assertNotNull(prebrano.celice());
+        assertEquals(1050, prebrano.celice().sirina());
+        assertEquals(5, prebrano.celice().nizi().size());
+        assertArrayEquals(vrstica, prebrano.celice().rezultat());
+        assertFalse(prebrano.obrnjeno(), "po kodi listek ni obrnjen");
+        assertArrayEquals(jpeg, storitev.poravnana(id));
+
+        bralnik.poravnava = null;
+        storitev.znova(id);
+        storitev.obdelaj(id);
+        assertNull(eno().celice());
+        assertThrows(NiNajdenoIzjema.class, () -> storitev.poravnana(id));
+    }
+
+    /* F4.4: fotografija listka pri tekmi samo po potrditvi, samo lastniku turnirja
+       in adminu, dokler fotografija obstaja. */
+    @Test
+    void listekTekmePoPotrditviSamoZaLastnika() throws IOException {
+        Uporabnik lastnik = racun("lastnik-listek@test", Vloga.ORGANIZATOR);
+        racun("tujec-listek@test", Vloga.ORGANIZATOR);
+        Turnir turnir = dogodek.getTurnir();
+        turnir.setUstvaril(lastnik);
+        turnirRepozitorij.save(turnir);
+        bralnik.naslednji = prepis(ime(tekma.getPrijava1()), ime(tekma.getPrijava2()),
+                new int[][] {{11, 7}, {9, 11}, {11, 5}, {11, 8}}, 3, 1);
+        byte[] foto = fotografija("TK:" + tekma.getId());
+        Long id = storitev.sprejmi(idTurnirja(), foto).id();
+        storitev.obdelaj(id);
+        assertThrows(NiNajdenoIzjema.class, () -> storitev.listekTekme(tekma.getId()), "pred potrditvijo ni listka");
+
+        storitev.potrdi(id, new PotrditevBranjaVnos(null, vnos(eno().predlog())));
+        byte[] shranjena = slikeRepozitorij.findById(id).orElseThrow().getVsebina();
+        assertArrayEquals(shranjena, storitev.listekTekme(tekma.getId()));
+
+        storitev.nastaviSamoAdmin(false);
+        prijava("lastnik-listek@test", "ROLE_ORGANIZATOR");
+        assertArrayEquals(shranjena, storitev.listekTekme(tekma.getId()));
+        prijava("tujec-listek@test", "ROLE_ORGANIZATOR");
+        assertThrows(PrepovedanoIzjema.class, () -> storitev.listekTekme(tekma.getId()));
+        assertThrows(PrepovedanoIzjema.class, () -> storitev.poravnana(id));
+
+        prijava("admin-branje@test", "ROLE_ADMIN");
+        slikeRepozitorij.deleteById(id);
+        assertThrows(NiNajdenoIzjema.class, () -> storitev.listekTekme(tekma.getId()), "po 30 dneh ni fotografije");
     }
 
     @Test
@@ -609,6 +674,10 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
         List<PrebranListek.Niz> nizi = new ArrayList<>();
         for (int[] niz : tocke) {
             nizi.add(new PrebranListek.Niz(niz[0], niz[1], false, false));
+        }
+        // kot pravi bralnik: vse natisnjene vrstice (tekme v testu so na 5 nizov), neodigrane prazne
+        while (nizi.size() < 5) {
+            nizi.add(new PrebranListek.Niz(null, null, false, false));
         }
         return new PrebranListek(true, null, levo, desno, false, null, null, nizi,
                 rezLevo, rezDesno, false, "NI", null, null);

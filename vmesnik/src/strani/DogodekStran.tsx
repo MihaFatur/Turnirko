@@ -32,7 +32,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { dogodkiApi, igralciApi, turnirjiApi } from '../api/zahteve'
+import { branjeListkovApi, dogodkiApi, igralciApi, turnirjiApi } from '../api/zahteve'
 import type {
   IgralecDto,
   IzborDto,
@@ -90,6 +90,7 @@ import { IzlocilniZrebDel, RocnaMrezaZaDogodek } from '../komponente/IzlocilniZr
 import { SvPriprava } from '../komponente/SvPriprava'
 import { SvRegijaDel } from '../komponente/SvRegija'
 import { VsebinaSkupine, opisSkupine } from '../komponente/VsebinaSkupine'
+import { ListekTekmeOkno } from '../komponente/ListekTekmeOkno'
 import { NiziTekmeOkno, type StranTekme } from '../komponente/NiziTekmeOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { TekmaKartica, type KlikTekme } from '../komponente/TekmaKartica'
@@ -132,7 +133,7 @@ export function DogodekStran() {
   const idDogodka = Number(id)
   const odjemalec = useQueryClient()
   const navigiraj = useNavigate()
-  const { jeAdmin, smemUrejati } = useAvtentikacija()
+  const { jeAdmin, jeOrganizator, smemUrejati } = useAvtentikacija()
   const branjeNaVoljo = useBranjeListkovNaVoljo()
   const jeTelefon = useTelefon()
 
@@ -174,6 +175,14 @@ export function DogodekStran() {
   const [ekipnaTekma, nastaviEkipnoTekmo] = useState<TekmaDto | null>(null)
   /* Končana tekma, za katero je odprto okno s točkami po nizih. */
   const [tekmaZNizi, nastaviTekmoZNizi] = useState<TekmaDto | null>(null)
+  /* Fotografija listka tekme (F4.4), če je branje listkov organizatorju na voljo. */
+  const [listekTekme, nastaviListekTekme] = useState<number | null>(null)
+  const branjeListkov = useQuery({
+    queryKey: ['branje-listkov', 'stanje-strani'],
+    queryFn: branjeListkovApi.stanje,
+    enabled: jeAdmin || jeOrganizator,
+    staleTime: 60_000,
+  })
   /* Končana tekma, katere rezultat organizator popravlja — napačen vpis ali
      napaka v zapisniku, ki se pokaže šele čez nekaj dni. */
   const [popravljana, nastaviPopravljano] = useState<TekmaDto | null>(null)
@@ -680,6 +689,10 @@ export function DogodekStran() {
         />
       )}
 
+      {listekTekme !== null && (
+        <ListekTekmeOkno idTekme={listekTekme} onZapri={() => nastaviListekTekme(null)} />
+      )}
+
       {tekmaZNizi && (
         <NiziTekmeOkno
           nadnaslov={dogodek.ime}
@@ -690,6 +703,14 @@ export function DogodekStran() {
           nizi={tekmaZNizi.nizi}
           izidTip={tekmaZNizi.izidTip}
           onZapri={() => nastaviTekmoZNizi(null)}
+          onListek={
+            smem && branjeListkov.data?.omogoceno
+              ? () => {
+                  nastaviListekTekme(tekmaZNizi.id)
+                  nastaviTekmoZNizi(null)
+                }
+              : undefined
+          }
           onPopravi={
             popravekMozen(tekmaZNizi)
               ? () => {
