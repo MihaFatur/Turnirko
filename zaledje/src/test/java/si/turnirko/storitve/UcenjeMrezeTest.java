@@ -5,7 +5,8 @@
      meritvami (nacin, preizkusne, MNIST, zlati nabor, trajanje) in jo sprejme
      samo, ce ne bere slabse;
    - nova mreza je zavrnjena, ce je slabsa na preizkusnih stevkah, ima vec napacnih
-     celic na zlatem naboru ali na MNIST pade za vec kot eno odstotno tocko (F6.3);
+     celic na zlatem naboru ali na MNIST pade za vec kot eno odstotno tocko (od
+     vgrajene skupaj za vec kot dve, F6.3);
    - preizkusne stevke se delijo po listku (ista pisava ni v obeh delih); brez
      dovolj preizkusnih se ucenje odlozi brez zapisa;
    - prekinjeno ucenje (casovna meja) se zapise brez utezi, mreza ostane stara (F6.5);
@@ -133,12 +134,27 @@ class UcenjeMrezeTest extends IntegracijskiTest {
     @Test
     void razlogZavrnitvePoMerilih() {
         UcenjeMreze.Zlati zlatiEnako = new UcenjeMreze.Zlati(30, 0.95f, 0.95f, 10, 10);
-        assertNull(UcenjeMreze.razlogZavrnitve(0.95, 0.95, 0.98, 0.975, zlatiEnako), "izenaceno in malo MNIST je v redu");
-        assertNull(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.98, null), "brez zlatega nabora");
-        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.94, 0.98, 0.98, null).startsWith("Na preizkusnih"));
-        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.98,
+        assertNull(UcenjeMreze.razlogZavrnitve(0.95, 0.95, 0.98, 0.975, 0.98, zlatiEnako),
+                "izenaceno in malo MNIST je v redu");
+        assertNull(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.98, 0.98, null), "brez zlatega nabora");
+        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.94, 0.98, 0.98, 0.98, null).startsWith("Na preizkusnih"));
+        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.98, 0.98,
                 new UcenjeMreze.Zlati(30, 0.95f, 0.94f, 10, 12)).startsWith("Na zlatem naboru"));
-        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.965, null).startsWith("Na MNIST"));
+        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.965, 0.98, null).startsWith("Na MNIST slabša"));
+    }
+
+    /* Vsako ucenje sme vzeti do eno tocko MNIST, vse skupaj pa najvec dve od vgrajene:
+       sicer bi mreza po nekaj ucenjih po malem pozabila splosne oblike stevk. */
+    @Test
+    void mnistNeSmeZdrsnitiVecKotDveTockiOdVgrajene() {
+        // prva razlicica: -0,9 tocke od vgrajene (21. 11. 2026, 99,5 % -> 98,6 %)
+        assertNull(UcenjeMreze.razlogZavrnitve(0.64, 0.96, 0.995, 0.986, 0.995, null));
+        // druga: od mreze v uporabi -0,9 tocke (v redu), od vgrajene -1,8 (v redu)
+        assertNull(UcenjeMreze.razlogZavrnitve(0.96, 0.97, 0.986, 0.977, 0.995, null));
+        // tretja: od mreze v uporabi -0,5 tocke, a od vgrajene -2,3: zavrnjena
+        String razlog = UcenjeMreze.razlogZavrnitve(0.97, 0.98, 0.977, 0.972, 0.995, null);
+        assertNotNull(razlog);
+        assertTrue(razlog.startsWith("Na MNIST za več kot 2 odstotni točki slabša od vgrajene"), razlog);
     }
 
     /* Zlati nabor odloca, ko ima vsaj NAJMANJ_ZLATIH listkov: obe mrezi se izmerita

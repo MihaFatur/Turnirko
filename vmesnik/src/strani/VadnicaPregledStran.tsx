@@ -5,17 +5,18 @@
    vzorec (pomota, prečrtano) ali je narobe razrezana (pol števke). Števke, ki jih
    mreža zdaj bere drugače, so obrobljene - najprej preveri te. »Odobri list«
    pošlje preostale v učenje; izločene se izbrišejo. */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { StevkaVadniceDto } from '../api/tipi'
 import { vadnicaApi } from '../api/zahteve'
 import { useNazaj } from '../komponente/GlavaTelefona'
+import { SlikaStevke } from '../komponente/SlikaStevke'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
-import { STOLPCEV, VREDNOSTI, oznakaLista, slikaStevke } from '../pomozno/vadnica'
+import { STOLPCEV, VREDNOSTI, oznakaLista } from '../pomozno/vadnica'
 
 export function VadnicaPregledStran() {
   const { id } = useParams()
@@ -179,12 +180,6 @@ function Stevka({
   izlocena: boolean
   onklik?: () => void
 }) {
-  const platno = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const risba = platno.current?.getContext('2d')
-    if (risba) risba.putImageData(new ImageData(slikaStevke(stevka.slika), 28, 28), 0, 0)
-  }, [stevka.slika])
-
   return (
     <button
       type="button"
@@ -198,7 +193,7 @@ function Stevka({
       disabled={!onklik}
       onClick={onklik}
     >
-      <canvas ref={platno} width={28} height={28} />
+      <SlikaStevke slika={stevka.slika} />
     </button>
   )
 }

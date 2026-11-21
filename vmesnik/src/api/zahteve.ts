@@ -7,6 +7,7 @@ import type {
   BranjeListkaDto,
   MeritevBranjaDto,
   MrezeStevkDto,
+  NapakeMrezeDto,
   PotrditevBranjaVnos,
   StanjeBranjaListkovDto,
   StanjeNaboraDto,
@@ -346,6 +347,9 @@ export const meritevBranjaApi = {
   mreze: () => api.vrni<MrezeStevkDto>('/branje-listkov/mreze'),
   uciZdaj: () => api.objavi<MrezeStevkDto>('/branje-listkov/mreze/uci'),
   vrniPrejsnjo: () => api.objavi<MrezeStevkDto>('/branje-listkov/mreze/vrni'),
+  /* Napake mreže po števkah (F6.6); izločena števka ne gre več v učenje. */
+  napake: () => api.vrni<NapakeMrezeDto>('/branje-listkov/mreze/napake'),
+  izlociStevko: (id: number) => api.izbrisi(`/branje-listkov/mreze/stevke/${id}`),
 }
 
 /* Vadnica števk (F3, samo admin). */

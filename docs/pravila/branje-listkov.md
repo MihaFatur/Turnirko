@@ -118,7 +118,10 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
 - **Sprejem (F6.3):** nova različica (`mreza_stevk`) se sprejme samo, če (1) na
   preizkusnih števkah ne bere slabše, (2) na zlatem naboru (prvih 400 listkov, če jih je
   vsaj 20) nima več napačnih celic in (3) na MNIST ne nazaduje za več kot 1 odstotno
-  točko. Razlog zavrnitve se zapiše (`razlog`), z vsemi meritvami, načinom in trajanjem.
+  točko od mreže v uporabi **in** za več kot 2 od vgrajene (`PADEC_MNIST_SKUPAJ`, od
+  21. 11. 2026: meja samo od prejšnje bi dovolila zdrs za točko ob vsakem učenju; prva
+  različica v produkciji je padla 99,5 % → 98,6 %). Razlog zavrnitve se zapiše (`razlog`),
+  z vsemi meritvami, načinom in trajanjem.
 - **Meje (F6.5):** hkrati teče največ eno učenje (zastavica; vrnitev prejšnje vzame isto),
   »Uči zdaj« ima premor 10 min. Učenje (2 niti) se po 30 min prekine: zapis brez uteži
   (`razlog` »Prekinjeno …«), mreža ostane stara. Ob ustavitvi strežnika se nič ne zapiše.
@@ -127,6 +130,16 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
 - **»Vrni prejšnjo« (F6.4):** različica v uporabi dobi `umaknjena_ob`; `VirMrezeStevk`
   naloži zadnjo sprejeto neumaknjeno (ali vgrajeno). Umaknjena ostane v zgodovini in
   se ne vrne sama. Med učenjem ni mogoča (409).
+- **Napake mreže (`NapakeMreze`, F6.6, 21. 11. 2026):** na strani Meritev branja (admin)
+  na klik, ne ob nalaganju: vse števke iz učenja (`najnovejse`, ista razdelitev
+  `jePreizkusna`) gredo skozi mrežo v uporabi, preizkusne še skozi vgrajeno. Pokaže za
+  vsako števko 0–9 delež prav in najpogostejše zamenjave, narobe prebrane preizkusne
+  (s sliko, največ 60 za vsako napisano števko) in **sumljive oznake**: učne števke, ki
+  jih mreža kljub učenju bere drugače z verjetnostjo ≥ 0,9 (napisana druga števka ali
+  narobe izrezano okence). »Izloči« (`DELETE /mreze/stevke/{id}`) števko izbriše iz
+  učenja in zmanjša `vadnica.stevk`; že naučena mreža ostane. Izločati se sme samo
+  napačne oznake: grdo napisana prava preizkusna števka mora ostati, sicer je preizkus
+  videti boljši, kot je.
 
 ## Sprejem fotografije in dvojniki (F0, 20. 11. 2026)
 

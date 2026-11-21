@@ -4,7 +4,8 @@
    (z vadnic in potrjenih listkov) in zgodovina različic: kako je vsaka brala
    preizkusne števke, zlati nabor in MNIST pred in po učenju, ter zakaj ni bila
    sprejeta. »Uči zdaj« požene učenje takoj (ne čaka noči), »Vrni prejšnjo«
-   umakne različico v uporabi, če se na turnirju izkaže za slabšo. */
+   umakne različico v uporabi, če se na turnirju izkaže za slabšo. Pod gumbi so
+   napake mreže po števkah (NapakeMreze, F6.6). */
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -12,6 +13,7 @@ import type { MrezeStevkDto, RazlicicaMrezeDto } from '../api/tipi'
 import { meritevBranjaApi } from '../api/zahteve'
 import { delez, prejPotem, stanjeRazlicice, trajanje, type StanjeRazlicice } from '../pomozno/branjeListkov'
 import { oblikujTermin, oblikujUro } from '../pomozno/oblikovanje'
+import { KLJUC_NAPAK, NapakeMreze } from './NapakeMreze'
 import { SporociloNapake } from './SporociloNapake'
 
 const KLJUC = ['mreze-stevk']
@@ -43,13 +45,17 @@ export function MrezeStevk() {
   const ucilSe = useRef(false)
   const uciSe = stanje.data?.uciSe ?? false
   useEffect(() => {
-    if (ucilSe.current && !uciSe) void odjemalec.invalidateQueries({ queryKey: ['meritev-branja'] })
+    if (ucilSe.current && !uciSe) {
+      void odjemalec.invalidateQueries({ queryKey: ['meritev-branja'] })
+      void odjemalec.invalidateQueries({ queryKey: KLJUC_NAPAK })
+    }
     ucilSe.current = uciSe
   }, [uciSe, odjemalec])
   const shrani = (s: MrezeStevkDto) => {
     odjemalec.setQueryData(KLJUC, s)
-    // tabela »Po različicah mreže« in meritev nabora navajata mrežo v uporabi
+    // tabela »Po različicah mreže«, meritev nabora in napake navajajo mrežo v uporabi
     void odjemalec.invalidateQueries({ queryKey: ['meritev-branja'] })
+    void odjemalec.invalidateQueries({ queryKey: KLJUC_NAPAK })
   }
   const uci = useMutation({ mutationFn: meritevBranjaApi.uciZdaj, onSuccess: shrani })
   const vrni = useMutation({
@@ -141,6 +147,8 @@ export function MrezeStevk() {
               </div>
             </div>
           )}
+
+          <NapakeMreze />
 
           <h3 className="meritev-branja__podnaslov">Zgodovina učenja</h3>
           {s.razlicice.length === 0 ? (

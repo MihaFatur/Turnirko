@@ -8,6 +8,7 @@
 package si.turnirko.kontrolerji;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -55,7 +56,7 @@ class MeritevBranjaDostopTest {
     private static final String ORGANIZATOR = "organizator-meritev@test.si";
     private static final String[] POTI = {
             "/api/v1/branje-listkov/meritev", "/api/v1/branje-listkov/nabor", "/api/v1/branje-listkov/nabor/zip",
-            "/api/v1/branje-listkov/mreze"};
+            "/api/v1/branje-listkov/mreze", "/api/v1/branje-listkov/mreze/napake"};
 
     @Autowired MockMvc mockMvc;
     @Autowired UporabnikRepozitorij uporabnikRepozitorij;
@@ -113,6 +114,25 @@ class MeritevBranjaDostopTest {
             mockMvc.perform(post(pot)).andExpect(status().isUnauthorized());
             mockMvc.perform(post(pot).header("Authorization", basic(ORGANIZATOR))).andExpect(status().isForbidden());
         }
+        // izlocanje stevke iz ucenja (F6.6)
+        mockMvc.perform(delete("/api/v1/branje-listkov/mreze/stevke/1")).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/v1/branje-listkov/mreze/stevke/1").header("Authorization", basic(ORGANIZATOR)))
+                .andExpect(status().isForbidden());
+    }
+
+    /* F6.6: pregled napak ima vrstico za vsako stevko 0-9; izlocanje neobstojece
+       stevke je 404. */
+    @Test
+    void adminVidiNapakeMreze() throws Exception {
+        String admin = basic(ADMIN);
+        mockMvc.perform(get("/api/v1/branje-listkov/mreze/napake").header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.poStevkah.length()").value(10))
+                .andExpect(jsonPath("$.poStevkah[7].stevka").value(7))
+                .andExpect(jsonPath("$.napake").isArray())
+                .andExpect(jsonPath("$.sumljive").isArray());
+        mockMvc.perform(delete("/api/v1/branje-listkov/mreze/stevke/-1").header("Authorization", admin))
+                .andExpect(status().isNotFound());
     }
 
     /* F6.4: admin vidi mrezo v uporabi in zgodovino; brez novih stevk »Uci zdaj«

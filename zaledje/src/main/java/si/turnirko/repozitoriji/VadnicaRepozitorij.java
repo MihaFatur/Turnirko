@@ -30,4 +30,10 @@ public interface VadnicaRepozitorij extends JpaRepository<Vadnica, Long> {
             WHERE v.id = :id AND v.odobrena = false
             """)
     int odobri(@Param("id") Long id, @Param("stevk") int stevk, @Param("zdaj") LocalDateTime zdaj);
+
+    /* Stevka lista je izlocena iz ucenja (napake mreze, F6.6): stevilo na seznamu
+       listov ostane enako stevkam v bazi. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Vadnica v SET v.stevk = v.stevk - 1 WHERE v.id = :id AND v.stevk > 0")
+    int odstejStevko(@Param("id") Long id);
 }

@@ -32641,6 +32641,94 @@ html.uvod-tece {
   color: var(--barva-negativna-tekst);
 }
 
+/* Napake mreze (F6.6): tabela po stevkah in galerija narobe prebranih stevk. */
+.napake-mreze {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+.napake-mreze__tabela {
+  max-width: 36rem;
+}
+
+.napake-mreze__stevilka {
+  min-width: 2rem;
+  font-family: var(--pisava-mono);
+  font-weight: 700;
+}
+
+.napake-mreze__izbrana td {
+  background: var(--barva-glavna-mehko);
+}
+
+/* Pri primerjavi z vgrajeno je stolpcev pet: na telefonu se glave in zamenjave
+   prelomijo, stevilo preizkusnih po stevkah pa odpade (390 px ne sprejme vseh). */
+.napake-mreze__tabela th,
+.napake-mreze__zamenjave {
+  white-space: normal;
+}
+
+.napake-mreze__zamenjave {
+  text-align: left;
+}
+
+@media (max-width: 30rem) {
+  .napake-mreze__tabela--primerjava .napake-mreze__stevk {
+    display: none;
+  }
+}
+
+.napake-mreze__naslov {
+  margin: var(--r2) 0 0;
+  font-size: var(--tip-telo);
+  font-weight: 700;
+}
+
+.napake-mreze__galerija {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.75rem, 1fr));
+  gap: var(--r1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.napake-mreze__stevka {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--r1);
+  border: 1px solid var(--barva-crta);
+}
+
+.napake-mreze__slika {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--barva-crta);
+  background: #fff;
+  image-rendering: pixelated;
+}
+
+.napake-mreze__branje {
+  font: 800 var(--tip-h3) / 1 var(--pisava-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Oznaka lista (V- in deset stevk) ostane v eni vrstici tudi v ozki kartici. */
+.napake-mreze__vir {
+  font: 400 var(--tip-mono) / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.napake-mreze__izloci {
+  align-self: stretch;
+  padding-block: 8px;
+}
+
 /* ---------- Vadnica stevk (nacrt F3) ----------
    List A4 pokoncno, natisnjen brez robov (@page listki): oznake, QR in okenca so
    postavljeni absolutno v mm iz istih stevil kot v zaledju (GeometrijaVadnice,

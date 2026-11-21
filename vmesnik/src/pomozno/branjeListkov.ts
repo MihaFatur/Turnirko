@@ -3,7 +3,14 @@
 
    Predlog je že v straneh tekme (1 = udelezenec1), zato tu ni nič o tem, kateri
    stolpec listka je bil levi - to je strežnikova skrb (PredlogIzidaListka). */
-import type { BranjeListkaDto, CeliceListkaDto, PredlogIzidaDto, VnosRezultata } from '../api/tipi'
+import type {
+  BranjeListkaDto,
+  CeliceListkaDto,
+  NapakeMrezeDto,
+  PredlogIzidaDto,
+  VnosRezultata,
+  ZamenjavaStevkeDto,
+} from '../api/tipi'
 import type { VrsticaNiza } from '../komponente/TockeNizov'
 
 /* Vrstice za TockeNizov: neprebrana celica je prazno polje. */
@@ -187,6 +194,30 @@ export function delez(d: number | null): string {
 export function prejPotem(prej: number | null, potem: number | null): string {
   if (prej === null || potem === null) return '–'
   return `${delez(prej)} → ${delez(potem)}`
+}
+
+/* Delež prav od vseh; brez števk »–«. */
+export function delezOd(prav: number, vseh: number): string {
+  return vseh === 0 ? '–' : delez(prav / vseh)
+}
+
+/* Najpogostejše zamenjave števke: »1 ×4, 9 ×2«; brez napak »–«. */
+export function zamenjaveBesedilo(zamenjave: ZamenjavaStevkeDto[]): string {
+  return zamenjave.length === 0 ? '–' : zamenjave.map((z) => `${z.prebrano} ×${z.krat}`).join(', ')
+}
+
+/* Pregled po izločitvi števke: števka izgine s seznamov, števca se zmanjšata.
+   Tabela po števkah ostane do naslednjega ogleda (izračun je drag). */
+export function brezStevke(p: NapakeMrezeDto, id: number): NapakeMrezeDto {
+  const napake = p.napake.filter((s) => s.id !== id)
+  const sumljive = p.sumljive.filter((s) => s.id !== id)
+  return {
+    ...p,
+    napake,
+    napakVseh: p.napakVseh - (p.napake.length - napake.length),
+    sumljive,
+    drugacnihUcnih: p.drugacnihUcnih - (p.sumljive.length - sumljive.length),
+  }
 }
 
 export type StanjeRazlicice = 'v-uporabi' | 'sprejeta' | 'umaknjena' | 'zavrnjena' | 'prekinjena'

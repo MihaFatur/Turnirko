@@ -10,18 +10,24 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletResponse;
 
 import si.turnirko.dto.MeritevBranjaDto;
 import si.turnirko.dto.MrezeStevkDto;
+import si.turnirko.dto.NapakeMrezeDto;
 import si.turnirko.dto.StanjeNaboraDto;
 import si.turnirko.storitve.MeritevBranjaStoritev;
 import si.turnirko.storitve.MeritevNabora;
+import si.turnirko.storitve.NapakeMreze;
 import si.turnirko.storitve.UcenjeMreze;
 import si.turnirko.storitve.ZlatiNabor;
 
@@ -32,13 +38,15 @@ public class MeritevBranjaKontroler {
     private final MeritevNabora meritevNabora;
     private final ZlatiNabor nabor;
     private final UcenjeMreze ucenje;
+    private final NapakeMreze napakeMreze;
 
     public MeritevBranjaKontroler(MeritevBranjaStoritev meritev, MeritevNabora meritevNabora, ZlatiNabor nabor,
-                                  UcenjeMreze ucenje) {
+                                  UcenjeMreze ucenje, NapakeMreze napakeMreze) {
         this.meritev = meritev;
         this.meritevNabora = meritevNabora;
         this.nabor = nabor;
         this.ucenje = ucenje;
+        this.napakeMreze = napakeMreze;
     }
 
     @GetMapping("/api/v1/branje-listkov/meritev")
@@ -75,6 +83,19 @@ public class MeritevBranjaKontroler {
     @PostMapping("/api/v1/branje-listkov/mreze/vrni")
     public MrezeStevkDto vrniPrejsnjo() {
         return ucenje.vrniPrejsnjo();
+    }
+
+    /* Napake mreze po stevkah in sumljive oznake (F6.6); racuna se ob ogledu. */
+    @GetMapping("/api/v1/branje-listkov/mreze/napake")
+    public NapakeMrezeDto napake() {
+        return napakeMreze.pregled();
+    }
+
+    /* Izloci stevko iz ucenja (napacna oznaka ali narobe izrezano okence). */
+    @DeleteMapping("/api/v1/branje-listkov/mreze/stevke/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void izlociStevko(@PathVariable Long id) {
+        napakeMreze.izloci(id);
     }
 
     /* Zip zlatega nabora za lokalne meritve. Pravica se preveri PRED zacetkom

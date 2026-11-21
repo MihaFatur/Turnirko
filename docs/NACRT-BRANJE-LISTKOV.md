@@ -534,7 +534,8 @@ preveri ob začetku vsake faze (razdelek 2).
 | F3 | v produkciji od 21. 11. 2026 (lastnik: »kar zdaj naredi vadnico«, pred F2; 20 listov, ~3500 števk odobrenih 21. 11.) | 20. 11. 2026 | `794470f` |
 | F2 (2.1, 2.2, 2.5–2.7) | v produkciji; 2.3, 2.4 in umeritev β po prvem turnirju | 21. 11. 2026 | `7cd3289` |
 | F4 | v produkciji | 21. 11. 2026 | `7cd3289` |
-| F6 | narejeno, ni commitano (lastnik: generalka + F6 + F5, 21. 11.) | 21. 11. 2026 | — |
+| F6 | v produkciji od 21. 11. 2026 20.15 (lastnik: generalka + F6 + F5; prej pregledano na testu) | 21. 11. 2026 | `66dddae` |
+| F6.6 napake mreže + meja MNIST | narejeno, ni commitano (lastnik po prvem učenju: »katere cifre ga matrajo«) | 21. 11. 2026 | — |
 | F5, F7–F9 | načrtovano | — | — |
 
 **F0 — odstopanja od načrta in dodatno:**
@@ -797,3 +798,26 @@ odobrenih vadnicah izbral generalko, F6 in F5):
     premoru; sprejeta različica se naloži ob zagonu, »Vrni prejšnjo« s potrditvijo →
     vgrajena, različica »Umaknjena«; brez napak v konzoli in brez vodoravnega pomikanja
     (zgodovina je zato seznam, ne tabela s sedmimi stolpci).
+
+**F6.6 — napake mreže in meja MNIST** (21. 11. 2026, brez migracije; lastnik po prvem
+učenju v produkciji, različica 1: preizkusne 64,4 % → 96,1 %, MNIST 99,5 % → 98,6 %,
+»katere cifre ga matrajo najpogosteje«):
+- **Napake mreže** (`NapakeMreze`, stran Meritev branja, na klik): tabela po števkah 0–9
+  (vgrajena in različica v uporabi, najpogostejše zamenjave), galerija narobe prebranih
+  preizkusnih števk s sliko in listom vadnice, sumljive oznake (učne, ki jih mreža po
+  učenju bere drugače z ≥ 90 %), »Izloči« (izbris števke iz učenja). Pravila:
+  `docs/pravila/branje-listkov.md`, »Napake mreže«.
+- **Meja MNIST tudi od vgrajene** (−2 točki skupaj), ne samo od prejšnje različice
+  (−1): prej bi lahko vsako učenje vzelo svojo točko.
+- Na telefonu tabela pri primerjavi skrije stolpec »Števk« (pet stolpcev ne gre v 390 px).
+- **Znani vrzeli (pregled /code-review, sprejeto):** (1) števka listka, izločena iz
+  učenja, se vrne, če organizator pozneje popravi izid te tekme (popravek oznak izreže
+  števke znova); (2) pregled naloži vse števke iz učenja (do 60.000) v zahtevi, brez
+  zaklepa - pri sedanjih ~3500 števkah je to sekunda.
+- Preverjeno: zaledje 1454 testov (`NapakeMrezeTest` 3, `UcenjeMrezeTest` +1 za zdrs
+  MNIST, `MeritevBranjaDostopTest` +1 in DELETE 401/403); vmesnik 334 testov, lint 0
+  napak, gradnja; pravo zaledje s pg18 in dvema listoma vadnice z namerno napačnimi
+  oznakami, brezglavi Chrome 390 in 1280 px: vse 3 napačno označene preizkusne med
+  napakami, napačne učne med sumljivimi (tudi pravi narobe izrezani okenci z
+  vadnice iz F3), izbira števke omeji galerijo, »Izloči« odstrani kartico, slike
+  narisane, brez vodoravnega pomikanja, brez napak v konzoli.

@@ -3394,6 +3394,47 @@ export interface MrezeStevkDto {
   razlicice: RazlicicaMrezeDto[]
 }
 
+/* Napake mreže števk (F6.6, samo admin): preizkusne števke po števkah in sumljive
+   oznake učnih števk (NapakeMrezeDto v zaledju). */
+export interface ZamenjavaStevkeDto {
+  prebrano: number
+  krat: number
+}
+
+export interface NapakePoStevkiDto {
+  stevka: number
+  preizkusnih: number
+  pravVgrajena: number
+  pravVUporabi: number
+  zamenjave: ZamenjavaStevkeDto[]
+}
+
+export interface StevkaNapakeDto {
+  id: number
+  vrednost: number
+  prebrano: number
+  verjetnost: number
+  /* sivine 28 × 28 (base64, 0 = papir) */
+  slika: string
+  idVadnica: number | null
+  listek: boolean
+}
+
+export interface NapakeMrezeDto {
+  /* null = v uporabi je vgrajena (stolpca sta enaka) */
+  vUporabi: number | null
+  preizkusnih: number
+  ucnih: number
+  poStevkah: NapakePoStevkiDto[]
+  napakVseh: number
+  /* toliko napak je največ prikazanih za vsako napisano števko */
+  najvecNaStevko: number
+  napake: StevkaNapakeDto[]
+  drugacnihUcnih: number
+  pragSumljive: number
+  sumljive: StevkaNapakeDto[]
+}
+
 /* Vadnica števk (V70, samo admin): list A4, ki ga izpolni ena oseba. */
 export interface VadnicaDto {
   id: number

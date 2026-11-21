@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { BranjeListkaDto, PredlogIzidaDto } from '../api/tipi'
+import type { BranjeListkaDto, NapakeMrezeDto, PredlogIzidaDto } from '../api/tipi'
 import { veljavenNiz } from '../komponente/TockeNizov'
 import {
   casPregleda,
@@ -18,6 +18,9 @@ import {
   delez,
   prejPotem,
   stanjeRazlicice,
+  delezOd,
+  zamenjaveBesedilo,
+  brezStevke,
 } from './branjeListkov'
 
 function predlog(polja: Partial<PredlogIzidaDto> = {}): PredlogIzidaDto {
@@ -188,5 +191,34 @@ describe('mreža števk (F6)', () => {
     expect(stanjeRazlicice({ ...r, umaknjenaOb: '2026-11-22T10:00:00' }, null)).toBe('umaknjena')
     expect(stanjeRazlicice({ ...r, sprejeta: false }, 3)).toBe('zavrnjena')
     expect(stanjeRazlicice({ ...r, sprejeta: false, prekinjena: true }, null)).toBe('prekinjena')
+  })
+})
+
+describe('napake mreže (F6.6)', () => {
+  it('delež od števila in zamenjave števke', () => {
+    expect(delezOd(666, 693)).toBe('96,1 %')
+    expect(delezOd(0, 0)).toBe('–')
+    expect(zamenjaveBesedilo([{ prebrano: 1, krat: 4 }, { prebrano: 9, krat: 2 }])).toBe('1 ×4, 9 ×2')
+    expect(zamenjaveBesedilo([])).toBe('–')
+  })
+
+  it('izločena števka izgine s seznama, v katerem je, in zmanjša njegov števec', () => {
+    const stevka = (id: number) => ({
+      id, vrednost: 7, prebrano: 1, verjetnost: 0.95, slika: '', idVadnica: 5, listek: false,
+    })
+    const p: NapakeMrezeDto = {
+      vUporabi: 1, preizkusnih: 10, ucnih: 40, poStevkah: [],
+      napakVseh: 3, najvecNaStevko: 60, napake: [stevka(1), stevka(2)],
+      drugacnihUcnih: 5, pragSumljive: 0.9, sumljive: [stevka(3)],
+    }
+    const brezNapake = brezStevke(p, 2)
+    expect(brezNapake.napake.map((s) => s.id)).toEqual([1])
+    expect(brezNapake.napakVseh).toBe(2)
+    expect(brezNapake.drugacnihUcnih).toBe(5)
+    const brezSumljive = brezStevke(p, 3)
+    expect(brezSumljive.sumljive).toEqual([])
+    expect(brezSumljive.drugacnihUcnih).toBe(4)
+    expect(brezSumljive.napakVseh).toBe(3)
+    expect(brezStevke(p, 99)).toEqual(p)
   })
 })

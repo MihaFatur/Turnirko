@@ -8,7 +8,9 @@
    - na preizkusnih stevkah ne bere slabse,
    - na zlatem naboru (celi listki, F1.5) nima vec napacnih celic - ce je nabor
      dovolj velik,
-   - na MNIST ne nazaduje za vec kot eno odstotno tocko.
+   - na MNIST ne nazaduje za vec kot eno odstotno tocko od mreze v uporabi in za
+     vec kot dve od vgrajene (sicer bi vsaka razlicica lahko vzela svojo tocko in
+     bi mreza po nekaj ucenjih pozabila splosne oblike stevk).
    Vsak poskus se zapise (tudi zavrnjen in prekinjen), da admin vidi, kaj se je
    zgodilo; odlozen poskus (premalo stevk) ne, ker se ponovi, ko jih pride vec.
 
@@ -88,8 +90,12 @@ public class UcenjeMreze {
        listek nekaj desetink sekunde). Pod NAJMANJ_ZLATIH nabor ne odloca. */
     static final int ZLATIH_ZA_SPREJEM = 400;
     static final int NAJMANJ_ZLATIH = 20;
-    /* MNIST (splosne oblike stevk) sme pasti za najvec toliko. */
+    /* MNIST (splosne oblike stevk) sme pasti za najvec toliko v enem ucenju in za
+       najvec PADEC_MNIST_SKUPAJ od vgrajene mreze v vseh skupaj. Prva razlicica
+       (21. 11. 2026) je padla za 0,9 tocke: specializacija za evropsko pisavo je
+       pricakovana, zdrs brez meje pa ne. */
     static final double PADEC_MNIST = 0.01;
+    static final double PADEC_MNIST_SKUPAJ = 0.02;
     static final Duration NAJDALJ = Duration.ofMinutes(30);
     static final Duration PREMOR = Duration.ofMinutes(10);
     /* Zgodovina na strani: toliko zadnjih razlicic. */
@@ -109,6 +115,8 @@ public class UcenjeMreze {
     private volatile LocalDateTime zadnjiZagon;
     private volatile String sporocilo;
     private volatile LocalDateTime sporociloOb;
+    /* MNIST vgrajene mreze (izracuna se ob prvem ucenju; vgrajena se ne spreminja). */
+    private volatile Double mnistVgrajene;
     private final ExecutorService nit = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ucenje-mreze");
         t.setDaemon(true);
@@ -326,8 +334,10 @@ public class UcenjeMreze {
             potem = UcenjeStevk.natancnost(nova, preizkusni);
             mnistPrej = UcenjeStevk.natancnost(trenutna.mreza(), mnistPreizkus);
             mnistPotem = UcenjeStevk.natancnost(nova, mnistPreizkus);
+            double vgrajena = trenutna.oznaka().startsWith(VirMrezeStevk.PREDPONA_UCENE)
+                    ? mnistVgrajene(mnistPreizkus) : mnistPrej;
             zlati = zlati(trenutna.mreza(), nova, prekini);
-            razlog = razlogZavrnitve(prej, potem, mnistPrej, mnistPotem, zlati);
+            razlog = razlogZavrnitve(prej, potem, mnistPrej, mnistPotem, vgrajena, zlati);
         } catch (UcenjeStevk.Prekinjeno e) {
             if (Thread.currentThread().isInterrupted()) {
                 // streznik se ustavlja: nic se ne zapise, mreza ostane stara
@@ -367,8 +377,21 @@ public class UcenjeMreze {
                 narobe(b.celice()));
     }
 
-    /* Zakaj nova mreza ni sprejeta; null = sprejeta (F6.3). */
-    static String razlogZavrnitve(double prej, double potem, double mnistPrej, double mnistPotem, Zlati zlati) {
+    private double mnistVgrajene(List<UcenjeStevk.Vzorec> mnistPreizkus) {
+        Double m = mnistVgrajene;
+        if (m == null) {
+            VirMrezeStevk.Nalozena vgrajena = VirMrezeStevk.vgrajena();
+            // brez vgrajene (samo v okolju brez virov) meja velja le od mreze v uporabi
+            m = vgrajena == null ? 0.0 : UcenjeStevk.natancnost(vgrajena.mreza(), mnistPreizkus);
+            mnistVgrajene = m;
+        }
+        return m;
+    }
+
+    /* Zakaj nova mreza ni sprejeta; null = sprejeta (F6.3). mnistVgrajene je MNIST
+       vgrajene mreze (meja skupnega zdrsa). */
+    static String razlogZavrnitve(double prej, double potem, double mnistPrej, double mnistPotem,
+                                  double mnistVgrajene, Zlati zlati) {
         if (potem < prej) {
             return "Na preizkusnih števkah slabša: " + odstotek(prej) + " → " + odstotek(potem) + ".";
         }
@@ -378,6 +401,10 @@ public class UcenjeMreze {
         if (mnistPotem < mnistPrej - PADEC_MNIST) {
             return "Na MNIST slabša za več kot 1 odstotno točko: " + odstotek(mnistPrej) + " → "
                     + odstotek(mnistPotem) + ".";
+        }
+        if (mnistPotem < mnistVgrajene - PADEC_MNIST_SKUPAJ) {
+            return "Na MNIST za več kot 2 odstotni točki slabša od vgrajene mreže: " + odstotek(mnistVgrajene)
+                    + " → " + odstotek(mnistPotem) + ".";
         }
         return null;
     }
