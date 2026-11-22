@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  MAJHNA_SLIKA,
   NAJVEC_LISTOV,
   RAZLICICA,
   STOLPCEV,
   VREDNOSTI,
+  namigMajhneSlike,
   noviIdjiListov,
   oznakaLista,
   qrVadnice,
@@ -49,5 +51,19 @@ describe('vadnica števk', () => {
     expect(piksli.length).toBe(784 * 4)
     expect([...piksli.slice(0, 4)]).toEqual([0, 0, 0, 255])
     expect([...piksli.slice(4, 8)]).toEqual([255, 255, 255, 255])
+  })
+})
+
+describe('namigMajhneSlike', () => {
+  it('pri dovolj veliki sliki ne doda ničesar', () => {
+    expect(namigMajhneSlike(1200, 1600)).toBe('')
+    expect(namigMajhneSlike(MAJHNA_SLIKA, 900)).toBe('')
+  })
+
+  it('pri majhni sliki pove velikost in prosi za izvirnik', () => {
+    const namig = namigMajhneSlike(600, 800)
+    expect(namig).toContain('600 × 800 px')
+    expect(namig).toContain('izvirno fotografijo')
+    expect(namig.startsWith(' ')).toBe(true)
   })
 })

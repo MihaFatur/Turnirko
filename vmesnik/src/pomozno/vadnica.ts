@@ -38,6 +38,21 @@ export const NAJVEC_LISTOV = 50
    števka v okencu 10 mm ima tako ~70 px, kot na listku pri 2000 px. */
 export const NAJVEC_STRANICA_VADNICE = 3200
 
+/* Naložena slika, ki jo je stisnila aplikacija za sporočila: preizkus na
+   simuliranih fotografijah lista (VadnicaTest) bere pri 1600 in 1280 px daljše
+   stranice enako kot izvirnik, pri 1000 px še bere, a slabše, pri 800 px kode QR
+   ne prebere več. Pod to mejo je ob neuspelem branju vzrok verjetno velikost. */
+export const MAJHNA_SLIKA = 1200
+
+/* Dodatek k sporočilu o neuspelem branju; prazen, če slika ni majhna. */
+export function namigMajhneSlike(sirina: number, visina: number): string {
+  if (Math.max(sirina, visina) >= MAJHNA_SLIKA) return ''
+  return (
+    ` Slika ima samo ${sirina} × ${visina} px, verjetno jo je stisnila aplikacija za sporočila.` +
+    ' Prosi za izvirno fotografijo (po e-pošti ali kot datoteko).'
+  )
+}
+
 export function vsebinaQrVadnice(idLista: number): string {
   return `TKV:${RAZLICICA}:${idLista}`
 }

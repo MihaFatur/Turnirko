@@ -297,6 +297,18 @@ storitev preveri še enkrat; strani `/vadnica`, `/vadnica/tisk`, `/vadnica/:id`)
   (`UcenjeIzListkov.stevkeCelice`): dvomestno število mora razrez dati kot dve števki,
   sicer se okence preskoči. Prazen list (0 števk) → 400. Listek tekme na strani vadnice
   in list vadnice na strani branja dobita razlago, kam sodita.
+- **Naložene slike** (F3.6, 22. 11. 2026): poleg »Fotografiraj list« (`capture`, na
+  telefonu odpre kamero) je »Naloži slike« (brez `capture`, galerija ali datoteke, več
+  hkrati) za liste, ki jih fotografirajo in pošljejo drugi. Obe gresta po isti poti
+  (vmesnik pomanjša na 3200 px JPEG, strežnik se ne spremeni); slike se pošiljajo ena
+  za drugo, sporočilo naložene ima ime datoteke. Slika iz aplikacije za sporočila je
+  dovolj: simulacija (`VadnicaTest.slikaIzAplikacijeZaSporocilaSePrebere`) bere pri
+  1600 in 1280 px daljše stranice kot izvirnik, pri 1000 px še bere (mreža slabše),
+  pri 800 px kode QR ne prebere. Zato vmesnik ob neuspelem branju (400) slike pod
+  `MAJHNA_SLIKA` (1200 px) doda, naj pošiljatelj pošlje izvirnik. Datoteka, ki je
+  brskalnik ne zna odpreti (HEIC v Chromu, PDF), dobi `NapakaFotografije` z navodilom
+  za JPG/PNG namesto »Povezava s strežnikom ni uspela« (velja tudi za stran branja
+  listkov).
 - **Hramba**: tabela `vadnica` (id iz QR, PNG poravnanega lista s samimi okenci kot pri
   zlatem naboru, ~0,4 MB, števci) in števke v `stevka_listka` (`id_vadnica`, `celica`,
   `odobreno = false`; CHECK: števka je z listka ali z lista, ne obojega). Fotografija se

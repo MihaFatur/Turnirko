@@ -535,7 +535,8 @@ preveri ob začetku vsake faze (razdelek 2).
 | F2 (2.1, 2.2, 2.5–2.7) | v produkciji; 2.3, 2.4 in umeritev β po prvem turnirju | 21. 11. 2026 | `7cd3289` |
 | F4 | v produkciji | 21. 11. 2026 | `7cd3289` |
 | F6 | v produkciji od 21. 11. 2026 20.15 (lastnik: generalka + F6 + F5; prej pregledano na testu) | 21. 11. 2026 | `66dddae` |
-| F6.6 napake mreže + meja MNIST | narejeno, ni commitano (lastnik po prvem učenju: »katere cifre ga matrajo«) | 21. 11. 2026 | — |
+| F6.6 napake mreže + meja MNIST | v produkciji od 21. 11. 2026 (lastnik po prvem učenju: »katere cifre ga matrajo«; test in produkcija v istem zagonu po lastnikovem »objavi na test in produkcijo«) | 21. 11. 2026 | `de9dd42` |
+| F3.6 nalaganje slik vadnice | objava na test in v produkcijo 22. 11. 2026 (lastnik: kolegi bodo liste fotografirali in poslali; »test in produkcija«) | 22. 11. 2026 | — |
 | F5, F7–F9 | načrtovano | — | — |
 
 **F0 — odstopanja od načrta in dodatno:**
@@ -821,3 +822,22 @@ učenju v produkciji, različica 1: preizkusne 64,4 % → 96,1 %, MNIST 99,5 % �
   napakami, napačne učne med sumljivimi (tudi pravi narobe izrezani okenci z
   vadnice iz F3), izbira števke omeji galerijo, »Izloči« odstrani kartico, slike
   narisane, brez vodoravnega pomikanja, brez napak v konzoli.
+
+**F3.6 — nalaganje slik vadnice** (22. 11. 2026, brez migracije in brez spremembe
+zaledja; lastnik: »kolegi, ki bodo izpolnili, bodo slikali liste in mi jih poslali«):
+- Na `/vadnica` gumb »Naloži slike« poleg »Fotografiraj list« (brez `capture`: galerija
+  na telefonu, datoteke na računalniku; več hkrati, ena za drugo). Sporočilo pove ime
+  datoteke. Stolpec »Fotografiran« je zdaj »Naložen« (čas nalaganja).
+- **Stisnjene slike:** simulirana fotografija 2400 × 3200, pomanjšana s povprečenjem in
+  JPEG 70 %: 1600 in 1280 px vseh 140 okenc, mreža 98–100 %; 1000 px vseh 140 okenc,
+  mreža 86–93 %; 800 px koda QR neberljiva. Stalni test pri 1280 px. Vmesnik ob
+  neuspelem branju slike pod 1200 px prosi za izvirnik.
+- Datoteka, ki je brskalnik ne odpre (HEIC v Chromu, PDF), je prej javila »Povezava s
+  strežnikom ni uspela« (tudi na strani branja listkov); zdaj navodilo za JPG/PNG.
+- Ni narejeno: povleci in spusti na računalniku, PDF iz optičnega bralnika (shrani kot
+  JPG).
+- Preverjeno: `VadnicaTest` (+1), vmesnik 336 testov, lint 0 napak, gradnja; pravo
+  zaledje s pg18, brezglavi Chrome 1100 in 390 px, pet datotek naenkrat: izvirnik z
+  dolgim imenom in 1280 px prebrana (180 števk), 525 × 700 px napaka QR + namig o
+  velikosti, PDF s končnico .heic navodilo za JPG/PNG, že odobren list zavrnjen; brez
+  vodoravnega pomikanja, brez napak v konzoli.

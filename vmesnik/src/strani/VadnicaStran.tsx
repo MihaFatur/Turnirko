@@ -3,7 +3,8 @@
 
    1. Natisni liste (vsak ima svojo kodo) in jih razdeli, npr. na treningu kluba:
       vsak udeleženec izpolni en list (~180 števk).
-   2. Izpolnjene liste fotografiraj; Turnirko list prebere in shrani števke z
+   2. Izpolnjene liste fotografiraj ali naloži slike, ki so jih poslali drugi
+      (izpolnjujejo jih tudi drugod); Turnirko list prebere in shrani števke z
       oznako vrstice - še NE za učenje.
    3. Vsak list preglej, izloči slabo napisane ali narobe razrezane števke in ga
       odobri. Šele odobrene gredo v nočno učenje (zastrupitev mreže, F3 varnost). */
@@ -11,18 +12,20 @@ import { useState, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { opisNapake } from '../api/odjemalec'
+import { NapakaStreznika } from '../api/odjemalec'
 import type { VadnicaDto } from '../api/tipi'
 import { vadnicaApi } from '../api/zahteve'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { pomanjsajFotografijo } from '../pomozno/branjeListkov'
+import { opisNapakeFotografije, pripraviFotografijo } from '../pomozno/branjeListkov'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
-import { NAJVEC_LISTOV, NAJVEC_STRANICA_VADNICE, oznakaLista } from '../pomozno/vadnica'
+import { NAJVEC_LISTOV, NAJVEC_STRANICA_VADNICE, namigMajhneSlike, oznakaLista } from '../pomozno/vadnica'
 
-/* Fotografija lista na poti ali že prebrana (sporočilo pod gumbom). */
+/* Fotografija lista na poti ali že prebrana (sporočilo pod gumbom). ime: ime
+   naložene datoteke (pri več slikah pove, katera ni uspela); pri fotografiji
+   s kamero je brez pomena, zato null. */
 interface Posiljanje {
   kljuc: number
-  ime: string
+  ime: string | null
   stanje: 'posiljam' | 'prebran' | 'napaka'
   besedilo: string
 }
@@ -38,26 +41,36 @@ export function VadnicaStran() {
 
   const steviloZaTisk = Math.min(NAJVEC_LISTOV, Math.max(1, Math.floor(Number(listov)) || 1))
 
-  async function poslji(datoteka: File) {
+  async function poslji(datoteka: File, nalozena: boolean) {
     const kljuc = naslednjiKljuc++
     const posodobi = (p: Partial<Posiljanje>) =>
       nastaviPosiljanja((x) => x.map((y) => (y.kljuc === kljuc ? { ...y, ...p } : y)))
-    nastaviPosiljanja((x) => [{ kljuc, ime: datoteka.name, stanje: 'posiljam', besedilo: 'Berem list …' }, ...x])
+    nastaviPosiljanja((x) => [
+      { kljuc, ime: nalozena ? datoteka.name : null, stanje: 'posiljam', besedilo: 'Berem list …' },
+      ...x,
+    ])
+    let velikost: { sirina: number; visina: number } | null = null
     try {
-      const jpeg = await pomanjsajFotografijo(datoteka, NAJVEC_STRANICA_VADNICE)
+      const { jpeg, sirina, visina } = await pripraviFotografijo(datoteka, NAJVEC_STRANICA_VADNICE)
+      velikost = { sirina, visina }
       const list = await vadnicaApi.nalozi(jpeg)
       posodobi({ stanje: 'prebran', besedilo: povzetekBranja(list) })
       void odjemalec.invalidateQueries({ queryKey: ['vadnice'] })
     } catch (napaka) {
-      posodobi({ stanje: 'napaka', besedilo: opisNapake(napaka) })
+      // 400 = strežnik lista ni prebral (ne zaseden strežnik ali odobren list)
+      const namig =
+        velikost && napaka instanceof NapakaStreznika && napaka.stanje === 400
+          ? namigMajhneSlike(velikost.sirina, velikost.visina)
+          : ''
+      posodobi({ stanje: 'napaka', besedilo: opisNapakeFotografije(napaka) + namig })
     }
   }
 
-  function obFotografiji(dogodek: ChangeEvent<HTMLInputElement>) {
+  function obDatotekah(dogodek: ChangeEvent<HTMLInputElement>, nalozene: boolean) {
     const datoteke = [...(dogodek.target.files ?? [])]
     dogodek.target.value = ''
     // ena za drugo: strežnik bere največ dve fotografiji hkrati
-    void datoteke.reduce<Promise<void>>((veriga, d) => veriga.then(() => poslji(d)), Promise.resolve())
+    void datoteke.reduce<Promise<void>>((veriga, d) => veriga.then(() => poslji(d, nalozene)), Promise.resolve())
   }
 
   const listi = seznam.data?.listi ?? []
@@ -101,10 +114,15 @@ export function VadnicaStran() {
       </div>
 
       <div className="vadnica__korak">
-        <h2>2. Fotografiraj izpolnjene liste</h2>
+        <h2>2. Fotografiraj ali naloži izpolnjene liste</h2>
         <p>
           En list na fotografijo, od zgoraj, da se vidijo vsi trije črni kvadrati in koda v
           desnem kotu. Isti list lahko fotografiraš znova, dokler ga ne odobriš.
+        </p>
+        <p>
+          Liste, ki so jih fotografirali drugi, naloži kot slike, lahko več hkrati. Slika iz
+          aplikacije za sporočila (WhatsApp, Viber) običajno zadošča; če je zelo majhna ali
+          neostra, prosi za izvirno fotografijo.
         </p>
         <div className="vadnica__vrsta">
           <label className="gumb gumb--glavni vadnica__fotografiraj">
@@ -115,7 +133,17 @@ export function VadnicaStran() {
               capture="environment"
               multiple
               className="vadnica__datoteka"
-              onChange={obFotografiji}
+              onChange={(e) => obDatotekah(e, false)}
+            />
+          </label>
+          <label className="gumb vadnica__fotografiraj">
+            Naloži slike
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="vadnica__datoteka"
+              onChange={(e) => obDatotekah(e, true)}
             />
           </label>
         </div>
@@ -130,6 +158,7 @@ export function VadnicaStran() {
                   (p.stanje === 'prebran' ? ' vadnica__sporocilo--uspeh' : '')
                 }
               >
+                {p.ime !== null && <span className="vadnica__ime-datoteke">{p.ime}: </span>}
                 {p.besedilo}
               </li>
             ))}
@@ -177,7 +206,7 @@ function TabelaListov({ listi }: { listi: VadnicaDto[] }) {
           <tr>
             <th>List</th>
             <th className="vadnica__stevilo">Števk</th>
-            <th>Fotografiran</th>
+            <th>Naložen</th>
           </tr>
         </thead>
         <tbody>

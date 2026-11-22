@@ -14,7 +14,6 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode 
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { opisNapake } from '../api/odjemalec'
 import { imeUdelezenca } from '../api/tipi'
 import type {
   BranjeListkaDto,
@@ -36,6 +35,7 @@ import {
   celiceZaPregled,
   izrezCelice,
   jeZanesljiv,
+  opisNapakeFotografije,
   pomanjsajFotografijo,
   razdeliVrsto,
   slogIzreza,
@@ -135,7 +135,7 @@ export function BranjeListkovStran() {
       void odjemalec.invalidateQueries({ queryKey: kljucBranj })
     } catch (napaka) {
       nastaviPosiljanja((p) =>
-        p.map((x) => (x.kljuc === kljuc ? { ...x, napaka: opisNapake(napaka) } : x)),
+        p.map((x) => (x.kljuc === kljuc ? { ...x, napaka: opisNapakeFotografije(napaka) } : x)),
       )
     }
   }

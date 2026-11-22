@@ -32917,6 +32917,19 @@ html.uvod-tece {
   position: relative;
 }
 
+.vadnica__fotografiraj:focus-within {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: 2px;
+}
+
+/* Ime naložene datoteke pred sporočilom (»IMG-20261122-WA0003.jpg: …«); dolgo
+   ime brez presledkov se lomi, da telefon ne dobi vodoravnega drsnika. */
+.vadnica__ime-datoteke {
+  font-family: var(--pisava-mono);
+  font-size: var(--tip-mono);
+  overflow-wrap: anywhere;
+}
+
 .vadnica__sporocila {
   display: grid;
   gap: var(--r1);

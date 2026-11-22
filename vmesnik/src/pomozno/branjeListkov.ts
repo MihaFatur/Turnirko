@@ -3,6 +3,7 @@
 
    Predlog je že v straneh tekme (1 = udelezenec1), zato tu ni nič o tem, kateri
    stolpec listka je bil levi - to je strežnikova skrb (PredlogIzidaListka). */
+import { opisNapake } from '../api/odjemalec'
 import type {
   BranjeListkaDto,
   CeliceListkaDto,
@@ -130,22 +131,51 @@ export function trajanje(ms: number | null): string {
 export const NAJVEC_STRANICA = 2000
 
 export async function pomanjsajFotografijo(datoteka: Blob, najvecStranica = NAJVEC_STRANICA): Promise<Blob> {
-  const slika = await createImageBitmap(datoteka)
-  const k = Math.min(1, najvecStranica / Math.max(slika.width, slika.height))
+  return (await pripraviFotografijo(datoteka, najvecStranica)).jpeg
+}
+
+/* Napaka pri pripravi slike v brskalniku (preden gre na strežnik): sporočilo je
+   za uporabnika, ne »Povezava s strežnikom ni uspela«. */
+export class NapakaFotografije extends Error {}
+
+/* Kot pomanjsajFotografijo, z izvirno velikostjo slike: naložena slika je lahko
+   že stisnjena (aplikacija za sporočila), in tedaj je vzrok neuspelega branja
+   premajhna slika, ne fotografiranje. */
+export async function pripraviFotografijo(
+  datoteka: Blob,
+  najvecStranica = NAJVEC_STRANICA,
+): Promise<{ jpeg: Blob; sirina: number; visina: number }> {
+  let slika: ImageBitmap
+  try {
+    slika = await createImageBitmap(datoteka)
+  } catch {
+    // npr. HEIC z iPhona v brskalniku, ki ga ne zna, ali PDF
+    throw new NapakaFotografije(
+      'Datoteke ni mogoče odpreti kot slike. Pošlji fotografijo kot JPG ali PNG (iPhone jo včasih shrani kot HEIC).',
+    )
+  }
+  const sirina = slika.width
+  const visina = slika.height
+  const k = Math.min(1, najvecStranica / Math.max(sirina, visina))
   const platno = document.createElement('canvas')
-  platno.width = Math.round(slika.width * k)
-  platno.height = Math.round(slika.height * k)
+  platno.width = Math.round(sirina * k)
+  platno.height = Math.round(visina * k)
   const risba = platno.getContext('2d')
-  if (!risba) throw new Error('Platno ni na voljo.')
+  if (!risba) throw new NapakaFotografije('Brskalnik ne more pripraviti fotografije.')
   risba.drawImage(slika, 0, 0, platno.width, platno.height)
   slika.close()
-  return new Promise((razresi, zavrni) =>
+  const jpeg = await new Promise<Blob>((razresi, zavrni) =>
     platno.toBlob(
-      (blob) => (blob ? razresi(blob) : zavrni(new Error('Fotografije ni bilo mogoče pripraviti.'))),
+      (blob) => (blob ? razresi(blob) : zavrni(new NapakaFotografije('Fotografije ni bilo mogoče pripraviti.'))),
       'image/jpeg',
       0.88,
     ),
   )
+  return { jpeg, sirina, visina }
+}
+
+export function opisNapakeFotografije(napaka: unknown): string {
+  return napaka instanceof NapakaFotografije ? napaka.message : opisNapake(napaka)
 }
 
 /* Izrez celice ob polju (F4.1): pravokotnik celice na poravnanem listku za polje

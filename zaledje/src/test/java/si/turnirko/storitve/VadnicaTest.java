@@ -22,15 +22,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -147,6 +153,23 @@ class VadnicaTest extends IntegracijskiTest {
                     seme, p.stevke().size(), okencZStevkami, (double) prav / p.stevke().size());
             assertTrue(okencZStevkami >= 0.9 * GeometrijaVadnice.OKENC, "okenc s stevkami " + okencZStevkami);
             assertTrue(prav >= 0.85 * p.stevke().size(), "mreza prav " + prav + " od " + p.stevke().size());
+        }
+    }
+
+    /* Sliko, ki jo kolega poslje po aplikaciji za sporocila, ta pomanjsa (WhatsApp
+       na ~1600 px daljse stranice) in stisne. Pri 1280 px se list
+       prebere kot izvirnik; pri 1000 px je mreza slabsa, pri 800 px kode QR ni vec
+       mogoce prebrati (vmesnik tedaj prosi za izvirnik: MAJHNA_SLIKA). */
+    @Test
+    void slikaIzAplikacijeZaSporocilaSePrebere() throws IOException {
+        for (long seme : new long[] {3L, 11L}) {
+            Random r = new Random(seme);
+            BufferedImage slika = stisnjena(foto(izpolnjen(r), r), 1280);
+            BranjeVadnice.Prebrana p = BranjeVadnice.preberi(slika, mreza);
+            int okencZStevkami = GeometrijaVadnice.OKENC - p.praznih() - p.preskocenih();
+            long prav = p.stevke().stream().filter(BranjeVadnice.Stevka::mrezaPrav).count();
+            assertTrue(okencZStevkami >= 0.95 * GeometrijaVadnice.OKENC, "okenc s stevkami " + okencZStevkami);
+            assertTrue(prav >= 0.9 * p.stevke().size(), "mreza prav " + prav + " od " + p.stevke().size());
         }
     }
 
@@ -331,6 +354,28 @@ class VadnicaTest extends IntegracijskiTest {
 
     private static BufferedImage foto(BufferedImage slika, Random r) throws IOException {
         return ImageIO.read(new ByteArrayInputStream(jpeg(slika, r)));
+    }
+
+    /* Kot aplikacija za sporocila: pomanjsa s povprecenjem na »stranica« px daljse
+       stranice in shrani kot JPEG 70 %. */
+    private static BufferedImage stisnjena(BufferedImage izvirnik, int stranica) throws IOException {
+        double k = (double) stranica / Math.max(izvirnik.getWidth(), izvirnik.getHeight());
+        int w = (int) Math.round(izvirnik.getWidth() * k);
+        int h = (int) Math.round(izvirnik.getHeight() * k);
+        BufferedImage manjsa = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        manjsa.getGraphics().drawImage(izvirnik.getScaledInstance(w, h, Image.SCALE_AREA_AVERAGING), 0, 0, null);
+        ByteArrayOutputStream izhod = new ByteArrayOutputStream();
+        ImageWriter pisec = ImageIO.getImageWritersByFormatName("jpeg").next();
+        ImageWriteParam nastavitve = pisec.getDefaultWriteParam();
+        nastavitve.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        nastavitve.setCompressionQuality(0.7f);
+        try (ImageOutputStream o = ImageIO.createImageOutputStream(izhod)) {
+            pisec.setOutput(o);
+            pisec.write(null, new IIOImage(manjsa, null, null), nastavitve);
+        } finally {
+            pisec.dispose();
+        }
+        return ImageIO.read(new ByteArrayInputStream(izhod.toByteArray()));
     }
 
     private static BufferedImage kopija(BufferedImage izvor) {
