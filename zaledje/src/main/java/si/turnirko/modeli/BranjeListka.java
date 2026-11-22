@@ -97,6 +97,11 @@ public class BranjeListka {
     @Column(name = "nacin_potrditve")
     private NacinPotrditve nacinPotrditve;
 
+    /* Nakljucni kljuc posiljanja s telefona (F5.2, V73): ponovljeno posiljanje iste
+       fotografije vrne to branje namesto dvojnika. Po 24 urah se pobrise. */
+    @Column(name = "kljuc_posiljanja", length = 64)
+    private String kljucPosiljanja;
+
     protected BranjeListka() {}
 
     public BranjeListka(Turnir turnir, Uporabnik nalozil, LocalDateTime ustvarjenoOb) {
@@ -126,6 +131,8 @@ public class BranjeListka {
     public String getModel() { return model; }
     public void setModel(String model) { this.model = model; }
     public Uporabnik getNalozil() { return nalozil; }
+    public String getKljucPosiljanja() { return kljucPosiljanja; }
+    public void setKljucPosiljanja(String kljucPosiljanja) { this.kljucPosiljanja = kljucPosiljanja; }
     public LocalDateTime getUstvarjenoOb() { return ustvarjenoOb; }
     public LocalDateTime getPrebranoOb() { return prebranoOb; }
     public void setPrebranoOb(LocalDateTime prebranoOb) { this.prebranoOb = prebranoOb; }

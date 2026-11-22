@@ -314,10 +314,15 @@ export const tekmeApi = {
 export const branjeListkovApi = {
   stanje: () => api.vrni<StanjeBranjaListkovDto>('/branje-listkov/stanje'),
   seznam: (idTurnir: number) => api.vrni<BranjaTurnirjaDto>(`/turnirji/${idTurnir}/branja-listkov`),
-  nalozi: (idTurnir: number, jpeg: Blob) => {
+  /* kljuc: ključ pošiljanja vrste (F5.2) - ponovitev z istim ključem vrne isto
+     branje; signal: časovna meja (zahteva ob slabem signalu ne visi v nedogled). */
+  nalozi: (idTurnir: number, jpeg: Blob, kljuc?: string, signal?: AbortSignal) => {
     const obrazec = new FormData()
     obrazec.append('slika', jpeg, 'listek.jpg')
-    return api.objavi<BranjeListkaDto>(`/turnirji/${idTurnir}/branja-listkov`, obrazec)
+    return api.objavi<BranjeListkaDto>(`/turnirji/${idTurnir}/branja-listkov`, obrazec, {
+      glave: kljuc ? { 'Idempotency-Key': kljuc } : undefined,
+      signal,
+    })
   },
   slika: (id: number) => api.vrniDatoteko(`/branja-listkov/${id}/slika`),
   /* Listek, poravnan v stalne koordinate (F4.1): iz njega se izrežejo celice. */

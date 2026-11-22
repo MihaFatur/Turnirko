@@ -257,6 +257,7 @@ class SimuliraneFotografijeTest {
         int brezPopravka = 0;
         int neprebranih = 0;
         long nanosekund = 0;
+        long bajtov = 0;
         for (int k = 0; k < listkov; k++) {
             int[][] izid = tekmePoZgodovini ? tekmaPoZgodovini(r, 3) : nakljucnaTekma(r, 3);
             BufferedImage izpolnjen = kopija(listek);
@@ -271,6 +272,7 @@ class SimuliraneFotografijeTest {
             }
             PrebranListek p;
             byte[] foto = fotografija(izpolnjen, r, pogoji);
+            bajtov += foto.length;
             // za ogled simulacije: -Dsimulacija.slike=<mapa> shrani prvih pet fotografij ravni
             String mapa = System.getProperty("simulacija.slike");
             if (mapa != null && k < 5) {
@@ -317,8 +319,9 @@ class SimuliraneFotografijeTest {
         }
         Meritev m = new Meritev(listkov, neprebranih, (double) prav / Math.max(1, celic),
                 (double) tihih / Math.max(1, celic), brezPopravka, nanosekund / 1e6 / Math.max(1, listkov));
-        System.out.printf("Simulirane fotografije %s: %s%n",
-                pogoji == NEUGODNO ? "neugodne" : pogoji == ZAHTEVNO ? "zahtevne" : "obicajne", m);
+        System.out.printf("Simulirane fotografije %s (%d kB na listek): %s%n",
+                pogoji == NEUGODNO ? "neugodne" : pogoji == ZAHTEVNO ? "zahtevne" : "obicajne",
+                bajtov / 1024 / Math.max(1, listkov), m);
         return m;
     }
 
@@ -644,7 +647,8 @@ class SimuliraneFotografijeTest {
         ImageWriter pisec = pisci.next();
         ImageWriteParam nastavitve = pisec.getDefaultWriteParam();
         nastavitve.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-        nastavitve.setCompressionQuality(0.85f);
+        // -Dsimulacija.kakovost=0.82: kakovost JPEG, kot jo zapise brskalnik (F5.3)
+        nastavitve.setCompressionQuality(Float.parseFloat(System.getProperty("simulacija.kakovost", "0.85")));
         try (ImageOutputStream o = ImageIO.createImageOutputStream(izhod)) {
             pisec.setOutput(o);
             pisec.write(null, new IIOImage(foto, null, null), nastavitve);

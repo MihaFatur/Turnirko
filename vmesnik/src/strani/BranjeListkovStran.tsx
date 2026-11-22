@@ -35,22 +35,15 @@ import {
   celiceZaPregled,
   izrezCelice,
   jeZanesljiv,
-  opisNapakeFotografije,
-  pomanjsajFotografijo,
   razdeliVrsto,
   slogIzreza,
   vnosIzPredloga,
 } from '../pomozno/branjeListkov'
+import { useBudenZaslon } from '../pomozno/budenZaslon'
 import { natisnjenaKoda } from '../pomozno/kodaListka'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
-
-/* Fotografija, ki je še na poti na strežnik. */
-interface Posiljanje {
-  kljuc: number
-  predogled: string | null
-  napaka: string | null
-}
+import { besediloCakajocih, useVrstaFotografij, type FotografijaVrste } from '../pomozno/vrstaFotografij'
 
 /* Odprto okno pregleda: branje, tekma (prepoznana ali izbrana s seznama) in predlog. */
 interface Pregled {
@@ -60,8 +53,6 @@ interface Pregled {
   /* Levi stolpec listka je udeleženec 2 te tekme (za izrez celic ob poljih). */
   obrnjeno: boolean
 }
-
-let naslednjiKljuc = 1
 
 export function BranjeListkovStran() {
   const { id } = useParams()
@@ -78,11 +69,28 @@ export function BranjeListkovStran() {
   })
   const omogoceno = stanje.data?.omogoceno === true
 
-  const [posiljanja, nastaviPosiljanja] = useState<Posiljanje[]>([])
   /* Fotografija, ki jo je telefon pravkar posnel, se ne prenaša nazaj s strežnika. */
   const [predogledi, nastaviPredoglede] = useState<Record<number, string>>({})
   const [pregled, nastaviPregled] = useState<Pregled | null>(null)
-  const { jeAdmin } = useAvtentikacija()
+  const { jeAdmin, uporabnik } = useAvtentikacija()
+
+  /* Vrsta brez signala (F5.2): fotografija se shrani v telefon in pošilja, dokler
+     ne pride; ponovitev z istim ključem ne ustvari dvojnika. */
+  const vrstaFotografij = useVrstaFotografij(
+    idTurnirja,
+    omogoceno ? (uporabnik?.id ?? null) : null,
+    (branje, predogled) => {
+      if (predogled) nastaviPredoglede((p) => ({ ...p, [branje.id]: predogled }))
+      void odjemalec.invalidateQueries({ queryKey: ['turnir', idTurnirja, 'branja-listkov'] })
+    },
+    (zapis, signal) => branjeListkovApi.nalozi(zapis.idTurnir, zapis.jpeg, zapis.kljuc, signal),
+  )
+  const posiljanja = vrstaFotografij.fotografije
+  /* Brez signala poskusi samo najstarejša (ostale čakajo za njo), čakajo pa vse neposlane. */
+  const cakajoNaSignal = posiljanja.some((f) => f.stanje === 'caka')
+    ? posiljanja.filter((f) => f.stanje === 'caka' || f.stanje === 'v-vrsti' || f.stanje === 'posiljam').length
+    : 0
+  useBudenZaslon(omogoceno)
 
   /* Sled pregleda (meritev, V69): kdaj se je predlog prvič pokazal in kdaj je
      organizator nazadnje potrdil ali zavrgel listek (glej casPregleda). */
@@ -122,29 +130,11 @@ export function BranjeListkovStran() {
     void odjemalec.invalidateQueries({ queryKey: ['dogodek'] })
   }
 
-  async function poslji(datoteka: File) {
-    const kljuc = naslednjiKljuc++
-    nastaviPosiljanja((p) => [...p, { kljuc, predogled: null, napaka: null }])
-    try {
-      const jpeg = await pomanjsajFotografijo(datoteka)
-      const predogled = URL.createObjectURL(jpeg)
-      nastaviPosiljanja((p) => p.map((x) => (x.kljuc === kljuc ? { ...x, predogled } : x)))
-      const branje = await branjeListkovApi.nalozi(idTurnirja, jpeg)
-      nastaviPredoglede((p) => ({ ...p, [branje.id]: predogled }))
-      nastaviPosiljanja((p) => p.filter((x) => x.kljuc !== kljuc))
-      void odjemalec.invalidateQueries({ queryKey: kljucBranj })
-    } catch (napaka) {
-      nastaviPosiljanja((p) =>
-        p.map((x) => (x.kljuc === kljuc ? { ...x, napaka: opisNapakeFotografije(napaka) } : x)),
-      )
-    }
-  }
-
   function obFotografiji(dogodek: ChangeEvent<HTMLInputElement>) {
     const datoteke = [...(dogodek.target.files ?? [])]
     // isto datoteko je mogoče izbrati znova (druga fotografija istega imena na telefonu)
     dogodek.target.value = ''
-    datoteke.forEach((d) => void poslji(d))
+    datoteke.forEach((d) => void vrstaFotografij.dodaj(d))
   }
 
   /* Potrditev z enim dotikom (gumb v vrsti); okno potrjuje prek VnosRezultataOkno. */
@@ -274,24 +264,25 @@ export function BranjeListkovStran() {
           {(posiljanja.length > 0 || vrsta.berem.length > 0) && (
             <>
               <h2 className="branje__razdelek">Berem</h2>
+              {cakajoNaSignal > 0 && (
+                <p className="branje__signal" role="status">
+                  {besediloCakajocih(cakajoNaSignal)} Pošljejo se same, ko bo povezava; pusti to stran odprto.
+                </p>
+              )}
               <ul className="branje__vrsta">
                 {posiljanja.map((p) => (
                   <li key={`p${p.kljuc}`} className="branje-vrsta">
                     <Slicica url={p.predogled} />
                     <div className="branje-vrsta__telo">
-                      {p.napaka ? (
-                        <>
-                          <p className="branje-vrsta__napaka">{p.napaka}</p>
-                          <button
-                            type="button"
-                            className="gumb gumb--majhen"
-                            onClick={() => nastaviPosiljanja((x) => x.filter((y) => y.kljuc !== p.kljuc))}
-                          >
-                            Opusti
-                          </button>
-                        </>
-                      ) : (
-                        <p className="branje-vrsta__stanje">Pošiljam …</p>
+                      <StanjePosiljanja f={p} />
+                      {p.stanje !== 'posiljam' && p.stanje !== 'pripravljam' && p.stanje !== 'v-vrsti' && (
+                        <button
+                          type="button"
+                          className="gumb gumb--majhen"
+                          onClick={() => vrstaFotografij.opusti(p.kljuc)}
+                        >
+                          Opusti
+                        </button>
                       )}
                     </div>
                   </li>
@@ -632,6 +623,32 @@ function PregledListka({
 }
 
 /* Majhna slika v vrsti. */
+/* Stanje fotografije v vrsti (F5.2): napaka strežnika ali brskalnika je rjasta,
+   čakanje na signal ni napaka - fotografija pride sama. */
+function StanjePosiljanja({ f }: { f: FotografijaVrste }) {
+  switch (f.stanje) {
+    case 'pripravljam':
+      return <p className="branje-vrsta__stanje">Pripravljam fotografijo …</p>
+    case 'v-vrsti':
+      return <p className="branje-vrsta__stanje">V vrsti za pošiljanje …{opozoriloTrajne(f)}</p>
+    case 'posiljam':
+      return <p className="branje-vrsta__stanje">Pošiljam …</p>
+    case 'caka':
+      return (
+        <p className="branje-vrsta__stanje">
+          {f.napaka ?? 'Ni povezave.'} Poskusim znova ({f.poskusov}. poskus ni uspel) …{opozoriloTrajne(f)}
+        </p>
+      )
+    default:
+      return <p className="branje-vrsta__napaka">{f.napaka}</p>
+  }
+}
+
+/* Telefon fotografije ni mogel shraniti (poln, zasebno okno): ob zaprtju strani se izgubi. */
+function opozoriloTrajne(f: FotografijaVrste) {
+  return f.trajna ? null : ' Fotografija ni shranjena v telefon: ne zapri strani, dokler ni poslana.'
+}
+
 function Slicica({ url, id }: { url: string | null; id?: number }) {
   return (
     <span className="branje-vrsta__slicica">

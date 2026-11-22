@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -46,9 +47,11 @@ public class BranjeListkovKontroler {
 
     @PostMapping(path = "/api/v1/turnirji/{id}/branja-listkov", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public BranjeListkaDto nalozi(@PathVariable Long id, @RequestParam("slika") MultipartFile slika)
+    public BranjeListkaDto nalozi(@PathVariable Long id, @RequestParam("slika") MultipartFile slika,
+                                  @RequestHeader(name = "Idempotency-Key", required = false) String kljuc)
             throws IOException {
-        return storitev.sprejmi(id, slika.getBytes());
+        // kljuc: vrsta na telefonu (F5.2) - ponovljeno posiljanje ne ustvari dvojnika
+        return storitev.sprejmi(id, slika.getBytes(), kljuc);
     }
 
     /* Fotografija je osebni podatek (imena, rokopis): ne gre v skupni predpomnilnik. */

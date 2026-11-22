@@ -1,6 +1,7 @@
 /* Opravila branja listkov, ki tecejo brez organizatorja:
-   - vsako noc izbrise fotografije, starejse od 30 dni po turnirju, ter stevke
-     in razlicice mreze cez mejo hrambe (UcenjeMreze.pocisti);
+   - vsako noc izbrise fotografije, starejse od 30 dni po turnirju, kljuce
+     posiljanja, starejse od 24 ur (F5.2), ter stevke in razlicice mreze cez mejo
+     hrambe (UcenjeMreze.pocisti);
    - ob zagonu oznaci branja, ki jih je prekinil ponovni zagon;
    - ob zagonu in vsako noc prebere pogostost izidov nizov (PogostostNizovStoritev).
 
@@ -46,6 +47,11 @@ public class OpravilaBranjaListkov {
             }
         } catch (RuntimeException e) {
             log.error("Branje listkov: brisanje starih fotografij ni uspelo", e);
+        }
+        try {
+            storitev.pobrisiStareKljucePosiljanja();
+        } catch (RuntimeException e) {
+            log.error("Branje listkov: brisanje kljucev posiljanja ni uspelo", e);
         }
         try {
             int[] hramba = ucenje.pocisti();

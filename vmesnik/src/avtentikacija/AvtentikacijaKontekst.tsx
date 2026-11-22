@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { nastaviPoverilnice, obNeveljavnihPoverilnicah } from '../api/odjemalec'
 import { authApi } from '../api/zahteve'
 import type { UporabnikDto } from '../api/tipi'
+import { shrambaVrste } from '../pomozno/vrstaFotografij'
 
 const KLJUC_SHRAMBE = 'turnirko-poverilnice'
 
@@ -109,6 +110,12 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     return () => obNeveljavnihPoverilnicah(null)
   }, [odjemalec])
 
+  /* Neposlane fotografije listkov, starejše od 24 ur, se izbrišejo ob vsakem
+     odprtju aplikacije, ne šele na strani branja (seja brez odjave, F5.2). */
+  useEffect(() => {
+    void shrambaVrste.pocistiPretekle()
+  }, [])
+
   /* Ob zagonu preveri shranjene poverilnice. */
   useEffect(() => {
     const shranjene = sessionStorage.getItem(KLJUC_SHRAMBE)
@@ -166,6 +173,8 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     prijavljen.current = false
     nastaviPoverilnice(null)
     sessionStorage.removeItem(KLJUC_SHRAMBE)
+    // neposlane fotografije listkov nosijo imena igralcev: ne ostanejo v brskalniku
+    void shrambaVrste.izbrisiVse()
     nastaviUporabnika(null)
     nastaviPrijavaPotekla(false)
     odjemalec.invalidateQueries()

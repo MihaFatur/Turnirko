@@ -32041,6 +32041,15 @@ html.uvod-tece {
   letter-spacing: -0.02em;
 }
 
+/* Fotografije v vrsti brez signala (F5.2): obvestilo, ne napaka. */
+.branje__signal {
+  margin: var(--r2) 0 0;
+  padding: var(--r1) var(--r2);
+  border-left: 3px solid var(--barva-crnilo-3);
+  font-size: var(--tip-drobno);
+  line-height: 1.5;
+}
+
 /* Naslov »Za potrditev« z gumbom »Potrdi vse zanesljive« (F4.2) v isti vrstici. */
 .branje__razdelek-glava {
   display: flex;

@@ -175,6 +175,42 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
   Zaklep se vzame pred transakcijo (čakajoča nit ne drži povezave z bazo).
   Aplikacija teče v enem primerku; ob več primerkih bi potrebovali zaklep v bazi.
 
+## Vrsta brez signala (F5, 22. 11. 2026, V73)
+
+- **Vrsta na telefonu** (`pomozno/vrstaFotografij.ts`, stran Branje listkov): fotografija
+  se pomanjša, shrani v IndexedDB (`turnirko-vrsta`) in šele nato pošilja, ena za drugo,
+  najstarejša najprej (novejša fotografija istega listka mora priti zadnja, sicer bi
+  pravilo dvojnikov obdržalo starejšo). Napaka omrežja, časovna meja 45 s, 5xx, 408 in
+  429: ponovi po 2, 4, 8 … največ 60 s (503/429 vsaj 5 s), takoj ob dogodku `online` in
+  ob vrnitvi na stran. 401 in 403 (dostop je lahko le začasno izklopljen): vrsta se
+  ustavi, fotografije počakajo na novo odprtje strani oziroma prijavo.
+  Ostali 4xx: ne ponavlja, fotografija se izbriše, razlog ostane v vrsti do »Opusti«.
+  Pošilja se samo na strani branja turnirja, kjer je bila posneta, in samo za
+  uporabnika, ki jo je posnel; ob odprtju strani se nadaljuje (stran zaprta, brskalnik
+  ugasnjen). Brez IndexedDB (ali ko zapis ne uspe) vrsta živi v pomnilniku strani in
+  vrstica to pove (»ne zapri strani«). Vrstni red je čas posnetka, ne konec priprave.
+- **Zasebnost (V4):** fotografija nosi imena, zato se iz brskalnika izbriše po uspehu,
+  najkasneje po 24 urah (`VELJA_MS`, ob vsakem zagonu aplikacije za vse uporabnike) in ob odjavi
+  (`AvtentikacijaKontekst.odjava`). Neveljavna prijava (401) ni odjava: vrsta ostane.
+- **Idempotenca** (`Idempotency-Key`, `branje_listka.kljuc_posiljanja`, V73): vsaka
+  fotografija ima naključni ključ (`crypto.randomUUID`, strežnik sprejme
+  `[A-Za-z0-9-]{8,64}`, sicer 400). Če je uporabnik s tem ključem že poslal, `sprejmi`
+  vrne obstoječe branje: brez dekodiranja, brez nove vrstice, ne šteje v omejitev
+  hitrosti. Ključ velja za uporabnika (edinstveni indeks `id_nalozil, kljuc_posiljanja`,
+  tuj uporabnik ga ne more zasesti), ključ za drug turnir je 400. Dve hkratni zahtevi z
+  istim ključem: druga po dekodiranju najde zapisano ali jo zavrne indeks, `sprejmi` to
+  ujame in vrne prvo. Nočno opravilo (`OpravilaBranjaListkov`) ključe, starejše od
+  24 ur, pobriše. Brez glave je sprejem kot prej (postaja, starejši vmesnik).
+- **Zaslon ne ugasne** (`pomozno/budenZaslon.ts`, Wake Lock), dokler je stran branja
+  odprta in branje omogočeno; ob vrnitvi na stran se zahteva znova.
+- **Kakovost JPEG ostane 0,88** (F5.3, simulacija 3 × 30 listkov): 0,82 da 29 % manjšo
+  datoteko, a listek manj brez popravka (20 namesto 21) in celico manj na neugodnih;
+  0,75 46 % manjšo in 19 brez popravka. Velikost z vrsto ni več kritična
+  (`-Dsimulacija.kakovost` v `SimuliraneFotografijeTest`).
+- **Preverba pred pošiljanjem (5.1) ni narejena:** pragov ostrine in svetlosti ni mogoče
+  umeriti brez pravih fotografij (generalka), koda QR pa ni merilo (prazen listek je
+  nima). Lažen alarm bi stal dotik pri vsakem listku.
+
 ## Meritev (F1, 20. 11. 2026, V69)
 
 - **Sled pregleda** (`branje_listka`): ob potrditvi se zapišejo `pripravljen` (ali bi

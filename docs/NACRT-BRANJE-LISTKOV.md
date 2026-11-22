@@ -536,8 +536,9 @@ preveri ob začetku vsake faze (razdelek 2).
 | F4 | v produkciji | 21. 11. 2026 | `7cd3289` |
 | F6 | v produkciji od 21. 11. 2026 20.15 (lastnik: generalka + F6 + F5; prej pregledano na testu) | 21. 11. 2026 | `66dddae` |
 | F6.6 napake mreže + meja MNIST | v produkciji od 21. 11. 2026 (lastnik po prvem učenju: »katere cifre ga matrajo«; test in produkcija v istem zagonu po lastnikovem »objavi na test in produkcijo«) | 21. 11. 2026 | `de9dd42` |
-| F3.6 nalaganje slik vadnice | objava na test in v produkcijo 22. 11. 2026 (lastnik: kolegi bodo liste fotografirali in poslali; »test in produkcija«) | 22. 11. 2026 | — |
-| F5, F7–F9 | načrtovano | — | — |
+| F3.6 nalaganje slik vadnice | v produkciji od 22. 11. 2026 (lastnik: kolegi bodo liste fotografirali in poslali; »test in produkcija«; najprej test, nato main) | 22. 11. 2026 | `d4eaaaa` |
+| F5 (5.2–5.4) vrsta brez signala, V73 | objava na test 22. 11. 2026 (lastnik: »Da, začni F5«, »Commit in test«; brez osvežitve baze zaradi demo računa); 5.1 po generalki | 22. 11. 2026 | — |
+| F7–F9 | načrtovano | — | — |
 
 **F0 — odstopanja od načrta in dodatno:**
 - Meja fotografije je 6000 px / 20 Mpx (ne 4096 / 16 Mpx). Pri 16 Mpx bi bila zavrnjena
@@ -841,3 +842,31 @@ zaledja; lastnik: »kolegi, ki bodo izpolnili, bodo slikali liste in mi jih posl
   dolgim imenom in 1280 px prebrana (180 števk), 525 × 700 px napaka QR + namig o
   velikosti, PDF s končnico .heic navodilo za JPG/PNG, že odobren list zavrnjen; brez
   vodoravnega pomikanja, brez napak v konzoli.
+
+**F5 — vrsta brez signala** (22. 11. 2026, V73; lastnik: »Da, začni F5«, vzporedno z
+zbiranjem vadnic, pred generalko):
+- **5.2 vrsta + idempotenca:** `pomozno/vrstaFotografij.ts` (IndexedDB, ena za drugo,
+  najstarejša najprej, ponovitev 2 s … 60 s, 401/403 ustavita, ostali 4xx zavrnejo,
+  izbris po uspehu / 24 h / odjavi, čiščenje ob zagonu aplikacije) in
+  `Idempotency-Key` → `branje_listka.kljuc_posiljanja` (edinstveno po uporabniku,
+  nočno brisanje po 24 h). Pravila: `docs/pravila/branje-listkov.md`, »Vrsta brez
+  signala«.
+- **5.3 velikost:** kakovost ostane 0,88 (0,82: −29 % in listek manj brez popravka;
+  0,75: −46 % in dva manj). Vrsta naredi velikost manj kritično.
+- **5.4** Wake Lock na strani branja (`pomozno/budenZaslon.ts`).
+- **5.1 odloženo do generalke:** pragovi ostrine/svetlosti potrebujejo prave
+  fotografije, QR ni merilo (prazen listek ga nima).
+- **Pregled:** podagent V1–V9 brez blokirnih najdb; popravljeno: 403 ne briše
+  fotografij, čiščenje pretečenih ob zagonu aplikacije, opozorilo, ko zapis v telefon
+  ne uspe. `/code-review`: popravljeno vračanje tuje fotografije v vrsto po menjavi
+  uporabnika med pošiljanjem in vrstni red po času posnetka; sprejeto brez testa
+  (pokrije E2E): hkratni zahtevi z istim ključem in prenos glave skozi kontroler.
+  Sprejeto brez popravka: ura telefona (24 h po uri naprave), ponastavitev zamika ob
+  dogodku `online`.
+- Preverjeno: zaledje 1460 testov; `BranjeListkovStoritevTest` +5 (isti ključ, uporabnik/turnir, neveljaven
+  ključ, nočno brisanje, edinstveni indeks); vmesnik 347 testov, lint 0 napak, gradnja;
+  pravo zaledje s pg18 (V73), brezglavi Chrome 390 px z omrežjem »offline«: tri
+  fotografije v IndexedDB, obvestilo »3 fotografije čakajo na signal«, zaprtje strani,
+  vklop omrežja, ponovno odprtje → natanko 3 nova branja, IndexedDB prazen; prekinjen
+  odgovor (CDP Fetch.failRequest) → 2 zahtevi POST, 1 branje; odjava izprazni vrsto;
+  brez napak v konzoli.

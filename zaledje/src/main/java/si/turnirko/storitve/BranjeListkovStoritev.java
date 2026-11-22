@@ -51,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -126,6 +127,8 @@ public class BranjeListkovStoritev {
     static final Duration OKNO = Duration.ofMinutes(10);
     /* Fotografija ostane toliko dni po turnirju (odlocitev lastnika, 19. 11. 2026). */
     static final int DNI_HRAMBE = 30;
+    /* Toliko vrsta na telefonu hrani neposlano fotografijo (pomozno/vrstaFotografij.ts). */
+    static final Duration KLJUC_POSILJANJA_VELJA = Duration.ofHours(24);
     /* Zakljucenih branj (potrjenih, zavrzenih) seznam pokaze toliko zadnjih. */
     static final int ZADNJIH_ZAKLJUCENIH = 30;
     /* Listek brez kode: toliko tekem, ki cakajo na izid, je ponujenih za izbiro. */
@@ -264,23 +267,91 @@ public class BranjeListkovStoritev {
        3. zapis branja in fotografije (kratka transakcija); branje gre v vrsto
           sele po potrditvi zapisa. */
     public BranjeListkaDto sprejmi(Long idTurnir, byte[] vsebina) {
-        Long idUporabnika = transakcija.execute(s -> {
+        return sprejmi(idTurnir, vsebina, null);
+    }
+
+    /* kljuc: nakljucni kljuc posiljanja z vrste na telefonu (glava Idempotency-Key,
+       F5.2) ali null. Ce je uporabnik s tem kljucem fotografijo ze poslal (odgovor
+       se je izgubil), vrne ze ustvarjeno branje: brez novega dekodiranja, brez
+       dvojnika in brez stetja v omejitev hitrosti. */
+    public BranjeListkaDto sprejmi(Long idTurnir, byte[] vsebina, String kljuc) {
+        String kljucPosiljanja = preveriKljuc(kljuc);
+        Prejeto prejeto = transakcija.execute(s -> {
             Uporabnik jaz = preveriDostop(idTurnir);
+            BranjeListkaDto poslano = zePoslano(jaz.getId(), kljucPosiljanja, idTurnir);
+            if (poslano != null) {
+                return new Prejeto(jaz.getId(), poslano);
+            }
             if (branjaRepozitorij.countByNalozilIdAndUstvarjenoObAfter(jaz.getId(),
                     LocalDateTime.now().minus(OKNO)) >= NAJVEC_V_OKNU) {
                 throw new PrevecZahtevIzjema("Preveč fotografij v kratkem času. Počakaj nekaj minut.");
             }
-            return jaz.getId();
+            return new Prejeto(jaz.getId(), null);
         });
-        ObdelavaSlik.Zapis zapis = pripraviFotografijo(vsebina, idUporabnika);
-        return transakcija.execute(s -> {
-            Uporabnik jaz = preveriDostop(idTurnir);
-            BranjeListka branje = branjaRepozitorij.save(
-                    new BranjeListka(turnirRepozitorij.getReferenceById(idTurnir), jaz, LocalDateTime.now()));
-            slikeRepozitorij.save(new SlikaBranjaListka(branje.getId(), zapis.vsebina(), zapis.sirina(), zapis.visina()));
-            vVrsto(branje.getId());
-            return dto(branje, Map.of(), Map.of(), List.of());
-        });
+        if (prejeto.poslano() != null) {
+            return prejeto.poslano();
+        }
+        ObdelavaSlik.Zapis zapis = pripraviFotografijo(vsebina, prejeto.idUporabnika());
+        try {
+            return transakcija.execute(s -> {
+                Uporabnik jaz = preveriDostop(idTurnir);
+                // isti kljuc je medtem (med dekodiranjem) prisel se enkrat in je ze zapisan
+                BranjeListkaDto poslano = zePoslano(jaz.getId(), kljucPosiljanja, idTurnir);
+                if (poslano != null) {
+                    return poslano;
+                }
+                BranjeListka novo = new BranjeListka(turnirRepozitorij.getReferenceById(idTurnir), jaz,
+                        LocalDateTime.now());
+                novo.setKljucPosiljanja(kljucPosiljanja);
+                BranjeListka branje = branjaRepozitorij.saveAndFlush(novo);
+                slikeRepozitorij.save(new SlikaBranjaListka(branje.getId(), zapis.vsebina(), zapis.sirina(),
+                        zapis.visina()));
+                vVrsto(branje.getId());
+                return dto(branje, Map.of(), Map.of(), List.of());
+            });
+        } catch (DataIntegrityViolationException e) {
+            // dve zahtevi z istim kljucem hkrati: edinstveni indeks je zavrnil drugo
+            if (kljucPosiljanja == null) {
+                throw e;
+            }
+            BranjeListkaDto poslano = transakcija.execute(s -> zePoslano(prejeto.idUporabnika(), kljucPosiljanja,
+                    idTurnir));
+            if (poslano == null) {
+                throw e;
+            }
+            return poslano;
+        }
+    }
+
+    /* Prvi korak sprejema: uporabnik in morebitno ze poslano branje z istim kljucem. */
+    private record Prejeto(Long idUporabnika, BranjeListkaDto poslano) {}
+
+    /* Kljuc posiljanja: nakljucen niz z vrste (crypto.randomUUID), ne vsebuje nic
+       osebnega. Brez kljuca (prazen) ni zascite pred dvojniki, kot doslej. */
+    static String preveriKljuc(String kljuc) {
+        if (kljuc == null || kljuc.isBlank()) {
+            return null;
+        }
+        if (!kljuc.matches("[A-Za-z0-9-]{8,64}")) {
+            throw new NeveljavenVnosIzjema("Neveljaven ključ pošiljanja fotografije.");
+        }
+        return kljuc;
+    }
+
+    /* Branje, ki ga je uporabnik s tem kljucem ze poslal; kljuc drugega turnirja je
+       napaka odjemalca (vrsta posilja vsako fotografijo na svoj turnir). */
+    private BranjeListkaDto zePoslano(Long idUporabnika, String kljuc, Long idTurnir) {
+        if (kljuc == null) {
+            return null;
+        }
+        return branjaRepozitorij.poKljucuPosiljanja(idUporabnika, kljuc)
+                .map(b -> {
+                    if (!b.getTurnir().getId().equals(idTurnir)) {
+                        throw new NeveljavenVnosIzjema("Ključ pošiljanja je že uporabljen za drug turnir.");
+                    }
+                    return dto(b, Map.of(), Map.of(), List.of());
+                })
+                .orElse(null);
     }
 
     /* Dekodira, pomanjsa in znova zapise fotografijo (brez metapodatkov). Cez
@@ -860,6 +931,13 @@ public class BranjeListkovStoritev {
     }
 
     // ---------- Opravila (OpravilaBranjaListkov) ----------
+
+    /* Kljuci posiljanja, starejsi od KLJUC_POSILJANJA_VELJA: vrsta na telefonu
+       fotografijo po 24 urah izbrise, zato istega kljuca ne poslje vec. */
+    @Transactional
+    public int pobrisiStareKljucePosiljanja() {
+        return branjaRepozitorij.pobrisiKljucePosiljanja(LocalDateTime.now().minus(KLJUC_POSILJANJA_VELJA));
+    }
 
     /* Fotografije, starejse od 30 dni po turnirju; vrstica branja ostane. */
     @Transactional

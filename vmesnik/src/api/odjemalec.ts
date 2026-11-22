@@ -55,11 +55,24 @@ export function opisNapake(napaka: unknown): string {
 
 /* datoteka: odgovor je datoteka (fotografija listka), ne JSON. Slika za <img>
    ne more iti po naslovu, ker brskalnik glave Authorization ne pošlje. */
-async function zahteva<T>(pot: string, metoda: string, telo?: unknown, datoteka = false): Promise<T> {
+/* Dodatne glave (npr. Idempotency-Key vrste fotografij) in prekinitev zahteve
+   (časovna meja pošiljanja ob slabem signalu). */
+export interface MoznostiZahteve {
+  glave?: Record<string, string>
+  signal?: AbortSignal
+}
+
+async function zahteva<T>(
+  pot: string,
+  metoda: string,
+  telo?: unknown,
+  datoteka = false,
+  moznosti?: MoznostiZahteve,
+): Promise<T> {
   /* Obrazec z datoteko (nalaganje slike) gre kot multipart: mejo med deli
      zapiše brskalnik sam v Content-Type, zato glave ne smemo postaviti. */
   const obrazec = telo instanceof FormData
-  const glave: Record<string, string> = {}
+  const glave: Record<string, string> = { ...moznosti?.glave }
   if (telo !== undefined && !obrazec) glave['Content-Type'] = 'application/json'
   /* Poverilnice te zahteve: ob odgovoru so lahko v modulu že druge. */
   const poslane = poverilnice
@@ -69,6 +82,7 @@ async function zahteva<T>(pot: string, metoda: string, telo?: unknown, datoteka 
     method: metoda,
     headers: Object.keys(glave).length > 0 ? glave : undefined,
     body: obrazec ? telo : telo !== undefined ? JSON.stringify(telo) : undefined,
+    signal: moznosti?.signal,
   })
 
   if (!odgovor.ok) {
@@ -112,7 +126,8 @@ async function zahteva<T>(pot: string, metoda: string, telo?: unknown, datoteka 
 export const api = {
   vrni: <T>(pot: string) => zahteva<T>(pot, 'GET'),
   vrniDatoteko: (pot: string) => zahteva<Blob>(pot, 'GET', undefined, true),
-  objavi: <T>(pot: string, telo?: unknown) => zahteva<T>(pot, 'POST', telo),
+  objavi: <T>(pot: string, telo?: unknown, moznosti?: MoznostiZahteve) =>
+    zahteva<T>(pot, 'POST', telo, false, moznosti),
   posodobi: <T>(pot: string, telo: unknown) => zahteva<T>(pot, 'PUT', telo),
   /* Večina brisanj vrne 204 brez telesa; umik preklopa naročnine vrne
      posodobljeno naročnino, zato je tip odgovora izbiren. */

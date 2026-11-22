@@ -50,6 +50,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -631,6 +632,85 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
         assertEquals(0, BranjeListkovStoritev.casPregleda(0L));
         assertEquals(3_600_000, BranjeListkovStoritev.casPregleda(3_600_000L));
         assertNull(BranjeListkovStoritev.casPregleda(3_600_001L));
+    }
+
+    // ---------- Vrsta brez signala (F5.2, V73) ----------
+
+    /* Telefon fotografijo poslje znova, ce se je odgovor izgubil: isti kljuc vrne
+       ze ustvarjeno branje, nova vrstica in fotografija ne nastaneta. */
+    @Test
+    void istiKljucPosiljanjaVrneIstoBranje() throws IOException {
+        byte[] slika = fotografija("TK:" + tekma.getId());
+        long prej = branjaRepozitorij.count();
+        Long prvo = storitev.sprejmi(idTurnirja(), slika, "7f3c2a10-5b1e-4c8e-9d2f-0a1b2c3d4e5f").id();
+        Long ponovljeno = storitev.sprejmi(idTurnirja(), slika, "7f3c2a10-5b1e-4c8e-9d2f-0a1b2c3d4e5f").id();
+        assertEquals(prvo, ponovljeno);
+        assertEquals(prej + 1, branjaRepozitorij.count());
+        Long drugo = storitev.sprejmi(idTurnirja(), slika, "0b9e8d7c-6a5f-4e3d-8c2b-1a0f9e8d7c6b").id();
+        assertFalse(drugo.equals(prvo), "drug kljuc je nova fotografija");
+        assertEquals(prej + 2, branjaRepozitorij.count());
+        assertNotNull(storitev.sprejmi(idTurnirja(), slika, null).id(), "brez kljuca kot doslej");
+        assertNotNull(storitev.sprejmi(idTurnirja(), slika, "  ").id(), "prazen kljuc kot brez kljuca");
+        assertEquals(prej + 4, branjaRepozitorij.count());
+    }
+
+    /* Kljuc velja za uporabnika: drug organizator istega turnirja z enakim kljucem
+       ne dobi tujega branja (V1). Isti kljuc za drug turnir je napaka odjemalca. */
+    @Test
+    void kljucPosiljanjaVeljaZaUporabnikaInTurnir() throws IOException {
+        byte[] slika = fotografija("TK:" + tekma.getId());
+        String kljuc = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
+        Long admina = storitev.sprejmi(idTurnirja(), slika, kljuc).id();
+
+        Uporabnik lastnik = racun("lastnik-kljuc@test", Vloga.ORGANIZATOR);
+        Turnir turnir = dogodek.getTurnir();
+        turnir.setUstvaril(lastnik);
+        turnirRepozitorij.save(turnir);
+        storitev.nastaviSamoAdmin(false);
+        prijava("lastnik-kljuc@test", "ROLE_ORGANIZATOR");
+        Long lastnika = storitev.sprejmi(idTurnirja(), slika, kljuc).id();
+        assertFalse(lastnika.equals(admina), "tuj kljuc ne vrne branja drugega uporabnika");
+
+        prijava("admin-branje@test", "ROLE_ADMIN");
+        Long drugTurnir = pripraviDogodek(4).getTurnir().getId();
+        assertThrows(NeveljavenVnosIzjema.class, () -> storitev.sprejmi(drugTurnir, slika, kljuc));
+    }
+
+    @Test
+    void neveljavenKljucPosiljanjaSeZavrne() throws IOException {
+        byte[] slika = fotografija("TK:" + tekma.getId());
+        long prej = branjaRepozitorij.count();
+        for (String kljuc : new String[] {"kratek", "a".repeat(65), "kljuc z presledki 123", "<script>12345</script>"}) {
+            assertThrows(NeveljavenVnosIzjema.class, () -> storitev.sprejmi(idTurnirja(), slika, kljuc), kljuc);
+        }
+        assertEquals(prej, branjaRepozitorij.count());
+    }
+
+    @Test
+    void kljuciPosiljanjaSePo24UrahPobrisejo() {
+        BranjeListka staro = shraniBranje(dogodek.getTurnir(), LocalDateTime.now().minusHours(25));
+        staro.setKljucPosiljanja("staro-kljuc-12345678");
+        BranjeListka novo = shraniBranje(dogodek.getTurnir(), LocalDateTime.now().minusHours(23));
+        novo.setKljucPosiljanja("novo-kljuc-12345678");
+        branjaRepozitorij.saveAllAndFlush(List.of(staro, novo));
+
+        assertEquals(1, storitev.pobrisiStareKljucePosiljanja());
+        assertNull(branjaRepozitorij.findById(staro.getId()).orElseThrow().getKljucPosiljanja());
+        assertEquals("novo-kljuc-12345678", branjaRepozitorij.findById(novo.getId()).orElseThrow().getKljucPosiljanja());
+    }
+
+    /* Zadnja varovalka pred dvojnikom pri dveh hkratnih zahtevah z istim kljucem:
+       edinstveni indeks (id_nalozil, kljuc_posiljanja); sprejmi ujame zavrnitev in
+       vrne ze zapisano branje. */
+    @Test
+    void edinstveniIndeksZavrneDvaEnakaKljuca() {
+        Uporabnik admin = uporabnikRepozitorij.findByUporabniskoIme("admin-branje@test").orElseThrow();
+        BranjeListka prvo = new BranjeListka(dogodek.getTurnir(), admin, LocalDateTime.now());
+        prvo.setKljucPosiljanja("isti-kljuc-12345678");
+        branjaRepozitorij.saveAndFlush(prvo);
+        BranjeListka drugo = new BranjeListka(dogodek.getTurnir(), admin, LocalDateTime.now());
+        drugo.setKljucPosiljanja("isti-kljuc-12345678");
+        assertThrows(DataIntegrityViolationException.class, () -> branjaRepozitorij.saveAndFlush(drugo));
     }
 
     private BranjeListkaDto branje(Long id) {

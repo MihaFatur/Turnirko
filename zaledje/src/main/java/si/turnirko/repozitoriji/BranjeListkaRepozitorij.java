@@ -50,6 +50,24 @@ public interface BranjeListkaRepozitorij extends JpaRepository<BranjeListka, Lon
             """)
     Optional<BranjeListka> najdiZTurnirjem(@Param("id") Long id);
 
+    /* Branje, ki ga je uporabnik ze poslal s tem kljucem (F5.2, ponovljeno posiljanje). */
+    @Query("""
+            SELECT b FROM BranjeListka b
+            JOIN FETCH b.turnir
+            LEFT JOIN FETCH b.tekma
+            WHERE b.nalozil.id = :idUporabnika AND b.kljucPosiljanja = :kljuc
+            """)
+    Optional<BranjeListka> poKljucuPosiljanja(@Param("idUporabnika") Long idUporabnika,
+                                              @Param("kljuc") String kljuc);
+
+    /* Telefon kljuca po 24 urah ne poslje vec (vrsta ga izbrise), zato ga ni treba hraniti. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            UPDATE BranjeListka b SET b.kljucPosiljanja = NULL
+            WHERE b.kljucPosiljanja IS NOT NULL AND b.ustvarjenoOb < :meja
+            """)
+    int pobrisiKljucePosiljanja(@Param("meja") LocalDateTime meja);
+
     /* Vsa branja turnirja, najnovejsa prva (vrsta na strani Branje listkov). */
     @Query("""
             SELECT b FROM BranjeListka b

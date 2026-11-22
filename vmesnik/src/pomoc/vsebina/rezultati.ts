@@ -58,7 +58,20 @@ export const REZULTATI: Clanek[] = [
     poglavje: 'rezultati',
     kratko:
       'Izpolnjen sodniški listek fotografiraš s telefonom, Turnirko prebere točke in predlaga izid. Ti ga pogledaš in potrdiš — izid se zapiše šele s tvojo potrditvijo.',
-    kljucne: ['fotografija', 'slika', 'kamera', 'telefon', 'umetna inteligenca', 'AI', 'QR', 'koda', 'branje', 'skeniraj'],
+    kljucne: [
+      'fotografija',
+      'slika',
+      'kamera',
+      'telefon',
+      'umetna inteligenca',
+      'AI',
+      'QR',
+      'koda',
+      'branje',
+      'skeniraj',
+      'signal',
+      'brez interneta',
+    ],
     vsebina: [
       { tip: 'kje', pot: ['Turnir', 'Branje listkov'] },
       {
@@ -111,6 +124,22 @@ export const REZULTATI: Clanek[] = [
         tip: 'nasvet',
         besedilo:
           'Fotografijo potrjenega listka najdeš tudi pozneje: klikni končano tekmo in v oknu s točkami izberi **Listek** (30 dni po turnirju, nato se fotografija izbriše). Vidita jo samo organizator turnirja in administrator.',
+      },
+      {
+        tip: 'razdelek',
+        id: 'signal',
+        naslov: 'Ko v dvorani ni signala',
+        kratko:
+          'Fotografija se najprej shrani v telefon in se pošlje sama, ko je povezava spet na voljo. Fotografiraš lahko naprej; pod **Berem** piše, koliko fotografij čaka na signal.',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          'Stran **Branje listkov** pusti odprto: fotografije se pošiljajo, dokler je stran odprta. Če jo zapreš ali telefon ugasne brskalnik, se pošiljanje nadaljuje, ko stran spet odpreš.',
+          'Fotografija, ki je prišla na strežnik dvakrat (signal je izginil sredi pošiljanja), se zapiše samo enkrat.',
+          'Neposlane fotografije se iz telefona izbrišejo ob odjavi in po 24 urah. Tak listek fotografiraj znova.',
+          'Dokler je stran odprta, zaslon telefona ne ugasne.',
+        ],
       },
       {
         tip: 'razdelek',
