@@ -71,6 +71,9 @@ export const REZULTATI: Clanek[] = [
       'skeniraj',
       'signal',
       'brez interneta',
+      'miza',
+      'sodnik',
+      'plakat',
     ],
     vsebina: [
       { tip: 'kje', pot: ['Turnir', 'Branje listkov'] },
@@ -116,6 +119,11 @@ export const REZULTATI: Clanek[] = [
           'Listek poravnajo trije črni kvadrati v vogalih in QR koda. Listki, natisnjeni pred to funkcijo, jih nimajo — natisni nove ([Listki za tiskanje](listki)). Imen Turnirko ne bere: tekmo pove koda.',
       },
       {
+        tip: 'odstavek',
+        besedilo:
+          'V okence **Miza** v glavi listka vpiši številko mize, ko tekmo pokličeš (ali naj jo vpiše sodnik). Turnirko jo prebere in pokaže ob listku kot »Miza 7 (z listka)«; slabo berljivo številko obarva in pokaže izrez okenca. Na izid miza ne vpliva.',
+      },
+      {
         tip: 'nasvet',
         besedilo:
           'Isti listek lahko fotografiraš znova (npr. če je bila prva fotografija zamegljena). Velja novejša fotografija, starejša se umakne iz vrste z oznako »Nadomeščeno«. Če novejše ni bilo mogoče prebrati, ostane prebrana starejša.',
@@ -124,6 +132,24 @@ export const REZULTATI: Clanek[] = [
         tip: 'nasvet',
         besedilo:
           'Fotografijo potrjenega listka najdeš tudi pozneje: klikni končano tekmo in v oknu s točkami izberi **Listek** (30 dni po turnirju, nato se fotografija izbriše). Vidita jo samo organizator turnirja in administrator.',
+      },
+      {
+        tip: 'razdelek',
+        id: 'sodniki',
+        naslov: 'Sodniki slikajo listke sami',
+        kratko:
+          'Na strani **Branje listkov** vklopi **Sodniki slikajo listke**. Sodnik po tekmi odpre stran za sodnike na svojem telefonu (brez prijave), fotografira listek, preveri točke in izid potrdi. Ti ne fotografiraš več vsakega listka sam.',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          '**Predpregled**: sodnikova potrditev počaka tebe – v vrsti piše »Sodnik je izid potrdil«, potrdiš z enim dotikom. Za prvi turnir izberi to.',
+          '**Velja takoj**: izid se vpiše, ko ga sodnik potrdi, mreža napreduje. Ti ga vidiš med zaključenimi (»potrdil sodnik«) in ga po potrebi popraviš. Če sodnik spremeni številko, ki jo je Turnirko prebral zanesljivo, ali Turnirko na fotografiji ne prebere cele tekme, izid vseeno počaka tebe.',
+          'Natisni **Plakat za ob mize** (povezava pod stikalom): koda na njem odpre stran za sodnike.',
+          'Sodnik lahko pošlje izid samo za listek, ki ga ima v roki: koda na listku nosi skrivnost tekme. Deluje samo z listki, natisnjenimi po 22. 11. 2026, in samo, dokler tekma nima izida. Listke natisni prijavljen.',
+          'Predajo, brez boja, diskvalifikacijo in ekipne zapisnike sodnik ne vpiše – taki listki pridejo na pult kot doslej. Tudi papirni listek po tekmi vedno oddajo na pultu.',
+          'Če sodnik spremeni prebrano številko, je listek označen, da ga pogledaš.',
+        ],
       },
       {
         tip: 'razdelek',

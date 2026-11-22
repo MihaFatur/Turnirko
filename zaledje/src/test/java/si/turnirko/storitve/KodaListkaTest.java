@@ -6,10 +6,13 @@
    - tuja QR koda (spletni naslov) ni koda tekme;
    - dve kodi na eni fotografiji se obe prebereta (organizator mora
      fotografirati vsakega posebej);
-   - natisnjena stevilka se prebere v oblikah, kot jo vrne bralnik. */
+   - natisnjena stevilka se prebere v oblikah, kot jo vrne bralnik;
+   - koda s skrivnostjo (S1) da id in skrivnost; listek pred S1 je brez skrivnosti,
+     pokvarjena skrivnost (male crke, napacna dolzina) pa ni koda tekme. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Color;
@@ -37,6 +40,19 @@ class KodaListkaTest {
         assertEquals("T-48213", KodaListka.natisnjena(48213));
         BufferedImage slika = list(List.of(qr("TK:48213")), 0);
         assertEquals(List.of(48213L), KodaListka.preberiQr(slika));
+    }
+
+    @Test
+    void kodaSSkrivnostjo() throws Exception {
+        assertEquals("TK:48213:ABCD2345", KodaListka.vsebinaQr(48213, "ABCD2345"));
+        List<KodaListka.NajdenaKoda> kode = KodaListka.najdi(list(List.of(qr("TK:48213:ABCD2345")), 0));
+        assertEquals(1, kode.size());
+        assertEquals(48213L, kode.getFirst().idTekme());
+        assertEquals("ABCD2345", kode.getFirst().skrivnost());
+
+        assertNull(KodaListka.najdi(list(List.of(qr("TK:48213")), 0)).getFirst().skrivnost());
+        assertTrue(KodaListka.preberiQr(list(List.of(qr("TK:48213:abcd2345")), 0)).isEmpty());
+        assertTrue(KodaListka.preberiQr(list(List.of(qr("TK:48213:ABC")), 0)).isEmpty());
     }
 
     @Test

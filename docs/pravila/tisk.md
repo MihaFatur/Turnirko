@@ -39,10 +39,14 @@
       `--listek-stolpci`, zato so točke vedno natanko pod imenom tistega, ki jih
       je dosegel. Dvopičje v sredinskem žlebu bere vrstico kot »11 : 7«.
     - **Oznake za branje s fotografije** (V68, `docs/pravila/branje-listkov.md`): trije
-      črni kvadrati 4 mm v vogalih in QR koda tekme 13 mm zgoraj desno na STALNIH mestih
-      (`GeometrijaListka.java` jih pozna) — ob premiku spremeni oboje.
-    - Vsebina: znamka (`ZnakTurnirko` + »Turnirko«) in prazna črta »Miza št.«
-      (številka se izpiše, če je že dodeljena), nato Dogodek (= turnir, kot ga
+      črni kvadrati 4 mm v vogalih, QR koda tekme 13 mm zgoraj desno in okence za
+      mizo (S1, x 62–80 mm, y 5–12 mm) na STALNIH mestih (`GeometrijaListka.java` jih
+      pozna) — ob premiku spremeni oboje in posnemi `/dev/listek` za simulacijo znova.
+    - **QR s skrivnostjo** (S1): vsebino kode da strežnik samo organizatorju turnirja
+      in adminu (`dogodkiApi.kodeListkov`); gost natisne zasilno kodo brez skrivnosti.
+      Tisk čaka, da se kode naložijo.
+    - Vsebina: znamka (`ZnakTurnirko` + »Turnirko«) in okence »Miza« (številka se
+      izpiše, če je že dodeljena), nato Dogodek (= turnir, kot ga
       igralci poznajo), Kategorija (ime dogodka; spol in starost se dodata samo,
       če ju ime ne pove, `oznakaKategorije`; »Kdorkoli« se izpusti), Skupina +
       kolo oz. Faza pri mreži, spodaj Sodnik in Podpis. **Kluba na listku ni**

@@ -60,6 +60,18 @@ public interface BranjeListkaRepozitorij extends JpaRepository<BranjeListka, Lon
     Optional<BranjeListka> poKljucuPosiljanja(@Param("idUporabnika") Long idUporabnika,
                                               @Param("kljuc") String kljuc);
 
+    /* Sodnisko branje te tekme s tem kljucem posiljanja (S2, ponovljeno posiljanje). */
+    @Query("""
+            SELECT b FROM BranjeListka b
+            JOIN FETCH b.turnir
+            LEFT JOIN FETCH b.tekma
+            WHERE b.poslalSodnik = true AND b.tekma.id = :idTekme AND b.kljucPosiljanja = :kljuc
+            """)
+    Optional<BranjeListka> sodniskoPoKljucu(@Param("idTekme") Long idTekme, @Param("kljuc") String kljuc);
+
+    /* Koliko fotografij so sodniki poslali za tekmo (meja na tekmo, S2). */
+    long countByTekmaIdAndPoslalSodnikTrue(Long idTekme);
+
     /* Telefon kljuca po 24 urah ne poslje vec (vrsta ga izbrise), zato ga ni treba hraniti. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""

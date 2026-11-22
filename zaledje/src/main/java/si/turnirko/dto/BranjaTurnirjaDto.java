@@ -7,5 +7,7 @@ import java.util.List;
 public record BranjaTurnirjaDto(
         List<BranjeListkaDto> branja,
         int potrjenih,
-        int brezPopravka
+        int brezPopravka,
+        // stikalo »Sodniki slikajo listke« (S2): null = izklopljeno
+        si.turnirko.modeli.SodniskaPotrditev sodnikiListki
 ) {}

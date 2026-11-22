@@ -102,6 +102,31 @@ public class BranjeListka {
     @Column(name = "kljuc_posiljanja", length = 64)
     private String kljucPosiljanja;
 
+    /* Sodniska pot (S2, V75): fotografijo je poslal sodnik brez prijave (nalozil je
+       null). Pravico za potrditev ima samo telefon z zetonom - v bazi je SHA-256. */
+    @Column(name = "poslal_sodnik", nullable = false)
+    private boolean poslalSodnik;
+
+    @Column(name = "zeton_sodnika")
+    private byte[] zetonSodnika;
+
+    @Column(name = "zeton_velja_do")
+    private LocalDateTime zetonVeljaDo;
+
+    @Column(name = "sodnik_potrdil_ob")
+    private LocalDateTime sodnikPotrdilOb;
+
+    /* Izid, kot ga je potrdil sodnik (JSON VnosRezultata); pri predpregledu ga
+       organizator potrdi z enim dotikom. */
+    @Column(name = "sodnikov_izid")
+    private String sodnikovIzid;
+
+    @Column(name = "sodnik_spremenil")
+    private Boolean sodnikSpremenil;
+
+    @Column(name = "miza_sodnika")
+    private Integer mizaSodnika;
+
     protected BranjeListka() {}
 
     public BranjeListka(Turnir turnir, Uporabnik nalozil, LocalDateTime ustvarjenoOb) {
@@ -131,6 +156,27 @@ public class BranjeListka {
     public String getModel() { return model; }
     public void setModel(String model) { this.model = model; }
     public Uporabnik getNalozil() { return nalozil; }
+    public boolean isPoslalSodnik() { return poslalSodnik; }
+    public void setPoslalSodnik(boolean poslalSodnik) { this.poslalSodnik = poslalSodnik; }
+
+    public byte[] getZetonSodnika() { return zetonSodnika; }
+    public void setZetonSodnika(byte[] zetonSodnika) { this.zetonSodnika = zetonSodnika; }
+
+    public LocalDateTime getZetonVeljaDo() { return zetonVeljaDo; }
+    public void setZetonVeljaDo(LocalDateTime zetonVeljaDo) { this.zetonVeljaDo = zetonVeljaDo; }
+
+    public LocalDateTime getSodnikPotrdilOb() { return sodnikPotrdilOb; }
+    public void setSodnikPotrdilOb(LocalDateTime sodnikPotrdilOb) { this.sodnikPotrdilOb = sodnikPotrdilOb; }
+
+    public String getSodnikovIzid() { return sodnikovIzid; }
+    public void setSodnikovIzid(String sodnikovIzid) { this.sodnikovIzid = sodnikovIzid; }
+
+    public Boolean getSodnikSpremenil() { return sodnikSpremenil; }
+    public void setSodnikSpremenil(Boolean sodnikSpremenil) { this.sodnikSpremenil = sodnikSpremenil; }
+
+    public Integer getMizaSodnika() { return mizaSodnika; }
+    public void setMizaSodnika(Integer mizaSodnika) { this.mizaSodnika = mizaSodnika; }
+
     public String getKljucPosiljanja() { return kljucPosiljanja; }
     public void setKljucPosiljanja(String kljucPosiljanja) { this.kljucPosiljanja = kljucPosiljanja; }
     public LocalDateTime getUstvarjenoOb() { return ustvarjenoOb; }

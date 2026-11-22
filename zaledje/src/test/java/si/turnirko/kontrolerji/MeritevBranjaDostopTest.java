@@ -10,7 +10,9 @@ package si.turnirko.kontrolerji;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -155,6 +157,32 @@ class MeritevBranjaDostopTest {
     void listekTekmeInPoravnanListekNistaJavna() throws Exception {
         mockMvc.perform(get("/api/v1/tekme/1/listek")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/branja-listkov/1/poravnana")).andExpect(status().isUnauthorized());
+    }
+
+    /* S1/S2: kode QR s skrivnostjo in stikalo sodnikov niso javni; sodniske poti so
+       edine, kjer gost sme pisati - samo POST na tri poti, vse ostalo pod /sodnik/** je
+       zaprto. Brez zetona je odgovor 404 (storitev), ne 401 (veriga ga spusti). */
+    @Test
+    void sodniskePotiSoOdprteSamoZaPost() throws Exception {
+        mockMvc.perform(get("/api/v1/dogodki/1/listki/kode")).andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/api/v1/turnirji/" + turnir.getId() + "/sodniki-listki")
+                        .contentType("application/json").content("{\"nacin\":\"VELJA_TAKOJ\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/sodnik/branja/999999999/stanje")
+                        .contentType("application/json").content("{\"zeton\":\"neveljaven\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")));
+        mockMvc.perform(post("/api/v1/sodnik/branja/999999999/potrdi")
+                        .contentType("application/json")
+                        .content("{\"zeton\":\"neveljaven\",\"izid\":{\"dobljeniNizi1\":3,\"dobljeniNizi2\":0,"
+                                + "\"nizi\":[{\"tocke1\":11,\"tocke2\":1}]}}"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(multipart("/api/v1/sodnik/listki")
+                        .file(new org.springframework.mock.web.MockMultipartFile("slika", "x.jpg", "image/jpeg",
+                                new byte[] {1, 2, 3})))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/sodnik/branja/1/stanje")).andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/v1/sodnik/branja/1")).andExpect(status().isUnauthorized());
     }
 
     @Test

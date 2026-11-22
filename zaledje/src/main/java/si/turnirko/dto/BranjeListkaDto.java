@@ -34,7 +34,19 @@ public record BranjeListkaDto(
         // lega celic na poravnanem listku za izrez ob poljih (F4.1); null brez slike
         CeliceListkaDto celice,
         // levi stolpec listka je udelezenec 2 prepoznane tekme (listek brez kode)
-        boolean obrnjeno
+        boolean obrnjeno,
+        // stevilka mize iz okenca listka (S1); null, ce je okence prazno ali ga ni
+        Integer prebranaMiza,
+        // zapis v okencu mize je tezko berljiv
+        boolean negotovaMiza,
+        // S2: fotografijo je poslal sodnik s svojim telefonom
+        boolean poslalSodnik,
+        // sodnik je izid potrdil (pri predpregledu je predlog sodnikov izid)
+        boolean sodnikPotrdil,
+        // sodnik je spremenil prebrano - organizator naj pogleda fotografijo
+        Boolean sodnikSpremenil,
+        // miza, kot jo je potrdil sodnik
+        Integer mizaSodnika
 ) {
 
     /* Tekma z imenom dogodka in oznako skupine (za izpis »U15 · Skupina B · 2. kolo»). */

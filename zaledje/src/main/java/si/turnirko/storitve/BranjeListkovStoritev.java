@@ -85,9 +85,11 @@ import si.turnirko.modeli.PrepoznavaTekme;
 import si.turnirko.modeli.Prijava;
 import si.turnirko.modeli.Skupina;
 import si.turnirko.modeli.SlikaBranjaListka;
+import si.turnirko.modeli.SodniskaPotrditev;
 import si.turnirko.modeli.StanjeBranja;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
+import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.Uporabnik;
 import si.turnirko.modeli.Vloga;
 import si.turnirko.pomozno.ObdelavaSlik;
@@ -358,7 +360,7 @@ public class BranjeListkovStoritev {
        mejo hkratnih dekodiranj zahteva pocaka; ce predolgo, dobi 503 in jo
        odjemalec ponovi - bolje kot da bi vec velikih slik hkrati izcrpalo
        pomnilnik streznika. */
-    private ObdelavaSlik.Zapis pripraviFotografijo(byte[] vsebina, Long idUporabnika) {
+    ObdelavaSlik.Zapis pripraviFotografijo(byte[] vsebina, Long idUporabnika) {
         return podDekodiranjem(idUporabnika, () -> ObdelavaSlik.zapisiFotografijo(ObdelavaSlik.pomanjsaj(
                 ObdelavaSlik.preberi(vsebina, NAJVEC_STRANICA_VHODA, NAJVEC_PIKSLOV_VHODA), NAJVEC_STRANICA)));
     }
@@ -408,7 +410,7 @@ public class BranjeListkovStoritev {
 
     /* Branje gre na izvajalca sele po potrditvi transakcije - prej ga nit v
        ozadju v bazi se ne bi videla. */
-    private void vVrsto(Long idBranja) {
+    void vVrsto(Long idBranja) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -659,7 +661,19 @@ public class BranjeListkovStoritev {
         Map<Long, String> skupine = oznakeSkupin(tekme.values());
 
         List<BranjeListkaDto> branja = prikaz.stream().map(b -> dto(b, tekme, skupine, cakajoce)).toList();
-        return new BranjaTurnirjaDto(branja, potrjenih, brezPopravka);
+        return new BranjaTurnirjaDto(branja, potrjenih, brezPopravka,
+                turnirRepozitorij.findById(idTurnir).map(Turnir::getSodnikiListki).orElse(null));
+    }
+
+    /* Stikalo »Sodniki slikajo listke« (S2): null izklopi. Sme ga organizator, ki
+       sme brati listke tega turnirja (dokler velja samo-admin, samo admin). */
+    @Transactional
+    public SodniskaPotrditev nastaviSodnike(Long idTurnir, SodniskaPotrditev nacin) {
+        preveriDostop(idTurnir);
+        Turnir turnir = turnirRepozitorij.findById(idTurnir)
+                .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + idTurnir + " ne obstaja."));
+        turnir.setSodnikiListki(nacin);
+        return nacin;
     }
 
     private Map<Long, String> oznakeSkupin(Collection<Tekma> tekme) {
@@ -681,7 +695,11 @@ public class BranjeListkovStoritev {
         Tekma t = b.getTekma() == null ? null : tekme.get(b.getTekma().getId());
         if (t != null) {
             tekma = tekmaListka(t, skupine);
-            if (listek != null) {
+            if (b.getSodnikovIzid() != null && b.getStanje() == StanjeBranja.PREBRANO) {
+                // predpregled (S2): organizator potrdi izid, kot ga je potrdil sodnik
+                predlog = predlogSodnika(JsonBranja.preberi(b.getSodnikovIzid(), VnosRezultata.class), t,
+                        Boolean.TRUE.equals(b.getSodnikSpremenil()));
+            } else if (listek != null) {
                 predlog = predlog(b, listek, t);
             }
         } else if (b.getStanje() == StanjeBranja.PREBRANO && listek != null && nimaImen(listek)) {
@@ -713,7 +731,31 @@ public class BranjeListkovStoritev {
         return new BranjeListkaDto(b.getId(), b.getStanje(), b.getUstvarjenoOb(), b.getPrebranoOb(),
                 b.getSlikaIzbrisanaOb() == null, b.getPrepoznava(), tekma, predlog, kandidati,
                 listek == null ? null : listek.imeLevo(), listek == null ? null : listek.imeDesno(),
-                b.getNapaka(), b.getPopravljeno(), jeObviselo(b), b.isKontrola(), celice, obrnjeno);
+                b.getNapaka(), b.getPopravljeno(), jeObviselo(b), b.isKontrola(), celice, obrnjeno,
+                listek == null ? null : listek.miza(), listek != null && listek.negotovaMiza(),
+                b.isPoslalSodnik(), b.getSodnikPotrdilOb() != null, b.getSodnikSpremenil(), b.getMizaSodnika());
+    }
+
+    /* Sporocilo organizatorju, ko je sodnik spremenil prebrano (S2). */
+    static final String SODNIK_SPREMENIL = "Sodnik je popravil prebrano. Primerjaj s fotografijo.";
+
+    /* Sodnikov izid kot predlog v straneh tekme (S2, predpregled). Pripravljen za en
+       dotik, razen ce ga je sodnik spremenil ali ima tekma izid ze vpisan. */
+    static PredlogIzidaDto predlogSodnika(VnosRezultata izid, Tekma t, boolean spremenil) {
+        List<PredlogIzidaDto.NizPredloga> nizi = (izid.nizi() == null ? List.<NizVnos>of() : izid.nizi()).stream()
+                .map(n -> new PredlogIzidaDto.NizPredloga(n.tocke1(), n.tocke2(), false, false, false))
+                .toList();
+        List<String> opozorila = new ArrayList<>();
+        if (t.getStatus() == StatusTekme.KONCANA) {
+            opozorila.add("Ta tekma ima izid že vpisan. Listek je morda fotografiran dvakrat.");
+        }
+        if (spremenil) {
+            opozorila.add(SODNIK_SPREMENIL);
+        }
+        Integer zmagovalec = izid.dobljeniNizi1() == null || izid.dobljeniNizi2() == null ? null
+                : izid.dobljeniNizi1() > izid.dobljeniNizi2() ? 1 : 2;
+        return new PredlogIzidaDto(IzidTekme.IGRANO, izid.dobljeniNizi1(), izid.dobljeniNizi2(), zmagovalec, nizi,
+                opozorila, opozorila.isEmpty());
     }
 
     private static boolean jeObviselo(BranjeListka b) {
@@ -729,7 +771,7 @@ public class BranjeListkovStoritev {
 
     /* zKontrolo = false: predlog, kot bi bil brez nakljucne kontrole (ali je ponujen
        za en dotik, za kontrolo in meritev). */
-    private PredlogIzidaDto predlog(BranjeListka b, PrebranListek listek, Tekma t, boolean zKontrolo) {
+    PredlogIzidaDto predlog(BranjeListka b, PrebranListek listek, Tekma t, boolean zKontrolo) {
         boolean poKodi = b.getPrepoznava() == PrepoznavaTekme.KODA;
         boolean obrnjeno = !poKodi && jeObrnjeno(listek, t);
         PredlogIzidaDto osnova = PredlogIzidaListka.sestavi(listek, t.getSteviloNizov(), obrnjeno);
@@ -774,6 +816,27 @@ public class BranjeListkovStoritev {
     public BranjeListkaDto potrdi(Long idBranja, PotrditevBranjaVnos vnos) {
         synchronized (zakljucevanje) {
             return transakcija.execute(s -> potrdiPodZaklepom(idBranja, vnos));
+        }
+    }
+
+    /* Delo nad branji pod istim zaklepom in v svoji transakciji kot potrditev
+       organizatorja (sodniska potrditev, S2: SodniskaBranjaStoritev). */
+    <T> T podZaklepom(Supplier<T> delo) {
+        synchronized (zakljucevanje) {
+            return transakcija.execute(s -> delo.get());
+        }
+    }
+
+    /* Ostale odprte fotografije istega listka (po kodi) nimajo vec pomena, ko je
+       tekma potrjena s tem branjem. */
+    void zapriOstalaBranjaTekme(Long idTekme, Long idBranja) {
+        for (BranjeListka drugo : branjaRepozitorij.findByTekmaIdAndStanjeIn(idTekme,
+                List.of(StanjeBranja.PREBRANO, StanjeBranja.NAPAKA))) {
+            if (!drugo.getId().equals(idBranja) && drugo.getPrepoznava() == PrepoznavaTekme.KODA) {
+                drugo.setStanje(StanjeBranja.ZAVRZENO);
+                drugo.setNapaka(POTRJENO_DRUGJE);
+                drugo.setZakljucenoOb(LocalDateTime.now());
+            }
         }
     }
 
@@ -839,15 +902,7 @@ public class BranjeListkovStoritev {
         branje.setPripravljen(ponujen);
         branje.setCasPregledaMs(casPregleda(vnos.casPregledaMs()));
         branje.setNacinPotrditve(vnos.nacin());
-        // ostale odprte fotografije istega listka (po kodi) nimajo vec pomena
-        for (BranjeListka drugo : branjaRepozitorij.findByTekmaIdAndStanjeIn(idTekme,
-                List.of(StanjeBranja.PREBRANO, StanjeBranja.NAPAKA))) {
-            if (!drugo.getId().equals(idBranja) && drugo.getPrepoznava() == PrepoznavaTekme.KODA) {
-                drugo.setStanje(StanjeBranja.ZAVRZENO);
-                drugo.setNapaka(POTRJENO_DRUGJE);
-                drugo.setZakljucenoOb(LocalDateTime.now());
-            }
-        }
+        zapriOstalaBranjaTekme(idTekme, idBranja);
         // bralnik se uci iz potrjenega izida; smer stolpcev je znana samo pri listku s kodo
         int steviloNizov = vnos.izid().steviloNizov() != null ? vnos.izid().steviloNizov() : tekma.getSteviloNizov();
         // celice, ki jih je organizator popravil (ali vpisal namesto bralnika), so mocne oznake (F6.2)
@@ -883,8 +938,12 @@ public class BranjeListkovStoritev {
         branje.setNapaka(null);
         branje.setPrebrano(null);
         branje.setCelice(null);
-        branje.setTekma(null);
-        branje.setPrepoznava(null);
+        // sodnisko branje ima tekmo po preverjeni skrivnosti (S2): ostane, sicer bi
+        // sodnikov zeton ostal brez tekme
+        if (!branje.isPoslalSodnik()) {
+            branje.setTekma(null);
+            branje.setPrepoznava(null);
+        }
         vVrsto(branje.getId());
         return dto(branje, Map.of(), Map.of(), List.of());
     }
@@ -1051,7 +1110,7 @@ public class BranjeListkovStoritev {
         return JsonBranja.zapisi(vrednost);
     }
 
-    private static PrebranListek izJson(String json) {
+    static PrebranListek izJson(String json) {
         return JsonBranja.preberi(json, PrebranListek.class);
     }
 }

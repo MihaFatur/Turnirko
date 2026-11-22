@@ -6,6 +6,8 @@
       mreza stevk (MrezaStevk) da verjetnost vsake vrednosti;
    4. pravila namiznega tenisa izberejo najverjetnejsi veljaven izid in oznacijo
       negotove celice (RazlagaListka).
+   5. okence mize v glavi (S1, MizaListka) prebere ista mreza; pravil zanj ni,
+      zato je dvomljiv zapis vedno negotov.
    En listek je ~30 stevk in nekaj sto milisekund racunanja - brez omejitve stevila
    listkov in brez cene.
 
@@ -24,6 +26,7 @@ import javax.imageio.ImageIO;
 import org.springframework.stereotype.Component;
 
 import si.turnirko.branje.CeliceListka;
+import si.turnirko.branje.MizaListka;
 import si.turnirko.branje.MrezaStevk;
 import si.turnirko.branje.PogostostNizov;
 import si.turnirko.branje.PoravnavaListka;
@@ -64,11 +67,31 @@ public class LokalniBralnikListka implements BralnikListka {
         this.vecBranj = vecBranj;
     }
 
-    /* Razrez celic listka: vsebina vsake celice (za branje in za ucenje iz potrditev). */
-    public record Izrez(List<RazrezCelice.Vsebina[]> nizi, RazrezCelice.Vsebina[] rezultat) {}
+    /* Razrez celic listka: vsebina vsake celice (za branje in za ucenje iz potrditev).
+       miza = okence mize (S1) ali null, ce ga listek nima; mizaZanesljiva = okence je
+       zanesljivo (sicer je branje mize negotovo, MizaListka). */
+    public record Izrez(List<RazrezCelice.Vsebina[]> nizi, RazrezCelice.Vsebina[] rezultat, RazrezCelice.Vsebina miza,
+                        boolean mizaZanesljiva) {
 
-    /* Listek v stalnih koordinatah in njegove celice (pred razrezom). */
-    public record Poravnan(Temnost slika, CeliceListka.Tabela tabela) {}
+        public Izrez(List<RazrezCelice.Vsebina[]> nizi, RazrezCelice.Vsebina[] rezultat) {
+            this(nizi, rezultat, null, false);
+        }
+    }
+
+    /* Listek v stalnih koordinatah in njegove celice (pred razrezom); miza = okence
+       mize (S1) ali null. */
+    public record Poravnan(Temnost slika, CeliceListka.Tabela tabela, MizaListka.Okence miza) {
+
+        public Poravnan(Temnost slika, CeliceListka.Tabela tabela) {
+            this(slika, tabela, null);
+        }
+    }
+
+    /* Prebrana stevilka mize (S1): null, ce je okence prazno ali ga ni. */
+    public record Miza(Integer stevilka, boolean negotova) {}
+
+    /* Zapis v okencu mize je negotov pod tem zaupanjem (enako kot celica tock). */
+    static final double ZAUPANJE_MIZE = 0.8;
 
     @Override
     public boolean jeNastavljen() {
@@ -111,8 +134,10 @@ public class LokalniBralnikListka implements BralnikListka {
         for (CeliceListka.Vrstica v : tabela.nizi()) {
             nizi.add(vrstica(v));
         }
+        CeliceListka.Celica m = poravnan.miza() == null ? null : poravnan.miza().celica();
+        int[] miza = m == null ? null : new int[] {m.x0(), m.y0(), m.x1(), m.y1()};
         return new Poravnava(izhod.toByteArray(),
-                new si.turnirko.dto.CeliceListkaDto(t.sirina, t.visina, nizi, vrstica(tabela.rezultat())));
+                new si.turnirko.dto.CeliceListkaDto(t.sirina, t.visina, nizi, vrstica(tabela.rezultat()), miza));
     }
 
     private static int[] vrstica(CeliceListka.Vrstica v) {
@@ -153,9 +178,30 @@ public class LokalniBralnikListka implements BralnikListka {
         if (rezultatPopravljen) {
             popravljene.add("rezultat");
         }
+        Miza miza = izrez.miza() == null ? new Miza(null, false)
+                : miza(porazdelitev(izrez.miza(), mreza, vecBranj),
+                        izrez.miza().popravljena() || !izrez.mizaZanesljiva());
         return new PrebranListek(true, null, null, null, false, null, null, nizi,
                 izid.rezultatLevo(), izid.rezultatDesno(), izid.negotovRezultat() || rezultatPopravljen, "NI", null,
-                opomba(izid.opomba(), popravljene));
+                opomba(izid.opomba(), popravljene), miza.stevilka(), miza.negotova());
+    }
+
+    /* Stevilka mize iz porazdelitve okenca: najverjetnejsa med 1-99 in prazno (mize 0
+       ni, zato nicla ni kandidat - steje pa v vsoto: kar mreza vidi kot 0, ni
+       zanesljiva druga stevilka). Pravil, ki bi mizo popravila, ni - negotova je,
+       kadar je mreza ne prebere zanesljivo, je zapis precrtan in prepisan ali okence
+       ni zanesljivo (vedno negotova = true). */
+    static Miza miza(double[] p, boolean vednoNegotova) {
+        double vsota = p[0];
+        int najboljsa = RazlagaListka.PRAZNO;
+        for (int v = 1; v <= RazlagaListka.PRAZNO; v++) {
+            vsota += p[v];
+            if (p[v] > p[najboljsa]) {
+                najboljsa = v;
+            }
+        }
+        boolean negotova = vednoNegotova || vsota <= 0 || p[najboljsa] / vsota < ZAUPANJE_MIZE;
+        return new Miza(najboljsa == RazlagaListka.PRAZNO ? null : najboljsa, negotova);
     }
 
     /* Opomba razlage in seznam popravljenih celic v enem stavku za organizatorja. */
@@ -186,7 +232,9 @@ public class LokalniBralnikListka implements BralnikListka {
         RazrezCelice.Vsebina[] rezultat = {
                 RazrezCelice.razrezi(slika, tabela.rezultat().levo()),
                 RazrezCelice.razrezi(slika, tabela.rezultat().desno())};
-        return new Izrez(nizi, rezultat);
+        MizaListka.Okence okence = poravnan.miza();
+        RazrezCelice.Vsebina miza = okence == null ? null : RazrezCelice.razrezi(slika, okence.celica());
+        return new Izrez(nizi, rezultat, miza, okence != null && okence.zanesljivo());
     }
 
     /* QR koda, poravnava in iskanje celic; ob neuspehu NapakaBranjaListka z
@@ -220,7 +268,7 @@ public class LokalniBralnikListka implements BralnikListka {
             throw new NapakaBranjaListka("Na fotografiji ni mogoče najti celic za točke. "
                     + "Fotografiraj listek od zgoraj, ostro in brez sence ali prsta čez tabelo.");
         }
-        return new Poravnan(poravnan.slika(), tabela);
+        return new Poravnan(poravnan.slika(), tabela, MizaListka.najdi(poravnan.slika()));
     }
 
     /* Verjetnost vsake vrednosti celice (0-99) in prazne celice, cez vse razlage

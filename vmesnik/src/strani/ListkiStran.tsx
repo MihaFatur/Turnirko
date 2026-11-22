@@ -1,7 +1,7 @@
 /* Natisljivi listki (zapisniki) tekem enega turnirskega dogodka.
 
-   Sodniki jih izpolnijo z roko za mizo, glavni sodnik pa rezultate pozneje
-   vnese prek običajnega vnosa. Listek je POGLED na podatke, ki jih dogodek že
+   Sodniki jih izpolnijo z roko za mizo; izid se prebere s fotografije listka
+   (branje listkov) ali ga organizator vnese prek običajnega vnosa. Listek je POGLED na podatke, ki jih dogodek že
    ima; edino, kar Turnirko pomni zraven, je sled tiska (tekma.listekNatisnjenOb):
    organizator listke natisne že med igro, rezultat pa se vnese šele pozneje,
    zato so natisnjeni listki označeni in jih naslednji tisk preskoči. Tiska
@@ -21,6 +21,11 @@
    natančno 210 × 297 mm, listki 105 × 99 mm, zato ga režejo samo trije rezi po
    črtkanih črtah. Zadnji list se dopolni s praznimi mesti, da so rezi povsod
    enaki.
+
+   QR koda na listku nosi skrivnost (S1), ki sodniku da pravico poslati izid te
+   tekme s svojim telefonom. Kode s skrivnostjo da strežnik samo organizatorju
+   tega turnirja in adminu; gost natisne listek z zasilno kodo brez skrivnosti
+   (prebere jo pult, sodniška pot pa ne).
 
    Ekipni dogodek ima namesto listkov uradni ekipni zapisnik za vsako tekmo
    (ZapisnikiEkipnegaDogodka): iste pripravljene tekme, v istem vrstnem redu,
@@ -57,7 +62,7 @@ type Nacin = 'tekme' | 'prazni'
 export function ListkiStran() {
   const { id } = useParams()
   const idDogodka = Number(id)
-  const { jeAdmin, smemUrejati } = useAvtentikacija()
+  const { jeAdmin, smemUrejati, uporabnik } = useAvtentikacija()
 
   const mreza = useQuery({
     queryKey: ['dogodek', idDogodka],
@@ -94,6 +99,19 @@ export function ListkiStran() {
         })))
   const izbira = useIzbiraListkov(idDogodka, listki, smemOznacevati)
 
+  /* Kode QR s skrivnostjo (S1). Ključ so id-ji pripravljenih tekem: ko se nabor
+     spremeni (žreb, nova tekma), se kode naložijo znova. Podatki se uporabijo SAMO,
+     dokler sme uporabnik urejati - onemogočena poizvedba bi sicer vrnila kode iz
+     predpomnilnika tudi gostu, ki odpre stran po odjavi v istem zavihku (odjava
+     jih tudi odstrani, AvtentikacijaKontekst). */
+  const idjiListkov = useMemo(() => listki.map((l) => l.tekma.id).join(','), [listki])
+  const kodePoizvedba = useQuery({
+    queryKey: ['kode-listkov', idDogodka, idjiListkov],
+    queryFn: () => dogodkiApi.kodeListkov(idDogodka),
+    enabled: smemOznacevati && !ekipno,
+  })
+  const kode = smemOznacevati ? kodePoizvedba.data : undefined
+
   const [nacin, nastaviNacin] = useState<Nacin>('tekme')
   const [vnosPraznih, nastaviVnosPraznih] = useState(String(LISTKOV_NA_LIST))
   const praznih = steviloPraznih(vnosPraznih)
@@ -119,10 +137,10 @@ export function ListkiStran() {
       dogodek
         ? izbira.izbraniListki.map((l) => ({
             kljuc: `tekma-${l.tekma.id}`,
-            podatki: podatkiListka(l, imeTurnirja, dogodek),
+            podatki: podatkiListka(l, imeTurnirja, dogodek, kode?.[String(l.tekma.id)] ?? null),
           }))
         : [],
-    [dogodek, izbira.izbraniListki, imeTurnirja],
+    [dogodek, izbira.izbraniListki, imeTurnirja, kode],
   )
   const prazniListki = useMemo<ListekZaTisk[]>(() => {
     if (!dogodek) return []
@@ -163,6 +181,8 @@ export function ListkiStran() {
   }
 
   const praznoNacin = nacin === 'prazni'
+  /* Izbran listek brez kode s skrivnostjo, čeprav jo organizator sme dobiti. */
+  const manjkaKoda = !!kode && izbira.izbraniListki.some((l) => !kode[String(l.tekma.id)])
   const steviloZaTisk = praznoNacin ? praznih : izbira.izbraniListki.length
   const listi = razdeli(praznoNacin ? prazniListki : listkiTekem, LISTKOV_NA_LIST)
 
@@ -180,11 +200,26 @@ export function ListkiStran() {
         <span className="listki-orodja__stevec">
           {steviloZaTisk} {sklonListkov(steviloZaTisk)} za tisk
         </span>
-        <button className="gumb gumb--glavni" disabled={steviloZaTisk === 0} onClick={natisni}>
+        <button
+          className="gumb gumb--glavni"
+          /* Prijavljen ne-admin: dokler turnir ni naložen, se ne ve, ali sme dobiti
+             kode s skrivnostjo - tisk bi sicer šel z zasilnimi kodami brez opozorila. */
+          disabled={
+            steviloZaTisk === 0 ||
+            (!praznoNacin && (kodePoizvedba.isLoading || (!!uporabnik && !jeAdmin && turnir.isPending)))
+          }
+          onClick={natisni}
+        >
           {praznoNacin ? 'Natisni prazne' : 'Natisni izbrane'} ({steviloZaTisk})
         </button>
         {!praznoNacin && <PotrditevTiska izbira={izbira} vrsta="listek" />}
       </div>
+      {!praznoNacin && (kodePoizvedba.error || manjkaKoda) && (
+        <p className="obvestilo obvestilo--opozorilo zaslon-samo">
+          Kod za sodnike ni bilo mogoče naložiti. Listke lahko natisneš, a izid z njih bo
+          mogoče poslati samo s fotografijo na pultu, ne s telefonom sodnika.
+        </p>
+      )}
 
       <div className="listki-stran listki-stran--listki">
         <header className="listki-naslov zaslon-samo">
@@ -274,7 +309,12 @@ function razdeli<T>(seznam: T[], velikost: number): T[][] {
 }
 
 /* Podatki listka za pripravljeno tekmo. */
-function podatkiListka(l: PripravljenListek, imeTurnirja: string | null, dogodek: DogodekDto): ListekPodatki {
+function podatkiListka(
+  l: PripravljenListek,
+  imeTurnirja: string | null,
+  dogodek: DogodekDto,
+  kodaQr: string | null,
+): ListekPodatki {
   return {
     dogodek: imeTurnirja,
     kategorija: oznakaKategorije(dogodek),
@@ -283,6 +323,7 @@ function podatkiListka(l: PripravljenListek, imeTurnirja: string | null, dogodek
     steviloNizov: l.tekma.steviloNizov,
     miza: l.tekma.miza,
     idTekme: l.tekma.id,
+    kodaQr,
     stran1: { ime: imeUdelezenca(l.tekma.udelezenec1) ?? '—' },
     stran2: { ime: imeUdelezenca(l.tekma.udelezenec2) ?? '—' },
   }

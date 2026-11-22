@@ -41,34 +41,60 @@ public final class CeliceVadnice {
 
     /* Notranjost vseh okenc po vrsti (vrstica * STOLPCEV + stolpec), za razrez. */
     public static List<CeliceListka.Celica> najdi(Temnost list) {
+        boolean[] crnilo = crnilo(list);
+        List<CeliceListka.Celica> okenca = new ArrayList<>(GeometrijaVadnice.OKENC);
+        for (int i = 0; i < GeometrijaVadnice.OKENC; i++) {
+            okenca.add(okence(list, crnilo, GeometrijaVadnice.okence(i)).celica());
+        }
+        return okenca;
+    }
+
+    /* Crnilo poravnanega lista za iskanje robov okenc. */
+    static boolean[] crnilo(Temnost list) {
+        return list.crnilo(8 * GeometrijaListka.PX_NA_MM, 0.10f, 0.15f);
+    }
+
+    /* Notranjost okenca in stevilo robov (0-4), ki so bili najdeni kot crta; pri
+       manjkajocem robu velja pricakovana lega. Okence mize na listku (MizaListka)
+       po tem loci nov listek od starega, ki okenca nima. */
+    record Okence(CeliceListka.Celica celica, int najdenihRobov) {}
+
+    /* Okence z zunanjimi robovi mm = {x0, y0, x1, y1} na poravnanem listu (10 px/mm). */
+    static Okence okence(Temnost list, boolean[] crnilo, double[] mm) {
         int r = GeometrijaListka.PX_NA_MM;
-        boolean[] crnilo = list.crnilo(8 * r, 0.10f, 0.15f);
         int w = list.sirina;
         int h = list.visina;
         int o = RazrezCelice.ODMIK - 1;
-        List<CeliceListka.Celica> okenca = new ArrayList<>(GeometrijaVadnice.OKENC);
-        for (int i = 0; i < GeometrijaVadnice.OKENC; i++) {
-            double[] mm = GeometrijaVadnice.okence(i);
-            int x0 = (int) Math.round(mm[0] * r);
-            int y0 = (int) Math.round(mm[1] * r);
-            int x1 = (int) Math.round(mm[2] * r);
-            int y1 = (int) Math.round(mm[3] * r);
-            // crta se meri le na srednjih treh petinah roba: stevka v kotu ne naredi crte
-            int sy0 = y0 + (y1 - y0) / 5;
-            int sy1 = y1 - (y1 - y0) / 5;
-            int sx0 = x0 + (x1 - x0) / 5;
-            int sx1 = x1 - (x1 - x0) / 5;
-            IntPredicate navpicna = x -> x >= 1 && x < w - 1 && pokrito(sy0, sy1, y -> y >= 0 && y < h
-                    && (crnilo[y * w + x - 1] || crnilo[y * w + x] || crnilo[y * w + x + 1]));
-            IntPredicate vodoravna = y -> y >= 1 && y < h - 1 && pokrito(sx0, sx1, x -> x >= 0 && x < w
-                    && (crnilo[(y - 1) * w + x] || crnilo[y * w + x] || crnilo[(y + 1) * w + x]));
-            okenca.add(new CeliceListka.Celica(
-                    notranjiRob(navpicna, x0, true) - o,
-                    notranjiRob(vodoravna, y0, true) - o,
-                    notranjiRob(navpicna, x1, false) + o,
-                    notranjiRob(vodoravna, y1, false) + o));
+        int x0 = (int) Math.round(mm[0] * r);
+        int y0 = (int) Math.round(mm[1] * r);
+        int x1 = (int) Math.round(mm[2] * r);
+        int y1 = (int) Math.round(mm[3] * r);
+        // crta se meri le na srednjih treh petinah roba: stevka v kotu ne naredi crte
+        int sy0 = y0 + (y1 - y0) / 5;
+        int sy1 = y1 - (y1 - y0) / 5;
+        int sx0 = x0 + (x1 - x0) / 5;
+        int sx1 = x1 - (x1 - x0) / 5;
+        IntPredicate navpicna = x -> x >= 1 && x < w - 1 && pokrito(sy0, sy1, y -> y >= 0 && y < h
+                && (crnilo[y * w + x - 1] || crnilo[y * w + x] || crnilo[y * w + x + 1]));
+        IntPredicate vodoravna = y -> y >= 1 && y < h - 1 && pokrito(sx0, sx1, x -> x >= 0 && x < w
+                && (crnilo[(y - 1) * w + x] || crnilo[y * w + x] || crnilo[(y + 1) * w + x]));
+        int najdenih = (imaCrto(navpicna, x0) ? 1 : 0) + (imaCrto(navpicna, x1) ? 1 : 0)
+                + (imaCrto(vodoravna, y0) ? 1 : 0) + (imaCrto(vodoravna, y1) ? 1 : 0);
+        return new Okence(new CeliceListka.Celica(
+                notranjiRob(navpicna, x0, true) - o,
+                notranjiRob(vodoravna, y0, true) - o,
+                notranjiRob(navpicna, x1, false) + o,
+                notranjiRob(vodoravna, y1, false) + o), najdenih);
+    }
+
+    /* Ali je v pasu iskanja okrog p kaksna crta (natisnjen rob okenca). */
+    private static boolean imaCrto(IntPredicate jeCrta, int p) {
+        for (int i = p - ISKANJE; i <= p + ISKANJE; i++) {
+            if (jeCrta.test(i)) {
+                return true;
+            }
         }
-        return okenca;
+        return false;
     }
 
     private static boolean pokrito(int od, int doo, IntPredicate crnilo) {

@@ -1,8 +1,11 @@
 /* Koda tekme na sodniskem listku: QR koda in natisnjena stevilka ob njej.
 
-   QR koda nosi »TK:<id tekme>« (alfanumericni nacin QR: velike crke, stevke in
-   dvopicje, zato je koda majhna - verzija 1 ali 2 - in berljiva tudi na
-   stisnjenem listku). Natisnjena stevilka »T-<id>« je za cloveka in za bralnika,
+   QR koda nosi »TK:<id tekme>:<skrivnost>« (alfanumericni nacin QR: velike crke,
+   stevke in dvopicje, zato je koda majhna - verzija 1 - in berljiva tudi na
+   stisnjenem listku). Skrivnost (S1, SkrivnostListka) da sodniku pravico poslati
+   izid te tekme brez prijave (S2). Listki, natisnjeni pred S1 (22. 11. 2026),
+   nosijo samo »TK:<id>«: bralnik jih se vedno prebere, sodniska pot pa jih ne
+   sprejme. Natisnjena stevilka »T-<id>« je za cloveka in za bralnika,
    ce QR na fotografiji ni berljiva (zamegljena, prepognjen vogal).
 
    Koda tekmo doloci deterministicno: brez nje bi jo moral bralnik ugibati po
@@ -38,9 +41,10 @@ import si.turnirko.pomozno.ObdelavaSlik;
 
 public final class KodaListka {
 
-    /* QR: »TK:48213«; natisnjeno: »T-48213«. Bralnik vrne natisnjeno, kakor jo
-       vidi (lahko s presledkom ali brez vezaja), zato je vzorec za branje ohlapen. */
-    private static final Pattern QR = Pattern.compile("^TK:(\\d{1,12})$");
+    /* QR: »TK:48213:ABCD2345« (pred S1 samo »TK:48213«); natisnjeno: »T-48213«.
+       Bralnik vrne natisnjeno, kakor jo vidi (lahko s presledkom ali brez
+       vezaja), zato je vzorec za branje ohlapen. */
+    private static final Pattern QR = Pattern.compile("^TK:(\\d{1,12})(?::([A-Z2-7]{8}))?$");
     private static final Pattern NATISNJENA = Pattern.compile("T\\s*[-–:]?\\s*(\\d{1,12})");
     /* List vadnice stevk: »TKV:<razlicica postavitve>:<id lista>« (vadnica.ts v vmesniku). */
     private static final Pattern QR_VADNICE = Pattern.compile("^TKV:(\\d{1,3}):(\\d{1,12})$");
@@ -52,8 +56,14 @@ public final class KodaListka {
 
     private KodaListka() {}
 
+    /* Zapis brez skrivnosti: listki pred S1 in vhod za HMAC skrivnosti. */
     public static String vsebinaQr(long idTekme) {
         return "TK:" + idTekme;
+    }
+
+    /* Zapis novega listka s skrivnostjo (SkrivnostListka). */
+    public static String vsebinaQr(long idTekme, String skrivnost) {
+        return "TK:" + idTekme + ":" + skrivnost;
     }
 
     public static String natisnjena(long idTekme) {
@@ -82,8 +92,16 @@ public final class KodaListka {
 
     /* Prebrana koda tekme in sredisca njenih treh iskalnih vzorcev v koordinatah
        fotografije: [spodaj levo, zgoraj levo, zgoraj desno] (vrstni red ZXing).
-       Bralnik po njih poravna listek (PoravnavaListka). */
-    public record NajdenaKoda(long idTekme, double[][] tocke) {}
+       Bralnik po njih poravna listek (PoravnavaListka). Skrivnost je null pri
+       listku, natisnjenem pred S1; ali velja, pove SkrivnostListka. */
+    public record NajdenaKoda(long idTekme, String skrivnost, double[][] tocke) {
+
+        /* Skrivnost ne sme v dnevnik: izpis jo samo omeni. */
+        @Override
+        public String toString() {
+            return "NajdenaKoda[idTekme=" + idTekme + ", skrivnost=" + (skrivnost == null ? "ne" : "da") + "]";
+        }
+    }
 
     /* Prebrana koda lista vadnice stevk (razlicica postavitve, id lista) in
        sredisca iskalnih vzorcev kot pri NajdenaKoda. */
@@ -93,7 +111,7 @@ public final class KodaListka {
         Map<Long, NajdenaKoda> poId = new java.util.LinkedHashMap<>();
         for (Zadetek z : najdi(slika, QR, MANJSA_STRANICA)) {
             long id = Long.parseLong(z.skupine().group(1));
-            poId.putIfAbsent(id, new NajdenaKoda(id, z.tocke()));
+            poId.putIfAbsent(id, new NajdenaKoda(id, z.skupine().group(2), z.tocke()));
         }
         return List.copyOf(poId.values());
     }

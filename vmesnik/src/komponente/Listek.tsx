@@ -6,10 +6,10 @@
    rezultat (dobljeni nizi). Tocke so tako vedno pod imenom tistega, ki jih je
    dosegel, ne glede na to, kdo je pisal, zato jih sodnik ne more zamenjati.
 
-   Zgoraj stoji znamka Turnirko in prazna crta za stevilko mize, pod njo
-   dogodek, kategorija in skupina oz. faza; spodaj crta za ime sodnika in
-   podpis. Sodnik listek izpolni z roko za mizo, rezultat pa glavni sodnik
-   pozneje vnese prek obicajnega vnosa.
+   Zgoraj stoji znamka Turnirko in okence za stevilko mize (S1: bralnik ga
+   prebere), pod njo dogodek, kategorija in skupina oz. faza; spodaj crta za ime
+   sodnika in podpis. Sodnik listek izpolni z roko za mizo; izid prebere branje
+   listkov s fotografije ali ga organizator vnese prek obicajnega vnosa.
 
    Listek je namenoma crno-bel ne glede na temo (natis na papir), zato tu ne
    uporabljamo temo odvisnih spremenljivk. Natis na list A4 (6 listkov, rezi)
@@ -41,6 +41,9 @@ export interface ListekPodatki {
   /* Id tekme za QR kodo in natisnjeno stevilko (branje listka s fotografije);
      null pri praznem listku, ki tekme se nima. */
   idTekme: number | null
+  /* Vsebina QR kode s skrivnostjo (»TK:<id>:<skrivnost>«, S1) s streznika; brez nje
+     zasilno »TK:<id>«, ki ga prebere pult, sodniska pot (S2) pa ne. */
+  kodaQr?: string | null
   stran1: StranListka
   stran2: StranListka
   /* Prazen listek: imena igralcev in skupino oz. fazo sodnik dopise z roko
@@ -63,7 +66,10 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
       <Oznaka kje="zl" />
       <Oznaka kje="sl" />
       <Oznaka kje="sd" />
-      {podatki.idTekme !== null && <KodaTekme idTekme={podatki.idTekme} />}
+      {podatki.idTekme !== null && (
+        <KodaTekme idTekme={podatki.idTekme} vsebina={podatki.kodaQr ?? vsebinaQr(podatki.idTekme)} />
+      )}
+      <OkenceMize miza={podatki.miza} />
 
       {/* Vrh listka: glava in kontekst; desno je prostor za kodo tekme. */}
       <div className={'listek__vrh' + (podatki.idTekme !== null ? ' listek__vrh--koda' : '')}>
@@ -71,11 +77,6 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
           <span className="listek__znamka">
             <ZnakTurnirko velikost={18} />
             Turnirko
-          </span>
-          {/* Kadar miza se ni dodeljena, ostane crta za rocni vpis. */}
-          <span className="listek__miza">
-            Miza št.
-            <span className="listek__vpis">{podatki.miza !== null ? podatki.miza : ''}</span>
           </span>
         </header>
 
@@ -157,10 +158,24 @@ function Oznaka({ kje }: { kje: 'zl' | 'sl' | 'sd' }) {
   )
 }
 
-/* QR koda tekme in njena številka. Organizator listek po tekmi fotografira, strežnik
-   po kodi ve, katera tekma je na njem (branje listkov, docs/pravila/branje-listkov.md). */
-function KodaTekme({ idTekme }: { idTekme: number }) {
-  const { velikost, pot } = potQr(vsebinaQr(idTekme))
+/* Okence za številko mize na STALNEM mestu glave (S1): bralnik ga poišče po robovih
+   in prebere z isto mrežo kot točke (si.turnirko.branje.GeometrijaListka.MIZA) -
+   ob premiku spremeni oboje. Kadar je miza ob tisku že znana, je natisnjena v
+   okencu; sicer jo vpiše organizator ob klicu ali sodnik za mizo. */
+function OkenceMize({ miza }: { miza: number | null }) {
+  return (
+    <>
+      <span className="listek__miza-oznaka">Miza</span>
+      <span className="listek__miza-okence">{miza !== null ? miza : ''}</span>
+    </>
+  )
+}
+
+/* QR koda tekme in njena številka. Sodnik ali organizator listek po tekmi
+   fotografira, strežnik po kodi ve, katera tekma je na njem, skrivnost v njej pa
+   sodniku da pravico poslati izid (branje listkov, docs/pravila/branje-listkov.md). */
+function KodaTekme({ idTekme, vsebina }: { idTekme: number; vsebina: string }) {
+  const { velikost, pot } = qrAliZasilna(idTekme, vsebina)
   return (
     <span className="listek__koda">
       <svg
@@ -174,6 +189,17 @@ function KodaTekme({ idTekme }: { idTekme: number }) {
       <span className="listek__stevilka">{natisnjenaKoda(idTekme)}</span>
     </span>
   )
+}
+
+/* Koda s skrivnostjo gre v QR verzije 1 do id-ja z 8 števkami; daljši zapis bi
+   potQr zavrnil in stran za tisk bi ostala prazna. Takrat zasilna koda brez
+   skrivnosti (pult jo prebere, sodnik ne). */
+function qrAliZasilna(idTekme: number, vsebina: string) {
+  try {
+    return potQr(vsebina)
+  } catch {
+    return potQr(vsebinaQr(idTekme))
+  }
 }
 
 /* Vrednost, daljša od tega, se v eni vrstici ne prilega pri običajni velikosti

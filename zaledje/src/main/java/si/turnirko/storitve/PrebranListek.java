@@ -35,8 +35,22 @@ public record PrebranListek(
         /* LEVO ali DESNO: kdo je zmagal pri posebnem izidu, ce je razvidno. */
         String posebnostZmagovalec,
         /* Kratka opomba bralnika o necem nenavadnem (prečrtano, pripis). */
-        String opomba
+        String opomba,
+        /* Stevilka mize iz okenca v glavi (S1); null, ce je okence prazno ali ga
+           listek (natisnjen pred S1) nima. Branja, shranjena pred S1, polja nimajo. */
+        Integer miza,
+        /* Zapis v okencu mize je tezko berljiv (zaupanje pod mejo). */
+        boolean negotovaMiza
 ) {
+
+    /* Listek brez prebrane mize (prazen listek, testi, branja pred S1). */
+    public PrebranListek(boolean jeListek, String koda, String imeLevo, String imeDesno, boolean imenaRocno,
+                         String kategorija, String faza, List<Niz> nizi, Integer rezultatLevo,
+                         Integer rezultatDesno, boolean negotovRezultat, String posebnost,
+                         String posebnostZmagovalec, String opomba) {
+        this(jeListek, koda, imeLevo, imeDesno, imenaRocno, kategorija, faza, nizi, rezultatLevo, rezultatDesno,
+                negotovRezultat, posebnost, posebnostZmagovalec, opomba, null, false);
+    }
 
     /* Ena vrstica niza: tocke levega in desnega stolpca; null = prazna ali
        neberljiva celica. Negotovo = popravljeno, precrtano ali tezko berljivo. */

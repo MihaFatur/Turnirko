@@ -130,6 +130,14 @@ public class VarnostneNastavitve {
                         // ki jo poslje odjemalec poste): dokaz je zeton iz sporocila, ki ne
                         // odpre nicesar razen izklopa obvestil
                         .requestMatchers(HttpMethod.POST, "/api/v1/obvestila/odjava").permitAll()
+                        // sodnik slika listek s svojim telefonom (S2): dokaz je skrivnost v
+                        // QR kodi listka, nato enkraten zeton branja; omejitev hitrosti po
+                        // IP v storitvi. Druge metode na /sodnik/** ne obstajajo.
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/sodnik/listki",
+                                "/api/v1/sodnik/branja/*/stanje",
+                                "/api/v1/sodnik/branja/*/potrdi").permitAll()
+                        .requestMatchers("/api/v1/sodnik/**").denyAll()
                         // /auth/me sluzi za preverbo poverilnic - zahteva veljavno prijavo
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         // placana registracija: racun se ustvari sele v webhooku, zato
@@ -206,6 +214,9 @@ public class VarnostneNastavitve {
                         // fotografija listka tekme (F4.4) ni javna, ceprav je GET pod /tekme
                         .requestMatchers("/api/v1/branje-listkov/**", "/api/v1/branja-listkov/**",
                                 "/api/v1/turnirji/*/branja-listkov", "/api/v1/tekme/*/listek").authenticated()
+                        // kode QR za tisk listkov (S1) nosijo skrivnost, ki sodniku da pravico
+                        // poslati izid: samo prijavljeni (lastnistvo preveri ListkiStoritev)
+                        .requestMatchers("/api/v1/dogodki/*/listki/kode").authenticated()
                         // podpora klubu (V61): izbira kluba in popust organizatorja sta osebna
                         .requestMatchers("/api/v1/podpora-kluba", "/api/v1/podpora-kluba/**").authenticated()
                         // potisna obvestila (V60): vpis naprave, izpis in preizkus so osebni (paket

@@ -189,6 +189,10 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             """)
     List<Tekma> najdiZaDogodek(Long idDogodek);
 
+    /* Id-ji vseh tekem dogodka (kode QR za tisk listkov, ListkiStoritev.kode). */
+    @Query("SELECT t.id FROM Tekma t WHERE t.dogodek.id = :idDogodek ORDER BY t.id")
+    List<Long> idjiZaDogodek(Long idDogodek);
+
     /* Tekma z vsem, kar potrebujeta vnos rezultata in izpis v DTO. */
     @Query("""
             SELECT t FROM Tekma t

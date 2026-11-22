@@ -210,7 +210,10 @@ const ZASEBNOST: Tocka[] = [
         za ločevanje igralcev z enakim imenom. Podlaga je zakoniti interes vodenja javne
         zgodovine tekmovanj.
         <br />
-        Organizator lahko izpolnjen sodniški listek fotografira, da Turnirko prebere točke.
+        Organizator ali sodnik (s svojim telefonom, brez prijave, kadar organizator to vklopi)
+        lahko izpolnjen sodniški listek fotografira, da Turnirko prebere točke. O sodniku ne
+        hranimo ničesar; njegov naslov IP se uporabi le za kratkotrajno omejitev števila
+        fotografij in se ne shrani.
         Fotografijo, na kateri sta imeni igralcev, obdela samo strežnik Turnirka, brez zunanjih
         storitev. Vidita jo le organizator tekmovanja in upravljavec, izbriše pa se 30 dni po
         tekmovanju (listek, vnesen pozneje, 30 dni po vnosu). Prebrane točke ostanejo pri tekmi

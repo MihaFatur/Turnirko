@@ -21,6 +21,7 @@ import type {
   KandidatListkaDto,
   NacinPotrditve,
   PredlogIzidaDto,
+  SodniskaPotrditev,
   TekmaListkaDto,
   VnosRezultata,
 } from '../api/tipi'
@@ -246,6 +247,14 @@ export function BranjeListkovStran() {
             </p>
           </div>
 
+          {branja.data && (
+            <StikaloSodnikov
+              idTurnirja={idTurnirja}
+              nacin={branja.data.sodnikiListki}
+              onSpremenjeno={() => void odjemalec.invalidateQueries({ queryKey: kljucBranj })}
+            />
+          )}
+
           {branja.data && branja.data.potrjenih > 0 && (
             <p className="branje__merilo">
               Brez popravka {branja.data.brezPopravka} od {branja.data.potrjenih} potrjenih
@@ -357,7 +366,8 @@ export function BranjeListkovStran() {
                     <span className="branje-zakljuceno__izid">
                       {b.stanje === 'ZAVRZENO'
                         ? 'zavrženo'
-                        : `${izidTekme(b.tekma)}${b.popravljeno ? ' · popravljeno' : ''}`}
+                        : `${izidTekme(b.tekma)}${b.popravljeno ? ' · popravljeno' : ''}${
+                            b.sodnikPotrdil ? (b.sodnikSpremenil ? ' · sodnik popravil' : ' · potrdil sodnik') : ''}`}
                     </span>
                   </li>
                 ))}
@@ -398,6 +408,63 @@ export function BranjeListkovStran() {
         />
       )}
     </section>
+  )
+}
+
+/* Stikalo »Sodniki slikajo listke« (S2). Sodnik izid pošlje s svojim telefonom;
+   pravico mu da koda na listku (natisnjenem po 22. 11. 2026). Predpregled: izid
+   počaka organizatorja (en dotik). Velja takoj: mreža napreduje ob sodnikovi
+   potrditvi, organizator nadzira v tej vrsti in med zaključenimi. */
+function StikaloSodnikov({
+  idTurnirja,
+  nacin,
+  onSpremenjeno,
+}: {
+  idTurnirja: number
+  nacin: SodniskaPotrditev | null
+  onSpremenjeno: () => void
+}) {
+  const sprememba = useMutation({
+    mutationFn: (nov: SodniskaPotrditev | null) => branjeListkovApi.sodnikiListki(idTurnirja, nov),
+    onSuccess: onSpremenjeno,
+  })
+  const moznosti: { vrednost: SodniskaPotrditev | null; oznaka: string }[] = [
+    { vrednost: null, oznaka: 'Izklopljeno' },
+    { vrednost: 'PREDPREGLED', oznaka: 'Predpregled' },
+    { vrednost: 'VELJA_TAKOJ', oznaka: 'Velja takoj' },
+  ]
+  return (
+    <div className="branje__sodniki">
+      <p className="branje__sodniki-naslov">Sodniki slikajo listke s svojim telefonom</p>
+      <div className="izbirnik" role="group" aria-label="Sodniki slikajo listke">
+        {moznosti.map((m) => (
+          <button
+            key={m.oznaka}
+            type="button"
+            className={'izbirnik__gumb' + (nacin === m.vrednost ? ' izbirnik__gumb--aktiven' : '')}
+            aria-pressed={nacin === m.vrednost}
+            disabled={sprememba.isPending}
+            onClick={() => sprememba.mutate(m.vrednost)}
+          >
+            {m.oznaka}
+          </button>
+        ))}
+      </div>
+      <p className="branje__navodilo">
+        {nacin === null
+          ? 'Izide fotografiraš samo ti na pultu.'
+          : nacin === 'PREDPREGLED'
+            ? 'Sodnik izid potrdi na telefonu, velja pa šele, ko ga tu potrdiš ti (en dotik).'
+            : 'Izid velja takoj, ko ga sodnik potrdi. Ti ga vidiš med zaključenimi in ga po potrebi popraviš.'}
+        {nacin !== null && (
+          <>
+            {' '}Sodniki odprejo <strong>{window.location.host}/s</strong>.{' '}
+            <Link to={`/turnirji/${idTurnirja}/plakat-sodniki`} target="_blank">Plakat za ob mize →</Link>
+          </>
+        )}
+      </p>
+      <SporociloNapake napaka={sprememba.error} />
+    </div>
   )
 }
 
@@ -442,6 +509,12 @@ function VrsticaZaPotrditev({
             <span className="branje-vrsta__koda">{natisnjenaKoda(tekma.tekma.id)}</span> {opisTekme(tekma)}
           </p>
         )}
+        {branje.poslalSodnik && (
+          <p className="branje-vrsta__sodnik">
+            {branje.sodnikPotrdil ? 'Sodnik je izid potrdil – čaka tebe' : 'Poslal sodnik, še ni potrdil'}
+          </p>
+        )}
+        {branje.stanje === 'PREBRANO' && <MizaZListka branje={branje} />}
         {tekma && <p className="branje-vrsta__imena">{imeTekme(tekma)}</p>}
 
         {branje.stanje === 'NAPAKA' && <p className="branje-vrsta__napaka">{branje.napaka}</p>}
@@ -681,6 +754,32 @@ function Fotografija({ url, id }: { url: string | null; id?: number }) {
   })
   const vir = url ?? (slika.data ? naslovSlike(slika.data) : null)
   return vir ? <img src={vir} alt="Fotografija listka" /> : <span className="branje-vrsta__brez-slike" />
+}
+
+/* Številka mize iz okenca listka (S1). Zaenkrat samo podatek: izida ne spremeni,
+   miza se začne uporabljati s klicanjem tekem (M1). Negotova miza ima ob sebi
+   izrez okenca, da organizator vidi, kaj je napisano. */
+function MizaZListka({ branje }: { branje: BranjeListkaDto }) {
+  const okence = branje.celice?.miza
+  // miza, ki jo je potrdil sodnik, velja pred prebrano
+  if (branje.mizaSodnika !== null) {
+    return <p className="branje-vrsta__miza">Miza {branje.mizaSodnika} (sodnik)</p>
+  }
+  if (branje.prebranaMiza === null && !branje.negotovaMiza) return null
+  return (
+    <p className={'branje-vrsta__miza' + (branje.negotovaMiza ? ' branje-vrsta__miza--negotova' : '')}>
+      {branje.prebranaMiza !== null ? `Miza ${branje.prebranaMiza} (z listka)` : 'Miza: zapis ni berljiv'}
+      {branje.negotovaMiza && branje.celice && okence && okence.length === 4 && (
+        <IzrezCelice
+          id={branje.id}
+          slog={slogIzreza({ x0: okence[0], y0: okence[1], x1: okence[2], y1: okence[3] },
+            branje.celice.sirina, branje.celice.visina)}
+          povecan={false}
+          desno={false}
+        />
+      )}
+    </p>
+  )
 }
 
 /* Izrezi celic ob poljih obrazca (F4.1): vse iz ene poravnane slike listka (ena

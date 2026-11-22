@@ -112,6 +112,10 @@ Trdne omejitve, ki jih prihodnje delo ne sme razbiti:
   po potrditvi admina); njena zgostitev ne sme v nobeno drugo javno polje;
 - statuse in pravice določa strežnik, vmesnik dejanja le skrije; gost sme samo
   `GET`; gesla samo kot BCrypt zgostitev, brati jih ni mogoče;
+- **edina izjema od »gost sme samo GET«** (od 22. 11. 2026): sodnik pošlje izid s
+  svojim telefonom brez prijave (`POST /api/v1/sodnik/**`, branje listkov S2).
+  Pravico mu da skrivnost v QR kodi listka (samo za to tekmo, dokler nima izida, ob
+  vklopljenem stikalu turnirja), nato enkraten žeton branja; omejitev po IP;
 - igralca se ne briše, samo arhivira — tekmovalna zgodovina ostane;
 - vsaka sprememba domenske logike (žreb, rezultati, rating) potrebuje test.
 

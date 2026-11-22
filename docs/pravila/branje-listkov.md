@@ -2,12 +2,16 @@
 
 > Organizator s telefonom fotografira izpolnjen sodniški listek, Turnirko prebere točke in predlaga izid, organizator ga potrdi.
 > Nastalo 19. 11. 2026 po naročilu lastnika. Migracija V68.
-> Načrt nadaljnjega dela (merjenje, natančnost, vadnica, postaja za zajem s škatlo):
-> `docs/NACRT-BRANJE-LISTKOV.md`.
+> Načrt nadaljnjega dela: `docs/NACRT-BRANJE-LISTKOV.md`. **Od 22. 11. 2026 je smer
+> »sodnik slika listek«** (faze S1, S2, M1, M2): sodnik listek fotografira s svojim
+> telefonom brez prijave in izid potrdi sam, organizator nadzira in kliče tekme na
+> mize; pult ostane rezerva. Postaja in škatla sta ustavljeni.
 
 - **Zakaj:** na turnirju sta morala biti dva organizatorja, ker prepisovanje listkov v
-  Turnirko traja predolgo. Sodniki in igralci pri mizi telefona nimajo (QR pri mizi
-  zavrnjen), zato se listek fotografira na pultu.
+  Turnirko traja predolgo. Do 22. 11. 2026 je veljalo, da sodniki pri mizi telefona
+  nimajo, zato se je listek fotografiral na pultu. Lastnik je nato odločil, da listek
+  slika sodnik sam takoj po tekmi (manj dela in napak za organizatorja, prosta miza je
+  znana takoj); kdor telefona nima, nese listek na pult.
 - **Brezplačno in brez omejitve** (odločitev lastnika): bere lastna nevronska mreža na
   strežniku (`si.turnirko.branje`), brez zunanjih storitev. Branje s Claudom je bilo
   zgrajeno in na zahtevo lastnika odstranjeno (strošek na listek). Ne uvajaj plačljive
@@ -22,11 +26,56 @@
   koda 13 mm zgoraj desno stojijo na **stalnih mestih** (`slog.css` razdelek »Sodniški
   listek«, `GeometrijaListka.java`). **Ob spremembi listka spremeni oboje.** Oznaki sta
   vektorski (`<svg>`), ker rob ali ozadje brskalnik zaokroži oz. ne natisne.
-- QR nosi `TK:<id tekme>` (verzija 1), pod njo je `T-<id>` (`pomozno/kodaListka.ts`,
-  `KodaListka.java`). Prazen listek kode nima — tekmo izbere organizator s seznama
-  tekem, ki čakajo na izid.
+- QR nosi `TK:<id tekme>:<skrivnost>` (verzija 1, ECC M; S1 od 22. 11. 2026), pod njo
+  je `T-<id>` (`pomozno/kodaListka.ts`, `KodaListka.java`). Listki, natisnjeni prej,
+  nosijo samo `TK:<id>`: bralnik jih še prebere. Prazen listek kode nima — tekmo
+  izbere organizator s seznama tekem, ki čakajo na izid.
 - Celica za točke je **prosta** (lastnik je zavrnil okenca za števke): razrez na eno ali
   dve števki je del branja.
+- **Okence za mizo** (S1) stoji na stalnem mestu glave: zunanji robovi x 62–80 mm,
+  y 5–12 mm, črta 0,45 mm (`GeometrijaListka.MIZA`, `.listek__miza-okence`), levo od
+  njega oznaka »Miza«. Znana miza je ob tisku natisnjena v okencu.
+
+## Skrivnost listka in miza (S1, 22. 11. 2026, V74)
+
+- **Skrivnost** (`SkrivnostListka`) je prvih 40 bitov HMAC-SHA256(ključ, `TK:<id>`) v
+  base32 (A–Z, 2–7), 8 znakov. Zapis ostane v QR verzije 1 do id-ja z 8 števkami
+  (`potQr` vsili verzijo 1 in pri daljšem zapisu vrže napako). Skrivnost sodniku (S2)
+  da pravico poslati izid te tekme: kdor ima listek, sme poslati izid samo te tekme.
+- **Ključ** (32 bajtov, `SecureRandom`) ustvari aplikacija v tabeli `kljuc_aplikacije`
+  (V74), v **lastni transakciji** (REQUIRES_NEW), naloži pa ga že ob zagonu
+  (`ApplicationReadyEvent`): prva uporaba sredi tiska kod bi potrebovala drugo
+  povezavo iz bazena. V migraciji in repozitoriju ga ni; v dnevnik gre samo opozorilo,
+  da je nastal nov ključ. Ključ je del baze in njenih kopij — **obnova baze brez te
+  tabele naredi nov ključ, listki, natisnjeni prej, pa za sodnika ne veljajo več**
+  (pult jih še prebere). Testno okolje ga dobi s kopijo baze.
+- **Kode dobi samo organizator** turnirja in admin: `GET /dogodki/{id}/listki/kode`
+  (preverba lastništva, varnostna veriga `authenticated`, `Cache-Control: no-store`).
+  Javni `TekmaDto` skrivnosti nima; `KodaListka.NajdenaKoda.toString` je ne izpiše.
+  Gost lahko listke natisne, a z zasilno kodo brez skrivnosti (pult jo prebere,
+  sodniška pot ne). Stran za tisk kode uporabi samo, dokler uporabnik sme urejati, in
+  odjava jih odstrani iz predpomnilnika (sicer bi jih gost v istem zavihku natisnil).
+  Če kod ni bilo mogoče naložiti ali kateri izbrani tekmi manjka, stran to pove in tisk
+  dovoli; ključ poizvedbe so id-ji pripravljenih tekem.
+- **Branje mize** (`MizaListka`, `LokalniBralnikListka.miza`): okence se poišče po
+  robovih kot okenca vadnice; ista mreža prebere 1–99. Okence velja le, če so najdeni
+  vsaj trije robovi (listek pred S1 ima na istem mestu samo črto za vpis → mize ni).
+  Ker za mizo ni pravil, ki bi branje popravila, je **negotova**, kadar:
+  - je zaupanje pod 0,8 (ničla ni kandidat, a šteje v vsoto);
+  - je zapis prečrtan in prepisan;
+  - okence ni »zanesljivo«: manjka rob, mere se ne ujemajo s natisnjenim ali čez
+    notranjost gre ravna črta od roba do roba. Simulacija je pokazala, da senca
+    pregiba čez okence mreža prebere kot »1« (prazno okence → tiha miza 1).
+- Miza gre v `PrebranListek` (`miza`, `negotovaMiza`; branja pred S1 jih nimajo) in v
+  `BranjeListkaDto.prebranaMiza`; izrez okenca je v `CeliceListkaDto.miza`. Stran
+  Branje listkov pokaže »Miza 7 (z listka)«, negotovo rjasto z izrezom. **Izida ne
+  spremeni** — uporabi jo klicanje tekem (M1).
+- **Simulacija** (`SimuliraneFotografijeTest`) od S1 riše na posnetek listka z okencem
+  (`/dev/listek`, brezglavi Chrome, deviceScaleFactor 3) in v okence piše mizo z ločenim
+  virom naključnosti (zaporedje celic ostane primerljivo). Izmerjeno 22. 11. 2026:
+  miza prav 100 % (običajne, zahtevne), 93 % (neugodne), 0 tihih napak na vseh ravneh;
+  točke nespremenjene v okviru ene celice. Listek pred S1 (`listek-5-nizov-pred-s1.png`)
+  se prebere kot prej in mize nima.
 
 ## Postopek branja (`LokalniBralnikListka`)
 
@@ -174,6 +223,65 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
   zaključek ne prepišeta drug drugemu stanja (`branje_listka` nima stolpca verzije).
   Zaklep se vzame pred transakcijo (čakajoča nit ne drži povezave z bazo).
   Aplikacija teče v enem primerku; ob več primerkih bi potrebovali zaklep v bazi.
+
+## Sodnik slika listek (S2, 22. 11. 2026, V75)
+
+- **Stikalo turnirja** `turnir.sodniki_listki` (organizator na strani Branje listkov,
+  `PUT /turnirji/{id}/sodniki-listki`, preverba kot za branje): `null` = izklopljeno,
+  `PREDPREGLED` = sodnikova potrditev počaka organizatorja (en dotik), `VELJA_TAKOJ` =
+  izid gre v tekmovanje ob sodnikovi potrditvi. Prvi pravi turnir teče v predpregledu.
+- **Stran `/s`** (`SodnikStran.tsx`, zunaj postavitve, brez prijave): »Slikaj listek« →
+  pošiljanje z istim ključem do odgovora (časovna meja 45 s, po ~20 s »Ni signala,
+  listek oddaj na pultu«; vrsta je samo v pomnilniku strani) → branje (sprašuje vsakih
+  1,5 s) → potrditev → »Izid je vpisan« ali »čaka na potrditev organizatorja«. Zaslon ne
+  ugasne. **Plakat** `/turnirji/:id/plakat-sodniki` (A4, QR do `/s`, trije koraki) ne
+  nosi nič skrivnega.
+- **Edine poti, kjer gost sme pisati** (PRODUCT.md): `POST /api/v1/sodnik/listki`,
+  `.../branja/{id}/stanje`, `.../branja/{id}/potrdi`; vse ostalo pod `/sodnik/**` je
+  `denyAll`. Žeton gre vedno v telesu, nikoli v naslovu (naslovi gredo v dnevnike).
+- **Sprejem** (`SodniskaBranjaStoritev.sprejmi`): (1) fotografija največ 4 MB
+  (kontroler, pred kopiranjem v pomnilnik); omejitev po naslovu IP (120 / 10 min,
+  šteje tudi zavrnjene poskuse – prav ti so ugibanje skrivnosti; IPv6 po omrežju /64)
+  in skupna (1000 / 10 min, šteje SAMO listke s pravo skrivnostjo, da je smeti z več
+  naslovov ne izčrpajo); (2) dekodiranje pod skupno mejo z organizatorji; (3) QR z
+  **veljavno skrivnostjo** –
+  šele nato branje sploh nastane (stari listek, napačna skrivnost, brez kode: isto
+  sporočilo); (4) stikalo vklopljeno, turnir ni uvožen, dogodek je v teku, tekma ni
+  ekipna, ni KONCANA ali CAKA; največ 10 sodniških fotografij na tekmo. Branje nastane brez uporabnika
+  (`poslal_sodnik`), s tekmo po kodi in z **enkratnim žetonom** (32 bajtov, v bazi
+  SHA-256, velja 30 min). Branje teče v ozadju kot pri organizatorju.
+- **Idempotenca**: ključ pošiljanja velja za tekmo (`uq_branje_listka_kljuc_sodnika`);
+  ponovitev vrne isto branje z NOVIM žetonom (starega strežnik ne pozna).
+- **Žeton**: napačen, tuj, potekel ali po potrditvi porabljen žeton → vedno isti 404
+  (ne izda, ali branje obstaja). Neuspeli poskusi so omejeni po naslovu (300 / 10 min);
+  potrditev preveri žeton PRED zaklepom zaključevanja (poplava smeti ne čaka na istem
+  zaklepu kot organizatorji). Ponovitev s ključem po sodnikovi potrditvi novega žetona
+  ne da.
+- **Potrditev** pod zaklepom zaključevanja (kot organizatorjeva): samo PREBRANO, samo
+  odigrana tekma s točkami 0–99 (predajo, brez boja in diskvalifikacijo vpiše
+  organizator). **Skrivnost dokazuje le, da je nekdo listek videl** (QR je na mizi,
+  fotografira ga lahko kdorkoli), ne da je izid pravi. Zato pri `VELJA_TAKOJ` velja izid
+  takoj samo, če ga podpira fotografija (`smeTakoj`): bralnik je sam prebral ODLOČENO
+  tekmo (zmagovalec ima dovolj nizov; prazen listek da 0:0), sodnik ne zamenja zmagovalca
+  in spremeni kvečjemu negotove ali neprebrane celice. Sicer gre izid v predpregled k
+  organizatorju (sodnik to izve). Takojšnji vpis:
+  `TekmaStoritev.vnesiRezultatSodnika` (iste preverbe in posledice kot
+  ročni vnos, **brez preverbe lastništva** – pravico je dala skrivnost; metoda je vidna
+  samo paketu `storitve`), način `SODNIK`, ostala branja tekme se zaprejo, učenje z
+  navadno težo samo iz takojšnjih vpisov (močne oznake F6.2 so samo organizatorjevi
+  popravki; ostalo se uči ob organizatorjevi potrditvi). `PREDPREGLED`:
+  izid se preveri (`preveriIgrano`), zapiše se samo `sodnikov_izid`.
+- **»Preberi znova«** na sodniškem branju ohrani tekmo (sicer bi sodnikov žeton ostal
+  brez nje); branje brez tekme (nov žreb) sodniku vrne »Te tekme ni več«.
+- **Organizator** vidi »Poslal sodnik« / »Sodnik je izid potrdil – čaka tebe«, mizo
+  sodnika in med zaključenimi »potrdil sodnik« / »sodnik popravil«. Pri predpregledu je
+  predlog sodnikov izid (`predlogSodnika`): pripravljen za en dotik, razen če je sodnik
+  spremenil prebrano (opozorilo `SODNIK_SPREMENIL`) ali ima tekma izid že vpisan.
+- **Sodnikov zaslon**: zmagovalec z velikimi črkami (»Zmagal je … 3:1«), točke kot na
+  listku, negotove in neprebrane celice rjaste – **potrditi jih mora z dotikom**, prej
+  gumb »Potrdi« ne deluje (največja nevarnost poti je potrditev brez gledanja). Miza:
+  prebrana ali poklicana, negotova se potrdi z dotikom; razlika med prebrano in
+  poklicano je opozorilo.
 
 ## Vrsta brez signala (F5, 22. 11. 2026, V73)
 

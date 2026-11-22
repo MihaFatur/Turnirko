@@ -105,10 +105,30 @@ public class TekmaStoritev {
        se vzame PRED prvim branjem tekme. */
     @Transactional
     public Tekma vnesiRezultat(Long idTekme, VnosRezultata vnos) {
+        return vnesi(idTekme, vnos, true);
+    }
+
+    /* Izid, ki ga je potrdil sodnik s svojim telefonom (S2): iste preverbe in
+       posledice kot vnesiRezultat, BREZ preverbe lastnistva - sodnik ni
+       prijavljen. Pravico mu da skrivnost v QR kodi listka (SkrivnostListka), ki
+       jo preveri SodniskaBranjaStoritev, preden branje sploh nastane. Metoda je
+       namenoma vidna samo paketu storitve: kontroler je ne more poklicati. */
+    @Transactional
+    Tekma vnesiRezultatSodnika(Long idTekme, VnosRezultata vnos) {
+        return vnesi(idTekme, vnos, false);
+    }
+
+    private Tekma vnesi(Long idTekme, VnosRezultata vnos, boolean preveriLastnistvo) {
         zaklepi.zakleniTurnirPoTekmi(idTekme);
-        lastnistvo.preveriTurnirPoTekmi(idTekme);
+        if (preveriLastnistvo) {
+            lastnistvo.preveriTurnirPoTekmi(idTekme);
+        }
         Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme)
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
+        if (!preveriLastnistvo && tekma.getDogodek().getTurnir().jeUvozen()) {
+            // uvozeno tekmovanje je samo za branje - tudi za sodnika
+            throw new DomenskaIzjema("Tekmovanje je uvoženo in samo za branje.");
+        }
 
         preveriStanje(tekma);
 
@@ -509,7 +529,9 @@ public class TekmaStoritev {
 
     /* Veljavnost odigrane tekme - brez spreminjanja tekme, zato jo lahko predogled
        popravka poklice, preden je kaj zapisano. */
-    private static void preveriIgrano(Tekma tekma, VnosRezultata vnos) {
+    /* Vidno paketu: sodnikov izid pri predpregledu (S2) se preveri enako, ceprav se
+       se ne zapise (SodniskaBranjaStoritev). */
+    static void preveriIgrano(Tekma tekma, VnosRezultata vnos) {
         Integer nizi1 = vnos.dobljeniNizi1();
         Integer nizi2 = vnos.dobljeniNizi2();
         if (nizi1 == null || nizi2 == null) {

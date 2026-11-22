@@ -23,10 +23,26 @@ public class ListkiStoritev {
 
     private final TekmaRepozitorij tekmaRepozitorij;
     private final LastnistvoStoritev lastnistvo;
+    private final SkrivnostListka skrivnost;
 
-    public ListkiStoritev(TekmaRepozitorij tekmaRepozitorij, LastnistvoStoritev lastnistvo) {
+    public ListkiStoritev(TekmaRepozitorij tekmaRepozitorij, LastnistvoStoritev lastnistvo,
+                          SkrivnostListka skrivnost) {
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.lastnistvo = lastnistvo;
+        this.skrivnost = skrivnost;
+    }
+
+    /* Vsebina QR kode za listek vsake tekme dogodka (id tekme -> »TK:<id>:<skrivnost>«).
+       Skrivnost da sodniku pravico poslati izid (S1/S2), zato jo dobi samo
+       organizator (lastnik) turnirja ali admin - javni podatki tekme je nimajo. */
+    @Transactional(readOnly = true)
+    public java.util.Map<Long, String> kode(Long idDogodka) {
+        lastnistvo.preveriTurnirPoDogodku(idDogodka);
+        java.util.Map<Long, String> kode = new java.util.LinkedHashMap<>();
+        for (Long id : tekmaRepozitorij.idjiZaDogodek(idDogodka)) {
+            kode.put(id, skrivnost.vsebinaQr(id));
+        }
+        return kode;
     }
 
     /* Tekme dogodka oznaci kot natisnjene (zdaj) ali neoznaci (null). Id, ki ne

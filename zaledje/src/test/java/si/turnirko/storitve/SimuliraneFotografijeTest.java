@@ -2,7 +2,8 @@
    do prepisa).
 
    Na listek, kot ga natisne vmesnik (resources/branje/listek-5-nizov.png, posnetek
-   iz brskalnika, 11,3 px/mm), se v celice narisejo rocne stevke iz preizkusnega
+   razvojne strani /dev/listek v brezglavem Chromu, 11,34 px/mm; od S1 z okencem
+   mize in QR s skrivnostjo), se v celice narisejo rocne stevke iz preizkusnega
    dela MNIST - teh mreza pri ucenju ni videla. Listek se nato »fotografira«:
    zasuk, perspektiva telefona, neenakomerna svetloba, sum in stiskanje JPEG.
    Zahtevne fotografije imajo se stevke, ki se dotikajo ali silijo cez celico,
@@ -14,13 +15,16 @@
    - bralnik najde oznake in celice tudi na zasukani fotografiji s perspektivo;
    - prazen listek nima nobenega prebranega niza;
    - velika vecina celic je prebrana prav, napacna celica pa je skoraj vedno
-     oznacena kot negotova (organizator jo pogleda) - tiha napaka je redka.
+     oznacena kot negotova (organizator jo pogleda) - tiha napaka je redka;
+   - stevilka mize iz okenca (S1) je prebrana prav ali oznacena kot negotova;
+     listek pred S1 (listek-5-nizov-pred-s1.png) se prebere kot prej in mize nima.
    Meje so postavljene pod izmerjene vrednosti (pisava iz MNIST ni pisava v
    dvorani); pravo merilo je stevilo potrjenih listkov brez popravka na strani
    Branje listkov. */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,8 +49,10 @@ import org.junit.jupiter.api.Test;
 
 import si.turnirko.branje.CeliceListka;
 import si.turnirko.branje.GeometrijaListka;
+import si.turnirko.branje.MizaListka;
 import si.turnirko.branje.PoravnavaListka;
 import si.turnirko.branje.Preslikava;
+import si.turnirko.branje.Temnost;
 import si.turnirko.branje.UcenjeStevk;
 
 class SimuliraneFotografijeTest {
@@ -79,12 +85,18 @@ class SimuliraneFotografijeTest {
             {GeometrijaListka.SPODAJ_LEVO[0] / GeometrijaListka.SIRINA, GeometrijaListka.SPODAJ_LEVO[1] / GeometrijaListka.VISINA},
             {GeometrijaListka.SPODAJ_DESNO[0] / GeometrijaListka.SIRINA, GeometrijaListka.SPODAJ_DESNO[1] / GeometrijaListka.VISINA}};
 
-    record Meritev(int listkov, int neprebranih, double prav, double tihe, int brezPopravka, double msNaListek) {}
+    /* mizaPrav/mizaTihe: delez prebranih listkov s pravo mizo oziroma z napacno, ki ni
+       oznacena kot negotova (S1). */
+    record Meritev(int listkov, int neprebranih, double prav, double tihe, int brezPopravka, double msNaListek,
+                   double mizaPrav, double mizaTihe) {}
 
     static BufferedImage listek;
     static double pxNaMm;
     private static List<UcenjeStevk.Vzorec> stevke;
     static CeliceListka.Tabela celice;
+    /* Okence mize na cistem listku (S1). */
+    static CeliceListka.Celica miza;
+    static boolean mizaZanesljiva;
     static LokalniBralnikListka bralnik;
 
     /* Fotografija listka z danim izidom (za druge teste: ucenje iz potrjenih listkov). */
@@ -114,7 +126,11 @@ class SimuliraneFotografijeTest {
         }
         // lega celic na cistem listku (iz istega postopka, ki ga uporablja bralnik)
         double[][] qr = KodaListka.najdi(listek).getFirst().tocke();
-        celice = CeliceListka.najdi(PoravnavaListka.poravnaj(listek, qr).slika());
+        Temnost poravnan = PoravnavaListka.poravnaj(listek, qr).slika();
+        celice = CeliceListka.najdi(poravnan);
+        MizaListka.Okence okence = MizaListka.najdi(poravnan);
+        miza = okence == null ? null : okence.celica();
+        mizaZanesljiva = okence != null && okence.zanesljivo();
         VirMrezeStevk vir = new VirMrezeStevk(null);
         VirMrezeStevk.Nalozena vgrajena = VirMrezeStevk.vgrajena();
         vir.nastavi(vgrajena.mreza(), vgrajena.oznaka());
@@ -134,6 +150,48 @@ class SimuliraneFotografijeTest {
         assertEquals(5, p.nizi().size());
         assertTrue(p.nizi().stream().allMatch(n -> n.levo() == null && n.desno() == null), p.nizi().toString());
         assertNull(p.rezultatLevo());
+        assertNull(p.miza());
+        assertFalse(p.negotovaMiza(), "prazno okence mize ni negotovo");
+    }
+
+    /* S1: okence mize lezi na stalnem mestu glave (GeometrijaListka.MIZA). */
+    @Test
+    void cistListekImaOkenceMize() {
+        assertNotNull(miza, "okence mize ni najdeno");
+        assertTrue(mizaZanesljiva, "okence na cistem listku je zanesljivo");
+        int r = GeometrijaListka.PX_NA_MM;
+        assertTrue(Math.abs(miza.x0() - GeometrijaListka.MIZA[0] * r) < 15, "x0 " + miza.x0());
+        assertTrue(Math.abs(miza.x1() - GeometrijaListka.MIZA[2] * r) < 15, "x1 " + miza.x1());
+        assertTrue(Math.abs(miza.y0() - GeometrijaListka.MIZA[1] * r) < 15, "y0 " + miza.y0());
+        assertTrue(Math.abs(miza.y1() - GeometrijaListka.MIZA[3] * r) < 15, "y1 " + miza.y1());
+    }
+
+    /* Listki, natisnjeni pred S1 (crta »Miza st.« namesto okenca, QR brez skrivnosti),
+       se se vedno preberejo; mize nimajo, tudi ce je na crti napisana stevilka. */
+    @Test
+    void listekPredS1SePrebereBrezMize() throws IOException {
+        BufferedImage star;
+        try (InputStream v = SimuliraneFotografijeTest.class.getResourceAsStream("/branje/listek-5-nizov-pred-s1.png")) {
+            star = ImageIO.read(v);
+        }
+        double[][] qr = KodaListka.najdi(star).getFirst().tocke();
+        Temnost poravnan = PoravnavaListka.poravnaj(star, qr).slika();
+        assertNull(MizaListka.najdi(poravnan), "listek pred S1 nima okenca mize");
+        CeliceListka.Tabela stareCelice = CeliceListka.najdi(poravnan);
+        Random r = new Random(26112026L);
+        int[][] izid = {{11, 4}, {7, 11}, {11, 9}};
+        BufferedImage izpolnjen = kopija(star);
+        for (int i = 0; i < izid.length; i++) {
+            napisi(izpolnjen, stareCelice.nizi().get(i).levo(), izid[i][0], r, OBICAJNO);
+            napisi(izpolnjen, stareCelice.nizi().get(i).desno(), izid[i][1], r, OBICAJNO);
+        }
+        // stevilka na crti »Miza st.« (x 60-80 mm, nad crto pri ~9,7 mm)
+        napisi(izpolnjen, new CeliceListka.Celica(640, 40, 760, 92), 7, r, OBICAJNO);
+        PrebranListek p = bralnik.preberi(fotografija(izpolnjen, r, OBICAJNO)).listek();
+        assertEquals(11, p.nizi().get(0).levo());
+        assertEquals(4, p.nizi().get(0).desno());
+        assertNull(p.miza());
+        assertFalse(p.negotovaMiza());
     }
 
     @Test
@@ -142,6 +200,9 @@ class SimuliraneFotografijeTest {
         assertEquals(0, m.neprebranih(), "vsak listek mora biti poravnan");
         assertTrue(m.prav() >= 0.95, "premalo pravilnih celic: " + m.prav());
         assertTrue(m.tihe() <= 0.01, "prevec tihih napak: " + m.tihe());
+        // S1: miza iz okenca (izmerjeno 22. 11. 2026: 100 % prav, 0 tihih)
+        assertTrue(m.mizaPrav() >= 0.95, "premalo pravilnih miz: " + m.mizaPrav());
+        assertEquals(0, m.mizaTihe(), "tiha napaka mize");
     }
 
     @Test
@@ -150,6 +211,9 @@ class SimuliraneFotografijeTest {
         assertEquals(0, m.neprebranih(), "vsak listek mora biti poravnan");
         assertTrue(m.prav() >= 0.85, "premalo pravilnih celic: " + m.prav());
         assertTrue(m.tihe() <= 0.03, "prevec tihih napak: " + m.tihe());
+        // S1: izmerjeno 100 % prav, 0 tihih
+        assertTrue(m.mizaPrav() >= 0.9, "premalo pravilnih miz: " + m.mizaPrav());
+        assertTrue(m.mizaTihe() <= 0.034, "prevec tihih napak mize: " + m.mizaTihe());
     }
 
     /* F4.1: bralnik vrne poravnan listek (JPEG v sivinah, 10 px/mm) in lego celic;
@@ -192,6 +256,8 @@ class SimuliraneFotografijeTest {
                 o.visinaDo(), o.kot(), o.perspektiva(), o.zamegli(), true, 0, 0, 0));
         assertEquals(0, m.neprebranih(), "prepognjen listek mora biti prebran");
         assertTrue(m.prav() >= 0.95, "premalo pravilnih celic: " + m.prav());
+        // S1: pregib cez okence mize ne sme dati tihe napake (senca pregiba = »1«)
+        assertEquals(0, m.mizaTihe(), "tiha napaka mize na prepognjenem listku");
     }
 
     /* F2.5: precrtana in prepisana vrednost je vedno negotova in ima opombo;
@@ -227,6 +293,9 @@ class SimuliraneFotografijeTest {
         assertTrue(m.neprebranih() <= 2, "prevec neprebranih listkov: " + m.neprebranih());
         assertTrue(m.prav() >= 0.88, "premalo pravilnih celic: " + m.prav());
         assertTrue(m.tihe() <= 0.02, "prevec tihih napak: " + m.tihe());
+        // S1: izmerjeno 93 % prav, 0 tihih (pregib cez okence: miza negotova)
+        assertTrue(m.mizaPrav() >= 0.85, "premalo pravilnih miz: " + m.mizaPrav());
+        assertTrue(m.mizaTihe() <= 0.034, "prevec tihih napak mize: " + m.mizaTihe());
     }
 
     /* Tekme meritve po pogostosti izidov iz zgodovine (PogostostNizov.VGRAJENA)
@@ -258,6 +327,9 @@ class SimuliraneFotografijeTest {
         int neprebranih = 0;
         long nanosekund = 0;
         long bajtov = 0;
+        int mizaPrav = 0;
+        int mizaTihih = 0;
+        int prebranih = 0;
         for (int k = 0; k < listkov; k++) {
             int[][] izid = tekmePoZgodovini ? tekmaPoZgodovini(r, 3) : nakljucnaTekma(r, 3);
             BufferedImage izpolnjen = kopija(listek);
@@ -269,6 +341,16 @@ class SimuliraneFotografijeTest {
             if (r.nextDouble() < 0.8) {
                 napisi(izpolnjen, celice.rezultat().levo(), dobljeni[0], r, pogoji);
                 napisi(izpolnjen, celice.rezultat().desno(), dobljeni[1], r, pogoji);
+            }
+            // miza (S1) z locenim virom nakljucnosti: zaporedje r (in s tem vse meritve
+            // celic) ostane, kot je bilo pred S1; okence ostane prazno pri desetini listkov
+            Integer pisanaMiza = null;
+            if (miza != null) {
+                Random rm = new Random(1_000_003L * k + listkov);
+                if (rm.nextDouble() < 0.9) {
+                    pisanaMiza = 1 + rm.nextInt(30);
+                    napisi(izpolnjen, miza, pisanaMiza, rm, pogoji);
+                }
             }
             PrebranListek p;
             byte[] foto = fotografija(izpolnjen, r, pogoji);
@@ -288,6 +370,13 @@ class SimuliraneFotografijeTest {
                 continue;
             } finally {
                 nanosekund += System.nanoTime() - zacetek;
+            }
+            prebranih++;
+            if (java.util.Objects.equals(p.miza(), pisanaMiza)) {
+                mizaPrav++;
+            } else if (!p.negotovaMiza()) {
+                mizaTihih++;
+                System.out.printf("TIHA NAPAKA MIZE listek %d: %s prebrano kot %s%n", k, pisanaMiza, p.miza());
             }
             boolean vsePrav = true;
             for (int i = 0; i < izid.length; i++) {
@@ -318,7 +407,8 @@ class SimuliraneFotografijeTest {
             }
         }
         Meritev m = new Meritev(listkov, neprebranih, (double) prav / Math.max(1, celic),
-                (double) tihih / Math.max(1, celic), brezPopravka, nanosekund / 1e6 / Math.max(1, listkov));
+                (double) tihih / Math.max(1, celic), brezPopravka, nanosekund / 1e6 / Math.max(1, listkov),
+                (double) mizaPrav / Math.max(1, prebranih), (double) mizaTihih / Math.max(1, prebranih));
         System.out.printf("Simulirane fotografije %s (%d kB na listek): %s%n",
                 pogoji == NEUGODNO ? "neugodne" : pogoji == ZAHTEVNO ? "zahtevne" : "obicajne",
                 bajtov / 1024 / Math.max(1, listkov), m);

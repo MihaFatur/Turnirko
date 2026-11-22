@@ -2,11 +2,15 @@
 
    Strežnik iz fotografije listka prebere QR kodo in po njej ve, za katero
    tekmo gre (KodaListka.java) - brez nje bi moral tekmo ugibati po imenih.
-   Zapis mora biti isti kot v zaledju: QR »TK:<id>« (alfanumerični način, zato
-   je koda majhna: verzija 1 do 2), natisnjeno »T-<id>« (za človeka in za
-   bralnika, kadar QR na fotografiji ni berljiva). */
+   Zapis mora biti isti kot v zaledju: QR »TK:<id>:<skrivnost>« (alfanumerični
+   način, zato je koda majhna: verzija 1), natisnjeno »T-<id>« (za človeka in za
+   bralnika, kadar QR na fotografiji ni berljiva). Skrivnost (S1) da sodniku
+   pravico poslati izid te tekme brez prijave; izračuna jo samo strežnik in jo
+   da organizatorju za tisk (dogodkiApi.kodeListkov). */
 import { encode } from 'uqr'
 
+/* Zapis brez skrivnosti (listki pred S1): bralnik ga še prebere, sodniška pot
+   (S2) pa ga ne sprejme. Samo zasilno, kadar kode tekme s strežnika ni. */
 export function vsebinaQr(idTekme: number): string {
   return `TK:${idTekme}`
 }
@@ -18,9 +22,15 @@ export function natisnjenaKoda(idTekme: number): string {
 /* QR koda kot pot SVG v enotah modulov: en pravokotnik na zaporedje temnih
    modulov v vrstici (manj elementov kot kvadrat na modul, isto ostro na
    papirju). Mirna cona okrog kode ni v poti - zagotovi jo rob v CSS.
-   Popravljanje napak M (15 %): koda prenese madež ali pregib, a ostane majhna. */
-export function potQr(vsebina: string): { velikost: number; pot: string } {
-  const { data, size } = encode(vsebina, { ecc: 'M', border: 0 })
+   Popravljanje napak M (15 %): koda prenese madež ali pregib, a ostane majhna.
+   Verzija je vedno 1 (21 modulov): nanjo računa poravnava v zaledju
+   (GeometrijaListka.QR_MODULOV). »TK:<id>:<8 znakov>« gre vanjo do id-ja z 8
+   števkami; daljši zapis vrže napako, namesto da bi tiho natisnil drugo kodo. */
+export function potQr(vsebina: string, samoVerzija1 = true): { velikost: number; pot: string } {
+  // plakat za sodnike (S2) nosi spletni naslov, ki v verzijo 1 ne gre; listek vedno
+  const { data, size } = encode(vsebina, samoVerzija1
+    ? { ecc: 'M', border: 0, minVersion: 1, maxVersion: 1 }
+    : { ecc: 'M', border: 0 })
   let pot = ''
   for (let y = 0; y < size; y++) {
     let x = 0

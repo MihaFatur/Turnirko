@@ -7,11 +7,20 @@
 > `docs/pravila/branje-listkov.md`. Ta dokument je **načrt**; ko je faza narejena, se
 > njena pravila prenesejo v `docs/pravila/branje-listkov.md`, tu pa se faza označi kot
 > narejena (datum, commit).
+>
+> **Sprememba smeri (22. 11. 2026, lastnik).** Listek fotografira **sodnik s svojim
+> telefonom** takoj po tekmi, brez prijave. Prebrani izid potrdi sam in izid velja
+> takoj, organizator nadzira. Organizator kliče tekme na mize v aplikaciji in ob
+> sprostitvi mize dobi predlog naslednje tekme. Pult ostane rezerva za sodnike brez
+> telefona. Postaja (F7) in škatla (F8) sta ustavljeni. Nove faze so S1, S2, M1 in M2
+> (razdelek 4), vrstni red je v razdelku 6. Prej veljavna predpostavka »sodniki pri
+> mizi nimajo telefona« (19. 11.) ne velja več.
 
 ## 1. Cilj in merila
 
-**Cilj:** turnir vodi en organizator. Listek pride od pulta do vpisanega izida brez
-tipkanja, napačen izid pa ne gre v žreb neopažen.
+**Cilj:** turnir vodi en organizator. Izid vpiše sodnik ob mizi s fotografijo listka
+(rezerva: organizator na pultu), organizator nadzira in kliče tekme na proste mize.
+Napačen izid ne gre v žreb neopažen.
 
 | Merilo (meri ga F1) | Cilj za uvedbo (F9) |
 |---|---|
@@ -240,7 +249,80 @@ po vklopu pošljejo natanko enkrat.
 **Gotovo, ko:** testi pokrijejo popravek oznak po popravku izida, sprejem in
 zavrnitev po zlatem naboru, »Vrni prejšnjo« in zaklep.
 
-### F7 — Postaja: programski del na strežniku in v brskalniku (L)
+### S1 — Listek za sodnika (M)
+
+| Korak | Kaj |
+|---|---|
+| 1.1 | **Skrivnost v QR.** QR nosi `TK:<id>:<8 znakov>`. Znaki so prvih 40 bitov HMAC-SHA256(ključ, id tekme) v base32 (A–Z, 2–7). Zapis ostane v alfanumeričnem načinu in v QR verzije 1 (pri ECC M do 20 znakov), zato se postavitev in poravnava ne spremenita. Ključ (32 bajtov iz `SecureRandom`) ustvari aplikacija ob prvem zagonu v tabeli `kljuc_aplikacije` (migracija); testno okolje ga dobi s kopijo baze. Bralnik sprejme oba zapisa: stari `TK:<id>` (že natisnjeni listki, samo pult) in novega. |
+| 1.2 | **Kode samo organizatorju.** Tisk dobi kode z nove poti `GET /dogodki/{id}/listki/kode` (preverba lastništva kot pri oznaki tiska). Javni podatki tekme skrivnosti ne vsebujejo. |
+| 1.3 | **Okence za mizo.** Namesto črte »Miza št.« je v glavi okence na stalnem mestu (x 60–80 mm, y 5–12 mm), levo od njega oznaka »Miza«. Če je miza ob tisku znana, je natisnjena v okencu. Okence je nad tabelo (`TABELA_OD`), zato iskanja celic ne moti. |
+| 1.4 | **Branje mize.** Bralnik okence poišče ob pričakovani legi (robovi kot pri celicah), razreže zapis in ga prebere z isto mrežo (1–99). Pod zaupanjem 0,8 je miza negotova. Prebrana miza gre v `PrebranListek` (`miza`, `negotovaMiza`) in med izreze celic. Stari listki brez okenca dajo prazno mizo. |
+| 1.5 | **Prikaz organizatorju.** Na strani Branje listkov ob tekmi »miza 7 (z listka)«, negotova z izrezom. Potrditev izida mize ne spreminja (miza se začne uporabljati v M1). |
+| 1.6 | **Simulacija.** Nov posnetek listka za simulacijo z novo kodo in okencem. Simulacija v okence napiše številko mize in meri tudi njeno branje. Natančnost točk ne sme pasti. |
+
+**Varnost:**
+- Skrivnost ni v javnih DTO-jih, dnevniku ali URL-ju (V5, V6). Primerjava je v
+  stalnem času. Ključ je samo v bazi, ne v repozitoriju.
+- 40 bitov zadošča, ker skrivnost velja za eno tekmo, samo dokler ta nima izida, in
+  ob omejitvi hitrosti (S2).
+
+**Gotovo, ko:** listek z novo kodo se na simulaciji prebere enako dobro kot prej, miza
+se prebere, stari listek se še vedno prebere, tuj organizator kod ne dobi.
+
+### S2 — Sodnik slika in potrdi (L)
+
+| Korak | Kaj |
+|---|---|
+| 2.1 | **Stikalo na turnirju** »Sodniki slikajo listke« z dvema stopnjama: *predpregled* (sodnikova potrditev čaka organizatorja: en dotik ali »Potrdi vse«) in *velja takoj*. Privzeto izklopljeno; prvi turnir teče v predpregledu. |
+| 2.2 | **Stran za sodnika** (kratek naslov, npr. `/s`), brez prijave: velik gumb »Slikaj listek«, vrsta iz F5. Stran ostane odprta za naslednje listke. Na listku je kratek napis s tem naslovom, organizator lahko natisne plakat s QR za ob mize. |
+| 2.3 | **Pošiljanje** `POST /api/v1/sodnik/listki`: meje velikosti kot pri branju. Najprej QR in skrivnost (poceni), nato preverba: turnir ima stikalo vklopljeno, dogodek teče, tekma nima izida. Šele nato branje števk. Omejitev hitrosti na IP in na tekmo. Napaka ne razkrije, ali tekma obstaja. Odgovor: imeni, nizi, negotove celice, prebrana in poklicana miza ter enkraten žeton potrditve (naključen, v bazi samo SHA-256, velja 30 min). |
+| 2.4 | **Potrditev** `POST /api/v1/sodnik/branja/{id}/potrdi` z žetonom in (morda popravljenimi) vrednostmi. Ista preverba izida kot pri organizatorju (`TekmaStoritev`), namesto lastništva žeton. V dnevnik: »vpisal sodnik prek listka«. V predpregledu se branje samo označi kot sodniško potrjeno. Če ima tekma izid že vpisan: sporočilo sodniku, organizatorju opozorilo, če se izida razlikujeta. |
+| 2.5 | **Zaslon sodnika.** Na vrhu z velikimi črkami »Zmagal je Novak 3:1«, pod tem točke po nizih in miza. Negotove celice so obarvane in jih mora potrditi z dotikom, prej »Potrdi« ne deluje. Popravek s številčnico. Po potrditvi: »Hvala, listek oddaj na pultu« (papir ostane uradni zapis). Brez signala po ~20 s: »Ni signala, listek oddaj na pultu«; fotografija se pošlje sama in pristane pri organizatorju kot nepotrjena. |
+| 2.6 | **Nadzor organizatorja** na strani Branje listkov: seznam »Potrdili sodniki« s fotografijami. Posebej so označeni sodnikovi popravki prebranega in neujemanje mize s klicem. |
+| 2.7 | **Učenje.** Sodnikove potrditve so učni primeri z navadno težo; »močne« (F6.2) so samo organizatorjeve popravke. |
+| 2.8 | **Dokumenti:** PRODUCT.md (izjema od »gost sme samo GET«), pravila, zasebnost (fotografija s sodnikovega telefona), pomoč (članek za organizatorja, kratka navodila na strani sodnika). |
+
+**Varnost:**
+- Skrivnost listka velja samo za svojo tekmo, žeton potrditve samo za svoje branje
+  (V1).
+- Omejitev hitrosti; branje števk šele po preverjeni skrivnosti; semafor iz F0 (V3).
+- Sodnik vidi samo svojo tekmo; fotografija je pri organizatorju 30 dni kot zdaj (V4).
+- Enak odgovor za neobstoječo in tujo tekmo (V5); žeton samo kot SHA-256 (V6).
+- Ponovljeno pošiljanje ne ustvari dvojnika (ključ pošiljanja, vezan na tekmo) (V9).
+- Testi: napačna skrivnost, tekma z izidom, izklopljeno stikalo, ponovljen žeton,
+  žeton drugega branja, omejitev hitrosti.
+
+**Gotovo, ko:** E2E na telefonski širini (Slikaj → Potrdi → izid v mreži); skripta s
+`curl` na testu potrdi varnostne primere.
+
+### M1 — Mize in klicanje (M)
+
+| Korak | Kaj |
+|---|---|
+| 3.1 | **Mize turnirja:** število miz in začasno izklopljene mize; na tekmi čas klica in čas konca (migracija). Stolpec `tekma.miza` že obstaja, a ga do zdaj nič ne nastavlja. |
+| 3.2 | **Klic:** tekma PRIPRAVLJENA → V_IGRI z mizo in časom klica; preklic jo vrne. Miza ne sme biti zasedena. Če igralec igra drugje, opozorilo (organizator lahko vseeno pokliče). **Preveri vse uporabe V_IGRI** (SV regija, `ZrebStoritev`, uvoz Stupe), ker do zdaj ta status nosijo samo ekipne tekme. |
+| 3.3 | **Sprostitev:** vsak vpis izida (sodnik, pult, ročni vnos, popravek) zapiše čas konca. Miza je prosta, ko nobena tekma na njej ni V_IGRI. |
+| 3.4 | **Stran »Mize«** za turnir v teku: mreža miz (prosta / zasedena: igralca, dogodek, minute igre), pisk in poudarek ob sprostitvi, seznam pripravljenih tekem vseh dogodkov, osvežitev vsakih nekaj sekund. |
+| 3.5 | **Miza z listka:** neujemanje prebrane mize s klicem je opozorilo organizatorju in sodniku; pri tekmi, ki ni bila poklicana, se zapiše prebrana miza. |
+| 3.6 | Za gledalca (ločen korak, pozneje): javno »Miza 5« pri tekmi v igri. |
+
+### M2 — Predlog naslednje tekme (M)
+
+| Korak | Kaj |
+|---|---|
+| 4.1 | Kandidati: pripravljene in nepoklicane tekme vseh dogodkov turnirja v teku. |
+| 4.2 | Izloči tekme, v katerih kdo od igralcev igra ali sodi na drugi mizi. |
+| 4.3 | Razvrsti: (1) prednost dogodku ali fazi, ki zadržuje druge (npr. skupina, brez katere se izločilni del ne more začeti); (2) vrstni red kol v skupini; (3) počitek: kdor je končal pred manj kot N min (privzeto 5), gre nižje; (4) najdlje čaka. |
+| 4.4 | Prikaz: ob prosti mizi prve tri tekme z razlogom; »Pokliči« z enim klikom. Odloči vedno organizator. |
+| 4.5 | Sodnik ob klicu (neobvezno), ker sodijo mešano: predlog prostega igralca iz iste skupine. Kdor sodi, je za predlog zaseden; brez izbranega sodnika predlog sodnikov ne upošteva. |
+
+Razvrščanje je domenska logika in dobi teste (pravilo projekta).
+
+### F7 — Postaja: programski del na strežniku in v brskalniku (L) — USTAVLJENO 22. 11. 2026
+
+> Ustavljeno z zasnovo »sodnik slika listek« (lastnik, 22. 11. 2026). Ostane kot
+> zapis zasnove, ne izvaja se. Za listke sodnikov brez telefona ostane običajno
+> fotografiranje na pultu.
 
 **7.1 Postaja v brskalniku** (telefon na stojalu, prehodna rešitev in preizkus poteka
 pred škatlo):
@@ -295,7 +377,9 @@ preklic; članek pomoči.
 **Gotovo, ko:** telefon na stojalu na testu zajame 30 listkov zapored brez dvojnika;
 skripta s `curl` potrdi vse zgornje varnostne primere na test.turnirko-nt.si.
 
-### F8 — Postaja: naprava (škatla z režo) (L)
+### F8 — Postaja: naprava (škatla z režo) (L) — USTAVLJENO 22. 11. 2026
+
+> Ustavljeno skupaj s F7; delov se ne naroča. Razdelek 5 ostane kot zapis zasnove.
 
 Zasnova je v razdelku 5. Programje in navodila v repozitoriju, mapa `postaja/`.
 
@@ -481,40 +565,39 @@ NI_POVEZAVE: vrsta na kartici, modra lučka utripa, zajem teče naprej
 
 | Kdaj | Faze |
 |---|---|
-| **Takoj** (lastnik, vzporedno) | Naročilo delov za H1 (Pi, kamera, kartica, LED, napajalnik), da so do F8 doma. |
-| **Pred prvim turnirjem z branjem** | F0 → F1 → F2 (2.1, 2.2, 2.5–2.7) → F4 → F5. F3, če je pred turnirjem klubski trening. 7.1 (telefon na stojalu) za preizkus poteka. |
-| **Prvi turnir (F9, korak 1)** | Zbiranje zlatega nabora in meritev. |
-| **Po prvem turnirju** | F2 (umerjanje β, 2.3, 2.4 na resničnih podatkih) → F6 → F7 (7.2–7.3) → F8 (H1 → H2). |
+| **Pred prvim turnirjem z branjem** | F0–F6 (narejeno) → S1 → S2 → M1 → M2 → generalka na testu: kolegi sodijo s svojimi telefoni, iz njihovih fotografij se umeri 5.1. |
+| **Prvi turnir (F9, korak 1)** | Stikalo »Sodniki slikajo listke« na stopnji *predpregled*; zbiranje zlatega nabora in meritev. |
+| **Po prvem turnirju** | F2 (umerjanje β, 2.3, 2.4 na resničnih podatkih) → stopnja *velja takoj*. |
 | **Po meritvah, ki izpolnijo merila iz razdelka 1** | F9, koraki 2–3. |
 
+F7 in F8 (postaja, škatla) sta od 22. 11. 2026 ustavljeni; delov se ne naroča.
+
 Migracije: zaporedno od V69 (F1: sled pregleda, kontrola, zlati nabor; F3: vadnica;
-F4: poravnana slika; F5: idempotenca; F6: močne oznake; F7: postaja). Številko
-preveri ob začetku vsake faze (razdelek 2).
+F4: poravnana slika; F5: idempotenca; F6: močne oznake; S1: ključ aplikacije; S2:
+stikalo in žetoni potrditve; M1: mize in časi tekem). Številko preveri ob začetku
+vsake faze (razdelek 2).
 
 ### F9 — Uvedba na turnirjih
 
 | Korak | Kako | Merilo za naprej |
 |---|---|---|
-| 1. V senci | Fotografira se vsak listek in vsak se pregleda v celoti. Drugi organizator je še zraven za varnost. | 150–300 listkov v zlatem naboru, meritve F1. |
-| 2. En dotik | Zanesljivi listki z enim dotikom, kontrole tečejo. | Merila iz razdelka 1 na vsaj dveh turnirjih. |
+| 1. V senci | Sodniki slikajo in potrdijo (stopnja *predpregled*), organizator pregleda vsak listek; listki brez sodnikove fotografije na pultu. Drugi organizator je še zraven za varnost. | 150–300 listkov v zlatem naboru, meritve F1. |
+| 2. Velja takoj | Sodnikova potrditev velja takoj (stopnja *velja takoj*), organizator nadzira; na pultu zanesljivi listki z enim dotikom, kontrole tečejo. | Merila iz razdelka 1 na vsaj dveh turnirjih. |
 | 3. Za vse | Izklop `samo-admin`, članek pomoči, kratek video. Meritve po organizatorjih. | Merila veljajo tudi za druge organizatorje. |
 | 4. Morda | Samodejna potrditev izjemno zanesljivih listkov; organizator vidi samo izjeme. | Kontrole skozi mesece kažejo ~0 tihih napak. Posebna odločitev lastnika. |
 
 **Kontrolni seznam za dan turnirja** (gre v pomoč):
 - tisk listkov na 100 %, oznake polno črne (brez varčevanja s tonerjem);
-- poskusni listek pred začetkom (fotografija ali postaja → pravilen predlog);
+- poskusni listek pred začetkom (sodnikova stran in pult → pravilen predlog);
 - omrežje: Wi-Fi dvorane ali telefon kot dostopna točka;
-- postaja: zelena lučka, predal prazen;
-- rezerva: ročni vnos deluje vedno, listki ostanejo v predalu.
+- stikalo »Sodniki slikajo listke« vklopljeno, plakat za sodnike ob mizah, število miz vpisano;
+- rezerva: ročni vnos deluje vedno, papirni listki se zbirajo na pultu.
 
 ## 7. Odprte odločitve (lastnik)
 
-1. **Računalnik naprave:** Pi 4 2 GB (priporočam: hitrejši, enostavnejši kabel
-   kamere) ali Pi Zero 2 W (~30 € ceneje, počasnejši).
-2. **Ohišje:** H1 karton; H2 vezana plošča, ročno ali laserski razrez (FabLab), mali
-   deli tiskani 3D (naročilo ali FabLab). Kaj ti je dostopno?
-3. **Python na tvojem računalniku** za preizkus programja naprave pred sestavo
-   (namestitev prek `winget`), ali se programje preizkuša samo na Pi.
+1. ~~Računalnik naprave~~ — odpade (škatla ustavljena 22. 11. 2026).
+2. ~~Ohišje~~ — odpade.
+3. ~~Python na tvojem računalniku~~ — odpade.
 4. **Delež naključne kontrole:** priporočam 5 %.
 5. **Zlati nabor:** trajna hramba izrezov celic s številkami, brez imen —
    **potrjeno 20. 11. 2026.** Še odprto: podnabor za regresijski test (F1.5) v
@@ -537,8 +620,12 @@ preveri ob začetku vsake faze (razdelek 2).
 | F6 | v produkciji od 21. 11. 2026 20.15 (lastnik: generalka + F6 + F5; prej pregledano na testu) | 21. 11. 2026 | `66dddae` |
 | F6.6 napake mreže + meja MNIST | v produkciji od 21. 11. 2026 (lastnik po prvem učenju: »katere cifre ga matrajo«; test in produkcija v istem zagonu po lastnikovem »objavi na test in produkcijo«) | 21. 11. 2026 | `de9dd42` |
 | F3.6 nalaganje slik vadnice | v produkciji od 22. 11. 2026 (lastnik: kolegi bodo liste fotografirali in poslali; »test in produkcija«; najprej test, nato main) | 22. 11. 2026 | `d4eaaaa` |
-| F5 (5.2–5.4) vrsta brez signala, V73 | objava na test 22. 11. 2026 (lastnik: »Da, začni F5«, »Commit in test«; brez osvežitve baze zaradi demo računa); 5.1 po generalki | 22. 11. 2026 | — |
-| F7–F9 | načrtovano | — | — |
+| F5 (5.2–5.4) vrsta brez signala, V73 | na testu od 22. 11. 2026 (V73 OK, 0 napak; lastnik: »Da, začni F5«, »Commit in test«; brez osvežitve baze zaradi demo računa); 5.1 po generalki | 22. 11. 2026 | `0ccfb38` |
+| S1 listek za sodnika, V74 | objava na test 22. 11. 2026 skupaj s S2 (lastnik 22. 11. 2026: »sodniki naj slikajo sami«; »zapiši in začni«; »commitaj in objavi na test«). 1475 testov zaledja zelenih; simulacija: miza prav 100/100/93 %, 0 tihih; točke ±1 celica; E2E: natisnjen listek → koda s skrivnostjo, branje prepozna mizo 7. Varnostni pregled: kode po odjavi iz predpomnilnika, ključ ob zagonu, `toString` brez skrivnosti, tisk počaka na pravice | 22. 11. 2026 | — |
+| S2 sodnik slika in potrdi, V75 | objava na test 22. 11. 2026 skupaj s S1 (lastnik 22. 11. 2026: »Nadaljuj s S2«; »commitaj in objavi na test«). 1494 testov zaledja in 355 vmesnika zelenih. E2E na telefonski širini: /s → fotografija → potrditev (velja takoj: izid vpisan; predpregled: organizator vidi »Sodnik je izid potrdil«), plakat. Varnostni pregled: QR lahko fotografira kdorkoli, zato »velja takoj« samo, ko izid podpira fotografija (smeTakoj), sicer predpregled; učenje samo iz takih; meja napačnih žetonov, IPv6 /64, skupna meja samo za prave listke, 4 MB, točke 0–99, dogodek v teku. Odstopanje od 2.2: vrsta na strani sodnika je samo v pomnilniku (brez IndexedDB) – sodnik listek vedno odda na pultu; napis na listku ni dodan (postavitev listka ostane), pot do strani je plakat | 22. 11. 2026 | — |
+| M1, M2 | načrtovano | — | — |
+| F7, F8 postaja in škatla | ustavljeno 22. 11. 2026 (sodnik slika s svojim telefonom) | — | — |
+| F9 | načrtovano | — | — |
 
 **F0 — odstopanja od načrta in dodatno:**
 - Meja fotografije je 6000 px / 20 Mpx (ne 4096 / 16 Mpx). Pri 16 Mpx bi bila zavrnjena

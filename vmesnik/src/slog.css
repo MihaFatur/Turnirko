@@ -15393,8 +15393,7 @@ a.ekipa-okno__srecanje:hover {
   border-bottom: 0.3mm dashed #000;
 }
 
-/* Glava: znamka levo, prazna crta za mizo desno. Crte pod znamko ni: crta mize
-   bi z njo tvorila dvojno crto. */
+/* Glava: znamka levo; okence mize stoji absolutno na stalnem mestu (spodaj). */
 .listek__glava {
   display: flex;
   align-items: flex-end;
@@ -15422,24 +15421,36 @@ a.ekipa-okno__srecanje:hover {
   stroke-width: 1;
 }
 
-.listek__miza {
+/* Okence za stevilko mize (S1): zunanji robovi na STALNEM mestu x 62-80 mm,
+   y 5-12 mm, crta 0,45 mm kot okenca vadnice. Bralnik ga poisce po robovih in
+   prebere z mrezo stevk (si.turnirko.branje.GeometrijaListka.MIZA) - ob
+   spremembi spremeni oboje. Desno je 5 mm do QR (mirna cona 3 mm). */
+.listek__miza-okence {
+  position: absolute;
+  top: 5mm;
+  left: 62mm;
+  box-sizing: border-box;
+  width: 18mm;
+  height: 7mm;
   display: flex;
-  align-items: flex-end;
-  gap: 1.6mm;
+  align-items: center;
+  justify-content: center;
+  border: 0.45mm solid #000;
+  font: 500 13pt / 1 var(--pisava-mono);
+  letter-spacing: 0;
+}
+
+/* Oznaka levo od okenca; konca se 1,5 mm pred njim (iskanje robu je +-1,2 mm). */
+.listek__miza-oznaka {
+  position: absolute;
+  top: 5mm;
+  right: 44.5mm;
+  height: 7mm;
+  display: flex;
+  align-items: center;
   font: 500 7pt / 1 var(--pisava-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-/* Prazna crta za rocni vpis mize; brez min-height bi bila visoka 0 in bi
-   crta lezala nize od crte besedila. */
-.listek__vpis {
-  min-width: 22mm;
-  min-height: 5mm;
-  border-bottom: 0.35mm solid #000;
-  text-align: center;
-  font: 500 11pt / 1.2 var(--pisava-mono);
-  letter-spacing: 0;
 }
 
 /* Vrh listka: glava in kontekst. Desno je prostor za kodo tekme (13 mm + 3 mm
@@ -32195,6 +32206,28 @@ html.uvod-tece {
   overflow-wrap: anywhere;
 }
 
+/* Miza z listka (S1): podatek pod kategorijo; negotova je rjasta z izrezom okenca. */
+.branje-vrsta__miza {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  margin: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.branje-vrsta__miza--negotova {
+  color: var(--barva-negativna-tekst);
+}
+
+.branje-vrsta__miza .izrez-celice {
+  flex: none;
+  width: 72px;
+  max-width: none;
+}
+
 .branje-vrsta__izid {
   display: flex;
   flex-wrap: wrap;
@@ -33087,4 +33120,302 @@ html.uvod-tece {
   .vadnica-list + .vadnica-list {
     break-before: page;
   }
+}
+
+/* ---------- Stran za sodnika (S2, /s) ----------
+   Telefon sodnika ob mizi, brez prijave in navigacije. Ena stvar naenkrat:
+   slikaj, preveri, potrdi. Zmagovalec z velikimi črkami (sodnik ga primerja z
+   listkom), številke za preverbo rjaste kot pri organizatorju, polja dovolj
+   velika za palec. */
+.sodnik {
+  box-sizing: border-box;
+  max-width: 30rem;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: var(--r3) 16px var(--r6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--r3);
+  background: var(--barva-papir);
+  color: var(--barva-crnilo);
+}
+
+.sodnik__glava {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--r2);
+  border-bottom: 2px solid var(--barva-crnilo);
+}
+
+.sodnik__znamka {
+  display: flex;
+  align-items: center;
+  gap: var(--r1);
+  font: 800 20px / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.sodnik__vloga,
+.sodnik__tekma,
+.sodnik__miza {
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.sodnik__uvod,
+.sodnik__stanje,
+.sodnik__navodilo {
+  margin: 0;
+  font: 400 var(--tip-uvod) / 1.5 var(--pisava-telo);
+}
+
+.sodnik__stanje {
+  font-weight: 600;
+}
+
+.sodnik__drobno {
+  margin: 0;
+  font-size: var(--tip-drobno);
+  line-height: 1.5;
+  color: var(--barva-crnilo-3);
+}
+
+.sodnik__fotografiraj {
+  position: relative;
+  justify-content: center;
+  min-height: 56px;
+  font-size: 18px;
+}
+
+/* Vnos datoteke je pod gumbom (label), viden je samo gumb - kot na strani Branje listkov. */
+.sodnik__datoteka {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sodnik__fotografiraj:has(.sodnik__datoteka:focus-visible) {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: 2px;
+}
+
+.sodnik__signal,
+.sodnik__opozorilo {
+  margin: 0;
+  padding: var(--r1) var(--r2);
+  border-left: 3px solid var(--barva-crnilo-3);
+  font-size: var(--tip-drobno);
+  line-height: 1.5;
+}
+
+.sodnik__napaka {
+  margin: 0;
+  padding: var(--r1) var(--r2);
+  border-left: 3px solid var(--barva-negativna);
+  color: var(--barva-negativna-tekst);
+  line-height: 1.5;
+}
+
+.sodnik__hvala {
+  margin: 0;
+  font: 800 28px / 1.15 var(--pisava-display);
+  letter-spacing: -0.02em;
+  color: var(--barva-glavna-tekst);
+}
+
+.sodnik__potrditev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+}
+
+.sodnik__tekma {
+  margin: 0;
+}
+
+.sodnik__zmagovalec {
+  margin: 0;
+  font: 800 28px / 1.15 var(--pisava-display);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+/* Tabela kot na listku: oznaka niza, točke prvega, dvopičje, točke drugega. */
+.sodnik__nizi {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--r1) var(--r1);
+}
+
+.sodnik__ime {
+  font: 700 15px / 1.25 var(--pisava-display);
+  overflow-wrap: anywhere;
+}
+
+.sodnik__niz {
+  font: 500 var(--tip-mono) / 1 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+  white-space: nowrap;
+}
+
+.sodnik__dvopicje {
+  font: 700 20px / 1 var(--pisava-mono);
+}
+
+.sodnik__polje {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--r1);
+  border: 1px solid var(--barva-crta);
+  border-radius: 0;
+  background: var(--barva-bela);
+  color: var(--barva-crnilo);
+  font: 600 24px / 1 var(--pisava-mono);
+  text-align: center;
+}
+
+.sodnik__polje:focus {
+  outline: 2px solid var(--barva-glavna);
+  outline-offset: 0;
+}
+
+/* Številka, ki jo mora sodnik pogledati na listku (negotova ali neprebrana). */
+.sodnik__polje--preveri {
+  border-color: var(--barva-negativna);
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+}
+
+.sodnik__miza {
+  display: flex;
+  align-items: center;
+  gap: var(--r2);
+}
+
+.sodnik__miza .sodnik__polje {
+  width: 5rem;
+}
+
+.sodnik__potrdi {
+  justify-content: center;
+  min-height: 56px;
+  font-size: 18px;
+}
+
+/* ---------- Plakat za sodnike (S2) ----------
+   List A4 za ob mize: koda QR do strani za sodnika in trije koraki. Črno-bel
+   kot listki (natis), na zaslonu list s tanko obrobo. */
+.plakat-sodnikov {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto var(--r4);
+  padding: 20mm 18mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8mm;
+  background: #fff;
+  color: #000;
+  outline: 1px solid var(--barva-crnilo-3);
+  text-align: center;
+}
+
+.plakat-sodnikov__glava {
+  align-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6mm;
+  padding-bottom: 4mm;
+  border-bottom: 0.6mm solid #000;
+}
+
+.plakat-sodnikov__znamka {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  font: 800 26pt / 1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.plakat-sodnikov .logo-znak__poteza,
+.plakat-sodnikov .logo-znak__poteza--glavna {
+  fill: #000;
+}
+
+.plakat-sodnikov .logo-znak__poteza--izid {
+  fill: none;
+  stroke: #000;
+}
+
+.plakat-sodnikov__turnir {
+  font: 600 13pt / 1.3 var(--pisava-telo);
+  text-align: right;
+}
+
+.plakat-sodnikov__naslov {
+  margin: 4mm 0 0;
+  font: 800 34pt / 1.1 var(--pisava-display);
+  letter-spacing: -0.02em;
+}
+
+.plakat-sodnikov__qr {
+  width: 110mm;
+  height: 110mm;
+}
+
+.plakat-sodnikov__naslov-strani {
+  margin: 0;
+  font: 600 20pt / 1 var(--pisava-mono);
+}
+
+.plakat-sodnikov__koraki {
+  margin: 0;
+  padding-left: 8mm;
+  text-align: left;
+  font: 400 15pt / 1.5 var(--pisava-telo);
+}
+
+.plakat-sodnikov__drobno {
+  margin: auto 0 0;
+  font: 400 11pt / 1.4 var(--pisava-telo);
+}
+
+@media print {
+  .plakat-sodnikov {
+    margin: 0;
+    outline: none;
+  }
+}
+
+/* Stikalo »Sodniki slikajo listke« (S2) pod gumbom za fotografijo in oznaka
+   sodniškega listka v vrsti. */
+.branje__sodniki {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r1);
+  margin-top: var(--r3);
+  padding-top: var(--r2);
+  border-top: 1px solid var(--barva-crta);
+}
+
+.branje__sodniki-naslov,
+.branje-vrsta__sodnik {
+  margin: 0;
+  font: 500 var(--tip-mono) / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.branje-vrsta__sodnik {
+  color: var(--barva-glavna-tekst);
 }

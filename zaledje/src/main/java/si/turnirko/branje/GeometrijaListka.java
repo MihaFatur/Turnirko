@@ -49,6 +49,12 @@ public final class GeometrijaListka {
     public static final double TABELA_OD = 16;
     public static final double TABELA_DO = 90;
 
+    /* Okence za stevilko mize (S1, od 22. 11. 2026): zunanji robovi {x0, y0, x1, y1},
+       crta 0,45 mm kot okenca vadnice (CeliceVadnice isce robove). Lezi v glavi
+       levo od QR (mirna cona QR je 3 mm: 80 + 3 < 85) in nad TABELA_OD, zato
+       iskanja celic tabele ne moti. Listki pred S1 okenca nimajo (MizaListka vrne null). */
+    public static final double[] MIZA = {62, 5, 80, 12};
+
     /* Locljivost poravnane slike listka. 10 px/mm: crta 0,3 mm je 3 px, stevka
        visoka 5 mm ima 50 px - dovolj za razrez in mrezo 28 x 28. */
     public static final int PX_NA_MM = 10;

@@ -36,6 +36,8 @@ import { OrganizatorskiPregledStran } from './strani/OrganizatorskiPregledStran'
 import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStran'
 import { PomocStran } from './strani/PomocStran'
 import { BranjeListkovStran } from './strani/BranjeListkovStran'
+import { SodnikStran } from './strani/SodnikStran'
+import { PlakatSodnikovStran } from './strani/PlakatSodnikovStran'
 import { MeritevBranjaStran } from './strani/MeritevBranjaStran'
 import { VadnicaStran } from './strani/VadnicaStran'
 import { VadnicaPregledStran } from './strani/VadnicaPregledStran'
@@ -161,6 +163,7 @@ const PomocShemePosnetki = import.meta.env.DEV ? lazy(() => import('./dev/PomocS
 const IzpisSvrStranPosnetki = import.meta.env.DEV
   ? lazy(() => import('./dev/IzpisSvrPosnetki').then((m) => ({ default: m.IzpisSvrStran })))
   : null
+const ListekPosnetek = import.meta.env.DEV ? lazy(() => import('./dev/ListekPosnetek')) : null
 
 export function App() {
   return (
@@ -192,9 +195,16 @@ export function App() {
         <Route path="/dev/izpis-svr-stran/:id"
           element={<Suspense fallback={null}><IzpisSvrStranPosnetki /></Suspense>} />
       )}
+      {ListekPosnetek && (
+        <Route path="/dev/listek"
+          element={<Suspense fallback={null}><ListekPosnetek /></Suspense>} />
+      )}
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}
       <Route path="/dogodki/:id/listki" element={<ListkiStran />} />
+      {/* Stran za sodnika (S2): brez prijave in brez navigacije - telefon sodnika ob mizi. */}
+      <Route path="/s" element={<SodnikStran />} />
+      <Route path="/turnirji/:id/plakat-sodniki" element={<PlakatSodnikovStran />} />
       <Route path="/srecanja/:id/listki" element={<ListkiSrecanjaStran />} />
       {/* Žreb skupin za vrata dvorane: ena kategorija ali ves turnir. */}
       <Route path="/dogodki/:id/zreb-skupin" element={<ZrebSkupinDogodkaStran />} />

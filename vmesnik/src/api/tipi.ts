@@ -3261,6 +3261,18 @@ export interface BranjeListkaDto {
   celice: CeliceListkaDto | null
   /* Levi stolpec listka je udeleženec 2 prepoznane tekme (listek brez kode). */
   obrnjeno: boolean
+  /* Številka mize iz okenca listka (S1); null, če je okence prazno ali ga listek nima. */
+  prebranaMiza: number | null
+  /* Zapis v okencu mize je težko berljiv. */
+  negotovaMiza: boolean
+  /* S2: fotografijo je poslal sodnik s svojim telefonom. */
+  poslalSodnik: boolean
+  /* Sodnik je izid potrdil (pri predpregledu je predlog sodnikov izid). */
+  sodnikPotrdil: boolean
+  /* Sodnik je spremenil prebrano - organizator naj pogleda fotografijo. */
+  sodnikSpremenil: boolean | null
+  /* Miza, kot jo je potrdil sodnik. */
+  mizaSodnika: number | null
 }
 
 /* Celice na poravnanem listku (px slike sirina × visina, vključno z robom);
@@ -3270,12 +3282,46 @@ export interface CeliceListkaDto {
   visina: number
   nizi: number[][]
   rezultat: number[]
+  /* Okence mize [x0, y0, x1, y1] (S1); null pri listku in branju pred S1. */
+  miza?: number[] | null
 }
 
 export interface BranjaTurnirjaDto {
   branja: BranjeListkaDto[]
   potrjenih: number
   brezPopravka: number
+  /* Stikalo »Sodniki slikajo listke« (S2); null = izklopljeno. */
+  sodnikiListki: SodniskaPotrditev | null
+}
+
+/* Sodnik slika listek (S2): PREDPREGLED - izid počaka organizatorja (en dotik);
+   VELJA_TAKOJ - izid gre v tekmovanje ob sodnikovi potrditvi. */
+export type SodniskaPotrditev = 'PREDPREGLED' | 'VELJA_TAKOJ'
+
+/* Odgovor na sodnikovo fotografijo: zeton je samo v pomnilniku strani (ne v
+   naslovu, localStorage ali sessionStorage). */
+export interface SodnikPoslanoDto {
+  idBranja: number
+  zeton: string
+}
+
+/* Branje listka, kot ga vidi sodnik: samo tisto, kar je na listku v njegovih rokah. */
+export interface SodniskoBranjeDto {
+  id: number
+  stanje: StanjeBranja
+  napaka: string | null
+  dogodek: string
+  del: string | null
+  igralec1: string | null
+  igralec2: string | null
+  steviloNizov: number
+  predlog: PredlogIzidaDto | null
+  prebranaMiza: number | null
+  negotovaMiza: boolean
+  poklicanaMiza: number | null
+  izidZeVpisan: boolean
+  velja: SodniskaPotrditev | null
+  sodnikPotrdil: boolean
 }
 
 export interface StanjeBranjaListkovDto {

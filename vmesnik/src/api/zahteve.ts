@@ -9,6 +9,9 @@ import type {
   MrezeStevkDto,
   NapakeMrezeDto,
   PotrditevBranjaVnos,
+  SodniskaPotrditev,
+  SodnikPoslanoDto,
+  SodniskoBranjeDto,
   StanjeBranjaListkovDto,
   StanjeNaboraDto,
   SeznamVadnicDto,
@@ -253,6 +256,9 @@ export const dogodkiApi = {
      (natisnjeno = true) ali oznako odstrani (false). Tekme ne spremeni. */
   oznaciListke: (id: number, idjiTekem: number[], natisnjeno: boolean) =>
     api.posodobi<void>(`/dogodki/${id}/listki/natisnjeno`, { idjiTekem, natisnjeno }),
+  /* Vsebina QR kod listkov (id tekme -> »TK:<id>:<skrivnost>«, S1). Skrivnost sodniku
+     da pravico poslati izid, zato jo dobi samo organizator turnirja (preveri strežnik). */
+  kodeListkov: (id: number) => api.vrni<Record<string, string>>(`/dogodki/${id}/listki/kode`),
 
   /* Ekipni dogodek: prijava je ekipa s kadrom. Igralec sme biti v kadru ene
      same ekipe dogodka (preveri strežnik). */
@@ -331,8 +337,28 @@ export const branjeListkovApi = {
   listekTekme: (idTekme: number) => api.vrniDatoteko(`/tekme/${idTekme}/listek`),
   potrdi: (id: number, vnos: PotrditevBranjaVnos) =>
     api.objavi<BranjeListkaDto>(`/branja-listkov/${id}/potrdi`, vnos),
+  /* Stikalo »Sodniki slikajo listke« (S2); null izklopi. */
+  sodnikiListki: (idTurnir: number, nacin: SodniskaPotrditev | null) =>
+    api.posodobi<SodniskaPotrditev | null>(`/turnirji/${idTurnir}/sodniki-listki`, { nacin }),
   zavrzi: (id: number) => api.objavi<void>(`/branja-listkov/${id}/zavrzi`),
   znova: (id: number) => api.objavi<BranjeListkaDto>(`/branja-listkov/${id}/znova`),
+}
+
+/* Sodnik slika listek s svojim telefonom brez prijave (S2). Pravico da skrivnost
+   v QR kodi listka, nato enkraten žeton branja - vedno v telesu, nikoli v naslovu. */
+export const sodnikApi = {
+  poslji: (jpeg: Blob, kljuc: string, signal?: AbortSignal) => {
+    const obrazec = new FormData()
+    obrazec.append('slika', jpeg, 'listek.jpg')
+    return api.objavi<SodnikPoslanoDto>('/sodnik/listki', obrazec, {
+      glave: { 'Idempotency-Key': kljuc },
+      signal,
+    })
+  },
+  stanje: (id: number, zeton: string) =>
+    api.objavi<SodniskoBranjeDto>(`/sodnik/branja/${id}/stanje`, { zeton }),
+  potrdi: (id: number, zeton: string, izid: VnosRezultata, miza: number | null) =>
+    api.objavi<SodniskoBranjeDto>(`/sodnik/branja/${id}/potrdi`, { zeton, izid, miza }),
 }
 
 /* Meritev branja in zlati nabor (F1, samo admin). */

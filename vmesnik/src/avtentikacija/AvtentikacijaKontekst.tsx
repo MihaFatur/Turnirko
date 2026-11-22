@@ -175,6 +175,9 @@ export function AvtentikacijaPonudnik({ children }: { children: ReactNode }) {
     sessionStorage.removeItem(KLJUC_SHRAMBE)
     // neposlane fotografije listkov nosijo imena igralcev: ne ostanejo v brskalniku
     void shrambaVrste.izbrisiVse()
+    // kode listkov s skrivnostjo (S1) dajo sodniku pravico poslati izid: ne ostanejo
+    // v predpomnilniku za naslednjega, ki odpre stran v istem zavihku
+    odjemalec.removeQueries({ queryKey: ['kode-listkov'] })
     nastaviUporabnika(null)
     nastaviPrijavaPotekla(false)
     odjemalec.invalidateQueries()

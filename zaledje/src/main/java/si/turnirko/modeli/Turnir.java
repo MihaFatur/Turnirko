@@ -63,6 +63,11 @@ public class Turnir {
     @Column(name = "raven", nullable = false)
     private RavenTekmovanja raven = RavenTekmovanja.KLUBSKO;
 
+    /* Sodniki slikajo listke s svojim telefonom (S2, V75); null = izklopljeno. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sodniki_listki")
+    private SodniskaPotrditev sodnikiListki;
+
     /* Od kod je turnir prisel (V27). Prazen = nastal je v Turnirku; sicer je
        uvozen in samo za branje (glej VirTekmovanja, LastnistvoStoritev). */
     @Enumerated(EnumType.STRING)
@@ -131,6 +136,9 @@ public class Turnir {
 
     public String getOpombe() { return opombe; }
     public void setOpombe(String opombe) { this.opombe = opombe; }
+
+    public SodniskaPotrditev getSodnikiListki() { return sodnikiListki; }
+    public void setSodnikiListki(SodniskaPotrditev sodnikiListki) { this.sodnikiListki = sodnikiListki; }
 
     public RavenTekmovanja getRaven() { return raven; }
     public void setRaven(RavenTekmovanja raven) { this.raven = raven; }

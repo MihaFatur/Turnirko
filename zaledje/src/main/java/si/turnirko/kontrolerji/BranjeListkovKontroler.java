@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -80,6 +81,15 @@ public class BranjeListkovKontroler {
                 .cacheControl(CacheControl.noStore().cachePrivate())
                 .body(storitev.listekTekme(id));
     }
+
+    /* Stikalo »Sodniki slikajo listke« (S2): telo {"nacin": null | "PREDPREGLED" | "VELJA_TAKOJ"}. */
+    @PutMapping("/api/v1/turnirji/{id}/sodniki-listki")
+    public si.turnirko.modeli.SodniskaPotrditev sodnikiListki(@PathVariable Long id,
+                                                              @RequestBody NacinSodnikov vnos) {
+        return storitev.nastaviSodnike(id, vnos.nacin());
+    }
+
+    public record NacinSodnikov(si.turnirko.modeli.SodniskaPotrditev nacin) {}
 
     @PostMapping("/api/v1/branja-listkov/{id}/potrdi")
     public BranjeListkaDto potrdi(@PathVariable Long id, @Valid @RequestBody PotrditevBranjaVnos vnos) {
