@@ -11,38 +11,50 @@
 package si.turnirko.storitve;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import si.turnirko.dto.KodeListkovDto;
+import si.turnirko.izjeme.NiNajdenoIzjema;
+import si.turnirko.modeli.Turnir;
 import si.turnirko.repozitoriji.TekmaRepozitorij;
+import si.turnirko.repozitoriji.TurnirRepozitorij;
 
 @Service
 public class ListkiStoritev {
 
     private final TekmaRepozitorij tekmaRepozitorij;
+    private final TurnirRepozitorij turnirRepozitorij;
     private final LastnistvoStoritev lastnistvo;
     private final SkrivnostListka skrivnost;
 
-    public ListkiStoritev(TekmaRepozitorij tekmaRepozitorij, LastnistvoStoritev lastnistvo,
-                          SkrivnostListka skrivnost) {
+    public ListkiStoritev(TekmaRepozitorij tekmaRepozitorij, TurnirRepozitorij turnirRepozitorij,
+                          LastnistvoStoritev lastnistvo, SkrivnostListka skrivnost) {
         this.tekmaRepozitorij = tekmaRepozitorij;
+        this.turnirRepozitorij = turnirRepozitorij;
         this.lastnistvo = lastnistvo;
         this.skrivnost = skrivnost;
     }
 
-    /* Vsebina QR kode za listek vsake tekme dogodka (id tekme -> »TK:<id>:<skrivnost>«).
-       Skrivnost da sodniku pravico poslati izid (S1/S2), zato jo dobi samo
-       organizator (lastnik) turnirja ali admin - javni podatki tekme je nimajo. */
+    /* Vsebina QR kode za listek vsake tekme dogodka (id tekme -> »TK:<id>:<skrivnost>«)
+       in stopnja sodniske potrditve turnirja: ko sodniki slikajo listke, gre na
+       hrbtno stran lista koda do strani za sodnika. Skrivnost da sodniku pravico
+       poslati izid (S1/S2), zato jo dobi samo organizator (lastnik) turnirja ali
+       admin - javni podatki tekme je nimajo. */
     @Transactional(readOnly = true)
-    public java.util.Map<Long, String> kode(Long idDogodka) {
-        lastnistvo.preveriTurnirPoDogodku(idDogodka);
-        java.util.Map<Long, String> kode = new java.util.LinkedHashMap<>();
+    public KodeListkovDto kode(Long idDogodka) {
+        Turnir turnir = turnirRepozitorij.najdiZLastnistvomPoDogodku(idDogodka)
+                .orElseThrow(() -> new NiNajdenoIzjema("Dogodek z id " + idDogodka + " ne obstaja."));
+        lastnistvo.preveriTurnir(turnir);
+        Map<Long, String> kode = new LinkedHashMap<>();
         for (Long id : tekmaRepozitorij.idjiZaDogodek(idDogodka)) {
             kode.put(id, skrivnost.vsebinaQr(id));
         }
-        return kode;
+        return new KodeListkovDto(turnir.getSodnikiListki(), kode);
     }
 
     /* Tekme dogodka oznaci kot natisnjene (zdaj) ali neoznaci (null). Id, ki ne

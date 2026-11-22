@@ -172,6 +172,22 @@ export function opisNatisa(iso: string, zdaj: Date = new Date()): string {
 export const NAJVEC_PRAZNIH_LISTKOV = 120
 export const LISTKOV_NA_LIST = 6
 
+/* Mesta na hrbtni strani lista (S2), ki dobijo kodo za sodnika, ko ima prednja
+   stran `listkov` listkov (zaporedje po vrsticah: 2 stolpca x 3 vrstice).
+   Obojestranski tisk obrne list po dolgem robu (hrbet stolpca c je za prednjim
+   stolpcem 1 - c) ali po kratkem (hrbet vrstice r je za vrstico 2 - r); katero,
+   izbere tiskalnik. Mesto dobi kodo, če je za njim listek v kateremkoli od obeh
+   načinov - koda je na vseh hrbtih ista, odvečna pa pristane na odrezku. */
+export function mestaHrbta(listkov: number): boolean[] {
+  return Array.from({ length: LISTKOV_NA_LIST }, (_, i) => {
+    const vrstica = Math.floor(i / 2)
+    const stolpec = i % 2
+    const poDolgem = vrstica * 2 + (1 - stolpec)
+    const poKratkem = (2 - vrstica) * 2 + stolpec
+    return poDolgem < listkov || poKratkem < listkov
+  })
+}
+
 /* Število praznih listkov iz vnosa: celo število od 1 do meje, sicer privzetek. */
 export function steviloPraznih(vnos: string, privzeto = LISTKOV_NA_LIST): number {
   const n = Math.floor(Number(vnos))

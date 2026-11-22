@@ -25,13 +25,15 @@
    QR koda na listku nosi skrivnost (S1), ki sodniku da pravico poslati izid te
    tekme s svojim telefonom. Kode s skrivnostjo da strežnik samo organizatorju
    tega turnirja in adminu; gost natisne listek z zasilno kodo brez skrivnosti
-   (prebere jo pult, sodniška pot pa ne).
+   (prebere jo pult, sodniška pot pa ne). Ko sodniki slikajo listke (stikalo na
+   strani Branje listkov), sledi vsakemu listu njegova hrbtna stran s kodo do
+   strani za sodnika (/s): tiska se obojestransko, organizator jo lahko izklopi.
 
    Ekipni dogodek ima namesto listkov uradni ekipni zapisnik za vsako tekmo
    (ZapisnikiEkipnegaDogodka): iste pripravljene tekme, v istem vrstnem redu,
    z isto izbiro in sledjo tiska, le da je vsaka srečanje s postavo in mrežo
    posamičnih tekem. */
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -40,6 +42,7 @@ import { OZNAKE_SPOL_KATEGORIJA, imeUdelezenca, type DogodekDto } from '../api/t
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   LISTKOV_NA_LIST,
+  mestaHrbta,
   NAJVEC_PRAZNIH_LISTKOV,
   pripraviListke,
   sklopiListkov,
@@ -47,9 +50,10 @@ import {
   type PripravljenListek,
 } from '../pomozno/listki'
 import { sklonListkov } from '../pomozno/oblikovanje'
+import { useBranjeListkovNaVoljo } from '../pomozno/useBranjeListkov'
 import { oznakaKategorije } from '../pomozno/zrebSkupin'
 import { IzbiraListkov, PotrditevTiska, useIzbiraListkov } from '../komponente/IzbiraListkov'
-import { Listek, type ListekPodatki } from '../komponente/Listek'
+import { HrbetListka, Listek, type ListekPodatki } from '../komponente/Listek'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { ZapisnikiEkipnegaDogodka } from '../komponente/ZapisnikiEkipnegaDogodka'
 
@@ -110,7 +114,11 @@ export function ListkiStran() {
     queryFn: () => dogodkiApi.kodeListkov(idDogodka),
     enabled: smemOznacevati && !ekipno,
   })
-  const kode = smemOznacevati ? kodePoizvedba.data : undefined
+  const kode = smemOznacevati ? kodePoizvedba.data?.kode : undefined
+  /* Sodniki slikajo listke (S2): list dobi hrbtno stran s kodo do /s. */
+  const sodnikiSlikajo = smemOznacevati && !!kodePoizvedba.data?.sodnikiListki
+  const [hrbet, nastaviHrbet] = useState(true)
+  const branjeNaVoljo = useBranjeListkovNaVoljo()
 
   const [nacin, nastaviNacin] = useState<Nacin>('tekme')
   const [vnosPraznih, nastaviVnosPraznih] = useState(String(LISTKOV_NA_LIST))
@@ -185,6 +193,9 @@ export function ListkiStran() {
   const manjkaKoda = !!kode && izbira.izbraniListki.some((l) => !kode[String(l.tekma.id)])
   const steviloZaTisk = praznoNacin ? praznih : izbira.izbraniListki.length
   const listi = razdeli(praznoNacin ? prazniListki : listkiTekem, LISTKOV_NA_LIST)
+  /* Prazen listek tekme še nima, zato sodnik z njim izida ne more poslati: brez hrbta. */
+  const zHrbtom = !praznoNacin && sodnikiSlikajo && hrbet
+  const naslovSodnika = `${window.location.origin}/s`
 
   const natisni = () => {
     if (praznoNacin) window.print()
@@ -232,9 +243,25 @@ export function ListkiStran() {
             {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
           </p>
           <p className="listki-naslov__navodilo">
-            Natisni na A4 v merilu 100 %, brez robov in brez glave ter noge. Vsak list ima šest
-            listkov; razreži ga po treh črtkanih črtah (ena navpična, dve vodoravni).
+            {zHrbtom
+              ? 'Natisni na A4 obojestransko (na obe strani lista), v merilu 100 %, brez robov in brez glave ter noge. '
+              : 'Natisni na A4 v merilu 100 %, brez robov in brez glave ter noge. '}
+            Vsak list ima šest listkov; razreži ga po treh črtkanih črtah (ena navpična, dve
+            vodoravni).
+            {zHrbtom && ' Za vsakim listom je v predogledu njegova hrbtna stran s kodo, ki sodniku odpre stran za pošiljanje izida.'}
           </p>
+          {!praznoNacin && sodnikiSlikajo && (
+            <label className="obrazec__polje obrazec__polje--stikalo listki-naslov__hrbet">
+              <input type="checkbox" checked={hrbet} onChange={(d) => nastaviHrbet(d.target.checked)} />
+              Na hrbtno stran lista natisni kodo za sodnike
+            </label>
+          )}
+          {!praznoNacin && !sodnikiSlikajo && branjeNaVoljo && !!kode && (
+            <p className="listki-naslov__navodilo">
+              Ko na strani Branje listkov vklopiš »Sodniki slikajo listke«, dobi vsak list na
+              hrbtni strani kodo, s katero sodnik po tekmi odpre stran za pošiljanje izida.
+            </p>
+          )}
         </header>
 
         <div className="izbirnik listki-nacin zaslon-samo" role="group" aria-label="Vrsta listkov">
@@ -272,20 +299,37 @@ export function ListkiStran() {
             <h2 className="listki-predogled zaslon-samo">Predogled natisa</h2>
             <div className="listki-listi" ref={nastaviOkvir}>
               {listi.map((list, i) => (
-                <section
-                  key={i}
-                  className="listki-list"
-                  aria-label={`List ${i + 1} od ${listi.length}`}
-                  style={merilo < 1 ? { zoom: merilo } : undefined}
-                >
-                  {list.map((l) => (
-                    <Listek key={l.kljuc} podatki={l.podatki} />
-                  ))}
-                  {/* Prazna mesta na zadnjem listu: rezi so povsod isti. */}
-                  {Array.from({ length: LISTKOV_NA_LIST - list.length }, (_, j) => (
-                    <div key={`prazno-${j}`} className="listek listek--prazen" aria-hidden="true" />
-                  ))}
-                </section>
+                <Fragment key={i}>
+                  <section
+                    className="listki-list"
+                    aria-label={`List ${i + 1} od ${listi.length}`}
+                    style={merilo < 1 ? { zoom: merilo } : undefined}
+                  >
+                    {list.map((l) => (
+                      <Listek key={l.kljuc} podatki={l.podatki} />
+                    ))}
+                    {/* Prazna mesta na zadnjem listu: rezi so povsod isti. */}
+                    {Array.from({ length: LISTKOV_NA_LIST - list.length }, (_, j) => (
+                      <div key={`prazno-${j}`} className="listek listek--prazen" aria-hidden="true" />
+                    ))}
+                  </section>
+                  {/* Hrbtna stran takoj za svojim listom: obojestranski tisk jo da na hrbet. */}
+                  {zHrbtom && (
+                    <section
+                      className="listki-list listki-list--hrbet"
+                      aria-label={`Hrbtna stran lista ${i + 1}`}
+                      style={merilo < 1 ? { zoom: merilo } : undefined}
+                    >
+                      {mestaHrbta(list.length).map((koda, j) =>
+                        koda ? (
+                          <HrbetListka key={j} naslov={naslovSodnika} />
+                        ) : (
+                          <div key={j} className="listek-hrbet" aria-hidden="true" />
+                        ),
+                      )}
+                    </section>
+                  )}
+                </Fragment>
               ))}
             </div>
           </>

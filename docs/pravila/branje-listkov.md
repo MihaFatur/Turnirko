@@ -234,8 +234,18 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
   pošiljanje z istim ključem do odgovora (časovna meja 45 s, po ~20 s »Ni signala,
   listek oddaj na pultu«; vrsta je samo v pomnilniku strani) → branje (sprašuje vsakih
   1,5 s) → potrditev → »Izid je vpisan« ali »čaka na potrditev organizatorja«. Zaslon ne
-  ugasne. **Plakat** `/turnirji/:id/plakat-sodniki` (A4, QR do `/s`, trije koraki) ne
-  nosi nič skrivnega.
+  ugasne.
+- **Pot do `/s` je hrbtna stran listka** (lastnik 22. 11. 2026, namesto plakata za ob
+  mize): ko je stikalo vklopljeno, `GET /dogodki/{id}/listki/kode` vrne tudi
+  `sodnikiListki` in `ListkiStran` za vsakim listom A4 izriše njegov hrbet
+  (`HrbetListka`: QR do `<origin>/s`, trije koraki; nič skrivnega). Tisk je
+  obojestranski; tiskalnik list obrne po dolgem ALI kratkem robu, zato dobi kodo
+  vsako mesto hrbta, za katerim je listek v kateremkoli načinu (`mestaHrbta`).
+  Vsebina hrbta je znotraj roba 20 mm zgoraj/spodaj in 15 mm levo/desno: v obeh
+  načinih prosojno sije samo za tabelo točk, ne za oznake, QR ali okence mize.
+  Da prosojnost tabele ne moti, meri `SimuliraneFotografijeTest.hrbetNeMotiBranja`.
+  Organizator hrbet pred tiskom lahko odkljuka (tiskalnik brez obojestranskega
+  tiska); prazni listki ga nimajo (tekme ne poznajo).
 - **Edine poti, kjer gost sme pisati** (PRODUCT.md): `POST /api/v1/sodnik/listki`,
   `.../branja/{id}/stanje`, `.../branja/{id}/potrdi`; vse ostalo pod `/sodnik/**` je
   `denyAll`. Žeton gre vedno v telesu, nikoli v naslovu (naslovi gredo v dnevnike).

@@ -7,12 +7,14 @@
    - zapis s skrivnostjo gre v QR verzije 1 pri ECC M do id-ja z 8 stevkami (na
      verzijo 1 racuna poravnava listka);
    - kode za tisk dobi samo lastnik turnirja ali admin, ne tuj organizator, in
-     zajemajo vse tekme dogodka. */
+     zajemajo vse tekme dogodka; povedo tudi, ali sodniki slikajo listke (S2:
+     takrat ima list hrbtno stran s kodo do strani za sodnika). */
 package si.turnirko.storitve;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -32,8 +34,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.google.zxing.qrcode.encoder.Encoder;
 
+import si.turnirko.dto.KodeListkovDto;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.Dogodek;
+import si.turnirko.modeli.SodniskaPotrditev;
 import si.turnirko.modeli.StatusRacuna;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.Uporabnik;
@@ -109,7 +113,10 @@ class SkrivnostListkaTest extends IntegracijskiTest {
         assertThrows(PrepovedanoIzjema.class, () -> listkiStoritev.kode(dogodek.getId()));
 
         prijava("lastnik-kode@test", "ROLE_ORGANIZATOR");
-        Map<Long, String> kode = listkiStoritev.kode(dogodek.getId());
+        KodeListkovDto odgovor = listkiStoritev.kode(dogodek.getId());
+        // sodniki ne slikajo listkov: listki brez hrbtne strani
+        assertNull(odgovor.sodnikiListki());
+        Map<Long, String> kode = odgovor.kode();
         assertEquals(tekme.size(), kode.size());
         for (Tekma t : tekme) {
             String vsebina = kode.get(t.getId());
@@ -118,7 +125,20 @@ class SkrivnostListkaTest extends IntegracijskiTest {
         }
 
         prijava("admin-kode@test", "ROLE_ADMIN");
-        assertEquals(kode, listkiStoritev.kode(dogodek.getId()));
+        assertEquals(kode, listkiStoritev.kode(dogodek.getId()).kode());
+    }
+
+    /* S2: ko sodniki slikajo listke, vmesnik natisne hrbtno stran s kodo do /s. */
+    @Test
+    void kodePovedoStopnjoSodniskePotrditve() {
+        Dogodek dogodek = pripraviDogodek(4);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        racun("admin-stopnja@test", Vloga.ADMIN);
+        dogodek.getTurnir().setSodnikiListki(SodniskaPotrditev.PREDPREGLED);
+        turnirRepozitorij.save(dogodek.getTurnir());
+
+        prijava("admin-stopnja@test", "ROLE_ADMIN");
+        assertEquals(SodniskaPotrditev.PREDPREGLED, listkiStoritev.kode(dogodek.getId()).sodnikiListki());
     }
 
     // ---------- Pomozno ----------

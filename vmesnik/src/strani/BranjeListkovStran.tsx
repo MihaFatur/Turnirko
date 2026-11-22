@@ -458,8 +458,8 @@ function StikaloSodnikov({
             : 'Izid velja takoj, ko ga sodnik potrdi. Ti ga vidiš med zaključenimi in ga po potrebi popraviš.'}
         {nacin !== null && (
           <>
-            {' '}Sodniki odprejo <strong>{window.location.host}/s</strong>.{' '}
-            <Link to={`/turnirji/${idTurnirja}/plakat-sodniki`} target="_blank">Plakat za ob mize →</Link>
+            {' '}Listki, ki jih zdaj natisneš, imajo na hrbtni strani kodo, ki sodniku odpre{' '}
+            <strong>{window.location.host}/s</strong> (natisni jih obojestransko).
           </>
         )}
       </p>

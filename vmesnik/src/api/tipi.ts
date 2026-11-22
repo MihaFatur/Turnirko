@@ -3298,6 +3298,14 @@ export interface BranjaTurnirjaDto {
    VELJA_TAKOJ - izid gre v tekmovanje ob sodnikovi potrditvi. */
 export type SodniskaPotrditev = 'PREDPREGLED' | 'VELJA_TAKOJ'
 
+/* Kode QR za tisk listkov dogodka (samo organizator in admin). Ko sodniki slikajo
+   listke, ima vsak list hrbtno stran s kodo do strani za sodnika (/s). */
+export interface KodeListkovDto {
+  sodnikiListki: SodniskaPotrditev | null
+  /* id tekme -> »TK:<id>:<skrivnost>« */
+  kode: Record<string, string>
+}
+
 /* Odgovor na sodnikovo fotografijo: zeton je samo v pomnilniku strani (ne v
    naslovu, localStorage ali sessionStorage). */
 export interface SodnikPoslanoDto {

@@ -17,7 +17,9 @@
    - velika vecina celic je prebrana prav, napacna celica pa je skoraj vedno
      oznacena kot negotova (organizator jo pogleda) - tiha napaka je redka;
    - stevilka mize iz okenca (S1) je prebrana prav ali oznacena kot negotova;
-     listek pred S1 (listek-5-nizov-pred-s1.png) se prebere kot prej in mize nima.
+     listek pred S1 (listek-5-nizov-pred-s1.png) se prebere kot prej in mize nima;
+   - hrbtna stran lista s kodo za sodnika (S2), ki prosojno sije skozi papir,
+     branja ne pokvari.
    Meje so postavljene pod izmerjene vrednosti (pisava iz MNIST ni pisava v
    dvorani); pravo merilo je stevilo potrjenih listkov brez popravka na strani
    Branje listkov. */
@@ -298,6 +300,99 @@ class SimuliraneFotografijeTest {
         assertTrue(m.mizaTihe() <= 0.034, "prevec tihih napak mize: " + m.mizaTihe());
     }
 
+    /* S2: hrbtna stran lista (koda do strani za sodnika, HrbetListka) prosojno sije
+       skozi papir za tabelo tock. Listek na mizi: papir 80 g/m2 je pod natisom hrbta
+       za ~8 % temnejsi (neprosojnost ~92 %); meja 15 % je z rezervo (tanjsi papir,
+       svetla miza). Branje mora ostati kot na cistem listku: koda tekme najdena,
+       celice prav, miza brez tihe napake. Izmerjeno 22. 11. 2026: pri 15 % 100 %
+       celic prav (cist listek 99,6 %); pri 30 % (listek proti luci) 85 % prav in
+       0,4 % tihih - zato hrbet sodniku naroci, naj listek polozi na mizo. */
+    @Test
+    void hrbetNeMotiBranja() throws IOException {
+        BufferedImage zHrbtom = sProsojnimHrbtom(listek, 0.15);
+        Meritev m = izmeri(new Random(19112026L), 30, OBICAJNO, bralnik, zHrbtom);
+        assertEquals(0, m.neprebranih(), "listek s prosojnim hrbtom mora biti poravnan");
+        assertTrue(m.prav() >= 0.95, "premalo pravilnih celic: " + m.prav());
+        assertTrue(m.tihe() <= 0.01, "prevec tihih napak: " + m.tihe());
+        assertEquals(0, m.mizaTihe(), "tiha napaka mize");
+    }
+
+    /* Listek, skozi katerega sije hrbet: zrcaljena vsebina HrbetListka (naslov, QR
+       26 mm do /s, naslov strani, trije koraki) na sredini mesta, kot jo natisne
+       obojestranski tisk z obratom po dolgem robu; »temnost« = za koliko natis
+       hrbta zatemni papir. Brez zameglitve - ostri robovi so za iskanje crt
+       tabele strozji od pravih. */
+    static BufferedImage sProsojnimHrbtom(BufferedImage cist, double temnost) {
+        int w = cist.getWidth();
+        int h = cist.getHeight();
+        double mm = w / GeometrijaListka.SIRINA;
+        BufferedImage hrbet = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
+        java.awt.Graphics2D g = hrbet.createGraphics();
+        g.setColor(java.awt.Color.WHITE);
+        g.fillRect(0, 0, w, h);
+        g.setColor(java.awt.Color.BLACK);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING,
+                java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        // obrat po dolgem robu: hrbet je vodoravno zrcaljen
+        g.translate(w, 0);
+        g.scale(-1, 1);
+        double sredina = GeometrijaListka.SIRINA / 2;
+        // naslov (11 pt krepko) nad kodo
+        g.setFont(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.BOLD, (int) Math.round(3.9 * mm)));
+        sredinsko(g, "Sodnik? Izid pošlji s telefonom.", sredina * mm, 27 * mm);
+        // QR 26 mm (mirna cona 1 mm nad in pod)
+        com.google.zxing.qrcode.encoder.ByteMatrix qr;
+        try {
+            qr = com.google.zxing.qrcode.encoder.Encoder.encode("https://turnirko-nt.si/s",
+                    com.google.zxing.qrcode.decoder.ErrorCorrectionLevel.M).getMatrix();
+        } catch (com.google.zxing.WriterException e) {
+            throw new IllegalStateException(e);
+        }
+        double modul = 26.0 / qr.getWidth();
+        double x0 = sredina - 13;
+        double y0 = 30;
+        for (int y = 0; y < qr.getHeight(); y++) {
+            for (int x = 0; x < qr.getWidth(); x++) {
+                if (qr.get(x, y) == 1) {
+                    g.fill(new java.awt.geom.Rectangle2D.Double((x0 + x * modul) * mm, (y0 + y * modul) * mm,
+                            modul * mm, modul * mm));
+                }
+            }
+        }
+        // naslov strani in trije koraki (8 pt)
+        g.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.BOLD, (int) Math.round(3.3 * mm)));
+        sredinsko(g, "turnirko-nt.si/s", sredina * mm, 62 * mm);
+        g.setFont(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.PLAIN, (int) Math.round(2.8 * mm)));
+        String[] koraki = {"1. Po tekmi skeniraj to kodo s kamero telefona.",
+                "2. Obrni listek, polozi ga na mizo in ga fotografiraj od zgoraj, celega.",
+                "3. Preveri tocke in pritisni Potrdi izid. Listek oddaj na pultu."};
+        for (int i = 0; i < koraki.length; i++) {
+            g.drawString(koraki[i], (float) (18 * mm), (float) ((68 + 3.8 * i) * mm));
+        }
+        g.dispose();
+        BufferedImage rezultat = kopija(cist);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                double crnilo = 1 - (hrbet.getRaster().getSample(x, y, 0) / 255.0);
+                if (crnilo <= 0) {
+                    continue;
+                }
+                double faktor = 1 - temnost * crnilo;
+                int rgb = rezultat.getRGB(x, y);
+                int rr = (int) Math.round(((rgb >> 16) & 0xff) * faktor);
+                int gg = (int) Math.round(((rgb >> 8) & 0xff) * faktor);
+                int bb = (int) Math.round((rgb & 0xff) * faktor);
+                rezultat.setRGB(x, y, (rr << 16) | (gg << 8) | bb);
+            }
+        }
+        return rezultat;
+    }
+
+    private static void sredinsko(java.awt.Graphics2D g, String besedilo, double cx, double y) {
+        double sirina = g.getFontMetrics().stringWidth(besedilo);
+        g.drawString(besedilo, (float) (cx - sirina / 2), (float) y);
+    }
+
     /* Tekme meritve po pogostosti izidov iz zgodovine (PogostostNizov.VGRAJENA)
        namesto enakomerno; nastavi SimulacijaBralnikaPoskus pred meritvijo. */
     static volatile boolean tekmePoZgodovini = false;
@@ -320,6 +415,12 @@ class SimuliraneFotografijeTest {
     }
 
     static Meritev izmeri(Random r, int listkov, Pogoji pogoji, LokalniBralnikListka bralnik) throws IOException {
+        return izmeri(r, listkov, pogoji, bralnik, listek);
+    }
+
+    /* »osnova«: natisnjen listek, na katerega se pise (cist ali s prosojnim hrbtom). */
+    static Meritev izmeri(Random r, int listkov, Pogoji pogoji, LokalniBralnikListka bralnik,
+                          BufferedImage osnova) throws IOException {
         int celic = 0;
         int prav = 0;
         int tihih = 0;
@@ -332,7 +433,7 @@ class SimuliraneFotografijeTest {
         int prebranih = 0;
         for (int k = 0; k < listkov; k++) {
             int[][] izid = tekmePoZgodovini ? tekmaPoZgodovini(r, 3) : nakljucnaTekma(r, 3);
-            BufferedImage izpolnjen = kopija(listek);
+            BufferedImage izpolnjen = kopija(osnova);
             for (int i = 0; i < izid.length; i++) {
                 napisiCelico(izpolnjen, celice.nizi().get(i).levo(), izid[i][0], r, pogoji);
                 napisiCelico(izpolnjen, celice.nizi().get(i).desno(), izid[i][1], r, pogoji);

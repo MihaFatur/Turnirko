@@ -45,6 +45,12 @@
     - **QR s skrivnostjo** (S1): vsebino kode da strežnik samo organizatorju turnirja
       in adminu (`dogodkiApi.kodeListkov`); gost natisne zasilno kodo brez skrivnosti.
       Tisk čaka, da se kode naložijo.
+    - **Hrbtna stran** (S2, 22. 11. 2026): ko sodniki slikajo listke, sledi vsakemu
+      listu A4 njegov hrbet s kodo do strani za sodnika (`HrbetListka`, brez črt za
+      rez), tisk obojestranski; organizator ga lahko odkljuka. Kodo dobi vsako mesto,
+      za katerim je listek pri obratu po dolgem ali kratkem robu (`mestaHrbta`).
+      Vsebina hrbta ostane znotraj roba 20/15 mm, da ne sije za oznake, QR ali okence
+      mize (`docs/pravila/branje-listkov.md`, »Sodnik slika listek«).
     - Vsebina: znamka (`ZnakTurnirko` + »Turnirko«) in okence »Miza« (številka se
       izpiše, če je že dodeljena), nato Dogodek (= turnir, kot ga
       igralci poznajo), Kategorija (ime dogodka; spol in starost se dodata samo,

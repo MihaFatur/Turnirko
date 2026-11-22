@@ -462,10 +462,11 @@ public class DogodkiKontroler {
         listkiStoritev.oznaci(id, vnos.idjiTekem(), vnos.natisnjeno());
     }
 
-    /* Vsebina QR kod za tisk listkov (id tekme -> koda s skrivnostjo). Samo
-       organizator turnirja ali admin; odgovor se ne shrani v predpomnilnik. */
+    /* Vsebina QR kod za tisk listkov (id tekme -> koda s skrivnostjo) in ali sodniki
+       slikajo listke (hrbtna stran lista). Samo organizator turnirja ali admin;
+       odgovor se ne shrani v predpomnilnik. */
     @GetMapping("/{id}/listki/kode")
-    public org.springframework.http.ResponseEntity<java.util.Map<Long, String>> listkiKode(@PathVariable Long id) {
+    public org.springframework.http.ResponseEntity<si.turnirko.dto.KodeListkovDto> listkiKode(@PathVariable Long id) {
         return org.springframework.http.ResponseEntity.ok()
                 .cacheControl(org.springframework.http.CacheControl.noStore().cachePrivate())
                 .body(listkiStoritev.kode(id));

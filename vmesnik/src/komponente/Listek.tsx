@@ -13,7 +13,8 @@
 
    Listek je namenoma crno-bel ne glede na temo (natis na papir), zato tu ne
    uporabljamo temo odvisnih spremenljivk. Natis na list A4 (6 listkov, rezi)
-   urejata ListkiStran in razdelek 16 v slog.css. */
+   urejata ListkiStran in razdelek 16 v slog.css. Ko sodniki slikajo listke,
+   dobi list hrbtno stran (HrbetListka spodaj). */
 import type { CSSProperties } from 'react'
 
 import { natisnjenaKoda, potQr, vsebinaQr } from '../pomozno/kodaListka'
@@ -144,6 +145,43 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
           <span className="listek__crta" />
         </span>
       </footer>
+    </article>
+  )
+}
+
+/* Hrbtna stran listka (S2): koda QR do strani za sodnika (/s) in trije koraki.
+   Natisne se na hrbet lista, ko sodniki slikajo listke (ListkiStran). Koda je na
+   vseh hrbtih ista in ne nosi nič skrivnega - pravico poslati izid da šele koda
+   na sprednji strani. Vsebina ostane v sredini mesta (rob 20 mm zgoraj in spodaj,
+   15 mm levo in desno, slog.css): pri obeh načinih obojestranskega tiska (obrat
+   po dolgem ali kratkem robu) prosojno sije le za tabelo točk, oznake, QR in
+   okence mize na sprednji strani pa ostanejo čisti. Da tabele ne moti, meri
+   SimuliraneFotografijeTest.hrbetNeMotiBranja. */
+export function HrbetListka({ naslov }: { naslov: string }) {
+  const { velikost, pot } = potQr(naslov, false)
+  return (
+    <article className="listek-hrbet">
+      <p className="listek-hrbet__naslov">
+        <ZnakTurnirko velikost={16} />
+        Sodnik? Izid pošlji s telefonom.
+      </p>
+      <svg
+        className="listek-hrbet__qr"
+        viewBox={`0 0 ${velikost} ${velikost}`}
+        shapeRendering="crispEdges"
+        role="img"
+        aria-label={naslov}
+      >
+        <path d={pot} />
+      </svg>
+      <p className="listek-hrbet__stran">{naslov.replace(/^https?:\/\//, '')}</p>
+      <ol className="listek-hrbet__koraki">
+        <li>Po tekmi skeniraj to kodo s kamero telefona.</li>
+        <li>Obrni listek, položi ga na mizo in ga fotografiraj od zgoraj, celega.</li>
+        <li>
+          Preveri točke in pritisni <strong>Potrdi izid</strong>. Listek oddaj na pultu.
+        </li>
+      </ol>
     </article>
   )
 }

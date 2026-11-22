@@ -6,6 +6,7 @@ import {
   enakiIdji,
   idjiNenatisnjenih,
   jeNatisnjen,
+  mestaHrbta,
   NAJVEC_PRAZNIH_LISTKOV,
   nenatisnjeni,
   opisNatisa,
@@ -109,6 +110,29 @@ describe('natisnjeni listki', () => {
     expect(enakiIdji(new Set([3, 2]), [2, 3])).toBe(true)
     expect(enakiIdji(new Set([2]), [2, 3])).toBe(false)
     expect(enakiIdji(new Set([1, 2, 3]), [2, 3])).toBe(false)
+  })
+})
+
+describe('mestaHrbta', () => {
+  it('poln list ima kodo na vseh šestih hrbtih', () => {
+    expect(mestaHrbta(6)).toEqual([true, true, true, true, true, true])
+  })
+
+  it('en listek (zgoraj levo) je pokrit pri obračanju po dolgem in po kratkem robu', () => {
+    // po dolgem: hrbet zgoraj desno; po kratkem: hrbet spodaj levo
+    expect(mestaHrbta(1)).toEqual([false, true, false, false, true, false])
+  })
+
+  it('vsak listek ima kodo za sabo v obeh načinih obojestranskega tiska', () => {
+    for (let listkov = 1; listkov <= 6; listkov++) {
+      const mesta = mestaHrbta(listkov)
+      for (let i = 0; i < listkov; i++) {
+        const vrstica = Math.floor(i / 2)
+        const stolpec = i % 2
+        expect(mesta[vrstica * 2 + (1 - stolpec)]).toBe(true)
+        expect(mesta[(2 - vrstica) * 2 + stolpec]).toBe(true)
+      }
+    }
   })
 })
 

@@ -73,7 +73,8 @@ export const REZULTATI: Clanek[] = [
       'brez interneta',
       'miza',
       'sodnik',
-      'plakat',
+      'hrbtna stran',
+      'obojestransko',
     ],
     vsebina: [
       { tip: 'kje', pot: ['Turnir', 'Branje listkov'] },
@@ -145,7 +146,7 @@ export const REZULTATI: Clanek[] = [
         postavke: [
           '**Predpregled**: sodnikova potrditev počaka tebe – v vrsti piše »Sodnik je izid potrdil«, potrdiš z enim dotikom. Za prvi turnir izberi to.',
           '**Velja takoj**: izid se vpiše, ko ga sodnik potrdi, mreža napreduje. Ti ga vidiš med zaključenimi (»potrdil sodnik«) in ga po potrebi popraviš. Če sodnik spremeni številko, ki jo je Turnirko prebral zanesljivo, ali Turnirko na fotografiji ne prebere cele tekme, izid vseeno počaka tebe.',
-          'Natisni **Plakat za ob mize** (povezava pod stikalom): koda na njem odpre stran za sodnike.',
+          'Listke natisni **po vklopu** stikala in **obojestransko**: vsak list dobi hrbtno stran s kodo, ki sodniku odpre stran za sodnike. Kodo na hrbtu lahko pred tiskom izklopiš, če tiskalnik ne tiska obojestransko.',
           'Sodnik lahko pošlje izid samo za listek, ki ga ima v roki: koda na listku nosi skrivnost tekme. Deluje samo z listki, natisnjenimi po 22. 11. 2026, in samo, dokler tekma nima izida. Listke natisni prijavljen.',
           'Predajo, brez boja, diskvalifikacijo in ekipne zapisnike sodnik ne vpiše – taki listki pridejo na pult kot doslej. Tudi papirni listek po tekmi vedno oddajo na pultu.',
           'Če sodnik spremeni prebrano številko, je listek označen, da ga pogledaš.',

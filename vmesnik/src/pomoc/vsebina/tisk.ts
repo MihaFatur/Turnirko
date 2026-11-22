@@ -7,7 +7,17 @@ export const TISK: Clanek[] = [
     poglavje: 'tisk',
     kratko:
       'Natisne sodniške listke pripravljenih tekem, šest na list A4. Privzeto so izbrani vsi še nenatisnjeni; izbereš lahko sklop (skupino, žreb) ali posamezne tekme. Po tisku potrdiš, da so se natisnili.',
-    kljucne: ['listki', 'listek', 'sodniški listek', 'natisni', 'tiskanje', 'prazni listki', 'natisnjeno'],
+    kljucne: [
+      'listki',
+      'listek',
+      'sodniški listek',
+      'natisni',
+      'tiskanje',
+      'prazni listki',
+      'natisnjeno',
+      'obojestransko',
+      'hrbtna stran',
+    ],
     shemaNamiga: 'listki-a4',
     vsebina: [
       { tip: 'kje', pot: ['Kategorija', 'Listki za tiskanje'] },
@@ -43,6 +53,18 @@ export const TISK: Clanek[] = [
         tip: 'odstavek',
         besedilo:
           'Uporabni za tekme, ki jih na hitro doda sodnik, ali kot rezerva. Prazni listki se ne beležijo kot natisnjeni.',
+      },
+      {
+        tip: 'razdelek',
+        id: 'hrbet',
+        naslov: 'Hrbtna stran s kodo za sodnike',
+        kratko:
+          'Ko na strani Branje listkov vklopiš **Sodniki slikajo listke**, ima vsak list hrbtno stran: na vsakem listku koda, ki sodniku odpre stran za pošiljanje izida s telefonom.',
+      },
+      {
+        tip: 'odstavek',
+        besedilo:
+          'Natisni **obojestransko** (na obe strani lista); vseeno je, ali tiskalnik list obrne po dolgem ali po kratkem robu. Če tiskalnik obojestransko ne zna, odkljukaj **Na hrbtno stran lista natisni kodo za sodnike** — sodnik nato listek prinese na pult. Prazni listki hrbta nimajo, ker tekme še ne poznajo.',
       },
       {
         tip: 'nasvet',

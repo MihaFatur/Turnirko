@@ -132,8 +132,8 @@ export function SodnikStran() {
     vsebina = (
       <>
         <p className="sodnik__uvod">
-          Po tekmi fotografiraj izpolnjen listek od zgoraj, da sta na sliki cela tabela in koda v
-          desnem kotu. Turnirko prebere točke, ti jih preveriš in potrdiš.
+          Po tekmi položi izpolnjen listek na mizo in ga fotografiraj od zgoraj, da sta na sliki
+          cela tabela in koda v desnem kotu. Turnirko prebere točke, ti jih preveriš in potrdiš.
         </p>
         {gumbFotografije('Slikaj listek')}
         <p className="sodnik__drobno">

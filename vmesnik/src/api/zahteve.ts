@@ -5,6 +5,7 @@ import { api } from './odjemalec'
 import type {
   BranjaTurnirjaDto,
   BranjeListkaDto,
+  KodeListkovDto,
   MeritevBranjaDto,
   MrezeStevkDto,
   NapakeMrezeDto,
@@ -258,7 +259,7 @@ export const dogodkiApi = {
     api.posodobi<void>(`/dogodki/${id}/listki/natisnjeno`, { idjiTekem, natisnjeno }),
   /* Vsebina QR kod listkov (id tekme -> »TK:<id>:<skrivnost>«, S1). Skrivnost sodniku
      da pravico poslati izid, zato jo dobi samo organizator turnirja (preveri strežnik). */
-  kodeListkov: (id: number) => api.vrni<Record<string, string>>(`/dogodki/${id}/listki/kode`),
+  kodeListkov: (id: number) => api.vrni<KodeListkovDto>(`/dogodki/${id}/listki/kode`),
 
   /* Ekipni dogodek: prijava je ekipa s kadrom. Igralec sme biti v kadru ene
      same ekipe dogodka (preveri strežnik). */

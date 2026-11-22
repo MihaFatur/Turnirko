@@ -37,7 +37,6 @@ import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStra
 import { PomocStran } from './strani/PomocStran'
 import { BranjeListkovStran } from './strani/BranjeListkovStran'
 import { SodnikStran } from './strani/SodnikStran'
-import { PlakatSodnikovStran } from './strani/PlakatSodnikovStran'
 import { MeritevBranjaStran } from './strani/MeritevBranjaStran'
 import { VadnicaStran } from './strani/VadnicaStran'
 import { VadnicaPregledStran } from './strani/VadnicaPregledStran'
@@ -202,9 +201,9 @@ export function App() {
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}
       <Route path="/dogodki/:id/listki" element={<ListkiStran />} />
-      {/* Stran za sodnika (S2): brez prijave in brez navigacije - telefon sodnika ob mizi. */}
+      {/* Stran za sodnika (S2): brez prijave in brez navigacije - telefon sodnika ob mizi.
+          Odpre jo koda na hrbtni strani natisnjenega listka. */}
       <Route path="/s" element={<SodnikStran />} />
-      <Route path="/turnirji/:id/plakat-sodniki" element={<PlakatSodnikovStran />} />
       <Route path="/srecanja/:id/listki" element={<ListkiSrecanjaStran />} />
       {/* Žreb skupin za vrata dvorane: ena kategorija ali ves turnir. */}
       <Route path="/dogodki/:id/zreb-skupin" element={<ZrebSkupinDogodkaStran />} />

@@ -27,7 +27,7 @@ export function natisnjenaKoda(idTekme: number): string {
    (GeometrijaListka.QR_MODULOV). »TK:<id>:<8 znakov>« gre vanjo do id-ja z 8
    števkami; daljši zapis vrže napako, namesto da bi tiho natisnil drugo kodo. */
 export function potQr(vsebina: string, samoVerzija1 = true): { velikost: number; pot: string } {
-  // plakat za sodnike (S2) nosi spletni naslov, ki v verzijo 1 ne gre; listek vedno
+  // hrbtna stran listka (S2) nosi spletni naslov, ki v verzijo 1 ne gre; sprednja vedno
   const { data, size } = encode(vsebina, samoVerzija1
     ? { ecc: 'M', border: 0, minVersion: 1, maxVersion: 1 }
     : { ecc: 'M', border: 0 })
