@@ -373,6 +373,33 @@ class MizeStoritevTest extends IntegracijskiTest {
         assertEquals(2, sveza(b.getId()).getMiza());
     }
 
+    // ---------- predlog (M2) ----------
+
+    /* Lastnik 23. 11. 2026: skupina po 3 pride v kolu med skupine po 4, ne na konec;
+       v kolu gredo skupine po vrsti (oznaka skupine pride iz baze v predlog).
+       11 igralcev: skupine po 4, 4 in 3, vse s 3 koli. */
+    @Test
+    void predlogPoKolihInSkupinahTudiSSkupinoPoTri() {
+        Dogodek dogodek = pripraviDogodek(11, SistemTekmovanja.SKUPINE_IZLOCILNI);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        List<Long> tekemVSkupini = tekmeDogodka(dogodek.getId()).stream()
+                .collect(java.util.stream.Collectors.groupingBy(Tekma::getIdSkupina,
+                        java.util.stream.Collectors.counting()))
+                .values().stream().sorted().toList();
+        assertEquals(List.of(3L, 6L, 6L), tekemVSkupini, "skupine po 3, 4 in 4");
+
+        Long idTurnir = dogodek.getTurnir().getId();
+        mize.nastavi(idTurnir, new NastavitveMizVnos(1, List.of(), false, 3));
+        List<String> vrstniRed = mize.pregled(idTurnir).kandidati().stream()
+                .map(k -> k.tekma().tekma().kolo() + ". kolo, " + k.tekma().del())
+                .toList();
+
+        assertEquals(15, vrstniRed.size());
+        assertEquals(vrstniRed.stream().sorted().toList(), vrstniRed,
+                "po kolih, v kolu po skupinah: " + vrstniRed);
+        assertEquals(5, vrstniRed.stream().filter(s -> s.startsWith("1. kolo")).count());
+    }
+
     // ---------- pomozno ----------
 
     private Dogodek izlocilni(int igralcev) {

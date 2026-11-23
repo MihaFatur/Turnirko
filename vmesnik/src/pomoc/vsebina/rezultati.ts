@@ -227,21 +227,22 @@ export const REZULTATI: Clanek[] = [
         id: 'predlog',
         naslov: 'Kako Turnirko izbere naslednjo tekmo',
         kratko:
-          'Igralec, ki igra ali sodi drugje, ni predlagan. Prednost ima tekma igralca, ki ima v kategoriji še največ tekem, nato tekma spočitih igralcev, nižje kolo in tisti, ki čakajo najdlje.',
+          'Igralec, ki igra ali sodi drugje, ni predlagan. Tekme gredo po kolih: najprej 1. kolo vseh skupin po vrsti (skupina 1, 2, 3 …), nato 2. kolo. Prednost ima skupina, ki ima do konca še največ kol, nato tekma spočitih igralcev in tisti, ki čakajo najdlje.',
       },
       {
         tip: 'seznam',
         postavke: [
           'Ne predlaga tekme igralca, ki zdaj igra ali sodi na drugi mizi, tudi v drugi kategoriji ali v dvojicah.',
-          'Prednost ima tekma igralca, ki ima v kategoriji še največ tekem. Tako ne zaostaja skupina, brez katere se izločilni del ne more začeti.',
-          'Pri enakem zaostanku ima prednost tekma, v kateri so vsi igralci počivali vsaj toliko minut, kot je nastavljeno pod **Počitek**.',
-          'Nato pride na vrsto nižje kolo skupine, potem pa tekma, katere igralci čakajo najdlje.',
+          'Prednost ima skupina, ki ima do konca še največ kol. Skupina po 3 ima 3 kola kot skupina po 4, zato pride na vrsto skupaj z njimi. Tekma, ki je zaostala (na primer 1. kolo, ko ostali že igrajo 2. kolo), gre naprej, tudi če igralec še ni počival.',
+          'Skupina po 5 ima 5 kol, zato začne prej: njeno 2. kolo pride pred 1. kolom skupin po 4, da vse skupine končajo hkrati.',
+          'Pri enakem številu kol ima prednost tekma, v kateri so vsi igralci počivali vsaj toliko minut, kot je nastavljeno pod **Počitek**. Nato pride na vrsto nižje kolo, potem tekma, katere igralci čakajo najdlje, nazadnje skupine po vrsti.',
+          'Dve kategoriji hkrati se izmenjujeta po kolih: najprej 1. kolo obeh, nato 2. kolo obeh.',
         ],
       },
       {
         tip: 'odstavek',
         besedilo:
-          'Pod vsakim predlogom so razlogi, na primer »ima v kategoriji še 3 tekme« ali »zadnja tekma pred 1 min«. Odločiš vedno ti. V meniju mize **Druga tekma …** ponudi vse pripravljene tekme, desni stolpec **Pripravljene** pa jih našteje po vrstnem redu predloga.',
+          'Pod vsakim predlogom so razlogi, na primer »do konca skupine še 3 kola« ali »zadnja tekma pred 1 min«. Odločiš vedno ti. V meniju mize **Druga tekma …** ponudi vse pripravljene tekme, desni stolpec **Pripravljene** pa jih našteje po vrstnem redu predloga.',
       },
       {
         tip: 'razdelek',

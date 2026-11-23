@@ -19,7 +19,6 @@ package si.turnirko.storitve;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,7 +48,6 @@ import si.turnirko.modeli.Dogodek;
 import si.turnirko.modeli.FazaTekme;
 import si.turnirko.modeli.Igralec;
 import si.turnirko.modeli.Prijava;
-import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.Skupina;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.StatusTekmovanja;
@@ -445,12 +443,9 @@ public class MizeStoritev {
         Map<String, Integer> zadnjaKola = new HashMap<>();
         tekme.forEach(t -> zadnjaKola.merge(kljucVeje(t), t.getKolo(), Math::max));
 
-        Map<Long, Integer> nadaljnjih = new HashMap<>();
         List<PredlogTekem.Tekma> vhod = new ArrayList<>();
         for (Tekma t : tekme) {
             Dogodek d = t.getDogodek();
-            int nad = t.getFaza() == FazaTekme.SKUPINA
-                    ? nadaljnjih.computeIfAbsent(d.getId(), id -> poSkupinah(d, tekme)) : 0;
             Map<StranEkipe, List<PredlogTekem.Oseba>> postava = postave.getOrDefault(t.getId(), Map.of());
             vhod.add(new PredlogTekem.Tekma(t.getId(), d.getId(), d.getStatus() == StatusTekmovanja.V_TEKU,
                     vrsta(d), t.getFaza(), t.getIdSkupina(), t.getIdZreb(), t.getKolo(), t.getPozicija(),
@@ -461,7 +456,7 @@ public class MizeStoritev {
                     t.getMiza(), t.getMiza2(), t.getPoklicanaOb(), t.getKoncanaOb(),
                     t.getSodnik() == null ? null
                             : new PredlogTekem.Oseba(t.getSodnik().getId(), t.getSodnik().polnoIme()),
-                    nad));
+                    t.getIdSkupina() == null ? null : skupine.get(t.getIdSkupina())));
         }
         return new Posnetek(vhod, entitete, skupine, srecanja, zadnjaKola);
     }
@@ -489,30 +484,4 @@ public class MizeStoritev {
         return new PredlogTekem.Stran(p.getId(), p.prikazanoIme(), osebe);
     }
 
-    /* Ocena tekem, ki udelezenca skupine cakajo po skupinskem delu (zaostanek, M2).
-       Izlocilni del iz prvih dveh vsake skupine ima log2(2 x skupin) kol; SV regija
-       igra zreb za vsa mesta iz skupin nivoja; finalna skupina za mesta ima 2 x
-       skupin igralcev, eden od dvobojev se prenese. Ocena, ne napoved: sluzi samo
-       temu, da kategorija z daljso potjo naprej pride na vrsto prej. */
-    static int poSkupinah(Dogodek d, Collection<Tekma> tekme) {
-        int skupin = (int) tekme.stream()
-                .filter(t -> t.getDogodek().getId().equals(d.getId()) && t.getFaza() == FazaTekme.SKUPINA)
-                .map(Tekma::getIdSkupina).filter(Objects::nonNull).distinct().count();
-        SistemTekmovanja sistem = d.getSistemTekmovanja();
-        return switch (sistem) {
-            case SKUPINE_IZLOCILNI -> kol(2 * Math.max(1, skupin));
-            case SV_REGIJA -> kol(2 * (d.getSteviloSkupin() == null ? 4 : Math.max(1, d.getSteviloSkupin())));
-            case SKUPINE_ZA_MESTA -> Math.max(0, 2 * skupin - 2);
-            default -> 0;
-        };
-    }
-
-    /* Stevilo kol izlocilne mreze za n udelezencev (zaokrozeno navzgor na potenco 2). */
-    static int kol(int n) {
-        int kol = 0;
-        for (int velikost = 1; velikost < n; velikost *= 2) {
-            kol++;
-        }
-        return kol;
-    }
 }

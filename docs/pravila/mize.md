@@ -80,16 +80,27 @@
   z razlogom.
 - **Vrstni red** (vsako merilo odloči šele pri izenačenju prejšnjega):
   1. tekme brez poraženca, ki čaka na sojenje, pridejo pred tekme s takim igralcem;
-  2. **zaostanek**: največ preostalih tekem udeleženca v dogodku. V skupini so to
-     neodigrane tekme skupine in ocena dela, ki sledi (`MizeStoritev.poSkupinah`:
-     izločilni del iz prvih dveh, zreb SV regije, finalna skupina). V izločilnem
-     delu so to kola do konca veje;
+  2. **zaostanek**: koliko kol ima skupina od kola te tekme do konca (v izločilnem
+     delu mreža). Šteje skupina, ne igralec (lastnik 23. 11. 2026): skupina po 3 ima
+     3 kola kot skupina po 4, zato njeno 1. kolo pride med 1. kola ostalih, ne na
+     konec (prej je štel igralec z največ preostalimi tekmami in skupine po 3 so
+     zdrsnile za vse skupine po 4). Posledice:
+     - **zaostala tekma** nižjega kola gre pred višje kolo drugih skupin, tudi pred
+       počitkom;
+     - **večja skupina prej**: skupina po 5 (5 kol) odigra 1. in 2. kolo pred 1. kolom
+       skupin po 4, da konča hkrati z njimi. Njeni igralci zato lahko igrajo dve koli
+       zapored brez počitka;
+     - **kategorije se izmenjujejo po kolih**: ocene izločilnega dela, ki sledi, ni,
+       zato kategorija z več skupinami ne gre vsa naprej;
   3. **počitek**: tekme, v katerih so vsi udeleženci končali pred vsaj N min, pridejo
      pred ostale;
   4. nižje kolo;
   5. **najdlje čaka**: odloči najkrajši premor med udeleženci, kdor še ni igral, čaka
      najdlje;
-  6. stalen vrstni red (dogodek, pozicija, id).
+  6. stalen vrstni red: dogodek, **skupina po vrsti kot na listkih** (1, 2, 3 …, pri
+     starejših dogodkih in v SV regiji A, B, C …; krajša oznaka prej, zato 9 pred 10
+     in Z pred ZA, isto pravilo kot `SkupinaRepozitorij.findByDogodekIdOrderByOznakaAsc`),
+     pozicija, id. V istem kolu gredo tako obe tekmi skupine 1, nato skupine 2 …
 - **Poraženec sodi** (ko je vklopljen): predlagani sodnik proste mize je poraženec
   zadnje končane tekme na njej. Pogoji:
   - tekma posameznikov z izidom odigrano ali predaja;

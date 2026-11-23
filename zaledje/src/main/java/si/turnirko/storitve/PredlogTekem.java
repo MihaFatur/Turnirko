@@ -11,18 +11,23 @@
    (0) tekma z udelezencem, ki zdaj igra ali sodi, ni predlagana (ostane na seznamu
        z razlogom, organizator jo sme vseeno poklicati);
    (1) tekma brez porazenca, ki caka na sojenje na svoji mizi, pred tekmo s takim;
-   (2) ZAOSTANEK: kdo od udelezencev ima v dogodku se najvec tekem. Lastnik
-       23. 11. 2026: zaostala skupina ima prednost pred pocitkom. V skupini so to
-       njegove neodigrane tekme skupine in ocena izlocilnega dela, ki sledi; v
-       izlocilnem delu kola do konca veje. Tako gre najprej tisto, kar bi sicer
-       zadrzalo izlocilni del ali konec turnirja (najdaljsa pot naprej);
+   (2) ZAOSTANEK: koliko kol ima skupina (v izlocilnem delu mreza) od kola te
+       tekme do konca. Lastnik 23. 11. 2026: zaostala skupina ima prednost pred
+       pocitkom. Steje skupina, ne igralec: prej je stel igralec z najvec
+       preostalimi tekmami in skupine po 3 (2 tekmi na igralca) so zdrsnile za vse
+       skupine po 4 (3 tekme), ceprav imata obe 3 kola. Zdaj ima 1. kolo obeh enako
+       (3 kola do konca); zaostala tekma nizjega kola gre pred visje kolo drugih;
+       vecja skupina (po 5: 5 kol) pride prej, da konca hkrati z ostalimi. Ocene
+       izlocilnega dela ni vec: kategorije se izmenjujejo po kolih (lastnik
+       23. 11. 2026), ne gre najprej tista z daljso potjo naprej;
    (3) POCITEK: tekma, v kateri je vsak udelezenec koncal pred vsaj N min (ali se
        ni igral), pred tekmo z utrujenim;
    (4) nizje kolo prej (vrstni red kol v skupini);
    (5) NAJDLJE CAKA: tekma, katere udelezenec z najkrajsim premorom caka najdlje
        (kdor se ni igral, caka najdlje);
-   (6) dogodek, kolo, pozicija, id - stalen vrstni red, da se predlog med
-       osvezitvami ne premetava. */
+   (6) dogodek, skupina (1, 2, 3 ...), pozicija, id - stalen vrstni red, da se
+       predlog med osvezitvami ne premetava; v istem kolu gredo tekme po skupinah
+       kot na listkih (lastnik 23. 11. 2026). */
 package si.turnirko.storitve;
 
 import java.time.Duration;
@@ -65,14 +70,14 @@ public final class PredlogTekem {
 
     public enum Vrsta { POSAMICNO, DVOJICE, EKIPNO }
 
-    /* Tekma v posnetku. nadaljnjih = ocena tekem, ki udelezenca skupine cakajo po
-       skupinskem delu (izlocilni del, finalna skupina); pri drugih fazah 0. */
+    /* Tekma v posnetku. skupina = oznaka skupine (A, B ... ali 1, 2 ...), null zunaj
+       skupin; doloca vrstni red skupin v istem kolu. */
     public record Tekma(long id, long idDogodka, boolean dogodekVTeku, Vrsta vrsta,
                         FazaTekme faza, Long idSkupina, Long idZreb, int kolo, int pozicija,
                         StatusTekme status, IzidTekme izid, boolean prenesena,
                         Stran stran1, Stran stran2, Long idZmagovalca,
                         Integer miza, Integer miza2, LocalDateTime poklicanaOb,
-                        LocalDateTime koncanaOb, Oseba sodnik, int nadaljnjih) {
+                        LocalDateTime koncanaOb, Oseba sodnik, String skupina) {
 
         boolean naMizi(int stevilka) {
             return status == StatusTekme.V_IGRI
@@ -84,11 +89,6 @@ public final class PredlogTekem {
             if (stran1 != null) s.add(stran1);
             if (stran2 != null) s.add(stran2);
             return s;
-        }
-
-        boolean imaPrijavo(long idPrijave) {
-            return (stran1 != null && stran1.idPrijave() == idPrijave)
-                    || (stran2 != null && stran2.idPrijave() == idPrijave);
         }
 
         /* Igrana tekma, ki steje za pocitek: ne prosti prehod, ne prenesen izid. */
@@ -289,16 +289,7 @@ public final class PredlogTekem {
                     }
                 }
 
-                // zaostanek: udelezenec z najvec preostalimi tekmami
-                Stran najdaljsa = null;
-                int zaostanek = 0;
-                for (Stran s : t.strani()) {
-                    int p = preostanek(t, s);
-                    if (najdaljsa == null || p > zaostanek) {
-                        najdaljsa = s;
-                        zaostanek = p;
-                    }
-                }
+                int zaostanek = kolaDoKonca(t);
 
                 // pocitek in cakanje: udelezenec z najkrajsim premorom
                 Long najkrajsiPremor = null;
@@ -319,9 +310,8 @@ public final class PredlogTekem {
 
                 List<String> razlogi = new ArrayList<>(zasedeni);
                 razlogi.addAll(sodniki);
-                if (najdaljsa != null && zaostanek > 0) {
-                    razlogi.add(najdaljsa.ime() + " ima v kategoriji še " + zaostanek + " " + tekem(zaostanek));
-                }
+                razlogi.add((t.faza() == FazaTekme.SKUPINA ? "do konca skupine še " : "do konca mreže še ")
+                        + zaostanek + " " + kol(zaostanek));
                 if (!spocit) {
                     razlogi.add(utrujen.ime() + ": zadnja tekma pred " + najkrajsiPremor + " min");
                 } else if (najkrajsiPremor != null) {
@@ -342,6 +332,7 @@ public final class PredlogTekem {
                     .thenComparing(o -> o.kandidat().tekma().kolo())
                     .thenComparing(Ocena::cakanje, Comparator.reverseOrder())
                     .thenComparing(o -> o.kandidat().tekma().idDogodka())
+                    .thenComparing(o -> o.kandidat().tekma().skupina(), PredlogTekem::primerjajSkupini)
                     .thenComparing(o -> o.kandidat().tekma().pozicija())
                     .thenComparing(o -> o.kandidat().tekma().id()));
             return ocene.stream().map(Ocena::kandidat).toList();
@@ -357,18 +348,13 @@ public final class PredlogTekem {
                     || (t.vrsta() == Vrsta.EKIPNO && t.status() == StatusTekme.V_IGRI && t.miza() == null);
         }
 
-        /* Koliko tekem ima stran se pred seboj v tem dogodku (vkljucno s to). */
-        private int preostanek(Tekma t, Stran s) {
-            if (t.faza() == FazaTekme.SKUPINA) {
-                long vSkupini = tekme.stream()
-                        .filter(u -> u.idDogodka() == t.idDogodka() && u.faza() == FazaTekme.SKUPINA
-                                && Objects.equals(u.idSkupina(), t.idSkupina())
-                                && u.status() != StatusTekme.KONCANA && u.imaPrijavo(s.idPrijave()))
-                        .count();
-                return (int) vSkupini + t.nadaljnjih();
-            }
+        /* Koliko kol ima skupina oz. mreza te tekme od njenega kola do konca
+           (vkljucno z njim). Posnetek vsebuje vse tekme dogodka v teku, zato je
+           zadnje kolo skupine znano tudi, ko je ze odigrano. */
+        private int kolaDoKonca(Tekma t) {
             int zadnjeKolo = tekme.stream()
                     .filter(u -> u.idDogodka() == t.idDogodka() && u.faza() == t.faza()
+                            && Objects.equals(u.idSkupina(), t.idSkupina())
                             && Objects.equals(u.idZreb(), t.idZreb()))
                     .mapToInt(Tekma::kolo).max().orElse(t.kolo());
             return Math.max(1, zadnjeKolo - t.kolo() + 1);
@@ -452,11 +438,23 @@ public final class PredlogTekem {
     }
 
     /* »ima še 1 tekmo, 2 tekmi, 3 tekme, 5 tekem« */
-    static String tekem(int n) {
+    /* »se 1 kolo, 2 kola, 3 kola, 4 kola, 5 kol« */
+    static String kol(int n) {
         int ostanek = n % 100;
-        if (ostanek == 1) return "tekmo";
-        if (ostanek == 2) return "tekmi";
-        if (ostanek == 3 || ostanek == 4) return "tekme";
-        return "tekem";
+        if (ostanek == 1) return "kolo";
+        if (ostanek >= 2 && ostanek <= 4) return "kola";
+        return "kol";
+    }
+
+    /* Skupine po vrsti kot na listkih: krajsa oznaka prej (9 pred 10 pri
+       ostevilcenih skupinah, Z pred ZA v SV regiji; pomozno/OznakaSkupine), nato
+       po abecedi - isto pravilo kot SkupinaRepozitorij.findByDogodekIdOrderByOznakaAsc.
+       Tekme brez skupine za skupinami. */
+    static int primerjajSkupini(String a, String b) {
+        if (a == null || b == null) {
+            return a == null ? (b == null ? 0 : 1) : -1;
+        }
+        int dolzina = Integer.compare(a.length(), b.length());
+        return dolzina != 0 ? dolzina : a.compareTo(b);
     }
 }
