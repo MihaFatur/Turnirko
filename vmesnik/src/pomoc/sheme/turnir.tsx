@@ -289,10 +289,10 @@ export function ShemaRocneSkupine() {
           <span>Igralec</span>
           <span>Skupina · pozicija</span>
         </div>
-        {vrstica('Novak Ana', 'A', '1')}
-        {vrstica('Kos Jan', 'B', '1')}
-        {vrstica('Horvat Nik', 'A', '2')}
-        {vrstica('Zupan Eva', 'B', '2')}
+        {vrstica('Novak Ana', '1', '1')}
+        {vrstica('Kos Jan', '2', '1')}
+        {vrstica('Horvat Nik', '1', '2')}
+        {vrstica('Zupan Eva', '2', '2')}
         <div className="sh-vrsta sh-vrsta--konec">
           <Gumb glavni>Shrani skupine in začni</Gumb>
         </div>
@@ -306,10 +306,10 @@ export function ShemaIzSkupin() {
     <Platno opis="Štiri skupine v mrežo osmih: zmagovalci skupin na nosilskih mestih, drugouvrščeni z žrebom v nasprotno polovico od zmagovalca svoje skupine.">
       <div className="sh-vrsta sh-vrsta--sredina sh-vrsta--zgoraj">
         <div className="sh-stolpec sh-stolpec--tesno sh-ozko">
-          {['A', 'B', 'C', 'D'].map((s) => (
+          {['1', '2', '3', '4'].map((s) => (
             <Skatla key={s} naslov={`Skupina ${s}`}>
               <span className="sh-mono">
-                <span className="sh-zmagovalec">{s}1</span> · {s}2
+                <span className="sh-zmagovalec">{s}/1</span> · {s}/2
               </span>
             </Skatla>
           ))}
@@ -319,10 +319,10 @@ export function ShemaIzSkupin() {
             naslovi={['Četrtfinale', 'Polfinale']}
             kola={[
               [
-                { a: 'A1', b: 'B2 · žreb', poudarek: 'a' },
-                { a: 'C2 · žreb', b: 'D1', poudarek: 'b' },
-                { a: 'C1', b: 'D2 · žreb', poudarek: 'a' },
-                { a: 'A2 · žreb', b: 'B1', poudarek: 'b' },
+                { a: '1/1', b: '2/2 · žreb', poudarek: 'a' },
+                { a: '3/2 · žreb', b: '4/1', poudarek: 'b' },
+                { a: '3/1', b: '4/2 · žreb', poudarek: 'a' },
+                { a: '1/2 · žreb', b: '2/1', poudarek: 'b' },
               ],
               [
                 { a: 'zgornja', b: 'polovica' },
@@ -332,7 +332,7 @@ export function ShemaIzSkupin() {
           />
         </div>
       </div>
-      <p className="sh-pripis">A1 je zgoraj, A2 spodaj: soigralca iz skupine se srečata šele v finalu.</p>
+      <p className="sh-pripis">»1/2« je 2. mesto v skupini 1. Soigralca iz iste skupine (1/1 zgoraj, 1/2 spodaj) se srečata šele v finalu.</p>
     </Platno>
   )
 }

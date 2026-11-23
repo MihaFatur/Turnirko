@@ -52,6 +52,7 @@ import si.turnirko.modeli.SistemTekmovanja;
 import si.turnirko.modeli.Skupina;
 import si.turnirko.modeli.StatusTekme;
 import si.turnirko.modeli.Tekma;
+import si.turnirko.pomozno.OznakaSkupine;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.NizRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
@@ -278,7 +279,7 @@ public class DogodkiKontroler {
         for (int i = 0; i < velikosti.size(); i++) {
             int velikost = velikosti.get(i);
             predogled.add(new IzborDto.SkupinaPredogledDto(
-                    String.valueOf((char) ('A' + i)), velikost, odMesta, odMesta + velikost - 1));
+                    OznakaSkupine.zaIndeks(i), velikost, odMesta, odMesta + velikost - 1));
             odMesta += velikost;
         }
         return new IzborDto(meja, prijavljeni.size(), igra, predogled,

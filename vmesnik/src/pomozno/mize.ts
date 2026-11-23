@@ -17,7 +17,7 @@ export function imenaTekme(t: TekmaMizeDto): string {
   return `${imeUdelezenca(t.tekma.udelezenec1) ?? '?'} – ${imeUdelezenca(t.tekma.udelezenec2) ?? '?'}`
 }
 
-/* »Člani · Skupina B« */
+/* »Člani · Skupina 2« */
 export function opisTekme(t: TekmaMizeDto): string {
   return `${t.imeDogodka} · ${t.del}`
 }

@@ -77,7 +77,7 @@ class ZrebNosilciTest extends IntegracijskiTest {
         assertEquals(4, skupine.size(), "16 igralcev -> 4 skupine po 4");
         for (int i = 0; i < skupine.size(); i++) {
             assertEquals(i + 1, skupine.get(i).get(0).getStNosilca(),
-                    "skupina " + (char) ('A' + i) + " ima za nosilca " + (i + 1) + ". igralca");
+                    "skupina " + (i + 1) + " ima za nosilca " + (i + 1) + ". igralca");
         }
     }
 
@@ -121,6 +121,20 @@ class ZrebNosilciTest extends IntegracijskiTest {
         assertEquals(3, velikosti.stream().filter(v -> v == 3).count(), "3 skupine po 3");
         assertEquals(14, velikosti.stream().filter(v -> v == 4).count(), "14 skupin po 4");
         assertEquals(4, (int) velikosti.get(velikosti.size() - 1), "nobena skupina nima vec kot 4");
+    }
+
+    /* Skupine so oštevilčene od 1 (23. 11. 2026) in se razvrstijo po vrednosti, ne besedilno:
+       pri 65 igralcih je 17 skupin, »10« pa bi po navadnem ORDER BY stalo pred »2«, kar bi
+       pomešalo nosilce izločilnega dela (zmagovalec skupine N je N-ti nosilec). */
+    @Test
+    void skupineSoOstevilceneOdEneInUrejenePoVrednosti() {
+        Dogodek dogodek = pripraviJakostniDogodek(65, SistemTekmovanja.SKUPINE_IZLOCILNI);
+        zrebStoritev.izvediZreb(dogodek.getId());
+
+        List<String> oznake = skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId())
+                .stream().map(Skupina::getOznaka).toList();
+        assertEquals(java.util.stream.IntStream.rangeClosed(1, 17).mapToObj(String::valueOf).toList(),
+                oznake);
     }
 
     /* Za vsako dopustno stevilo igralcev: v skupini nikoli vec kot 4, nikoli manj kot 3 in

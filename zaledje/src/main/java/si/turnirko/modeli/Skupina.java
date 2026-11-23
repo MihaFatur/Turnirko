@@ -30,7 +30,8 @@ public class Skupina {
     @JoinColumn(name = "id_dogodek", nullable = false)
     private Dogodek dogodek;
 
-    /* Oznaka skupine: 'A', 'B', 'C'... (enolicna na dogodku). */
+    /* Oznaka skupine: '1', '2', '3'... (od 23. 11. 2026; starejsi dogodki imajo 'A', 'B' ...),
+       enolicna na dogodku. */
     @Column(name = "oznaka", nullable = false)
     private String oznaka;
 

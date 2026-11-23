@@ -26,7 +26,7 @@ export const TISK: Clanek[] = [
         tip: 'koraki',
         postavke: [
           'Odpri **Listki za tiskanje** (vidno, ko kategorija teče).',
-          'V **Kaj natisniti** izberi: vsi še nenatisnjeni, en sklop (»Skupina A«, »Glavni žreb«, »Tekma za 3. mesto«) ali posamezne tekme s kljukicami.',
+          'V **Kaj natisniti** izberi: vsi še nenatisnjeni, en sklop (»Skupina 1«, »Glavni žreb«, »Tekma za 3. mesto«) ali posamezne tekme s kljukicami.',
           'Preveri predogled spodaj — natanko to gre na papir.',
           'Klikni **Natisni izbrane**. Po tisku potrdi, da so listki res prišli iz tiskalnika.',
         ],

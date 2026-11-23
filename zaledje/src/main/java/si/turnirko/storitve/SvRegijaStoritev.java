@@ -82,6 +82,7 @@ import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.VlogaIzvora;
 import si.turnirko.modeli.Zreb;
+import si.turnirko.pomozno.OznakaSkupine;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
 import si.turnirko.repozitoriji.SkupinaRepozitorij;
@@ -96,7 +97,9 @@ public class SvRegijaStoritev {
     public static final int PRIVZETA_VELIKOST_SKUPINE = 4;
 
     /* Zgornje meje: nivojev je najvec 9 (oznaka skupine "9A" ostane v treh
-       znakih), skupin na nivo 26 (A..Z). */
+       znakih), skupin na nivo 26 (22 crk slovenske abecede brez Č, Š, Ž,
+       nato ZA..ZD; glej OznakaSkupine - tudi pri 26 skupinah oznaka "9ZD" ostane
+       v treh znakih). */
     public static final int NAJVEC_NIVOJEV = 9;
     public static final int NAJVEC_SKUPIN = 26;
 
@@ -185,7 +188,7 @@ public class SvRegijaStoritev {
             List<Integer> skupine = velikostiSkupin(velikosti.get(i), velikostSkupine);
             if (skupine.size() > NAJVEC_SKUPIN) {
                 throw new DomenskaIzjema("Skupina " + (i + 1) + " bi imela " + skupine.size()
-                        + " skupin, največ jih je " + NAJVEC_SKUPIN + " (A–Z). Povečaj število Skupin"
+                        + " skupin, največ jih je " + NAJVEC_SKUPIN + ". Povečaj število Skupin"
                         + " ali velikost skupine.");
             }
             razrez.add(new NivoRazrez(i + 1, velikosti.get(i), odMesta, skupine,
@@ -393,7 +396,7 @@ public class SvRegijaStoritev {
         for (int mesto = 1; mesto <= najvec; mesto++) {
             for (int s = 0; s < velikostiSkupin.size(); s++) {
                 if (velikostiSkupin.get(s) >= mesto) {
-                    zaporedje.add((char) ('A' + s) + String.valueOf(mesto));
+                    zaporedje.add(OznakaSkupine.crkaPoVrsti(s) + mesto);
                 }
             }
         }
@@ -796,7 +799,7 @@ public class SvRegijaStoritev {
 
     /* Oznaka skupine je enolicna na dogodku: "1A" je skupina A prvega nivoja. */
     static String oznakaSkupine(int nivo, int indeks) {
-        return nivo + String.valueOf((char) ('A' + indeks));
+        return nivo + OznakaSkupine.crkaPoVrsti(indeks);
     }
 
     /* Razveljavi zreb skupin (in z njim vse zrebe): dogodek se vrne v pripravo.

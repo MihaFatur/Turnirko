@@ -13,10 +13,11 @@ import { dogodkiApi } from '../api/zahteve'
 import { imePrijave } from '../api/tipi'
 import type { PrijavaDto, SistemTekmovanja, SkupinaDto, SkupinePredlogDto } from '../api/tipi'
 import { sklonIgralcev, sklonSkupin } from '../pomozno/oblikovanje'
+import { oznakaSkupine, primerjajSkupine } from '../pomozno/oznakaSkupine'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 
-/* Skupine so A–Z (enako kot zgornja meja v zaledju). Racunalniski predlog pri 65 igralcih
+/* Zgornja meja je enaka kot v zaledju. Racunalniski predlog pri 65 igralcih
    da 17 skupin, zato izbira ne sme koncati pri osmih: izbrana vrednost bi izpadla iz seznama. */
 const NAJMANJ_SKUPIN = 2
 const NAJVEC_SKUPIN = 26
@@ -26,7 +27,7 @@ const NAJVEC_SKUPIN = 26
 const NAJVEC_V_SKUPINI = 4
 
 interface Mesto {
-  /* Indeks skupine (0 = A); null = brez skupine (pri TOP rezerva). */
+  /* Indeks skupine (0 = skupina 1); null = brez skupine (pri TOP rezerva). */
   skupina: number | null
   /* Pozicija v skupini, 1 = najmocnejsi v njej; 0 = brez skupine. */
   pozicija: number
@@ -51,9 +52,8 @@ interface Lastnosti {
   onShranjeno: () => void
 }
 
-function oznaka(j: number): string {
-  return String.fromCharCode(65 + j)
-}
+/* Isto oznako zapiše strežnik: številka skupine po vrsti (1, 2, 3 ...). */
+const oznaka = oznakaSkupine
 
 function izPredloga(predlog: SkupinePredlogDto, prijave: PrijavaDto[]): Stanje {
   const mesta: Record<number, Mesto> = {}
@@ -72,7 +72,7 @@ function izPredloga(predlog: SkupinePredlogDto, prijave: PrijavaDto[]): Stanje {
 function izTrenutnih(skupine: SkupinaDto[], prijave: PrijavaDto[]): Stanje {
   const urejene = skupine
     .filter((s) => s.stopnja === 1)
-    .sort((a, b) => a.oznaka.localeCompare(b.oznaka, 'sl'))
+    .sort(primerjajSkupine)
   const mesta: Record<number, Mesto> = {}
   prijave.forEach((p) => {
     mesta[p.id] = { skupina: null, pozicija: 0 }

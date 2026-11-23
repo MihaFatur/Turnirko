@@ -55,7 +55,7 @@ export function ShemaSkupineA4() {
       <div className="sh-vrsta sh-vrsta--sredina">
         <List naslov="A4 · skupine">
           <div className="sh-list__mreza sh-list__mreza--2x3">
-            {['A', 'B', 'C', 'D', 'E', 'F'].map((s) => (
+            {['1', '2', '3', '4', '5', '6'].map((s) => (
               <div key={s} className="sh-skupina-mini">
                 <span className="sh-mono">{s}</span>
                 <MiniKriznaTabela />

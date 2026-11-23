@@ -111,9 +111,9 @@ class SkupinskiSistemTest extends IntegracijskiTest {
         zrebStoritev.izvediZreb(dogodek.getId());
 
         List<Skupina> skupine = skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId());
-        assertEquals(List.of("A", "B", "C"), skupine.stream().map(Skupina::getOznaka).toList());
+        assertEquals(List.of("1", "2", "3"), skupine.stream().map(Skupina::getOznaka).toList());
 
-        // skupina A drzi mesta 1-8, B 9-16, C 17-24
+        // skupina 1 drzi mesta 1-8, 2 9-16, 3 17-24
         for (int i = 0; i < 3; i++) {
             List<Long> vSkupini = claniSkupine(dogodek, skupine.get(i).getId())
                     .stream().map(Prijava::getId).toList();

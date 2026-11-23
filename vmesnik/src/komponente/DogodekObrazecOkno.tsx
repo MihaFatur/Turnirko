@@ -314,8 +314,8 @@ export function DogodekObrazecOkno({
               {mejaIzbora > 0 ? (
                 <>
                   Igralo bo <strong>najboljših {mejaIzbora}</strong> prijavljenih:
-                  skupina A dobi mesta 1.–{velikostSkupine}, B naslednja in tako
-                  naprej. Znotraj skupine igra vsak z vsakim, izločilnega dela ni.
+                  skupina 1 dobi mesta 1.–{velikostSkupine}, skupina 2 naslednja in
+                  tako naprej. Znotraj skupine igra vsak z vsakim, izločilnega dela ni.
                   Vrstni red urediš pred žrebom.
                 </>
               ) : (

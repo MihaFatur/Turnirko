@@ -113,7 +113,7 @@ export function ShemaPopravek() {
 export function ShemaKrog() {
   return (
     <Platno opis="Novak, Kos in Horvat imajo po dve zmagi in tvorijo krog. Med njimi odloči razlika nizov: Novak 4 proti 3, Kos 3 proti 3, Horvat 3 proti 4.">
-      <Napis>Skupina A · trije z 2 zmagama</Napis>
+      <Napis>Skupina 1 · trije z 2 zmagama</Napis>
       <Tabela
         glava={['Igralec', 'Zmage', 'Nizi med njimi', 'Mesto']}
         vrstice={[

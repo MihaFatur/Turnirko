@@ -62,6 +62,7 @@ import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.VlogaIzvora;
+import si.turnirko.pomozno.OznakaSkupine;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.NizRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
@@ -369,10 +370,8 @@ public class StaraTurnirjiUvoz {
         Map<Integer, Skupina> skupine = new HashMap<>();
         int zaporedna = 0;
         for (Integer stevilka : stevilke) {
-            // oznaka je crka po vrsti (A, B, C ...); vir skupine samo osteva
-            String oznaka = zaporedna < 26
-                    ? String.valueOf((char) ('A' + zaporedna))
-                    : "S" + (zaporedna + 1);
+            // oznaka je stevilka po vrsti (1, 2, 3 ...); vir skupine samo osteva
+            String oznaka = OznakaSkupine.zaIndeks(zaporedna);
             skupine.put(stevilka, skupinaRepozitorij.save(new Skupina(dogodek, oznaka)));
             zaporedna++;
         }

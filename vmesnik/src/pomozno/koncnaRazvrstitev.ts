@@ -6,6 +6,7 @@
 import { imePrijave } from '../api/tipi'
 import type { MrezaDto, PrijavaDto, StatusPrijave, TekmaDto } from '../api/tipi'
 import { kratekKlub } from './oblikovanje'
+import { primerjajSkupine } from './oznakaSkupine'
 
 export interface UdelezenecRazvrstitve {
   id: number
@@ -150,7 +151,7 @@ function kljucIzpada(podatki: MrezaDto): (prijava: PrijavaDto) => number[] {
   }
   const skupinePoVrsti = podatki.skupine
     .filter((skupina) => skupina.stopnja === 1)
-    .sort((prva, druga) => prva.oznaka.localeCompare(druga.oznaka, 'sl'))
+    .sort(primerjajSkupine)
   const jeTop = podatki.dogodek.sistemTekmovanja === 'SKUPINE'
 
   return (prijava) => {

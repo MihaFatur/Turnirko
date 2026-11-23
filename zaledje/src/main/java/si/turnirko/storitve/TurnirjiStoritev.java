@@ -322,7 +322,8 @@ public class TurnirjiStoritev {
             throw new NeveljavenVnosIzjema(
                     "Pri skupinskem sistemu sta stevilo skupin in velikost skupine obvezna.");
         }
-        // zgornja meja skupin je posledica oznak A..Z
+        // zgornja meja skupin je nekdanja meja oznak A..Z; po 22. skupini oznake
+        // nadaljujejo ZA, ZB ... (OznakaSkupine)
         if (steviloSkupin < 1 || steviloSkupin > 26) {
             throw new NeveljavenVnosIzjema("Stevilo skupin mora biti med 1 in 26.");
         }

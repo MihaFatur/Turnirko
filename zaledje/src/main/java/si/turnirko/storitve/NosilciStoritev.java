@@ -5,8 +5,8 @@
    PRAVILA ZREBA (21. in 22. clen PST NTZS)
 
    Skupine (N skupin):
-   - prvi jakostni pas se NE zreba: 1. nosilec je prvi zapisan v skupini A,
-     2. v skupini B ... N-ti v N-ti skupini;
+   - prvi jakostni pas se NE zreba: 1. nosilec je prvi zapisan v skupini 1,
+     2. v skupini 2 ... N-ti v N-ti skupini;
    - vsak naslednji pas (N+1..2N, 2N+1..3N, 3N+1..4N ...) se zreba naklujucno,
      po enega igralca v vsako skupino - v skupinah torej stojijo drug pod
      drugim po jakostnih pasovih;
@@ -21,7 +21,7 @@
    - 9. do 16., 17. do 32. ... enako po pasovih, ki se podvajajo.
 
    Izlocilni del po skupinah (22. clen PST, Priloga C):
-   - zmagovalci skupin so nosilci 1..N (zmagovalec skupine A je 1. nosilec)
+   - zmagovalci skupin so nosilci 1..N (zmagovalec skupine 1 je 1. nosilec)
      in se zrebajo po zgornjem pravilu pasov;
    - NEPOLN zadnji pas zmagovalcev se zreba na VSA mesta svojega pasu: pri
      5 skupinah gre zmagovalec E na eno od mest 5.-8. (dve zgoraj, dve
@@ -87,7 +87,7 @@ public class NosilciStoritev {
     // ---------------------------------------------------------------------
 
     /* Razdeli jakostno urejen seznam v skupine po jakostnih pasovih.
-       Vrne seznam skupin (prva je skupina A); clani vsake skupine so urejeni
+       Vrne seznam skupin (prva je skupina 1); clani vsake skupine so urejeni
        po pasovih, torej po jakosti navzdol. */
     public List<List<Prijava>> vSkupine(List<Prijava> poJakosti, int stSkupin) {
         List<List<Prijava>> najboljsi = null;

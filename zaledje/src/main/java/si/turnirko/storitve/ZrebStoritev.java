@@ -58,6 +58,7 @@ import si.turnirko.modeli.StatusTekmovanja;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.VlogaIzvora;
+import si.turnirko.pomozno.OznakaSkupine;
 import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.PrijavaRepozitorij;
@@ -867,14 +868,14 @@ public class ZrebStoritev {
         return zapisiSkupineIzlocilni(dogodek, poSkupinah);
     }
 
-    /* Zapise skupine (A, B, C ...) in v vsaki krozni razpored. Kdo je v kateri skupini,
+    /* Zapise skupine (1, 2, 3 ...) in v vsaki krozni razpored. Kdo je v kateri skupini,
        odloca klicatelj - nakljucni zreb ali organizator z rocnim vpisom; od tu naprej
        je vse enako. */
     private List<Tekma> zapisiSkupineIzlocilni(Dogodek dogodek, List<List<Prijava>> poSkupinah) {
-        // ustvari skupine (A, B, C ...) in jih shrani, da dobijo id-je
+        // ustvari skupine (1, 2, 3 ...) in jih shrani, da dobijo id-je
         List<Skupina> skupine = new ArrayList<>();
         for (int i = 0; i < poSkupinah.size(); i++) {
-            skupine.add(new Skupina(dogodek, String.valueOf((char) ('A' + i))));
+            skupine.add(new Skupina(dogodek, OznakaSkupine.zaIndeks(i)));
         }
         skupinaRepozitorij.saveAll(skupine);
 
@@ -903,7 +904,7 @@ public class ZrebStoritev {
     // ---------------------------------------------------------------------
 
     /* Format TOP: igra najboljsih N (N = stevilo skupin x velikost skupine),
-       razdeljenih ZAPOREDNO po jakosti - skupina A dobi prvih 8, B naslednjih
+       razdeljenih ZAPOREDNO po jakosti - skupina 1 dobi prvih 8, 2 naslednjih
        8 in tako naprej. Skupine torej niso uravnotezene, ampak so rangi.
        Kdor ne pride v izbor, postane rezerva in ne igra.
 
@@ -934,7 +935,7 @@ public class ZrebStoritev {
 
         List<Skupina> skupine = new ArrayList<>();
         for (int i = 0; i < velikosti.size(); i++) {
-            skupine.add(new Skupina(dogodek, String.valueOf((char) ('A' + i))));
+            skupine.add(new Skupina(dogodek, OznakaSkupine.zaIndeks(i)));
         }
         skupinaRepozitorij.saveAll(skupine);
 

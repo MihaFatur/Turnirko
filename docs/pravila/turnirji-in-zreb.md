@@ -51,7 +51,7 @@
   PST). `ZrebStoritev` samo prebere jakostni vrstni red (`IzborStoritev`), ga
   zabeleži v `Prijava.stNosilca` in iz razporeditve sestavi tekme:
   - **Skupine se polnijo po jakostnih pasovih.** Prvi pas se **ne žreba** —
-    1. nosilec je prvi zapisani v skupini A, 2. v B … N-ti v N-ti skupini.
+    1. nosilec je prvi zapisani v skupini 1, 2. v skupini 2 … N-ti v N-ti skupini.
     Vsak naslednji pas (N+1…2N, 2N+1…3N …) se žreba, po enega igralca v vsako
     skupino; nepoln zadnji pas dobijo **naključne** skupine (te so večje).
     Razpored znotraj skupine je nato krožna metoda **brez mešanja**
@@ -67,6 +67,31 @@
     ostane njegovo. Ročni vpis skupin (`RocniSkupineOkno`) skupine s 5+
     igralci le **opozori**, ne zavrne; format TOP in SV regija imata velikost
     skupin namenoma po svoje.
+  - **Skupine so oštevilčene od 1** (odločitev lastnika, 23. 11. 2026; prej črke):
+    »Skupina 1«, »Skupina 2« … do števila skupin (`skupina.oznaka` = `1`, `2` … `17`).
+    Oznako daje **ena** funkcija, `OznakaSkupine.zaIndeks` (zaledje) z zrcalom
+    `oznakaSkupine` v vmesniku (`pomozno/oznakaSkupine.ts`); nobeno mesto, ki skupine
+    poimenuje (žreb, ročni žreb, TOP, predogled izbora, oba uvoza), ne sme več računati
+    črke (`'A' + i`). **Izjema je SV regija**: tam je »Skupina 1, 2 …« nivo, zato bi
+    številke znotraj nje (»Skupina 1, skupina 1«) zamenjale pomen; skupine v nivoju
+    ostanejo črke po slovenski abecedi brez Č, Š, Ž (A … P, **R**, S, T, U, V, Z; po P
+    pride R, ne Q; nad 22 se pred črko doda Z: ZA, ZB …), `OznakaSkupine.crkaPoVrsti`.
+    Pasti:
+    - **Oznaka je besedilo**, zato navadni `ORDER BY oznaka` da »10« pred »2« in bi
+      pomešal nosilce izločilnega dela (zmagovalec skupine N je N-ti nosilec). Skupine
+      zato vedno razvršča `SkupinaRepozitorij.findByDogodekIdOrderByOznakaAsc` (JPQL:
+      najprej krajša oznaka, nato abecedno; ime metode je ostalo, da klici veljajo
+      naprej), vmesnik pa `primerjajSkupine` (`localeCompare` z `numeric: true`). Vsako
+      novo razvrščanje po oznaki mora uporabiti isto pravilo.
+    - **Že zapisanih oznak ne preimenujemo** (migracije ni): starejši dogodki imajo še
+      A, B … (in Q pri 17+ skupinah). Ponovni žreb ali ročni vpis jih zamenja s
+      številkami; do tedaj so v bazi črke in številke hkrati, razvrščanje (dolžina,
+      oznaka) to prenese.
+    - Višje stopnje pri uvozu iz Stupe so `2-1`, `2-2` (ne `21`, ki bi se zlilo z 21.
+      skupino prve stopnje); skupine za mesta imajo `M5`, `M9` …
+    - Meja števila skupin pri računalniškem žrebu je 999 (stolpec dovoli 3 znake).
+    Testi: `OznakaSkupineTest`, `ZrebNosilciTest.skupineSoOstevilceneOdEneInUrejenePoVrednosti`
+    (65 igralcev = 17 skupin v vrstnem redu 1 … 17), `oznakaSkupine.test.ts`.
   - **Mreža: 1. nosilec na vrh, 2. na dno** (ta dva se ne žrebata), 3. in 4.
     na svoji četrtini (s prvima dvema se srečata šele v **polfinalu**), 5.–8.
     na svoje osmine (**četrtfinale**), 9.–16., 17.–32. … enako po pasovih, ki
@@ -74,7 +99,7 @@
     indeksu** je tisto, kar 2. nosilca potisne na dno in ne na sredino mreže
     (prej je bilo tako). Prosta mesta zasedejo najvišje številke, zato jih
     dobijo najvišji nosilci in se dve nikoli ne srečata.
-  - **Izločilni del po skupinah**: zmagovalec skupine A je 1. nosilec, B 2. …
+  - **Izločilni del po skupinah**: zmagovalec skupine 1 je 1. nosilec, skupine 2 2. …
     — skupine so nastale iz pasov, zato je njihov vrstni red hkrati vrstni
     red nosilcev. **Nepoln zadnji pas zmagovalcev se žreba na vsa mesta
     svojega pasu** (Priloga C PST): pri 5 skupinah gre E1 na eno od mest
@@ -158,7 +183,7 @@
   ročno: vsak igralec dobi skupino **in pozicijo v skupini** (`RocniClanVnos.pozicija`,
   1 = najmočnejši v svoji skupini). **Pozicija ni nosilec turnirja** — vsaka skupina ima
   svoje 1., 2., … mesto, in pozicije so v skupini brez lukenj. Strežnik iz njih izpelje
-  `Prijava.stNosilca` (najprej pozicija, nato skupina A pred B; rezerve po ratingu).
+  `Prijava.stNosilca` (najprej pozicija, nato skupina 1 pred 2; rezerve po ratingu).
   Vpis konča v isti točki kot zreb (`ZrebStoritev.zapisiSkupineIzlocilni`), zato tekme in
   napredovanje tečejo po nespremenjeni kodi; predlog (`POST …/skupine/predlog`) je zreb
   brez zapisa in vrne pozicije (rezerve brez pozicije).
@@ -181,7 +206,7 @@
 - **`SKUPINE` = format TOP** (npr. TOP 24 kot 3 skupine po 8):
   - igra najboljših N prijavljenih (N = `steviloSkupin` × `velikostSkupine`);
     kdor ne pride v izbor, dobi status `REZERVA` in ne igra;
-  - razporeditev je **zaporedna po jakosti** — skupina A dobi mesta 1–8, B
+  - razporeditev je **zaporedna po jakosti** — skupina 1 dobi mesta 1–8, skupina 2
     9–16 …; skupine so torej **rangi**, ne uravnotežene skupine;
   - jakostni vrstni red je edino merilo in živi v `Prijava.stNosilca`.
     Predlog naredi `IzborStoritev` po Turnirko ratingu, igralci **brez ratinga

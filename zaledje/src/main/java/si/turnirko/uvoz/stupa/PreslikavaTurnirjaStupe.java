@@ -67,6 +67,7 @@ import si.turnirko.modeli.Turnir;
 import si.turnirko.modeli.VirTekmovanja;
 import si.turnirko.modeli.VlogaIzvora;
 import si.turnirko.modeli.ZunanjaPovezava;
+import si.turnirko.pomozno.OznakaSkupine;
 import si.turnirko.storitve.RazvrstitevStoritev;
 import si.turnirko.storitve.SkupineStoritev;
 import si.turnirko.uvoz.KoncnaMestaUvoza;
@@ -469,8 +470,9 @@ final class PreslikavaTurnirjaStupe {
                 int zaporedna = 0;
                 for (JsonNode g : skupineStopnje) {
                     zaporedna++;
-                    String crka = crka(zaporedna);
-                    String oznaka = stopnja == 1 ? crka : prvoMesto != null ? "M" + prvoMesto : stopnja + crka;
+                    String stevilka = oznakaPoVrsti(zaporedna);
+                    // visje stopnje: »2-1«, ne »21« (to bi se zamenjalo z 21. skupino prve stopnje)
+                    String oznaka = stopnja == 1 ? stevilka : prvoMesto != null ? "M" + prvoMesto : stopnja + "-" + stevilka;
                     if (oznaka.length() > 3 || !oznake.add(oznaka)) {
                         oznaka = String.valueOf(stopnja * 100 + zaporedna).substring(0, 3);
                         while (!oznake.add(oznaka)) {
@@ -480,7 +482,7 @@ final class PreslikavaTurnirjaStupe {
                     Skupina sk = new Skupina(d, oznaka);
                     sk.setStopnja(stopnja);
                     if (stopnja > 1 && imeStopnje != null) {
-                        sk.setIme(UvozOblike.prirezi(skupineStopnje.size() == 1 ? imeStopnje : imeStopnje + " " + crka, 40));
+                        sk.setIme(UvozOblike.prirezi(skupineStopnje.size() == 1 ? imeStopnje : imeStopnje + " " + stevilka, 40));
                     }
                     sk.setPrvoMesto(prvoMesto);
                     sk = repo.skupine().save(sk);
@@ -1029,8 +1031,8 @@ final class PreslikavaTurnirjaStupe {
         return x + "|" + y;
     }
 
-    private static String crka(int zaporedna) {
-        return zaporedna <= 26 ? String.valueOf((char) ('A' + zaporedna - 1)) : "S" + zaporedna;
+    private static String oznakaPoVrsti(int zaporedna) {
+        return OznakaSkupine.zaIndeks(zaporedna - 1);
     }
 
     private static String imeTekmovanja(String ime, long id) {

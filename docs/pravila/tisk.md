@@ -18,7 +18,7 @@
     - **Listki tekem**: privzeto **vsi še nenatisnjeni**. Hitra izbira
       (»Vsi še nenatisnjeni«, po en gumb na sklop, »Počisti izbiro«) NADOMESTI
       izbiro; pod njo je seznam sklopov s kljukico pri vsaki tekmi in tri-stanjsko
-      kljukico sklopa. **Sklop** = skupina (»Skupina A«), žreb SV regije (»Skupina 2 ·
+      kljukico sklopa. **Sklop** = skupina (»Skupina 1«), žreb SV regije (»Skupina 2 ·
       Tolažilni žreb«), »Glavni žreb«, »Tekma za 3. mesto«; krožni sistem brez
       skupin se deli po kolih. Tako gredo vse še nenatisnjene, samo tolažilni žreb,
       ali štiri ročno izbrane tekme. Natisnjene so v seznamu privzeto skrite

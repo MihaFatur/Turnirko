@@ -3534,7 +3534,7 @@ export interface TekmaMizeDto {
   tekma: TekmaDto
   idDogodka: number
   imeDogodka: string
-  /* »Skupina B«, »polfinale«, »za 5.–8. mesto« */
+  /* »Skupina 2«, »polfinale«, »za 5.–8. mesto« */
   del: string
   ekipno: boolean
   idSrecanje: number | null

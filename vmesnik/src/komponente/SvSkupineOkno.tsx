@@ -17,6 +17,7 @@ import { useMutation } from '@tanstack/react-query'
 import { svApi } from '../api/zahteve'
 import type { MrezaDto, SvClanDto, SvPredlogDto } from '../api/tipi'
 import { sklonIgralcev, sklonSkupin } from '../pomozno/oblikovanje'
+import { crkaPoVrsti } from '../pomozno/oznakaSkupine'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 
@@ -61,7 +62,7 @@ function izPredloga(predlog: SvPredlogDto): Nivoji {
 
 /* »1A«, »1B«, »2A« ... - ista oznaka, kot jo da strežnik. */
 function oznaka(nivo: number, skupina: number): string {
-  return `${nivo + 1}${String.fromCharCode(65 + skupina)}`
+  return `${nivo + 1}${crkaPoVrsti(skupina)}`
 }
 
 export function SvSkupineOkno({ idDogodka, podatki, izhodisce, onZapri, onShranjeno }: Lastnosti) {

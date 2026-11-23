@@ -84,8 +84,8 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
         <div className="listek__kontekst">
           {podatki.dogodek && <Polje oznaka="Dogodek" vrednost={podatki.dogodek} sirok />}
           <Polje oznaka="Kategorija" vrednost={podatki.kategorija} sirok />
-          {/* Skupinska tekma: »Skupina A  2. kolo«; tekma mreže: »Faza  Polfinale«.
-              Prazen listek ima črto za »Skupina A, 2. kolo« ali »Polfinale«. */}
+          {/* Skupinska tekma: »Skupina 1  2. kolo«; tekma mreže: »Faza  Polfinale«.
+              Prazen listek ima črto za »Skupina 1, 2. kolo« ali »Polfinale«. */}
           {podatki.prazno ? (
             <Polje oznaka="Faza" vrednost="" sirok prazno />
           ) : podatki.skupina ? (

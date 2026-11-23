@@ -58,7 +58,7 @@ class RocniZrebSkupinTest extends IntegracijskiTest {
 
         List<si.turnirko.modeli.Skupina> skupineDogodka =
                 skupinaRepozitorij.findByDogodekIdOrderByOznakaAsc(dogodek.getId());
-        assertEquals(List.of("A", "B"), skupineDogodka.stream().map(s -> s.getOznaka()).toList());
+        assertEquals(List.of("1", "2"), skupineDogodka.stream().map(s -> s.getOznaka()).toList());
         for (int indeks : List.of(0, 5, 6, 7)) {
             assertEquals(skupineDogodka.get(0).getId(), osvezi(prijava(prijave, indeks)).getIdSkupina());
         }

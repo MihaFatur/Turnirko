@@ -356,7 +356,7 @@ class PopravekZmagovalcaTest extends IntegracijskiTest {
     @Test
     void obrnjenaTekmaBrezSpremembeVrstnegaRedaNeZahtevaOdlocitve() {
         Dogodek dogodek = skupinaInIzlocilni();
-        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "A");
+        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "1");
         Tekma aD = dvoboj(dogodek, vrstni.get(0), vrstni.get(3));
 
         VnosRezultata obrnjen = zmagaDrugega(aD, vrstni.get(3));
@@ -367,14 +367,14 @@ class PopravekZmagovalcaTest extends IntegracijskiTest {
         izprazniSejo();
 
         assertEquals(vrstni.stream().map(Prijava::getId).toList(),
-                vrstniRedSkupine(dogodek, "A").stream().map(Prijava::getId).toList());
+                vrstniRedSkupine(dogodek, "1").stream().map(Prijava::getId).toList());
         assertFalse(izlocilneTekme(dogodek).isEmpty(), "izlocilni del ostane");
     }
 
     @Test
     void spremenjenVrstniRedZahtevaIzbiroInPredogledPoveKaj() {
         Dogodek dogodek = skupinaInIzlocilni();
-        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "A");
+        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "1");
         Tekma ab = dvoboj(dogodek, vrstni.get(0), vrstni.get(1));
         VnosRezultata obrnjen = zmagaDrugega(ab, vrstni.get(1));
 
@@ -395,7 +395,7 @@ class PopravekZmagovalcaTest extends IntegracijskiTest {
     @Test
     void ohraniNaslednjiDelPopraviSamoTabelo() {
         Dogodek dogodek = skupinaInIzlocilni();
-        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "A");
+        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "1");
         Tekma ab = dvoboj(dogodek, vrstni.get(0), vrstni.get(1));
         List<Long> izlocilnePrej = izlocilneTekme(dogodek).stream().map(Tekma::getId).toList();
 
@@ -403,14 +403,14 @@ class PopravekZmagovalcaTest extends IntegracijskiTest {
                 NacinPopravka.OHRANI_NASLEDNJI_DEL);
         izprazniSejo();
 
-        assertEquals(vrstni.get(1).getId(), vrstniRedSkupine(dogodek, "A").get(0).getId());
+        assertEquals(vrstni.get(1).getId(), vrstniRedSkupine(dogodek, "1").get(0).getId());
         assertEquals(izlocilnePrej, izlocilneTekme(dogodek).stream().map(Tekma::getId).toList());
     }
 
     @Test
     void podriIzlocilniDelSOdigranimiTekmamiInGaZnovaZrebaj() {
         Dogodek dogodek = skupinaInIzlocilni();
-        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "A");
+        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "1");
         Tekma ab = dvoboj(dogodek, vrstni.get(0), vrstni.get(1));
         odigrajVse(dogodek.getId());
         assertEquals(StatusTekmovanja.ZAKLJUCEN, dogodek(dogodek).getStatus());
@@ -489,7 +489,7 @@ class PopravekZmagovalcaTest extends IntegracijskiTest {
     @Test
     void podriFinalneSkupineNastanejoZnovaIzNovegaVrstnegaReda() {
         Dogodek dogodek = skupineZaMesta();
-        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "A");
+        List<Prijava> vrstni = vrstniRedSkupine(dogodek, "1");
         // drugi in tretji v skupini: zamenjava preide mejo pasu (1.-2. proti 3.-4.)
         Tekma tekma = dvoboj(dogodek, vrstni.get(1), vrstni.get(2));
         VnosRezultata obrnjen = zmagaDrugega(tekma, vrstni.get(2));
@@ -666,7 +666,7 @@ class PopravekZmagovalcaTest extends IntegracijskiTest {
     }
 
     /* Skupine in izlocilni del: skupine odigrane po ratingu (mocnejsi zmaga), mreza
-       zgrajena, nobena tekma mreze se ni odigrana. Skupina A ima vrstni red, kot ga
+       zgrajena, nobena tekma mreze se ni odigrana. Skupina 1 ima vrstni red, kot ga
        pricakujejo testi: prvi premaga vse, drugi tretjega in cetrtega, tretji cetrtega. */
     private Dogodek skupinaInIzlocilni() {
         Dogodek dogodek = pripraviJakostniDogodek(8, SistemTekmovanja.SKUPINE_IZLOCILNI);

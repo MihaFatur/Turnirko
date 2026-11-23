@@ -18,7 +18,7 @@ export interface PripravljenListek {
   skupina: string | null
   /* Kolo skupine ali krog mreže. */
   faza: string
-  /* Sklop za hitro izbiro (»Skupina A«, »Tolažilni žreb«) in njegov ključ. */
+  /* Sklop za hitro izbiro (»Skupina 1«, »Tolažilni žreb«) in njegov ključ. */
   sklop: string
   sklopNaslov: string
 }
@@ -100,7 +100,7 @@ function oznakaFaze(tekma: TekmaDto, zadnjeKolo: number, podatki: MrezaDto): str
   return imeKola(tekma.kolo, zadnjeKolo)
 }
 
-/* Sklop, v katerem je tekma: skupina (»Skupina A«), žreb SV regije (»Skupina 2 ·
+/* Sklop, v katerem je tekma: skupina (»Skupina 1«), žreb SV regije (»Skupina 2 ·
    Tolažilni žreb«), glavni ali tolažilni del mreže; krožni sistem nima skupin,
    zato se tam sklopi ujemajo s koli (»3. kolo«). */
 function sklopTekme(

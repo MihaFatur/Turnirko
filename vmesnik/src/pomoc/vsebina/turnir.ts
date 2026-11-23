@@ -110,7 +110,7 @@ export const TURNIR: Clanek[] = [
           ['Izločilni', 'Mreža, poraženec izpade. Nosilci so razporejeni tako, da se najboljši srečajo čim kasneje.', 'Veliko igralcev, malo časa. Tudi dvojice.'],
           ['Krožni (vsak z vsakim)', 'Vsak igra z vsakim, ena lestvica.', 'Do ~8 igralcev, kategorija z malo prijavami.'],
           ['Skupine + izločilni', 'Skupine vsak z vsakim, prva dva iz vsake gresta v izločilno mrežo.', 'Najpogostejši sistem odprtih turnirjev.'],
-          ['Skupine po jakosti (TOP)', 'Igra najboljših N prijavljenih; skupina A so mesta 1–8, B 9–16 … Izločilnega dela ni.', 'TOP 12, TOP 24 — jakostne lige za en dan.'],
+          ['Skupine po jakosti (TOP)', 'Igra najboljših N prijavljenih; skupina 1 so mesta 1–8, skupina 2 mesta 9–16 … Izločilnega dela ni.', 'TOP 12, TOP 24 — jakostne lige za en dan.'],
           ['Skupine + finalne skupine za mesta', 'Po predtekmovanju igrajo prvi in drugi finalno skupino za 1.–4., tretji in četrti za 5.–8. … Medsebojni izid se prenese.', 'Ekipna tekmovanja po PST 14. člen.'],
           ['SV regija', 'Skupine po 16 (Skupina 1, 2 …), v njih skupine po 4, nato žrebi za vsa mesta.', 'Regijski turnirji, kjer vsak igra do konca.'],
         ],
@@ -271,7 +271,7 @@ export const TURNIR: Clanek[] = [
       {
         tip: 'odstavek',
         besedilo:
-          'Pri sistemu TOP je vrstni red edino merilo: skupina A dobi mesta 1–8, B 9–16. Kdor je pod črto reza, postane **rezerva**. Pazi na igralce brez ratinga — na vrhu bi izrinili nekoga, ki mu mesto pripada.',
+          'Pri sistemu TOP je vrstni red edino merilo: skupina 1 dobi mesta 1–8, skupina 2 mesta 9–16. Kdor je pod črto reza, postane **rezerva**. Pazi na igralce brez ratinga — na vrhu bi izrinili nekoga, ki mu mesto pripada.',
       },
       {
         tip: 'nasvet',
@@ -301,7 +301,7 @@ export const TURNIR: Clanek[] = [
         id: 'skupine',
         naslov: 'Skupine: po jakostnih pasovih',
         kratko:
-          'Prvi nosilci se ne žrebajo: 1. gre v skupino A, 2. v B … Vsak naslednji pas se žreba po enega v vsako skupino. Tako je v vsaki skupini en močan igralec.',
+          'Prvi nosilci se ne žrebajo: 1. gre v skupino 1, 2. v skupino 2 … Vsak naslednji pas se žreba po enega v vsako skupino. Tako je v vsaki skupini en močan igralec.',
         shemaNamiga: 'pasovi',
       },
       { tip: 'shema', shema: 'pasovi', opis: 'Štiri skupine: prvi pas (1–4) stoji, drugi pas (5–8) se žreba.' },
@@ -422,7 +422,7 @@ export const TURNIR: Clanek[] = [
       {
         tip: 'seznam',
         postavke: [
-          'Zmagovalec skupine A je 1. nosilec, B 2. … Skupine so nastale iz pasov, zato je to hkrati jakostni vrstni red.',
+          'Zmagovalec skupine 1 je 1. nosilec, skupine 2 2. … Skupine so nastale iz pasov, zato je to hkrati jakostni vrstni red.',
           'Drugouvrščeni gre v **nasprotno polovico** od zmagovalca svoje skupine — soigralca iz skupine se srečata šele v finalu.',
           'Nepoln pas zmagovalcev (npr. 5 skupin) se žreba na vsa mesta svojega pasu.',
           'Prosti krog gre za zmagovalcem skupine.',

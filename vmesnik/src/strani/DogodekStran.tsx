@@ -1330,8 +1330,8 @@ function JakostniVrstniRed({
         ) : izbor.steviloSkupin !== null ? (
           <>
             Igrajo vsi. Žreb jih razdeli v <strong>{izbor.steviloSkupin}</strong>{' '}
-            {sklonSkupin(izbor.steviloSkupin)}: prvi po jakosti je nosilec skupine A, drugi
-            skupine B in tako naprej, ostali se žrebajo po jakostnih pasovih.
+            {sklonSkupin(izbor.steviloSkupin)}: prvi po jakosti je nosilec skupine 1, drugi
+            skupine 2 in tako naprej, ostali se žrebajo po jakostnih pasovih.
           </>
         ) : (
           <>
