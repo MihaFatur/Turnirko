@@ -5,7 +5,11 @@ import { api } from './odjemalec'
 import type {
   BranjaTurnirjaDto,
   BranjeListkaDto,
+  KlicTekmeVnos,
   KodeListkovDto,
+  MizeTurnirjaDto,
+  NastavitveMizVnos,
+  OsebaMizeDto,
   MeritevBranjaDto,
   MrezeStevkDto,
   NapakeMrezeDto,
@@ -300,6 +304,18 @@ export const svApi = {
   shraniMesta: (idZreba: number, mesta: (number | null)[]) =>
     api.posodobi<void>(`/dogodki/sv/zrebi/${idZreba}/mesta`, { mesta }),
   znova: (idZreba: number) => api.objavi<void>(`/dogodki/sv/zrebi/${idZreba}/znova`),
+}
+
+/* Mize turnirja in klicanje tekem (M1, M2): samo organizator turnirja in admin,
+   tudi branje (stanje dvorane in sodniki niso javni). */
+export const mizeApi = {
+  pregled: (idTurnir: number) => api.vrni<MizeTurnirjaDto>(`/turnirji/${idTurnir}/mize`),
+  osebe: (idTurnir: number) => api.vrni<OsebaMizeDto[]>(`/turnirji/${idTurnir}/mize/osebe`),
+  nastavi: (idTurnir: number, vnos: NastavitveMizVnos) =>
+    api.posodobi<void>(`/turnirji/${idTurnir}/mize`, vnos),
+  /* Klic na mizo; isti klic tekmo premakne ali zamenja sodnika. */
+  poklici: (idTekme: number, vnos: KlicTekmeVnos) => api.posodobi<void>(`/tekme/${idTekme}/klic`, vnos),
+  preklici: (idTekme: number) => api.izbrisi(`/tekme/${idTekme}/klic`),
 }
 
 export const tekmeApi = {

@@ -155,6 +155,7 @@ public class BranjeListkovStoritev {
     private final SkupinaRepozitorij skupinaRepozitorij;
     private final LastnistvoStoritev lastnistvo;
     private final TekmaStoritev tekmaStoritev;
+    private final MizeStoritev mize;
     private final BralnikListka bralnik;
     private final UcenjeIzListkov ucenje;
     private final Executor izvajalec;
@@ -193,7 +194,9 @@ public class BranjeListkovStoritev {
                                  @Qualifier("branjeListkovIzvajalec") Executor izvajalec,
                                  PlatformTransactionManager upraviteljTransakcij,
                                  @Value("${turnirko.branje-listkov.samo-admin:true}") boolean samoAdmin,
-                                 @Value("${turnirko.branje-listkov.kontrola:0.05}") double delezKontrole) {
+                                 @Value("${turnirko.branje-listkov.kontrola:0.05}") double delezKontrole,
+                                 MizeStoritev mize) {
+        this.mize = mize;
         this.branjaRepozitorij = branjaRepozitorij;
         this.slikeRepozitorij = slikeRepozitorij;
         this.turnirRepozitorij = turnirRepozitorij;
@@ -888,6 +891,11 @@ public class BranjeListkovStoritev {
                 : izbranaRocno ? predlog.pripravljen() : predlog(branje, listek, tekma, false).pripravljen();
 
         tekmaStoritev.vnesiRezultat(idTekme, vnos.izid());
+        // tekma, ki ni bila poklicana, dobi mizo s listka (M1, 3.7): sodnikovo, sicer
+        // zanesljivo prebrano iz okenca
+        Integer mizaListka = branje.getMizaSodnika() != null ? branje.getMizaSodnika()
+                : listek != null && listek.miza() != null && !listek.negotovaMiza() ? listek.miza() : null;
+        mize.zapisiMizoZListka(idTekme, mizaListka);
 
         // napredovanje v mrezi s skupinskimi posodobitvami izprazni sejo: branje
         // od prej je odklopljeno in sprememba nanj bi se tiho izgubila

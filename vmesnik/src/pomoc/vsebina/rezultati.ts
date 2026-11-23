@@ -191,7 +191,105 @@ export const REZULTATI: Clanek[] = [
           'Branje listkov je v preizkusu. Če povezave **Branje listkov** ne vidiš, za tvoj račun še ni vklopljeno. Fotografije se po 30 dneh od turnirja izbrišejo.',
       },
     ],
-    povezani: ['vnos-rezultata', 'listki', 'popravek-rezultata'],
+    povezani: ['vnos-rezultata', 'listki', 'popravek-rezultata', 'mize'],
+  },
+  {
+    id: 'mize',
+    naslov: 'Mize in klicanje tekem',
+    poglavje: 'rezultati',
+    kratko:
+      'Na strani **Mize** vidiš, kje se igra in katera miza je prosta. Ob prosti mizi Turnirko predlaga naslednjo tekmo; ko pritisneš **Pokliči**, se klic zabeleži, igralce pa pokličeš na glas.',
+    kljucne: [
+      'miza',
+      'klic',
+      'pokliči',
+      'prosta miza',
+      'sodnik',
+      'poraženec sodi',
+      'počitek',
+      'naslednja tekma',
+      'dvorana',
+      'razpored',
+    ],
+    vsebina: [
+      { tip: 'kje', pot: ['Turnir', 'Mize'] },
+      {
+        tip: 'koraki',
+        postavke: [
+          'Pred turnirjem ali na začetku odpri **Mize** in vpiši **Število miz**. Mize so oštevilčene od 1 naprej, tako kot jih sodnik vpiše v okence na listku.',
+          'Ko kategorija teče, je ob vsaki prosti mizi predlog naslednje tekme. Pritisni **Pokliči** in igralca pokliči na glas.',
+          'Na začetku turnirja s **Pokliči predloge** zasedeš vse proste mize naenkrat.',
+          'Ko je tekma končana, vpiši izid z **Vnesi izid** ali pa ga pošlje sodnik s telefonom. Miza se sprosti sama, stran kratko pisne in mizo obarva zeleno.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'predlog',
+        naslov: 'Kako Turnirko izbere naslednjo tekmo',
+        kratko:
+          'Igralec, ki igra ali sodi drugje, ni predlagan. Prednost ima tekma igralca, ki ima v kategoriji še največ tekem, nato tekma spočitih igralcev, nižje kolo in tisti, ki čakajo najdlje.',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          'Ne predlaga tekme igralca, ki zdaj igra ali sodi na drugi mizi, tudi v drugi kategoriji ali v dvojicah.',
+          'Prednost ima tekma igralca, ki ima v kategoriji še največ tekem. Tako ne zaostaja skupina, brez katere se izločilni del ne more začeti.',
+          'Pri enakem zaostanku ima prednost tekma, v kateri so vsi igralci počivali vsaj toliko minut, kot je nastavljeno pod **Počitek**.',
+          'Nato pride na vrsto nižje kolo skupine, potem pa tekma, katere igralci čakajo najdlje.',
+        ],
+      },
+      {
+        tip: 'odstavek',
+        besedilo:
+          'Pod vsakim predlogom so razlogi, na primer »ima v kategoriji še 3 tekme« ali »zadnja tekma pred 1 min«. Odločiš vedno ti. V meniju mize **Druga tekma …** ponudi vse pripravljene tekme, desni stolpec **Pripravljene** pa jih našteje po vrstnem redu predloga.',
+      },
+      {
+        tip: 'razdelek',
+        id: 'sodnik',
+        naslov: 'Sodnik: poraženec sodi naslednjo tekmo',
+        kratko:
+          'Ko je vklopljeno **Poraženec sodi naslednjo tekmo na svoji mizi**, je ob klicu za sodnika predlagan poraženec zadnje tekme na tej mizi. Zamenjaš ga lahko s katerimkoli igralcem turnirja.',
+      },
+      {
+        tip: 'odstavek',
+        besedilo:
+          'Nastavitev vklopiš pod **Nastavitve miz**. Kdor sodi, ni predlagan za igro, dokler tekma ni končana. V oknu klica sodnika zamenjaš s katerimkoli igralcem turnirja ali polje izprazniš.',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          'Po tekmi dvojic sodnik ni predlagan.',
+          'Po tekmi brez boja tudi ne, ker poraženca ni bilo.',
+          'Poraženec, ki je od takrat že igral ali sodil, ne čaka več na sojenje.',
+          'Tekma igralca, ki naj bi sodil, je v predlogu na koncu, z razlogom »naj sodi na mizi 3«.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'dejanja',
+        naslov: 'Premik, preklic in izklop mize',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          '**Premakni ali zamenjaj sodnika** v meniju mize premakne tekmo na drugo prosto mizo; čas igre teče naprej.',
+          '**Prekliči klic** vrne tekmo med pripravljene. Ekipno srečanje, ki že ima postavo, se igra naprej in izgubi samo mizo.',
+          '**Izklopi mizo** uporabi, ko je miza pokvarjena ali zasedena za drug namen. Dokler je ne vklopiš, predlogov ne dobi. Mize, na kateri se igra, ni mogoče izklopiti.',
+          'Ekipno srečanje pokličeš na eno ali dve mizi (**Druga miza** v oknu klica). Izid se vpiše v zapisnik srečanja.',
+        ],
+      },
+      {
+        tip: 'pazi',
+        besedilo:
+          'Ko je tekma poklicana, velja za začeto: žreba te kategorije ni več mogoče ponoviti. Če je bil klic pomota, ga najprej prekliči.',
+      },
+      {
+        tip: 'nasvet',
+        besedilo:
+          'Če sodnik na listek vpiše drugo mizo, kot je bila poklicana, to vidi na telefonu, ti pa na strani **Branje listkov**.',
+      },
+    ],
+    povezani: ['vnos-rezultata', 'branje-listkov'],
   },
   {
     id: 'tocke-po-nizih',

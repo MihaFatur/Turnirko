@@ -222,6 +222,38 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             """)
     List<Tekma> najdiZVsemPoIdjih(@Param("idji") Collection<Long> idji);
 
+    /* Posnetek turnirja za stran Mize (M1, M2): vse tekme dogodkov v teku (tudi CAKA:
+       iz njih se ve, koliko kol ima veja), vse tekme v igri in tekme, koncane po
+       :od (porazenec zadnje tekme na mizi, pocitek - tudi ko je dogodek ze
+       zakljucen). Z vsem, kar potrebujeta TekmaDto in predlog. */
+    @Query("""
+            SELECT DISTINCT t FROM Tekma t
+            JOIN FETCH t.dogodek d JOIN FETCH d.turnir
+            LEFT JOIN FETCH t.prijava1 p1 LEFT JOIN FETCH p1.igralec LEFT JOIN FETCH p1.klubObPrijavi
+            LEFT JOIN FETCH p1.igralec2 LEFT JOIN FETCH p1.klubObPrijavi2
+            LEFT JOIN FETCH p1.ekipa e1 LEFT JOIN FETCH e1.klub
+            LEFT JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.klubObPrijavi
+            LEFT JOIN FETCH p2.igralec2 LEFT JOIN FETCH p2.klubObPrijavi2
+            LEFT JOIN FETCH p2.ekipa e2 LEFT JOIN FETCH e2.klub
+            LEFT JOIN FETCH t.zmagovalec
+            LEFT JOIN FETCH t.sodnik
+            WHERE d.turnir.id = :idTurnir
+              AND (d.status = si.turnirko.modeli.StatusTekmovanja.V_TEKU
+                   OR t.status = si.turnirko.modeli.StatusTekme.V_IGRI
+                   OR t.koncanaOb >= :od)
+            """)
+    List<Tekma> zaMizeTurnirja(@Param("idTurnir") Long idTurnir, @Param("od") LocalDateTime od);
+
+    /* Tekme v igri na izbranih mizah turnirja (preverba proste mize ob klicu in ob
+       zmanjsanju stevila miz). */
+    @Query("""
+            SELECT t FROM Tekma t
+            WHERE t.dogodek.turnir.id = :idTurnir
+              AND t.status = si.turnirko.modeli.StatusTekme.V_IGRI
+              AND (t.miza IS NOT NULL OR t.miza2 IS NOT NULL)
+            """)
+    List<Tekma> naMizahTurnirja(@Param("idTurnir") Long idTurnir);
+
     /* Posamicne tekme turnirja, ki so na vrsti in cakajo na izid (oba znana),
        v dogodkih v teku: kandidati za listek, ki nima berljive kode. Ekipne tekme
        odpadejo - njihov izid nastane iz zapisnika srecanja, ne iz listka. */

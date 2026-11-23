@@ -3520,3 +3520,75 @@ export interface VadnicaPodrobnoDto {
   list: VadnicaDto
   stevke: StevkaVadniceDto[]
 }
+
+/* ---------- Mize turnirja in klicanje tekem (M1, M2; docs/pravila/mize.md) ---------- */
+
+export interface OsebaMizeDto {
+  id: number
+  ime: string
+}
+
+/* Tekma na strani Mize: TekmaDto (okno za vnos izida) in kar pove klic. osebe so
+   id-ji igralcev tekme - vmesnik iz njih ve, ali predlagani sodnik igra v tej tekmi. */
+export interface TekmaMizeDto {
+  tekma: TekmaDto
+  idDogodka: number
+  imeDogodka: string
+  /* »Skupina B«, »polfinale«, »za 5.–8. mesto« */
+  del: string
+  ekipno: boolean
+  idSrecanje: number | null
+  miza: number | null
+  miza2: number | null
+  poklicanaOb: string | null
+  sodnik: OsebaMizeDto | null
+  osebe: number[]
+}
+
+export interface MizaDto {
+  stevilka: number
+  izklopljena: boolean
+  /* kar se igra na mizi; null pri prosti in izklopljeni */
+  tekma: TekmaMizeDto | null
+  /* konec zadnje tekme na prosti mizi; null, če še ni bila v rabi */
+  prostaOd: string | null
+  /* poraženec zadnje tekme, ki naj sodi naslednjo (nastavitev »Poraženec sodi«) */
+  cakajociSodnik: OsebaMizeDto | null
+  /* id-ji tekem; prvi je predlog za to mizo */
+  predlogi: number[]
+}
+
+export interface KandidatMizeDto {
+  tekma: TekmaMizeDto
+  /* kdo od udeležencev zdaj igra ali sodi: tekma ni predlagana, sme pa se poklicati */
+  zaseden: boolean
+  razlogi: string[]
+}
+
+export interface MizeTurnirjaDto {
+  idTurnir: number
+  imeTurnirja: string
+  /* null = mize niso nastavljene */
+  steviloMiz: number | null
+  izklopljeneMize: number[]
+  porazenecSodi: boolean
+  pocitekMin: number
+  dogodkiVTeku: boolean
+  casStreznika: string
+  mize: MizaDto[]
+  /* pripravljene tekme vseh kategorij v teku, po vrsti predloga */
+  kandidati: KandidatMizeDto[]
+}
+
+export interface NastavitveMizVnos {
+  steviloMiz: number | null
+  izklopljeneMize: number[]
+  porazenecSodi: boolean
+  pocitekMin: number
+}
+
+export interface KlicTekmeVnos {
+  miza: number
+  miza2: number | null
+  idSodnika: number | null
+}

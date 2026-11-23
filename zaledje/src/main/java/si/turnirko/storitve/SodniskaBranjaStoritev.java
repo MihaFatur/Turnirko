@@ -111,6 +111,7 @@ public class SodniskaBranjaStoritev {
     private final TekmaRepozitorij tekmaRepozitorij;
     private final SkupinaRepozitorij skupinaRepozitorij;
     private final TekmaStoritev tekmaStoritev;
+    private final MizeStoritev mize;
     private final SkrivnostListka skrivnost;
     private final BralnikListka bralnik;
     private final UcenjeIzListkov ucenje;
@@ -122,7 +123,9 @@ public class SodniskaBranjaStoritev {
                                   SlikaBranjaListkaRepozitorij slikeRepozitorij, TekmaRepozitorij tekmaRepozitorij,
                                   SkupinaRepozitorij skupinaRepozitorij, TekmaStoritev tekmaStoritev,
                                   SkrivnostListka skrivnost, BralnikListka bralnik, UcenjeIzListkov ucenje,
-                                  OmejevalnikPoskusov omejevalnik, PlatformTransactionManager transakcije) {
+                                  OmejevalnikPoskusov omejevalnik, PlatformTransactionManager transakcije,
+                                  MizeStoritev mize) {
+        this.mize = mize;
         this.branjeListkov = branjeListkov;
         this.branjaRepozitorij = branjaRepozitorij;
         this.slikeRepozitorij = slikeRepozitorij;
@@ -291,6 +294,8 @@ public class SodniskaBranjaStoritev {
         if (turnir.getSodnikiListki() == SodniskaPotrditev.VELJA_TAKOJ && smeTakoj(predlog, izid, tekma.nizovZaZmago())) {
             Long idTekme = tekma.getId();
             tekmaStoritev.vnesiRezultatSodnika(idTekme, izid);
+            // tekma, ki ni bila poklicana, dobi sodnikovo mizo (M1, 3.7)
+            mize.zapisiMizoZListka(idTekme, vnos.miza());
             // napredovanje v mrezi s skupinskimi posodobitvami izprazni sejo (kot pri organizatorju)
             branje = branjaRepozitorij.najdiZTurnirjem(idBranja).orElseThrow();
             branje.setStanje(StanjeBranja.POTRJENO);

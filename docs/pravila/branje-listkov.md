@@ -69,7 +69,10 @@
 - Miza gre v `PrebranListek` (`miza`, `negotovaMiza`; branja pred S1 jih nimajo) in v
   `BranjeListkaDto.prebranaMiza`; izrez okenca je v `CeliceListkaDto.miza`. Stran
   Branje listkov pokaže »Miza 7 (z listka)«, negotovo rjasto z izrezom. **Izida ne
-  spremeni** — uporabi jo klicanje tekem (M1).
+  spremeni.** Uporabi jo klicanje tekem (M1, `docs/pravila/mize.md`):
+  - miza, ki se razlikuje od klica, je opozorilo (»· poklicana na mizo 5«);
+  - nepoklicana tekma ob potrditvi dobi sodnikovo ali zanesljivo prebrano mizo, a
+    samo, če na tej mizi ne igra druga tekma.
 - **Simulacija** (`SimuliraneFotografijeTest`) od S1 riše na posnetek listka z okencem
   (`/dev/listek`, brezglavi Chrome, deviceScaleFactor 3) in v okence piše mizo z ločenim
   virom naključnosti (zaporedje celic ostane primerljivo). Izmerjeno 22. 11. 2026:

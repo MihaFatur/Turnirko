@@ -32222,6 +32222,11 @@ html.uvod-tece {
   color: var(--barva-negativna-tekst);
 }
 
+/* Miza z listka ni miza klica (M1, 3.7): opozorilo organizatorju. */
+.branje-vrsta__miza-klic {
+  color: var(--barva-negativna-tekst);
+}
+
 .branje-vrsta__miza .izrez-celice {
   flex: none;
   width: 72px;
@@ -33424,4 +33429,220 @@ html.uvod-tece {
 
 .branje-vrsta__sodnik {
   color: var(--barva-glavna-tekst);
+}
+
+/* ============================================================
+   Mize in klicanje tekem (M1, M2; strani/MizeStran.tsx,
+   docs/pravila/mize.md). Prenosnik na pultu: levo mize kot
+   vrstice s številko, desno pripravljene tekme po vrsti predloga.
+   Prosta miza je »čaka na dejanje« (modri rob in mehka podlaga),
+   pravkar sproščena je zelena (napredek), izklopljena zbledi.
+   ============================================================ */
+
+.mize__orodja {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--r2);
+  margin-top: var(--r4);
+  padding: var(--r1) 0;
+  border-top: 1px solid var(--barva-crta);
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.mize__orodja-desno {
+  display: flex;
+  align-items: center;
+  gap: var(--r2);
+  flex-wrap: wrap;
+}
+
+.mize__povzetek {
+  margin: 0;
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+.mize__nastavitve {
+  margin-top: var(--r4);
+  max-width: 640px;
+  border-top: 3px solid var(--barva-crnilo);
+  padding-top: var(--r2);
+}
+
+.mize__postavitev {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--r5);
+  align-items: start;
+  margin-top: var(--r5);
+}
+
+.mize__glava {
+  margin-bottom: var(--r1);
+}
+
+.mize__stevec {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+}
+
+.mize__seznam,
+.mize__pripravljene {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mize__pripravljene--okno {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.miza-vrstica {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 64px auto;
+  gap: var(--r2);
+  align-items: center;
+  padding: 14px var(--r1) 14px 12px;
+  border-bottom: 1px solid var(--barva-crta);
+  border-left: 4px solid transparent;
+  background: var(--barva-papir);
+}
+
+.miza-vrstica--prosta {
+  border-left-color: var(--barva-glavna);
+  background: var(--barva-glavna-mehko);
+}
+
+.miza-vrstica--sproscena {
+  border-left-color: var(--barva-poudarek);
+  background: var(--barva-poudarek-mehko);
+}
+
+.miza-vrstica--izklopljena {
+  opacity: 0.62;
+}
+
+.miza-vrstica__st {
+  font: 800 32px / 1 var(--pisava-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  text-align: right;
+}
+
+.miza-vrstica__vsebina {
+  min-width: 0;
+}
+
+.miza-vrstica__stanje {
+  margin: 0 0 4px;
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-glavna-tekst);
+}
+
+.miza-vrstica--izklopljena .miza-vrstica__stanje {
+  color: var(--barva-crnilo-3);
+}
+
+.miza-vrstica__imena {
+  margin: 0;
+  font-size: var(--tip-vrstica);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--barva-crnilo);
+  overflow-wrap: anywhere;
+}
+
+.miza-vrstica__meta {
+  margin: 2px 0 0;
+  font-size: var(--tip-drobno);
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--barva-crnilo-3);
+}
+
+.miza-vrstica__cas {
+  font: 600 16px / 1.4 var(--pisava-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--barva-crnilo);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.miza-vrstica__dejanja {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--r1);
+}
+
+.mize-kandidat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--r2);
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--barva-crta);
+}
+
+.mize-kandidat--zaseden {
+  opacity: 0.62;
+}
+
+.mize-kandidat__vsebina {
+  min-width: 0;
+}
+
+.mize-kandidat__razlogi {
+  margin: 4px 0 0;
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.mize-kandidat__razlogi--zaseden {
+  color: var(--barva-negativna-tekst);
+}
+
+.mize__okno-imena {
+  margin: 0 0 var(--r2);
+  font-size: var(--tip-vrstica);
+  font-weight: 600;
+  color: var(--barva-crnilo);
+}
+
+.mize__okno-meta {
+  margin: 0 0 var(--r2);
+  font: 500 var(--tip-mono) / 1.5 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+}
+
+@media (max-width: 1000px) {
+  .mize__postavitev {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .miza-vrstica {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: var(--r1) var(--r2);
+  }
+
+  .miza-vrstica__st {
+    font-size: 24px;
+  }
+
+  .miza-vrstica__dejanja {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
 }

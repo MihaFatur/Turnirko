@@ -95,6 +95,8 @@ public class IgralciZdruzitevStoritev {
         posodobi("UPDATE prijava SET id_igralec = ?2 WHERE id_igralec = ?1", odvec, obdrzan);
         posodobi("UPDATE prijava SET id_igralec_2 = ?2 WHERE id_igralec_2 = ?1", odvec, obdrzan);
         posodobi("UPDATE postava_srecanja SET id_igralec = ?2 WHERE id_igralec = ?1", odvec, obdrzan);
+        // sodnik tekme na mizi (M1, V76)
+        posodobi("UPDATE tekma SET id_sodnik = ?2 WHERE id_sodnik = ?1", odvec, obdrzan);
         for (String stolpec : new String[] {"id_igralec_domaci", "id_igralec_domaci2",
                 "id_igralec_gost", "id_igralec_gost2"}) {
             posodobi("UPDATE tekma_srecanja SET " + stolpec + " = ?2 WHERE " + stolpec + " = ?1",

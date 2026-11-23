@@ -8,6 +8,7 @@
 package si.turnirko.modeli;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -94,8 +95,28 @@ public class Tekma {
     @Column(name = "status", nullable = false)
     private StatusTekme status = StatusTekme.CAKA;
 
+    /* Klic na mizo (M1, V76; docs/pravila/mize.md). Miza, druga miza (ekipno
+       srecanje na dveh mizah), cas klica in sodnik obstajajo samo pri tekmi V_IGRI
+       ali KONCANA: setStatus jih ob vrnitvi pred igro pobrise. Miza ostane tudi na
+       koncani tekmi - iz nje se ve, kdo je na mizi zadnji izgubil (porazenec sodi
+       naslednjo tekmo). */
     @Column(name = "miza")
     private Integer miza;
+
+    @Column(name = "miza_2")
+    private Integer miza2;
+
+    @Column(name = "poklicana_ob")
+    private LocalDateTime poklicanaOb;
+
+    /* Cas prehoda v KONCANA (ne nujno cas igre: prosti prehod in uvozene tekme ga
+       dobijo ob nastanku). Iz njega predlog naslednje tekme (M2) racuna pocitek. */
+    @Column(name = "koncana_ob")
+    private LocalDateTime koncanaOb;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_sodnik")
+    private Igralec sodnik;
 
     @Column(name = "predviden_zacetek")
     private LocalDateTime predvidenZacetek;
@@ -201,10 +222,65 @@ public class Tekma {
     public void setIzidTip(IzidTekme izidTip) { this.izidTip = izidTip; }
 
     public StatusTekme getStatus() { return status; }
-    public void setStatus(StatusTekme status) { this.status = status; }
+
+    /* Nespremenljivka klica: vsaka pot, ki tekmo konca (vnos, sodnik, branje,
+       odstop, brez boja, ekipno srecanje), mizo sprosti s casom konca; vsaka pot, ki
+       jo vrne pred igro (razveljavitev zapisnika, popravek zmagovalca, ponoven zreb),
+       klic pobrise. Zato se miza ne more »zatakniti« zaradi poti, ki za mize ne ve. */
+    public void setStatus(StatusTekme status) {
+        if (status == StatusTekme.KONCANA) {
+            if (this.status != StatusTekme.KONCANA || koncanaOb == null) {
+                koncanaOb = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
+            }
+        } else {
+            koncanaOb = null;
+        }
+        // koncana tekma, ki bi se znova igrala, ni vec na mizi, kjer je koncala
+        if (status == StatusTekme.CAKA || status == StatusTekme.PRIPRAVLJENA
+                || (status == StatusTekme.V_IGRI && this.status == StatusTekme.KONCANA)) {
+            odstraniMizo();
+        }
+        this.status = status;
+    }
+
+    /* Klic na mizo ali sprememba klica (premik, drug sodnik). Pravila (prosta miza,
+       stanje tekme, sodnik) preveri MizeStoritev; cas klica ob premiku ostane. */
+    public void poklici(int miza, Integer miza2, Igralec sodnik, LocalDateTime ob) {
+        if (status == StatusTekme.PRIPRAVLJENA) {
+            setStatus(StatusTekme.V_IGRI);
+        }
+        this.miza = miza;
+        this.miza2 = miza2;
+        this.sodnik = sodnik;
+        if (poklicanaOb == null) {
+            poklicanaOb = ob;
+        }
+    }
+
+    /* Tekma ni (vec) na mizi: preklic klica ekipne tekme, ki ze tece, ali vrnitev. */
+    public void odstraniMizo() {
+        miza = null;
+        miza2 = null;
+        poklicanaOb = null;
+        sodnik = null;
+    }
+
+    /* Ali tekma zdaj zaseda mizo: igra se na njej. */
+    public boolean naMizi(int stevilka) {
+        return status == StatusTekme.V_IGRI
+                && ((miza != null && miza == stevilka) || (miza2 != null && miza2 == stevilka));
+    }
 
     public Integer getMiza() { return miza; }
     public void setMiza(Integer miza) { this.miza = miza; }
+
+    public Integer getMiza2() { return miza2; }
+
+    public LocalDateTime getPoklicanaOb() { return poklicanaOb; }
+
+    public LocalDateTime getKoncanaOb() { return koncanaOb; }
+
+    public Igralec getSodnik() { return sodnik; }
 
     public LocalDateTime getPredvidenZacetek() { return predvidenZacetek; }
     public void setPredvidenZacetek(LocalDateTime predvidenZacetek) { this.predvidenZacetek = predvidenZacetek; }

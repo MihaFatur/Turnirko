@@ -157,6 +157,9 @@ export function TurnirStran() {
   /* Branje listkov s fotografije: ko vsaj ena kategorija teče (docs/pravila/branje-listkov.md). */
   const zaBranjeListkov =
     seUreja && branjeNaVoljo && (dogodki.data ?? []).some((d) => d.dejanskiStatus === 'V_TEKU')
+  /* Mize in klicanje tekem (M1): število miz se nastavi že pred turnirjem, klicanje
+     pa steče, ko je kategorija izžrebana. */
+  const zaMize = seUreja && (dogodki.data ?? []).length > 0
   /* Žreb izločilnega dela: čisti izločilni dogodek v teku mrežo že ima, pri
      skupinah jo pokaže šele naložena mreža. */
   const zaTiskMreze =
@@ -309,6 +312,16 @@ export function TurnirStran() {
                       onClick={zapri}
                     >
                       Izločilni žreb za tiskanje
+                    </Link>
+                  )}
+                  {zaMize && (
+                    <Link
+                      to={`/turnirji/${idTurnirja}/mize`}
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      onClick={zapri}
+                    >
+                      Mize
                     </Link>
                   )}
                   {zaBranjeListkov && (
@@ -548,6 +561,11 @@ export function TurnirStran() {
             {zaTiskMreze && (
               <Link to={`/turnirji/${idTurnirja}/zreb-mreze`} className="gumb">
                 Izločilni žreb za tiskanje
+              </Link>
+            )}
+            {zaMize && (
+              <Link to={`/turnirji/${idTurnirja}/mize`} className="gumb">
+                Mize
               </Link>
             )}
             {zaBranjeListkov && (

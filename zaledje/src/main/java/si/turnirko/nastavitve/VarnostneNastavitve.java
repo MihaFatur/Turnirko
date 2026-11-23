@@ -217,6 +217,11 @@ public class VarnostneNastavitve {
                         // kode QR za tisk listkov (S1) nosijo skrivnost, ki sodniku da pravico
                         // poslati izid: samo prijavljeni (lastnistvo preveri ListkiStoritev)
                         .requestMatchers("/api/v1/dogodki/*/listki/kode").authenticated()
+                        // mize turnirja (M1, V76): stanje dvorane, sodniki in predlog tekem so
+                        // organizatorjevo delo, ne javni podatek - tudi GET (lastnistvo preveri
+                        // MizeStoritev); klic in preklic (/tekme/*/klic) ujame splosno pravilo spodaj
+                        .requestMatchers("/api/v1/turnirji/*/mize", "/api/v1/turnirji/*/mize/**")
+                                .hasAnyRole("ADMIN", "ORGANIZATOR")
                         // podpora klubu (V61): izbira kluba in popust organizatorja sta osebna
                         .requestMatchers("/api/v1/podpora-kluba", "/api/v1/podpora-kluba/**").authenticated()
                         // potisna obvestila (V60): vpis naprave, izpis in preizkus so osebni (paket

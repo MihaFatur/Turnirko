@@ -17,6 +17,15 @@ public interface PostavaSrecanjaRepozitorij extends JpaRepository<PostavaSrecanj
             """)
     List<PostavaSrecanja> najdiZaSrecanje(Long idSrecanje);
 
+    /* Igralci v postavah srecanj ekipnih tekem turnirja (stran Mize: kdo igra):
+       [idTekma, stran, idIgralec, ime, priimek]. */
+    @Query("""
+            SELECT s.tekma.id, p.stran, i.id, i.ime, i.priimek
+            FROM PostavaSrecanja p JOIN p.srecanje s JOIN p.igralec i
+            WHERE s.tekma.id IN :idjiTekem
+            """)
+    List<Object[]> osebePostavZaTekme(java.util.Collection<Long> idjiTekem);
+
     void deleteBySrecanjeId(Long idSrecanje);
 
     long countBySrecanjeId(Long idSrecanje);

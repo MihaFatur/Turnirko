@@ -163,6 +163,8 @@
     zrebati ali vpisati, dokler nobena tekma ni začeta (`ZrebStoritev.razveljaviZreb`,
     SV: `razveljaviZrebSkupin`). »Začeta« je `V_IGRI` ali `KONCANA` **razen** prostega
     prehoda (`IzidTekme.PROSTO`, ta je koncan ob nastanku) — `ZrebStoritev.zacet`.
+    Tekma, poklicana na mizo (M1, `docs/pravila/mize.md`), je `V_IGRI` in torej
+    začeta; po preklicu klica spet ni.
     Brisanje tekem gre skozi `izbrisiTekme`, ki najprej pretrga izvorne povezave.
   - **Mreža:** sosednja mesta igrata v prvem kolu; dva prosta mesta drug ob drugem
     ne smeta biti (`ZrebStoritev.mestaZaRocniVpis`). Prosta mesta so `null`.

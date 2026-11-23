@@ -91,6 +91,11 @@ public interface SrecanjeRepozitorij extends JpaRepository<Srecanje, Long> {
             """)
     Optional<Srecanje> najdiZaTekmo(Long idTekma);
 
+    /* Srecanja izbranih ekipnih tekem turnirja: [idTekma, idSrecanje] (stran Mize
+       ob ekipni tekmi pokaze povezavo na zapisnik). */
+    @Query("SELECT s.tekma.id, s.id FROM Srecanje s WHERE s.tekma.id IN :idjiTekem")
+    List<Object[]> srecanjaTekem(java.util.Collection<Long> idjiTekem);
+
     /* Srecanja ekipnih tekem enega dogodka: [idTekma, idSrecanje, status,
        dobljeneDomaci, dobljeneGost] - mreza in skupine ob vsaki ekipni tekmi
        pokazejo povezavo na zapisnik brez poizvedbe na tekmo. */

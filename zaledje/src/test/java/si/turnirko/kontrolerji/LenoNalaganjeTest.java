@@ -26,7 +26,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import si.turnirko.dto.DogodekVnos;
+import si.turnirko.dto.KlicTekmeVnos;
+import si.turnirko.dto.MizeTurnirjaDto;
 import si.turnirko.dto.MrezaDto;
+import si.turnirko.dto.NastavitveMizVnos;
 import si.turnirko.dto.NizVnos;
 import si.turnirko.dto.ParVnos;
 import si.turnirko.dto.PrijavaDto;
@@ -67,6 +70,7 @@ class LenoNalaganjeTest {
     @Autowired TurnirjiKontroler turnirjiKontroler;
     @Autowired DogodkiKontroler dogodkiKontroler;
     @Autowired TekmeKontroler tekmeKontroler;
+    @Autowired MizeKontroler mizeKontroler;
     @Autowired TurnirjiStoritev turnirjiStoritev;
 
     @Autowired KrajRepozitorij krajRepozitorij;
@@ -240,6 +244,34 @@ class LenoNalaganjeTest {
         assertEquals("Bor", par.ime2());
         assertEquals("Drugi", par.priimek2());
         assertTrue(par.kader().isEmpty());
+    }
+
+    /* Stran Mize (M1, M2): pregled sestavi DTO-je tekem (igralci, klubi, sodnik)
+       izven transakcije kontrolerja. */
+    @Test
+    void mizeVrnejoTekmeSKlubiInSodnikom() {
+        dogodkiKontroler.zreb(dogodek.getId());
+        mizeKontroler.nastavi(turnir.getId(), new NastavitveMizVnos(2, List.of(), true, 3));
+        MizeTurnirjaDto pred = mizeKontroler.pregled(turnir.getId()).getBody();
+        assertFalse(pred.kandidati().isEmpty());
+        assertTrue(pred.kandidati().stream()
+                .flatMap(k -> Stream.of(k.tekma().tekma().udelezenec1(), k.tekma().tekma().udelezenec2()))
+                .allMatch(u -> "Testni klub".equals(u.klub())));
+
+        TekmaDto prva = pred.kandidati().get(0).tekma().tekma();
+        // sodi tretji igralec (prosti prehod), ki v tej tekmi ne igra
+        PrijavaDto tretji = prijave.stream()
+                .filter(p -> !p.id().equals(prva.udelezenec1().idPrijave())
+                        && !p.id().equals(prva.udelezenec2().idPrijave()))
+                .findFirst().orElseThrow();
+        mizeKontroler.poklici(prva.id(), new KlicTekmeVnos(1, null, tretji.idIgralca()));
+
+        MizeTurnirjaDto po = mizeKontroler.pregled(turnir.getId()).getBody();
+        MizeTurnirjaDto.TekmaMizeDto naMizi = po.mize().get(0).tekma();
+        assertEquals(prva.id(), naMizi.tekma().id());
+        assertEquals("Testni klub", naMizi.tekma().udelezenec1().klub());
+        assertEquals(tretji.polnoIme(), naMizi.sodnik().ime());
+        assertEquals(3, mizeKontroler.osebe(turnir.getId()).getBody().size());
     }
 
     private Igralec novIgralec(String ime, String priimek) {

@@ -245,6 +245,21 @@ class AvtentikacijaDostopTest {
 
     /* Gost izbora igralcev nima: poti so osebne in zahtevajo prijavo (pravilo mora
        stati pred splosnim "GET je javen", sicer bi gost bral tuji izbor). */
+    /* Mize turnirja (M1, V76): stanje dvorane, sodniki in predlog tekem niso javni -
+       tudi GET zahteva organizatorja (pravilo pred splosnim "GET je javen"). Klic in
+       preklic sta mutaciji pod /tekme. */
+    @Test
+    void gostNimaMiz() throws Exception {
+        mockMvc.perform(get("/api/v1/turnirji/1/mize")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/turnirji/1/mize/osebe")).andExpect(status().isUnauthorized());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/v1/turnirji/1/mize")).andExpect(status().isUnauthorized());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/v1/tekme/1/klic")).andExpect(status().isUnauthorized());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/v1/tekme/1/klic")).andExpect(status().isUnauthorized());
+    }
+
     @Test
     void gostNimaSpremljanihIgralcev() throws Exception {
         mockMvc.perform(get("/api/v1/domov/moji-igralci")).andExpect(status().isUnauthorized());

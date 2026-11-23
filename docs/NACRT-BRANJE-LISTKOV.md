@@ -295,26 +295,80 @@ se prebere, stari listek se še vedno prebere, tuj organizator kod ne dobi.
 **Gotovo, ko:** E2E na telefonski širini (Slikaj → Potrdi → izid v mreži); skripta s
 `curl` na testu potrdi varnostne primere.
 
-### M1 — Mize in klicanje (M)
+### Odločitve lastnika za M1 in M2 (23. 11. 2026)
+
+Lastnik: »loti se M1 in M2 v celoti in natančno, ne oziraj se na čas«. Odgovori:
+
+- **Vse mize so za vse dogodke** (mize se ne delijo po dogodkih).
+- **Klic igralcem je na glas.** Aplikacija klic samo beleži: brez zaslona v dvorani,
+  brez potisnih obvestil in brez novega javnega prikaza mize (3.6 odpade).
+- **Listki se tiskajo vnaprej**, mizo v okence vpiše sodnik.
+- **Poraženec prejšnje tekme na isti mizi sodi naslednjo.** To je nastavitev turnirja;
+  ob vsakem klicu je poraženec predlagan, organizator ga lahko zamenja ali odstrani.
+  **Po tekmi dvojic sodnika ne predlaga nihče.**
+- **Ekipno srečanje** se pokliče na **eno ali dve mizi** (izbira ob klicu).
+- Tekme se **vedno kličejo** v aplikaciji; igralci ne sedejo sami.
+- Predlog: **zaostala skupina ima prednost pred počitkom**. Počitek je privzeto
+  **3 min** in nastavljiv na turnirju.
+- **Brez** označevanja odsotnih igralcev.
+- Stran Mize je za **prenosnik na pultu** (na telefonu deluje, ni pa optimizirana).
+
+### M1 — Mize in klicanje (M–L)
+
+**Model (V76):**
+- `turnir`:
+  - `stevilo_miz` (1–99, kolikor jih okence listka prebere; `null` = mize niso
+    nastavljene);
+  - `izklopljene_mize` (besedilo »3,7«);
+  - `porazenec_sodi` (boolean, privzeto false);
+  - `pocitek_min` (0–30, privzeto 3).
+- `tekma`:
+  - `miza_2` (druga miza ekipnega srečanja);
+  - `poklicana_ob`;
+  - `koncana_ob`;
+  - `id_sodnik` → `igralec` (ON DELETE SET NULL; združitev igralcev ga preusmeri).
+- **Nespremenljivka v `Tekma.setStatus`:**
+  - miza, druga miza, čas klica in sodnik obstajajo samo pri `V_IGRI` in `KONCANA`;
+    prehod v `PRIPRAVLJENA` ali `CAKA` jih pobriše;
+  - `koncana_ob` je čas prehoda v `KONCANA`; izhod iz `KONCANA` ga pobriše.
+
+  Tako mizo sprosti **vsaka** pot, ki tekmo konča: vnos, sodnik, branje na pultu,
+  odstop, brez boja, ekipno srečanje. Vsaka pot, ki tekmo vrne, klic izbriše
+  (razveljavitev zapisnika, popravek zmagovalca, ponoven žreb). Miza ostane zapisana
+  na končani tekmi; iz nje se ve, kdo je na mizi zadnji izgubil.
 
 | Korak | Kaj |
 |---|---|
-| 3.1 | **Mize turnirja:** število miz in začasno izklopljene mize; na tekmi čas klica in čas konca (migracija). Stolpec `tekma.miza` že obstaja, a ga do zdaj nič ne nastavlja. |
-| 3.2 | **Klic:** tekma PRIPRAVLJENA → V_IGRI z mizo in časom klica; preklic jo vrne. Miza ne sme biti zasedena. Če igralec igra drugje, opozorilo (organizator lahko vseeno pokliče). **Preveri vse uporabe V_IGRI** (SV regija, `ZrebStoritev`, uvoz Stupe), ker do zdaj ta status nosijo samo ekipne tekme. |
-| 3.3 | **Sprostitev:** vsak vpis izida (sodnik, pult, ročni vnos, popravek) zapiše čas konca. Miza je prosta, ko nobena tekma na njej ni V_IGRI. |
-| 3.4 | **Stran »Mize«** za turnir v teku: mreža miz (prosta / zasedena: igralca, dogodek, minute igre), pisk in poudarek ob sprostitvi, seznam pripravljenih tekem vseh dogodkov, osvežitev vsakih nekaj sekund. |
-| 3.5 | **Miza z listka:** neujemanje prebrane mize s klicem je opozorilo organizatorju in sodniku; pri tekmi, ki ni bila poklicana, se zapiše prebrana miza. |
-| 3.6 | Za gledalca (ločen korak, pozneje): javno »Miza 5« pri tekmi v igri. |
+| 3.1 | **Nastavitve miz** `PUT /api/v1/turnirji/{id}/mize`: število, izklopljene, poraženec sodi, počitek. Zmanjšanje števila miz ali izklop mize, na kateri se igra, vrne 400 z razlogom. |
+| 3.2 | **Klic** `PUT /api/v1/tekme/{id}/klic` `{miza, miza2, idSodnik}` (isti klic tudi premakne tekmo ali zamenja sodnika). Preverbe:<br>• zaklep turnirja, lastništvo, turnir ni uvožen, dogodek `V_TEKU`, mize so nastavljene;<br>• tekma je `PRIPRAVLJENA` z obema udeležencema ali že poklicana (sprememba); ekipna tekma v `V_IGRI` brez mize (srečanje že teče) dobi mizo naknadno;<br>• miza 1–N, ni izklopljena, na njej ne igra druga tekma (miza ali druga miza);<br>• druga miza samo pri ekipnem dogodku in različna od prve;<br>• sodnik je igralec s prijavo na turnirju in ni udeleženec te tekme.<br>Igralec ali sodnik, zaseden na drugi mizi, ni napaka (odloči organizator); odgovor to pove kot opozorilo. Prehod `PRIPRAVLJENA → V_IGRI`, `poklicana_ob` = zdaj (pri premiku ostane). |
+| 3.3 | **Preklic** `DELETE /api/v1/tekme/{id}/klic`: `V_IGRI → PRIPRAVLJENA`, klic se pobriše. Ekipna tekma, katere srečanje že ima postavo, ostane `V_IGRI` in izgubi samo mizo. |
+| 3.4 | **Pregled** `GET /api/v1/turnirji/{id}/mize` (samo organizator in admin, tudi GET):<br>• vse mize: prosta, izklopljena ali zasedena (tekma, minute igre, sodnik);<br>• prosta miza: čas sprostitve, predlagani sodnik in predlogi M2;<br>• pripravljene tekme vseh dogodkov v teku;<br>• čas strežnika (minute ne zavisijo od ure prenosnika).<br>`GET …/mize/osebe` vrne osebe s prijavo za izbiro sodnika. |
+| 3.5 | **Poraženec sodi** (ko je vklopljen): predlagani sodnik proste mize je poraženec zadnje končane tekme na njej. Pogoji:<br>• tekma posameznikov (ne dvojice, ne ekipna), izid odigrano ali predaja (pri brez boja in diskvalifikaciji ne);<br>• končana današnji dan;<br>• poraženec zdaj ne igra in ne sodi;<br>• poraženec ni udeleženec tekme, ki se kliče.<br>Poraženca, ki čaka na sojenje, predlog drugih tekem postavi na konec z razlogom »sodi na mizi 3«. |
+| 3.6 | **Stran »Mize«** `/turnirji/:id/mize` (prenosnik):<br>• mreža miz: prosta, zasedena (dogodek, del, igralca, minute igre, sodnik) ali izklopljena;<br>• ob prosti mizi trije predlogi z razlogom in gumb **Pokliči**; »Druga tekma …« odpre vse pripravljene;<br>• na zasedeni mizi: **Vnesi izid** (obstoječe okno, pri ekipni zapisnik srečanja), **Premakni**, **Sodnik**, **Prekliči klic**;<br>• kratek pisk in poudarek, ko se miza sprosti;<br>• osvežitev vsake 4 s, dokler je stran vidna;<br>• povezava s strani turnirja; članek pomoči. |
+| 3.7 | **Miza z listka:**<br>• neujemanje prebrane ali sodnikove mize s klicem dobi organizator kot opozorilo na strani Branje listkov (sodnik ga že vidi, S2);<br>• pri tekmi, ki ni bila poklicana, se ob potrditvi zapiše sodnikova miza, a samo, če na tej mizi ne igra druga tekma. |
+| 3.8 | **Uporabe `V_IGRI` preverjene** (23. 11. 2026):<br>• `ZrebStoritev.zacet`, SV regija in vmesnik (`IzlocilniZreb`, `DogodekStran`) štejejo poklicano tekmo kot začeto: žreba po klicu ni več mogoče ponoviti, po preklicu pa spet je;<br>• tisk listkov in »Čaka te« jo štejeta kot čakajočo na izid;<br>• uvoz Stupe je samo za branje, mize tam ne veljajo. |
+
+**Varnost M1:**
+- Nove poti `…/mize` so v `VarnostneNastavitve` samo za organizatorja in admina,
+  tudi GET (ker imena sodnikov in stanje dvorane niso javna). Lastništvo preveri
+  storitev (V1).
+- Število miz je omejeno na 99 in izklopljene mize na seznam števil (V2).
+- Pregled je ena poizvedba za tekme turnirja z `join fetch` in ena za postave
+  ekipnih srečanj v igri; odgovor je brez osebnih podatkov, samo imena (V3, V5).
+- Klic in preklic tečeta pod zaklepom turnirja, zato dva klica na isto mizo ne
+  prestaneta oba preverbe (V9).
 
 ### M2 — Predlog naslednje tekme (M)
 
+Domenska logika v čistem razredu `PredlogTekem` (brez Springa in baze), s testi.
+
 | Korak | Kaj |
 |---|---|
-| 4.1 | Kandidati: pripravljene in nepoklicane tekme vseh dogodkov turnirja v teku. |
-| 4.2 | Izloči tekme, v katerih kdo od igralcev igra ali sodi na drugi mizi. |
-| 4.3 | Razvrsti: (1) prednost dogodku ali fazi, ki zadržuje druge (npr. skupina, brez katere se izločilni del ne more začeti); (2) vrstni red kol v skupini; (3) počitek: kdor je končal pred manj kot N min (privzeto 5), gre nižje; (4) najdlje čaka. |
-| 4.4 | Prikaz: ob prosti mizi prve tri tekme z razlogom; »Pokliči« z enim klikom. Odloči vedno organizator. |
-| 4.5 | Sodnik ob klicu (neobvezno), ker sodijo mešano: predlog prostega igralca iz iste skupine. Kdor sodi, je za predlog zaseden; brez izbranega sodnika predlog sodnikov ne upošteva. |
+| 4.1 | **Kandidati:**<br>• tekme `PRIPRAVLJENA` vseh dogodkov turnirja v teku;<br>• ekipne tekme v `V_IGRI` brez mize. |
+| 4.2 | **Izločene so tekme, v katerih je kdo zaseden:** igra ali sodi tekmo v `V_IGRI` (oseba, ne prijava, ker igra isti igralec tudi dvojice ali drug dogodek). Pri ekipni tekmi štejejo igralci v postavi srečanja; ekipa, ki igra, je zasedena v celoti. |
+| 4.3 | **Razvrstitev** (po vrsti, vsako merilo odloči le pri izenačenju prejšnjega):<br>(0) tekme brez poraženca, ki čaka na sojenje (3.5), so pred tistimi s takim igralcem;<br>(1) **zaostanek**: kdo od udeležencev ima v dogodku še največ tekem. V skupini so to neodigrane tekme prijave, v izločilnem delu kola do konca veje. Tako gre najprej skupina, ki bi sicer zadržala izločilni del ali konec turnirja;<br>(2) **počitek**: tekme, v katerih je vsak udeleženec končal pred vsaj N min, so pred ostalimi;<br>(3) **vrstni red kol**: nižje kolo prej;<br>(4) **najdlje čaka**: tekma, katere udeleženec z najkrajšim premorom čaka najdlje (kdor še ni igral, čaka najdlje);<br>(5) dogodek, kolo, pozicija (stalen vrstni red). |
+| 4.4 | **Prikaz:** ob prosti mizi prve tri tekme z razlogi (»Kovač ima še 4 tekme«, »Novak je končal pred 1 min«, »kolo 2«) in **Pokliči** z enim klikom. Pri tekmi, ki ni prva, sta razlog tudi zasedenost in počitek. Odloči vedno organizator. |
+| 4.5 | **Sodnik ob klicu:**<br>• privzeto je poraženec iz 3.5;<br>• organizator ga zamenja s katerokoli osebo s prijavo na turnirju ali odstrani;<br>• kdor sodi, je za predlog zaseden (4.2). |
 
 Razvrščanje je domenska logika in dobi teste (pravilo projekta).
 
@@ -623,8 +677,8 @@ vsake faze (razdelek 2).
 | F5 (5.2–5.4) vrsta brez signala, V73 | na testu od 22. 11. 2026 (V73 OK, 0 napak; lastnik: »Da, začni F5«, »Commit in test«; brez osvežitve baze zaradi demo računa); 5.1 po generalki | 22. 11. 2026 | `0ccfb38` |
 | S1 listek za sodnika, V74 | na testu od 22. 11. 2026 skupaj s S2 (V74 OK, 0 napak; lastnik 22. 11. 2026: »sodniki naj slikajo sami«; »zapiši in začni«; »commitaj in objavi na test«). 1475 testov zaledja zelenih; simulacija: miza prav 100/100/93 %, 0 tihih; točke ±1 celica; E2E: natisnjen listek → koda s skrivnostjo, branje prepozna mizo 7. Varnostni pregled: kode po odjavi iz predpomnilnika, ključ ob zagonu, `toString` brez skrivnosti, tisk počaka na pravice | 22. 11. 2026 | `ead322b` |
 | S2 sodnik slika in potrdi, V75 | na testu od 22. 11. 2026 skupaj s S1 (V75 OK, 0 napak; lastnik 22. 11. 2026: »Nadaljuj s S2«; »commitaj in objavi na test«). 1494 testov zaledja in 355 vmesnika zelenih. E2E na telefonski širini: /s → fotografija → potrditev (velja takoj: izid vpisan; predpregled: organizator vidi »Sodnik je izid potrdil«), plakat. Varnostni pregled: QR lahko fotografira kdorkoli, zato »velja takoj« samo, ko izid podpira fotografija (smeTakoj), sicer predpregled; učenje samo iz takih; meja napačnih žetonov, IPv6 /64, skupna meja samo za prave listke, 4 MB, točke 0–99, dogodek v teku. Odstopanje od 2.2: vrsta na strani sodnika je samo v pomnilniku (brez IndexedDB) – sodnik listek vedno odda na pultu; napis na listku ni dodan (postavitev listka ostane), pot do strani je plakat | 22. 11. 2026 | `ead322b` |
-| S2.1 hrbtna stran listka namesto plakata | objava na test 22. 11. 2026 (lastnik 22. 11. 2026: »QR za dostop do strani … na zadnji strani vsakega natisnjenega listka« namesto plakata; »Commit in test«). 1496 testov zaledja, 358 vmesnika; PDF preverjen (list, hrbet, list, hrbet; kode berljive). `GET /listki/kode` vrne tudi `sodnikiListki`; ko so sodniki vklopljeni, sledi vsakemu listu hrbet (QR do `/s`, trije koraki), kodo dobi vsako mesto, za katerim je listek pri obratu po dolgem ali kratkem robu; organizator hrbet lahko odkljuka. Plakat odstranjen. Prosojnost hrbta izmerjena v simulaciji: 15 % zatemnitve → 100 % celic prav, 30 % (proti luči) → 85 % prav, 0,4 % tihih, zato navodilo »položi listek na mizo« | 22. 11. 2026 | — |
-| M1, M2 | načrtovano | — | — |
+| S2.1 hrbtna stran listka namesto plakata | na testu od 22. 11. 2026 (0 napak; lastnik 22. 11. 2026: »QR za dostop do strani … na zadnji strani vsakega natisnjenega listka« namesto plakata; »Commit in test«). 1496 testov zaledja, 358 vmesnika; PDF preverjen (list, hrbet, list, hrbet; kode berljive). `GET /listki/kode` vrne tudi `sodnikiListki`; ko so sodniki vklopljeni, sledi vsakemu listu hrbet (QR do `/s`, trije koraki), kodo dobi vsako mesto, za katerim je listek pri obratu po dolgem ali kratkem robu; organizator hrbet lahko odkljuka. Plakat odstranjen. Prosojnost hrbta izmerjena v simulaciji: 15 % zatemnitve → 100 % celic prav, 30 % (proti luči) → 85 % prav, 0,4 % tihih, zato navodilo »položi listek na mizo« | 22. 11. 2026 | `39c8c92` |
+| M1 mize in klicanje, M2 predlog naslednje tekme, V76 | commitano na vejo test 23. 11. 2026 (lastnik 23. 11. 2026: »loti se M1 in M2 v celoti in natančno«; odločitve zgoraj; »Commit in test«). Zaledje: vsi testi zeleni (PredlogTekemTest 28, MizeStoritevTest 13, leno nalaganje, dostop); vmesnik 364 testov, lint brez novih opozoril, build. E2E (brezglavi Chrome, prenosnik in telefon): nastavitve → »Pokliči predloge« → izid → miza zelena s poraženčevim sodnikom → klic s predlaganim sodnikom. Odstopanja od načrta: vrstni red prostih miz pri razporeditvi je »najprej mize s čakajočim sodnikom, nato po številki« (prej »nerabljene najprej«: sveže sproščena miza s sodnikom ni dobila predloga); sodnik predloga ene mize ni v predlogu druge (sicer bi »Pokliči predloge« poklical sodnika še za igro); zaslon v dvorani in javni prikaz mize (3.6) odpadeta po odločitvi lastnika. Varnostni pregled (podagent, V1–V9): brez resnih najdb; popravljeno – miza z listka se ne zapiše na izklopljeno mizo, končana tekma, ki bi se znova igrala, ni na stari mizi, nastavitve miz brez tihih privzetih vrednosti (vsa polja obvezna); namerno pustil – osvežitev na 4 s (en prenosnik na pultu, skrit zavihek ne sprašuje), zaklep turnirja pred preverbo lastništva (isti vzorec kot vnos izida). `/code-review` (medium): opozorilo zasedenosti brez »naj sodi«, »Pokliči predloge« pred klici prebere sveže stanje, komentar piska | 23. 11. 2026 | — |
 | F7, F8 postaja in škatla | ustavljeno 22. 11. 2026 (sodnik slika s svojim telefonom) | — | — |
 | F9 | načrtovano | — | — |
 

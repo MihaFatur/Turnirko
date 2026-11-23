@@ -7,6 +7,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -67,6 +70,21 @@ public class Turnir {
     @Enumerated(EnumType.STRING)
     @Column(name = "sodniki_listki")
     private SodniskaPotrditev sodnikiListki;
+
+    /* Mize turnirja (M1, V76; docs/pravila/mize.md): stevilo (null = niso
+       nastavljene), zacasno izklopljene (besedilo "3,7"), ali porazenec zadnje
+       tekme na mizi sodi naslednjo, in pocitek, ki ga uposteva predlog tekem (M2). */
+    @Column(name = "stevilo_miz")
+    private Integer steviloMiz;
+
+    @Column(name = "izklopljene_mize")
+    private String izklopljeneMize;
+
+    @Column(name = "porazenec_sodi", nullable = false)
+    private boolean porazenecSodi = false;
+
+    @Column(name = "pocitek_min", nullable = false)
+    private int pocitekMin = 3;
 
     /* Od kod je turnir prisel (V27). Prazen = nastal je v Turnirku; sicer je
        uvozen in samo za branje (glej VirTekmovanja, LastnistvoStoritev). */
@@ -139,6 +157,36 @@ public class Turnir {
 
     public SodniskaPotrditev getSodnikiListki() { return sodnikiListki; }
     public void setSodnikiListki(SodniskaPotrditev sodnikiListki) { this.sodnikiListki = sodnikiListki; }
+
+    public Integer getSteviloMiz() { return steviloMiz; }
+    public void setSteviloMiz(Integer steviloMiz) { this.steviloMiz = steviloMiz; }
+
+    /* Izklopljene mize po vrsti; zapis pise samo MizeStoritev, tuj del se preskoci. */
+    public SortedSet<Integer> getIzklopljeneMize() {
+        SortedSet<Integer> mize = new TreeSet<>();
+        if (izklopljeneMize == null || izklopljeneMize.isBlank()) {
+            return mize;
+        }
+        for (String del : izklopljeneMize.split(",")) {
+            try {
+                mize.add(Integer.parseInt(del.trim()));
+            } catch (NumberFormatException e) {
+                // ni stevilka - ne uposteva se
+            }
+        }
+        return mize;
+    }
+
+    public void setIzklopljeneMize(Collection<Integer> mize) {
+        this.izklopljeneMize = mize == null || mize.isEmpty() ? null
+                : mize.stream().sorted().distinct().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    public boolean isPorazenecSodi() { return porazenecSodi; }
+    public void setPorazenecSodi(boolean porazenecSodi) { this.porazenecSodi = porazenecSodi; }
+
+    public int getPocitekMin() { return pocitekMin; }
+    public void setPocitekMin(int pocitekMin) { this.pocitekMin = pocitekMin; }
 
     public RavenTekmovanja getRaven() { return raven; }
     public void setRaven(RavenTekmovanja raven) { this.raven = raven; }

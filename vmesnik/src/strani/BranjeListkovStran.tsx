@@ -756,19 +756,30 @@ function Fotografija({ url, id }: { url: string | null; id?: number }) {
   return vir ? <img src={vir} alt="Fotografija listka" /> : <span className="branje-vrsta__brez-slike" />
 }
 
-/* Številka mize iz okenca listka (S1). Zaenkrat samo podatek: izida ne spremeni,
-   miza se začne uporabljati s klicanjem tekem (M1). Negotova miza ima ob sebi
-   izrez okenca, da organizator vidi, kaj je napisano. */
+/* Številka mize iz okenca listka (S1). Izida ne spremeni. Če se razlikuje od
+   mize, na katero je bila tekma poklicana (M1, 3.7), to organizator vidi kot
+   opozorilo (sodnik ga vidi na telefonu). Negotova miza ima ob sebi izrez
+   okenca, da organizator vidi, kaj je napisano. */
 function MizaZListka({ branje }: { branje: BranjeListkaDto }) {
   const okence = branje.celice?.miza
+  const poklicana = branje.tekma?.tekma.miza ?? null
+  const neujemanje = (miza: number | null) =>
+    poklicana !== null && miza !== null && miza !== poklicana ? (
+      <span className="branje-vrsta__miza-klic"> · poklicana na mizo {poklicana}</span>
+    ) : null
   // miza, ki jo je potrdil sodnik, velja pred prebrano
   if (branje.mizaSodnika !== null) {
-    return <p className="branje-vrsta__miza">Miza {branje.mizaSodnika} (sodnik)</p>
+    return (
+      <p className="branje-vrsta__miza">
+        Miza {branje.mizaSodnika} (sodnik){neujemanje(branje.mizaSodnika)}
+      </p>
+    )
   }
   if (branje.prebranaMiza === null && !branje.negotovaMiza) return null
   return (
     <p className={'branje-vrsta__miza' + (branje.negotovaMiza ? ' branje-vrsta__miza--negotova' : '')}>
       {branje.prebranaMiza !== null ? `Miza ${branje.prebranaMiza} (z listka)` : 'Miza: zapis ni berljiv'}
+      {!branje.negotovaMiza && neujemanje(branje.prebranaMiza)}
       {branje.negotovaMiza && branje.celice && okence && okence.length === 4 && (
         <IzrezCelice
           id={branje.id}

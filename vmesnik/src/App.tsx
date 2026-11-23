@@ -36,6 +36,7 @@ import { OrganizatorskiPregledStran } from './strani/OrganizatorskiPregledStran'
 import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStran'
 import { PomocStran } from './strani/PomocStran'
 import { BranjeListkovStran } from './strani/BranjeListkovStran'
+import { MizeStran } from './strani/MizeStran'
 import { SodnikStran } from './strani/SodnikStran'
 import { MeritevBranjaStran } from './strani/MeritevBranjaStran'
 import { VadnicaStran } from './strani/VadnicaStran'
@@ -306,6 +307,15 @@ export function App() {
           element={
             <SamoUrejevalec>
               <BranjeListkovStran />
+            </SamoUrejevalec>
+          }
+        />
+        {/* Mize in klicanje tekem (M1, M2); kdo sme, odloči strežnik. */}
+        <Route
+          path="/turnirji/:id/mize"
+          element={
+            <SamoUrejevalec>
+              <MizeStran />
             </SamoUrejevalec>
           }
         />
