@@ -109,6 +109,36 @@ class ZrebNosilciTest extends IntegracijskiTest {
         }
     }
 
+    /* Regresija s testnega streznika: 65 igralcev je dalo 16 skupin in eno s petimi.
+       Najvec 4 v skupini pomeni vec skupin: 17, od tega 14 po 4 in 3 po 3. */
+    @Test
+    void petinsestdesetIgralcevNeDaSkupineSPetimi() {
+        Dogodek dogodek = pripraviJakostniDogodek(65, SistemTekmovanja.SKUPINE_IZLOCILNI);
+        zrebStoritev.izvediZreb(dogodek.getId());
+
+        List<Integer> velikosti = poSkupinah(dogodek).stream().map(List::size).sorted().toList();
+        assertEquals(17, velikosti.size(), "65 igralcev -> 17 skupin");
+        assertEquals(3, velikosti.stream().filter(v -> v == 3).count(), "3 skupine po 3");
+        assertEquals(14, velikosti.stream().filter(v -> v == 4).count(), "14 skupin po 4");
+        assertEquals(4, (int) velikosti.get(velikosti.size() - 1), "nobena skupina nima vec kot 4");
+    }
+
+    /* Za vsako dopustno stevilo igralcev: v skupini nikoli vec kot 4, nikoli manj kot 3 in
+       skupine se po velikosti razlikujejo najvec za enega. Pred popravkom je bilo pri 9, 13,
+       17 ... (n % 4 == 1) pet igralcev v eni skupini. */
+    @Test
+    void steviloSkupinNikoliNeDaVecKotStirihVSkupini() {
+        for (int n = ZrebStoritev.NAJMANJ_ZA_SKUPINE; n <= 100; n++) {
+            int skupin = ZrebStoritev.izberiSteviloSkupin(n);
+            int najmanjsa = n / skupin;
+            int najvecja = (n + skupin - 1) / skupin;
+            assertTrue(najvecja <= ZrebStoritev.NAJVEC_V_SKUPINI,
+                    n + " igralcev v " + skupin + " skupinah: najvecja skupina " + najvecja);
+            assertTrue(najmanjsa >= 3, n + " igralcev v " + skupin + " skupinah: najmanjsa " + najmanjsa);
+            assertTrue(skupin >= 2, n + " igralcev: manj kot dve skupini");
+        }
+    }
+
     /* Prvi pas ni zreb (1. nosilec vedno v A), vsi naslednji pa so. */
     @Test
     void prviPasJeStalenOstaliPasoviSeZrebajo() {

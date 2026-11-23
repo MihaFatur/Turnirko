@@ -57,6 +57,16 @@
     Razpored znotraj skupine je nato krožna metoda **brez mešanja**
     (`kroznePare`), zato nosilec skupine začne z najšibkejšim in dvoboj 1–2
     pade v zadnje kolo — isto kot pri formatu TOP.
+  - **Največ 4 igralci v skupini** (računalniški žreb `SKUPINE_IZLOCILNI`, od
+    23. 11. 2026): `ZrebStoritev.izberiSteviloSkupin` vzame n/4 **navzgor**
+    (`NAJVEC_V_SKUPINI`), zato so skupine po velikosti enake ali se razlikujejo
+    za enega (4 in 3). 65 igralcev = 17 skupin (14 po 4, 3 po 3); prej je
+    zaokroževanje na najbližje dalo 16 skupin in eno s petimi (n % 4 == 1).
+    Izjema ni nobena: pri 5 igralcih sta dve skupini (3 + 2). Isto število
+    velja za skupine za mesta, kadar organizator števila ni vpisal; ko ga je,
+    ostane njegovo. Ročni vpis skupin (`RocniSkupineOkno`) skupine s 5+
+    igralci le **opozori**, ne zavrne; format TOP in SV regija imata velikost
+    skupin namenoma po svoje.
   - **Mreža: 1. nosilec na vrh, 2. na dno** (ta dva se ne žrebata), 3. in 4.
     na svoji četrtini (s prvima dvema se srečata šele v **polfinalu**), 5.–8.
     na svoje osmine (**četrtfinale**), 9.–16., 17.–32. … enako po pasovih, ki

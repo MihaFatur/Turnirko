@@ -16,9 +16,14 @@ import { sklonIgralcev, sklonSkupin } from '../pomozno/oblikovanje'
 import { ModalnoOkno } from './ModalnoOkno'
 import { SporociloNapake } from './SporociloNapake'
 
-/* Skupine so A–H; vec kot osem jih pri tem stevilu igralcev ne bi bilo smiselno. */
+/* Skupine so A–Z (enako kot zgornja meja v zaledju). Racunalniski predlog pri 65 igralcih
+   da 17 skupin, zato izbira ne sme koncati pri osmih: izbrana vrednost bi izpadla iz seznama. */
 const NAJMANJ_SKUPIN = 2
-const NAJVEC_SKUPIN = 8
+const NAJVEC_SKUPIN = 26
+
+/* Racunalniski zreb skupin+izlocilni ne naredi skupine s petimi (ZrebStoritev.NAJVEC_V_SKUPINI).
+   Pri rocnem vpisu je to samo opozorilo: organizator ima zadnjo besedo. */
+const NAJVEC_V_SKUPINI = 4
 
 interface Mesto {
   /* Indeks skupine (0 = A); null = brez skupine (pri TOP rezerva). */
@@ -210,6 +215,19 @@ export function RocniSkupineOkno({
     }
   })
 
+  /* Ne preprecuje shranjevanja (opozorila zgoraj ga): racunalniski zreb take skupine ne naredi,
+     rocni vpis pa jih sme. Velja samo za skupine+izlocilni; TOP ima skupine po 8 namenoma. */
+  const svarila: string[] = []
+  if (sistem === 'SKUPINE_IZLOCILNI') {
+    claniSkupin.forEach((c, j) => {
+      if (c.length > NAJVEC_V_SKUPINI) {
+        svarila.push(
+          `Skupina ${oznaka(j)} ima ${c.length} ${sklonIgralcev(c.length)}, običajno jih je največ ${NAJVEC_V_SKUPINI}.`,
+        )
+      }
+    })
+  }
+
   const shranjevanje = useMutation({
     mutationFn: () =>
       dogodkiApi.rocniSkupine(
@@ -336,6 +354,21 @@ export function RocniSkupineOkno({
               <li key={o}>{o}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {stanje && svarila.length > 0 && (
+        <div className="zreb__opozorila">
+          <span className="podnaslov-sekcije">Večje skupine od običajnih</span>
+          <ul className="zreb__seznam">
+            {svarila.map((o) => (
+              <li key={o}>{o}</li>
+            ))}
+          </ul>
+          <p className="namig">
+            To ni napaka: skupine lahko shraniš, kot so. Računalniški žreb bi z več skupinami poskrbel,
+            da jih je v vsaki največ {NAJVEC_V_SKUPINI}.
+          </p>
         </div>
       )}
 

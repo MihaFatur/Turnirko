@@ -992,13 +992,17 @@ public class ZrebStoritev {
         return null;
     }
 
-    /* Stevilo skupin tako, da ima vsaka priblizno 4 (in vsaj 3) igralce. */
+    /* Najvec igralcev v skupini pri racunalniskem zrebu (skupine+izlocilni). */
+    public static final int NAJVEC_V_SKUPINI = 4;
+
+    /* Stevilo skupin, pri katerem v nobeni ni vec kot 4 igralci: n/4 navzgor. Skupine so
+       po zrebu po velikosti enake ali se razlikujejo za enega (4 in 3). Pri 65 igralcih je
+       to 17 skupin (14 po 4, 3 po 3); zaokrozanje na najblizje bi dalo 16 skupin in eno s
+       petimi. Pod 3 igralce v skupini ne pade, razen pri 5 (3 + 2) - manj skupin od dveh
+       ni. */
     public static int izberiSteviloSkupin(int steviloIgralcev) {
-        int stSkupin = Math.max(2, (int) Math.round(steviloIgralcev / 4.0));
-        while (stSkupin > 2 && steviloIgralcev / stSkupin < 3) {
-            stSkupin--;
-        }
-        return stSkupin;
+        int najmanjSkupin = (steviloIgralcev + NAJVEC_V_SKUPINI - 1) / NAJVEC_V_SKUPINI;
+        return Math.max(2, najmanjSkupin);
     }
 
     // ---------------------------------------------------------------------
