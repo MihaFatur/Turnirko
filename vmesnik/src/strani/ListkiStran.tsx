@@ -8,14 +8,17 @@
    brskalnik (window.print). Stran je namenoma zunaj skupne postavitve (brez
    navigacije), da je natis čist.
 
-   Organizator izbere, kaj natisniti:
-   - Tekme: privzeto vsi še nenatisnjeni; izbira se zoži na sklop (skupina,
-     tolažilni žreb ...) ali dopolni s kljukicami za posamezne tekme. Listek
-     imajo pripravljene tekme: znana sta oba igralca in še niso odigrane
-     (PRIPRAVLJENA ali V_IGRI). Prosti prehodi in še nedoločene tekme odpadejo
-     sami, ker nimajo obeh udeležencev.
-   - Prazni listki: izbrano število listkov brez imen igralcev, da jih sodnik
-     dopiše z roko (turnir in kategorija sta natisnjena).
+   Zaslon je delovna ploskev (prenova »Listki 1b«, 23. 11. 2026, komponenta ListkiPloskev):
+   tabela skupina × kolo, v njej vsak listek ploščica, ki jo organizator izbere s klikom.
+   Velikega predogleda na zaslonu ni več: listi A4 se izrišejo samo za tisk (@media print),
+   zato na zaslonu ni ničesar, kar bi bilo videti kot natis. Organizator izbere, kaj natisniti:
+   - Tekme: privzeto kolo (ali vrstica izločilnega dela), ki je na vrsti; izbira se zoži na
+     skupino ali posamezen listek ali razširi na vse nenatisnjene. Listek imajo pripravljene
+     tekme: znana sta oba igralca in še niso odigrane (PRIPRAVLJENA ali V_IGRI). Prosti
+     prehodi in še nedoločene tekme odpadejo sami, ker nimajo obeh udeležencev.
+   - Prazni listki: izbrano število listkov brez imen igralcev, da jih sodnik dopiše z roko
+     (turnir in kategorija sta natisnjena). Gredo v isti tisk za pravimi listki; zadnji list se
+     po želji dopolni z njimi do polnega lista.
 
    Listki so zloženi na liste A4 po šest (2 × 3, brez robov): vsak list je
    natančno 210 × 297 mm, listki 105 × 99 mm, zato ga režejo samo trije rezi po
@@ -33,35 +36,30 @@
    (ZapisnikiEkipnegaDogodka): iste pripravljene tekme, v istem vrstnem redu,
    z isto izbiro in sledjo tiska, le da je vsaka srečanje s postavo in mrežo
    posamičnih tekem. */
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Fragment, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { dogodkiApi, turnirjiApi } from '../api/zahteve'
-import { OZNAKE_SPOL_KATEGORIJA, imeUdelezenca, type DogodekDto } from '../api/tipi'
+import { imeUdelezenca, type DogodekDto, type MrezaDto, type SlikaDto } from '../api/tipi'
 import { useAvtentikacija } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   LISTKOV_NA_LIST,
-  mestaHrbta,
-  NAJVEC_PRAZNIH_LISTKOV,
+  imaVecSkupin,
+  praznihZaTisk,
+  preberiRazvrstitev,
   pripraviListke,
-  sklopiListkov,
-  steviloPraznih,
+  shraniRazvrstitev,
   type PripravljenListek,
+  type RazvrstitevListkov,
 } from '../pomozno/listki'
-import { sklonListkov } from '../pomozno/oblikovanje'
 import { useBranjeListkovNaVoljo } from '../pomozno/useBranjeListkov'
 import { oznakaKategorije } from '../pomozno/zrebSkupin'
-import { IzbiraListkov, PotrditevTiska, useIzbiraListkov } from '../komponente/IzbiraListkov'
+import { useIzbiraListkov } from '../komponente/IzbiraListkov'
 import { HrbetListka, Listek, type ListekPodatki } from '../komponente/Listek'
+import { ListkiPloskev } from '../komponente/ListkiPloskev'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { ZapisnikiEkipnegaDogodka } from '../komponente/ZapisnikiEkipnegaDogodka'
-
-/* Širina lista A4 na zaslonu (210 mm pri 96 dpi): ožji zaslon ga pomanjša, da
-   je cel list viden in se ne drsi vodoravno. */
-const SIRINA_LISTA_PX = (210 / 25.4) * 96
-
-type Nacin = 'tekme' | 'prazni'
 
 export function ListkiStran() {
   const { id } = useParams()
@@ -81,15 +79,6 @@ export function ListkiStran() {
     enabled: idTurnir !== undefined,
   })
 
-  const ekipno = mreza.data?.dogodek.disciplina === 'EKIPNO'
-  /* Ekipna tekma brez srečanja (npr. prenesen izid finalne skupine) zapisnika
-     nima, zato odpade. */
-  const listki = useMemo(() => {
-    const vsi = pripraviListke(mreza.data)
-    return ekipno ? vsi.filter((l) => l.tekma.idSrecanje !== null) : vsi
-  }, [mreza.data, ekipno])
-  const sklopi = useMemo(() => sklopiListkov(listki), [listki])
-
   /* Sled tiska smeta pisati organizator tega turnirja in admin; uvoženo
      tekmovanje je samo za branje, gost pa listke samo natisne. */
   const uvozen = mreza.data?.dogodek.vir != null
@@ -101,239 +90,227 @@ export function ListkiStran() {
           vrsta: 'turnir',
           id: turnir.data.id,
         })))
-  const izbira = useIzbiraListkov(idDogodka, listki, smemOznacevati)
 
   /* Kode QR s skrivnostjo (S1). Ključ so id-ji pripravljenih tekem: ko se nabor
      spremeni (žreb, nova tekma), se kode naložijo znova. Podatki se uporabijo SAMO,
      dokler sme uporabnik urejati - onemogočena poizvedba bi sicer vrnila kode iz
      predpomnilnika tudi gostu, ki odpre stran po odjavi v istem zavihku (odjava
      jih tudi odstrani, AvtentikacijaKontekst). */
-  const idjiListkov = useMemo(() => listki.map((l) => l.tekma.id).join(','), [listki])
+  const ekipno = mreza.data?.dogodek.disciplina === 'EKIPNO'
+  const idjiListkov = useMemo(
+    () => pripraviListke(mreza.data).map((l) => l.tekma.id).join(','),
+    [mreza.data],
+  )
   const kodePoizvedba = useQuery({
     queryKey: ['kode-listkov', idDogodka, idjiListkov],
     queryFn: () => dogodkiApi.kodeListkov(idDogodka),
     enabled: smemOznacevati && !ekipno,
   })
-  const kode = smemOznacevati ? kodePoizvedba.data?.kode : undefined
-  /* Sodniki slikajo listke (S2): list dobi hrbtno stran s kodo do /s. */
-  const sodnikiSlikajo = smemOznacevati && !!kodePoizvedba.data?.sodnikiListki
-  const [hrbet, nastaviHrbet] = useState(true)
   const branjeNaVoljo = useBranjeListkovNaVoljo()
-
-  const [nacin, nastaviNacin] = useState<Nacin>('tekme')
-  const [vnosPraznih, nastaviVnosPraznih] = useState(String(LISTKOV_NA_LIST))
-  const praznih = steviloPraznih(vnosPraznih)
-
-  /* Ožji zaslon list pomanjša (CSS zoom); pri tisku se pomanjšanje izključi. */
-  const [okvir, nastaviOkvir] = useState<HTMLDivElement | null>(null)
-  const [merilo, nastaviMerilo] = useState(1)
-  useEffect(() => {
-    if (!okvir) return
-    const izmeri = () => nastaviMerilo(Math.min(1, okvir.clientWidth / SIRINA_LISTA_PX))
-    izmeri()
-    const opazovalec = new ResizeObserver(izmeri)
-    opazovalec.observe(okvir)
-    return () => opazovalec.disconnect()
-  }, [okvir])
-
-  const dogodek = mreza.data?.dogodek
-  const imeTurnirja = turnir.data?.ime ?? null
-
-  /* Listki izbranih tekem (v vrstnem redu tiska) in prazni listki. */
-  const listkiTekem = useMemo<ListekZaTisk[]>(
-    () =>
-      dogodek
-        ? izbira.izbraniListki.map((l) => ({
-            kljuc: `tekma-${l.tekma.id}`,
-            podatki: podatkiListka(l, imeTurnirja, dogodek, kode?.[String(l.tekma.id)] ?? null),
-          }))
-        : [],
-    [dogodek, izbira.izbraniListki, imeTurnirja, kode],
-  )
-  const prazniListki = useMemo<ListekZaTisk[]>(() => {
-    if (!dogodek) return []
-    /* Dvojica ima vsakega igralca v svoji vrstici, zato prazen listek dvojic dobi dve. */
-    const ime = dogodek.disciplina === 'DVOJICE' ? ' / ' : ''
-    return Array.from({ length: praznih }, (_, i) => ({
-      kljuc: `prazen-${i}`,
-      podatki: {
-        dogodek: imeTurnirja,
-        kategorija: oznakaKategorije(dogodek),
-        skupina: null,
-        faza: '',
-        steviloNizov: dogodek.privzetoSteviloNizov,
-        miza: null,
-        idTekme: null,
-        stran1: { ime },
-        stran2: { ime },
-        prazno: true,
-      },
-    }))
-  }, [dogodek, imeTurnirja, praznih])
 
   if (mreza.isPending) return <p className="obvestilo">Nalaganje …</p>
   if (mreza.error) return <SporociloNapake napaka={mreza.error} />
-  if (!dogodek) return null
+  if (!mreza.data) return null
+
+  return (
+    <ListkiPogled
+      idDogodka={idDogodka}
+      mreza={mreza.data}
+      imeTurnirja={turnir.data?.ime ?? null}
+      logotipTurnirja={turnir.data?.logotip ?? null}
+      smemOznacevati={smemOznacevati}
+      kode={smemOznacevati ? kodePoizvedba.data?.kode : undefined}
+      /* Sodniki slikajo listke (S2): list dobi hrbtno stran s kodo do /s. */
+      sodnikiSlikajo={smemOznacevati && !!kodePoizvedba.data?.sodnikiListki}
+      kodeNalaganje={kodePoizvedba.isLoading}
+      kodeNapaka={!!kodePoizvedba.error}
+      branjeNaVoljo={branjeNaVoljo}
+      /* Prijavljen ne-admin: dokler turnir ni naložen, se ne ve, ali sme dobiti
+         kode s skrivnostjo - tisk bi sicer šel z zasilnimi kodami brez opozorila. */
+      cakaTurnir={!!uporabnik && !jeAdmin && turnir.isPending}
+    />
+  )
+}
+
+interface PogledLastnosti {
+  idDogodka: number
+  mreza: MrezaDto
+  imeTurnirja: string | null
+  logotipTurnirja: SlikaDto | null
+  smemOznacevati: boolean
+  /* Koda QR po id-ju tekme; undefined, kadar je uporabnik ne sme dobiti (gost). */
+  kode: Record<string, string> | undefined
+  sodnikiSlikajo: boolean
+  kodeNalaganje: boolean
+  kodeNapaka: boolean
+  branjeNaVoljo: boolean
+  cakaTurnir: boolean
+}
+
+/* Vse, kar stran zna brez strežnika: izbira, prazni listki, listi za tisk. Ločeno od
+   ListkiStran, da ga razvojni harness (dev/PrenovaZrebaPosnetki) izriše s stalnimi podatki. */
+export function ListkiPogled({
+  idDogodka,
+  mreza,
+  imeTurnirja,
+  logotipTurnirja,
+  smemOznacevati,
+  kode,
+  sodnikiSlikajo,
+  kodeNalaganje,
+  kodeNapaka,
+  branjeNaVoljo,
+  cakaTurnir,
+}: PogledLastnosti) {
+  const dogodek = mreza.dogodek
+  const ekipno = dogodek.disciplina === 'EKIPNO'
+
+  /* Skupinski del po skupinah ali po kolih (lastnik 23. 11. 2026); zadnja izbira
+     ostane v brskalniku. */
+  const [razvrstitev, nastaviRazvrstitevStanje] = useState<RazvrstitevListkov>(preberiRazvrstitev)
+  const nastaviRazvrstitev = (r: RazvrstitevListkov) => {
+    nastaviRazvrstitevStanje(r)
+    shraniRazvrstitev(r)
+  }
+  /* Ekipna tekma brez srečanja (npr. prenesen izid finalne skupine) zapisnika
+     nima, zato odpade. */
+  const listki = useMemo(() => {
+    const vsi = pripraviListke(mreza, razvrstitev)
+    return ekipno ? vsi.filter((l) => l.tekma.idSrecanje !== null) : vsi
+  }, [mreza, ekipno, razvrstitev])
+  const izbiraRazvrstitve = imaVecSkupin(listki)
+    ? { vrednost: razvrstitev, nastavi: nastaviRazvrstitev }
+    : undefined
+
+  const izbira = useIzbiraListkov(idDogodka, listki, smemOznacevati)
+
+  const [hrbet, nastaviHrbet] = useState(true)
+  /* Prazni listki gredo v isti tisk za pravimi; po potrjenem tisku se vrnejo na nič. */
+  const [prazni, nastaviPrazne] = useState(0)
+  const [dopolni, nastaviDopolni] = useState(false)
+
+  const nadnaslov = [imeTurnirja, dogodek.ime].filter(Boolean).join(' · ')
+  const povezavaNazaj = `/dogodki/${idDogodka}`
 
   /* Ekipna tekma nima listka, ampak zapisnik srečanja. */
   if (ekipno) {
     return (
       <ZapisnikiEkipnegaDogodka
         dogodek={dogodek}
-        imeTurnirja={imeTurnirja}
-        logotipTurnirja={turnir.data?.logotip ?? null}
-        sklopi={sklopi}
+        nadnaslov={nadnaslov}
+        povezavaNazaj={povezavaNazaj}
+        logotipTurnirja={logotipTurnirja}
+        listki={listki}
         izbira={izbira}
+        razvrstitev={izbiraRazvrstitve}
       />
     )
   }
 
-  const praznoNacin = nacin === 'prazni'
+  const izbranih = izbira.izbraniListki.length
+  const praznih = praznihZaTisk(izbranih, prazni, dopolni)
   /* Izbran listek brez kode s skrivnostjo, čeprav jo organizator sme dobiti. */
   const manjkaKoda = !!kode && izbira.izbraniListki.some((l) => !kode[String(l.tekma.id)])
-  const steviloZaTisk = praznoNacin ? praznih : izbira.izbraniListki.length
-  const listi = razdeli(praznoNacin ? prazniListki : listkiTekem, LISTKOV_NA_LIST)
-  /* Prazen listek tekme še nima, zato sodnik z njim izida ne more poslati: brez hrbta. */
-  const zHrbtom = !praznoNacin && sodnikiSlikajo && hrbet
+  /* Prazen listek tekme še nima, zato sodnik z njim izida ne more poslati; hrbet pa dobi vsak
+     list, sicer bi obojestranski tisk list za listom zamaknil hrbte. */
+  const zHrbtom = izbranih > 0 && sodnikiSlikajo && hrbet
   const naslovSodnika = `${window.location.origin}/s`
 
+  /* Listki izbranih tekem (v vrstnem redu tiska), nato prazni. */
+  const listkiZaTisk: ListekZaTisk[] = [
+    ...izbira.izbraniListki.map((l) => ({
+      kljuc: `tekma-${l.tekma.id}`,
+      podatki: podatkiListka(l, imeTurnirja, dogodek, kode?.[String(l.tekma.id)] ?? null),
+    })),
+    ...Array.from({ length: praznih }, (_, i) => ({
+      kljuc: `prazen-${i}`,
+      /* Dvojica ima vsakega igralca v svoji vrstici, zato prazen listek dvojic dobi dve. */
+      podatki: prazenListek(imeTurnirja, dogodek),
+    })),
+  ]
+  const listi = razdeli(listkiZaTisk, LISTKOV_NA_LIST)
+
   const natisni = () => {
-    if (praznoNacin) window.print()
-    else izbira.natisni()
+    if (izbranih > 0) izbira.natisni()
+    else window.print()
+  }
+  const potrdi = (natisnil: boolean) => {
+    izbira.potrdi(natisnil)
+    if (natisnil) {
+      nastaviPrazne(0)
+      nastaviDopolni(false)
+    }
   }
 
   return (
     <>
-      <div className="listki-orodja zaslon-samo">
-        <Link to={`/dogodki/${idDogodka}`} className="povezava-nazaj">
-          ← Nazaj na dogodek
-        </Link>
-        <span className="listki-orodja__stevec">
-          {steviloZaTisk} {sklonListkov(steviloZaTisk)} za tisk
-        </span>
-        <button
-          className="gumb gumb--glavni"
-          /* Prijavljen ne-admin: dokler turnir ni naložen, se ne ve, ali sme dobiti
-             kode s skrivnostjo - tisk bi sicer šel z zasilnimi kodami brez opozorila. */
-          disabled={
-            steviloZaTisk === 0 ||
-            (!praznoNacin && (kodePoizvedba.isLoading || (!!uporabnik && !jeAdmin && turnir.isPending)))
-          }
-          onClick={natisni}
-        >
-          {praznoNacin ? 'Natisni prazne' : 'Natisni izbrane'} ({steviloZaTisk})
-        </button>
-        {!praznoNacin && <PotrditevTiska izbira={izbira} vrsta="listek" />}
-      </div>
-      {!praznoNacin && (kodePoizvedba.error || manjkaKoda) && (
-        <p className="obvestilo obvestilo--opozorilo zaslon-samo">
-          Kod za sodnike ni bilo mogoče naložiti. Listke lahko natisneš, a izid z njih bo
-          mogoče poslati samo s fotografijo na pultu, ne s telefonom sodnika.
-        </p>
-      )}
-
-      <div className="listki-stran listki-stran--listki">
-        <header className="listki-naslov zaslon-samo">
-          <h1>
-            {turnir.data ? `${turnir.data.ime} — ` : ''}
-            {dogodek.ime}
-          </h1>
-          <p>
-            {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
-            {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
-          </p>
-          <p className="listki-naslov__navodilo">
-            {zHrbtom
-              ? 'Natisni na A4 obojestransko (na obe strani lista), v merilu 100 %, brez robov in brez glave ter noge. '
-              : 'Natisni na A4 v merilu 100 %, brez robov in brez glave ter noge. '}
-            Vsak list ima šest listkov; razreži ga po treh črtkanih črtah (ena navpična, dve
-            vodoravni).
-            {zHrbtom && ' Za vsakim listom je v predogledu njegova hrbtna stran s kodo, ki sodniku odpre stran za pošiljanje izida.'}
-          </p>
-          {!praznoNacin && sodnikiSlikajo && (
-            <label className="obrazec__polje obrazec__polje--stikalo listki-naslov__hrbet">
-              <input type="checkbox" checked={hrbet} onChange={(d) => nastaviHrbet(d.target.checked)} />
-              Na hrbtno stran lista natisni kodo za sodnike
-            </label>
-          )}
-          {!praznoNacin && !sodnikiSlikajo && branjeNaVoljo && !!kode && (
-            <p className="listki-naslov__navodilo">
+      <ListkiPloskev
+        vrsta="listek"
+        nadnaslov={nadnaslov}
+        naslov="Listki za tiskanje"
+        povezavaNazaj={povezavaNazaj}
+        listki={listki}
+        izbira={izbira}
+        razvrstitev={izbiraRazvrstitve}
+        prazni={{
+          stevilo: prazni,
+          nastavi: nastaviPrazne,
+          dopolni,
+          preklopiDopolni: () => nastaviDopolni(!dopolni),
+        }}
+        hrbet={sodnikiSlikajo ? { vklopljen: hrbet, preklopi: () => nastaviHrbet(!hrbet) } : undefined}
+        opozorilo={
+          (kodeNapaka || manjkaKoda) && izbranih > 0 ? (
+            <p className="obvestilo obvestilo--opozorilo">
+              Kod za sodnike ni bilo mogoče naložiti. Listke lahko natisneš, a izid z njih bo
+              mogoče poslati samo s fotografijo na pultu, ne s telefonom sodnika.
+            </p>
+          ) : undefined
+        }
+        opomba={
+          !sodnikiSlikajo && branjeNaVoljo && !!kode ? (
+            <p className="listki-ploskev__opomba">
               Ko na strani Branje listkov vklopiš »Sodniki slikajo listke«, dobi vsak list na
               hrbtni strani kodo, s katero sodnik po tekmi odpre stran za pošiljanje izida.
             </p>
-          )}
-        </header>
+          ) : undefined
+        }
+        navodilo={zHrbtom ? 'A4 obojestransko · 100 % · brez robov' : 'A4 · 100 % · brez robov'}
+        /* Samo pravi listki čakajo na kode; prazni so brez njih. */
+        tiskCaka={izbranih > 0 && (kodeNalaganje || cakaTurnir)}
+        onNatisni={natisni}
+        onPotrdi={potrdi}
+      />
 
-        <div className="izbirnik listki-nacin zaslon-samo" role="group" aria-label="Vrsta listkov">
-          <button
-            type="button"
-            className={'izbirnik__gumb' + (!praznoNacin ? ' izbirnik__gumb--aktiven' : '')}
-            aria-pressed={!praznoNacin}
-            onClick={() => nastaviNacin('tekme')}
-          >
-            Listki tekem
-          </button>
-          <button
-            type="button"
-            className={'izbirnik__gumb' + (praznoNacin ? ' izbirnik__gumb--aktiven' : '')}
-            aria-pressed={praznoNacin}
-            onClick={() => nastaviNacin('prazni')}
-          >
-            Prazni listki
-          </button>
+      {/* Listi A4 so samo za tisk (@media print); na zaslonu jih ni. */}
+      <div className="listki-stran listki-stran--listki">
+        <div className="listki-listi">
+          {listi.map((list, i) => (
+            <Fragment key={i}>
+              <section className="listki-list" aria-label={`List ${i + 1} od ${listi.length}`}>
+                {list.map((l) => (
+                  <Listek key={l.kljuc} podatki={l.podatki} />
+                ))}
+                {/* Prazna mesta na zadnjem listu: rezi so povsod isti. */}
+                {Array.from({ length: LISTKOV_NA_LIST - list.length }, (_, j) => (
+                  <div key={`prazno-${j}`} className="listek listek--prazen" aria-hidden="true" />
+                ))}
+              </section>
+              {/* Hrbtna stran takoj za svojim listom: obojestranski tisk jo da na hrbet.
+                  Koda je na vseh šestih mestih tudi za nepolnim listom: kako tiskalnik
+                  list obrne, ni znano vnaprej (lastnik 23. 11. 2026: pri enem listku je
+                  koda pristala za praznim mestom, listek je ostal brez hrbta). Kode za
+                  praznimi mesti gredo z odrezki. */}
+              {zHrbtom && (
+                <section className="listki-list listki-list--hrbet" aria-label={`Hrbtna stran lista ${i + 1}`}>
+                  {Array.from({ length: LISTKOV_NA_LIST }, (_, j) => (
+                    <HrbetListka key={j} naslov={naslovSodnika} />
+                  ))}
+                </section>
+              )}
+            </Fragment>
+          ))}
         </div>
-
-        {praznoNacin ? (
-          <PraznoPolje vnos={vnosPraznih} onVnos={nastaviVnosPraznih} stevilo={praznih} />
-        ) : listki.length === 0 ? (
-          <p className="obvestilo zaslon-samo">
-            Ni pripravljenih tekem za tiskanje. Listek se ustvari za tekmo, kjer
-            sta znana oba igralca in še ni odigrana.
-          </p>
-        ) : (
-          <IzbiraListkov sklopi={sklopi} izbira={izbira} vrsta="listek" />
-        )}
-
-        {listi.length > 0 && (
-          <>
-            <h2 className="listki-predogled zaslon-samo">Predogled natisa</h2>
-            <div className="listki-listi" ref={nastaviOkvir}>
-              {listi.map((list, i) => (
-                <Fragment key={i}>
-                  <section
-                    className="listki-list"
-                    aria-label={`List ${i + 1} od ${listi.length}`}
-                    style={merilo < 1 ? { zoom: merilo } : undefined}
-                  >
-                    {list.map((l) => (
-                      <Listek key={l.kljuc} podatki={l.podatki} />
-                    ))}
-                    {/* Prazna mesta na zadnjem listu: rezi so povsod isti. */}
-                    {Array.from({ length: LISTKOV_NA_LIST - list.length }, (_, j) => (
-                      <div key={`prazno-${j}`} className="listek listek--prazen" aria-hidden="true" />
-                    ))}
-                  </section>
-                  {/* Hrbtna stran takoj za svojim listom: obojestranski tisk jo da na hrbet. */}
-                  {zHrbtom && (
-                    <section
-                      className="listki-list listki-list--hrbet"
-                      aria-label={`Hrbtna stran lista ${i + 1}`}
-                      style={merilo < 1 ? { zoom: merilo } : undefined}
-                    >
-                      {mestaHrbta(list.length).map((koda, j) =>
-                        koda ? (
-                          <HrbetListka key={j} naslov={naslovSodnika} />
-                        ) : (
-                          <div key={j} className="listek-hrbet" aria-hidden="true" />
-                        ),
-                      )}
-                    </section>
-                  )}
-                </Fragment>
-              ))}
-            </div>
-          </>
-        )}
       </div>
     </>
   )
@@ -373,54 +350,19 @@ function podatkiListka(
   }
 }
 
-/* Izbira števila praznih listkov. */
-function PraznoPolje({
-  vnos,
-  onVnos,
-  stevilo,
-}: {
-  vnos: string
-  onVnos: (v: string) => void
-  stevilo: number
-}) {
-  const listov = Math.ceil(stevilo / LISTKOV_NA_LIST)
-  return (
-    <section className="listki-izbira zaslon-samo" aria-label="Prazni listki">
-      <h2 className="listki-izbira__naslov">Prazni listki</h2>
-      <p className="listki-izbira__pojasnilo">
-        Natisnjena sta turnir in kategorija. Imena igralcev, skupino ali fazo in mizo sodnik dopiše
-        z roko. Prazni listki se ne vpišejo kot natisnjeni.
-      </p>
-      <div className="listki-izbira__prazni">
-        <label className="obrazec__polje">
-          Število listkov
-          <input
-            className="vnos--ozek"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={NAJVEC_PRAZNIH_LISTKOV}
-            value={vnos}
-            onChange={(d) => onVnos(d.target.value)}
-          />
-        </label>
-        <div className="izbirnik" role="group" aria-label="Hitra izbira števila">
-          {[6, 12, 24].map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={'izbirnik__gumb' + (stevilo === n ? ' izbirnik__gumb--aktiven' : '')}
-              aria-pressed={stevilo === n}
-              onClick={() => onVnos(String(n))}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className="listki-izbira__povzetek">
-        {stevilo} {sklonListkov(stevilo)} · {listov} {listov === 1 ? 'list' : listov === 2 ? 'lista' : 'listov'} A4
-      </p>
-    </section>
-  )
+/* Prazen listek: turnir in kategorija sta natisnjena, vse ostalo sodnik dopiše z roko. */
+function prazenListek(imeTurnirja: string | null, dogodek: DogodekDto): ListekPodatki {
+  const ime = dogodek.disciplina === 'DVOJICE' ? ' / ' : ''
+  return {
+    dogodek: imeTurnirja,
+    kategorija: oznakaKategorije(dogodek),
+    skupina: null,
+    faza: '',
+    steviloNizov: dogodek.privzetoSteviloNizov,
+    miza: null,
+    idTekme: null,
+    stran1: { ime },
+    stran2: { ime },
+    prazno: true,
+  }
 }

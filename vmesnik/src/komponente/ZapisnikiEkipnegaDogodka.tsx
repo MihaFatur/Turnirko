@@ -12,12 +12,10 @@
    se IZMERI (visina obrazca je odvisna od formata: pri SNTL je vrstic deset,
    pri DSI tri), ne ugiba. */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { useQueries } from '@tanstack/react-query'
 
 import { srecanjaApi } from '../api/zahteve'
 import type { DogodekDto, SlikaDto, SrecanjePodrobnoDto } from '../api/tipi'
-import { OZNAKE_SPOL_KATEGORIJA } from '../api/tipi'
 import { SIRINA_LEZECEGA_LISTA_PX, useMeriloLista } from '../pomozno/meriloLista'
 import {
   type IzbiraObrazca,
@@ -26,11 +24,11 @@ import {
   privzetaOblika,
   shraniOblikoZapisnika,
 } from '../pomozno/oblikaZapisnika'
-import type { SklopListkov } from '../pomozno/listki'
-import { sklonZapisnikov } from '../pomozno/oblikovanje'
+import { sklonListovTiska, type PripravljenListek } from '../pomozno/listki'
 import { EkipniZapisnikTurnirko } from './EkipniZapisnikTurnirko'
-import { IzbiraListkov, PotrditevTiska, type Izbira } from './IzbiraListkov'
+import type { Izbira, IzbiraRazvrstitve } from './IzbiraListkov'
 import { IzbirnikObrazca } from './IzbirnikObrazca'
+import { ListkiPloskev } from './ListkiPloskev'
 import { SporociloNapake } from './SporociloNapake'
 import { ZapisnikEkipnegaDvoboja } from './ZapisnikEkipnegaDvoboja'
 
@@ -59,19 +57,25 @@ function preberiIzbiro(): NaList {
 
 export function ZapisnikiEkipnegaDogodka({
   dogodek,
-  imeTurnirja,
+  nadnaslov,
+  povezavaNazaj,
   logotipTurnirja,
-  sklopi,
+  listki,
   izbira,
+  razvrstitev,
 }: {
   dogodek: DogodekDto
-  imeTurnirja: string | null
+  /* »Turnir · Dogodek« v nadnaslovu črne glave in povezava nazaj na dogodek. */
+  nadnaslov: string
+  povezavaNazaj: string
   /* Logotip turnirja (V54) za glavo Turnirkovega zapisnika. */
   logotipTurnirja: SlikaDto | null
-  /* Pripravljene tekme s srecanjem, po sklopih (skupina, zreb ...). */
-  sklopi: SklopListkov[]
+  /* Pripravljene tekme s srecanjem v vrstnem redu tiska. */
+  listki: PripravljenListek[]
   /* Izbira tekem za tisk in sled tiska (skupna posamicnim listkom). */
   izbira: Izbira
+  /* Po skupinah ali po kolih (samo pri vec skupinah). */
+  razvrstitev?: IzbiraRazvrstitve
 }) {
   /* Srecanja izbranih tekem, v vrstnem redu tiska. Tekma brez srecanja zapisnika
      nima (ListkiStran jo ze izlocil). */
@@ -116,86 +120,65 @@ export function ZapisnikiEkipnegaDogodka({
   const nalozeno = srecanja.every((q) => q.data !== undefined)
   const podatki = srecanja.flatMap((q) => (q.data ? [q.data] : []))
 
+  const listov = lezeci ? idjiSrecanj.length : Math.ceil(idjiSrecanj.length / naList)
+  const pomanjsano = !lezeci && naList > 1 && nalozeno
+    ? najmanjse > 0.995
+      ? 'Obrazec je v naravni velikosti.'
+      : `Obrazec je pomanjšan na ${Math.round(najmanjse * 100)} %.`
+        + (najmanjse < 0.7 ? ' Pri tem formatu je pisanje z roko že tesno: poskusi z manj zapisniki na list.' : '')
+    : null
+
   return (
     <>
-      <div className="listki-orodja zaslon-samo">
-        <Link to={`/dogodki/${dogodek.id}`} className="povezava-nazaj">
-          ← Nazaj na dogodek
-        </Link>
-        <span className="listki-orodja__stevec">
-          {idjiSrecanj.length} {sklonZapisnikov(idjiSrecanj.length)} za tisk
-        </span>
-        <IzbirnikObrazca
-          oblika={oblika}
-          predloga={null}
-          onIzbira={izberiObliko}
-          razred="listki-orodja__izbira listki-orodja__izbira--zraven"
-        />
-        {!lezeci && (
-          <label className="listki-orodja__izbira listki-orodja__izbira--zraven">
-            Na list:
-            <select value={naList} onChange={(d) => izberi(Number(d.target.value) as NaList)}>
-              <option value={1}>1 zapisnik</option>
-              <option value={2}>2 zapisnika</option>
-              <option value={3}>3 zapisniki</option>
-            </select>
-          </label>
-        )}
-        <button
-          className="gumb gumb--glavni"
-          disabled={idjiSrecanj.length === 0 || !nalozeno}
-          onClick={izbira.natisni}
-        >
-          Natisni izbrane ({idjiSrecanj.length})
-        </button>
-        <PotrditevTiska izbira={izbira} vrsta="zapisnik" />
-      </div>
+      <ListkiPloskev
+        vrsta="zapisnik"
+        nadnaslov={nadnaslov}
+        naslov="Zapisniki za tiskanje"
+        povezavaNazaj={povezavaNazaj}
+        listki={listki}
+        izbira={izbira}
+        razvrstitev={razvrstitev}
+        meta={`${listov} ${sklonListovTiska(listov)} A4`}
+        nastavitve={
+          <div className="listki-ploskev__razdelek">
+            <IzbirnikObrazca
+              oblika={oblika}
+              predloga={null}
+              onIzbira={izberiObliko}
+              razred="listki-ploskev__nastavitev"
+            />
+            {!lezeci && (
+              <label className="listki-ploskev__nastavitev">
+                Na list:
+                <select value={naList} onChange={(d) => izberi(Number(d.target.value) as NaList)}>
+                  <option value={1}>1 zapisnik</option>
+                  <option value={2}>2 zapisnika</option>
+                  <option value={3}>3 zapisniki</option>
+                </select>
+              </label>
+            )}
+            {pomanjsano && (
+              <span className={'listki-ploskev__navodilo' + (najmanjse < 0.7 ? ' listki-ploskev__navodilo--opozorilo' : '')}>
+                {pomanjsano}
+              </span>
+            )}
+          </div>
+        }
+        navodilo={lezeci ? 'A4 ležeče · 100 % · robovi 10 mm' : 'A4 pokončno · 100 % · robovi 10 mm'}
+        tiskCaka={idjiSrecanj.length > 0 && !nalozeno}
+        onNatisni={izbira.natisni}
+        onPotrdi={izbira.potrdi}
+        opozorilo={napaka ? <SporociloNapake napaka={napaka} /> : undefined}
+      />
 
+      {/* Zapisniki so samo za tisk (@media print); na zaslonu ostanejo v postavitvi, a nevidni:
+          obrazec za 2 ali 3 na list se pomanjša po izmerjeni višini. */}
       <div
-        className={'listki-stran listki-stran--zapisnik' + (lezeci ? ' listki-stran--ekipni' : '')}
+        className={'listki-stran listki-stran--zapisnik listki-stran--skrit' + (lezeci ? ' listki-stran--ekipni' : '')}
         ref={merilo.okvir}
         style={lezeci ? merilo.slog : undefined}
       >
-        {/* Naslov je samo za zaslon: vsak list ima svojo glavo obrazca. */}
-        <header className="listki-naslov zaslon-samo">
-          <h1>
-            {imeTurnirja ? `${imeTurnirja} — ` : ''}
-            {dogodek.ime}
-          </h1>
-          <p>
-            {OZNAKE_SPOL_KATEGORIJA[dogodek.spolKategorija]}
-            {dogodek.starostnaKategorija && ` · ${dogodek.starostnaKategorija}`}
-          </p>
-          {!lezeci && naList > 1 && nalozeno && (
-            <p className={najmanjse < 0.7 ? 'listki-naslov__opozorilo' : undefined}>
-              {najmanjse > 0.995
-                ? 'Obrazec je v naravni velikosti.'
-                : `Obrazec je pomanjšan na ${Math.round(najmanjse * 100)} %.`}
-              {najmanjse < 0.7 && ' Pri tem formatu je pisanje z roko že tesno — poskusi z manj zapisniki na list.'}
-            </p>
-          )}
-        </header>
-
-        {sklopi.length === 0 ? (
-          <p className="obvestilo zaslon-samo">
-            Ni pripravljenih ekipnih tekem za tiskanje. Zapisnik se ustvari za tekmo, kjer
-            sta znani obe ekipi in še ni odigrana.
-          </p>
-        ) : (
-          <IzbiraListkov sklopi={sklopi} izbira={izbira} vrsta="zapisnik" />
-        )}
-
-        {napaka ? (
-          <SporociloNapake napaka={napaka} />
-        ) : idjiSrecanj.length === 0 ? (
-          sklopi.length > 0 && (
-            <p className="obvestilo zaslon-samo">
-              Nobena tekma ni izbrana. Izberi tekme, katerih zapisnike želiš natisniti.
-            </p>
-          )
-        ) : !nalozeno ? (
-          <p className="obvestilo zaslon-samo">Nalaganje …</p>
-        ) : lezeci ? (
+        {napaka || idjiSrecanj.length === 0 || !nalozeno ? null : lezeci ? (
           podatki.map((p) => (
             <EkipniZapisnikTurnirko key={p.srecanje.id} podrobno={p} liga={undefined} logotip={logotipTurnirja} />
           ))

@@ -14,16 +14,29 @@ import { RocnaMrezaOkno, type Udelezenec } from './RocnaMrezaOkno'
 import { SporociloNapake } from './SporociloNapake'
 import { Namig } from '../pomoc/Namig'
 
-/* Igralci po id-ju prijave za okno mreze: ime, mesto v skupini in klub. */
+/* Igralci po id-ju prijave za okno mreze: ime, mesto v skupini (»3 · 1.«), klub, rating in jakostno
+   mesto (crna znacka nosilca pri samostojnem izlocilnem sistemu). */
 export function udelezenciPoId(podatki: MrezaDto): Map<number, Udelezenec> {
   const skupinaPoId = new Map(podatki.skupine.map((s) => [s.id, s]))
   return new Map(
     podatki.prijave.map((p): [number, Udelezenec] => {
       const skupina = p.idSkupina !== null ? skupinaPoId.get(p.idSkupina) : undefined
       const uvrstitev = skupina && p.mestoVSkupini !== null
-        ? `${skupina.oznaka} ${p.mestoVSkupini}.`
+        ? `${skupina.oznaka} · ${p.mestoVSkupini}.`
         : ''
-      return [p.id, { ime: imePrijave(p), uvrstitev, klub: p.klub }]
+      const par = !!p.polnoIme2
+      return [p.id, {
+        ime: imePrijave(p),
+        /* Par (dvojice) ima oba priimka krepko in nobenega imena; ekipa samo ime ekipe. */
+        imeLahko: par ? '' : (p.ime ?? ''),
+        priimek: par && p.priimek && p.priimek2
+          ? `${p.priimek} / ${p.priimek2}`
+          : (p.priimek ?? p.polnoIme),
+        uvrstitev,
+        klub: p.klub,
+        rating: p.rating,
+        stNosilca: p.stNosilca,
+      }]
     }),
   )
 }
@@ -39,12 +52,13 @@ export function RocnaMrezaZaDogodek({
   onZapri: () => void
   onShranjeno: () => void
 }) {
+  /* Mreža je že žrebana (prva tekma še ni začeta): to je popravek, ne prvi vpis. */
+  const popravek = podatki.tekme.some((t) => t.faza === 'GLAVNI')
   return (
     <RocnaMrezaOkno
-      naslov={podatki.dogodek.sistemTekmovanja === 'IZLOCILNI'
-        ? 'Ročna mreža'
-        : 'Ročna razporeditev izločilnega dela'}
+      naslov={popravek ? 'Popravi mrežo' : 'Ročna mreža'}
       podnaslov={podatki.dogodek.ime}
+      popravek={popravek}
       poId={udelezenciPoId(podatki)}
       predlog={() => dogodkiApi.izlocilniPredlog(idDogodka)}
       shrani={(mesta) => dogodkiApi.izlocilniMesta(idDogodka, mesta)}

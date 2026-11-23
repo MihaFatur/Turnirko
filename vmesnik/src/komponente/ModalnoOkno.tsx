@@ -33,6 +33,16 @@ interface Lastnosti {
   /* Na telefonu (≤ 640 px) spodnji list čez širino zaslona namesto okna pod
      vrhom - zgornji del strani ostane viden (poziv k računu, DESIGN.md 5f). */
   spodaj?: boolean
+  /* Delovna ploskev žreba (prenova »Popravi skupine«, 23. 11. 2026): zelo široko
+     okno (1180 px, na višino zaslona), na telefonu celozaslonski list. Okno
+     poskrbi samo za lupino (zastor, portal, fokus, Escape); glavo, orodno
+     vrstico, telo in nogo izriše klicatelj, ker telo drsi, glava in noga pa
+     stojita. Klik na zastor okna ne zapre: pol ure dela ne sme izginiti zaradi
+     zgrešenega klika. */
+  zeloSiroko?: boolean
+  /* Delovna ploskev čez cel zaslon (»Popravi mrežo«): črna glava, brez okvira,
+     vlečenje z miško. Lupina kot pri zeloSiroko. */
+  celZaslon?: boolean
   onZapri: () => void
   children: ReactNode
 }
@@ -48,6 +58,8 @@ export function ModalnoOkno({
   zapisnik,
   brezObrazca,
   spodaj,
+  zeloSiroko,
+  celZaslon,
   onZapri,
   children,
 }: Lastnosti) {
@@ -108,9 +120,21 @@ export function ModalnoOkno({
     + (razdeljeno ? ' modal--razdeljeno' : '')
     + (zapisnik ? ' modal--zapisnik' : '')
     + (spodaj ? ' modal--spodaj' : '')
+    + (zeloSiroko ? ' modal--zelo-siroko' : '')
+    + (celZaslon ? ' modal--cel-zaslon' : '')
+
+  const delovna = zeloSiroko || celZaslon
 
   return createPortal(
-    <div className={'modal__zastor' + (spodaj ? ' modal__zastor--spodaj' : '')} onClick={onZapri}>
+    <div
+      className={
+        'modal__zastor'
+        + (spodaj ? ' modal__zastor--spodaj' : '')
+        + (zeloSiroko ? ' modal__zastor--zelo-siroko' : '')
+        + (celZaslon ? ' modal__zastor--cel-zaslon' : '')
+      }
+      onClick={delovna ? undefined : onZapri}
+    >
       <div
         ref={okvir}
         tabIndex={-1}
@@ -120,7 +144,7 @@ export function ModalnoOkno({
         aria-label={naslov}
         onClick={(dogodek) => dogodek.stopPropagation()}
       >
-        {razdeljeno ? (
+        {razdeljeno || delovna ? (
           children
         ) : zapisnik ? (
           <>

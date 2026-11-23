@@ -370,12 +370,13 @@ export const TURNIR: Clanek[] = [
       {
         tip: 'koraki',
         postavke: [
-          'Odpri **Ročni vpis skupin**. Okno naloži računalniški predlog.',
-          'Vsakemu igralcu določi skupino in **pozicijo** v njej (1 = najmočnejši v svoji skupini).',
-          'Klikni **Shrani skupine in začni**.',
+          'Odpri **Ročni vpis skupin**. Okno naloži računalniški predlog in pokaže vse skupine naenkrat.',
+          'Klikni igralca, nato drugega: **zamenjata se**. Prosto mesto v drugi skupini sprejme izbranega igralca (**+ Premakni sem**). Število skupin spremeniš s koračnikom, **Predlog žreba** naloži nov predlog, **Razveljavi spremembe** vrne izhodišče.',
+          'Pozicija v skupini je številka pred imenom (1 = najmočnejši v svoji skupini); igralec, ki ga premakneš v drugo skupino, pride na njen konec.',
+          'Spodaj te stanje opozori, kaj še manjka (»Razporedi še 3 igralce«, »Skupina 13 potrebuje vsaj 2 igralca«). Ko je vse v redu, klikni **Shrani in začni dogodek**.',
         ],
       },
-      { tip: 'shema', shema: 'rocne-skupine', opis: 'Vsak igralec dobi skupino in pozicijo v njej.' },
+      { tip: 'shema', shema: 'rocne-skupine', opis: 'Vse skupine so vidne naenkrat; klikneš dva igralca in zamenjata se.' },
       {
         tip: 'odstavek',
         besedilo:
@@ -385,7 +386,7 @@ export const TURNIR: Clanek[] = [
       {
         tip: 'odstavek',
         besedilo:
-          'Pri izločilnem sistemu vpišeš igralca na vsako mesto mreže. Sosednji mesti igrata v 1. kolu, zato dve prosti mesti ne smeta stati skupaj — v tem paru ne bi igral nihče. Shraniš z **Shrani mrežo**.',
+          'Mreža je čez cel zaslon, po četrtinah. Igralca **povleci** na drugo mesto in zamenjata se; Enter ali preslednica na mestu ga izbere, drugo mesto ga zamenja. Če igralca povlečeš na **Odlagališče**, mesto ostane prazno in se ne da shraniti, dokler ga ne zapolniš. Na telefonu tapneš mesto in izbereš igralca s seznama. Sosednji mesti igrata v 1. kolu, zato dve prosti mesti ne smeta stati skupaj — v tem paru ne bi igral nihče. Shraniš z **Shrani in začni** (pri popravku **Shrani popravek**).',
       },
       { tip: 'razdelek', id: 'popravek', naslov: 'Popravek po žrebu' },
       {

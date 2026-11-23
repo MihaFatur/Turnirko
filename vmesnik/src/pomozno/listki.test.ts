@@ -1,16 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { SkupinaDto, SvNivoDto } from '../api/tipi'
 import { mreza, prijava, tekma } from '../testi/tovarna'
 import {
   enakiIdji,
   idjiNenatisnjenih,
+  imaVecSkupin,
   jeNatisnjen,
-  mestaHrbta,
   NAJVEC_PRAZNIH_LISTKOV,
   nenatisnjeni,
   opisNatisa,
+  preberiRazvrstitev,
   pripraviListke,
+  shraniRazvrstitev,
   sklopiListkov,
   steviloPraznih,
 } from './listki'
@@ -113,25 +115,86 @@ describe('natisnjeni listki', () => {
   })
 })
 
-describe('mestaHrbta', () => {
-  it('poln list ima kodo na vseh šestih hrbtih', () => {
-    expect(mestaHrbta(6)).toEqual([true, true, true, true, true, true])
+describe('razvrstitev po skupinah ali po kolih', () => {
+  /* Skupini 1 in 2 po štiri (2 tekmi na kolo), skupina 3 po tri (1 tekma na kolo),
+     dve koli in tekma glavnega žreba. Id-ji skupin namenoma niso po vrsti oznak. */
+  const s = (id: number, idSkupina: number, kolo: number, pozicija: number) =>
+    tekma(id, 1, 2, { ...PRIPRAVLJENA, faza: 'SKUPINA', idSkupina, kolo, pozicija })
+  const podatki = mreza({}, prijave, [
+    s(31, 3, 1, 1), s(32, 3, 2, 1),
+    s(11, 1, 1, 1), s(12, 1, 1, 2), s(13, 1, 2, 1), s(14, 1, 2, 2),
+    s(21, 2, 1, 1), s(22, 2, 1, 2), s(23, 2, 2, 1), s(24, 2, 2, 2),
+    tekma(90, 3, 4, { ...PRIPRAVLJENA, faza: 'GLAVNI' }),
+  ], { skupine: [skupina(3, '3'), skupina(2, '2'), skupina(1, '1')] })
+
+  it('po skupinah: vsa kola skupine 1, nato skupine 2 in 3 (privzeto)', () => {
+    expect(pripraviListke(podatki).map((l) => l.tekma.id)).toEqual([
+      11, 12, 13, 14, 21, 22, 23, 24, 31, 32, 90,
+    ])
   })
 
-  it('en listek (zgoraj levo) je pokrit pri obračanju po dolgem in po kratkem robu', () => {
-    // po dolgem: hrbet zgoraj desno; po kratkem: hrbet spodaj levo
-    expect(mestaHrbta(1)).toEqual([false, true, false, false, true, false])
+  it('po kolih: 1. kolo skupin 1, 2, 3, nato 2. kolo; skupina po tri vmes, ne na koncu', () => {
+    expect(pripraviListke(podatki, 'kola').map((l) => l.tekma.id)).toEqual([
+      11, 12, 21, 22, 31, 13, 14, 23, 24, 32, 90,
+    ])
   })
 
-  it('vsak listek ima kodo za sabo v obeh načinih obojestranskega tiska', () => {
-    for (let listkov = 1; listkov <= 6; listkov++) {
-      const mesta = mestaHrbta(listkov)
-      for (let i = 0; i < listkov; i++) {
-        const vrstica = Math.floor(i / 2)
-        const stolpec = i % 2
-        expect(mesta[vrstica * 2 + (1 - stolpec)]).toBe(true)
-        expect(mesta[(2 - vrstica) * 2 + stolpec]).toBe(true)
-      }
+  it('po kolih so sklopi kola, opis v seznamu pa skupina', () => {
+    const listki = pripraviListke(podatki, 'kola')
+    expect(sklopiListkov(listki).map((k) => k.naslov)).toEqual(['1. kolo', '2. kolo', 'Glavni žreb'])
+    expect(listki[0].opis).toBe('Skupina 1')
+    expect(listki[0].faza).toBe('1. kolo')
+    // po skupinah ostane opis kolo
+    expect(pripraviListke(podatki)[0].opis).toBe('1. kolo')
+  })
+
+  it('skupine gredo po vrsti oznak (9 pred 10), ne po id-ju', () => {
+    const p = mreza({}, prijave, [s(1, 1, 1, 1), s(2, 2, 1, 1), s(3, 3, 1, 1)], {
+      skupine: [skupina(1, '10'), skupina(2, '9'), skupina(3, '1')],
+    })
+    expect(pripraviListke(p, 'kola').map((l) => l.skupina)).toEqual(['1', '9', '10'])
+    expect(pripraviListke(p).map((l) => l.skupina)).toEqual(['1', '9', '10'])
+  })
+
+  it('izbira ima smisel samo pri vsaj dveh skupinah', () => {
+    expect(imaVecSkupin(pripraviListke(podatki))).toBe(true)
+    const ena = mreza({}, prijave, [s(1, 1, 1, 1), s(2, 1, 2, 1)], { skupine: [skupina(1, '1')] })
+    expect(imaVecSkupin(pripraviListke(ena))).toBe(false)
+    const mreza0 = mreza({}, prijave, [tekma(1, 1, 2, { ...PRIPRAVLJENA, faza: 'GLAVNI' })])
+    expect(imaVecSkupin(pripraviListke(mreza0))).toBe(false)
+  })
+
+  it('zadnja izbira ostane v brskalniku, privzeto po skupinah', () => {
+    const shramba = new Map<string, string>()
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (k: string) => shramba.get(k) ?? null,
+        setItem: (k: string, v: string) => void shramba.set(k, v),
+      },
+    })
+    try {
+      expect(preberiRazvrstitev()).toBe('skupine')
+      shraniRazvrstitev('kola')
+      expect(preberiRazvrstitev()).toBe('kola')
+      shraniRazvrstitev('skupine')
+      expect(preberiRazvrstitev()).toBe('skupine')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('brez shrambe (zasebno okno) velja privzetek in shranjevanje ne pade', () => {
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: () => { throw new Error('ni shrambe') },
+        setItem: () => { throw new Error('ni shrambe') },
+      },
+    })
+    try {
+      expect(() => shraniRazvrstitev('kola')).not.toThrow()
+      expect(preberiRazvrstitev()).toBe('skupine')
+    } finally {
+      vi.unstubAllGlobals()
     }
   })
 })

@@ -203,6 +203,24 @@
     Brisanje tekem gre skozi `izbrisiTekme`, ki najprej pretrga izvorne povezave.
   - **Mreža:** sosednja mesta igrata v prvem kolu; dva prosta mesta drug ob drugem
     ne smeta biti (`ZrebStoritev.mestaZaRocniVpis`). Prosta mesta so `null`.
+  - **Oknu sta prenovljeni delovni ploskvi** (23. 11. 2026, predaja
+    `design_handoff_skupine_mreza_listki`, DESIGN.md 5k; logika in zaledje nespremenjena):
+    - **»Popravi skupine« / »Ročni vpis skupin«** (`RocniSkupineOkno`): vse skupine naenkrat,
+      igralca zamenjata dva klika (prvi izbere, drugi zamenja; Escape najprej prekliče izbiro),
+      prosto mesto sprejme izbranega (`nastaviSkupino`: na konec skupine, stara skupina zapre
+      vrzel). Stanje v nogi velja prvo, ki drži: izbran igralec, kdo brez skupine, skupina z manj
+      kot 2, vse v redu; Shrani je onemogočen pri napaki, med izbiro in pri popravku brez sprememb.
+      »Premaknjen« (modri levi rob, števec) se pokaže samo pri popravku (izhodišče so trenutne
+      skupine); pri ročnem vpisu je izhodišče predlog, ki se naloži ob odprtju, in »Razveljavi
+      spremembe« vrne nanj. Pri TOP je bazen »Rezerve« in ni napaka, koračnik je onemogočen.
+      Skupina s petimi pri skupine + izločilni ne ustavi shranjevanja (svarilo v nogi).
+    - **»Popravi mrežo« / »Ročna mreža«** (`RocnaMrezaOkno`, `ModalnoOkno celZaslon`): popravek je
+      mreža, ki že ima glavne tekme (`RocnaMrezaZaDogodek`). Mesto na mesto zamenja (vlečenje ali
+      Enter/preslednica), odlagališče naredi mesto **prazno** (`'prazno'`, samo v odjemalcu, ne
+      `null`: prosto mesto je prosti prehod, prazno čaka na igralca); dokler je kaj praznega,
+      Shrani ni mogoč. Nosilec (črna značka) je `stNosilca <= velikost mreže / 4`; pri izločilnem
+      delu skupin namesto značke stoji uvrstitev »3 · 1.« (`udelezenciPoId`). Do 16 mest je
+      mreža vidna cela, brez stolpca četrtin.
 - **`SKUPINE` = format TOP** (npr. TOP 24 kot 3 skupine po 8):
   - igra najboljših N prijavljenih (N = `steviloSkupin` × `velikostSkupine`);
     kdor ne pride v izbor, dobi status `REZERVA` in ne igra;

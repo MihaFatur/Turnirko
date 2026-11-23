@@ -14,6 +14,15 @@ export function useTelefon(): boolean {
   return useMedij(POIZVEDBA_TELEFON)
 }
 
+/* Delovni ploskvi žreba (mreža, listki za tisk) imata stolpce, ki jih tablica ne obdrži: pod
+   1000 px dobita postavitev telefona (zavihki, spodnji list). Prelomna točka je tudi v slog.css
+   (razdelek 17). */
+export const POIZVEDBA_KOMPAKTNO = '(max-width: 999px)'
+
+export function useKompakten(): boolean {
+  return useMedij(POIZVEDBA_KOMPAKTNO)
+}
+
 /* Ista prelomna tocka za poljubno medijsko poizvedbo - spet samo za izbiro,
    ne za mere (npr. ali domaca stran postavi sklopa drug ob drugega). */
 export function useMedij(izraz: string): boolean {

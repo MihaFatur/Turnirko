@@ -6,19 +6,30 @@
    (ListkiStran) in ekipni zapisniki (ZapisnikiEkipnegaDogodka). */
 import type { FazaTekme, MrezaDto, TekmaDto } from '../api/tipi'
 import { imeKola } from './oblikovanje'
+import { primerjajSkupine } from './oznakaSkupine'
 import { imeTekmeZreba } from './svRegija'
 
 /* Skupine se natisnejo prve (predtekmovanje), nato glavna mreža, nato
    tolažilne tekme (npr. za 3. mesto). */
 const RANG_FAZE: Record<FazaTekme, number> = { SKUPINA: 0, GLAVNI: 1, TOLAZILNI: 2 }
 
+/* Vrstni red listkov skupinskega dela na listih (lastnik 23. 11. 2026): po
+   skupinah (vsa kola skupine 1, nato vsa kola skupine 2 …) ali po kolih (1. kolo
+   skupine 1, 2, 3 …, nato 2. kolo …). Po kolih so tudi sklopi za izbiro kola, da
+   organizator z enim klikom natisne npr. 1. kolo vseh skupin. Izločilni del in
+   žrebi SV regije so v obeh enaki. */
+export type RazvrstitevListkov = 'skupine' | 'kola'
+
 export interface PripravljenListek {
   tekma: TekmaDto
-  /* Oznaka skupine (»A«); prazna pri izločilni mreži. */
+  /* Oznaka skupine (»1«, starejši »A«); prazna pri izločilni mreži. */
   skupina: string | null
   /* Kolo skupine ali krog mreže. */
   faza: string
-  /* Sklop za hitro izbiro (»Skupina 1«, »Tolažilni žreb«) in njegov ključ. */
+  /* Opis v seznamu izbire pod imeni: kolo, kadar so sklopi skupine, in
+     skupina, kadar so sklopi kola (naslov sklopa že pove drugo). */
+  opis: string
+  /* Sklop za hitro izbiro (»Skupina 1«, »1. kolo«, »Tolažilni žreb«) in njegov ključ. */
   sklop: string
   sklopNaslov: string
 }
@@ -51,18 +62,31 @@ export function nenatisnjeni(listki: PripravljenListek[]): PripravljenListek[] {
 
 /* Pripravi in razvrsti pripravljene tekme, vsaki doda človeku berljivo
    oznako skupine, kola/faze in sklopa. */
-export function pripraviListke(podatki: MrezaDto | undefined): PripravljenListek[] {
+export function pripraviListke(
+  podatki: MrezaDto | undefined,
+  razvrstitev: RazvrstitevListkov = 'skupine',
+): PripravljenListek[] {
   if (!podatki) return []
 
   const glavne = podatki.tekme.filter((t) => t.faza === 'GLAVNI')
   const zadnjeKolo = glavne.length > 0 ? Math.max(...glavne.map((t) => t.kolo)) : 1
+  const poKolih = razvrstitev === 'kola'
+
+  /* Skupine po vrsti oznak (9 pred 10), ne po id-ju: ročni žreb jih lahko zapiše
+     v drugem vrstnem redu. Neznana skupina gre za znanimi. */
+  const rangi = new Map(
+    [...podatki.skupine].sort(primerjajSkupine).map((s, i) => [s.id, i] as const),
+  )
+  const rangSkupine = (t: TekmaDto) =>
+    t.idSkupina === null ? -1 : (rangi.get(t.idSkupina) ?? rangi.size + t.idSkupina)
 
   return podatki.tekme
     .filter(jePripravljena)
     .sort(
       (a, b) =>
         RANG_FAZE[a.faza] - RANG_FAZE[b.faza] ||
-        (a.idSkupina ?? 0) - (b.idSkupina ?? 0) ||
+        (poKolih && a.faza === 'SKUPINA' ? a.kolo - b.kolo : 0) ||
+        rangSkupine(a) - rangSkupine(b) ||
         (a.idZreb ?? 0) - (b.idZreb ?? 0) ||
         a.kolo - b.kolo ||
         a.pozicija - b.pozicija,
@@ -72,11 +96,13 @@ export function pripraviListke(podatki: MrezaDto | undefined): PripravljenListek
         tekma.faza === 'SKUPINA'
           ? (podatki.skupine.find((s) => s.id === tekma.idSkupina)?.oznaka ?? null)
           : null
-      const sklop = sklopTekme(tekma, skupina, podatki)
+      const sklop = sklopTekme(tekma, skupina, podatki, poKolih)
+      const faza = oznakaFaze(tekma, zadnjeKolo, podatki)
       return {
         tekma,
         skupina,
-        faza: oznakaFaze(tekma, zadnjeKolo, podatki),
+        faza,
+        opis: poKolih && skupina !== null ? `Skupina ${skupina}` : faza,
         sklop: sklop.kljuc,
         sklopNaslov: sklop.naslov,
       }
@@ -102,14 +128,16 @@ function oznakaFaze(tekma: TekmaDto, zadnjeKolo: number, podatki: MrezaDto): str
 
 /* Sklop, v katerem je tekma: skupina (»Skupina 1«), žreb SV regije (»Skupina 2 ·
    Tolažilni žreb«), glavni ali tolažilni del mreže; krožni sistem nima skupin,
-   zato se tam sklopi ujemajo s koli (»3. kolo«). */
+   zato se tam sklopi ujemajo s koli (»3. kolo«), enako kot skupinski del, ko so
+   listki razvrščeni po kolih. */
 function sklopTekme(
   tekma: TekmaDto,
   skupina: string | null,
   podatki: MrezaDto,
+  poKolih: boolean,
 ): { kljuc: string; naslov: string } {
   if (tekma.faza === 'SKUPINA') {
-    if (skupina === null) return { kljuc: `kolo-${tekma.kolo}`, naslov: `${tekma.kolo}. kolo` }
+    if (skupina === null || poKolih) return { kljuc: `kolo-${tekma.kolo}`, naslov: `${tekma.kolo}. kolo` }
     const ime = podatki.skupine.find((s) => s.id === tekma.idSkupina)?.ime
     return {
       kljuc: `skupina-${tekma.idSkupina}`,
@@ -128,8 +156,34 @@ function sklopTekme(
   return { kljuc: 'glavni', naslov: 'Glavni žreb' }
 }
 
+/* Ali ima izbira vrstnega reda smisel: vsaj dve skupini s pripravljenimi tekmami
+   (z eno samo skupino ali brez skupin sta oba vrstna reda enaka). */
+export function imaVecSkupin(listki: PripravljenListek[]): boolean {
+  return new Set(listki.filter((l) => l.skupina !== null).map((l) => l.tekma.idSkupina)).size > 1
+}
+
+const KLJUC_RAZVRSTITVE = 'turnirko-razvrstitev-listkov'
+
+/* Zadnja izbira vrstnega reda ostane v brskalniku (organizator tiska ob vsakem
+   kolu); brez nje ali brez shrambe po skupinah, kot doslej. */
+export function preberiRazvrstitev(): RazvrstitevListkov {
+  try {
+    return window.localStorage.getItem(KLJUC_RAZVRSTITVE) === 'kola' ? 'kola' : 'skupine'
+  } catch {
+    return 'skupine'
+  }
+}
+
+export function shraniRazvrstitev(r: RazvrstitevListkov): void {
+  try {
+    window.localStorage.setItem(KLJUC_RAZVRSTITVE, r)
+  } catch {
+    /* izbira velja za to stran tudi brez shrambe */
+  }
+}
+
 /* Listke združi v sklope po vrstnem redu prve pojavitve (listki so že
-   razvrščeni po fazi, skupini in žrebu). */
+   razvrščeni po fazi, skupini oz. kolu in žrebu). */
 export function sklopiListkov(listki: PripravljenListek[]): SklopListkov[] {
   const poKljucu = new Map<string, SklopListkov>()
   for (const l of listki) {
@@ -141,6 +195,152 @@ export function sklopiListkov(listki: PripravljenListek[]): SklopListkov[] {
     sklop.listki.push(l)
   }
   return [...poKljucu.values()]
+}
+
+/* ---------- Tabela listkov (prenova »Listki 1b«, 23. 11. 2026) ----------
+   Organizator vidi skupine v vrsticah in kola v stolpcih: vsak listek je ploščica na
+   preseku. Izločilni del, tolažilni žrebi in žrebi SV regije (tekme brez skupine) so
+   vrstice pod tabelo, vsaka s svojo oznako faze. */
+
+/* Do toliko kol skupinskega dela stoji v stolpcih; pri več (krožni sistem z deset kol)
+   so ploščice preglednejše v vrsticah po kolih. */
+export const NAJVEC_KOL_V_TABELI = 7
+
+export interface VrstaTabele {
+  kljuc: string
+  /* »Sk. 3«; na telefonu »Skupina 3«. */
+  naslov: string
+  naslovDolgo: string
+  /* Listki po kolih tabele (enak vrstni red kot `kola`); prazna celica, kjer skupina v kolu
+     nima pripravljene tekme. */
+  celice: PripravljenListek[][]
+}
+
+export interface OstaloVTabeli {
+  kljuc: string
+  naslov: string
+  listki: PripravljenListek[]
+}
+
+export interface TabelaListkov {
+  /* Kola v stolpcih; prazno, kadar skupinskega dela ni v tabeli. */
+  kola: number[]
+  vrste: VrstaTabele[]
+  ostali: OstaloVTabeli[]
+}
+
+/* Kar hitra izbira »Na vrsti« obravnava kot eno celoto: kolo skupinskega dela ali ena vrstica
+   izločilnega dela. Pri izbiri so enote po vrsti tiska. */
+export interface EnotaListkov {
+  kljuc: string
+  naslov: string
+  listki: PripravljenListek[]
+}
+
+/* Oznaka vrstice izločilnega dela: »Mreža · 1/8 finala«, »Tolažilni«; žreb SV regije že nosi
+   »Skupina 2 · Za 21. mesto«, krožni sistem »3. kolo«. */
+function oznakaVrstice(l: PripravljenListek): { kljuc: string; naslov: string } {
+  if (l.tekma.faza === 'SKUPINA') return { kljuc: `kolo-${l.tekma.kolo}`, naslov: `${l.tekma.kolo}. kolo` }
+  if (l.sklop === 'glavni') return { kljuc: `glavni|${l.faza}`, naslov: `Mreža · ${l.faza}` }
+  if (l.sklop === 'tolazilni') return { kljuc: 'tolazilni', naslov: 'Tolažilni' }
+  return { kljuc: `${l.sklop}|${l.faza}`, naslov: l.faza }
+}
+
+/* Listke (že razvrščene za tisk) razporedi v tabelo. */
+export function tabelaListkov(listki: PripravljenListek[]): TabelaListkov {
+  const skupinski = listki.filter((l) => l.tekma.faza === 'SKUPINA')
+  const kola = [...new Set(skupinski.map((l) => l.tekma.kolo))].sort((a, b) => a - b)
+  const vTabeli =
+    skupinski.length > 0 &&
+    skupinski.every((l) => l.skupina !== null) &&
+    kola.length <= NAJVEC_KOL_V_TABELI
+
+  const vrste: VrstaTabele[] = []
+  if (vTabeli) {
+    const oznake = [...new Set(skupinski.map((l) => l.skupina as string))].sort((a, b) =>
+      primerjajSkupine({ oznaka: a }, { oznaka: b }),
+    )
+    for (const oznaka of oznake) {
+      vrste.push({
+        kljuc: `skupina-${oznaka}`,
+        naslov: `Sk. ${oznaka}`,
+        naslovDolgo: `Skupina ${oznaka}`,
+        celice: kola.map((k) =>
+          skupinski.filter((l) => l.skupina === oznaka && l.tekma.kolo === k),
+        ),
+      })
+    }
+  }
+
+  const ostali: OstaloVTabeli[] = []
+  const poKljucu = new Map<string, OstaloVTabeli>()
+  for (const l of listki) {
+    if (vTabeli && l.tekma.faza === 'SKUPINA') continue
+    const { kljuc, naslov } = oznakaVrstice(l)
+    let vrsta = poKljucu.get(kljuc)
+    if (!vrsta) {
+      vrsta = { kljuc, naslov, listki: [] }
+      poKljucu.set(kljuc, vrsta)
+      ostali.push(vrsta)
+    }
+    vrsta.listki.push(l)
+  }
+  return { kola: vTabeli ? kola : [], vrste, ostali }
+}
+
+/* Enote hitre izbire po vrsti tiska: najprej kola skupinskega dela, nato vrstice pod tabelo. */
+export function enoteListkov(tabela: TabelaListkov): EnotaListkov[] {
+  const enote: EnotaListkov[] = tabela.kola.map((k, i) => ({
+    kljuc: `kolo-${k}`,
+    naslov: `${k}. kolo`,
+    listki: tabela.vrste.flatMap((v) => v.celice[i]),
+  }))
+  for (const o of tabela.ostali) enote.push({ kljuc: o.kljuc, naslov: o.naslov, listki: o.listki })
+  return enote
+}
+
+/* Prva enota, v kateri je še kaj nenatisnjenega: kar organizator natisne naslednje. */
+export function enotaNaVrsti(enote: EnotaListkov[]): EnotaListkov | null {
+  return enote.find((e) => e.listki.some((l) => !jeNatisnjen(l))) ?? null
+}
+
+/* Privzeta izbira: nenatisnjeni listki enote, ki je na vrsti. */
+export function idjiNaVrsti(listki: PripravljenListek[]): number[] {
+  const e = enotaNaVrsti(enoteListkov(tabelaListkov(listki)))
+  return e ? nenatisnjeni(e.listki).map((l) => l.tekma.id) : []
+}
+
+/* Mesta na listu A4, ki ostanejo prosta za zadnjim listkom (0 pri polnem listu). */
+export function prostaMestaNaListu(steviloListkov: number): number {
+  return (LISTKOV_NA_LIST - (steviloListkov % LISTKOV_NA_LIST)) % LISTKOV_NA_LIST
+}
+
+/* Koliko praznih listkov gre v tisk: izbrani število in prazni se dopolnijo do polnega lista, če
+   organizator tako želi (le ob vsaj enem pravem listku: samo prazni listki se ne dopolnjujejo). */
+export function praznihZaTisk(izbranih: number, prazni: number, dopolni: boolean): number {
+  return prazni + (dopolni && izbranih > 0 ? prostaMestaNaListu(izbranih + prazni) : 0)
+}
+
+/* Kratek čas tiska v ploščici: »09:12« za danes, »16. 11.« za starejši dan. */
+export function kratekCasNatisa(iso: string, zdaj: Date = new Date()): string {
+  const cas = new Date(iso)
+  if (Number.isNaN(cas.getTime())) return ''
+  const istiDan =
+    cas.getFullYear() === zdaj.getFullYear() &&
+    cas.getMonth() === zdaj.getMonth() &&
+    cas.getDate() === zdaj.getDate()
+  return istiDan
+    ? cas.toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })
+    : `${cas.getDate()}. ${cas.getMonth() + 1}.`
+}
+
+/* 1 list, 2 lista, 3 listi, 5 listov (list je moškega spola). */
+export function sklonListovTiska(n: number): string {
+  const o = n % 100
+  if (o === 1) return 'list'
+  if (o === 2) return 'lista'
+  if (o === 3 || o === 4) return 'listi'
+  return 'listov'
 }
 
 /* Id-ji tekem za hitro izbiro: vse še nenatisnjene, ali samo iz enega sklopa. */
@@ -171,22 +371,6 @@ export function opisNatisa(iso: string, zdaj: Date = new Date()): string {
 /* Največ listkov, ki jih je mogoče natisniti praznih naenkrat (20 listov A4). */
 export const NAJVEC_PRAZNIH_LISTKOV = 120
 export const LISTKOV_NA_LIST = 6
-
-/* Mesta na hrbtni strani lista (S2), ki dobijo kodo za sodnika, ko ima prednja
-   stran `listkov` listkov (zaporedje po vrsticah: 2 stolpca x 3 vrstice).
-   Obojestranski tisk obrne list po dolgem robu (hrbet stolpca c je za prednjim
-   stolpcem 1 - c) ali po kratkem (hrbet vrstice r je za vrstico 2 - r); katero,
-   izbere tiskalnik. Mesto dobi kodo, če je za njim listek v kateremkoli od obeh
-   načinov - koda je na vseh hrbtih ista, odvečna pa pristane na odrezku. */
-export function mestaHrbta(listkov: number): boolean[] {
-  return Array.from({ length: LISTKOV_NA_LIST }, (_, i) => {
-    const vrstica = Math.floor(i / 2)
-    const stolpec = i % 2
-    const poDolgem = vrstica * 2 + (1 - stolpec)
-    const poKratkem = (2 - vrstica) * 2 + stolpec
-    return poDolgem < listkov || poKratkem < listkov
-  })
-}
 
 /* Število praznih listkov iz vnosa: celo število od 1 do meje, sicer privzetek. */
 export function steviloPraznih(vnos: string, privzeto = LISTKOV_NA_LIST): number {

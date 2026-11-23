@@ -273,28 +273,27 @@ export function ShemaMrezaNosilcev() {
 }
 
 export function ShemaRocneSkupine() {
-  const vrstica = (ime: string, skupina: string, pozicija: string) => (
-    <div className="sh-vrstica" key={ime}>
-      <span>{ime}</span>
-      <span className="sh-vrsta">
-        <Polje vrednost={`${skupina} ▾`} />
-        <Polje vrednost={`${pozicija} ▾`} />
-      </span>
-    </div>
-  )
   return (
-    <Platno opis="Ročni vpis skupin: vsak igralec dobi skupino in pozicijo v njej, nato Shrani skupine in začni.">
+    <Platno opis="Ročni vpis skupin: vse skupine so vidne naenkrat; klikneš dva igralca in zamenjata se, nato Shrani in začni dogodek.">
       <Okno naslov="Ročni vpis skupin">
-        <div className="sh-vrstica sh-vrstica--glava">
-          <span>Igralec</span>
-          <span>Skupina · pozicija</span>
+        <div className="sh-vrsta sh-vrsta--zgoraj">
+          {(
+            [
+              ['Skupina 1', ['Novak Ana', 'Horvat Nik']],
+              ['Skupina 2', ['Kos Jan', 'Zupan Eva']],
+            ] as const
+          ).map(([naslov, igralci]) => (
+            <Skatla key={naslov} naslov={naslov}>
+              {igralci.map((ime, i) => (
+                <span key={ime} className="sh-mono">
+                  {i + 1} · {ime}
+                </span>
+              ))}
+            </Skatla>
+          ))}
         </div>
-        {vrstica('Novak Ana', '1', '1')}
-        {vrstica('Kos Jan', '2', '1')}
-        {vrstica('Horvat Nik', '1', '2')}
-        {vrstica('Zupan Eva', '2', '2')}
         <div className="sh-vrsta sh-vrsta--konec">
-          <Gumb glavni>Shrani skupine in začni</Gumb>
+          <Gumb glavni>Shrani in začni dogodek</Gumb>
         </div>
       </Okno>
     </Platno>

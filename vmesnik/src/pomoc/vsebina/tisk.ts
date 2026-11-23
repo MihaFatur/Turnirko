@@ -6,7 +6,7 @@ export const TISK: Clanek[] = [
     naslov: 'Listki za tiskanje (sodniški listki)',
     poglavje: 'tisk',
     kratko:
-      'Natisne sodniške listke pripravljenih tekem, šest na list A4. Privzeto so izbrani vsi še nenatisnjeni; izbereš lahko sklop (skupino, žreb) ali posamezne tekme. Po tisku potrdiš, da so se natisnili.',
+      'Natisne sodniške listke pripravljenih tekem, šest na list A4. Vsak listek je ploščica v tabeli skupina × kolo; privzeto je izbrano kolo, ki je na vrsti. Po tisku potrdiš, da so se natisnili.',
     kljucne: [
       'listki',
       'listek',
@@ -26,9 +26,10 @@ export const TISK: Clanek[] = [
         tip: 'koraki',
         postavke: [
           'Odpri **Listki za tiskanje** (vidno, ko kategorija teče).',
-          'V **Kaj natisniti** izberi: vsi še nenatisnjeni, en sklop (»Skupina 1«, »Glavni žreb«, »Tekma za 3. mesto«) ali posamezne tekme s kljukicami.',
-          'Preveri predogled spodaj — natanko to gre na papir.',
-          'Klikni **Natisni izbrane**. Po tisku potrdi, da so listki res prišli iz tiskalnika.',
+          'V tabeli klikni listek (ploščico), skupino (levo) ali kolo (zgoraj): modri listki gredo v tisk. Pod skupinami so vrstice izločilnega dela (»Mreža · 1/8 finala«, »Tolažilni«). **Na vrsti** izbere naslednje kolo, **Vsi nenatisnjeni** vse, **Počisti** nič.',
+          'Pri več skupinah izberi še **Vrstni red na listih**: **Po kolih** (1. kolo vseh skupin, nato 2. kolo …) ali **Po skupinah** (vsa kola skupine 1, nato skupine 2 …). Izbira ostane za naslednji tisk.',
+          'Številka zgoraj desno pove, koliko listkov in listov A4 bo; sličice kažejo, koliko mest na zadnjem listu je še praznih.',
+          'Klikni **Natisni N listkov**. Po tisku potrdi, da so listki res prišli iz tiskalnika.',
         ],
       },
       {
@@ -36,23 +37,23 @@ export const TISK: Clanek[] = [
         id: 'natisnjeno',
         naslov: 'Sled natisnjenih',
         kratko:
-          'Potrjene tekme dobijo oznako »natisnjeno« in so v izbiri skrite. Tako naslednjič natisneš samo nove tekme. Oznako odstraniš z »Odznači«.',
+          'Potrjene tekme dobijo oznako »natisnjeno« in so v tabeli sive. Tako naslednjič natisneš samo nove tekme. Oznako odstraniš z »Odznači natisnjene«.',
       },
       {
         tip: 'odstavek',
         besedilo:
-          'Oznaka se zapiše šele po tvoji potrditvi, ne ob kliku — če se je papir zataknil, odgovori »Ne« in tekme ostanejo nenatisnjene. Že natisnjene vidiš s **Pokaži tudi že natisnjene**; z izrecno kljukico natisneš listek znova.',
+          'Oznaka se zapiše šele po tvoji potrditvi, ne ob kliku — če se je papir zataknil, odgovori »Ne, tisk ni uspel« in tekme ostanejo nenatisnjene. Natisnjen listek natisneš znova tako, da ga klikneš.',
       },
       {
         tip: 'razdelek',
         id: 'prazni',
         naslov: 'Prazni listki',
-        kratko: 'Listki z natisnjenim turnirjem in kategorijo, imena in faza so črte za ročni vpis. Število izbereš (1–120).',
+        kratko: 'Listki z natisnjenim turnirjem in kategorijo, imena in faza so črte za ročni vpis. Število izbereš s koračnikom (0–120).',
       },
       {
         tip: 'odstavek',
         besedilo:
-          'Uporabni za tekme, ki jih na hitro doda sodnik, ali kot rezerva. Prazni listki se ne beležijo kot natisnjeni.',
+          'Uporabni za tekme, ki jih na hitro doda sodnik, ali kot rezerva. Gredo v isti tisk za izbranimi listki; če zadnji list ni poln, ponudba **dopolni s praznimi** doda prazne do polnega lista. Prazni listki se ne beležijo kot natisnjeni.',
       },
       {
         tip: 'razdelek',
@@ -64,7 +65,7 @@ export const TISK: Clanek[] = [
       {
         tip: 'odstavek',
         besedilo:
-          'Natisni **obojestransko** (na obe strani lista); vseeno je, ali tiskalnik list obrne po dolgem ali po kratkem robu. Če tiskalnik obojestransko ne zna, odkljukaj **Na hrbtno stran lista natisni kodo za sodnike** — sodnik nato listek prinese na pult. Prazni listki hrbta nimajo, ker tekme še ne poznajo.',
+          'Natisni **obojestransko** (na obe strani lista); vseeno je, ali tiskalnik list obrne po dolgem ali po kratkem robu. Če tiskalnik obojestransko ne zna, odkljukaj **Koda za sodnike na hrbtu** — sodnik nato listek prinese na pult. Če tiskaš samo prazne listke, hrbta ni, ker tekme še ne poznajo.',
       },
       {
         tip: 'nasvet',

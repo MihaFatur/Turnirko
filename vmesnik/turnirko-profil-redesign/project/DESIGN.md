@@ -847,6 +847,50 @@ ikona ob besedilu v vsebini; ne uporabljaj je za nič drugega.
   zato, da ne premakne vsebine — to ni senca). Pod 360 px širine prikaza (poizvedba
   vsebnika) gredo vrstice s puščico v stolpec.
 
+### 5k. Izjema: delovna ploskev žreba (november 2026)
+
+Odločitev lastnika (23. 11. 2026, predaja `design_handoff_skupine_mreza_listki`): tri
+orodja organizatorja so prenovljena kot **delovne ploskve**, ki pokažejo ves žreb oz. stanje
+tiska naenkrat, z manj besedila in brez dolgih seznamov izbirnikov. Zasloni so v kodi
+`RocniSkupineOkno` (»Popravi skupine« / »Ročni vpis skupin«, varianta 1a), `RocnaMrezaOkno`
+(»Popravi mrežo« / »Ročna mreža«, 1b) in `ListkiPloskev` (stran »Listki za tiskanje«, 1b; isti
+pogled za ekipne zapisnike), razredi `.rocne-skupine__*`, `.rocna-mreza__*`, `.listki-ploskev__*`,
+`.listki-tabela__*`, `.listki-ploscica*` v razdelku 17 `slog.css`.
+
+- **Okno skupin** je zelo široko (`ModalnoOkno zeloSiroko`: 1180 px, na višino zaslona, zastor
+  odmaknjen 40 / 32 px); glava, orodna vrstica in noga stojijo, drsi samo telo. Skupine so v štirih
+  stolpcih; prvi klik izbere igralca, drugi zamenja, prosto mesto sprejme izbranega (»+ Premakni
+  sem«). Na telefonu je celozaslonski list z lepljivo nogo.
+- **Mreža in listki** sta čez cel zaslon (`ModalnoOkno celZaslon` oz. stran zunaj `Postavitve`) in
+  imata **črno glavo** 72 px (telefon 64): edini zaslon v vmesniku s črno glavo. Besedilo na njej je
+  `--barva-na-crni-glavi` #cfc7bd, onemogočen glavni gumb `--barva-crnilo-2` z besedilom
+  `--barva-na-crni-onemogocen` #8a8078, črta v stranskem stolpcu `--barva-crta-stranska` #c9c1b6
+  (na `--barva-polnilo` bi bila `--barva-crta` rjava). Desni stolpec je `--barva-polnilo`, od
+  vsebine ločen s črto 3 px.
+- **Vlečenje z miško** (mreža): mesto na mesto zamenja, na odlagališče naredi mesto prazno, nad
+  četrtino preklopi pogled vanjo. To je izjema od pravila »nič ne lebdi«; vir, ki ga vlečeš, ima
+  motnost .35, cilj 2 px modro obrobo. **Vlečenje nikoli ni edina pot**: Enter ali preslednica
+  mesto izbere, drugo mesto ga zamenja; na telefonu tap odpre spodnji list z iskanjem.
+- **Šrafura** `repeating-linear-gradient(135deg, …)` je edini gradient razen 8 % polnila grafa:
+  rumenkasta za prosto mesto mreže (prosti prehod) in modra za listke, ki čakajo na potrditev tiska.
+  Pomen nosi tudi besedilo (»prosto«, »Si natisnil …?«), šrafura je samo podlaga.
+- **Tipografija zunaj lestvice**: 104 px številka listkov za tisk (Bricolage 800, `-.05em`,
+  vrstica .85), 11–13 px mono oznake, 13–15 px imena v ploščicah; mere so iz prototipa.
+- **Stanje listka** nosi barva ploščice: bela = še ni natisnjen, `--barva-glavna-polna` = za tisk,
+  `--barva-polnilo` = natisnjen. Legenda na glavi to pove z besedo (barva ni edini nosilec).
+- Pod **1000 px** (tablica, telefon) dobita mreža in listki postavitev telefona (zavihki,
+  spodnji list), ker stolpcev prototipa tablica ne obdrži (`useKompakten`); skupine so do 640 px
+  v štirih, nato 3, 2 in 1 stolpcu. Prototip tablice ne pozna, mere zanjo so izpeljane.
+
+Preverjanje: razvojna pot `/dev/prenova-zreba?zaslon=skupine|mreza|listki&naprava=namizje|telefon&stanje=…`
+(`dev/PrenovaZrebaPosnetki`, podatki iz predaje; stanja se pripravijo s pravimi kliki in
+vlečenjem). Merilo je prototip `Posnetki.dc.html` v istem brezglavem Chromu: vseh 20 stanj
+(namizje 1280 × 900, telefon 390 × 844) se ujema na 0,00–0,23 % pikslov; edina izjema je izbran
+igralec v skupinah (0,63 %): prototip tam črke izriše s podpikslovnim glajenjem, razmiki so enaki.
+Prototip nima vrstične višine: besedilo brez nje je `normal`, ne 1,5 iz telesa, zato imata
+ploskvi `line-height: normal`; škatle z izrecno širino v prototipu so `content-box`
+(okno skupin 1180 + 2 px, desni stolpci 340/300 + 3 px, tekma 2. kola 270 + 2 px).
+
 ---
 
 ## 6. Tisk (listki, zapisnik NTZS)
@@ -856,6 +900,11 @@ oznake in številke. Brez podlag, brez sivin pod 10 %, samo `1px` in `2px` črne
 črte. Polja za vpis rezultata so prazni pravokotniki `40px` višine, mreža
 `repeat(5, 1fr)` z `4px` vrzeljo. Vsak listek ima glavo (miza, faza), dve
 vrstici igralcev z klubom v mono in nogo z opombo o številu nizov in podpisu.
+
+**Listki za tiskanje** (razdelek 5k): na zaslonu je samo delovna ploskev (tabela skupina × kolo,
+ploščica = listek, desni stolpec s številom za tisk in sličicami listov A4). **Velikega predogleda
+listkov ni več**: listi A4 se izrišejo samo za tisk (`@media print`), zato na zaslonu ni ničesar,
+kar bi bilo videti kot natis. Sam listek, hrbtna stran in rezi so nespremenjeni.
 
 **Izpis rezultatov** (`/dogodki/:id/izpis`; končna razvrstitev, skupinski in izločilni del, po
 izbiri v enem dokumentu) ima na vsakem listu A4 isto glavo: znak in napis Turnirko, vrsta lista

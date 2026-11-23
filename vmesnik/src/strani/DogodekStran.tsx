@@ -235,6 +235,8 @@ export function DogodekStran() {
   /* Branje listkov s fotografije velja za ves turnir; ekipna tekma nima listka. */
   const zaBranjeListkov = smem && branjeNaVoljo && !ekipno && dogodek.dejanskiStatus === 'V_TEKU'
   const aktivnePrijave = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN')
+  /* Ročni vpis skupin vidi tudi rezerve (TOP): po žrebu jih lahko organizator vrne v skupine. */
+  const rocnePrijave = podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN' || p.status === 'REZERVA')
   /* Zadržek pove strežnik (npr. zadnja skupina bi imela enega igralca),
      da vmesnik ne podvaja pravil razreza. */
   const zadrzek = podatki.izbor?.zadrzek ?? null
@@ -646,9 +648,10 @@ export function DogodekStran() {
         <RocniSkupineOkno
           idDogodka={idDogodka}
           sistem={sistem}
+          nadnaslov={`${dogodek.ime} · ${rocnePrijave.length} ${sklonIgralcev(rocnePrijave.length)}`}
           /* Pri formatu TOP so po zrebu ostali rezerve; okno jih mora videti, da jih lahko
              popravi. */
-          prijave={podatki.prijave.filter((p) => p.status === 'PRIJAVLJEN' || p.status === 'REZERVA')}
+          prijave={rocnePrijave}
           skupine={podatki.skupine}
           steviloSkupin={
             dogodek.steviloSkupin ?? Math.min(8, Math.max(2, Math.floor(aktivnePrijave.length / 3)))

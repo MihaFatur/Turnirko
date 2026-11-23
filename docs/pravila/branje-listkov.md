@@ -242,8 +242,11 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
   mize): ko je stikalo vklopljeno, `GET /dogodki/{id}/listki/kode` vrne tudi
   `sodnikiListki` in `ListkiStran` za vsakim listom A4 izriše njegov hrbet
   (`HrbetListka`: QR do `<origin>/s`, trije koraki; nič skrivnega). Tisk je
-  obojestranski; tiskalnik list obrne po dolgem ALI kratkem robu, zato dobi kodo
-  vsako mesto hrbta, za katerim je listek v kateremkoli načinu (`mestaHrbta`).
+  obojestranski; **koda je na vseh šestih mestih hrbta, tudi za nepolnim listom**
+  (lastnik 23. 11. 2026). Prej je dobilo kodo samo mesto, za katerim je listek pri
+  obratu po dolgem ali kratkem robu, a pri pravem tisku z enim listkom je koda
+  pristala za praznim mestom in listek je ostal brez hrbta: kako tiskalnik list
+  obrne, ni znano vnaprej. Kode za praznimi mesti gredo z odrezki.
   Vsebina hrbta je znotraj roba 20 mm zgoraj/spodaj in 15 mm levo/desno: v obeh
   načinih prosojno sije samo za tabelo točk, ne za oznake, QR ali okence mize.
   Da prosojnost tabele ne moti, meri `SimuliraneFotografijeTest.hrbetNeMotiBranja`.

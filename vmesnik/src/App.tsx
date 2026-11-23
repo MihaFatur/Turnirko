@@ -164,6 +164,7 @@ const IzpisSvrStranPosnetki = import.meta.env.DEV
   ? lazy(() => import('./dev/IzpisSvrPosnetki').then((m) => ({ default: m.IzpisSvrStran })))
   : null
 const ListekPosnetek = import.meta.env.DEV ? lazy(() => import('./dev/ListekPosnetek')) : null
+const PrenovaZrebaPosnetki = import.meta.env.DEV ? lazy(() => import('./dev/PrenovaZrebaPosnetki')) : null
 
 export function App() {
   return (
@@ -198,6 +199,10 @@ export function App() {
       {ListekPosnetek && (
         <Route path="/dev/listek"
           element={<Suspense fallback={null}><ListekPosnetek /></Suspense>} />
+      )}
+      {PrenovaZrebaPosnetki && (
+        <Route path="/dev/prenova-zreba"
+          element={<Suspense fallback={null}><PrenovaZrebaPosnetki /></Suspense>} />
       )}
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}
