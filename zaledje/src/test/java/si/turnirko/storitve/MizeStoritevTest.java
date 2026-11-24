@@ -47,6 +47,7 @@ import si.turnirko.dto.NastavitveMizVnos;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.VnosRezultata;
+import si.turnirko.dto.VrstniRedTekemVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.PrepovedanoIzjema;
@@ -267,6 +268,35 @@ class MizeStoritevTest extends IntegracijskiTest {
         mize.nastavi(idTurnir, new NastavitveMizVnos(3, List.of(1), false, 3));
     }
 
+    // ---------- rocni vrstni red ----------
+
+    @Test
+    void rocniVrstniRedVrste() {
+        Dogodek dogodek = izlocilni(4);
+        Long idTurnir = dogodek.getTurnir().getId();
+        mize.nastavi(idTurnir, new NastavitveMizVnos(1, List.of(), false, 3));
+        List<Long> samodejno = mize.pregled(idTurnir).kandidati().stream()
+                .map(k -> k.tekma().tekma().id()).toList();
+        assertEquals(2, samodejno.size());
+        assertFalse(mize.pregled(idTurnir).rocniVrstniRed());
+
+        // obrnjen red; tuj id (ni tekma turnirja) se ne zapise
+        List<Long> obrnjen = List.of(samodejno.get(1), samodejno.get(0), 999_999L);
+        mize.nastaviVrstniRed(idTurnir, new VrstniRedTekemVnos(obrnjen));
+        MizeTurnirjaDto p = mize.pregled(idTurnir);
+        assertTrue(p.rocniVrstniRed());
+        assertEquals(List.of(samodejno.get(1), samodejno.get(0)),
+                p.kandidati().stream().map(k -> k.tekma().tekma().id()).toList());
+        assertEquals(samodejno.get(1), p.mize().get(0).predlogi().get(0));
+        assertEquals(List.of(samodejno.get(1), samodejno.get(0)), sveziTurnir(idTurnir).getVrstniRedTekem());
+
+        // prazen seznam: spet samodejno
+        mize.nastaviVrstniRed(idTurnir, new VrstniRedTekemVnos(List.of()));
+        assertFalse(mize.pregled(idTurnir).rocniVrstniRed());
+        assertEquals(samodejno, mize.pregled(idTurnir).kandidati().stream()
+                .map(k -> k.tekma().tekma().id()).toList());
+    }
+
     // ---------- dostop ----------
 
     @Test
@@ -286,6 +316,8 @@ class MizeStoritevTest extends IntegracijskiTest {
                 () -> mize.nastavi(turnir.getId(), new NastavitveMizVnos(2, List.of(), false, 3)));
         assertThrows(PrepovedanoIzjema.class, () -> mize.poklici(prvi.getId(), new KlicTekmeVnos(1, null, null)));
         assertThrows(PrepovedanoIzjema.class, () -> mize.preklici(prvi.getId()));
+        assertThrows(PrepovedanoIzjema.class,
+                () -> mize.nastaviVrstniRed(turnir.getId(), new VrstniRedTekemVnos(List.of(prvi.getId()))));
 
         prijava("lastnik-mize@test", "ROLE_ORGANIZATOR");
         mize.nastavi(turnir.getId(), new NastavitveMizVnos(2, List.of(), false, 3));
@@ -419,6 +451,12 @@ class MizeStoritevTest extends IntegracijskiTest {
         seja.flush();
         seja.clear();
         return tekmaRepozitorij.najdiZVsem(id).orElseThrow();
+    }
+
+    private Turnir sveziTurnir(Long id) {
+        seja.flush();
+        seja.clear();
+        return turnirRepozitorij.findById(id).orElseThrow();
     }
 
     private Dogodek ekipni() {

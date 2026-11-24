@@ -20,8 +20,8 @@ import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
-import type { MrezaDto, TekmaDto } from '../api/tipi'
-import { dogodkiApi, mizeApi, tekmeApi } from '../api/zahteve'
+import type { DogodekDto, MrezaDto, TekmaDto } from '../api/tipi'
+import { dogodkiApi, mizeApi, tekmeApi, turnirjiApi } from '../api/zahteve'
 import { MizeStran } from '../strani/MizeStran'
 import { MizeZaslonStran } from '../strani/MizeZaslonStran'
 import {
@@ -62,6 +62,10 @@ mizeApi.nastavi = async (_id, v) => {
     porazenecSodi: v.porazenecSodi,
     pocitekMin: v.pocitekMin,
   })
+}
+mizeApi.vrstniRed = async (_id, idjiTekem) => {
+  okno.__klici.push(['vrstniRed', idjiTekem])
+  drzava.s = { ...drzava.s, rocniRed: idjiTekem }
 }
 mizeApi.poklici = async (idTekme, v) => {
   okno.__klici.push(['poklici', idTekme, v])
@@ -106,6 +110,15 @@ dogodkiApi.mreza = async () => {
   } as unknown as MrezaDto
 }
 dogodkiApi.kodeListkov = async () => ({ sodnikiListki: null, kode: {} }) as never
+/* Kategorije v teku za gumb »Listki za tiskanje« (?listki=1 = ena kategorija, povezava). */
+turnirjiApi.dogodki = async () =>
+  (new URLSearchParams(window.location.search).get('listki') === '1'
+    ? [{ id: 7, ime: 'Člani', disciplina: 'POSAMICNO', dejanskiStatus: 'V_TEKU' }]
+    : [
+        { id: 7, ime: 'Člani', disciplina: 'POSAMICNO', dejanskiStatus: 'V_TEKU' },
+        { id: 8, ime: 'Članice', disciplina: 'POSAMICNO', dejanskiStatus: 'V_TEKU' },
+        { id: 9, ime: 'Ekipe', disciplina: 'EKIPNO', dejanskiStatus: 'V_TEKU' },
+      ]) as unknown as DogodekDto[]
 
 /* Tiska tu ni: zapiše se, koliko listkov in s katero mizo bi šlo na list. Z ?tisk=ostani se
    vsebnik po »tisku« ohrani v kopiji (preverba tiskalnega pogleda z emulacijo medija). */

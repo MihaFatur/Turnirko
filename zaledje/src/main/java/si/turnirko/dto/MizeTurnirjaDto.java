@@ -20,7 +20,9 @@ public record MizeTurnirjaDto(
         LocalDateTime casStreznika,
         List<MizaDto> mize,
         /* pripravljene tekme vseh kategorij v teku, po vrsti predloga */
-        List<KandidatDto> kandidati
+        List<KandidatDto> kandidati,
+        /* vrsto je uredil organizator (vsaj ena tekma vrste je v rocnem vrstnem redu) */
+        boolean rocniVrstniRed
 ) {
 
     /* tekma = kar se igra na mizi (prazno pri prosti in izklopljeni); prostaOd =

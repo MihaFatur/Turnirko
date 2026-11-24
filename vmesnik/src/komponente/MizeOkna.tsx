@@ -84,7 +84,9 @@ export function OknoKlica({
   )
   // ročno izbran sodnik ostane, ko organizator zamenja mizo
   const [sodnikRocno, nastaviSodnikRocno] = useState(klic.sprememba)
-  const [tisk, nastaviTisk] = useState(true)
+  /* Listki so natisnjeni vnaprej: tisk ob klicu je izjema, ki jo organizator odkljuka sam
+     (lastnik 24. 11. 2026). */
+  const [tisk, nastaviTisk] = useState(false)
 
   const osebe = useQuery({
     queryKey: ['turnir', idTurnirja, 'mize', 'osebe'],

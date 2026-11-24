@@ -13,19 +13,22 @@
    »Pokliči vse« se konča s sporočilom z razveljavitvijo (6 s). Telefon ima pomanjšan tloris
    (tapneš mizo, nato tekmo). */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { KandidatMizeDto, MizaDto, NastavitveMizVnos, TekmaMizeDto } from '../api/tipi'
-import { mizeApi } from '../api/zahteve'
+import type { KandidatMizeDto, MizaDto, MizeTurnirjaDto, NastavitveMizVnos, TekmaMizeDto } from '../api/tipi'
+import { mizeApi, turnirjiApi } from '../api/zahteve'
 import { GlavaDejanja, useNazaj } from '../komponente/GlavaTelefona'
+import { MeniDejanj } from '../komponente/MeniDejanj'
 import {
   CrnaVrstica,
   GlavaMize,
   SporociloZRazveljavitvijo,
   Tloris,
   VrstaTekem,
+  oznakaListkov,
   type DejanjaTloris,
+  type KategorijaListkov,
   type SporociloMize,
 } from '../komponente/MizeTloris'
 import { MaliTloris, NaslovTelefon, PodrobnostiMize, VrstaTelefon } from '../komponente/MizeTelefon'
@@ -89,12 +92,31 @@ export function MizeStran() {
   const koracnikZagona = useRef<HTMLButtonElement>(null)
 
   const kljuc = ['turnir', idTurnirja, 'mize']
+
+  /* Ročni vrstni red vrste (cela vrsta, kot jo vidi organizator; prazen = samodejni). */
+  const vrstniRed = useMutation({
+    mutationFn: ({ red }: { red: number[]; sporocilo: SporociloMize }) => mizeApi.vrstniRed(idTurnirja, red),
+    onSuccess: (_, { sporocilo }) => sporoci(sporocilo),
+    onSettled: () => osvezi(),
+  })
+
   const pregled = useQuery({
     queryKey: kljuc,
     queryFn: () => mizeApi.pregled(idTurnirja),
-    /* Med vlečenjem strežnik ne sprašuje: osvežitev bi zamenjala elemente pod kazalcem. */
-    refetchInterval: vlecem ? false : OSVEZITEV_MS,
+    /* Med vlečenjem in med shranjevanjem vrstnega reda strežnik ne sprašuje: osvežitev bi
+       zamenjala elemente pod kazalcem oziroma za hip vrnila stari vrstni red. */
+    refetchInterval: vlecem || vrstniRed.isPending ? false : OSVEZITEV_MS,
   })
+
+  /* Kategorije v teku za gumb »Listki za tiskanje« (stran Listki je po kategoriji). */
+  const dogodki = useQuery({
+    queryKey: ['turnir', idTurnirja, 'dogodki'],
+    queryFn: () => turnirjiApi.dogodki(idTurnirja),
+    staleTime: 60_000,
+  })
+  const kategorijeListkov: KategorijaListkov[] = (dogodki.data ?? [])
+    .filter((d) => d.dejanskiStatus === 'V_TEKU')
+    .map((d) => ({ id: d.id, ime: d.ime, ekipno: d.disciplina === 'EKIPNO' }))
 
   const tisk = useTiskListkov(pregled.data?.imeTurnirja ?? '')
 
@@ -209,8 +231,9 @@ export function MizeStran() {
           miza,
           miza2: t.ekipno ? drugaMizaEkipnega(prosteMize(podatki.mize), miza) : null,
           sodnik: privzetiSodnik(podatki.mize.find((m) => m.stevilka === miza), t),
-          /* Pri vlečenju se listek natisne vedno; ekipno srečanje ima zapisnik. */
-          tisk: !t.ekipno,
+          /* Listki so natisnjeni vnaprej (lastnik 24. 11. 2026: tisk ob klicu ni privzet);
+             listek z vpisano mizo natisne samo kljukica v oknu klica. */
+          tisk: false,
           sprememba: false,
         },
         kandidat,
@@ -237,7 +260,7 @@ export function MizeStran() {
   /* »Pokliči vse predloge«: zaporedni klici prvih predlogov prostih miz (vsak svoja
      preverba na strežniku); ob prvi napaki se ustavi in jo pokaže. Pred klici se stanje
      prebere znova: pokliče se samo par, ki je še vedno prvi predlog svoje mize (medtem je
-     lahko drug organizator koga poklical drugam). */
+     lahko drug organizator koga poklical drugam). Nič se ne tiska (lastnik 24. 11. 2026). */
   const klicVseh = useMutation({
     mutationFn: async (potrjeni: [MizaDto, KandidatMizeDto][]) => {
       const sveze = await mizeApi.pregled(idTurnirja)
@@ -267,19 +290,12 @@ export function MizeStran() {
       return poklicani
     },
     onSuccess: (poklicani) => {
-      const posamicni = poklicani.filter((p) => !p.tekma.ekipno)
       sporoci({
-        besedilo:
-          `Poklicanih ${poklicani.length} tekem` + (posamicni.length > 0 ? ` · ${posamicni.length} listkov v tisku` : ''),
+        besedilo: `Poklicanih ${poklicani.length} tekem`,
         razveljavi: () => {
           void Promise.all(poklicani.map((p) => mizeApi.preklici(p.tekma.tekma.id))).then(osvezi)
         },
       })
-      if (posamicni.length > 0) {
-        void tisk
-          .natisni(posamicni.map((p) => ({ idDogodka: p.tekma.idDogodka, idTekme: p.tekma.tekma.id, miza: p.miza })))
-          .catch(() => sporoci({ besedilo: 'Listkov ni bilo mogoče pripraviti. Natisneš jih lahko na strani Listki.' }))
-      }
     },
   })
 
@@ -384,10 +400,48 @@ export function MizeStran() {
   }
   const pokliciVse = () => klicVseh.mutate(pari)
 
+  /* Ročni vrstni red: vrsta se na zaslonu uredi takoj, strežnik shrani celo vrsto, kot jo
+     organizator vidi. Razveljavitev vrne prejšnji red (ali samodejnega, če je bil). */
+  const shraniVrsto = (red: number[], besedilo: string) => {
+    const prej = podatki.rocniVrstniRed ? podatki.kandidati.map((k) => k.tekma.tekma.id) : []
+    void odjemalec.cancelQueries({ queryKey: kljuc })
+    if (red.length > 0) {
+      odjemalec.setQueryData<MizeTurnirjaDto>(kljuc, (p) => {
+        if (!p) return p
+        const po = new Map(p.kandidati.map((k) => [k.tekma.tekma.id, k]))
+        return { ...p, rocniVrstniRed: true, kandidati: red.flatMap((id) => (po.has(id) ? [po.get(id)!] : [])) }
+      })
+    }
+    vrstniRed.mutate({
+      red,
+      sporocilo: {
+        besedilo,
+        razveljavi: () => {
+          void mizeApi.vrstniRed(idTurnirja, prej).then(osvezi)
+        },
+      },
+    })
+  }
+
+  const premakniVVrsti = (idTekme: number, mesto: number) => {
+    const red = podatki.kandidati.map((k) => k.tekma.tekma.id)
+    const i = red.indexOf(idTekme)
+    if (i < 0 || vrstniRed.isPending) return
+    const cilj = mesto > i ? mesto - 1 : mesto
+    if (cilj === i) return
+    red.splice(i, 1)
+    red.splice(cilj, 0, idTekme)
+    const t = podatki.kandidati[i].tekma
+    shraniVrsto(red, `${kratkoImenaTekme(t)}: ${cilj + 1}. na vrsti`)
+  }
+
+  const samodejniRed = () => shraniVrsto([], 'Vrsta je spet v samodejnem vrstnem redu')
+
   const postavi = () =>
     nastavi.mutate(() => ({ steviloMiz: zagonStevilo, izklopljeneMize: [], porazenecSodi: zagonPorazenec }))
 
-  const napake = klicKandidata.error ?? premik.error ?? klicVseh.error ?? nastavi.error ?? preklicKlica.error
+  const napake =
+    klicKandidata.error ?? premik.error ?? klicVseh.error ?? nastavi.error ?? preklicKlica.error ?? vrstniRed.error
 
   /* ---------- okna ---------- */
 
@@ -479,6 +533,24 @@ export function MizeStran() {
               Pokliči vse · {pari.length}
             </button>
           )}
+          {kategorijeListkov.length > 0 && (
+            <MeniDejanj naslov="Dejanja strani Mize">
+              {(zapri) =>
+                kategorijeListkov.map((k) => (
+                  <Link
+                    key={k.id}
+                    to={`/dogodki/${k.id}/listki`}
+                    role="menuitem"
+                    className="uporabnik-meni__postavka"
+                    onClick={zapri}
+                  >
+                    {oznakaListkov(k)}
+                    {kategorijeListkov.length > 1 ? ` · ${k.ime}` : ''}
+                  </Link>
+                ))
+              }
+            </MeniDejanj>
+          )}
         </GlavaDejanja>
         <section className="mize mize--telefon">
           <NaslovTelefon kazalniki={kazalniki} />
@@ -535,6 +607,7 @@ export function MizeStran() {
         imeTurnirja={podatki.imeTurnirja}
         ura={uraIzCasa(podatki.casStreznika)}
         kazalniki={kazalniki}
+        listki={kategorijeListkov}
       />
       {pregled.error && (
         <div className="mize__napake">
@@ -589,6 +662,10 @@ export function MizeStran() {
             dejanja={dejanja}
             naPreklopVseh={() => nastaviVseKartice(!vseKartice)}
             dogodkiVTeku={podatki.dogodkiVTeku}
+            vlecem={vlecem}
+            rocniRed={podatki.rocniVrstniRed}
+            naPremik={premakniVVrsti}
+            naSamodejno={samodejniRed}
           />
         </div>
       )}

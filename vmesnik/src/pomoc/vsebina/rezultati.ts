@@ -149,6 +149,7 @@ export const REZULTATI: Clanek[] = [
           'Listke natisni **po vklopu** stikala in **obojestransko**: vsak list dobi hrbtno stran s kodo, ki sodniku odpre stran za sodnike. Kodo na hrbtu lahko pred tiskom izklopiš, če tiskalnik ne tiska obojestransko.',
           'Sodnik lahko pošlje izid samo za listek, ki ga ima v roki: koda na listku nosi skrivnost tekme. Deluje samo z listki, natisnjenimi po 22. 11. 2026, in samo, dokler tekma nima izida. Listke natisni prijavljen.',
           'Predajo, brez boja, diskvalifikacijo in ekipne zapisnike sodnik ne vpiše – taki listki pridejo na pult kot doslej. Tudi papirni listek po tekmi vedno oddajo na pultu.',
+          'Številke, ki jih Turnirko ni prebral zanesljivo, so sodniku močno obarvane, nad tabelo pa piše, koliko jih je. Sodnik jih primerja z listkom in izid potrdi z enim gumbom **Obarvane sem preveril · Potrdi izid**; vsake posebej ne potrjuje.',
           'Če sodnik spremeni prebrano številko, je listek označen, da ga pogledaš.',
         ],
       },
@@ -198,7 +199,7 @@ export const REZULTATI: Clanek[] = [
     naslov: 'Mize in klicanje tekem',
     poglavje: 'rezultati',
     kratko:
-      'Na strani **Mize** vidiš tloris dvorane: kje se igra, katera miza je prosta in kako dolgo traja tekma. Tekmo **povlečeš z vrste na prosto mizo** (ali klikneš mizo); klic se zabeleži, natisne se listek z vpisano mizo, igralce pa pokličeš na glas.',
+      'Na strani **Mize** vidiš tloris dvorane: kje se igra, katera miza je prosta in kako dolgo traja tekma. Tekmo **povlečeš z vrste na prosto mizo** (ali klikneš mizo); klic se zabeleži, igralce pa pokličeš na glas. Vrstni red vrste lahko spremeniš z vlečenjem.',
     kljucne: [
       'miza',
       'klic',
@@ -216,6 +217,8 @@ export const REZULTATI: Clanek[] = [
       'naslednja tekma',
       'dvorana',
       'razpored',
+      'vrstni red',
+      'tisk',
     ],
     vsebina: [
       { tip: 'kje', pot: ['Turnir', 'Mize'] },
@@ -224,8 +227,9 @@ export const REZULTATI: Clanek[] = [
         postavke: [
           'Pri prvem odprtju vpiši **Koliko miz imaš?** in pritisni **Postavi N miz**. Mize so oštevilčene od 1 naprej, tako kot jih sodnik vpiše v okence na listku.',
           'Ko kategorija teče, ima vsaka prosta miza (modro črtkana) predlog naslednje tekme. Pritisni mizo in **Pokliči**, ali pa tekmo **povleci z vrste »Na vrsti« na prosto mizo**. Igralca pokliči na glas.',
-          'Ob klicu se natisne listek z že vpisano številko mize (v oknu klica ga lahko izklopiš). Spodaj se za 6 sekund pokaže sporočilo z gumbom **Razveljavi**.',
-          'Na začetku turnirja s **Pokliči vse predloge** zasedeš vse proste mize naenkrat.',
+          'Spodaj se za 6 sekund pokaže sporočilo z gumbom **Razveljavi**. Listki so natisnjeni vnaprej (gumb **Listki za tiskanje** v glavi strani); če želiš listek z že vpisano mizo, v oknu klica odkljukaj **Natisni listek z vpisano mizo**.',
+          'Na začetku turnirja s **Pokliči vse predloge** zasedeš vse proste mize naenkrat. Pri tem se nič ne tiska.',
+          'Vrstni red vrste **Na vrsti** spremeniš tako, da tekmo povlečeš na drugo mesto v vrsti (s tipkovnico: Alt + puščica gor ali dol). Proste mize dobijo predloge po tvojem vrstnem redu. Tekme, ki se pripravijo pozneje, pridejo na konec. **Samodejni vrstni red** vrne vrsto, kot jo predlaga Turnirko.',
           'Ko je tekma končana, klikni mizo in izberi zmagovalca in izid v nizih; točke po nizih vpišeš v naslednjem oknu. Izid lahko pošlje tudi sodnik s telefonom. Miza se sprosti sama, stran kratko pisne in mizo 30 sekund obarva zeleno.',
         ],
       },
@@ -263,7 +267,7 @@ export const REZULTATI: Clanek[] = [
       {
         tip: 'odstavek',
         besedilo:
-          'Predlog je samo predlog, odločiš vedno ti: na prosto mizo lahko povlečeš katero koli tekmo z vrste (tudi zasedeno, s sporočilom, kdo igra drugje). Razlogi predloga, na primer »do konca skupine še 3 kola« ali »zadnja tekma pred 1 min«, so v oknu klica. Desni stolpec **Na vrsti** tekme našteje po vrstnem redu predloga; številka ob tekmi je predlagana miza.',
+          'Predlog je samo predlog, odločiš vedno ti: na prosto mizo lahko povlečeš katero koli tekmo z vrste (tudi zasedeno, s sporočilom, kdo igra drugje). Razlogi predloga, na primer »do konca skupine še 3 kola« ali »zadnja tekma pred 1 min«, so v oknu klica. Desni stolpec **Na vrsti** tekme našteje po vrstnem redu predloga; številka ob tekmi je predlagana miza. Ko vrsto urediš sam, velja tvoj vrstni red, dokler ne izbereš **Samodejni vrstni red** (tudi počitek takrat ne premakne tekme; zasedena tekma ostane na svojem mestu, a mize ne dobi).',
       },
       {
         tip: 'razdelek',

@@ -50,6 +50,8 @@ export interface Stanje {
   vrsta: Tk[]
   rezerva: Tk[]
   klici: Klic[]
+  /* Ročni vrstni red vrste (id-ji tekem); prazen ali brez = samodejni. */
+  rocniRed?: number[]
 }
 
 const K = (id: number, a: string, b: string, kat: string, del: string, razlogi: string[] = [], ekipno = false): Tk => ({
@@ -414,7 +416,10 @@ export function tekmaDto(t: Tk, dodatno: { miza?: number | null; miza2?: number 
 }
 
 export function vDto(s: Stanje): MizeTurnirjaDto {
-  const kand = vrsta(s)
+  /* Ročni red kot na strežniku: tekme s seznama naprej v njegovem redu, ostale za njimi. */
+  const red = s.rocniRed ?? []
+  const mesto = (id: number) => (red.includes(id) ? red.indexOf(id) : Number.MAX_SAFE_INTEGER)
+  const kand = [...vrsta(s)].sort((a, b) => mesto(a.id) - mesto(b.id))
   const pred = predlogi(s)
   const mize: MizaDto[] = s.mize.map((m) => ({
     stevilka: m.st,
@@ -442,5 +447,6 @@ export function vDto(s: Stanje): MizeTurnirjaDto {
     casStreznika: cas(s.ura),
     mize,
     kandidati,
+    rocniVrstniRed: kandidati.some((k) => red.includes(k.tekma.tekma.id)),
   }
 }

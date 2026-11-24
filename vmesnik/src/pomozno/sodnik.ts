@@ -25,9 +25,9 @@ export function vrsticeSodnika(predlog: PredlogIzidaDto | null, steviloNizov: nu
   })
 }
 
-/* Mesta (niz × 2 + stran), ki jih mora sodnik potrditi z dotikom: negotove in
-   neprebrane celice ter celice neveljavnega niza - samo v nizih, ki so bili
-   odigrani (vrstica ni prazna). */
+/* Mesta (niz × 2 + stran), ki jih mora sodnik primerjati z listkom (obarvana,
+   opozorilo s številom): negotove in neprebrane celice ter celice neveljavnega
+   niza - samo v nizih, ki so bili odigrani (vrstica ni prazna). */
 export function celiceZaPotrditev(predlog: PredlogIzidaDto | null): Set<number> {
   const mesta = new Set<number>()
   predlog?.nizi.forEach((n, i) => {

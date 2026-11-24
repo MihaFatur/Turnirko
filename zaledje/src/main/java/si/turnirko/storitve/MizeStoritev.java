@@ -41,6 +41,7 @@ import si.turnirko.dto.MizeTurnirjaDto.OsebaDto;
 import si.turnirko.dto.MizeTurnirjaDto.TekmaMizeDto;
 import si.turnirko.dto.NastavitveMizVnos;
 import si.turnirko.dto.TekmaDto;
+import si.turnirko.dto.VrstniRedTekemVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
 import si.turnirko.izjeme.NeveljavenVnosIzjema;
 import si.turnirko.izjeme.NiNajdenoIzjema;
@@ -124,9 +125,31 @@ public class MizeStoritev {
                 .map(k -> new KandidatDto(vDto.apply(k.tekma()), k.zaseden(), k.razlogi()))
                 .toList();
         boolean vTeku = tekme.stream().anyMatch(t -> t.getDogodek().getStatus() == StatusTekmovanja.V_TEKU);
+        Set<Long> rocni = Set.copyOf(turnir.getVrstniRedTekem());
+        boolean rocniRed = rezultat.kandidati().stream().anyMatch(k -> rocni.contains(k.tekma().id()));
         return new MizeTurnirjaDto(turnir.getId(), turnir.getIme(), turnir.getSteviloMiz(),
                 List.copyOf(turnir.getIzklopljeneMize()), turnir.isPorazenecSodi(), turnir.getPocitekMin(),
-                vTeku, zdaj, mize, kandidati);
+                vTeku, zdaj, mize, kandidati, rocniRed);
+    }
+
+    /* Rocni vrstni red vrste »Na vrsti« (V77): organizator je tekmo povlekel na drugo
+       mesto, vmesnik poslje vrsto, kot jo je videl. Shranijo se samo tekme tega turnirja
+       (dogodki v teku in tekme, koncane danes - isti posnetek kot pregled), da tuj id ne
+       pride v zapis. Prazen seznam vrne samodejni vrstni red. */
+    @Transactional
+    public void nastaviVrstniRed(Long idTurnir, VrstniRedTekemVnos vnos) {
+        zaklepi.zakleni(Zaklepi.Vrsta.TURNIR, idTurnir);
+        lastnistvo.preveriTurnirPoId(idTurnir);
+        Turnir turnir = najdiTurnir(idTurnir);
+        List<Long> zeleni = vnos.idjiTekem() == null ? List.of() : vnos.idjiTekem();
+        // List.of(...).contains(null) vrze izjemo, zato pregled po elementih
+        if (zeleni.stream().anyMatch(Objects::isNull)) {
+            throw new NeveljavenVnosIzjema("Vrstni red tekem ne sme vsebovati praznih vnosov.");
+        }
+        Set<Long> tekmeTurnirja = tekmaRepozitorij
+                .zaMizeTurnirja(idTurnir, LocalDateTime.now().toLocalDate().atStartOfDay()).stream()
+                .map(Tekma::getId).collect(Collectors.toSet());
+        turnir.setVrstniRedTekem(zeleni.stream().filter(tekmeTurnirja::contains).distinct().toList());
     }
 
     /* Osebe, ki smejo soditi: igralci s prijavo na turnir (tudi soigralci para in
@@ -352,7 +375,8 @@ public class MizeStoritev {
 
     private static PredlogTekem.Nastavitve nastavitve(Turnir turnir) {
         return new PredlogTekem.Nastavitve(turnir.getSteviloMiz() == null ? 0 : turnir.getSteviloMiz(),
-                turnir.getIzklopljeneMize(), turnir.isPorazenecSodi(), turnir.getPocitekMin());
+                turnir.getIzklopljeneMize(), turnir.isPorazenecSodi(), turnir.getPocitekMin(),
+                turnir.getVrstniRedTekem());
     }
 
     private static OsebaDto oseba(PredlogTekem.Oseba o) {

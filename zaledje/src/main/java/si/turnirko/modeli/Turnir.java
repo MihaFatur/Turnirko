@@ -5,7 +5,9 @@ package si.turnirko.modeli;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -85,6 +87,10 @@ public class Turnir {
 
     @Column(name = "pocitek_min", nullable = false)
     private int pocitekMin = 3;
+
+    /* Rocni vrstni red vrste »Na vrsti« (V77): id-ji tekem "12,45,7", null = samodejni. */
+    @Column(name = "vrstni_red_tekem")
+    private String vrstniRedTekem;
 
     /* Od kod je turnir prisel (V27). Prazen = nastal je v Turnirku; sicer je
        uvozen in samo za branje (glej VirTekmovanja, LastnistvoStoritev). */
@@ -187,6 +193,27 @@ public class Turnir {
 
     public int getPocitekMin() { return pocitekMin; }
     public void setPocitekMin(int pocitekMin) { this.pocitekMin = pocitekMin; }
+
+    /* Rocni vrstni red tekem po vrsti; zapis pise samo MizeStoritev, tuj del se preskoci. */
+    public List<Long> getVrstniRedTekem() {
+        List<Long> red = new ArrayList<>();
+        if (vrstniRedTekem == null || vrstniRedTekem.isBlank()) {
+            return red;
+        }
+        for (String del : vrstniRedTekem.split(",")) {
+            try {
+                red.add(Long.parseLong(del.trim()));
+            } catch (NumberFormatException e) {
+                // zapis je samo nas; poskodovan del ne sme podreti strani Mize
+            }
+        }
+        return red;
+    }
+
+    public void setVrstniRedTekem(List<Long> red) {
+        this.vrstniRedTekem = red == null || red.isEmpty() ? null
+                : red.stream().distinct().map(String::valueOf).collect(Collectors.joining(","));
+    }
 
     public RavenTekmovanja getRaven() { return raven; }
     public void setRaven(RavenTekmovanja raven) { this.raven = raven; }

@@ -27,7 +27,9 @@
        (kdor se ni igral, caka najdlje);
    (6) dogodek, skupina (1, 2, 3 ...), pozicija, id - stalen vrstni red, da se
        predlog med osvezitvami ne premetava; v istem kolu gredo tekme po skupinah
-       kot na listkih (lastnik 23. 11. 2026). */
+       kot na listkih (lastnik 23. 11. 2026).
+   Ce je organizator vrsto uredil sam (rocni vrstni red), velja njegov red pred vsemi
+   merili (glej poRocnemRedu). */
 package si.turnirko.storitve;
 
 import java.time.Duration;
@@ -98,11 +100,18 @@ public final class PredlogTekem {
         }
     }
 
+    /* rocniRed = vrstni red vrste, ki ga je organizator nastavil s premikom tekme
+       (prazen = samodejni). */
     public record Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi,
-                             int pocitekMin) {
+                             int pocitekMin, List<Long> rocniRed) {
 
         public Nastavitve {
             izklopljene = Set.copyOf(izklopljene);
+            rocniRed = rocniRed == null ? List.of() : List.copyOf(rocniRed);
+        }
+
+        public Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi, int pocitekMin) {
+            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, List.of());
         }
     }
 
@@ -335,7 +344,26 @@ public final class PredlogTekem {
                     .thenComparing(o -> o.kandidat().tekma().skupina(), PredlogTekem::primerjajSkupini)
                     .thenComparing(o -> o.kandidat().tekma().pozicija())
                     .thenComparing(o -> o.kandidat().tekma().id()));
-            return ocene.stream().map(Ocena::kandidat).toList();
+            return poRocnemRedu(ocene.stream().map(Ocena::kandidat).toList());
+        }
+
+        /* (R) ROCNI VRSTNI RED (lastnik 24. 11. 2026): organizator tekmo v vrsti povlece
+           na drugo mesto in shrani se vrsta, kot jo je videl. Tekme s tega seznama gredo
+           naprej v njegovem vrstnem redu - tudi zasedene, ki jih razporeditev po mizah
+           tako ali tako preskoci, in ne glede na pocitek: kar je organizator uredil,
+           ostane, dokler ne izbere samodejnega reda. Tekme, ki jih na seznamu ni (pripravile
+           so se pozneje), sledijo v samodejnem vrstnem redu (stabilno razvrscanje). */
+        private List<Kandidat> poRocnemRedu(List<Kandidat> samodejno) {
+            if (nastavitve.rocniRed().isEmpty()) {
+                return samodejno;
+            }
+            Map<Long, Integer> mesto = new HashMap<>();
+            for (Long id : nastavitve.rocniRed()) {
+                mesto.putIfAbsent(id, mesto.size());
+            }
+            List<Kandidat> red = new ArrayList<>(samodejno);
+            red.sort(Comparator.comparing(k -> mesto.getOrDefault(k.tekma().id(), Integer.MAX_VALUE)));
+            return red;
         }
 
         /* Pripravljena tekma dogodka v teku z obema udelezencema; ekipna tekma, ki ze

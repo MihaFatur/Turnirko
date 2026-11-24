@@ -294,10 +294,15 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
   predlog sodnikov izid (`predlogSodnika`): pripravljen za en dotik, razen če je sodnik
   spremenil prebrano (opozorilo `SODNIK_SPREMENIL`) ali ima tekma izid že vpisan.
 - **Sodnikov zaslon**: zmagovalec z velikimi črkami (»Zmagal je … 3:1«), točke kot na
-  listku, negotove in neprebrane celice rjaste – **potrditi jih mora z dotikom**, prej
-  gumb »Potrdi« ne deluje (največja nevarnost poti je potrditev brez gledanja). Miza:
-  prebrana ali poklicana, negotova se potrdi z dotikom; razlika med prebrano in
-  poklicano je opozorilo.
+  listku, negotove in neprebrane celice ter negotova miza **močno obarvane** (debel
+  rjast rob, rjasto ozadje), nad tabelo opozorilo »Pozor: N negotovih številk. Obarvane
+  primerjaj z listkom in napačno popravi.«. **Vsake posebej sodnik ne potrjuje več**
+  (lastnik 24. 11. 2026: dotik vsake celice je bil zamuden; prej je bil gumb onemogočen,
+  dokler se ni dotaknil vseh). Gumb se pri negotovih glasi »Obarvane sem preveril ·
+  Potrdi izid«: sodnik s tem zagotovi, da je pogledal. Popravljena celica ni več
+  obarvana. Varovalka ostane na strežniku (`smeTakoj`): sprememba zanesljive celice ali
+  drug zmagovalec gre v predpregled. Miza: prebrana ali poklicana; razlika med prebrano
+  in poklicano je opozorilo.
 
 ## Vrsta brez signala (F5, 22. 11. 2026, V73)
 

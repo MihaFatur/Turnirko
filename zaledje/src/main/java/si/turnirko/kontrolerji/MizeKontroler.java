@@ -21,6 +21,7 @@ import jakarta.validation.Valid;
 import si.turnirko.dto.KlicTekmeVnos;
 import si.turnirko.dto.MizeTurnirjaDto;
 import si.turnirko.dto.NastavitveMizVnos;
+import si.turnirko.dto.VrstniRedTekemVnos;
 import si.turnirko.storitve.MizeStoritev;
 
 @RestController
@@ -49,6 +50,13 @@ public class MizeKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void nastavi(@PathVariable Long id, @Valid @RequestBody NastavitveMizVnos vnos) {
         storitev.nastavi(id, vnos);
+    }
+
+    /* Rocni vrstni red vrste »Na vrsti«; prazen seznam vrne samodejni red. */
+    @PutMapping("/api/v1/turnirji/{id}/mize/vrstni-red")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void vrstniRed(@PathVariable Long id, @Valid @RequestBody VrstniRedTekemVnos vnos) {
+        storitev.nastaviVrstniRed(id, vnos);
     }
 
     @PutMapping("/api/v1/tekme/{id}/klic")

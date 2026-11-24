@@ -12,7 +12,11 @@
   strani** (glej »Vmesnik«): samo za organizatorja in admina, odpre se v novem oknu v isti
   seji, bere isti klic kot stran Mize (zaledja ni treba spreminjati).
 - Listki se tiskajo vnaprej, mizo v okence vpiše sodnik. Ob klicu na strani Mize se lahko
-  natisne tudi listek z že vpisano mizo.
+  natisne tudi listek z že vpisano mizo, a samo, če organizator to odkljuka v oknu klica
+  (privzeto izklopljeno; vlečenje, telefon in »Pokliči vse« ne tiskajo; lastnik
+  24. 11. 2026). Do strani Listki za tiskanje vodi gumb v glavi strani Mize.
+- **Vrstni red vrste »Na vrsti« sme organizator urediti sam** (lastnik 24. 11. 2026,
+  V77, glej »Ročni vrstni red«).
 - **Poraženec prejšnje tekme na isti mizi sodi naslednjo.** To je nastavitev turnirja
   (`turnir.porazenec_sodi`). Ob klicu je poraženec predlagan, organizator ga lahko
   zamenja ali odstrani. Po tekmi dvojic sodnika ne predlaga nihče.
@@ -112,6 +116,19 @@
   - od tedaj ni bil poklican (ne kot igralec ne kot sodnik).
 
   Ob klicu tekme, v kateri igra, ni predlagan.
+- **Ročni vrstni red (V77, `turnir.vrstni_red_tekem`, besedilo »12,45,7«):** ko
+  organizator kartico v vrsti povleče na drugo mesto (ali Alt + ↑/↓), vmesnik pošlje
+  `PUT /api/v1/turnirji/{id}/mize/vrstni-red {idjiTekem}` s **celo vrsto, kot jo vidi**.
+  Shranijo se samo tekme tega turnirja (isti posnetek kot pregled). `PredlogTekem`
+  (`poRocnemRedu`) tekme s seznama postavi naprej v tem redu **pred vsemi merili**
+  (tudi pred zasedenostjo in počitkom: kar je organizator uredil, ostane), tekme brez
+  mesta (pripravile so se pozneje) sledijo v samodejnem redu. Zasedena tekma ostane na
+  svojem mestu, mize pa ne dobi (razporeditev po mizah jo preskoči). Prazen seznam vrne
+  samodejni red (gumb »Samodejni vrstni red«). `MizeTurnirjaDto.rocniVrstniRed` pove,
+  ali je vsaj ena tekma vrste v ročnem redu. Zavestna izbira: cela vrsta namesto
+  »pripetih« tekem, ker je tako vrsta po premiku natanko taka, kot jo je organizator
+  videl; cena je, da počitek urejenih tekem ne premika več. Zaslon za igralce bere isti
+  vrstni red.
 - **Razporeditev po mizah:** vsaka prosta miza dobi svoj prvi predlog. Najprej pridejo
   na vrsto mize, kjer poraženec čaka na sojenje (prej sproščena prej), nato ostale po
   številki. Dve mizi nimata istega prvega predloga in ne tekem z isto osebo. Tudi
@@ -130,11 +147,16 @@ Po predaji `design_handoff_mize_tloris` (smer 1b). Komponente: `komponente/MizeT
   `MEJA_PREDOLGO_MIN` v `pomozno/mize.ts`; rjasta črta + minute v znački; ne velja za ekipno),
   izklopljena (šrafirana), tarča (med vlečenjem). Ekipno srečanje je ena enota čez dve mizi.
 - **Vlečenje (HTML5):** kartica vrste → prosta miza = klic (sodnik po pravilu »poraženec sodi«,
-  druga miza ekipnega = sosednja prosta, listek se natisne); zasedena miza → prosta miza = premik
-  (sodnik ostane). Med vlečenjem se osveževanje (4 s) ustavi in elementi se ne zamenjujejo (samo
+  druga miza ekipnega = sosednja prosta, brez tiska); kartica vrste → drugo mesto v vrsti = ročni
+  vrstni red (modra črta med karticami, zgornja polovica kartice = pred njo; s tipkovnico
+  Alt + ↑/↓; vrsta se uredi takoj, osveževanje počaka na shranjevanje; sporočilo z
+  razveljavitvijo vrne prejšnji red); zasedena miza → prosta miza = premik (sodnik ostane). Med vlečenjem se osveževanje (4 s) ustavi in elementi se ne zamenjujejo (samo
   razred). Isto je mogoče s klikom in tipkovnico (Enter, presledek): prosta miza s predlogom ali
   kartica → okno klica, zasedena miza → okno izida.
-- **Sporočilo z razveljavitvijo** (6 s) po klicu, »Pokliči vse« in premiku; izid razveljavitve nima.
+- **Sporočilo z razveljavitvijo** (6 s) po klicu, »Pokliči vse«, premiku in spremembi vrstnega
+  reda; izid razveljavitve nima.
+- **Listki za tiskanje** (glava): ena kategorija v teku = povezava na `/dogodki/:id/listki`,
+  več = spustni meni kategorij (ekipna: zapisniki); na telefonu v meniju »⋯«.
 - **Okno izida** izbere zmagovalca in izid v nizih, shranjevanje pa teče v `VnosRezultataOkno` z
   že izbranim izidom (odločitev lastnika, 24. 11. 2026: točke po nizih lahko odločijo o vrstnem
   redu v skupini, zato hitrega shranjevanja brez njih ni). Okno vsebuje tudi »Zamenjaj sodnika«
@@ -143,7 +165,8 @@ Po predaji `design_handoff_mize_tloris` (smer 1b). Komponente: `komponente/MizeT
   »+ Miza« in »− Odstrani zadnjo« (ne, dokler se na zadnji igra); Poraženec sodi, **Počitek**
   (0–30 min) in **Pisk ob prosti mizi** (`localStorage`, udobje prenosnika) so v drugi vrstici
   črne vrstice. Vse gre skozi `mizeApi.nastavi` (stanje se prebere znova pred vsako spremembo).
-- **Listek ob klicu** (`MizeListekTisk`): skrit natisljiv vsebnik v portalu + `window.print()`;
+- **Listek ob klicu** (`MizeListekTisk`, samo s kljukico v oknu klica, privzeto izklopljeno):
+  skrit natisljiv vsebnik v portalu + `window.print()`;
   podatki iz žreba dogodka kot na strani Listki, miza v okencu je klicana miza. Sled tiska
   (»natisnjeno«) se NE zapisuje (potrdi jo organizator na strani Listki). **Ekipno srečanje ima
   zapisnik, ki se ob klicu ne tiska samodejno** (zapisnik odpre »Odpri zapisnik«).

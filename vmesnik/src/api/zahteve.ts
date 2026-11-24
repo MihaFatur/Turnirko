@@ -313,6 +313,10 @@ export const mizeApi = {
   osebe: (idTurnir: number) => api.vrni<OsebaMizeDto[]>(`/turnirji/${idTurnir}/mize/osebe`),
   nastavi: (idTurnir: number, vnos: NastavitveMizVnos) =>
     api.posodobi<void>(`/turnirji/${idTurnir}/mize`, vnos),
+  /* Ročni vrstni red vrste »Na vrsti« (cela vrsta, kot jo vidi organizator); prazen
+     seznam vrne samodejni red. */
+  vrstniRed: (idTurnir: number, idjiTekem: number[]) =>
+    api.posodobi<void>(`/turnirji/${idTurnir}/mize/vrstni-red`, { idjiTekem }),
   /* Klic na mizo; isti klic tekmo premakne ali zamenja sodnika. */
   poklici: (idTekme: number, vnos: KlicTekmeVnos) => api.posodobi<void>(`/tekme/${idTekme}/klic`, vnos),
   preklici: (idTekme: number) => api.izbrisi(`/tekme/${idTekme}/klic`),

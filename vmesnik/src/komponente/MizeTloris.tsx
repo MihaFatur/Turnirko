@@ -10,11 +10,12 @@
    vlečenjem stran ne sprašuje strežnika, sicer bi osvežitev zamenjala element pod kazalcem
    in `dragleave` bi utripal; otroci tarče so zato tudi brez dogodkov kazalca (CSS).
    Klik ima enako pot brez vlečenja (tipkovnica: Enter in presledek). */
-import { type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { KandidatMizeDto, MizaDto, MizeTurnirjaDto, TekmaMizeDto } from '../api/tipi'
 import { Namig } from '../pomoc/Namig'
+import { MeniDejanj } from './MeniDejanj'
 import {
   MEJA_PREDOLGO_MIN,
   imenaTekme,
@@ -71,17 +72,63 @@ export interface DejanjaTloris {
 
 /* ---------- glava strani ---------- */
 
+/* Kategorija v teku, za katero se tiskajo listki (ekipna: zapisniki). */
+export interface KategorijaListkov {
+  id: number
+  ime: string
+  ekipno: boolean
+}
+
+/* Isti naslov kot na strani kategorije: ekipni dogodek tiska zapisnike. */
+export function oznakaListkov(k: KategorijaListkov) {
+  return k.ekipno ? 'Zapisniki za tiskanje' : 'Listki za tiskanje'
+}
+
+/* Pot do strani »Listki za tiskanje« (izbira listkov po sklopih) brez poti čez kategorijo:
+   ena kategorija v teku je povezava, več jih je v spustnem meniju. */
+function ListkiZaTiskanje({ kategorije }: { kategorije: KategorijaListkov[] }) {
+  if (kategorije.length === 0) return null
+  if (kategorije.length === 1) {
+    return (
+      <Link to={`/dogodki/${kategorije[0].id}/listki`} className="mize__zaslon-povezava">
+        {oznakaListkov(kategorije[0])}
+      </Link>
+    )
+  }
+  return (
+    <MeniDejanj naslov="Listki za tiskanje po kategorijah" oznaka="Listki za tiskanje" razred="mize__zaslon-povezava mize__listki">
+      {(zapri) =>
+        kategorije.map((k) => (
+          <Link
+            key={k.id}
+            to={`/dogodki/${k.id}/listki`}
+            role="menuitem"
+            className="uporabnik-meni__postavka"
+            onClick={zapri}
+          >
+            {k.ime}
+            {k.ekipno ? ' · zapisniki' : ''}
+          </Link>
+        ))
+      }
+    </MeniDejanj>
+  )
+}
+
 export function GlavaMize({
   idTurnirja,
   imeTurnirja,
   ura,
   kazalniki,
+  listki,
 }: {
   idTurnirja: number
   imeTurnirja: string
   ura: string
   /* Samo, ko so mize nastavljene. */
   kazalniki?: { proste: number; vIgri: number; naVrsti: number }
+  /* Kategorije v teku (gumb »Listki za tiskanje«). */
+  listki: KategorijaListkov[]
 }) {
   return (
     <div className="mize__glava">
@@ -105,6 +152,7 @@ export function GlavaMize({
             <Kazalnik vrednost={kazalniki.naVrsti} oznaka="na vrsti" />
           </div>
         )}
+        <ListkiZaTiskanje kategorije={listki} />
         {/* Zaslon za igralce je ločena stran celega zaslona; odpre se v novem oknu (drugi zaslon). */}
         <a
           className="mize__zaslon-povezava"
@@ -534,6 +582,9 @@ function PravokotnikIgre({
 /* Najvec toliko kartic je vidnih, dokler organizator ne pokaže vseh. */
 export const NAJVEC_KARTIC = 10
 
+/* Vrsta »Na vrsti«. Kartico organizator povleče na prosto mizo (klic) ali na drugo mesto v
+   vrsti (ročni vrstni red, lastnik 24. 11. 2026); s tipkovnico Alt + ↑ / ↓. Mesto vstavitve
+   je med karticami: zgornja polovica kartice pomeni »pred njo«, spodnja »za njo«. */
 export function VrstaTekem({
   kandidati,
   predlagane,
@@ -541,6 +592,10 @@ export function VrstaTekem({
   dejanja,
   naPreklopVseh,
   dogodkiVTeku,
+  vlecem,
+  rocniRed,
+  naPremik,
+  naSamodejno,
 }: {
   kandidati: KandidatMizeDto[]
   /* Id tekme → miza, za katero je tekma prvi predlog. */
@@ -550,8 +605,43 @@ export function VrstaTekem({
   naPreklopVseh: () => void
   /* Ali kakšna kategorija turnirja teče (sicer vrsta ne more imeti tekem). */
   dogodkiVTeku: boolean
+  vlecem: Vlecem
+  /* Vrsto je uredil organizator (sicer samodejni vrstni red strežnika). */
+  rocniRed: boolean
+  /* Tekmo postavi na mesto `mesto` (indeks vstavitve v trenutni vrsti, 0 = na vrh). */
+  naPremik: (idTekme: number, mesto: number) => void
+  naSamodejno: () => void
 }) {
   const vidni = vse ? kandidati : kandidati.slice(0, NAJVEC_KARTIC)
+  const [mesto, nastaviMesto] = useState<number | null>(null)
+  const seznam = useRef<HTMLOListElement>(null)
+  /* Po premiku s tipkovnico ostane fokus na premaknjeni kartici (React jo pri
+     preurejanju premakne v drevesu in brskalnik ji fokus vzame). */
+  const fokus = useRef<number | null>(null)
+  useEffect(() => {
+    if (fokus.current === null) return
+    const el = seznam.current?.querySelector<HTMLElement>(`[data-tekma="${fokus.current}"]`)
+    if (el && document.activeElement !== el) el.focus()
+    fokus.current = null
+  }, [kandidati])
+
+  const vlecemKartico = vlecem?.tip === 'k' ? vlecem.id : null
+  const indeksVlecene = vlecemKartico === null ? -1 : kandidati.findIndex((k) => k.tekma.tekma.id === vlecemKartico)
+  /* Spust na isto mesto ni premik: kazalnika ni. */
+  const brezUcinka = (m: number) => indeksVlecene >= 0 && (m === indeksVlecene || m === indeksVlecene + 1)
+  const cilj = mesto !== null && !brezUcinka(mesto) ? mesto : null
+  useEffect(() => {
+    if (vlecemKartico === null) nastaviMesto(null)
+  }, [vlecemKartico])
+
+  const premakniSTipko = (i: number, smer: -1 | 1) => {
+    const id = kandidati[i].tekma.tekma.id
+    const nov = smer < 0 ? i - 1 : i + 2
+    if (nov < 0 || nov > kandidati.length) return
+    fokus.current = id
+    naPremik(id, nov)
+  }
+
   return (
     <aside className="mize__vrsta">
       <div className="mize__vrsta-glava">
@@ -559,14 +649,58 @@ export function VrstaTekem({
         <span className="mize__vrsta-stevec">{kandidati.length}</span>
       </div>
       <p className="mize__vrsta-namig">
-        Primi tekmo in jo spusti na prosto mizo. Številka desno je predlagana miza.
+        Primi tekmo in jo spusti na prosto mizo ali na drugo mesto v vrsti. Številka desno je predlagana miza.
       </p>
-      <ol className="mize__vrsta-seznam">
-        {vidni.map((k) => (
-          <li key={k.tekma.tekma.id}>
-            <KarticaKandidata kandidat={k} miza={predlagane.get(k.tekma.tekma.id)} dejanja={dejanja} />
-          </li>
-        ))}
+      {rocniRed && (
+        <p className="mize__vrsta-rocno">
+          <span>Vrstni red si uredil ročno.</span>
+          <button type="button" className="mize__vrsta-samodejno" onClick={naSamodejno}>
+            Samodejni vrstni red
+          </button>
+        </p>
+      )}
+      <ol
+        className="mize__vrsta-seznam"
+        ref={seznam}
+        onDragLeave={(d) => {
+          if (!d.currentTarget.contains(d.relatedTarget as Node | null)) nastaviMesto(null)
+        }}
+      >
+        {vidni.map((k, i) => {
+          const id = k.tekma.tekma.id
+          const razred =
+            cilj === i ? ' mize__vrsta-mesto--pred' : cilj === i + 1 && i === vidni.length - 1 ? ' mize__vrsta-mesto--za' : ''
+          return (
+            <li
+              key={id}
+              className={'mize__vrsta-mesto' + razred}
+              onDragOver={(d) => {
+                if (vlecemKartico === null) return
+                d.preventDefault()
+                d.dataTransfer.dropEffect = 'move'
+                const r = d.currentTarget.getBoundingClientRect()
+                const m = d.clientY < r.top + r.height / 2 ? i : i + 1
+                if (m !== mesto) nastaviMesto(m)
+              }}
+              onDrop={(d) => {
+                if (vlecemKartico === null) return
+                d.preventDefault()
+                const r = d.currentTarget.getBoundingClientRect()
+                const m = d.clientY < r.top + r.height / 2 ? i : i + 1
+                nastaviMesto(null)
+                dejanja.konecVlecenja()
+                if (!brezUcinka(m)) naPremik(vlecemKartico, m)
+              }}
+            >
+              <KarticaKandidata
+                kandidat={k}
+                miza={predlagane.get(id)}
+                dejanja={dejanja}
+                naTipko={(smer) => premakniSTipko(i, smer)}
+              />
+            </li>
+          )
+        })}
       </ol>
       {kandidati.length === 0 && (
         <p className="mize__vrsta-namig">
@@ -588,19 +722,33 @@ function KarticaKandidata({
   kandidat,
   miza,
   dejanja,
+  naTipko,
 }: {
   kandidat: KandidatMizeDto
   miza: number | undefined
   dejanja: DejanjaTloris
+  /* Alt + ↑ / ↓: premik za eno mesto v vrsti. */
+  naTipko: (smer: -1 | 1) => void
 }) {
   const t = kandidat.tekma
+  const poklici = () => dejanja.poklici(kandidat, miza ?? null)
   return (
     <div
       className={'mize__kandidat' + (kandidat.zaseden ? ' mize__kandidat--zaseden' : '')}
+      data-tekma={t.tekma.id}
       draggable
       onDragStart={(d) => zacniVlecenje(d, { tip: 'k', id: t.tekma.id }, dejanja.zacniVlecenje)}
       onDragEnd={dejanja.konecVlecenja}
-      {...klikljivo(`${imenaTekme(t)}. Pokliči na mizo`, () => dejanja.poklici(kandidat, miza ?? null))}
+      {...klikljivo(`${imenaTekme(t)}. Pokliči na mizo. Alt in puščica gor ali dol premakne tekmo v vrsti`, poklici)}
+      onKeyDown={(d) => {
+        if (d.altKey && (d.key === 'ArrowUp' || d.key === 'ArrowDown')) {
+          d.preventDefault()
+          naTipko(d.key === 'ArrowUp' ? -1 : 1)
+        } else if (d.target === d.currentTarget && (d.key === 'Enter' || d.key === ' ')) {
+          d.preventDefault()
+          poklici()
+        }
+      }}
     >
       <span className="mize__rocaj" aria-hidden="true">
         ⋮⋮

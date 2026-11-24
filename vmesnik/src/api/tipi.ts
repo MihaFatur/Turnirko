@@ -3578,6 +3578,8 @@ export interface MizeTurnirjaDto {
   mize: MizaDto[]
   /* pripravljene tekme vseh kategorij v teku, po vrsti predloga */
   kandidati: KandidatMizeDto[]
+  /* vrsto je uredil organizator (V77); sicer samodejni vrstni red */
+  rocniVrstniRed: boolean
 }
 
 export interface NastavitveMizVnos {

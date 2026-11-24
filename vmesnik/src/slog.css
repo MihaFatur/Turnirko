@@ -33134,10 +33134,26 @@ html.uvod-tece {
 }
 
 /* Številka, ki jo mora sodnik pogledati na listku (negotova ali neprebrana). */
+/* Negotova številka: sodnik je ne potrjuje z dotikom (lastnik 24. 11. 2026), zato mora
+   biti na prvi pogled drugačna od ostalih - debel rjast rob in rjasto ozadje. */
 .sodnik__polje--preveri {
-  border-color: var(--barva-negativna);
+  border: 3px solid var(--barva-negativna);
   background: var(--barva-negativna-mehko);
   color: var(--barva-negativna-tekst);
+}
+
+/* Opozorilo nad tabelo: koliko številk ni zanesljivih in kaj naj sodnik naredi. */
+.sodnik__negotove {
+  margin: 0;
+  padding: var(--r2);
+  border-left: 6px solid var(--barva-negativna);
+  background: var(--barva-negativna-mehko);
+  color: var(--barva-negativna-tekst);
+  font: 600 var(--tip-uvod) / 1.4 var(--pisava-telo);
+}
+
+.sodnik__negotove strong {
+  font-weight: 800;
 }
 
 .sodnik__miza {
@@ -33999,6 +34015,66 @@ html.uvod-tece {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
+}
+
+/* Ročni vrstni red vrste (24. 11. 2026): kartico povlečeš na drugo mesto; mesto vstavitve
+   je modra črta na sredini razmika (10 px) med karticami. */
+.mize__vrsta-mesto {
+  position: relative;
+}
+
+.mize__vrsta-mesto--pred::before,
+.mize__vrsta-mesto--za::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--barva-glavna);
+  pointer-events: none;
+}
+
+.mize__vrsta-mesto--pred::before {
+  top: -7px;
+}
+
+.mize__vrsta-mesto--za::after {
+  bottom: -7px;
+}
+
+.mize__vrsta-rocno {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--barva-crnilo-2);
+}
+
+.mize__vrsta-samodejno {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--barva-glavna-tekst);
+  font: 500 12px / 1.4 var(--pisava-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Gumb »Listki za tiskanje« v glavi strani Mize: isti videz kot »Zaslon za igralce«;
+   pri več kategorijah v teku odpre spustni meni kategorij. */
+.mize__listki {
+  background: none;
+  cursor: pointer;
+}
+
+.mize__listki:hover {
+  border-color: var(--barva-glavna);
+  color: var(--barva-glavna-tekst);
 }
 
 /* --- Sporočilo z razveljavitvijo --- */

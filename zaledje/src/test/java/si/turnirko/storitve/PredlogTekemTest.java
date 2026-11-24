@@ -381,6 +381,41 @@ class PredlogTekemTest {
         assertEquals(3, miza(r, 1).predlogi().size());
     }
 
+    // ---------- rocni vrstni red ----------
+
+    /* Organizator je vrsto uredil: njegove tekme gredo naprej v njegovem redu, tudi pred
+       zaostalim kolom; tekma, ki je na seznamu ni (pripravila se je pozneje), za njimi.
+       Mize dobijo predloge po tem redu. */
+    @Test
+    void rocniVrstniRedVeljaPredSamodejnim() {
+        Tekma prvoKolo = t(1).kolo(1).igralca(1, 2).v();
+        Tekma drugoKolo = t(2).kolo(2).igralca(3, 4).v();
+        Tekma nova = t(3).kolo(1).igralca(5, 6).v();
+        Nastavitve n = new Nastavitve(1, Set.of(), false, 3, List.of(2L, 1L, 99L));
+
+        Rezultat r = izracunaj(n, prvoKolo, drugoKolo, nova);
+
+        assertEquals(List.of(2L, 1L, 3L), idji(r));
+        assertEquals(2L, miza(r, 1).predlogi().get(0));
+        // brez rocnega reda: samodejno
+        assertEquals(List.of(1L, 3L, 2L), idji(izracunaj(nast(1), prvoKolo, drugoKolo, nova)));
+    }
+
+    /* Zasedena tekma ostane na mestu, ki ji ga je dal organizator, a mize ne dobi. */
+    @Test
+    void rocniVrstniRedNePredlagaZasedenih() {
+        Tekma igra = t(1).igralca(1, 2).vIgri(1).v();
+        Tekma zNjim = t(2).igralca(1, 3).v();
+        Tekma prosta = t(3).igralca(4, 5).v();
+        Nastavitve n = new Nastavitve(2, Set.of(), false, 3, List.of(2L, 3L));
+
+        Rezultat r = izracunaj(n, igra, zNjim, prosta);
+
+        assertEquals(List.of(2L, 3L), idji(r));
+        assertTrue(kandidat(r, 2).zaseden());
+        assertEquals(List.of(3L), miza(r, 2).predlogi());
+    }
+
     @Test
     void sklanjanjeKol() {
         assertEquals("kolo", PredlogTekem.kol(1));

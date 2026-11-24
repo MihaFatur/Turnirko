@@ -11,9 +11,11 @@
    na pultu, F5); po ~20 s sodnik izve, naj listek odda na pultu. Če fotografija
    pride pozneje, jo organizator vidi kot nepotrjeno.
 
-   Sodnik vpiše samo odigrano tekmo s točkami. Negotove celice mora potrditi z
-   dotikom: »Potrdi« brez gledanja je največja nevarnost te poti (otroci sodijo
-   tudi sami). Zmagovalec je zato napisan z velikimi črkami. */
+   Sodnik vpiše samo odigrano tekmo s točkami. »Potrdi« brez gledanja je največja
+   nevarnost te poti (otroci sodijo tudi sami), zato so negotove celice močno
+   obarvane, nad tabelo je opozorilo s številom, gumb pa se glasi »Obarvane sem
+   preveril«. Vsake posebej sodnik ne potrjuje več (lastnik 24. 11. 2026: dotik
+   vsake celice je bil zamuden). Zmagovalec je napisan z velikimi črkami. */
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
@@ -242,13 +244,18 @@ function Potrditev({
     vrsticeSodnika(branje.predlog, branje.steviloNizov),
   )
   const zaPotrditev = celiceZaPotrditev(branje.predlog)
-  const [preverjene, nastaviPreverjene] = useState<Set<number>>(() => new Set())
+  /* Celice, ki jih je sodnik popravil: niso več obarvane (vrednost je njegova). */
+  const [popravljene, nastaviPopravljene] = useState<Set<number>>(() => new Set())
   const [miza, nastaviMizo] = useState(String(branje.prebranaMiza ?? branje.poklicanaMiza ?? ''))
-  const [mizaPreverjena, nastaviMizaPreverjena] = useState(!branje.negotovaMiza)
+  const [mizaPopravljena, nastaviMizaPopravljena] = useState(false)
 
   const izid = izidSodnika(vrstice, branje.steviloNizov)
   const prebranaMiza = mizaIzPolja(miza)
-  const manjka = [...zaPotrditev].filter((m) => !preverjene.has(m)).length + (mizaPreverjena ? 0 : 1)
+  /* Negotove številke sodnik primerja z listkom, a jih ne potrjuje vsake posebej (lastnik
+     24. 11. 2026: dotik vsake je bil zamuden). Opozorilo je zato očitno, gumb pa pove, da
+     s potrditvijo sodnik zagotavlja, da je obarvane pogledal. */
+  const negotovih =
+    [...zaPotrditev].filter((m) => !popravljene.has(m)).length + (branje.negotovaMiza && !mizaPopravljena ? 1 : 0)
 
   const potrditev = useMutation({
     mutationFn: () => sodnikApi.potrdi(branje.id, zeton, izid.vnos!, prebranaMiza.miza),
@@ -259,11 +266,11 @@ function Potrditev({
     return <Napaka sporocilo="Izid te tekme je že vpisan. Listek oddaj na pultu." gumb={gumbZnova} />
   }
 
-  const preveri = (mesto: number) => nastaviPreverjene((p) => (p.has(mesto) ? p : new Set(p).add(mesto)))
   const spremeni = (i: number, stran: 1 | 2, vrednost: string) => {
     const cisto = vrednost.replace(/\D/g, '').slice(0, 2)
     nastaviVrstice((v) => v.map((r, j) => (j !== i ? r : stran === 1 ? { ...r, tocke1: cisto } : { ...r, tocke2: cisto })))
-    preveri(i * 2 + stran - 1)
+    const mesto = i * 2 + stran - 1
+    nastaviPopravljene((p) => (p.has(mesto) ? p : new Set(p).add(mesto)))
   }
   // opozorila strežnika (npr. več listkov na sliki); celice so obarvane posebej
   const opozorila = (branje.predlog?.opozorila ?? []).filter((o) => !o.startsWith('Ta tekma ima izid'))
@@ -273,7 +280,7 @@ function Potrditev({
   return (
     <form className="sodnik__potrditev" onSubmit={(e) => {
       e.preventDefault()
-      if (izid.vnos && manjka === 0 && prebranaMiza.veljavna) potrditev.mutate()
+      if (izid.vnos && prebranaMiza.veljavna) potrditev.mutate()
     }}>
       <p className="sodnik__tekma">
         {branje.dogodek}{branje.del ? ` · ${branje.del}` : ''}
@@ -283,8 +290,11 @@ function Potrditev({
           ? besediloZmagovalca(izid.dobljeni, branje.igralec1, branje.igralec2)
           : 'Preveri točke'}
       </p>
-      {zaPotrditev.size > 0 && (
-        <p className="sodnik__navodilo">Obarvane številke primerjaj z listkom in se jih dotakni.</p>
+      {negotovih > 0 && (
+        <p className="sodnik__negotove" role="alert">
+          <strong>Pozor: {negotovih} {negotoveStevilke(negotovih)}.</strong> Obarvane primerjaj z listkom in
+          napačno popravi.
+        </p>
       )}
       {opozorila.map((o) => <p key={o} className="sodnik__opozorilo">{o}</p>)}
 
@@ -294,23 +304,21 @@ function Potrditev({
         <span />
         <span className="sodnik__ime">{branje.igralec2}</span>
         {vrstice.map((r, i) => (
-          <Vrstica key={i} i={i} r={r} zaPotrditev={zaPotrditev} preverjene={preverjene}
-            onSpremeni={spremeni} onPreveri={preveri} />
+          <Vrstica key={i} i={i} r={r} zaPotrditev={zaPotrditev} popravljene={popravljene} onSpremeni={spremeni} />
         ))}
       </div>
 
       <label className="sodnik__miza">
         Miza
         <input
-          className={'sodnik__polje' + (!mizaPreverjena ? ' sodnik__polje--preveri' : '')}
+          className={'sodnik__polje' + (branje.negotovaMiza && !mizaPopravljena ? ' sodnik__polje--preveri' : '')}
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={2}
           value={miza}
-          onFocus={() => nastaviMizaPreverjena(true)}
           onChange={(e) => {
             nastaviMizo(e.target.value.replace(/\D/g, '').slice(0, 2))
-            nastaviMizaPreverjena(true)
+            nastaviMizaPopravljena(true)
           }}
         />
       </label>
@@ -329,12 +337,12 @@ function Potrditev({
       <button
         type="submit"
         className="gumb gumb--glavni sodnik__potrdi"
-        disabled={!izid.vnos || manjka > 0 || !prebranaMiza.veljavna || potrditev.isPending}
+        disabled={!izid.vnos || !prebranaMiza.veljavna || potrditev.isPending}
       >
         {potrditev.isPending
           ? 'Potrjujem …'
-          : manjka > 0
-            ? `Preveri še ${manjka} ${manjka === 1 ? 'številko' : manjka === 2 ? 'številki' : manjka <= 4 ? 'številke' : 'številk'}`
+          : negotovih > 0
+            ? 'Obarvane sem preveril · Potrdi izid'
             : 'Potrdi izid'}
       </button>
       {gumbZnova}
@@ -345,33 +353,39 @@ function Potrditev({
   )
 }
 
+/* »1 negotova številka, 2 negotovi številki, 3 negotove številke, 5 negotovih številk« */
+function negotoveStevilke(n: number) {
+  const o = n % 100
+  if (o === 1) return 'negotova številka'
+  if (o === 2) return 'negotovi številki'
+  if (o === 3 || o === 4) return 'negotove številke'
+  return 'negotovih številk'
+}
+
 function Vrstica({
   i,
   r,
   zaPotrditev,
-  preverjene,
+  popravljene,
   onSpremeni,
-  onPreveri,
 }: {
   i: number
   r: VrsticaSodnika
   zaPotrditev: Set<number>
-  preverjene: Set<number>
+  popravljene: Set<number>
   onSpremeni: (i: number, stran: 1 | 2, vrednost: string) => void
-  onPreveri: (mesto: number) => void
 }) {
   const polje = (stran: 1 | 2) => {
     const mesto = i * 2 + stran - 1
-    const preveri = zaPotrditev.has(mesto) && !preverjene.has(mesto)
+    const negotova = zaPotrditev.has(mesto) && !popravljene.has(mesto)
     return (
       <input
-        className={'sodnik__polje' + (preveri ? ' sodnik__polje--preveri' : '')}
+        className={'sodnik__polje' + (negotova ? ' sodnik__polje--preveri' : '')}
         inputMode="numeric"
         pattern="[0-9]*"
         maxLength={2}
-        aria-label={`${i + 1}. niz, ${stran === 1 ? 'prvi' : 'drugi'} igralec`}
+        aria-label={`${i + 1}. niz, ${stran === 1 ? 'prvi' : 'drugi'} igralec${negotova ? ', preveri z listkom' : ''}`}
         value={stran === 1 ? r.tocke1 : r.tocke2}
-        onFocus={() => onPreveri(mesto)}
         onChange={(e) => onSpremeni(i, stran, e.target.value)}
       />
     )
