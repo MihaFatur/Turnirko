@@ -2,14 +2,29 @@ import { describe, expect, it } from 'vitest'
 
 import type { KandidatMizeDto, MizaDto, TekmaMizeDto } from '../api/tipi'
 import {
+  MEJA_PREDOLGO_MIN,
+  drugaMizaEkipnega,
   imenaTekme,
+  jePredolgo,
+  kratekDel,
+  kratkoImenaTekme,
   minutOd,
+  mizSklon,
   mizeTekme,
+  najdljeIgra,
+  oznakaMize,
   predMinutami,
+  priimekNaMizi,
   privzetiSodnik,
   prosteMize,
   prviPredlogi,
+  razlogiPredloga,
+  razlogiZasedenosti,
+  sirinaTraka,
   sprosceneMize,
+  tekmeVIgri,
+  uraIzCasa,
+  zadnjaBeseda,
 } from './mize'
 
 function tekma(id: number, osebe: number[] = [1, 2], miza: number | null = null): TekmaMizeDto {
@@ -84,5 +99,112 @@ describe('prviPredlogi', () => {
     const pari = prviPredlogi(mize, [k(11), k(12)])
     expect(pari.map(([m, kand]) => [m.stevilka, kand.tekma.tekma.id])).toEqual([[1, 11], [2, 12]])
     expect(prviPredlogi(mize, [k(11, true), k(12)]).map(([m]) => m.stevilka)).toEqual([2])
+  })
+})
+
+describe('imena na tlorisu', () => {
+  const u = (polnoIme: string, priimek: string, dodatno: object = {}) =>
+    ({ idPrijave: 1, polnoIme, klub: null, polnoIme2: null, klub2: null, priimek, priimek2: null, ...dodatno }) as never
+
+  it('je priimek tisto, kar pošlje strežnik; dvojica z » / «, ekipa z imenom', () => {
+    expect(priimekNaMizi(u('Anže Vidmar', 'Vidmar'))).toBe('Vidmar')
+    expect(priimekNaMizi(u('Ana Kokalj', 'Kokalj', { polnoIme2: 'Eva Logar', priimek2: 'Logar' }))).toBe('Kokalj / Logar')
+    expect(priimekNaMizi(u('NTK Savinja', 'NTK Savinja'))).toBe('NTK Savinja')
+  })
+
+  it('brez priimka pade na zadnjo besedo imena, brez udeleženca je vprašaj', () => {
+    expect(priimekNaMizi(u('Anže Vidmar', ''))).toBe('Vidmar')
+    expect(priimekNaMizi(u('Ana Kokalj / Eva Logar', ''))).toBe('Kokalj / Logar')
+    expect(priimekNaMizi(null)).toBe('?')
+    expect(zadnjaBeseda('  Tadej  Mihelič ')).toBe('Mihelič')
+  })
+
+  it('priimka tekme in skrajšan del', () => {
+    expect(kratkoImenaTekme(tekma(1))).toBe('Novak – Kovač')
+    expect(kratekDel('Skupina 2')).toBe('sk. 2')
+    expect(kratekDel('1/8 finala')).toBe('1/8 finala')
+  })
+})
+
+describe('mize ekipnega srečanja', () => {
+  it('oznaka mize', () => {
+    expect(oznakaMize({ miza: 5, miza2: null })).toBe('5')
+    expect(oznakaMize({ miza: 11, miza2: 12 })).toBe('11 + 12')
+    expect(oznakaMize({ miza: 11, miza2: 12 }, '+')).toBe('11+12')
+    expect(oznakaMize({ miza: null, miza2: null })).toBe('')
+  })
+
+  it('druga miza je sosednja prosta: najprej +1, nato −1, sicer prva prosta', () => {
+    expect(drugaMizaEkipnega([3, 4, 9], 3)).toBe(4)
+    expect(drugaMizaEkipnega([2, 3, 9], 3)).toBe(2)
+    expect(drugaMizaEkipnega([3, 9, 15], 3)).toBe(9)
+    expect(drugaMizaEkipnega([3], 3)).toBeNull()
+    expect(drugaMizaEkipnega([], 3)).toBeNull()
+  })
+})
+
+describe('tekme v igri in čas', () => {
+  const ekipna = { ...tekma(9, [1, 2], 11), miza2: 12, ekipno: true, poklicanaOb: '2026-12-05T10:01:00' }
+  const posamicna = { ...tekma(8, [3, 4], 5), poklicanaOb: '2026-12-05T10:08:00' }
+  const mize = [
+    miza(5, { tekma: posamicna }),
+    miza(11, { tekma: ekipna }),
+    miza(12, { tekma: ekipna }),
+    miza(13),
+  ]
+
+  it('ekipno srečanje na dveh mizah je ena tekma', () => {
+    expect(tekmeVIgri(mize).map((t) => t.tekma.id)).toEqual([8, 9])
+  })
+
+  it('najdlje igra tekma z največ minutami, miza ekipnega je »11 + 12«', () => {
+    expect(najdljeIgra(mize, '2026-12-05T10:42:30')).toEqual({ oznaka: '11 + 12', minute: 41 })
+    expect(najdljeIgra([miza(1)], '2026-12-05T10:42:30')).toBeNull()
+  })
+
+  it('predolgo velja od meje naprej in ne za ekipno srečanje', () => {
+    expect(MEJA_PREDOLGO_MIN).toBe(30)
+    expect(jePredolgo(posamicna, 29)).toBe(false)
+    expect(jePredolgo(posamicna, 30)).toBe(true)
+    expect(jePredolgo(ekipna, 41)).toBe(false)
+    expect(jePredolgo(posamicna, null)).toBe(false)
+  })
+
+  it('trak časa raste do meje in se tam ustavi', () => {
+    expect(sirinaTraka(12)).toBe(40)
+    expect(sirinaTraka(8)).toBe(27)
+    expect(sirinaTraka(34)).toBe(100)
+  })
+
+  it('ura iz časa strežnika', () => {
+    expect(uraIzCasa('2026-11-24T10:42:07')).toBe('10:42')
+    expect(uraIzCasa('2026-11-24T09:05')).toBe('09:05')
+    expect(uraIzCasa(null)).toBe('')
+  })
+})
+
+describe('razlogi kandidata', () => {
+  const k = (razlogi: string[], zaseden = true): KandidatMizeDto => ({ tekma: tekma(1), zaseden, razlogi })
+
+  it('zasedenost ločimo od razlogov za predlog', () => {
+    const kand = k(['Kos igra na mizi 2', 'do konca skupine še 2 kola', 'Zajc naj sodi'])
+    expect(razlogiZasedenosti(kand)).toEqual(['Kos igra na mizi 2'])
+    expect(razlogiPredloga(kand)).toEqual(['do konca skupine še 2 kola', 'Zajc naj sodi'])
+  })
+
+  it('brez poimenovane zasedenosti ostanejo vsi razlogi', () => {
+    const kand = k(['igralec je zaseden'])
+    expect(razlogiZasedenosti(kand)).toEqual(['igralec je zaseden'])
+    // razlog, ki ni zasedenost, je razlog za predlog (tudi kadar ga zasedenost ne izpodrine)
+    expect(razlogiPredloga(kand)).toEqual(['igralec je zaseden'])
+    expect(razlogiPredloga(k(['do konca skupine še 2 kola'], false))).toEqual(['do konca skupine še 2 kola'])
+  })
+})
+
+describe('mizSklon', () => {
+  it('sklanja po številu', () => {
+    expect([1, 2, 3, 4, 5, 20, 21, 22, 101, 111].map(mizSklon)).toEqual([
+      'miza', 'mizi', 'mize', 'mize', 'miz', 'miz', 'miz', 'miz', 'miza', 'miz',
+    ])
   })
 })

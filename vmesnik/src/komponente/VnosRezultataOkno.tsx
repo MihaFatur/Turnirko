@@ -54,8 +54,9 @@ import {
 interface Lastnosti {
   tekma: TekmaDto
   onZapri: () => void
-  /* Poklicano po uspesnem vnosu - stran osvezi podatke dogodka. */
-  onShranjeno: () => void
+  /* Poklicano po uspesnem vnosu - stran osvezi podatke dogodka. Pri navadnem vnosu in
+     popravku dobi shranjeno tekmo (stran Mize iz nje izpise izid). */
+  onShranjeno: (rezultat?: TekmaDto) => void
   /* Ekipna tekma: izid nastane iz zapisnika srecanja, neposredno sta mogoca
      samo brez boja in diskvalifikacija (TekmaStoritev.vnesiRezultat). */
   samoBrezIgre?: boolean
@@ -71,6 +72,14 @@ interface Lastnosti {
   /* Izrez celice z listka pod vsako vrstico tock (branje listka, F4.1). */
   izrezCelice?: (mesto: number) => ReactNode
   naslov?: string
+  /* Že izbran izid v nizih (stran Mize: organizator izbere zmagovalca in 3:1, točke po
+     nizih vpiše tu). Velja samo pri navadnem vnosu. */
+  zacetniNizi?: { prvi: number; drugi: number }
+}
+
+/* Odgovor vnosa je shranjena tekma; pri potrditvi listka (shrani) je lahko karkoli. */
+function jeTekma(rezultat: unknown): rezultat is TekmaDto {
+  return typeof rezultat === 'object' && rezultat !== null && 'dobljeniNizi1' in rezultat
 }
 
 /* Izidi, ki jih rocno vnasa sodnik (PROSTO doloci sistem sam pri zrebu). */
@@ -92,6 +101,7 @@ export function VnosRezultataOkno({
   nadObrazcem,
   izrezCelice,
   naslov,
+  zacetniNizi,
 }: Lastnosti) {
   /* Prepis števila nizov za to tekmo (privzeto kar je določil dogodek). Pri popravku
      in ekipni tekmi ga ni: izid je že odigran oz. nastane iz srečanja. */
@@ -135,12 +145,16 @@ export function VnosRezultataOkno({
   const [niziPrvi, nastaviNiziPrvi] = useState(
     predlog
       ? predlog.izidTip === 'IGRANO' ? besedilo(predlog.dobljeniNizi1) : ''
-      : popravek && tekma.izidTip === 'IGRANO' ? String(tekma.dobljeniNizi1) : '',
+      : popravek && tekma.izidTip === 'IGRANO'
+        ? String(tekma.dobljeniNizi1)
+        : zacetniNizi ? String(zacetniNizi.prvi) : '',
   )
   const [niziDrugi, nastaviNiziDrugi] = useState(
     predlog
       ? predlog.izidTip === 'IGRANO' ? besedilo(predlog.dobljeniNizi2) : ''
-      : popravek && tekma.izidTip === 'IGRANO' ? String(tekma.dobljeniNizi2) : '',
+      : popravek && tekma.izidTip === 'IGRANO'
+        ? String(tekma.dobljeniNizi2)
+        : zacetniNizi ? String(zacetniNizi.drugi) : '',
   )
   /* Točke po nizih so privzeto vklopljene - organizator jih prepisuje s papirja
      pri vsakem rezultatu, izklopi pa jih odznačenje. Pri popravku ostane stanje,
@@ -160,7 +174,9 @@ export function VnosRezultataOkno({
             tekma.nizi.map((niz) => ({ tocke1: String(niz.tocke1), tocke2: String(niz.tocke2) })),
             tekma.dobljeniNizi1 + tekma.dobljeniNizi2,
           )
-        : [],
+        : zacetniNizi
+          ? vrsticeZaIzid([], zacetniNizi.prvi + zacetniNizi.drugi)
+          : [],
   )
   /* Za posebne izide: katera stran je zmagala (1 ali 2). */
   const [zmagovalecStran, nastaviZmagovalecStran] = useState<'' | '1' | '2'>(
@@ -221,8 +237,8 @@ export function VnosRezultataOkno({
         : popravek
           ? tekmeApi.popraviRezultat(tekma.id, vnos, izbran)
           : tekmeApi.vnesiRezultat(tekma.id, vnos),
-    onSuccess: () => {
-      onShranjeno()
+    onSuccess: (rezultat) => {
+      onShranjeno(jeTekma(rezultat) ? rezultat : undefined)
       onZapri()
     },
   })

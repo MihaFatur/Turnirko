@@ -37,6 +37,7 @@ import { RegistracijaZakljucenaStran } from './strani/RegistracijaZakljucenaStra
 import { PomocStran } from './strani/PomocStran'
 import { BranjeListkovStran } from './strani/BranjeListkovStran'
 import { MizeStran } from './strani/MizeStran'
+import { MizeZaslonStran } from './strani/MizeZaslonStran'
 import { SodnikStran } from './strani/SodnikStran'
 import { MeritevBranjaStran } from './strani/MeritevBranjaStran'
 import { VadnicaStran } from './strani/VadnicaStran'
@@ -165,6 +166,10 @@ const IzpisSvrStranPosnetki = import.meta.env.DEV
   : null
 const ListekPosnetek = import.meta.env.DEV ? lazy(() => import('./dev/ListekPosnetek')) : null
 const PrenovaZrebaPosnetki = import.meta.env.DEV ? lazy(() => import('./dev/PrenovaZrebaPosnetki')) : null
+const MizePosnetki = import.meta.env.DEV ? lazy(() => import('./dev/MizePosnetki')) : null
+const MizeZaslonPosnetki = import.meta.env.DEV
+  ? lazy(() => import('./dev/MizePosnetki').then((m) => ({ default: m.MizeZaslonPosnetki })))
+  : null
 
 export function App() {
   return (
@@ -204,6 +209,20 @@ export function App() {
         <Route path="/dev/prenova-zreba"
           element={<Suspense fallback={null}><PrenovaZrebaPosnetki /></Suspense>} />
       )}
+      {MizeZaslonPosnetki && (
+        <Route path="/dev/mize-zaslon/:id"
+          element={<Suspense fallback={null}><MizeZaslonPosnetki /></Suspense>} />
+      )}
+      {/* Zaslon za igralce (TV v dvorani): celozaslonska stran brez glave in spodnje vrstice,
+          odpre se iz strani Mize v novem oknu. Podatke dobi isti klic kot stran Mize. */}
+      <Route
+        path="/turnirji/:id/mize/zaslon"
+        element={
+          <SamoUrejevalec>
+            <MizeZaslonStran />
+          </SamoUrejevalec>
+        }
+      />
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}
       <Route path="/dogodki/:id/listki" element={<ListkiStran />} />
@@ -232,6 +251,7 @@ export function App() {
         }
       />
       <Route element={<Postavitev />}>
+        {MizePosnetki && <Route path="/dev/mize/:id" element={<Suspense fallback={null}><MizePosnetki /></Suspense>} />}
         <Route index element={<DomacaStran />} />
         <Route path="/turnirji" element={<TurnirjiStran />} />
         <Route path="/turnirji/:id" element={<TurnirStran />} />

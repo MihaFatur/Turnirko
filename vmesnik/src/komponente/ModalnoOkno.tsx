@@ -43,6 +43,11 @@ interface Lastnosti {
   /* Delovna ploskev čez cel zaslon (»Popravi mrežo«): črna glava, brez okvira,
      vlečenje z miško. Lupina kot pri zeloSiroko. */
   celZaslon?: boolean
+  /* Dodaten razred okna (stran Mize, prenova 24. 11. 2026: okno stoji 140 px pod vrhom in
+     ima na telefonu lastno glavo). Samo kljuka za CSS, vsebine okna ne spreminja. */
+  razred?: string
+  /* Naslov je samo za bralnik zaslona (spodnji list izida na telefonu: glava nosi le nadnaslov). */
+  skritNaslov?: boolean
   onZapri: () => void
   children: ReactNode
 }
@@ -60,6 +65,8 @@ export function ModalnoOkno({
   spodaj,
   zeloSiroko,
   celZaslon,
+  razred,
+  skritNaslov,
   onZapri,
   children,
 }: Lastnosti) {
@@ -122,6 +129,7 @@ export function ModalnoOkno({
     + (spodaj ? ' modal--spodaj' : '')
     + (zeloSiroko ? ' modal--zelo-siroko' : '')
     + (celZaslon ? ' modal--cel-zaslon' : '')
+    + (razred ? ' ' + razred : '')
 
   const delovna = zeloSiroko || celZaslon
 
@@ -164,7 +172,7 @@ export function ModalnoOkno({
             <div className="modal__glava">
               <h2>
                 {nadnaslov && <span className="modal__nad">{nadnaslov}</span>}
-                {naslov}
+                {skritNaslov ? <span className="samo-za-bralnik">{naslov}</span> : naslov}
                 {podnaslov && <span className="modal__pod">{podnaslov}</span>}
               </h2>
               {/* Ikon v vmesniku ni; pomen kriza nosi aria-label. */}

@@ -329,8 +329,8 @@ function razdeli<T>(seznam: T[], velikost: number): T[][] {
   return deli
 }
 
-/* Podatki listka za pripravljeno tekmo. */
-function podatkiListka(
+/* Podatki listka za pripravljeno tekmo (uporablja tudi stran Mize za listek ob klicu). */
+export function podatkiListka(
   l: PripravljenListek,
   imeTurnirja: string | null,
   dogodek: DogodekDto,

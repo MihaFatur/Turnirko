@@ -198,12 +198,18 @@ export const REZULTATI: Clanek[] = [
     naslov: 'Mize in klicanje tekem',
     poglavje: 'rezultati',
     kratko:
-      'Na strani **Mize** vidiš, kje se igra in katera miza je prosta. Ob prosti mizi Turnirko predlaga naslednjo tekmo; ko pritisneš **Pokliči**, se klic zabeleži, igralce pa pokličeš na glas.',
+      'Na strani **Mize** vidiš tloris dvorane: kje se igra, katera miza je prosta in kako dolgo traja tekma. Tekmo **povlečeš z vrste na prosto mizo** (ali klikneš mizo); klic se zabeleži, natisne se listek z vpisano mizo, igralce pa pokličeš na glas.',
     kljucne: [
       'miza',
       'klic',
       'pokliči',
       'prosta miza',
+      'tloris',
+      'povleci',
+      'uredi dvorano',
+      'zaslon za igralce',
+      'listek',
+      'razveljavi',
       'sodnik',
       'poraženec sodi',
       'počitek',
@@ -216,10 +222,25 @@ export const REZULTATI: Clanek[] = [
       {
         tip: 'koraki',
         postavke: [
-          'Pred turnirjem ali na začetku odpri **Mize** in vpiši **Število miz**. Mize so oštevilčene od 1 naprej, tako kot jih sodnik vpiše v okence na listku.',
-          'Ko kategorija teče, je ob vsaki prosti mizi predlog naslednje tekme. Pritisni **Pokliči** in igralca pokliči na glas.',
-          'Na začetku turnirja s **Pokliči predloge** zasedeš vse proste mize naenkrat.',
-          'Ko je tekma končana, vpiši izid z **Vnesi izid** ali pa ga pošlje sodnik s telefonom. Miza se sprosti sama, stran kratko pisne in mizo obarva zeleno.',
+          'Pri prvem odprtju vpiši **Koliko miz imaš?** in pritisni **Postavi N miz**. Mize so oštevilčene od 1 naprej, tako kot jih sodnik vpiše v okence na listku.',
+          'Ko kategorija teče, ima vsaka prosta miza (modro črtkana) predlog naslednje tekme. Pritisni mizo in **Pokliči**, ali pa tekmo **povleci z vrste »Na vrsti« na prosto mizo**. Igralca pokliči na glas.',
+          'Ob klicu se natisne listek z že vpisano številko mize (v oknu klica ga lahko izklopiš). Spodaj se za 6 sekund pokaže sporočilo z gumbom **Razveljavi**.',
+          'Na začetku turnirja s **Pokliči vse predloge** zasedeš vse proste mize naenkrat.',
+          'Ko je tekma končana, klikni mizo in izberi zmagovalca in izid v nizih; točke po nizih vpišeš v naslednjem oknu. Izid lahko pošlje tudi sodnik s telefonom. Miza se sprosti sama, stran kratko pisne in mizo 30 sekund obarva zeleno.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'tloris',
+        naslov: 'Kaj kaže tloris',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          '**Prosta** miza je modro črtkana in pove predlog. **Pravkar sproščena** je 30 sekund zelena.',
+          '**V igri** je črna miza: igralca stojita vsak na svoji strani mreže, spodaj je modri trak časa. Ko tekma traja 30 minut ali več, ima rjasto črto in minute v rdeči znački.',
+          '**Izklopljena** miza je šrafirana. Ekipno srečanje je narisano čez dve mizi.',
+          'Zgoraj so števci (proste, v igri, na vrsti) in ura strežnika, po kateri se računajo minute.',
         ],
       },
       {
@@ -242,19 +263,19 @@ export const REZULTATI: Clanek[] = [
       {
         tip: 'odstavek',
         besedilo:
-          'Pod vsakim predlogom so razlogi, na primer »do konca skupine še 3 kola« ali »zadnja tekma pred 1 min«. Odločiš vedno ti. V meniju mize **Druga tekma …** ponudi vse pripravljene tekme, desni stolpec **Pripravljene** pa jih našteje po vrstnem redu predloga.',
+          'Predlog je samo predlog, odločiš vedno ti: na prosto mizo lahko povlečeš katero koli tekmo z vrste (tudi zasedeno, s sporočilom, kdo igra drugje). Razlogi predloga, na primer »do konca skupine še 3 kola« ali »zadnja tekma pred 1 min«, so v oknu klica. Desni stolpec **Na vrsti** tekme našteje po vrstnem redu predloga; številka ob tekmi je predlagana miza.',
       },
       {
         tip: 'razdelek',
         id: 'sodnik',
         naslov: 'Sodnik: poraženec sodi naslednjo tekmo',
         kratko:
-          'Ko je vklopljeno **Poraženec sodi naslednjo tekmo na svoji mizi**, je ob klicu za sodnika predlagan poraženec zadnje tekme na tej mizi. Zamenjaš ga lahko s katerimkoli igralcem turnirja.',
+          'Ko je vklopljeno **Poraženec sodi**, je ob klicu za sodnika predlagan poraženec zadnje tekme na tej mizi. Zamenjaš ga lahko s katerimkoli igralcem turnirja.',
       },
       {
         tip: 'odstavek',
         besedilo:
-          'Nastavitev vklopiš pod **Nastavitve miz**. Kdor sodi, ni predlagan za igro, dokler tekma ni končana. V oknu klica sodnika zamenjaš s katerimkoli igralcem turnirja ali polje izprazniš.',
+          'Nastavitev vklopiš v načinu **Uredi dvorano** (tam sta še **Počitek** in **Pisk ob prosti mizi**). Kdor sodi, ni predlagan za igro, dokler tekma ni končana. V oknu klica sodnika zamenjaš s katerimkoli igralcem turnirja ali polje izprazniš.',
       },
       {
         tip: 'seznam',
@@ -268,21 +289,33 @@ export const REZULTATI: Clanek[] = [
       {
         tip: 'razdelek',
         id: 'dejanja',
-        naslov: 'Premik, preklic in izklop mize',
+        naslov: 'Premik, preklic in urejanje dvorane',
       },
       {
         tip: 'seznam',
         postavke: [
-          '**Premakni ali zamenjaj sodnika** v meniju mize premakne tekmo na drugo prosto mizo; čas igre teče naprej.',
-          '**Prekliči klic** vrne tekmo med pripravljene. Ekipno srečanje, ki že ima postavo, se igra naprej in izgubi samo mizo.',
-          '**Izklopi mizo** uporabi, ko je miza pokvarjena ali zasedena za drug namen. Dokler je ne vklopiš, predlogov ne dobi. Mize, na kateri se igra, ni mogoče izklopiti.',
-          'Ekipno srečanje pokličeš na eno ali dve mizi (**Druga miza** v oknu klica). Izid se vpiše v zapisnik srečanja.',
+          '**Premik:** zasedeno mizo povleci na drugo prosto mizo; čas igre teče naprej. **Zamenjaj sodnika** je v oknu izida (klik na zasedeno mizo).',
+          '**Prekliči klic** je prav tam in vrne tekmo med pripravljene. Ekipno srečanje, ki že ima postavo, se igra naprej in izgubi samo mizo.',
+          '**Uredi dvorano:** klikni prosto mizo, da jo izklopiš (pokvarjena ali zasedena za drug namen), ali izklopljeno, da jo vklopiš. **+ Miza** in **− Odstrani zadnjo** spremenita število miz. Mize, na kateri se igra, ni mogoče izklopiti ali odstraniti.',
+          'Ekipno srečanje pokličeš na dve mizi (druga je sosednja prosta). Izid se vpiše v zapisnik srečanja: klikni mizo in **Odpri zapisnik**.',
         ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'zaslon',
+        naslov: 'Zaslon za igralce',
+        kratko:
+          'Gumb **Zaslon za igralce ↗** odpre celozaslonsko stran za TV v dvorani: zadnji klici, naslednje tekme in zemljevid dvorane. Odpri jo na drugem zaslonu v istem brskalniku, kjer si prijavljen; osvežuje se sama.',
+      },
+      {
+        tip: 'odstavek',
+        besedilo:
+          'Na telefonu je tloris pomanjšan: tapni mizo, nato tekmo (**Na N** ali **Pokliči na mizo N**). Vlečenja tam ni.',
       },
       {
         tip: 'pazi',
         besedilo:
-          'Ko je tekma poklicana, velja za začeto: žreba te kategorije ni več mogoče ponoviti. Če je bil klic pomota, ga najprej prekliči.',
+          'Ko je tekma poklicana, velja za začeto: žreba te kategorije ni več mogoče ponoviti. Če je bil klic pomota, ga najprej prekliči (ali pritisni **Razveljavi**).',
       },
       {
         tip: 'nasvet',

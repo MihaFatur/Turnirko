@@ -1,39 +1,53 @@
-/* Stran »Mize« (/turnirji/:id/mize; M1, M2; docs/pravila/mize.md): organizator
-   na prenosniku na pultu kliče tekme na mize. Igralce pokliče na glas, aplikacija
-   klic samo zabeleži (odločitev lastnika, 23. 11. 2026).
+/* Stran »Mize« (/turnirji/:id/mize; M1, M2; docs/pravila/mize.md): organizator na
+   prenosniku na pultu kliče tekme na mize. Igralce pokliče na glas, aplikacija klic samo
+   zabeleži (odločitev lastnika, 23. 11. 2026).
 
-   Levo so mize: zasedena pove, kdo igra, kaj in koliko časa, in kdo sodi; prosta
-   pokaže predlog naslednje tekme z razlogi in gumb »Pokliči«. Desno so vse
-   pripravljene tekme v vrstnem redu predloga. Kaj je prosto in v kakšnem vrstnem
-   redu, odloči strežnik (PredlogTekem); stran se osveži vsake 4 s in ob sprostitvi
-   mize kratko pisne. Izid se vpiše v istem oknu kot drugod (VnosRezultataOkno),
-   vpis pa mizo sprosti sam. */
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+   Prenova »tloris dvorane« (24. 11. 2026, design_handoff_mize_tloris): mize so narisane kot
+   tloris dvorane, tekmo povlečeš z vrste na prosto mizo (ali s klikom v oknu klica), klik na
+   zasedeno mizo odpre izid, »Uredi dvorano« izklaplja, dodaja in odstranjuje mize, »Zaslon
+   za igralce« je ločena stran za TV v dvorani (MizeZaslonStran).
+
+   Kaj je prosto in v kakšnem vrstnem redu, odloči strežnik (PredlogTekem); stran se osveži
+   vsake 4 s (med vlečenjem ne) in ob sprostitvi mize kratko pisne. Izid se vpiše v istem
+   oknu kot drugod (VnosRezultataOkno), vpis pa mizo sprosti sam. Vsak klic, premik in
+   »Pokliči vse« se konča s sporočilom z razveljavitvijo (6 s). Telefon ima pomanjšan tloris
+   (tapneš mizo, nato tekmo). */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { KandidatMizeDto, MizaDto, MizeTurnirjaDto, OsebaMizeDto, TekmaMizeDto } from '../api/tipi'
+import type { KandidatMizeDto, MizaDto, NastavitveMizVnos, TekmaMizeDto } from '../api/tipi'
 import { mizeApi } from '../api/zahteve'
-import { useNazaj } from '../komponente/GlavaTelefona'
-import { IskalniIzbirnik } from '../komponente/IskalniIzbirnik'
-import { MeniDejanj } from '../komponente/MeniDejanj'
-import { ModalnoOkno } from '../komponente/ModalnoOkno'
+import { GlavaDejanja, useNazaj } from '../komponente/GlavaTelefona'
+import {
+  CrnaVrstica,
+  GlavaMize,
+  SporociloZRazveljavitvijo,
+  Tloris,
+  VrstaTekem,
+  type DejanjaTloris,
+  type SporociloMize,
+} from '../komponente/MizeTloris'
+import { MaliTloris, NaslovTelefon, PodrobnostiMize, VrstaTelefon } from '../komponente/MizeTelefon'
+import { OknoIzida, OknoKlica, PrviZagon, type Klic, type PotrditevKlica } from '../komponente/MizeOkna'
+import { useTiskListkov } from '../komponente/MizeListekTisk'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
 import { SporociloNapake } from '../komponente/SporociloNapake'
-import { StevilskoPolje } from '../komponente/StevilskoPolje'
 import { VnosRezultataOkno } from '../komponente/VnosRezultataOkno'
-import { Namig } from '../pomoc/Namig'
 import {
+  drugaMizaEkipnega,
   imenaTekme,
-  minutOd,
-  mizeTekme,
-  opisTekme,
-  predMinutami,
+  kratkoImenaTekme,
+  najdljeIgra,
+  oznakaMize,
   privzetiSodnik,
   prosteMize,
   prviPredlogi,
+  razlogiZasedenosti,
   sprosceneMize,
+  uraIzCasa,
+  type Vlecem,
 } from '../pomozno/mize'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
@@ -42,13 +56,14 @@ import { useTelefon } from '../pomozno/telefon'
 const OSVEZITEV_MS = 4000
 /* Kako dolgo je sproščena miza poudarjena. */
 const POUDAREK_MS = 30_000
+/* Kako dolgo stoji sporočilo z razveljavitvijo. */
+const SPOROCILO_MS = 6000
 const KLJUC_PISKA = 'turnirko-mize-pisk'
 
-/* Odprto okno klica: tekma in miza (pri spremembi klica je tekma že na mizi). */
-interface Klic {
-  tekma: TekmaMizeDto
-  miza: number | null
-  sprememba: boolean
+/* Poklic kandidata na mizo z vlečenjem, klikom na telefonu ali »Pokliči vse«. */
+interface KlicKandidata {
+  kandidat: KandidatMizeDto
+  miza: number
 }
 
 export function MizeStran() {
@@ -59,24 +74,43 @@ export function MizeStran() {
   useNaslovStrani('Mize')
   useNazaj(`/turnirji/${idTurnirja}`, 'Turnir')
 
+  const [vlecem, nastaviVlecem] = useState<Vlecem>(null)
+  const [nadMizo, nastaviNadMizo] = useState<number | null>(null)
+  const [urejanje, nastaviUrejanje] = useState(false)
+  const [sporocilo, nastaviSporocilo] = useState<SporociloMize | null>(null)
+  const [klic, nastaviKlic] = useState<Klic | null>(null)
+  const [vnosIzida, nastaviVnosIzida] = useState<TekmaMizeDto | null>(null)
+  const [polniVnos, nastaviPolniVnos] = useState<{ tekma: TekmaMizeDto; prvi: number; drugi: number } | null>(null)
+  const [preklic, nastaviPreklic] = useState<TekmaMizeDto | null>(null)
+  const [vseKartice, nastaviVseKartice] = useState(false)
+  const [izbranaMiza, nastaviIzbranoMizo] = useState<number | null>(null)
+  const [zagonStevilo, nastaviZagonStevilo] = useState(20)
+  const [zagonPorazenec, nastaviZagonPorazenca] = useState(true)
+  const koracnikZagona = useRef<HTMLButtonElement>(null)
+
   const kljuc = ['turnir', idTurnirja, 'mize']
   const pregled = useQuery({
     queryKey: kljuc,
     queryFn: () => mizeApi.pregled(idTurnirja),
-    refetchInterval: OSVEZITEV_MS,
+    /* Med vlečenjem strežnik ne sprašuje: osvežitev bi zamenjala elemente pod kazalcem. */
+    refetchInterval: vlecem ? false : OSVEZITEV_MS,
   })
 
-  const [klic, nastaviKlic] = useState<Klic | null>(null)
-  const [izbiraZa, nastaviIzbiraZa] = useState<MizaDto | null>(null)
-  const [vnosIzida, nastaviVnosIzida] = useState<TekmaMizeDto | null>(null)
-  const [preklic, nastaviPreklic] = useState<TekmaMizeDto | null>(null)
-  const [vsiPredlogi, nastaviVsePredloge] = useState(false)
-  const [nastavitveOdprte, nastaviNastavitveOdprte] = useState(false)
+  const tisk = useTiskListkov(pregled.data?.imeTurnirja ?? '')
 
   const osvezi = useCallback(() => {
     void odjemalec.invalidateQueries({ queryKey: ['turnir', idTurnirja] })
     void odjemalec.invalidateQueries({ queryKey: ['dogodek'] })
   }, [odjemalec, idTurnirja])
+
+  /* Sporočilo z razveljavitvijo izgine po 6 s; novo nadomesti staro. */
+  const casovnikSporocila = useRef<number | undefined>(undefined)
+  const sporoci = useCallback((s: SporociloMize) => {
+    window.clearTimeout(casovnikSporocila.current)
+    nastaviSporocilo(s)
+    casovnikSporocila.current = window.setTimeout(() => nastaviSporocilo(null), SPOROCILO_MS)
+  }, [])
+  useEffect(() => () => window.clearTimeout(casovnikSporocila.current), [])
 
   /* Sproščene mize: pisk in poudarek. Primerjava s prejšnjo osvežitvijo, zato
      stran ne piska, ko se odpre. Pisk sledi tudi organizatorjevemu vnosu izida:
@@ -107,185 +141,258 @@ export function MizeStran() {
     }, 2000)
     return () => window.clearTimeout(casovnik)
   }, [poudarjene])
+  const poudarjeneMize = useMemo(() => new Set(poudarjene.keys()), [poudarjene])
 
-  const izklop = useMutation({
-    mutationFn: ({ podatki, miza, izklopi }: { podatki: MizeTurnirjaDto; miza: number; izklopi: boolean }) =>
-      mizeApi.nastavi(idTurnirja, {
-        steviloMiz: podatki.steviloMiz,
-        izklopljeneMize: izklopi
-          ? [...podatki.izklopljeneMize, miza]
-          : podatki.izklopljeneMize.filter((m) => m !== miza),
-        porazenecSodi: podatki.porazenecSodi,
-        pocitekMin: podatki.pocitekMin,
-      }),
+  /* ---------- nastavitve dvorane ---------- */
+
+  /* Vsaka sprememba bere stanje strežnika znova: dva hitra klika (izklop 3, izklop 7) ne
+     smeta prepisati drug drugega z zastarelim seznamom izklopljenih miz. */
+  const nastavi = useMutation({
+    mutationFn: async (sprememba: (sveze: NastavitveMizVnos) => Partial<NastavitveMizVnos>) => {
+      const sveze = await mizeApi.pregled(idTurnirja)
+      const trenutne: NastavitveMizVnos = {
+        steviloMiz: sveze.steviloMiz,
+        izklopljeneMize: sveze.izklopljeneMize,
+        porazenecSodi: sveze.porazenecSodi,
+        pocitekMin: sveze.pocitekMin,
+      }
+      await mizeApi.nastavi(idTurnirja, { ...trenutne, ...sprememba(trenutne) })
+    },
     onSuccess: osvezi,
   })
+
+  /* ---------- klic, premik, preklic ---------- */
+
   const preklicKlica = useMutation({
     mutationFn: (t: TekmaMizeDto) => mizeApi.preklici(t.tekma.id),
-    onSuccess: osvezi,
+    onSuccess: (_, t) => {
+      osvezi()
+      sporoci({ besedilo: `Klic preklican · ${kratkoImenaTekme(t)} je spet na vrsti` })
+    },
   })
-  /* »Pokliči predloge«: zaporedni klici prvih predlogov prostih miz (vsak svoja
-     preverba na strežniku); ob prvi napaki se ustavi in jo pokaže. Pred klici se
-     stanje prebere znova: pokliče se samo par, ki je še vedno prvi predlog svoje
-     mize (medtem je lahko drug organizator koga poklical drugam). */
+
+  /* Jedro vsakega klica: strežnik, sporočilo z razveljavitvijo in listek. Okno klica ga
+     kliče samo (napako pokaže v oknu), vlečenje in telefon prek mutacije spodaj. */
+  const izvediKlic = async (v: PotrditevKlica, kandidat?: KandidatMizeDto) => {
+    const t = v.tekma
+    const idSodnika = v.sodnik?.id ?? null
+    await mizeApi.poklici(t.tekma.id, { miza: v.miza, miza2: v.miza2, idSodnika })
+    osvezi()
+    if (v.sprememba) {
+      sporoci({ besedilo: `${kratkoImenaTekme(t)}: klic spremenjen` })
+      return
+    }
+    const opozorilo = kandidat?.zaseden ? ` · pozor, ${razlogiZasedenosti(kandidat)[0] ?? 'igralec je zaseden'}` : ''
+    sporoci({
+      besedilo:
+        `Miza ${oznakaMize({ miza: v.miza, miza2: v.miza2 })}: ${kratkoImenaTekme(t)} poklicana` +
+        (v.tisk ? ' · listek v tisku' : '') +
+        opozorilo,
+      razveljavi: () => {
+        void mizeApi.preklici(t.tekma.id).then(osvezi)
+      },
+    })
+    if (v.tisk) {
+      void tisk.natisni([{ idDogodka: t.idDogodka, idTekme: t.tekma.id, miza: v.miza }]).catch(() => {
+        sporoci({ besedilo: 'Listka ni bilo mogoče pripraviti. Natisneš ga lahko na strani Listki.' })
+      })
+    }
+  }
+
+  const klicKandidata = useMutation({
+    mutationFn: ({ kandidat, miza }: KlicKandidata) => {
+      const podatki = pregled.data!
+      const t = kandidat.tekma
+      return izvediKlic(
+        {
+          tekma: t,
+          miza,
+          miza2: t.ekipno ? drugaMizaEkipnega(prosteMize(podatki.mize), miza) : null,
+          sodnik: privzetiSodnik(podatki.mize.find((m) => m.stevilka === miza), t),
+          /* Pri vlečenju se listek natisne vedno; ekipno srečanje ima zapisnik. */
+          tisk: !t.ekipno,
+          sprememba: false,
+        },
+        kandidat,
+      )
+    },
+  })
+
+  /* Tekma z mize na drugo prosto mizo: čas igre teče naprej, sodnik ostane. */
+  const premik = useMutation({
+    mutationFn: async ({ tekma: t, nova }: { tekma: TekmaMizeDto; nova: number }) => {
+      const stara = t.miza!
+      const idSodnika = t.sodnik?.id ?? null
+      await mizeApi.poklici(t.tekma.id, { miza: nova, miza2: t.miza2, idSodnika })
+      osvezi()
+      sporoci({
+        besedilo: `${kratkoImenaTekme(t)}: z mize ${stara} na mizo ${nova}`,
+        razveljavi: () => {
+          void mizeApi.poklici(t.tekma.id, { miza: stara, miza2: t.miza2, idSodnika }).then(osvezi)
+        },
+      })
+    },
+  })
+
+  /* »Pokliči vse predloge«: zaporedni klici prvih predlogov prostih miz (vsak svoja
+     preverba na strežniku); ob prvi napaki se ustavi in jo pokaže. Pred klici se stanje
+     prebere znova: pokliče se samo par, ki je še vedno prvi predlog svoje mize (medtem je
+     lahko drug organizator koga poklical drugam). */
   const klicVseh = useMutation({
     mutationFn: async (potrjeni: [MizaDto, KandidatMizeDto][]) => {
       const sveze = await mizeApi.pregled(idTurnirja)
       const pari = prviPredlogi(sveze.mize, sveze.kandidati).filter(([m, k]) =>
         potrjeni.some(([pm, pk]) => pm.stevilka === m.stevilka && pk.tekma.tekma.id === k.tekma.tekma.id))
-      for (const [miza, k] of pari) {
-        await mizeApi.poklici(k.tekma.tekma.id, {
-          miza: miza.stevilka,
-          miza2: null,
-          idSodnika: privzetiSodnik(miza, k.tekma)?.id ?? null,
-        })
+      /* Druga miza ekipnega srečanja ne sme vzeti mize, ki jo čaka drug predlog. */
+      const prosta = new Set(prosteMize(sveze.mize))
+      const cakajoce = new Set(pari.map(([m]) => m.stevilka))
+      const poklicani: { tekma: TekmaMizeDto; miza: number }[] = []
+      try {
+        for (const [miza, k] of pari) {
+          const miza2 = k.tekma.ekipno
+            ? drugaMizaEkipnega([...prosta].filter((st) => st === miza.stevilka || !cakajoce.has(st)), miza.stevilka)
+            : null
+          await mizeApi.poklici(k.tekma.tekma.id, {
+            miza: miza.stevilka,
+            miza2,
+            idSodnika: privzetiSodnik(miza, k.tekma)?.id ?? null,
+          })
+          prosta.delete(miza.stevilka)
+          if (miza2 !== null) prosta.delete(miza2)
+          poklicani.push({ tekma: k.tekma, miza: miza.stevilka })
+        }
+      } finally {
+        osvezi()
+      }
+      return poklicani
+    },
+    onSuccess: (poklicani) => {
+      const posamicni = poklicani.filter((p) => !p.tekma.ekipno)
+      sporoci({
+        besedilo:
+          `Poklicanih ${poklicani.length} tekem` + (posamicni.length > 0 ? ` · ${posamicni.length} listkov v tisku` : ''),
+        razveljavi: () => {
+          void Promise.all(poklicani.map((p) => mizeApi.preklici(p.tekma.tekma.id))).then(osvezi)
+        },
+      })
+      if (posamicni.length > 0) {
+        void tisk
+          .natisni(posamicni.map((p) => ({ idDogodka: p.tekma.idDogodka, idTekme: p.tekma.tekma.id, miza: p.miza })))
+          .catch(() => sporoci({ besedilo: 'Listkov ni bilo mogoče pripraviti. Natisneš jih lahko na strani Listki.' }))
       }
     },
-    onSettled: osvezi,
   })
 
   if (pregled.isPending) return <p className="obvestilo">Nalaganje …</p>
   if (!pregled.data) return <NapakaPoizvedbe poizvedba={pregled} kaj="miz" />
   const podatki = pregled.data
+  const nastavljene = podatki.steviloMiz !== null
   const kandidatPoId = new Map(podatki.kandidati.map((k) => [k.tekma.tekma.id, k]))
+  const mizaPo = (st: number | null) => podatki.mize.find((m) => m.stevilka === st)
   const proste = prosteMize(podatki.mize)
   const vIgri = podatki.mize.filter((m) => m.tekma !== null).length
   const pari = prviPredlogi(podatki.mize, podatki.kandidati)
-  const nastavljene = podatki.steviloMiz !== null
+  const predlogi = new Map(pari.map(([m, k]) => [m.stevilka, k]))
+  const predlagane = new Map(pari.map(([m, k]) => [k.tekma.tekma.id, m.stevilka]))
+  const najdlje = najdljeIgra(podatki.mize, podatki.casStreznika)
+  const najdljeBesedilo = najdlje
+    ? `Najdlje igra miza ${najdlje.oznaka} (${najdlje.minute} min)`
+    : ''
+  const kazalniki = nastavljene ? { proste: proste.length, vIgri, naVrsti: podatki.kandidati.length } : undefined
 
-  return (
-    <section className="mize">
-      {!jeTelefon && (
-        <Link to={`/turnirji/${idTurnirja}`} className="povezava-nazaj">
-          ← Nazaj na turnir
-        </Link>
-      )}
-      <div className="stran-glava">
-        <div>
-          <h1 className="naslov-strani naslov-strani--enovrsticni">
-            Mize <Namig clanek="mize" />
-          </h1>
-          <p className="uvod uvod--tesno">{podatki.imeTurnirja}</p>
-        </div>
-        {nastavljene && (
-          <div className="kolofon">
-            <Kolofon oznaka="Proste mize" vrednost={String(proste.length)} />
-            <Kolofon oznaka="V igri" vrednost={String(vIgri)} />
-            <Kolofon oznaka="Pripravljene tekme" vrednost={String(podatki.kandidati.length)} />
-          </div>
-        )}
-      </div>
-      <NapakaPoizvedbe poizvedba={pregled} kaj="miz" />
+  /* ---------- dejanja ---------- */
 
-      {!nastavljene || nastavitveOdprte ? (
-        <NastavitveMiz
-          podatki={podatki}
-          prvic={!nastavljene}
-          onShranjeno={() => {
-            nastaviNastavitveOdprte(false)
-            osvezi()
-          }}
-          onZapri={nastavljene ? () => nastaviNastavitveOdprte(false) : undefined}
-        />
-      ) : (
-        <div className="mize__orodja">
-          <p className="mize__povzetek">
-            {podatki.steviloMiz} {mizSklon(podatki.steviloMiz!)}
-            {podatki.izklopljeneMize.length > 0 && ` · izklopljene ${podatki.izklopljeneMize.join(', ')}`}
-            {' · '}
-            {podatki.porazenecSodi ? 'poraženec sodi naslednjo tekmo' : 'sodnika izbereš ob klicu'}
-            {` · počitek ${podatki.pocitekMin} min`}
-          </p>
-          <div className="mize__orodja-desno">
-            <label className="obrazec__polje obrazec__polje--stikalo">
-              <input
-                type="checkbox"
-                checked={pisk}
-                onChange={(d) => {
-                  nastaviPisk(d.target.checked)
-                  zapisiPisk(d.target.checked)
-                }}
-              />
-              Pisk ob prosti mizi
-            </label>
-            <button type="button" className="gumb gumb--majhen" onClick={() => nastaviNastavitveOdprte(true)}>
-              Nastavitve miz
-            </button>
-          </div>
-        </div>
-      )}
+  const odpriKlic = (k: KandidatMizeDto, miza: number | null) => {
+    const m = miza ?? k.tekma.miza ?? proste[0] ?? null
+    if (m === null) {
+      sporoci({ besedilo: 'Ni proste mize.' })
+      return
+    }
+    nastaviKlic({ tekma: k.tekma, miza: m, sprememba: false })
+  }
 
-      {nastavljene && !podatki.dogodkiVTeku && (
-        <p className="namig">
-          Nobena kategorija tega turnirja še ne teče. Ko izžrebaš kategorijo, se tu pokažejo
-          pripravljene tekme.
-        </p>
-      )}
+  const spusti = (miza: number) => {
+    const v = vlecem
+    nastaviVlecem(null)
+    nastaviNadMizo(null)
+    if (!v) return
+    if (v.tip === 'k') {
+      const k = kandidatPoId.get(v.id)
+      if (k) klicKandidata.mutate({ kandidat: k, miza })
+    } else if (v.miza !== miza) {
+      const t = mizaPo(v.miza)?.tekma
+      if (t) premik.mutate({ tekma: t, nova: miza })
+    }
+  }
 
-      {nastavljene && (
-        <div className="mize__postavitev">
-          <div className="mize__stolpec">
-            <div className="naslovna-vrstica mize__glava">
-              <h2 className="sekcija__naslov--manjsi">Mize</h2>
-              {pari.length > 1 && (
-                <div className="naslovna-vrstica__desno">
-                  <button
-                    type="button"
-                    className="gumb gumb--glavni"
-                    disabled={klicVseh.isPending}
-                    onClick={() => nastaviVsePredloge(true)}
-                  >
-                    Pokliči predloge ({pari.length})
-                  </button>
-                </div>
-              )}
-            </div>
-            <SporociloNapake napaka={klicVseh.error ?? izklop.error ?? preklicKlica.error} />
-            <ol className="mize__seznam">
-              {podatki.mize.map((m) => (
-                <VrsticaMize
-                  key={m.stevilka}
-                  miza={m}
-                  podatki={podatki}
-                  kandidatPoId={kandidatPoId}
-                  poudarjena={poudarjene.has(m.stevilka)}
-                  onPoklici={(t) => nastaviKlic({ tekma: t, miza: m.stevilka, sprememba: false })}
-                  onDruga={() => nastaviIzbiraZa(m)}
-                  onVnosIzida={nastaviVnosIzida}
-                  onSprememba={(t) => nastaviKlic({ tekma: t, miza: t.miza, sprememba: true })}
-                  onPreklic={nastaviPreklic}
-                  onIzklop={(izklopi) => izklop.mutate({ podatki, miza: m.stevilka, izklopi })}
-                />
-              ))}
-            </ol>
-          </div>
+  const dejanja: DejanjaTloris = {
+    poklici: odpriKlic,
+    izid: nastaviVnosIzida,
+    preklopiMizo: (miza, izklopi) => {
+      if (nastavi.isPending) return
+      nastavi.mutate((s) => ({
+        izklopljeneMize: izklopi ? [...s.izklopljeneMize, miza] : s.izklopljeneMize.filter((m) => m !== miza),
+      }))
+    },
+    zacniVlecenje: nastaviVlecem,
+    konecVlecenja: () => {
+      nastaviVlecem(null)
+      nastaviNadMizo(null)
+    },
+    nadMizo: nastaviNadMizo,
+    spusti,
+  }
 
-          <aside className="mize__stolpec">
-            <div className="naslovna-vrstica mize__glava">
-              <h2 className="sekcija__naslov--manjsi">Pripravljene</h2>
-              <span className="mize__stevec">{podatki.kandidati.length}</span>
-            </div>
-            {podatki.kandidati.length === 0 ? (
-              <p className="namig">Ni pripravljenih tekem: vse tekme se igrajo ali čakajo na prejšnja kola.</p>
-            ) : (
-              <ol className="mize__pripravljene">
-                {podatki.kandidati.map((k) => (
-                  <VrsticaKandidata
-                    key={k.tekma.tekma.id}
-                    kandidat={k}
-                    onPoklici={
-                      proste.length > 0
-                        ? () => nastaviKlic({ tekma: k.tekma, miza: k.tekma.miza ?? proste[0], sprememba: false })
-                        : undefined
-                    }
-                  />
-                ))}
-              </ol>
-            )}
-          </aside>
-        </div>
-      )}
+  const dodajMizo = () => {
+    if (nastavi.isPending) return
+    nastavi.mutate((s) => ({ steviloMiz: Math.min(99, (s.steviloMiz ?? 0) + 1) }))
+  }
+  const odstraniZadnjo = () => {
+    if (nastavi.isPending) return
+    const zadnja = podatki.mize[podatki.mize.length - 1]
+    if (!zadnja || podatki.mize.length <= 1) {
+      sporoci({ besedilo: 'Vsaj ena miza mora ostati.' })
+    } else if (zadnja.tekma) {
+      sporoci({ besedilo: 'Na zadnji mizi se igra – ne moreš je odstraniti' })
+    } else {
+      const n = podatki.mize.length - 1
+      nastavi.mutate((s) => ({ steviloMiz: n, izklopljeneMize: s.izklopljeneMize.filter((m) => m <= n) }))
+    }
+  }
 
+  const urejanjeDvorane = urejanje
+    ? {
+        porazenecSodi: podatki.porazenecSodi,
+        pocitekMin: podatki.pocitekMin,
+        pisk,
+        zasedeno: nastavi.isPending,
+        naPorazenec: (v: boolean) => nastavi.mutate(() => ({ porazenecSodi: v })),
+        naPocitek: (m: number) => nastavi.mutate(() => ({ pocitekMin: Math.max(0, Math.min(30, m)) })),
+        naPisk: (v: boolean) => {
+          nastaviPisk(v)
+          zapisiPisk(v)
+        },
+        odstraniZadnjo,
+        konec: () => nastaviUrejanje(false),
+      }
+    : undefined
+
+  /* V prvem zagonu je »Uredi dvorano« enako postavitvi dvorane: fokus na števec. */
+  const uredi = () => {
+    if (!nastavljene) koracnikZagona.current?.focus()
+    else nastaviUrejanje(true)
+  }
+  const pokliciVse = () => klicVseh.mutate(pari)
+
+  const postavi = () =>
+    nastavi.mutate(() => ({ steviloMiz: zagonStevilo, izklopljeneMize: [], porazenecSodi: zagonPorazenec }))
+
+  const napake = klicKandidata.error ?? premik.error ?? klicVseh.error ?? nastavi.error ?? preklicKlica.error
+
+  /* ---------- okna ---------- */
+
+  const okna = (
+    <>
       {klic && (
         <OknoKlica
           idTurnirja={idTurnirja}
@@ -293,539 +400,205 @@ export function MizeStran() {
           klic={klic}
           kandidat={kandidatPoId.get(klic.tekma.tekma.id)}
           onZapri={() => nastaviKlic(null)}
-          onPoklicano={osvezi}
-        />
-      )}
-
-      {izbiraZa && (
-        <OknoIzbire
-          miza={izbiraZa}
-          podatki={podatki}
-          onIzbira={(k) => {
-            nastaviIzbiraZa(null)
-            nastaviKlic({ tekma: k.tekma, miza: izbiraZa.stevilka, sprememba: false })
-          }}
-          onZapri={() => nastaviIzbiraZa(null)}
+          onPotrdi={(v) => izvediKlic(v, kandidatPoId.get(v.tekma.tekma.id))}
         />
       )}
 
       {vnosIzida && (
-        <VnosRezultataOkno
-          tekma={vnosIzida.tekma}
-          nadObrazcem={
-            <p className="mize__okno-meta">
-              Miza {mizeTekme(vnosIzida)} · {opisTekme(vnosIzida)}
-            </p>
-          }
+        <OknoIzida
+          tekma={vnosIzida}
+          casStreznika={podatki.casStreznika}
+          telefon={jeTelefon}
           onZapri={() => nastaviVnosIzida(null)}
-          onShranjeno={osvezi}
+          onShrani={(izbira) => {
+            const t = vnosIzida
+            const zaZmago = Math.floor(t.tekma.steviloNizov / 2) + 1
+            nastaviVnosIzida(null)
+            nastaviPolniVnos({
+              tekma: t,
+              prvi: izbira.zmagovalec === 1 ? zaZmago : izbira.niziPorazenca,
+              drugi: izbira.zmagovalec === 2 ? zaZmago : izbira.niziPorazenca,
+            })
+          }}
+          onPreklic={() => {
+            nastaviPreklic(vnosIzida)
+            nastaviVnosIzida(null)
+          }}
+          onSodnik={() => {
+            nastaviKlic({ tekma: vnosIzida, miza: vnosIzida.miza, sprememba: true })
+            nastaviVnosIzida(null)
+          }}
+        />
+      )}
+
+      {polniVnos && (
+        <VnosRezultataOkno
+          tekma={polniVnos.tekma.tekma}
+          zacetniNizi={{ prvi: polniVnos.prvi, drugi: polniVnos.drugi }}
+          onZapri={() => nastaviPolniVnos(null)}
+          onShranjeno={(rezultat) => {
+            const t = polniVnos.tekma
+            osvezi()
+            sporoci({
+              besedilo:
+                `Miza ${oznakaMize(t)} je prosta · ${kratkoImenaTekme(t)}` +
+                (rezultat ? ` ${rezultat.dobljeniNizi1}:${rezultat.dobljeniNizi2}` : ''),
+            })
+          }}
         />
       )}
 
       {preklic && (
         <PotrditvenoOkno
           naslov="Prekliči klic"
-          sporocilo={`${imenaTekme(preklic)} gre z mize ${mizeTekme(preklic)} nazaj med pripravljene tekme.`}
+          sporocilo={`${imenaTekme(preklic)} gre z mize ${oznakaMize(preklic)} nazaj med pripravljene tekme.`}
           besedaPotrditve="Prekliči klic"
           onPotrdi={() => preklicKlica.mutate(preklic)}
           onZapri={() => nastaviPreklic(null)}
         />
       )}
 
-      {vsiPredlogi && (
-        <PotrditvenoOkno
-          naslov="Pokliči predloge"
-          sporocilo={pari
-            .map(([m, k]) => `Miza ${m.stevilka}: ${imenaTekme(k.tekma)}`)
-            .join('; ')}
-          besedaPotrditve={`Pokliči ${pari.length}`}
-          onPotrdi={() => klicVseh.mutate(pari)}
-          onZapri={() => nastaviVsePredloge(false)}
-        />
+      {sporocilo && <SporociloZRazveljavitvijo sporocilo={sporocilo} naZapri={() => nastaviSporocilo(null)} />}
+      {tisk.izris}
+    </>
+  )
+
+  /* ---------- telefon ---------- */
+
+  if (jeTelefon) {
+    const izb = izbranaMiza !== null && mizaPo(izbranaMiza) && !mizaPo(izbranaMiza)!.izklopljena
+      ? izbranaMiza
+      : (proste[0] ?? null)
+    const mizaIzb = izb === null ? undefined : mizaPo(izb)
+    const cilj = mizaIzb && !mizaIzb.tekma ? mizaIzb.stevilka : null
+    return (
+      <>
+        <GlavaDejanja>
+          {pari.length > 0 && (
+            <button type="button" className="glava-telefon__gumb" disabled={klicVseh.isPending} onClick={pokliciVse}>
+              Pokliči vse · {pari.length}
+            </button>
+          )}
+        </GlavaDejanja>
+        <section className="mize mize--telefon">
+          <NaslovTelefon kazalniki={kazalniki} />
+          {napake && (
+            <div className="mize-tel__napaka">
+              <SporociloNapake napaka={napake} />
+            </div>
+          )}
+          {!nastavljene ? (
+            <PrviZagon
+              telefon
+              stevilo={zagonStevilo}
+              naStevilo={nastaviZagonStevilo}
+              porazenecSodi={zagonPorazenec}
+              naPorazenec={nastaviZagonPorazenca}
+              naPostavi={postavi}
+              zasedeno={nastavi.isPending}
+              napaka={null}
+            />
+          ) : (
+            <>
+              <MaliTloris podatki={podatki} izbrana={izb} poudarjene={poudarjeneMize} naIzbiro={nastaviIzbranoMizo} />
+              <PodrobnostiMize
+                miza={mizaIzb}
+                podatki={podatki}
+                predlog={mizaIzb ? predlogi.get(mizaIzb.stevilka) : undefined}
+                najdlje={najdljeBesedilo}
+                onPoklici={(k, miza) => klicKandidata.mutate({ kandidat: k, miza })}
+                onIzid={nastaviVnosIzida}
+              />
+              <VrstaTelefon
+                kandidati={podatki.kandidati}
+                predlagane={predlagane}
+                cilj={cilj}
+                prva={proste[0] ?? null}
+                vse={vseKartice}
+                onNaMizo={(k, miza) => klicKandidata.mutate({ kandidat: k, miza })}
+                naPreklopVseh={() => nastaviVseKartice(!vseKartice)}
+              />
+            </>
+          )}
+        </section>
+        {okna}
+      </>
+    )
+  }
+
+  /* ---------- namizje ---------- */
+
+  return (
+    <section className="mize">
+      <GlavaMize
+        idTurnirja={idTurnirja}
+        imeTurnirja={podatki.imeTurnirja}
+        ura={uraIzCasa(podatki.casStreznika)}
+        kazalniki={kazalniki}
+      />
+      {pregled.error && (
+        <div className="mize__napake">
+          <NapakaPoizvedbe poizvedba={pregled} kaj="miz" />
+        </div>
       )}
+      {napake && (
+        <div className="mize__napake">
+          <SporociloNapake napaka={napake} />
+        </div>
+      )}
+
+      <CrnaVrstica
+        urejanje={urejanjeDvorane}
+        vlecem={vlecem !== null}
+        predlogov={pari.length}
+        vseZasedeno={nastavljene && proste.length === 0}
+        najdlje={najdljeBesedilo}
+        onUredi={uredi}
+        onPoklicVseh={pokliciVse}
+        poklicVsehNalaga={klicVseh.isPending}
+      />
+
+      {!nastavljene ? (
+        <PrviZagon
+          telefon={false}
+          stevilo={zagonStevilo}
+          naStevilo={nastaviZagonStevilo}
+          porazenecSodi={zagonPorazenec}
+          naPorazenec={nastaviZagonPorazenca}
+          naPostavi={postavi}
+          zasedeno={nastavi.isPending}
+          napaka={null}
+          koracnik={koracnikZagona}
+        />
+      ) : (
+        <div className="mize__telo">
+          <Tloris
+            podatki={podatki}
+            predlogi={predlogi}
+            poudarjene={poudarjeneMize}
+            urejanje={urejanje}
+            vlecem={vlecem !== null}
+            nadMizo={nadMizo}
+            dejanja={dejanja}
+            naDodaj={dodajMizo}
+          />
+          <VrstaTekem
+            kandidati={podatki.kandidati}
+            predlagane={predlagane}
+            vse={vseKartice}
+            dejanja={dejanja}
+            naPreklopVseh={() => nastaviVseKartice(!vseKartice)}
+            dogodkiVTeku={podatki.dogodkiVTeku}
+          />
+        </div>
+      )}
+
+      {okna}
     </section>
   )
 }
 
-function Kolofon({ oznaka, vrednost }: { oznaka: string; vrednost: string }) {
-  return (
-    <div className="kolofon__vrstica">
-      <span className="kolofon__oznaka">{oznaka}</span>
-      <span className="kolofon__vrednost">{vrednost}</span>
-    </div>
-  )
-}
-
-/* ---------- vrstica mize ---------- */
-
-function VrsticaMize({
-  miza,
-  podatki,
-  kandidatPoId,
-  poudarjena,
-  onPoklici,
-  onDruga,
-  onVnosIzida,
-  onSprememba,
-  onPreklic,
-  onIzklop,
-}: {
-  miza: MizaDto
-  podatki: MizeTurnirjaDto
-  kandidatPoId: Map<number, KandidatMizeDto>
-  poudarjena: boolean
-  onPoklici: (t: TekmaMizeDto) => void
-  onDruga: () => void
-  onVnosIzida: (t: TekmaMizeDto) => void
-  onSprememba: (t: TekmaMizeDto) => void
-  onPreklic: (t: TekmaMizeDto) => void
-  onIzklop: (izklopi: boolean) => void
-}) {
-  const t = miza.tekma
-  if (miza.izklopljena) {
-    return (
-      <li className="miza-vrstica miza-vrstica--izklopljena">
-        <span className="miza-vrstica__st">{miza.stevilka}</span>
-        <div className="miza-vrstica__vsebina">
-          <p className="miza-vrstica__stanje">Izklopljena</p>
-        </div>
-        <div className="miza-vrstica__dejanja">
-          <button type="button" className="gumb gumb--majhen" onClick={() => onIzklop(false)}>
-            Vklopi
-          </button>
-        </div>
-      </li>
-    )
-  }
-
-  if (t) {
-    const minute = minutOd(t.poklicanaOb, podatki.casStreznika)
-    return (
-      <li className="miza-vrstica miza-vrstica--zasedena">
-        <span className="miza-vrstica__st">{miza.stevilka}</span>
-        <div className="miza-vrstica__vsebina">
-          <p className="miza-vrstica__imena">{imenaTekme(t)}</p>
-          <p className="miza-vrstica__meta">
-            {opisTekme(t)}
-            {t.miza2 !== null && ` · mizi ${mizeTekme(t)}`}
-            {t.sodnik ? ` · sodi ${t.sodnik.ime}` : ''}
-          </p>
-        </div>
-        <span className="miza-vrstica__cas" title="Minute od klica">
-          {minute !== null ? `${minute} min` : ''}
-        </span>
-        <div className="miza-vrstica__dejanja">
-          {t.ekipno && t.idSrecanje !== null ? (
-            <Link to={`/srecanja/${t.idSrecanje}`} className="gumb gumb--majhen">
-              Zapisnik
-            </Link>
-          ) : (
-            <button type="button" className="gumb" onClick={() => onVnosIzida(t)}>
-              Vnesi izid
-            </button>
-          )}
-          <MeniDejanj naslov={`Dejanja mize ${miza.stevilka}`}>
-            {(zapri) => (
-              <>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="uporabnik-meni__postavka"
-                  onClick={() => {
-                    zapri()
-                    onSprememba(t)
-                  }}
-                >
-                  Premakni ali zamenjaj sodnika
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="uporabnik-meni__postavka"
-                  onClick={() => {
-                    zapri()
-                    onPreklic(t)
-                  }}
-                >
-                  Prekliči klic
-                </button>
-              </>
-            )}
-          </MeniDejanj>
-        </div>
-      </li>
-    )
-  }
-
-  const predlog = miza.predlogi.length > 0 ? kandidatPoId.get(miza.predlogi[0]) : undefined
-  const prostaMinut = minutOd(miza.prostaOd, podatki.casStreznika)
-  const sodnik = predlog ? privzetiSodnik(miza, predlog.tekma) : miza.cakajociSodnik
-  return (
-    <li className={'miza-vrstica miza-vrstica--prosta' + (poudarjena ? ' miza-vrstica--sproscena' : '')}>
-      <span className="miza-vrstica__st">{miza.stevilka}</span>
-      <div className="miza-vrstica__vsebina">
-        <p className="miza-vrstica__stanje">
-          Prosta{miza.prostaOd ? ` · ${predMinutami(prostaMinut)}` : ''}
-          {miza.cakajociSodnik && ` · sodi ${miza.cakajociSodnik.ime} (poraženec)`}
-        </p>
-        {predlog ? (
-          <div className="miza-predlog">
-            <p className="miza-vrstica__imena">{imenaTekme(predlog.tekma)}</p>
-            <p className="miza-vrstica__meta">
-              {opisTekme(predlog.tekma)} · {predlog.razlogi.join(' · ')}
-            </p>
-            {miza.cakajociSodnik && !sodnik && (
-              <p className="miza-vrstica__meta">
-                {miza.cakajociSodnik.ime} igra v tej tekmi – sodnika izberi v oknu klica.
-              </p>
-            )}
-          </div>
-        ) : podatki.kandidati.length === 0 ? (
-          <p className="miza-vrstica__meta">Ni pripravljenih tekem.</p>
-        ) : (
-          <p className="miza-vrstica__meta">
-            Vse pripravljene tekme imajo igralca, ki igra ali je predlagan za drugo mizo. Izbereš
-            jih lahko v meniju mize (Druga tekma …).
-          </p>
-        )}
-      </div>
-      <span className="miza-vrstica__cas" />
-      <div className="miza-vrstica__dejanja">
-        {predlog && (
-          <button type="button" className="gumb gumb--glavni" onClick={() => onPoklici(predlog.tekma)}>
-            Pokliči
-          </button>
-        )}
-        <MeniDejanj naslov={`Dejanja mize ${miza.stevilka}`}>
-          {(zapri) => (
-            <>
-              <button
-                type="button"
-                role="menuitem"
-                className="uporabnik-meni__postavka"
-                disabled={podatki.kandidati.length === 0}
-                onClick={() => {
-                  zapri()
-                  onDruga()
-                }}
-              >
-                Druga tekma …
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="uporabnik-meni__postavka"
-                onClick={() => {
-                  zapri()
-                  onIzklop(true)
-                }}
-              >
-                Izklopi mizo
-              </button>
-            </>
-          )}
-        </MeniDejanj>
-      </div>
-    </li>
-  )
-}
-
-/* ---------- pripravljene tekme ---------- */
-
-function VrsticaKandidata({ kandidat, onPoklici }: { kandidat: KandidatMizeDto; onPoklici?: () => void }) {
-  const t = kandidat.tekma
-  return (
-    <li className={'mize-kandidat' + (kandidat.zaseden ? ' mize-kandidat--zaseden' : '')}>
-      <div className="mize-kandidat__vsebina">
-        <p className="miza-vrstica__imena">{imenaTekme(t)}</p>
-        <p className="miza-vrstica__meta">{opisTekme(t)}</p>
-        <p className={'mize-kandidat__razlogi' + (kandidat.zaseden ? ' mize-kandidat__razlogi--zaseden' : '')}>
-          {kandidat.razlogi.join(' · ')}
-        </p>
-      </div>
-      {onPoklici && (
-        <button type="button" className="gumb gumb--majhen" onClick={onPoklici}>
-          Pokliči …
-        </button>
-      )}
-    </li>
-  )
-}
-
-/* Izbira druge tekme za prosto mizo: najprej zamenjavi iz predloga, nato vse
-   ostale pripravljene po vrsti (zasedene na koncu, z razlogom). */
-function OknoIzbire({
-  miza,
-  podatki,
-  onIzbira,
-  onZapri,
-}: {
-  miza: MizaDto
-  podatki: MizeTurnirjaDto
-  onIzbira: (k: KandidatMizeDto) => void
-  onZapri: () => void
-}) {
-  const poId = new Map(podatki.kandidati.map((k) => [k.tekma.tekma.id, k]))
-  const prvi = miza.predlogi.map((id) => poId.get(id)).filter((k): k is KandidatMizeDto => !!k)
-  const ostali = podatki.kandidati.filter((k) => !miza.predlogi.includes(k.tekma.tekma.id))
-  return (
-    <ModalnoOkno naslov={`Tekma za mizo ${miza.stevilka}`} srednje brezObrazca onZapri={onZapri}>
-      <ol className="mize__pripravljene mize__pripravljene--okno">
-        {[...prvi, ...ostali].map((k) => (
-          <VrsticaKandidata key={k.tekma.tekma.id} kandidat={k} onPoklici={() => onIzbira(k)} />
-        ))}
-      </ol>
-    </ModalnoOkno>
-  )
-}
-
-/* ---------- okno klica ---------- */
-
-function OknoKlica({
-  idTurnirja,
-  podatki,
-  klic,
-  kandidat,
-  onZapri,
-  onPoklicano,
-}: {
-  idTurnirja: number
-  podatki: MizeTurnirjaDto
-  klic: Klic
-  kandidat: KandidatMizeDto | undefined
-  onZapri: () => void
-  onPoklicano: () => void
-}) {
-  const t = klic.tekma
-  const proste = prosteMize(podatki.mize)
-  // pri spremembi sta na voljo tudi mizi, na katerih tekma že je
-  const moznosti = [
-    ...new Set([...(klic.sprememba ? [t.miza, t.miza2] : []), ...proste].filter((m): m is number => m !== null)),
-  ].sort((a, b) => a - b)
-  const zacetnaMiza = klic.miza ?? moznosti[0] ?? null
-  const mizaPo = (st: number | null) => podatki.mize.find((m) => m.stevilka === st)
-
-  const [miza, nastaviMizo] = useState<number | null>(zacetnaMiza)
-  const [miza2, nastaviMizo2] = useState<number | null>(klic.sprememba ? t.miza2 : null)
-  const [sodnik, nastaviSodnika] = useState<OsebaMizeDto | null>(
-    klic.sprememba ? t.sodnik : privzetiSodnik(mizaPo(zacetnaMiza), t),
-  )
-  // ročno izbran sodnik ostane, ko organizator zamenja mizo
-  const [sodnikRocno, nastaviSodnikRocno] = useState(klic.sprememba)
-
-  const osebe = useQuery({
-    queryKey: ['turnir', idTurnirja, 'mize', 'osebe'],
-    queryFn: () => mizeApi.osebe(idTurnirja),
-    staleTime: 60_000,
-  })
-  const moznostiSodnika = useMemo(() => {
-    const vse = (osebe.data ?? []).filter((o) => !t.osebe.includes(o.id))
-    if (sodnik && !vse.some((o) => o.id === sodnik.id)) vse.unshift(sodnik)
-    return vse.map((o) => ({ id: o.id, ime: o.ime }))
-  }, [osebe.data, t.osebe, sodnik])
-
-  /* Kdo zdaj igra ali sodi: opozorilo za izbranega sodnika. */
-  const zasedeniSodniki = useMemo(() => {
-    const z = new Map<number, number>()
-    for (const m of podatki.mize) {
-      if (!m.tekma || m.tekma.tekma.id === t.tekma.id) continue
-      m.tekma.osebe.forEach((o) => z.set(o, m.stevilka))
-      if (m.tekma.sodnik) z.set(m.tekma.sodnik.id, m.stevilka)
-    }
-    return z
-  }, [podatki.mize, t.tekma.id])
-
-  const poklici = useMutation({
-    mutationFn: () => mizeApi.poklici(t.tekma.id, { miza: miza!, miza2, idSodnika: sodnik?.id ?? null }),
-    onSuccess: () => {
-      onPoklicano()
-      onZapri()
-    },
-  })
-
-  function obMizi(st: number) {
-    nastaviMizo(st)
-    if (miza2 === st) nastaviMizo2(null)
-    if (!sodnikRocno) nastaviSodnika(privzetiSodnik(mizaPo(st), t))
-  }
-
-  function obOddaji(d: FormEvent) {
-    d.preventDefault()
-    if (miza !== null) poklici.mutate()
-  }
-
-  const predlaganSodnik = !sodnikRocno && sodnik !== null && sodnik.id === mizaPo(miza)?.cakajociSodnik?.id
-  const zasedenSodnik = sodnik ? zasedeniSodniki.get(sodnik.id) : undefined
-
-  return (
-    <ModalnoOkno
-      naslov={klic.sprememba ? 'Spremeni klic' : 'Pokliči tekmo'}
-      nadnaslov={opisTekme(t)}
-      onZapri={onZapri}
-    >
-      <form className="obrazec" onSubmit={obOddaji}>
-        <p className="mize__okno-imena">{imenaTekme(t)}</p>
-        {kandidat?.zaseden && (
-          <p className="obvestilo obvestilo--opozorilo">
-            {kandidat.razlogi.filter((r) => !r.includes(' naj sodi') && / (igra|sodi)( na mizi|$)/.test(r)).join(' · ')}. Tekmo lahko vseeno
-            pokličeš.
-          </p>
-        )}
-        {moznosti.length === 0 ? (
-          <p className="obvestilo obvestilo--opozorilo">Ni proste mize.</p>
-        ) : (
-          <div className="obrazec__vrstica">
-            <label className="obrazec__polje">
-              Miza
-              <select value={miza ?? ''} onChange={(d) => obMizi(Number(d.target.value))}>
-                {moznosti.map((st) => (
-                  <option key={st} value={st}>
-                    {st}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {t.ekipno && (
-              <label className="obrazec__polje">
-                Druga miza
-                <select
-                  value={miza2 ?? ''}
-                  onChange={(d) => nastaviMizo2(d.target.value === '' ? null : Number(d.target.value))}
-                >
-                  <option value="">brez</option>
-                  {moznosti
-                    .filter((st) => st !== miza)
-                    .map((st) => (
-                      <option key={st} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            )}
-          </div>
-        )}
-
-        <IskalniIzbirnik
-          oznaka="Sodnik"
-          vidnaOznaka
-          vObrazcu
-          namig="Vpiši ime ali pusti prazno"
-          moznosti={moznostiSodnika}
-          izbrano={sodnik?.id ?? null}
-          naIzbiro={(id) => {
-            nastaviSodnikRocno(true)
-            nastaviSodnika(moznostiSodnika.find((o) => o.id === id) ?? null)
-          }}
-          naPraznjenje={() => {
-            nastaviSodnikRocno(true)
-            nastaviSodnika(null)
-          }}
-        />
-        {predlaganSodnik && <p className="namig">Poraženec prejšnje tekme na tej mizi.</p>}
-        {zasedenSodnik !== undefined && (
-          <p className="obvestilo obvestilo--opozorilo">
-            {sodnik!.ime} zdaj igra ali sodi na mizi {zasedenSodnik}.
-          </p>
-        )}
-
-        <SporociloNapake napaka={poklici.error} />
-        <div className="obrazec__gumbi">
-          <button type="submit" className="gumb gumb--glavni" disabled={miza === null || poklici.isPending}>
-            {klic.sprememba ? 'Shrani' : `Pokliči na mizo ${miza ?? ''}`}
-          </button>
-          <button type="button" className="gumb" onClick={onZapri}>
-            Prekliči
-          </button>
-        </div>
-      </form>
-    </ModalnoOkno>
-  )
-}
-
-/* ---------- nastavitve miz ---------- */
-
-function NastavitveMiz({
-  podatki,
-  prvic,
-  onShranjeno,
-  onZapri,
-}: {
-  podatki: MizeTurnirjaDto
-  prvic: boolean
-  onShranjeno: () => void
-  onZapri?: () => void
-}) {
-  const [stevilo, nastaviStevilo] = useState(podatki.steviloMiz === null ? '' : String(podatki.steviloMiz))
-  const [porazenecSodi, nastaviPorazenecSodi] = useState(prvic ? true : podatki.porazenecSodi)
-  const [pocitek, nastaviPocitek] = useState(String(podatki.pocitekMin))
-  const shrani = useMutation({
-    mutationFn: () => {
-      const n = Number(stevilo)
-      return mizeApi.nastavi(podatki.idTurnir, {
-        steviloMiz: n,
-        // izklopljene mize, ki jih po zmanjšanju ni več, odpadejo
-        izklopljeneMize: podatki.izklopljeneMize.filter((m) => m <= n),
-        porazenecSodi,
-        pocitekMin: pocitek === '' ? 0 : Number(pocitek),
-      })
-    },
-    onSuccess: onShranjeno,
-  })
-  const veljavno = stevilo !== '' && Number(stevilo) >= 1
-
-  return (
-    <form
-      className="obrazec mize__nastavitve"
-      onSubmit={(d) => {
-        d.preventDefault()
-        if (veljavno) shrani.mutate()
-      }}
-    >
-      {prvic && (
-        <p className="namig">
-          Vpiši, koliko miz imaš v dvorani. Mize so oštevilčene od 1 naprej, kot jih sodnik vpiše
-          v okence na listku.
-        </p>
-      )}
-      <div className="obrazec__vrstica">
-        <label className="obrazec__polje">
-          Število miz (1–99)
-          <StevilskoPolje vrednost={stevilo} naSpremembo={nastaviStevilo} najvec={99} className="vnos--ozek" />
-        </label>
-        <label className="obrazec__polje">
-          Počitek med tekmami (0–30 min)
-          <StevilskoPolje vrednost={pocitek} naSpremembo={nastaviPocitek} najvec={30} className="vnos--ozek" />
-        </label>
-      </div>
-      <label className="obrazec__polje obrazec__polje--stikalo">
-        <input type="checkbox" checked={porazenecSodi} onChange={(d) => nastaviPorazenecSodi(d.target.checked)} />
-        Poraženec sodi naslednjo tekmo na svoji mizi
-      </label>
-      <SporociloNapake napaka={shrani.error} />
-      <div className="obrazec__gumbi">
-        <button type="submit" className="gumb gumb--glavni" disabled={!veljavno || shrani.isPending}>
-          Shrani
-        </button>
-        {onZapri && (
-          <button type="button" className="gumb" onClick={onZapri}>
-            Prekliči
-          </button>
-        )}
-      </div>
-    </form>
-  )
-}
-
-/* ---------- pomožno ---------- */
-
-function mizSklon(n: number): string {
-  const o = n % 100
-  if (o === 1) return 'miza'
-  if (o === 2) return 'mizi'
-  if (o === 3 || o === 4) return 'mize'
-  return 'miz'
-}
+/* ---------- pisk ---------- */
 
 /* Nastavitev piska je udobje tega prenosnika: hrani se v brskalniku, privzeto vklopljena. */
 function beriPisk(): boolean {

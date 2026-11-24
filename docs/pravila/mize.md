@@ -7,9 +7,12 @@
 ## Odločitve lastnika (23. 11. 2026)
 
 - Vse mize so za vse kategorije. Mize se ne delijo po dogodkih.
-- Organizator igralce pokliče na glas, aplikacija klic samo beleži. Zaslona v dvorani,
-  potisnih obvestil in javnega prikaza mize ni.
-- Listki se tiskajo vnaprej, mizo v okence vpiše sodnik.
+- Organizator igralce pokliče na glas, aplikacija klic samo beleži. Potisnih obvestil in
+  javnega prikaza mize ni. **Zaslon za igralce (TV v dvorani) je od 24. 11. 2026 del prenove
+  strani** (glej »Vmesnik«): samo za organizatorja in admina, odpre se v novem oknu v isti
+  seji, bere isti klic kot stran Mize (zaledja ni treba spreminjati).
+- Listki se tiskajo vnaprej, mizo v okence vpiše sodnik. Ob klicu na strani Mize se lahko
+  natisne tudi listek z že vpisano mizo.
 - **Poraženec prejšnje tekme na isti mizi sodi naslednjo.** To je nastavitev turnirja
   (`turnir.porazenec_sodi`). Ob klicu je poraženec predlagan, organizator ga lahko
   zamenja ali odstrani. Po tekmi dvojic sodnika ne predlaga nihče.
@@ -115,19 +118,42 @@
   sodnik predloga ene mize ne igra v predlogu druge: »Pokliči predloge« pokliče vse
   prve predloge naenkrat. Zamenjavi (največ dve) sta naslednja prosta kandidata.
 
-## Vmesnik (`strani/MizeStran.tsx`)
+## Vmesnik (`strani/MizeStran.tsx`, prenova »tloris dvorane«, 24. 11. 2026)
 
-- Levo so mize kot vrstice s številko, desno pripravljene tekme po vrstnem redu
-  predloga.
-- Barve vrstic:
-  - prosta miza ima modri rob in mehko podlago (čaka na dejanje);
-  - pravkar sproščena je 30 s zelena;
-  - izklopljena zbledi.
-- Osveži se vsake 4 s, dokler je stran vidna. Minute se računajo po uri strežnika
-  (`casStreznika`).
-- Kratek dvojni pisk ob sprostitvi mize: zvočni kontekst nastane ob prvem kliku na
-  strani, nastavitev je v `localStorage` (udobje prenosnika).
-- Izid se vpiše v `VnosRezultataOkno`, pri ekipni tekmi prek povezave na zapisnik
-  srečanja.
-- Pomoč: članek `mize` (`pomoc/vsebina/rezultati.ts`). Ob vsaki spremembi strani ga
-  posodobi.
+Po predaji `design_handoff_mize_tloris` (smer 1b). Komponente: `komponente/MizeTloris.tsx` (glava,
+črna vrstica, tloris, vrsta), `MizeOkna.tsx` (klic, izid, prvi zagon), `MizeTelefon.tsx`,
+`MizeListekTisk.tsx`, stran `MizeZaslonStran.tsx`; CSS razdelek »Mize« v `slog.css`.
+
+- **Tloris:** mize so pravokotniki z mrežo na sredini, priimek vsakega igralca na njegovi strani.
+  Stanja: prosta (modro črtkana, predlog + »Pokliči ›«), pravkar sproščena (30 s zelena, obstoječa
+  logika `sprosceneMize` + pisk), v igri (črna, modri trak časa), predolgo (30 min,
+  `MEJA_PREDOLGO_MIN` v `pomozno/mize.ts`; rjasta črta + minute v znački; ne velja za ekipno),
+  izklopljena (šrafirana), tarča (med vlečenjem). Ekipno srečanje je ena enota čez dve mizi.
+- **Vlečenje (HTML5):** kartica vrste → prosta miza = klic (sodnik po pravilu »poraženec sodi«,
+  druga miza ekipnega = sosednja prosta, listek se natisne); zasedena miza → prosta miza = premik
+  (sodnik ostane). Med vlečenjem se osveževanje (4 s) ustavi in elementi se ne zamenjujejo (samo
+  razred). Isto je mogoče s klikom in tipkovnico (Enter, presledek): prosta miza s predlogom ali
+  kartica → okno klica, zasedena miza → okno izida.
+- **Sporočilo z razveljavitvijo** (6 s) po klicu, »Pokliči vse« in premiku; izid razveljavitve nima.
+- **Okno izida** izbere zmagovalca in izid v nizih, shranjevanje pa teče v `VnosRezultataOkno` z
+  že izbranim izidom (odločitev lastnika, 24. 11. 2026: točke po nizih lahko odločijo o vrstnem
+  redu v skupini, zato hitrega shranjevanja brez njih ni). Okno vsebuje tudi »Zamenjaj sodnika«
+  (okno klica v načinu spremembe) in »Prekliči klic« (s potrditvijo).
+- **Uredi dvorano** (črna vrstica): klik na prosto mizo jo izklopi, na izklopljeno vklopi;
+  »+ Miza« in »− Odstrani zadnjo« (ne, dokler se na zadnji igra); Poraženec sodi, **Počitek**
+  (0–30 min) in **Pisk ob prosti mizi** (`localStorage`, udobje prenosnika) so v drugi vrstici
+  črne vrstice. Vse gre skozi `mizeApi.nastavi` (stanje se prebere znova pred vsako spremembo).
+- **Listek ob klicu** (`MizeListekTisk`): skrit natisljiv vsebnik v portalu + `window.print()`;
+  podatki iz žreba dogodka kot na strani Listki, miza v okencu je klicana miza. Sled tiska
+  (»natisnjeno«) se NE zapisuje (potrdi jo organizator na strani Listki). **Ekipno srečanje ima
+  zapisnik, ki se ob klicu ne tiska samodejno** (zapisnik odpre »Odpri zapisnik«).
+- **Zaslon za igralce** (`/turnirji/:id/mize/zaslon`, brez glave aplikacije, oder 1280 × 720 s
+  `transform: scale()`): zadnjih 5 klicev, 6 naslednjih tekem brez zasedenih igralcev in
+  zemljevid dvorane; osvežuje se vsake 4 s. Najnovejši klic je »pravkar« do 5 min starosti.
+- Telefon (≤ 640 px): pomanjšan tloris, tap na mizo, nato tekma (»Na N« takoj pokliče).
+- Imena na mizi so priimki (`priimekNaMizi`: strežnikov `priimek`, pri dvojicah » / «, pri
+  ekipah ime ekipe). Razlogi zasedenosti: `razlogiZasedenosti`; razlogi predloga so samo v oknu
+  klica.
+- Pomoč: članek `mize` (`pomoc/vsebina/rezultati.ts`). Ob vsaki spremembi strani ga posodobi.
+- Preverba videza: razvojni harness `/dev/mize/:id?stanje=…` in `/dev/mize-zaslon/:id`
+  (`dev/MizePosnetki.tsx`, `dev/mizePodatki.ts`, prepis podatkov prototipa).
