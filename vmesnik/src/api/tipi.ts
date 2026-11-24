@@ -3391,6 +3391,8 @@ export interface MeritevBranjaDto {
   skupaj: SkupinaMeritve
   poTurnirjih: SkupinaMeritve[]
   poMrezah: SkupinaMeritve[]
+  /* sodnik s svojim telefonom (S2) in pult, vedno oba v tem vrstnem redu */
+  poViru: SkupinaMeritve[]
 }
 
 /* Zlati nabor in zadnja meritev bralnika nad njim. */
@@ -3405,6 +3407,56 @@ export interface StanjeNaboraDto {
   mreza: string | null
   rezultat: SkupinaMeritve | null
   napaka: string | null
+  /* isto samo za listke, katerih števke niso v učenju (pisava, ki je mreža ni videla) */
+  preizkusni: SkupinaMeritve | null
+  /* in za listke, na katerih se je mreža učila */
+  ucni: SkupinaMeritve | null
+  diagnoza: DiagnozaNaboraDto | null
+}
+
+/* Diagnostika branja nad zlatim naborom (24. 11. 2026, docs/pravila/branje-listkov.md). */
+export type VzrokNapakeBranja = 'NI_CRNILA' | 'CRNILO_V_PRAZNI' | 'RAZREZ' | 'MREZA' | 'IZBIRA_RAZREZA' | 'PRAVILA'
+
+export interface DiagnozaNaboraDto {
+  preizkusni: DelDiagnozeDto
+  ucni: DelDiagnozeDto
+}
+
+export interface DelDiagnozeDto {
+  listkov: number
+  celic: number
+  napacnih: number
+  vzroki: { vzrok: VzrokNapakeBranja; tihih: number; ujetih: number }[]
+  stevke: {
+    celicZZapisom: number
+    /* celice, ki jih razrez ne razdeli na pravo število števk (v učenje ne pridejo) */
+    brezRazreza: number
+    stevk: number
+    prav: number
+    poStevkah: { stevka: number; vseh: number; prav: number; zamenjave: { prebrano: number; krat: number }[] }[]
+  }
+  umerjenostMreze: RazredUmerjenostiDto[]
+  umerjenostKoncna: RazredUmerjenostiDto[]
+  napake: NapacnaCelicaDto[]
+}
+
+export interface RazredUmerjenostiDto {
+  od: number
+  doMeje: number
+  celic: number
+  prav: number
+}
+
+export interface NapacnaCelicaDto {
+  niz: number
+  stran: 'levo' | 'desno'
+  napisano: number | null
+  prebrano: number | null
+  vzrok: VzrokNapakeBranja
+  tiha: boolean
+  zaupanje: number
+  /* PNG izrez celice (base64) ali null */
+  slika: string | null
 }
 
 /* Ena različica mreže števk v zgodovini učenja (F6.4). Natančnosti so deleži 0-1:
@@ -3487,6 +3539,8 @@ export interface NapakeMrezeDto {
   drugacnihUcnih: number
   pragSumljive: number
   sumljive: StevkaNapakeDto[]
+  /* preizkusne števke po viru (potrjen listek, vadnica, ostalo) */
+  poViru: { vir: 'LISTEK' | 'VADNICA' | 'OSTALO'; preizkusnih: number; pravVUporabi: number; pravVgrajena: number }[]
 }
 
 /* Vadnica števk (V70, samo admin): list A4, ki ga izpolni ena oseba. */

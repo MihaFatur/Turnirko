@@ -17,5 +17,11 @@ public record StanjeNaboraDto(
         /* null, dokler ni koncane meritve */
         MeritevBranjaDto.Skupina rezultat,
         /* razlog, ce zadnja meritev ni uspela */
-        String napaka
+        String napaka,
+        /* isto samo za listke, katerih stevke niso v ucenju (prava neznana pisava) */
+        MeritevBranjaDto.Skupina preizkusni,
+        /* in za listke, na katerih se je mreza ucila */
+        MeritevBranjaDto.Skupina ucni,
+        /* diagnostika (vzroki napak, stevke, umerjenost, galerija); DiagnozaBranja */
+        DiagnozaNaboraDto diagnoza
 ) {}

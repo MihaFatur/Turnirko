@@ -170,6 +170,7 @@ const MizePosnetki = import.meta.env.DEV ? lazy(() => import('./dev/MizePosnetki
 const MizeZaslonPosnetki = import.meta.env.DEV
   ? lazy(() => import('./dev/MizePosnetki').then((m) => ({ default: m.MizeZaslonPosnetki })))
   : null
+const DiagnozaBranjaPosnetek = import.meta.env.DEV ? lazy(() => import('./dev/DiagnozaBranjaPosnetek')) : null
 
 export function App() {
   return (
@@ -212,6 +213,10 @@ export function App() {
       {MizeZaslonPosnetki && (
         <Route path="/dev/mize-zaslon/:id"
           element={<Suspense fallback={null}><MizeZaslonPosnetki /></Suspense>} />
+      )}
+      {DiagnozaBranjaPosnetek && (
+        <Route path="/dev/diagnoza-branja"
+          element={<Suspense fallback={null}><DiagnozaBranjaPosnetek /></Suspense>} />
       )}
       {/* Zaslon za igralce (TV v dvorani): celozaslonska stran brez glave in spodnje vrstice,
           odpre se iz strani Mize v novem oknu. Podatke dobi isti klic kot stran Mize. */}

@@ -209,7 +209,7 @@ describe('napake mreže (F6.6)', () => {
     const p: NapakeMrezeDto = {
       vUporabi: 1, preizkusnih: 10, ucnih: 40, poStevkah: [],
       napakVseh: 3, najvecNaStevko: 60, napake: [stevka(1), stevka(2)],
-      drugacnihUcnih: 5, pragSumljive: 0.9, sumljive: [stevka(3)],
+      drugacnihUcnih: 5, pragSumljive: 0.9, sumljive: [stevka(3)], poViru: [],
     }
     const brezNapake = brezStevke(p, 2)
     expect(brezNapake.napake.map((s) => s.id)).toEqual([1])

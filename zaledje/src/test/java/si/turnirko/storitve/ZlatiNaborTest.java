@@ -39,6 +39,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import si.turnirko.branje.CeliceListka;
 import si.turnirko.branje.MrezaStevk;
 import si.turnirko.branje.Temnost;
+import si.turnirko.dto.DiagnozaNaboraDto;
 import si.turnirko.dto.MeritevBranjaDto;
 import si.turnirko.izjeme.PrepovedanoIzjema;
 import si.turnirko.modeli.BranjeListka;
@@ -186,6 +187,24 @@ class ZlatiNaborTest extends IntegracijskiTest {
         // 4 nizi (8) in Rezultat, ce je prebran (2) na listek
         assertTrue(vseh >= 16 && vseh <= 20, "celic " + vseh);
         assertTrue(c.pravZanesljive() + c.pravNegotove() >= vseh - 3, c.toString());
+
+        // diagnostika: preizkusni in ucni listki skupaj so vsi (vsi imajo branje), vsaka
+        // celica je v natanko enem razredu umerjenosti, napacne imajo vzrok
+        MeritevNabora.Podrobno d = meritevNabora.izmeri(vir.trenutna().mreza(), Integer.MAX_VALUE, () -> false,
+                n -> {}, true);
+        assertEquals(2, d.preizkusni().izmerjenih() + d.ucni().izmerjenih());
+        DiagnozaNaboraDto.Del pre = d.diagnoza().preizkusni();
+        DiagnozaNaboraDto.Del uc = d.diagnoza().ucni();
+        assertEquals(2, pre.listkov() + uc.listkov());
+        for (DiagnozaNaboraDto.Del del : List.of(pre, uc)) {
+            assertEquals(del.celic(), del.umerjenostMreze().stream().mapToInt(DiagnozaNaboraDto.Razred::celic).sum());
+            assertEquals(del.celic(), del.umerjenostKoncna().stream().mapToInt(DiagnozaNaboraDto.Razred::celic).sum());
+            assertEquals(del.napacnih(),
+                    del.vzroki().stream().mapToInt(v -> v.tihih() + v.ujetih()).sum());
+            assertTrue(del.stevke().prav() <= del.stevke().stevk());
+        }
+        // stevila celic se ujemajo z meritvijo (nizi brez Rezultata)
+        assertTrue(pre.celic() + uc.celic() >= 16, "celic diagnoze " + (pre.celic() + uc.celic()));
 
         racun("organizator-nabor@test", Vloga.ORGANIZATOR);
         prijava("organizator-nabor@test", "ROLE_ORGANIZATOR");

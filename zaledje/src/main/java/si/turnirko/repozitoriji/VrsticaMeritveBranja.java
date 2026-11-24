@@ -21,5 +21,7 @@ public record VrsticaMeritveBranja(
         boolean kontrola,
         Integer casPregledaMs,
         NacinPotrditve nacinPotrditve,
-        String model
+        String model,
+        /* fotografijo je poslal sodnik s svojim telefonom (S2), ne organizator */
+        boolean poslalSodnik
 ) {}

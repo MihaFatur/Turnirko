@@ -156,12 +156,35 @@ public class LokalniBralnikListka implements BralnikListka {
     }
 
     static PrebranListek beri(Izrez izrez, MrezaStevk mreza, PogostostNizov pogostost, double beta, boolean vecBranj) {
-        List<RazlagaListka.Vrstica> vrstice = new ArrayList<>();
+        return beri(izrez, porazdelitve(izrez, mreza, vecBranj), mreza, pogostost, beta, vecBranj).listek();
+    }
+
+    /* Porazdelitve vrednosti vseh celic listka (mreza na vsaki celici posebej, pred
+       pravili): nizi[i] = {levo, desno}, rezultat = {levo, desno}. */
+    public record Porazdelitve(List<double[][]> nizi, double[][] rezultat) {}
+
+    public static Porazdelitve porazdelitve(Izrez izrez, MrezaStevk mreza, boolean vecBranj) {
+        List<double[][]> nizi = new ArrayList<>();
         for (RazrezCelice.Vsebina[] v : izrez.nizi()) {
-            vrstice.add(new RazlagaListka.Vrstica(porazdelitev(v[0], mreza, vecBranj), porazdelitev(v[1], mreza, vecBranj)));
+            nizi.add(new double[][] {porazdelitev(v[0], mreza, vecBranj), porazdelitev(v[1], mreza, vecBranj)});
         }
-        RazlagaListka.Izid izid = RazlagaListka.razlozi(vrstice, porazdelitev(izrez.rezultat()[0], mreza, vecBranj),
-                porazdelitev(izrez.rezultat()[1], mreza, vecBranj), pogostost, beta);
+        return new Porazdelitve(nizi, new double[][] {porazdelitev(izrez.rezultat()[0], mreza, vecBranj),
+                porazdelitev(izrez.rezultat()[1], mreza, vecBranj)});
+    }
+
+    /* Prebran listek in razlaga pravil (z zaupanjem vsake celice) - diagnostika
+       branja (DiagnozaBranja) potrebuje oboje, branje samo listek. */
+    public record Razlozen(PrebranListek listek, RazlagaListka.Izid razlaga) {}
+
+    /* Branje od ze izracunanih porazdelitev naprej (pravila, popravljene celice, miza). */
+    public static Razlozen beri(Izrez izrez, Porazdelitve porazdelitve, MrezaStevk mreza, PogostostNizov pogostost,
+                                double beta, boolean vecBranj) {
+        List<RazlagaListka.Vrstica> vrstice = new ArrayList<>();
+        for (double[][] v : porazdelitve.nizi()) {
+            vrstice.add(new RazlagaListka.Vrstica(v[0], v[1]));
+        }
+        RazlagaListka.Izid izid = RazlagaListka.razlozi(vrstice, porazdelitve.rezultat()[0],
+                porazdelitve.rezultat()[1], pogostost, beta);
         // popravljena celica (precrtano in prepisano) je vedno negotova (F2.5)
         List<PrebranListek.Niz> nizi = new ArrayList<>();
         List<String> popravljene = new ArrayList<>();
@@ -181,9 +204,9 @@ public class LokalniBralnikListka implements BralnikListka {
         Miza miza = izrez.miza() == null ? new Miza(null, false)
                 : miza(porazdelitev(izrez.miza(), mreza, vecBranj),
                         izrez.miza().popravljena() || !izrez.mizaZanesljiva());
-        return new PrebranListek(true, null, null, null, false, null, null, nizi,
+        return new Razlozen(new PrebranListek(true, null, null, null, false, null, null, nizi,
                 izid.rezultatLevo(), izid.rezultatDesno(), izid.negotovRezultat() || rezultatPopravljen, "NI", null,
-                opomba(izid.opomba(), popravljene), miza.stevilka(), miza.negotova());
+                opomba(izid.opomba(), popravljene), miza.stevilka(), miza.negotova()), izid);
     }
 
     /* Stevilka mize iz porazdelitve okenca: najverjetnejsa med 1-99 in prazno (mize 0

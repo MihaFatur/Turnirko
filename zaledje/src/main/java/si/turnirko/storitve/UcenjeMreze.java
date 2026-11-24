@@ -154,6 +154,13 @@ public class UcenjeMreze {
         return Math.floorMod(kljuc, 5L) == 0;
     }
 
+    /* Ali je potrjen listek (po id branja) v preizkusnem delu - njegove stevke niso v
+       ucenju. Ista razdelitev kot jePreizkusna; zlati nabor jo uporabi, da meri tudi
+       samo na pisavi, ki je mreza ni videla (diagnostika, MeritevNabora). */
+    static boolean jePreizkusenListek(long idBranja) {
+        return Math.floorMod(idBranja, 5L) == 0;
+    }
+
     // ---------- Stanje, »Uci zdaj«, »Vrni prejsnjo« ----------
 
     public MrezeStevkDto stanje() {

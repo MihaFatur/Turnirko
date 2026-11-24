@@ -15,7 +15,9 @@ public record MeritevBranjaDto(
         Long idTurnir,
         Skupina skupaj,
         List<Skupina> poTurnirjih,
-        List<Skupina> poMrezah
+        List<Skupina> poMrezah,
+        /* sodnik s svojim telefonom (S2) in pult - vedno oba, v tem vrstnem redu */
+        List<Skupina> poViru
 ) {
 
     public record Skupina(

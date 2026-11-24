@@ -22,6 +22,12 @@ import { SporociloNapake } from './SporociloNapake'
 
 export const KLJUC_NAPAK = ['napake-mreze']
 
+const OZNAKA_VIRA: Record<NapakeMrezeDto['poViru'][number]['vir'], string> = {
+  LISTEK: 'listki',
+  VADNICA: 'vadnica',
+  OSTALO: 'izbrisana branja',
+}
+
 export function NapakeMreze() {
   const odjemalec = useQueryClient()
   const [odprto, nastaviOdprto] = useState(false)
@@ -151,6 +157,16 @@ function PoStevkah({
         {primerjava
           ? `Različica ${p.vUporabi} prebere prav ${delezOd(pravVUporabi, p.preizkusnih)}, vgrajena ${delezOd(pravVgrajena, p.preizkusnih)}.`
           : `Vgrajena mreža prebere prav ${delezOd(pravVUporabi, p.preizkusnih)}.`}
+      </p>
+      {/* Po viru: skupni delež skrije, da so preizkusne večinoma z vadnice (skrbno pisane v
+          okenca), na listku pa pišejo med tekmo (diagnostika 24. 11. 2026). */}
+      <p className="meritev-branja__besedilo">
+        Po viru:{' '}
+        {p.poViru
+          .filter((v) => v.preizkusnih > 0)
+          .map((v) => `${OZNAKA_VIRA[v.vir]} ${delezOd(v.pravVUporabi, v.preizkusnih)} (${v.preizkusnih})`)
+          .join(' · ') || 'ni preizkusnih števk'}
+        .
       </p>
       <div className="tabela-ovoj">
         <table className={`tabela napake-mreze__tabela${primerjava ? ' napake-mreze__tabela--primerjava' : ''}`}>

@@ -51,6 +51,8 @@ public class NapakeMreze {
     static final int ZAMENJAV = 3;
     /* Razredi mreze: stevke 0-9. */
     private static final int STEVK = 10;
+    /* Vir preizkusne stevke: potrjen listek, list vadnice, ostalo (branje izbrisano). */
+    static final String[] VIRI = {"LISTEK", "VADNICA", "OSTALO"};
 
     private final StevkaListkaRepozitorij stevke;
     private final VadnicaRepozitorij vadnice;
@@ -90,6 +92,9 @@ public class NapakeMreze {
         int preizkusnih = 0;
         int ucnih = 0;
         int drugacnihUcnih = 0;
+        // preizkusne po viru: listki in vadnica locena (diagnostika 24. 11. 2026) - vadnica
+        // je skrbno pisana v okenca, listek med tekmo; skupni delez skrije razliko
+        int[][] poViru = new int[VIRI.length][3];
         for (StevkaListka s : vse) {
             int v = s.getVrednost();
             if (v < 0 || v >= STEVK) {
@@ -105,6 +110,14 @@ public class NapakeMreze {
                         : najverjetnejsa(vgrajena.verjetnosti(vhod, 1.0));
                 if (poVgrajeni == v) {
                     pravVgrajena[v]++;
+                }
+                int[] vir = poViru[s.getIdBranje() != null ? 0 : s.getIdVadnica() != null ? 1 : 2];
+                vir[0]++;
+                if (prebrano == v) {
+                    vir[1]++;
+                }
+                if (poVgrajeni == v) {
+                    vir[2]++;
                 }
                 if (prebrano != v) {
                     napake.add(new Prebrana(s, prebrano, p[prebrano]));
@@ -151,8 +164,12 @@ public class NapakeMreze {
         List<NapakeMrezeDto.Stevka> sumljiveDto = sumljive.stream().limit(NAJVEC_SUMLJIVIH)
                 .map(NapakeMreze::dto).toList();
 
+        List<NapakeMrezeDto.PoViru> viri = new ArrayList<>();
+        for (int i = 0; i < VIRI.length; i++) {
+            viri.add(new NapakeMrezeDto.PoViru(VIRI[i], poViru[i][0], poViru[i][1], poViru[i][2]));
+        }
         return new NapakeMrezeDto(idVUporabi, preizkusnih, ucnih, poStevkah, napake.size(), NAJVEC_NA_STEVKO, napakeDto,
-                drugacnihUcnih, PRAG_SUMLJIVE, sumljiveDto);
+                drugacnihUcnih, PRAG_SUMLJIVE, sumljiveDto, viri);
     }
 
     /* Izloci stevko iz ucenja (napacna oznaka ali narobe izrezano okence). Ze naucena

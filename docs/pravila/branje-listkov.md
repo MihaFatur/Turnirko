@@ -340,6 +340,50 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
   umeriti brez pravih fotografij (generalka), koda QR pa ni merilo (prazen listek je
   nima). Lažen alarm bi stal dotik pri vsakem listku.
 
+## Diagnostika (24. 11. 2026, brez migracije)
+
+Lastnik: na pravih listkih je branje občutno slabše, kot kaže meritev, čeprav so listke
+pisali isti ljudje kot vadnice. Pregled kode je našel pet verjetnih vzrokov; diagnostika
+jih izmeri na podatkih (samo admin, stran Meritev branja):
+
+1. **Učenje na istih listkih.** Zlati nabor vsebuje vse potrjene listke, 4/5 pa jih je dalo
+   števke v učenje (`UcenjeMreze.jePreizkusna` po `id_branje % 5`). Meritev nabora in sprejem
+   mreže (prvih 400) zato merita deloma na pisavi, ki jo je mreža že videla (z utežjo ×4).
+   → `MeritevNabora` ločeno meri **preizkusne listke** (`UcenjeMreze.jePreizkusenListek`, ista
+   razdelitev) in učne; zlati listek brez branja (izbrisano) ni v nobenem. `StanjeNaboraDto`
+   ima `preizkusni`, `ucni` in `diagnoza`.
+2. **Napake razreza so nevidne.** Števka gre v učenje in med preizkusne samo, če razrez da
+   pravo število števk (`UcenjeIzListkov.stevkeCelice`). → `DiagnozaBranja` šteje celice z
+   zapisom, ki jih razrez ne razdeli (`brezRazreza`), in meri števke listkov, izrezane
+   natanko kot za učenje.
+3. **Preizkusne števke so večinoma z vadnice** (skrbno, v okencih). → `NapakeMreze.poViru`:
+   delež prav ločeno za LISTEK, VADNICA, OSTALO (izbrisano branje).
+4. **Zlati nabor začne pri celicah**: fotografija, poravnava in iskanje celic se na njem ne
+   merijo. → Meritev branj ima `poViru` (sodnik s svojim telefonom / pult) z deležem
+   neuspelih zajemov (`VrsticaMeritveBranja.poslalSodnik`).
+5. **Zaupanje ni umerjeno** (softmax T 1,5, Viterbi, pogostost nizov β). → umerjenost: celice
+   po razredih zaupanja 0–0,5–0,8–0,9–0,95–0,99–1 proti deležu prav, za mrežo samo (najvišja
+   verjetnost porazdelitve celice) in za končno branje (robna verjetnost razlage;
+   `RazlagaListka.Niz.zaupanjeLevo/Desno`).
+
+**Vzrok napačne celice** (`DiagnozaBranja.vzrok`, po korakih bralnika; samo celice točk po
+nizih, brez Rezultata, v istem obsegu kot `MeritevBranja.primerjaj`): `NI_CRNILA` (razrez ni
+našel zapisa) → `CRNILO_V_PRAZNI` (prazna celica s črto/senco) → `RAZREZ` (nobena razlaga s
+pravim številom števk) → `MREZA` (nobena taka razlaga ne da prave vrednosti; mreža ena
+sama, temperatura 1) → `IZBIRA_RAZREZA` (porazdelitev celice ima na vrhu drugo vrednost) →
+`PRAVILA` (mreža prav, pravila ali pogostost izbrala drugo). Vsak vzrok ločeno tihe (niso
+označene) in ujete. Galerija: prvih 40 napačnih celic preizkusnih listkov z izrezom celice
+(PNG v sivinah, base64 v stanju meritve, ne v bazi).
+
+Diagnoza teče v istem prehodu kot »Izmeri trenutni bralnik« (`MeritevNabora.zazeni`);
+porazdelitve celic se izračunajo enkrat (`LokalniBralnikListka.porazdelitve` + `beri` od
+porazdelitev naprej). Sprejem mreže (`UcenjeMreze`) diagnoze ne računa. Razvojni prikaz:
+`/dev/diagnoza-branja`.
+
+**Odprto (odloči lastnik):** sprejem nove mreže meri na prvih 400 zlatih listkih, ki so
+večinoma učni. Predlog: sprejem samo na preizkusnih zlatih listkih (pravi preizkus nove
+pisave). Ni uvedeno.
+
 ## Meritev (F1, 20. 11. 2026, V69)
 
 - **Sled pregleda** (`branje_listka`): ob potrditvi se zapišejo `pripravljen` (ali bi

@@ -83,6 +83,10 @@ class NapakeMrezeTest extends IntegracijskiTest {
         assertNull(p.vUporabi(), "v uporabi je vgrajena");
         assertEquals(p.preizkusnih(), p.poStevkah().stream().mapToInt(NapakeMrezeDto.PoStevki::preizkusnih).sum());
         assertTrue(p.preizkusnih() >= preizkusne.size());
+        // po viru: listki, vadnica, ostalo - skupaj vse preizkusne
+        assertEquals(List.of("LISTEK", "VADNICA", "OSTALO"),
+                p.poViru().stream().map(NapakeMrezeDto.PoViru::vir).toList());
+        assertEquals(p.preizkusnih(), p.poViru().stream().mapToInt(NapakeMrezeDto.PoViru::preizkusnih).sum());
         assertTrue(p.ucnih() >= ucne.size());
         assertEquals(10, p.poStevkah().size());
         for (NapakeMrezeDto.PoStevki s : p.poStevkah()) {

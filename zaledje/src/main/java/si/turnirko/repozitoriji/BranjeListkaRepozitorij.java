@@ -22,7 +22,7 @@ public interface BranjeListkaRepozitorij extends JpaRepository<BranjeListka, Lon
     @Query("""
             SELECT new si.turnirko.repozitoriji.VrsticaMeritveBranja(t.id, t.ime, t.datumZacetka,
                 b.stanje, b.prepoznava, b.prebrano, b.potrjeno, b.popravljeno, b.pripravljen,
-                b.kontrola, b.casPregledaMs, b.nacinPotrditve, b.model)
+                b.kontrola, b.casPregledaMs, b.nacinPotrditve, b.model, b.poslalSodnik)
             FROM BranjeListka b JOIN b.turnir t
             WHERE b.ustvarjenoOb >= :od AND b.ustvarjenoOb < :doo
             ORDER BY b.ustvarjenoOb, b.id
@@ -33,7 +33,7 @@ public interface BranjeListkaRepozitorij extends JpaRepository<BranjeListka, Lon
     @Query("""
             SELECT new si.turnirko.repozitoriji.VrsticaMeritveBranja(t.id, t.ime, t.datumZacetka,
                 b.stanje, b.prepoznava, b.prebrano, b.potrjeno, b.popravljeno, b.pripravljen,
-                b.kontrola, b.casPregledaMs, b.nacinPotrditve, b.model)
+                b.kontrola, b.casPregledaMs, b.nacinPotrditve, b.model, b.poslalSodnik)
             FROM BranjeListka b JOIN b.turnir t
             WHERE b.ustvarjenoOb >= :od AND b.ustvarjenoOb < :doo AND t.id = :idTurnir
             ORDER BY b.ustvarjenoOb, b.id

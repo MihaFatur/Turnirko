@@ -1014,3 +1014,23 @@ zbiranjem vadnic, pred generalko):
   vklop omrežja, ponovno odprtje → natanko 3 nova branja, IndexedDB prazen; prekinjen
   odgovor (CDP Fetch.failRequest) → 2 zahtevi POST, 1 branje; odjava izprazni vrsto;
   brez napak v konzoli.
+
+**Diagnostika »pravi listki berejo slabše od meritve«** (24. 11. 2026, brez migracije;
+lastnik: »ali imaš način, kako preveriti, zakaj je zaznavanje na sodniških listkih občutno
+slabše, kot kaže meritev?«). Pravila: `docs/pravila/branje-listkov.md`, »Diagnostika«.
+- **Puščanje:** zlati nabor se meri tudi ločeno na preizkusnih listkih (`id_branje % 5`,
+  števke niso v učenju) in učnih; prej je bil en sam delež čez vse, 4/5 nabora pa je mreža
+  že videla.
+- **Razčlenitev napak** (`DiagnozaBranja`): vzrok vsake napačne celice (ni črnila, črnilo v
+  prazni, razrez, mreža, izbira razreza, pravila) × tiha/ujeta; števke listkov, izrezane kot
+  za učenje, in celice, ki jih razrez ne razdeli (v učenje nikoli ne pridejo); umerjenost
+  mreže in končnega branja; galerija 40 napačnih celic preizkusnih listkov.
+- **Po viru:** `NapakeMreze.poViru` (listek/vadnica/ostalo) in meritev branj po viru
+  fotografije (sodnik/pult) z deležem neuspelih.
+- **Odprto:** sprejem mreže meri na prvih 400 zlatih listkih (večinoma učni); predlog, da
+  meri samo na preizkusnih, čaka lastnika.
+- Preverjeno: `DiagnozaBranjaTest` (3), `ZlatiNaborTest` (diagnoza na simuliranih listkih:
+  preizkusni + učni = vsi, umerjenost in vzroki se seštejejo), `MeritevBranjaStoritevTest`
+  (po viru), `NapakeMrezeTest` (po viru), simulacija bralnika nespremenjena
+  (`SimuliraneFotografijeTest` 12/12); prikaz `/dev/diagnoza-branja`. Na pravih podatkih
+  izmeri admin na test.turnirko-nt.si ali v produkciji (»Izmeri trenutni bralnik«).

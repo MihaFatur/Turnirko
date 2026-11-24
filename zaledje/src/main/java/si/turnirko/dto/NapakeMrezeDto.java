@@ -21,7 +21,12 @@ public record NapakeMrezeDto(
         List<Stevka> napake,
         int drugacnihUcnih,
         float pragSumljive,
-        List<Stevka> sumljive) {
+        List<Stevka> sumljive,
+        /* preizkusne stevke po viru (LISTEK, VADNICA, OSTALO): skupni delez skrije, da
+           so preizkusne vecinoma z vadnice, ki je pisana skrbneje kot listek */
+        List<PoViru> poViru) {
+
+    public record PoViru(String vir, int preizkusnih, int pravVUporabi, int pravVgrajena) {}
 
     public record PoStevki(int stevka, int preizkusnih, int pravVgrajena, int pravVUporabi,
                            List<Zamenjava> zamenjave) {}

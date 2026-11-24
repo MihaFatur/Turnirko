@@ -65,9 +65,17 @@ class MeritevBranjaStoritevTest extends IntegracijskiTest {
         potrjeno(drugi, "ucena-3", false, 3000);
         BranjeListka napaka = new BranjeListka(drugi, null, LocalDateTime.now());
         napaka.setStanje(StanjeBranja.NAPAKA);
+        // fotografija sodnika (S2), ki je bralnik ni prebral
+        napaka.setPoslalSodnik(true);
         branja.save(napaka);
 
         MeritevBranjaDto m = meritev.meritev(null, null, null);
+        // po viru: sodnik ima samo neuspelo branje, pult vse potrjene
+        assertEquals(2, m.poViru().size());
+        assertEquals(1, m.poViru().get(0).branj());
+        assertEquals(1, m.poViru().get(0).neuspelih());
+        assertEquals(3, m.poViru().get(1).branj());
+        assertEquals(3, m.poViru().get(1).potrjenih());
         assertEquals(4, m.skupaj().branj());
         assertEquals(3, m.skupaj().potrjenih());
         assertEquals(1, m.skupaj().neuspelih());

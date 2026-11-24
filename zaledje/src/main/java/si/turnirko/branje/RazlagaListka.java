@@ -39,7 +39,15 @@ public final class RazlagaListka {
 
     public record Vrstica(double[] levo, double[] desno) {}
 
-    public record Niz(Integer levo, Integer desno, boolean negotovoLevo, boolean negotovoDesno) {}
+    /* zaupanjeLevo/Desno = robna verjetnost izbrane vrednosti celice cez vsa veljavna
+       zaporedja (0-1); diagnostika branja (DiagnozaBranja) iz nje meri umerjenost. */
+    public record Niz(Integer levo, Integer desno, boolean negotovoLevo, boolean negotovoDesno,
+                      double zaupanjeLevo, double zaupanjeDesno) {
+
+        public Niz(Integer levo, Integer desno, boolean negotovoLevo, boolean negotovoDesno) {
+            this(levo, desno, negotovoLevo, negotovoDesno, 0, 0);
+        }
+    }
 
     public record Izid(List<Niz> nizi, Integer rezultatLevo, Integer rezultatDesno,
                        boolean negotovRezultat, String opomba) {}
@@ -234,8 +242,8 @@ public final class RazlagaListka {
             boolean negDesno = robDesno < ZAUPANJE || najverjetnejsa(v.desno()) != izbrana.desno()
                     || brez == null || brez.desno() != izbrana.desno();
             nizi.add(izbrana.prazna()
-                    ? new Niz(null, null, negLevo, negDesno)
-                    : new Niz(izbrana.levo(), izbrana.desno(), negLevo, negDesno));
+                    ? new Niz(null, null, negLevo, negDesno, robLevo, robDesno)
+                    : new Niz(izbrana.levo(), izbrana.desno(), negLevo, negDesno, robLevo, robDesno));
         }
         Integer[] rez = rezultatCelic(rezultatLevo, rezultatDesno);
         // skupna verjetnost izbranega proti najboljsemu branju brez pravil: pove,
@@ -342,7 +350,8 @@ public final class RazlagaListka {
         for (Vrstica v : vrstice) {
             int l = najverjetnejsa(v.levo());
             int d = najverjetnejsa(v.desno());
-            nizi.add(new Niz(l == PRAZNO ? null : l, d == PRAZNO ? null : d, true, true));
+            nizi.add(new Niz(l == PRAZNO ? null : l, d == PRAZNO ? null : d, true, true,
+                    najvecja(v.levo()), najvecja(v.desno())));
         }
         Integer[] rez = rezultatCelic(rezLevo, rezDesno);
         return new Izid(nizi, rez[0], rez[1], true, "Številke na listku se ne ujemajo s pravili. Preveri vse nize.");

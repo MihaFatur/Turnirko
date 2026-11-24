@@ -72,9 +72,14 @@ public class MeritevBranjaStoritev {
         MeritevBranja.Zbirnik skupaj = new MeritevBranja.Zbirnik("Skupaj", null, null);
         Map<Long, MeritevBranja.Zbirnik> poTurnirjih = new LinkedHashMap<>();
         Map<String, MeritevBranja.Zbirnik> poMrezah = new LinkedHashMap<>();
+        // vir fotografije: sodnik s svojim telefonom (S2) ali organizator na pultu -
+        // drug telefon, druga luc, drug kot; diagnostika primerja oba (24. 11. 2026)
+        MeritevBranja.Zbirnik sodnik = new MeritevBranja.Zbirnik("Sodnik (svoj telefon)", null, null);
+        MeritevBranja.Zbirnik pult = new MeritevBranja.Zbirnik("Pult (organizator)", null, null);
         for (VrsticaMeritveBranja v : vrstice) {
             MeritevBranja.Vzorec vzorec = vzorec(v);
             skupaj.dodaj(vzorec);
+            (v.poslalSodnik() ? sodnik : pult).dodaj(vzorec);
             poTurnirjih.computeIfAbsent(v.idTurnir(),
                     k -> new MeritevBranja.Zbirnik(v.imeTurnirja(), v.idTurnir(), v.datumTurnirja())).dodaj(vzorec);
             // mreza je znana samo pri prebranih; neuspela branja ne gredo k nobeni
@@ -95,7 +100,8 @@ public class MeritevBranjaStoritev {
                 })
                 .toList();
         return new MeritevBranjaDto(zacetek, konec, idTurnir, skupaj.dto(), turnirji,
-                poMrezah.values().stream().map(MeritevBranja.Zbirnik::dto).toList());
+                poMrezah.values().stream().map(MeritevBranja.Zbirnik::dto).toList(),
+                List.of(sodnik.dto(), pult.dto()));
     }
 
     static void preveriAdmina(Uporabnik jaz) {

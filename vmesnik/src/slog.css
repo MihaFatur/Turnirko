@@ -32618,6 +32618,61 @@ html.uvod-tece {
   padding-block: 8px;
 }
 
+/* Diagnostika branja (24. 11. 2026): pod zlatim naborom, ista tabela in galerija kot
+   napake mreze, le da so v galeriji cele celice (sirse od stevke). */
+.diagnoza-branja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r2);
+  margin-top: var(--r3);
+}
+
+.diagnoza-branja__vzroki {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--tip-drobno);
+  line-height: 1.5;
+}
+
+.diagnoza-branja__vzroki > div {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+
+.diagnoza-branja__vzroki dt {
+  font-weight: 700;
+}
+
+.diagnoza-branja__vzroki dd {
+  margin: 0;
+  color: var(--barva-crnilo-3);
+}
+
+.diagnoza-branja__galerija {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--r1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diagnoza-branja__slika {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--barva-crta);
+  background: #fff;
+}
+
+.diagnoza-branja__slika--brez {
+  padding: var(--r1);
+  font: 400 var(--tip-mono) / 1.4 var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
 /* ---------- Vadnica stevk (nacrt F3) ----------
    List A4 pokoncno, natisnjen brez robov (@page listki): oznake, QR in okenca so
    postavljeni absolutno v mm iz istih stevil kot v zaledju (GeometrijaVadnice,

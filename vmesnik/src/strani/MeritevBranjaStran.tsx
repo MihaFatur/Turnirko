@@ -16,6 +16,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { SkupinaMeritve, StanjeNaboraDto } from '../api/tipi'
+import { DiagnozaBranja } from '../komponente/DiagnozaBranja'
 import { meritevBranjaApi } from '../api/zahteve'
 import { useNazaj } from '../komponente/GlavaTelefona'
 import { MrezeStevk } from '../komponente/MrezeStevk'
@@ -145,6 +146,16 @@ export function MeritevBranjaStran() {
             </>
           )}
 
+          {m.skupaj.branj > 0 && (
+            <>
+              <h2 className="meritev-branja__razdelek">Po viru fotografije</h2>
+              <p className="meritev-branja__besedilo">
+                Sodnik fotografira s svojim telefonom ob mizi, organizator na pultu. Neuspeli zajemi in popravki
+                tu pokažejo, koliko izgubimo že pred branjem števk (fotografija, poravnava, celice).
+              </p>
+              <Tabela skupine={m.poViru} prvi="Vir" />
+            </>
+          )}
           {m.poTurnirjih.length > 1 && (
             <>
               <h2 className="meritev-branja__razdelek">Po turnirjih</h2>
@@ -309,6 +320,7 @@ function Tabela({
           <tr>
             <th>{prvi}</th>
             <th className="meritev-branja__desno">Fotografij</th>
+            <th className="meritev-branja__desno">Neuspelih</th>
             <th className="meritev-branja__desno">Potrjenih</th>
             <th className="meritev-branja__desno">Brez popravka</th>
             <th className="meritev-branja__desno">Tihe napake</th>
@@ -329,6 +341,7 @@ function Tabela({
                 {s.datum && <span className="meritev-branja__datum">{oblikujDatum(s.datum)}</span>}
               </td>
               <td className="meritev-branja__stevilo">{s.branj}</td>
+              <td className="meritev-branja__stevilo">{odstotek(s.neuspelih, s.branj)}</td>
               <td className="meritev-branja__stevilo">{s.potrjenih}</td>
               <td className="meritev-branja__stevilo">{odstotek(s.brezPopravka, s.potrjenih)}</td>
               <td className="meritev-branja__stevilo">{s.tihihNapak}</td>
@@ -409,6 +422,7 @@ function Nabor({
             {odprto ? 'Skrij celice' : 'Pokaži celice'}
           </button>
           {odprto && <Celice s={r} />}
+          <DiagnozaBranja stanje={stanje} />
         </>
       )}
       <p className="meritev-branja__besedilo">
