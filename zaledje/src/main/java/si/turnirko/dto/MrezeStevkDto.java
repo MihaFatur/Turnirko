@@ -24,5 +24,8 @@ public record MrezeStevkDto(
         long stevkVadnice,
         /* pred tem casom »Uci zdaj« ni mogoc (premor med zagoni); null = zdaj */
         LocalDateTime uciZdajOd,
-        List<RazlicicaMrezeDto> razlicice
+        List<RazlicicaMrezeDto> razlicice,
+        /* povprecno stevk na potrjen listek (null: listkov se ni): natancnost velja
+           za eno stevko, listek brez napake je ~ natancnost na to potenco */
+        Double stevkNaListek
 ) {}

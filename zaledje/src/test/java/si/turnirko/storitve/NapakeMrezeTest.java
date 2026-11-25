@@ -145,7 +145,7 @@ class NapakeMrezeTest extends IntegracijskiTest {
     private List<StevkaListka> list(long id, List<UcenjeStevk.Vzorec> vzorci) {
         LocalDateTime zdaj = LocalDateTime.now();
         Vadnica v = new Vadnica(id, 1);
-        v.nastaviBranje(new byte[] {1}, vzorci.size(), 0, 0, zdaj);
+        v.nastaviBranje(1, new byte[] {1}, vzorci.size(), 0, 0, zdaj);
         v.odobri(vzorci.size(), zdaj);
         vadnice.save(v);
         List<StevkaListka> nove = new ArrayList<>();

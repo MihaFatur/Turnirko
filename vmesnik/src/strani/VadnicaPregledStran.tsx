@@ -16,7 +16,7 @@ import { SlikaStevke } from '../komponente/SlikaStevke'
 import { SporociloNapake } from '../komponente/SporociloNapake'
 import { useNaslovStrani } from '../pomozno/naslovStrani'
 import { useTelefon } from '../pomozno/telefon'
-import { STOLPCEV, VREDNOSTI, oznakaLista } from '../pomozno/vadnica'
+import { okencaVadnice, oznakaLista, RAZLICICA } from '../pomozno/vadnica'
 
 export function VadnicaPregledStran() {
   const { id } = useParams()
@@ -53,12 +53,14 @@ export function VadnicaPregledStran() {
     onSuccess: (blob) => nastaviSliko(URL.createObjectURL(blob)),
   })
 
-  /* Števke po vrsticah lista, v vrstici po okencih. */
+  /* Števke po vrsticah lista, v vrstici po okencih (postavitev različice lista). */
+  const okenca = okencaVadnice(podrobno.data?.list.razlicica ?? RAZLICICA)
   const vrstice = useMemo(() => {
-    const po = VREDNOSTI.map(() => Array.from({ length: STOLPCEV }, () => [] as StevkaVadniceDto[]))
+    const { vrednosti, stolpcev } = okencaVadnice(podrobno.data?.list.razlicica ?? RAZLICICA)
+    const po = vrednosti.map(() => Array.from({ length: stolpcev }, () => [] as StevkaVadniceDto[]))
     for (const s of podrobno.data?.stevke ?? []) {
-      const vrstica = Math.floor(s.okence / STOLPCEV)
-      if (vrstica < po.length) po[vrstica][s.okence % STOLPCEV].push(s)
+      const vrstica = Math.floor(s.okence / stolpcev)
+      if (vrstica < po.length) po[vrstica][s.okence % stolpcev].push(s)
     }
     return po
   }, [podrobno.data])
@@ -103,8 +105,8 @@ export function VadnicaPregledStran() {
       )}
 
       <div className="vadnica-pregled__vrstice">
-        {VREDNOSTI.map((vrednost, i) => (
-          <div key={vrednost} className="vadnica-pregled__vrstica">
+        {okenca.vrednosti.map((vrednost, i) => (
+          <div key={i} className="vadnica-pregled__vrstica">
             <span className="vadnica-pregled__vzorec">{vrednost}</span>
             <div className="vadnica-pregled__okenca">
               {vrstice[i]

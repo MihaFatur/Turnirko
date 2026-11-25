@@ -120,6 +120,7 @@ class UcenjeMrezeTest extends IntegracijskiTest {
         MrezeStevkDto s = ucenje.stanje();
         assertEquals(sprejeta.getId(), s.vUporabi());
         assertEquals(UcenjeMreze.NAJMANJ_NOVIH, s.najmanjNovih());
+        assertNull(s.stevkNaListek(), "brez stevk listkov ni ocene stevk na listek");
         assertEquals(2, s.razlicice().size());
         RazlicicaMrezeDto prekinjena = s.razlicice().getFirst();
         assertTrue(prekinjena.prekinjena());
@@ -129,6 +130,24 @@ class UcenjeMrezeTest extends IntegracijskiTest {
         assertTrue(prva.sprejeta());
         assertEquals(30, prva.zlatih().intValue());
         assertEquals(0.96f, prva.zlati().floatValue());
+    }
+
+    /* Lastnik 24. 11. 2026: stevke pravih listkov stejejo pri ucenju vec kot vadnica
+       (pisava med tekmo je tista, ki jo mora mreza brati). */
+    @Test
+    void stevkeListkovStejejoVecKotVadnica() {
+        UcenjeStevk.Vzorec mnist = new UcenjeStevk.Vzorec(new byte[784], 1);
+        UcenjeStevk.Vzorec vadnica = new UcenjeStevk.Vzorec(new byte[784], 2);
+        UcenjeStevk.Vzorec listek = new UcenjeStevk.Vzorec(new byte[784], 3);
+        UcenjeStevk.Vzorec mocen = new UcenjeStevk.Vzorec(new byte[784], 4);
+        List<UcenjeStevk.Vzorec> mesano = UcenjeMreze.zaUcenje(List.of(mnist), List.of(vadnica, listek, mocen),
+                List.of(mocen), List.of(listek, mocen));
+        assertEquals(1, mesano.stream().filter(v -> v == mnist).count());
+        assertEquals(UcenjeMreze.UTEZ_STEVK, mesano.stream().filter(v -> v == vadnica).count());
+        assertEquals(UcenjeMreze.UTEZ_STEVK + UcenjeMreze.DODATNA_UTEZ_LISTKOV,
+                mesano.stream().filter(v -> v == listek).count());
+        assertEquals(2 * UcenjeMreze.UTEZ_STEVK + UcenjeMreze.DODATNA_UTEZ_LISTKOV,
+                mesano.stream().filter(v -> v == mocen).count());
     }
 
     @Test
@@ -220,6 +239,27 @@ class UcenjeMrezeTest extends IntegracijskiTest {
         stevke.saveAll(nove);
         assertNull(ucenje.uci(Nacin.NOC, 2, 1, UcenjeMreze.NAJDALJ));
         assertEquals(0, mreze.count(), "odlozeno ucenje ne zapise razlicice");
+    }
+
+    /* Ocena »listki brez napake« na strani ucenja: povprecno stevk na potrjen listek
+       (stevke vadnice ne stejejo). PostgreSQL vrne avg kot numeric - poizvedba ga mora
+       pretvoriti v double (pregled kode 24. 11. 2026). */
+    @Test
+    void povprecnoStevkNaListek() {
+        prijava("admin-povprecje@test", Vloga.ADMIN);
+        Dogodek dogodek = pripraviDogodek(4);
+        Long prvo = branja.save(new BranjeListka(dogodek.getTurnir(), null, LocalDateTime.now())).getId();
+        Long drugo = branja.save(new BranjeListka(dogodek.getTurnir(), null, LocalDateTime.now())).getId();
+        List<StevkaListka> nove = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            nove.add(new StevkaListka(prvo, new byte[784], i % 10, true, LocalDateTime.now()));
+        }
+        for (int i = 0; i < 20; i++) {
+            nove.add(new StevkaListka(drugo, new byte[784], i % 10, true, LocalDateTime.now()));
+        }
+        nove.add(new StevkaListka(null, new byte[784], 3, true, LocalDateTime.now()));   // vadnica
+        stevke.saveAll(nove);
+        assertEquals(15.0, ucenje.stanje().stevkNaListek(), 1e-9);
     }
 
     @Test

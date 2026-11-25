@@ -39,12 +39,13 @@ public final class CeliceVadnice {
     private static final int DEBELINA = 5;
     private static final int NAJVEC_SIRINA_CRTE = 10;
 
-    /* Notranjost vseh okenc po vrsti (vrstica * STOLPCEV + stolpec), za razrez. */
-    public static List<CeliceListka.Celica> najdi(Temnost list) {
+    /* Notranjost vseh okenc razlicice lista po vrsti (vrstica * stolpcev + stolpec),
+       za razrez. Razmik med okenci je pri vseh razlicicah vsaj 2 mm (ISKANJE). */
+    public static List<CeliceListka.Celica> najdi(Temnost list, GeometrijaVadnice.Okenca postavitev) {
         boolean[] crnilo = crnilo(list);
-        List<CeliceListka.Celica> okenca = new ArrayList<>(GeometrijaVadnice.OKENC);
-        for (int i = 0; i < GeometrijaVadnice.OKENC; i++) {
-            okenca.add(okence(list, crnilo, GeometrijaVadnice.okence(i)).celica());
+        List<CeliceListka.Celica> okenca = new ArrayList<>(postavitev.okenc());
+        for (int i = 0; i < postavitev.okenc(); i++) {
+            okenca.add(okence(list, crnilo, postavitev.okence(i)).celica());
         }
         return okenca;
     }

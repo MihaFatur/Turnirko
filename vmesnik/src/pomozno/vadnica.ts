@@ -7,13 +7,61 @@
    preberejo narobe. Koda QR je »TKV:<različica>:<id lista>« (KodaListka.java). */
 import { encode } from 'uqr'
 
-export const RAZLICICA = 1
+/* Okenca ene različice lista (GeometrijaVadnice.Okenca): vrstice (kaj se piše v
+   okenca; vzorec stoji levo od vrstice), okenc v vrstici in mere v mm. */
+export interface OkencaVadnice {
+  vrednosti: readonly number[]
+  stolpcev: number
+  okenceX: number
+  okenceY: number
+  okenceSirina: number
+  okenceVisina: number
+  korakX: number
+  korakY: number
+}
 
-/* Vrstice lista: kaj se piše v okenca (vzorec stoji levo od vrstice). */
-export const VREDNOSTI = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-export const STOLPCEV = 10
+/* Različica 1 (20. 11. 2026): 14 vrstic po 10 okenc 14 × 10 mm. */
+const V1: OkencaVadnice = {
+  vrednosti: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  stolpcev: 10,
+  okenceX: 38,
+  okenceY: 46,
+  okenceSirina: 14,
+  okenceVisina: 10,
+  korakX: 16,
+  korakY: 16,
+}
 
-/* Mere v mm od zgornjega levega roba lista (GeometrijaVadnice). */
+/* Različica 2 (24. 11. 2026): okenca kot celica za točke na sodniškem listku
+   (17 × 9 mm), da se mreža uči na pisavi v istih pogojih; 16 vrstic po 8, zadnji
+   dve še enkrat 11 in 10 (na listkih najpogostejši dvomestni vrednosti). */
+const V2: OkencaVadnice = {
+  vrednosti: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 11, 10],
+  stolpcev: 8,
+  okenceX: 38,
+  okenceY: 46,
+  okenceSirina: 17,
+  okenceVisina: 9,
+  korakX: 19,
+  korakY: 13,
+}
+
+const POSTAVITVE: Record<number, OkencaVadnice> = { 1: V1, 2: V2 }
+
+/* Različica, ki se natisne. */
+export const RAZLICICA = 2
+
+/* Okenca različice lista (pregled že natisnjenih listov); neznana → trenutna. */
+export function okencaVadnice(razlicica: number): OkencaVadnice {
+  return POSTAVITVE[razlicica] ?? POSTAVITVE[RAZLICICA]
+}
+
+/* Vrstice in okenca lista, ki se natisne. */
+export const VREDNOSTI = POSTAVITVE[RAZLICICA].vrednosti
+export const STOLPCEV = POSTAVITVE[RAZLICICA].stolpcev
+
+/* Mere v mm od zgornjega levega roba lista (GeometrijaVadnice): oznake in koda so
+   pri vseh različicah na istem mestu, okenca so iz trenutne različice. */
 export const GEOMETRIJA = {
   stranicaOznake: 6,
   /* Središča oznak. */
@@ -23,19 +71,14 @@ export const GEOMETRIJA = {
   qrX: 173,
   qrY: 9,
   qrStranica: 22,
-  okenceX: 38,
-  okenceY: 46,
-  okenceSirina: 14,
-  okenceVisina: 10,
-  korakX: 16,
-  korakY: 16,
+  ...POSTAVITVE[RAZLICICA],
 } as const
 
 /* Največ listov v enem tisku (en list je ena stran A4). */
 export const NAJVEC_LISTOV = 50
 
 /* Fotografija lista A4 gre na strežnik do 3200 px (VadnicaStoritev.NAJVEC_STRANICA):
-   števka v okencu 10 mm ima tako ~70 px, kot na listku pri 2000 px. */
+   števka v okencu 9-10 mm ima tako ~65-70 px, kot na listku pri 2000 px. */
 export const NAJVEC_STRANICA_VADNICE = 3200
 
 /* Naložena slika, ki jo je stisnila aplikacija za sporočila: preizkus na

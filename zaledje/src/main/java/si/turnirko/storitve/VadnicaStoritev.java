@@ -103,7 +103,7 @@ public class VadnicaStoritev {
                 stevke.izbrisiVadnice(list.getId());
             }
             LocalDateTime zdaj = LocalDateTime.now();
-            list.nastaviBranje(prebrana.slika(), prebrana.stevke().size(), prebrana.praznih(),
+            list.nastaviBranje(prebrana.razlicica(), prebrana.slika(), prebrana.stevke().size(), prebrana.praznih(),
                     prebrana.preskocenih(), zdaj);
             Vadnica shranjena = vadnice.save(list);
             stevke.saveAll(prebrana.stevke().stream()
@@ -190,6 +190,6 @@ public class VadnicaStoritev {
 
     private static VadnicaDto dto(Vadnica v) {
         return new VadnicaDto(v.getId(), v.getStevk(), v.getPraznih(), v.getPreskocenih(), v.isOdobrena(),
-                v.getUstvarjenoOb(), v.getOdobrenoOb());
+                v.getUstvarjenoOb(), v.getOdobrenoOb(), v.getRazlicica());
     }
 }

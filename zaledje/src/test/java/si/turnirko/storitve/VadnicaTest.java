@@ -106,9 +106,9 @@ class VadnicaTest extends IntegracijskiTest {
     void cistListNimaStevk() throws IOException {
         BranjeVadnice.Prebrana p = BranjeVadnice.preberi(foto(kopija(list), new Random(1)), mreza);
         assertEquals(idLista, p.idLista());
-        assertEquals(GeometrijaVadnice.RAZLICICA, p.razlicica());
+        assertEquals(GeometrijaVadnice.V1.razlicica(), p.razlicica());
         assertTrue(p.stevke().isEmpty(), "stevk: " + p.stevke().size());
-        assertEquals(GeometrijaVadnice.OKENC, p.praznih());
+        assertEquals(GeometrijaVadnice.V1.okenc(), p.praznih());
     }
 
     @Test
@@ -119,13 +119,13 @@ class VadnicaTest extends IntegracijskiTest {
             assertOkencaNaMestu(fotografija, seme);
             BranjeVadnice.Prebrana p = BranjeVadnice.preberi(fotografija, mreza);
             assertEquals(idLista, p.idLista());
-            int okencZStevkami = GeometrijaVadnice.OKENC - p.praznih() - p.preskocenih();
-            assertTrue(okencZStevkami >= 0.95 * GeometrijaVadnice.OKENC,
+            int okencZStevkami = GeometrijaVadnice.V1.okenc() - p.praznih() - p.preskocenih();
+            assertTrue(okencZStevkami >= 0.95 * GeometrijaVadnice.V1.okenc(),
                     "okenc s stevkami " + okencZStevkami + ", praznih " + p.praznih() + ", preskocenih " + p.preskocenih());
             long prav = 0;
             for (BranjeVadnice.Stevka s : p.stevke()) {
-                int vrstica = s.okence() / GeometrijaVadnice.STOLPCEV;
-                String zapis = String.valueOf(GeometrijaVadnice.VREDNOSTI[vrstica]);
+                int vrstica = s.okence() / GeometrijaVadnice.V1.stolpcev();
+                String zapis = String.valueOf(GeometrijaVadnice.V1.vrednosti()[vrstica]);
                 assertTrue(zapis.indexOf('0' + s.vrednost()) >= 0, "stevka " + s.vrednost() + " v vrstici " + zapis);
                 prav += s.mrezaPrav() ? 1 : 0;
             }
@@ -135,6 +135,40 @@ class VadnicaTest extends IntegracijskiTest {
             assertTrue(delez >= 0.85, "mreza prebere prav le " + delez);
             assertSamoOkenca(p.slika());
         }
+    }
+
+    /* Razlicica 2 (24. 11. 2026): okenca 17 x 9 mm kot celica listka, 16 vrstic po 8.
+       Natisnjen list (vadnica-list-v2.png) se prebere po svoji postavitvi, oznaka
+       stevke je vrstica te razlicice; listi razlicice 1 se se vedno berejo (zgoraj). */
+    @Test
+    void listDrugeRazliciceDaStevkeZOznakoVrstice() throws IOException {
+        BufferedImage list2;
+        try (InputStream v = VadnicaTest.class.getResourceAsStream("/branje/vadnica-list-v2.png")) {
+            list2 = ImageIO.read(v);
+        }
+        GeometrijaVadnice.Okenca v2 = GeometrijaVadnice.V2;
+        for (long seme : new long[] {24112026L, 5L}) {
+            Random r = new Random(seme);
+            BranjeVadnice.Prebrana p = BranjeVadnice.preberi(foto(izpolnjen(list2, v2, r), r), mreza);
+            assertEquals(2, p.razlicica());
+            int okencZStevkami = v2.okenc() - p.praznih() - p.preskocenih();
+            assertTrue(okencZStevkami >= 0.95 * v2.okenc(),
+                    "okenc s stevkami " + okencZStevkami + ", praznih " + p.praznih() + ", preskocenih " + p.preskocenih());
+            long prav = 0;
+            for (BranjeVadnice.Stevka s : p.stevke()) {
+                String zapis = String.valueOf(v2.vrednost(s.okence()));
+                assertTrue(zapis.indexOf('0' + s.vrednost()) >= 0, "stevka " + s.vrednost() + " v vrstici " + zapis);
+                prav += s.mrezaPrav() ? 1 : 0;
+            }
+            double delez = (double) prav / p.stevke().size();
+            System.out.printf("Vadnica v2 (seme %d): %d stevk, %d okenc, mreza prav %.3f%n",
+                    seme, p.stevke().size(), okencZStevkami, delez);
+            assertTrue(delez >= 0.85, "mreza prebere prav le " + delez);
+        }
+        // cist list druge razlicice: koda je razlicica 2, vsa okenca prazna
+        BranjeVadnice.Prebrana cist = BranjeVadnice.preberi(foto(kopija(list2), new Random(1)), mreza);
+        assertEquals(2, cist.razlicica());
+        assertEquals(v2.okenc(), cist.praznih());
     }
 
     /* Zasuk do 20 st., mocnejsa perspektiva in zamegljena fotografija: list se
@@ -147,11 +181,11 @@ class VadnicaTest extends IntegracijskiTest {
                     izpolnjen(r), r, SimuliraneFotografijeTest.ZAHTEVNO, SIRINA_FOTO, VISINA_FOTO, 1300, 200)));
             assertOkencaNaMestu(fotografija, seme);
             BranjeVadnice.Prebrana p = BranjeVadnice.preberi(fotografija, mreza);
-            int okencZStevkami = GeometrijaVadnice.OKENC - p.praznih() - p.preskocenih();
+            int okencZStevkami = GeometrijaVadnice.V1.okenc() - p.praznih() - p.preskocenih();
             long prav = p.stevke().stream().filter(BranjeVadnice.Stevka::mrezaPrav).count();
             System.out.printf("Vadnica zahtevno (seme %d): %d stevk, %d okenc, mreza prav %.3f%n",
                     seme, p.stevke().size(), okencZStevkami, (double) prav / p.stevke().size());
-            assertTrue(okencZStevkami >= 0.9 * GeometrijaVadnice.OKENC, "okenc s stevkami " + okencZStevkami);
+            assertTrue(okencZStevkami >= 0.9 * GeometrijaVadnice.V1.okenc(), "okenc s stevkami " + okencZStevkami);
             assertTrue(prav >= 0.85 * p.stevke().size(), "mreza prav " + prav + " od " + p.stevke().size());
         }
     }
@@ -166,9 +200,9 @@ class VadnicaTest extends IntegracijskiTest {
             Random r = new Random(seme);
             BufferedImage slika = stisnjena(foto(izpolnjen(r), r), 1280);
             BranjeVadnice.Prebrana p = BranjeVadnice.preberi(slika, mreza);
-            int okencZStevkami = GeometrijaVadnice.OKENC - p.praznih() - p.preskocenih();
+            int okencZStevkami = GeometrijaVadnice.V1.okenc() - p.praznih() - p.preskocenih();
             long prav = p.stevke().stream().filter(BranjeVadnice.Stevka::mrezaPrav).count();
-            assertTrue(okencZStevkami >= 0.95 * GeometrijaVadnice.OKENC, "okenc s stevkami " + okencZStevkami);
+            assertTrue(okencZStevkami >= 0.95 * GeometrijaVadnice.V1.okenc(), "okenc s stevkami " + okencZStevkami);
             assertTrue(prav >= 0.9 * p.stevke().size(), "mreza prav " + prav + " od " + p.stevke().size());
         }
     }
@@ -277,10 +311,10 @@ class VadnicaTest extends IntegracijskiTest {
         KodaListka.KodaVadnice koda = KodaListka.najdiVadnico(fotografija).getFirst();
         Temnost poravnan = si.turnirko.branje.PoravnavaListka.poravnaj(fotografija, koda.tocke(),
                 GeometrijaVadnice.POSTAVITEV).slika();
-        List<si.turnirko.branje.CeliceListka.Celica> okenca = si.turnirko.branje.CeliceVadnice.najdi(poravnan);
+        List<si.turnirko.branje.CeliceListka.Celica> okenca = si.turnirko.branje.CeliceVadnice.najdi(poravnan, GeometrijaVadnice.V1);
         int odmik = si.turnirko.branje.RazrezCelice.ODMIK;
         for (int i = 0; i < okenca.size(); i++) {
-            double[] mm = GeometrijaVadnice.okence(i);
+            double[] mm = GeometrijaVadnice.V1.okence(i);
             var c = okenca.get(i);
             // razrez zacne pri x0 + ODMIK: za crto 0,45 mm, najvec ~1 mm od natisnjenega
             // zunanjega roba (poravnava se zmoti za nekaj px, zato tudi malo cez)
@@ -299,8 +333,8 @@ class VadnicaTest extends IntegracijskiTest {
     private static void assertSamoOkenca(byte[] png) {
         Temnost t = ZlatiNabor.temnost(png);
         boolean[] vOkencu = new boolean[t.sirina * t.visina];
-        for (int i = 0; i < GeometrijaVadnice.OKENC; i++) {
-            double[] mm = GeometrijaVadnice.okence(i);
+        for (int i = 0; i < GeometrijaVadnice.V1.okenc(); i++) {
+            double[] mm = GeometrijaVadnice.V1.okence(i);
             for (int y = (int) ((mm[1] - 1.5) * 10); y <= (mm[3] + 1.5) * 10; y++) {
                 for (int x = (int) ((mm[0] - 1.5) * 10); x <= (mm[2] + 1.5) * 10; x++) {
                     vOkencu[y * t.sirina + x] = true;
@@ -324,11 +358,15 @@ class VadnicaTest extends IntegracijskiTest {
 
     /* List z MNIST stevkami v vseh okencih (kemicni svincnik). */
     private static BufferedImage izpolnjen(Random r) {
-        BufferedImage slika = kopija(list);
+        return izpolnjen(list, GeometrijaVadnice.V1, r);
+    }
+
+    private static BufferedImage izpolnjen(BufferedImage osnova, GeometrijaVadnice.Okenca okenca, Random r) {
+        BufferedImage slika = kopija(osnova);
         double px = GeometrijaListka.PX_NA_MM;     // vir je posnet v 10 px/mm
-        for (int i = 0; i < GeometrijaVadnice.OKENC; i++) {
-            double[] mm = GeometrijaVadnice.okence(i);
-            String zapis = String.valueOf(GeometrijaVadnice.VREDNOSTI[i / GeometrijaVadnice.STOLPCEV]);
+        for (int i = 0; i < okenca.okenc(); i++) {
+            double[] mm = okenca.okence(i);
+            String zapis = String.valueOf(okenca.vrednost(i));
             double w = (mm[2] - mm[0]) * px;
             double h = (mm[3] - mm[1]) * px;
             boolean dvomestno = zapis.length() == 2;

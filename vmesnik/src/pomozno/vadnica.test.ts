@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  GEOMETRIJA,
   MAJHNA_SLIKA,
   NAJVEC_LISTOV,
+  okencaVadnice,
   RAZLICICA,
   STOLPCEV,
   VREDNOSTI,
@@ -38,9 +40,22 @@ describe('vadnica števk', () => {
     expect(noviIdjiListov(1, (meja) => meja - 1)).toEqual([9_999_999_999])
   })
 
-  it('list ima 140 okenc v 14 vrsticah (GeometrijaVadnice)', () => {
-    expect(VREDNOSTI.length * STOLPCEV).toBe(140)
-    expect(VREDNOSTI).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+  it('natisne se različica 2: 128 okenc 17 × 9 mm kot celica listka, 16 vrstic (GeometrijaVadnice.V2)', () => {
+    expect(RAZLICICA).toBe(2)
+    expect(VREDNOSTI.length * STOLPCEV).toBe(128)
+    expect(VREDNOSTI).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 11, 10])
+    expect(GEOMETRIJA.okenceSirina).toBe(17)
+    expect(GEOMETRIJA.okenceVisina).toBe(9)
+    // zadnje okence ostane znotraj oznak (desna 195 ± 3 mm, spodnja 282 ± 3 mm)
+    expect(GEOMETRIJA.okenceX + (STOLPCEV - 1) * GEOMETRIJA.korakX + GEOMETRIJA.okenceSirina).toBeLessThan(192)
+    expect(GEOMETRIJA.okenceY + (VREDNOSTI.length - 1) * GEOMETRIJA.korakY + GEOMETRIJA.okenceVisina).toBeLessThan(279)
+  })
+
+  it('pregled že natisnjenega lista uporabi postavitev njegove različice', () => {
+    expect(okencaVadnice(1).stolpcev).toBe(10)
+    expect(okencaVadnice(1).vrednosti).toHaveLength(14)
+    expect(okencaVadnice(2).stolpcev).toBe(8)
+    expect(okencaVadnice(99)).toBe(okencaVadnice(RAZLICICA))
   })
 
   it('števka 28 × 28 postane temno črnilo na belem', () => {

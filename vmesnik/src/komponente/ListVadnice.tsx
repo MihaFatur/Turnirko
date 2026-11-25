@@ -72,7 +72,7 @@ export function ListVadnice({ idLista, merilo = 1 }: { idLista: number; merilo?:
 
       {VREDNOSTI.map((vrednost, i) => (
         <span
-          key={vrednost}
+          key={i}
           className="vadnica-list__vzorec"
           style={{ top: mm(G.okenceY + i * G.korakY), height: mm(G.okenceVisina) }}
         >
@@ -83,10 +83,10 @@ export function ListVadnice({ idLista, merilo = 1 }: { idLista: number; merilo?:
           celo piko zaslona (0,4 mm → 0,26 mm), tanka črta pa se na fotografiji
           raztrga (CeliceVadnice). Zunanji rob črte je natanko na mestu okenca. */}
       <svg className="vadnica-list__okenca" viewBox={`0 0 ${SIRINA} ${VISINA}`} aria-hidden="true">
-        {VREDNOSTI.flatMap((vrednost, i) =>
+        {VREDNOSTI.flatMap((_, i) =>
           Array.from({ length: STOLPCEV }, (_, j) => (
             <rect
-              key={`${vrednost}-${j}`}
+              key={`${i}-${j}`}
               x={G.okenceX + j * G.korakX + CRTA / 2}
               y={G.okenceY + i * G.korakY + CRTA / 2}
               width={G.okenceSirina - CRTA}

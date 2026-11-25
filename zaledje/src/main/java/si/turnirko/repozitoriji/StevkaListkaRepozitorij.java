@@ -67,4 +67,12 @@ public interface StevkaListkaRepozitorij extends JpaRepository<StevkaListka, Lon
             WHERE id <= (SELECT id FROM stevka_listka ORDER BY id DESC OFFSET :ohrani LIMIT 1)
             """, nativeQuery = true)
     int izbrisiRazenNajnovejsih(@Param("ohrani") int ohrani);
+
+    /* Povprecno stevilo stevk na potrjen listek (ocena »listki brez napake« na strani
+       ucenja); null, ce stevk listkov se ni. */
+    @Query(value = """
+            SELECT CAST(avg(n) AS double precision) FROM (SELECT count(*) AS n FROM stevka_listka
+                                WHERE id_branje IS NOT NULL GROUP BY id_branje) t
+            """, nativeQuery = true)
+    Double povprecnoStevkNaListek();
 }

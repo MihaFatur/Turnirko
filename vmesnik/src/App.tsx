@@ -165,6 +165,7 @@ const IzpisSvrStranPosnetki = import.meta.env.DEV
   ? lazy(() => import('./dev/IzpisSvrPosnetki').then((m) => ({ default: m.IzpisSvrStran })))
   : null
 const ListekPosnetek = import.meta.env.DEV ? lazy(() => import('./dev/ListekPosnetek')) : null
+const VadnicaPosnetek = import.meta.env.DEV ? lazy(() => import('./dev/VadnicaPosnetek')) : null
 const PrenovaZrebaPosnetki = import.meta.env.DEV ? lazy(() => import('./dev/PrenovaZrebaPosnetki')) : null
 const MizePosnetki = import.meta.env.DEV ? lazy(() => import('./dev/MizePosnetki')) : null
 const MizeZaslonPosnetki = import.meta.env.DEV
@@ -205,6 +206,10 @@ export function App() {
       {ListekPosnetek && (
         <Route path="/dev/listek"
           element={<Suspense fallback={null}><ListekPosnetek /></Suspense>} />
+      )}
+      {VadnicaPosnetek && (
+        <Route path="/dev/vadnica"
+          element={<Suspense fallback={null}><VadnicaPosnetek /></Suspense>} />
       )}
       {PrenovaZrebaPosnetki && (
         <Route path="/dev/prenova-zreba"

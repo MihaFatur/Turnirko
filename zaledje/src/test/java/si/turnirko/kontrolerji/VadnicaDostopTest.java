@@ -64,7 +64,7 @@ class VadnicaDostopTest {
         uporabniki.add(racun(ORGANIZATOR, Vloga.ORGANIZATOR));
         Vadnica v = new Vadnica(ID_LISTA, 1);
         LocalDateTime zdaj = LocalDateTime.now();
-        v.nastaviBranje(new byte[] {(byte) 0x89, 'P', 'N', 'G'}, 2, 137, 1, zdaj);
+        v.nastaviBranje(1, new byte[] {(byte) 0x89, 'P', 'N', 'G'}, 2, 137, 1, zdaj);
         vadnice.save(v);
         stevke.save(StevkaListka.zVadnice(ID_LISTA, 0, new byte[784], 0, true, zdaj));
         stevke.save(StevkaListka.zVadnice(ID_LISTA, 1, new byte[784], 0, false, zdaj));

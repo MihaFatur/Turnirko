@@ -1,15 +1,22 @@
 /* En natisljiv sodniski listek posamicne (turnirske) tekme.
 
    Listek je zapisnik na papirju in je zgrajen kot tabela, v kateri vsak
-   igralec dobi SVOJ stolpec: ime je glava stolpca, pod njim sta znacki za
-   prvi servis in timeout, nato po ena celica za vsak niz in na dnu
-   rezultat (dobljeni nizi). Tocke so tako vedno pod imenom tistega, ki jih je
-   dosegel, ne glede na to, kdo je pisal, zato jih sodnik ne more zamenjati.
+   igralec dobi SVOJ stolpec: ime je glava stolpca, pod njim po ena celica za
+   vsak niz in na dnu rezultat (dobljeni nizi). Tocke so tako vedno pod imenom
+   tistega, ki jih je dosegel, ne glede na to, kdo je pisal, zato jih sodnik ne
+   more zamenjati. Znacki za prvi servis in timeout stojita na zunanji strani
+   stolpca ob prvih dveh nizih.
+
+   Polja za tocke (od 24. 11. 2026, lastnik): visoka in ozka (17 mm, 9 mm pri
+   petih nizih, 10 mm pri treh, okoli 7 mm pri sedmih), brez crte med deseticami
+   in enicami. Prej so bila 35 x 6 mm in stevke, napisane cez crto, je bralnik
+   odrezal. Visina vrstic je stalna (ne raztegne se po dolzini imen), zato so
+   celice vedno na istem mestu (si.turnirko.branje.GeometrijaListka).
 
    Zgoraj stoji znamka Turnirko in okence za stevilko mize (S1: bralnik ga
-   prebere), pod njo dogodek, kategorija in skupina oz. faza; spodaj crta za ime
-   sodnika in podpis. Sodnik listek izpolni z roko za mizo; izid prebere branje
-   listkov s fotografije ali ga organizator vnese prek obicajnega vnosa.
+   prebere), pod njo kategorija z dogodkom ter skupina oz. faza; spodaj crta za
+   ime sodnika in podpis. Sodnik listek izpolni z roko za mizo; izid prebere
+   branje listkov s fotografije ali ga organizator vnese prek obicajnega vnosa.
 
    Listek je namenoma crno-bel ne glede na temo (natis na papir), zato tu ne
    uporabljamo temo odvisnih spremenljivk. Natis na list A4 (6 listkov, rezi)
@@ -72,8 +79,8 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
       )}
       <OkenceMize miza={podatki.miza} />
 
-      {/* Vrh listka: glava in kontekst; desno je prostor za kodo tekme. */}
-      <div className={'listek__vrh' + (podatki.idTekme !== null ? ' listek__vrh--koda' : '')}>
+      {/* Vrh listka: glava in kontekst levo od okenca mize (do 60 mm). */}
+      <div className="listek__vrh">
         <header className="listek__glava">
           <span className="listek__znamka">
             <ZnakTurnirko velikost={18} />
@@ -81,11 +88,15 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
           </span>
         </header>
 
+        {/* Dve vrstici: kategorija (z dogodkom za piko, ki se ob pomanjkanju
+            prostora odreže) ter skupina in kolo oz. faza. Prazen listek ima
+            črto za »Skupina 1, 2. kolo« ali »Polfinale«. */}
         <div className="listek__kontekst">
-          {podatki.dogodek && <Polje oznaka="Dogodek" vrednost={podatki.dogodek} sirok />}
-          <Polje oznaka="Kategorija" vrednost={podatki.kategorija} sirok />
-          {/* Skupinska tekma: »Skupina 1  2. kolo«; tekma mreže: »Faza  Polfinale«.
-              Prazen listek ima črto za »Skupina 1, 2. kolo« ali »Polfinale«. */}
+          <Polje
+            oznaka="Kategorija"
+            vrednost={podatki.dogodek ? `${podatki.kategorija} · ${podatki.dogodek}` : podatki.kategorija}
+            sirok
+          />
           {podatki.prazno ? (
             <Polje oznaka="Faza" vrednost="" sirok prazno />
           ) : podatki.skupina ? (
@@ -101,37 +112,38 @@ export function Listek({ podatki }: { podatki: ListekPodatki }) {
 
       <div className="listek__tabela">
         <div className="listek__vrsta listek__vrsta--imena">
-          <span />
-          <Ime ime={podatki.stran1.ime} />
+          <Ime ime={podatki.stran1.ime} stran="levo" />
           <span className="listek__dvopicje">:</span>
-          <Ime ime={podatki.stran2.ime} />
+          <Ime ime={podatki.stran2.ime} stran="desno" />
         </div>
 
-        {/* Prvi servis in timeout stojita pod imenom: sodnik ju oznaci s
-            križcem, ko se zgodita. Vsak igralec (par) ima en timeout. */}
-        <div className="listek__vrsta listek__vrsta--znaki">
-          <span />
-          <Znaki />
-          <span />
-          <Znaki />
-        </div>
-
+        {/* Prvi servis ob 1. nizu, timeout ob 2. (pri enem nizu oba ob njem), na
+            zunanji strani stolpca: sodnik ju označi s križcem, ko se zgodita.
+            Vsak igralec (par) ima en timeout. Do celice je vsaj 11 mm, da križec
+            ne pride v polje za točke. */}
         <div className="listek__nizi">
-          {nizi.map((n) => (
-            <div key={n} className="listek__vrsta listek__vrsta--niz">
-              <span className="listek__niz-oznaka">{n}. niz</span>
-              <span className="listek__celica" />
-              <span className="listek__dvopicje">:</span>
-              <span className="listek__celica" />
-            </div>
-          ))}
+          {nizi.map((n) => {
+            const znaki: Znak[] = nizi.length === 1 ? ['servis', 'timeout'] : n === 1 ? ['servis'] : n === 2 ? ['timeout'] : []
+            return (
+              <div key={n} className="listek__vrsta listek__vrsta--niz">
+                <Znaki znaki={znaki} />
+                <span className="listek__niz-oznaka">{n}. niz</span>
+                <span className="listek__celica" />
+                <span className="listek__dvopicje">:</span>
+                <span className="listek__celica" />
+                <Znaki znaki={znaki} desno />
+              </div>
+            )
+          })}
         </div>
 
         <div className="listek__vrsta listek__vrsta--rezultat">
+          <span />
           <span className="listek__rezultat-oznaka">Rezultat</span>
-          <span className="listek__celica listek__celica--rezultat" />
+          <span className="listek__celica" />
           <span className="listek__dvopicje">:</span>
-          <span className="listek__celica listek__celica--rezultat" />
+          <span className="listek__celica" />
+          <span />
         </div>
       </div>
 
@@ -211,21 +223,25 @@ function OkenceMize({ miza }: { miza: number | null }) {
 
 /* QR koda tekme in njena številka. Sodnik ali organizator listek po tekmi
    fotografira, strežnik po kodi ve, katera tekma je na njem, skrivnost v njej pa
-   sodniku da pravico poslati izid (branje listkov, docs/pravila/branje-listkov.md). */
+   sodniku da pravico poslati izid (branje listkov, docs/pravila/branje-listkov.md).
+   Številka stoji pod okencem mize (ne pod kodo), da ime desnega igralca lahko
+   začne takoj pod mirno cono kode. */
 function KodaTekme({ idTekme, vsebina }: { idTekme: number; vsebina: string }) {
   const { velikost, pot } = qrAliZasilna(idTekme, vsebina)
   return (
-    <span className="listek__koda">
-      <svg
-        className="listek__qr"
-        viewBox={`0 0 ${velikost} ${velikost}`}
-        shapeRendering="crispEdges"
-        aria-hidden="true"
-      >
-        <path d={pot} />
-      </svg>
+    <>
+      <span className="listek__koda">
+        <svg
+          className="listek__qr"
+          viewBox={`0 0 ${velikost} ${velikost}`}
+          shapeRendering="crispEdges"
+          aria-hidden="true"
+        >
+          <path d={pot} />
+        </svg>
+      </span>
       <span className="listek__stevilka">{natisnjenaKoda(idTekme)}</span>
-    </span>
+    </>
   )
 }
 
@@ -240,9 +256,9 @@ function qrAliZasilna(idTekme: number, vsebina: string) {
   }
 }
 
-/* Vrednost, daljša od tega, se v eni vrstici ne prilega pri običajni velikosti
-   (turnir »1. otroški turnir NTZS za U-13, Kidričevo, 19. 9. 2026«). */
-const NAJDALJSE_PRI_OBICAJNI_VELIKOSTI = 46
+/* Vrednost, daljša od tega, se v eni vrstici (do okenca mize) ne prilega pri
+   običajni velikosti; daljša se skrči, nato odreže. */
+const NAJDALJSE_PRI_OBICAJNI_VELIKOSTI = 34
 
 /* Oznaka in vrednost v glavi listka. */
 function Polje({
@@ -281,12 +297,17 @@ function Polje({
   )
 }
 
-/* Glava stolpca. Dvojica ima vsakega igralca v svoji vrstici, ker bi se par v
-   enem stolpcu prelomil sredi imena. */
-function Ime({ ime }: { ime: string }) {
+/* Glava stolpca: levo ime je poravnano proti dvopičju (nad svojo celico), desno
+   tudi. Dvojica ima vsakega igralca v svoji vrstici, ker bi se par v enem
+   stolpcu prelomil sredi imena. */
+function Ime({ ime, stran }: { ime: string; stran: 'levo' | 'desno' }) {
   const igralci = ime.split(' / ')
   return (
-    <span className={'listek__ime' + (igralci.length > 1 ? ' listek__ime--par' : '')}>
+    <span
+      className={
+        'listek__ime listek__ime--' + stran + (igralci.length > 1 ? ' listek__ime--par' : '')
+      }
+    >
       {igralci.map((igralec, i) => (
         <span key={i} className="listek__ime-vrstica">
           {igralec}
@@ -296,17 +317,20 @@ function Ime({ ime }: { ime: string }) {
   )
 }
 
-function Znaki() {
+type Znak = 'servis' | 'timeout'
+
+const OZNAKE_ZNAKOV: Record<Znak, string> = { servis: 'Prvi servis', timeout: 'Timeout' }
+
+/* Kvadratek za križec na zunanji strani stolpca (levo igralec 1, desno igralec 2). */
+function Znaki({ znaki, desno = false }: { znaki: Znak[]; desno?: boolean }) {
   return (
-    <span className="listek__znaki">
-      <span className="listek__znak">
-        <span className="listek__kvadratek" />
-        Prvi servis
-      </span>
-      <span className="listek__znak">
-        <span className="listek__kvadratek" />
-        Timeout
-      </span>
+    <span className={'listek__znaki' + (desno ? ' listek__znaki--desno' : '')}>
+      {znaki.map((z) => (
+        <span key={z} className="listek__znak">
+          <span className="listek__kvadratek" />
+          {OZNAKE_ZNAKOV[z]}
+        </span>
+      ))}
     </span>
   )
 }

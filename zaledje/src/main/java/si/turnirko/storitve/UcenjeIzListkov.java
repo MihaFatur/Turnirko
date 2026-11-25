@@ -258,7 +258,7 @@ public class UcenjeIzListkov {
         if (celica.popravljena()) {
             return;
         }
-        List<float[]> vhodi = stevkeCelice(celica, vrednost);
+        List<float[]> vhodi = stevkeCelice(celica, vrednost, mreza);
         if (vhodi == null) {
             return;
         }
@@ -275,15 +275,39 @@ public class UcenjeIzListkov {
        prazna ali razrez ne da toliko stevk (npr. »11« v eni potezi brez reza).
        Isto pravilo velja za vadnico (BranjeVadnice). */
     static List<float[]> stevkeCelice(RazrezCelice.Vsebina celica, int vrednost) {
+        return stevkeCelice(celica, vrednost, null);
+    }
+
+    /* Kot zgoraj; sklenjen dvomestni zapis ima lahko vec rezov (F2.3). Ce je mreza
+       dana, ima prednost rez, ki ga mreza prebere kot potrjeno vrednost - ta je
+       skoraj gotovo pravi, napacen rez pa bi dal stevke z napacno oznako. Sicer
+       (ali ce ga ni) najverjetnejsi rez po obliki. */
+    static List<float[]> stevkeCelice(RazrezCelice.Vsebina celica, int vrednost, MrezaStevk mreza) {
         if (celica.prazna()) {
             return null;
         }
-        int dolzina = String.valueOf(vrednost).length();
-        RazrezCelice.Razlaga ustrezna = celica.razlage().stream()
-                .filter(r -> r.stevke().size() == dolzina)
-                .max(java.util.Comparator.comparingDouble(RazrezCelice.Razlaga::verjetnost))
-                .orElse(null);
-        return ustrezna == null ? null : ustrezna.stevke().stream().map(RazrezCelice.Stevka::vhod).toList();
+        String zapis = String.valueOf(vrednost);
+        List<RazrezCelice.Razlaga> ustrezne = celica.razlage().stream()
+                .filter(r -> r.stevke().size() == zapis.length())
+                .sorted(java.util.Comparator.comparingDouble(RazrezCelice.Razlaga::verjetnost).reversed())
+                .toList();
+        if (ustrezne.isEmpty()) {
+            return null;
+        }
+        RazrezCelice.Razlaga izbrana = ustrezne.getFirst();
+        if (mreza != null && ustrezne.size() > 1) {
+            for (RazrezCelice.Razlaga r : ustrezne) {
+                boolean vsePrav = true;
+                for (int i = 0; i < zapis.length() && vsePrav; i++) {
+                    vsePrav = mrezaPrav(mreza, r.stevke().get(i).vhod(), zapis.charAt(i) - '0');
+                }
+                if (vsePrav) {
+                    izbrana = r;
+                    break;
+                }
+            }
+        }
+        return izbrana.stevke().stream().map(RazrezCelice.Stevka::vhod).toList();
     }
 
     /* Ali mreza stevko ze zdaj prebere prav (najverjetnejsa vrednost). */

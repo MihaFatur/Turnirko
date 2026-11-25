@@ -140,6 +140,14 @@ public class ZlatiNabor {
                     }
                 }
             }
+            // poteze stevk, ki sezejo cez crto (F2.4): samo deli, ki jih razrez vzame
+            // za stevke te celice (vecinoma v njej) - ne okolica, ne ime nad tabelo
+            for (int i : RazrezCelice.tockeZapisa(t, c)) {
+                float v = t.t[i] - papir;
+                if (v >= SUM_PAPIRJA) {
+                    piksli[i] = (byte) (255 - Math.round(255 * Math.min(1f, v)));
+                }
+            }
         }
         ByteArrayOutputStream izhod = new ByteArrayOutputStream();
         try {

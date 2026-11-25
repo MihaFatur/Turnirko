@@ -17,7 +17,7 @@ public interface VadnicaRepozitorij extends JpaRepository<Vadnica, Long> {
     /* Seznam brez slik: najprej neodobreni (cakajo na pregled), nato najnovejsi. */
     @Query("""
             SELECT new si.turnirko.dto.VadnicaDto(v.id, v.stevk, v.praznih, v.preskocenih, v.odobrena,
-                   v.ustvarjenoOb, v.odobrenoOb)
+                   v.ustvarjenoOb, v.odobrenoOb, cast(v.razlicica as Integer))
             FROM Vadnica v
             ORDER BY v.odobrena ASC, v.ustvarjenoOb DESC, v.id DESC
             """)

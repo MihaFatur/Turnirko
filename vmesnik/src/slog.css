@@ -15217,14 +15217,26 @@ a.ekipa-okno__srecanje:hover {
   outline: 1px solid var(--barva-crnilo-3);
 }
 
+/* Stolpci (od 24. 11. 2026, lastnik): znak igralca 1 | oznaka niza | celica 1 |
+   dvopicje | celica 2 | znak igralca 2. Celici sta na STALNEM mestu (x
+   32,75-49,75 in 55,25-72,25 mm od levega roba listka;
+   si.turnirko.branje.GeometrijaListka) - ob spremembi spremeni oboje. Dvopicje
+   je na sredini listka (52,5 mm): listek, prepognjen na pol, ima pregib med
+   celicama, ne cez rob celice. Visina vrstice niza je stalna glede na stevilo
+   nizov: 10 mm pri najvec stirih, 9 mm pri petih, okoli 6,8 mm pri sedmih
+   (--listek-nizi je prostor, ki ostane za nize, ko so vse ostale vrstice
+   stalne visine). */
 .listek {
-  --listek-stolpci: 15mm minmax(0, 1fr) 5.5mm minmax(0, 1fr);
+  --listek-stolpci: 14.5mm 11.25mm 17mm 5.5mm 17mm minmax(0, 1fr);
+  --listek-nizi: 49.1mm;
+  --listek-razmik: 1mm;
+  --listek-niz: min(10mm, calc((var(--listek-nizi) - (var(--nizov) - 1) * var(--listek-razmik)) / var(--nizov)));
   position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 2mm;
-  padding: 6mm 7mm;
+  gap: 1.5mm;
+  padding: 5mm 7mm;
   overflow: hidden;
   background: #fff;
   color: #000;
@@ -15301,16 +15313,18 @@ a.ekipa-okno__srecanje:hover {
   text-transform: uppercase;
 }
 
-/* Vrh listka: glava in kontekst. Desno je prostor za kodo tekme (13 mm + 3 mm
-   mirne cone), pri praznem listku samo za nic - kode nima. */
+/* Vrh listka: glava in dve vrstici konteksta, stalne visine 14 mm (5-19 mm), in
+   samo levo od okenca mize (do 60 mm): desno so okence, stevilka kode pod njim
+   in koda. */
 .listek__vrh {
+  flex: none;
+  box-sizing: border-box;
+  height: 14mm;
   display: flex;
   flex-direction: column;
-  gap: 2mm;
-}
-
-.listek__vrh--koda {
-  padding-right: 16mm;
+  gap: 1.2mm;
+  padding-right: 38mm;
+  overflow: hidden;
 }
 
 /* Oznake za branje s fotografije: polni crni kvadrati 4 x 4 mm na STALNIH mestih
@@ -15349,16 +15363,13 @@ a.ekipa-okno__srecanje:hover {
 }
 
 /* QR je 13 mm (verzija 1: 21 modulov po 0,62 mm) na stalnem mestu zgoraj desno,
-   dovolj za fotografijo s telefona na pultu; stevilka je pod njo. */
+   dovolj za fotografijo s telefona na pultu. Stevilka je pod okencem mize
+   (2 mm pod njim, da ne zmoti iskanja robov okenca), desno poravnana. */
 .listek__koda {
   position: absolute;
   top: 5mm;
   right: 7mm;
   width: 13mm;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.7mm;
 }
 
 .listek__qr {
@@ -15369,6 +15380,11 @@ a.ekipa-okno__srecanje:hover {
 }
 
 .listek__stevilka {
+  position: absolute;
+  top: 14mm;
+  left: 62mm;
+  width: 18mm;
+  text-align: right;
   font: 600 7pt / 1 var(--pisava-mono);
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -15431,7 +15447,7 @@ a.ekipa-okno__srecanje:hover {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.1mm;
+  gap: 1mm;
 }
 
 .listek__vrsta {
@@ -15440,21 +15456,39 @@ a.ekipa-okno__srecanje:hover {
 }
 
 .listek__vrsta--imena {
+  flex: none;
+  height: 8.4mm;
   align-items: end;
 }
 
 /* Ime je glava stolpca: debela crta pod njim loci glavo od nizov. Posameznik
-   ima prostor za dve vrstici, dvojica za dve imeni po eno vrstico. */
+   ima prostor za dve vrstici, dvojica za dve imeni po eno vrstico. Visina je
+   stalna, da so celice vedno na istem mestu. Levo ime je poravnano desno (nad
+   svojo celico ob dvopicju), desno levo. */
 .listek__ime {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   min-width: 0;
-  min-height: 8.6mm;
+  height: 8.4mm;
   padding-bottom: 0.9mm;
   border-bottom: 0.5mm solid #000;
-  font: 800 10pt / 1.1 var(--pisava-display);
+  overflow: hidden;
+  font: 800 9pt / 1.1 var(--pisava-display);
   letter-spacing: -0.02em;
+}
+
+.listek__ime--levo {
+  grid-column: 1 / 4;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.listek__ime--desno {
+  grid-column: 5 / 7;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .listek__ime-vrstica {
@@ -15466,7 +15500,7 @@ a.ekipa-okno__srecanje:hover {
 }
 
 .listek__ime--par {
-  font-size: 8.5pt;
+  font-size: 8pt;
   line-height: 1.15;
 }
 
@@ -15489,19 +15523,30 @@ a.ekipa-okno__srecanje:hover {
   padding-bottom: 1.2mm;
 }
 
-/* Prvi servis in timeout: kvadratek, v katerega sodnik zapise kriz. */
+/* Prvi servis in timeout: kvadratek, v katerega sodnik zapise kriz, na zunanji
+   strani stolpca (levo igralec 1, desno igralec 2; kvadratek na zunanji strani). */
 .listek__znaki {
   display: flex;
-  align-items: center;
-  gap: 2.4mm;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1mm;
   white-space: nowrap;
-  font: 500 6.6pt / 1 var(--pisava-telo);
+  font: 500 6.4pt / 1 var(--pisava-telo);
+}
+
+.listek__znaki--desno {
+  align-items: flex-end;
 }
 
 .listek__znak {
   display: inline-flex;
   align-items: center;
   gap: 1mm;
+}
+
+.listek__znaki--desno .listek__znak {
+  flex-direction: row-reverse;
 }
 
 .listek__kvadratek {
@@ -15512,21 +15557,21 @@ a.ekipa-okno__srecanje:hover {
   border: 0.3mm solid #000;
 }
 
-/* Celice nizov: najvec 10 mm visoke, kadar je nizov malo (pri treh zapolnijo
-   prostor); pri sedmih se skrcijo, a ostanejo vsaj 4,2 mm. */
+/* Celice nizov: stalna visina --listek-niz (glej .listek). Oznaka niza je
+   desno poravnana z 2 mm do celice, da crka ne pride v obmocje, ki ga bralnik
+   pregleda okrog celice (stevka cez crto). */
 .listek__nizi {
-  flex: 1 1 0;
-  min-height: calc(var(--nizov) * 4.2mm + (var(--nizov) - 1) * 1mm);
+  flex: none;
   display: grid;
-  grid-template-rows: repeat(var(--nizov), minmax(0, 10mm));
-  align-content: center;
-  gap: 1.1mm;
+  grid-template-rows: repeat(var(--nizov), var(--listek-niz));
+  gap: var(--listek-razmik);
 }
 
 .listek__niz-oznaka {
   align-self: center;
-  font: 500 6.6pt / 1 var(--pisava-mono);
-  letter-spacing: 0.04em;
+  justify-self: end;
+  padding-right: 2mm;
+  font: 500 7pt / 1 var(--pisava-telo);
   white-space: nowrap;
 }
 
@@ -15535,22 +15580,23 @@ a.ekipa-okno__srecanje:hover {
   border: 0.3mm solid #000;
 }
 
+/* Rezultat ima enako tanko obrobo kot nizi: debelejsa crta bi bila bralniku le
+   ovira. */
 .listek__vrsta--rezultat {
-  height: 8mm;
+  flex: none;
+  height: 7.5mm;
 }
 
 .listek__rezultat-oznaka {
   align-self: center;
+  justify-self: end;
+  padding-right: 2mm;
   font: 800 8pt / 1 var(--pisava-display);
   letter-spacing: -0.01em;
 }
 
-/* Rezultat ima debelejso obrobo: to je edino polje, ki ga glavni sodnik prepise. */
-.listek__celica--rezultat {
-  border-width: 0.55mm;
-}
-
 .listek__noga {
+  flex: none;
   display: flex;
   align-items: flex-end;
   gap: 4mm;
@@ -15572,28 +15618,24 @@ a.ekipa-okno__srecanje:hover {
 
 .listek__crta {
   flex: 1 1 0;
-  height: 5.5mm;
+  height: 5mm;
   border-bottom: 0.35mm solid #000;
 }
 
-/* Sedem nizov (najboljsi od 7): ostali bloki se stisnejo, da celice nizov
-   ostanejo dovolj visoke za pisanje. */
+/* Sedem nizov (najboljsi od 7): imena, rezultat, noga in razmiki se stisnejo,
+   da celice nizov ostanejo okoli 6,8 mm visoke. */
 .listek--gosto {
-  gap: 1.3mm;
-  padding-top: 5mm;
-  padding-bottom: 5mm;
+  --listek-nizi: 50.9mm;
+  --listek-razmik: 0.6mm;
 }
 
+.listek--gosto .listek__vrsta--imena,
 .listek--gosto .listek__ime {
-  min-height: 7.4mm;
+  height: 8mm;
 }
 
 .listek--gosto .listek__tabela {
-  gap: 0.9mm;
-}
-
-.listek--gosto .listek__nizi {
-  gap: 0.9mm;
+  gap: 0.8mm;
 }
 
 .listek--gosto .listek__vrsta--rezultat {
@@ -15601,7 +15643,7 @@ a.ekipa-okno__srecanje:hover {
 }
 
 .listek--gosto .listek__crta {
-  height: 5mm;
+  height: 4.5mm;
 }
 
 /* ---------- Ekipni zapisnik (uraden NTZS obrazec) ---------- */

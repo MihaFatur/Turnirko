@@ -86,6 +86,11 @@ public class UcenjeMreze {
     /* Stevke listkov in vadnic stejejo vec kot MNIST: v vsaki epohi po toliko
        kopij, mocne oznake (popravljene celice, F6.2) se enkrat toliko. */
     static final int UTEZ_STEVK = 4;
+    /* Stevke s pravih sodniskih listkov se toliko kopij vec (lastnik 24. 11. 2026):
+       na generalki so pravi listki brali slabse, kot je kazala natancnost na
+       preizkusnih stevkah, ker je bila vecina ucnih stevk z vadnice (mirno pisanje
+       v vecja okenca). Pisava med tekmo je tista, ki jo mora mreza brati. */
+    static final int DODATNA_UTEZ_LISTKOV = 4;
     /* Zlati nabor pri sprejemu: prvih toliko listkov (stara in nova mreza, vsak
        listek nekaj desetink sekunde). Pod NAJMANJ_ZLATIH nabor ne odloca. */
     static final int ZLATIH_ZA_SPREJEM = 400;
@@ -154,6 +159,22 @@ public class UcenjeMreze {
         return Math.floorMod(kljuc, 5L) == 0;
     }
 
+    /* Ucne stevke ene epohe: izbor MNIST enkrat, ucne stevke (listki in vadnice)
+       UTEZ_STEVK-krat, mocne oznake se enkrat toliko, stevke pravih listkov pa se
+       DODATNA_UTEZ_LISTKOV-krat (vsaka ucna stevka listka je tudi v »ucni«). */
+    static List<UcenjeStevk.Vzorec> zaUcenje(List<UcenjeStevk.Vzorec> mnist, List<UcenjeStevk.Vzorec> ucni,
+                                            List<UcenjeStevk.Vzorec> mocni, List<UcenjeStevk.Vzorec> zListkov) {
+        List<UcenjeStevk.Vzorec> mesano = new ArrayList<>(mnist);
+        for (int k = 0; k < UTEZ_STEVK; k++) {
+            mesano.addAll(ucni);
+            mesano.addAll(mocni);
+        }
+        for (int k = 0; k < DODATNA_UTEZ_LISTKOV; k++) {
+            mesano.addAll(zListkov);
+        }
+        return mesano;
+    }
+
     /* Ali je potrjen listek (po id branja) v preizkusnem delu - njegove stevke niso v
        ucenju. Ista razdelitev kot jePreizkusna; zlati nabor jo uporabi, da meri tudi
        samo na pisavi, ki je mreza ni videla (diagnostika, MeritevNabora). */
@@ -173,7 +194,7 @@ public class UcenjeMreze {
             return new MrezeStevkDto(vir.idTrenutne(), tece.get(), ucenjeOd, nacinUcenja, sporocilo, sporociloOb,
                     novih, NAJMANJ_NOVIH, stevke.countByOdobrenoTrue(), stevke.countByIdVadnicaIsNotNullAndOdobrenoTrue(),
                     od != null && od.isAfter(LocalDateTime.now()) ? od : null,
-                    mreze.zgodovina(PageRequest.of(0, V_ZGODOVINI)));
+                    mreze.zgodovina(PageRequest.of(0, V_ZGODOVINI)), stevke.povprecnoStevkNaListek());
         });
     }
 
@@ -301,6 +322,7 @@ public class UcenjeMreze {
         List<StevkaListka> vse = transakcija.execute(s -> stevke.najnovejse(PageRequest.of(0, NAJVEC_STEVK)));
         List<UcenjeStevk.Vzorec> ucni = new ArrayList<>();
         List<UcenjeStevk.Vzorec> mocni = new ArrayList<>();
+        List<UcenjeStevk.Vzorec> zListkov = new ArrayList<>();
         List<UcenjeStevk.Vzorec> preizkusni = new ArrayList<>();
         for (StevkaListka s : vse) {
             UcenjeStevk.Vzorec v = new UcenjeStevk.Vzorec(s.getSlika(), s.getVrednost());
@@ -310,6 +332,9 @@ public class UcenjeMreze {
                 ucni.add(v);
                 if (s.isPopravljena()) {
                     mocni.add(v);
+                }
+                if (s.getIdBranje() != null) {
+                    zListkov.add(v);
                 }
             }
         }
@@ -323,11 +348,7 @@ public class UcenjeMreze {
             return null;
         }
         List<UcenjeStevk.Vzorec> mnistPreizkus = beri("/branje/mnist-preizkus.bin.gz");
-        List<UcenjeStevk.Vzorec> mesano = new ArrayList<>(beri("/branje/mnist-izbor.bin.gz"));
-        for (int k = 0; k < UTEZ_STEVK; k++) {
-            mesano.addAll(ucni);
-            mesano.addAll(mocni);
-        }
+        List<UcenjeStevk.Vzorec> mesano = zaUcenje(beri("/branje/mnist-izbor.bin.gz"), ucni, mocni, zListkov);
         double prej = UcenjeStevk.natancnost(trenutna.mreza(), preizkusni);
         MrezaStevk nova = trenutna.mreza().kopija();
         Double potem = null;

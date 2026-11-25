@@ -50,8 +50,12 @@ public class Vadnica {
         this.razlicica = (short) razlicica;
     }
 
-    /* Nova fotografija istega (se neodobrenega) lista zamenja prejsnjo. */
-    public void nastaviBranje(byte[] slika, int stevk, int praznih, int preskocenih, LocalDateTime ob) {
+    /* Nova fotografija istega (se neodobrenega) lista zamenja prejsnjo. Razlicica je
+       iz kode QR nove fotografije: stevke so razrezane po njeni postavitvi, pregled jih
+       razvrsti po njej. */
+    public void nastaviBranje(int razlicica, byte[] slika, int stevk, int praznih, int preskocenih,
+                              LocalDateTime ob) {
+        this.razlicica = (short) razlicica;
         this.slika = slika;
         this.stevk = stevk;
         this.praznih = praznih;

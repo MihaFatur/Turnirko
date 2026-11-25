@@ -256,7 +256,7 @@ public class LokalniBralnikListka implements BralnikListka {
                 RazrezCelice.razrezi(slika, tabela.rezultat().levo()),
                 RazrezCelice.razrezi(slika, tabela.rezultat().desno())};
         MizaListka.Okence okence = poravnan.miza();
-        RazrezCelice.Vsebina miza = okence == null ? null : RazrezCelice.razrezi(slika, okence.celica());
+        RazrezCelice.Vsebina miza = okence == null ? null : RazrezCelice.razreziOkence(slika, okence.celica());
         return new Izrez(nizi, rezultat, miza, okence != null && okence.zanesljivo());
     }
 

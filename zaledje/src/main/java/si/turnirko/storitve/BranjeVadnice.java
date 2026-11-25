@@ -52,7 +52,8 @@ public final class BranjeVadnice {
             throw new NapakaBranjaListka("Na fotografiji je več listov vadnice. Fotografiraj po enega.");
         }
         KodaListka.KodaVadnice koda = kode.getFirst();
-        if (koda.razlicica() != GeometrijaVadnice.RAZLICICA) {
+        GeometrijaVadnice.Okenca postavitev = GeometrijaVadnice.za(koda.razlicica());
+        if (postavitev == null) {
             throw new NapakaBranjaListka("List je natisnjen v drugi različici vadnice (" + koda.razlicica()
                     + "), ki je ta strežnik ne pozna. Natisni nove liste.");
         }
@@ -67,18 +68,18 @@ public final class BranjeVadnice {
                     + "Fotografiraj cel list od zgoraj, da se vidijo vsi trije.");
         }
         Temnost list = poravnan.slika();
-        List<CeliceListka.Celica> okenca = CeliceVadnice.najdi(list);
+        List<CeliceListka.Celica> okenca = CeliceVadnice.najdi(list, postavitev);
         List<Stevka> stevke = new ArrayList<>();
         int praznih = 0;
         int preskocenih = 0;
         for (int i = 0; i < okenca.size(); i++) {
-            int vrednost = GeometrijaVadnice.VREDNOSTI[i / GeometrijaVadnice.STOLPCEV];
-            RazrezCelice.Vsebina vsebina = RazrezCelice.razrezi(list, okenca.get(i));
+            int vrednost = postavitev.vrednost(i);
+            RazrezCelice.Vsebina vsebina = RazrezCelice.razreziOkence(list, okenca.get(i));
             if (vsebina.prazna()) {
                 praznih++;
                 continue;
             }
-            List<float[]> vhodi = UcenjeIzListkov.stevkeCelice(vsebina, vrednost);
+            List<float[]> vhodi = UcenjeIzListkov.stevkeCelice(vsebina, vrednost, mreza);
             if (vhodi == null) {
                 preskocenih++;
                 continue;

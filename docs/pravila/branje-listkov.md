@@ -32,6 +32,20 @@
   izbere organizator s seznama tekem, ki čakajo na izid.
 - Celica za točke je **prosta** (lastnik je zavrnil okenca za števke): razrez na eno ali
   dve števki je del branja.
+- **Visoka ozka celica** (lastnik 24. 11. 2026, po generalki: pravi listki so brali
+  slabše od meritve): celica je 17 mm široka, pri največ štirih nizih 10 mm, pri petih
+  9 mm, pri sedmih ~6,8 mm visoka (prej 35 × ~6 mm) in **brez črte med deseticami in
+  enicami** (lastnik je črto izrecno zavrnil). Celici sta na stalnem mestu x 32,75–49,75
+  in 55,25–72,25 mm (`GeometrijaListka.TABELA`, `--listek-stolpci`), dvopičje na
+  sredini listka (pregib na pol gre med celicama). Višina vrstic je stalna (imena
+  imajo stalno višino, kontekst dve vrstici levo od okenca mize), znački »Prvi
+  servis«/»Timeout« stojita na zunanji strani stolpca ob 1. in 2. nizu, številka
+  `T-<id>` pod okencem mize. Rezultat ima enako tanko obrobo kot nizi.
+- **Stari listki** (široke celice, `GeometrijaListka.TABELA_SIROKA`) se še berejo:
+  `CeliceListka` pri vsakem pragu najprej poskusi nove stolpce, nato stare. Na novem
+  listku stari stolpci ne najdejo črt (prekratke), na starem novi ne najdejo
+  navpičnih robov. Simulacija ima oba posnetka (`listek-5-nizov.png`,
+  `listek-5-nizov-siroke.png`).
 - **Okence za mizo** (S1) stoji na stalnem mestu glave: zunanji robovi x 62–80 mm,
   y 5–12 mm, črta 0,45 mm (`GeometrijaListka.MIZA`, `.listek__miza-okence`), levo od
   njega oznaka »Miza«. Znana miza je ob tisku natisnjena v okencu.
@@ -98,15 +112,43 @@
    Rezultat. Ob neuspehu še enkrat z blažjim pragom. **Črte in celice se iščejo v
    vsakem stolpcu posebej** (toleranca ±2 px) in se nato povežejo v vrstice po
    bližini središča (≤ 1,2 mm), ker sta stolpca prepognjenega listka lahko zamaknjena
-   ali nagnjena drug proti drugemu (F2.6).
+   ali nagnjena drug proti drugemu (F2.6). Od 24. 11. 2026 (ozke celice):
+   - **črta tabele sega do obeh koncev stolpca** (12 % širine na vsakem koncu, ±5 px
+     za nagnjeno črto): prečrtana vrednost v 17 mm celici pokrije več kot pol širine
+     in bi celico razdelila na dve ter zamaknila vse vrstice stolpca;
+   - **zaporedna pasova z navpičnima robovoma** (vsak vsaj 1,5 mm) sta ena celica: guba
+     prepognjenega listka čez celico je videti kot črta. Med vrsticama nizov je vedno
+     razmik brez robov, zato se vrstici nikoli ne združita;
+   - najnižja celica nove postavitve je 5 mm (stare 2,5 mm).
 4. `RazrezCelice`: črnilo → komponente → skupine po stolpcih → razlage (ena ali dve
    števki, z verjetnostjo); števka v obliki MNIST (20 × 20, težišče v sredini 28 × 28).
-   **Popravljena celica** (F2.5: delež črnila > 0,12, več kot tri skupine potez ali
-   zapis čez več kot 35 % širine celice; navaden zapis sega do ~28 %) je vedno
-   negotova, listek dobi opombo »Popravljena celica (2. niz). Preveri jo.«, njene
-   števke ne gredo v učenje. Celica z več kot 40 deli se ne obdeluje naprej
-   (varnost) in je popravljena. Vadnica tega pravila nima (ozka okenca, slabe
-   števke izloči admin).
+   **Števka čez črto ostane cela** (F2.4, 24. 11. 2026): pregleda se še 1,5 mm okrog
+   celice; v pasu črte (12 px od jedra, tj. notranjosti brez `ODMIK`) se črnilo
+   izbriše, razen kjer ga poteza prečka (črnilo tik pred pasom in tik za njim, ±3 px
+   vstran); zunaj pasu se izbrišejo dolgi vodoravni in navpični nizi (črte sosednjih
+   celic, podčrtaj imen). Obdržijo se samo deli, ki imajo vsaj polovico črnila v jedru
+   (stevka soseda, ki seže k nam, ostane sosedu). Prej je razrez vzel samo jedro in
+   sedmici, napisani čez rob nizke celice, odrezal streho.
+   **Več rezov sklenjenega zapisa** (F2.3): enkomponentni zapis, ki je lahko dvomesten,
+   dobi do tri reze na stolpcih z najmanj črnila v 30–70 % širine (vsaj 12 % širine
+   narazen), vsak je svoja razlaga s težo 1 / (1 + črnilo v stolpcu); mreža jih
+   oceni, mešanica razlag da porazdelitev vrednosti. Učenje in vadnica pri več rezih
+   vzameta rez, ki ga mreža prebere kot potrjeno vrednost (sicer najverjetnejšega po
+   obliki), da števka ne dobi napačne oznake (`UcenjeIzListkov.stevkeCelice`).
+   **Popravljena celica** (F2.5: delež črnila > 0,12, več skupin potez, kot jih ima
+   navadna vrednost, ali zapis čez več kot 35 % širine) je vedno negotova, listek dobi
+   opombo »Popravljena celica (2. niz). Preveri jo.«, njene števke ne gredo v učenje.
+   Črnilo in razpon se merita glede na **primerjalno širino** max(širina, 6 × višina):
+   pri širokih celicah je to njihova širina (meje kot prej), pri ozkih bi sicer vsaka
+   dvomestna vrednost veljala za popravljeno. Navadna vrednost ima v široki celici
+   največ 3 skupine, v ozki 2. Umeritev (`PopravljenaCelicaPoskus`, 24. 11. 2026, ozke
+   celice): navadne celice po krivem popravljene 0,6 % (običajne fotografije) in 1–3 %
+   (zahtevne); prečrtano in prepisano vrednost oblika ujame le v 6–24 % — v ozki celici
+   se stisne s popravkom, zato jo pogosteje ujame neujemanje s pravili ali nizko
+   zaupanje (simulacija: brez tihe napake). Pri faktorju 5,2 bi bila po krivem
+   popravljena 3 % navadnih celic (četrtina listkov v pregled brez razloga). Celica z
+   več kot 40 deli se ne obdeluje naprej (varnost) in je popravljena. Vadnica tega
+   pravila nima (slabe števke izloči admin).
 5. `MrezaStevk` (LeNet, ~80.000 uteži, čista Java) da verjetnost števk (temperatura 1,5).
    **Petkratno branje** (F2.2, `VecBranj`): izvirnik, premik ±1 px, zasuk ±4°;
    verjetnosti se povprečijo.
@@ -136,6 +178,11 @@ ravni simulacije + vsaka težava tretje ravni posebej, `-Dzgodovina=true` za tek
 po pogostosti iz zgodovine). Sprememba, ki poslabša katerokoli merilo, se ne
 sprejme. Tretja raven (`NEUGODNO`, F2.7): prepognjen listek, prst čez eno oznako,
 prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
+Nov listek (24. 11. 2026, `SimuliraneFotografijeTest`, 30 listkov na raven): običajne
+100 % celic, 0 tihih; zahtevne (števke do 105 % višine celice, čez črto) 100 %, 0
+tihih; neugodne 96,9 %, 0,8 % tihih; prepognjen listek 100 %; miza 93–100 %. V ozki
+celici simulacija vrednost začne pri 5–25 % širine (pri 30–50 % bi dvomestna segla
+čez desni rob, sodnik pa jo napiše v celico).
 
 ## Učenje
 
@@ -164,7 +211,9 @@ prečrtane in prepisane celice, enica z nosom in prečrtana sedmica.
   z »Uči zdaj« (admin, stran Meritev branja), ob vsaj 200 novih števkah od zadnjega
   učenja (tudi ročno: ponavljanje na istih števkah bi novo mrežo prej ali slej po
   naključju »izboljšalo« na istem preizkusnem delu). Kopija se dotrenira (števke ×4,
-  močne še ×4, + izbor MNIST). Preizkusne so vse števke vsakega petega **listka ali lista
+  močne še ×4, **števke pravih listkov še ×4** — lastnik 24. 11. 2026: pisava med
+  tekmo je tista, ki jo mora mreža brati, vadnica je mirno pisanje; + izbor MNIST;
+  `UcenjeMreze.zaUcenje`). Preizkusne so vse števke vsakega petega **listka ali lista
   vadnice** (`jePreizkusna`), ne vsaka peta števka: ista pisava ne sme biti v obeh
   delih. Pod 50 preizkusnimi števkami se učenje odloži brez zapisa.
 - **Sprejem (F6.3):** nova različica (`mreza_stevk`) se sprejme samo, če (1) na
@@ -426,7 +475,9 @@ pisave). Ni uvedeno.
 - **Zlati nabor** (`zlati_listek`, `ZlatiNabor`): po potrditvi (izvajalec učenja,
   `UcenjeIzListkov.zabelezi`) poravnan listek PNG v sivinah, ohranjene **samo celice s
   točkami**, in to samo notranjost, ki jo bere razrez (brez `RazrezCelice.ODMIK` ob
-  črti: ime, napisano čez črto, ne pride v nabor); v celici se odšteje raven papirja, ki jo vzame razrez
+  črti: ime, napisano čez črto, ne pride v nabor), od 24. 11. 2026 pa še poteze, ki jih
+  razrez vzame čez črto (`RazrezCelice.tockeZapisa`: samo deli z vsaj polovico črnila
+  v celici, ne okolica in ne ime nad tabelo); v celici se odšteje raven papirja, ki jo vzame razrez
   (`RazrezCelice.papir`), in kar je pod 0,06, je belo. Maska razreza se zato ne
   spremeni razen zaokrožitve na 1/255 tik ob pragu (test
   `bralnikNadNaboromBereEnakoKotNadFotografijo`), slika ima ~15 kB.
@@ -481,12 +532,20 @@ storitev preveri še enkrat; strani `/vadnica`, `/vadnica/tisk`, `/vadnica/:id`)
 
 - **List** (A4 pokončno, `ListVadnice.tsx` ↔ `GeometrijaVadnice`): oznake 6 × 6 mm
   (središča 15/15, 15/282, 195/282 mm), QR 22 mm na (173, 9) z vsebino
-  `TKV:<različica>:<id lista>`, 14 vrstic (0–9, 10–13) po 10 okenc 14 × 10 mm (x 38 +
-  16·j, y 46 + 16·i). Okenca so ena risba SVG v mm s črto 0,45 mm: obroba CSS bi se
-  pri tisku zaokrožila na 0,26 mm, tanka črta pa se na fotografiji raztrga. Polja za
-  ime ni. Ob spremembi lista spremeni oboje in povečaj `RAZLICICA` (vmesnik in
-  zaledje); list stare različice bralnik zavrne. Natis: `@page listki` (A4, rob 0),
-  preverjeno v PDF na 0,1 mm.
+  `TKV:<različica>:<id lista>`. Okenca (`GeometrijaVadnice.Okenca`, `okencaVadnice`):
+  - **različica 2** (natisne se od 24. 11. 2026, lastnik): okenca **enake oblike kot
+    celica listka**, 17 × 9 mm, 16 vrstic (0–13, nato še 11 in 10, najpogostejši
+    dvomestni vrednosti na listkih) po 8 okenc (x 38 + 19·j, y 46 + 13·i). Mreža se tako
+    uči na pisavi v istih pogojih kot na listku;
+  - različica 1: 14 vrstic (0–9, 10–13) po 10 okenc 14 × 10 mm (x 38 + 16·j, y 46 + 16·i).
+  Oznake in koda so pri obeh na istem mestu. Bralnik pozna obe (`GeometrijaVadnice.za`),
+  pregled lista razvrsti števke po vrsticah njegove različice (`VadnicaDto.razlicica`).
+  Okenca so ena risba SVG v mm s črto 0,45 mm: obroba CSS bi se pri tisku zaokrožila na
+  0,26 mm, tanka črta pa se na fotografiji raztrga. Polja za ime ni. Ob spremembi lista
+  spremeni oboje in dodaj različico (vmesnik in zaledje); neznano različico bralnik
+  zavrne. Natis: `@page listki` (A4, rob 0), preverjeno v PDF na 0,1 mm. Test:
+  `VadnicaTest` za obe različici (`vadnica-list.png`, `vadnica-list-v2.png` z
+  `/dev/vadnica`, 10 px/mm): 140 oz. 128 okenc s števkami, mreža prav 97–100 %.
 - **Id lista izbere brskalnik** ob tisku (`noviIdjiListov`: deset mest, kripto
   naključno; koda ostane različica 1 z 21 moduli, na katero računa postavitev). List z
   enega okolja (test) zato velja tudi na drugem (produkcija); strežnik zapis lista

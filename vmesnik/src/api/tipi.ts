@@ -3498,6 +3498,8 @@ export interface MrezeStevkDto {
   /* pred tem časom »Uči zdaj« ni mogoč (premor med zagoni) */
   uciZdajOd: string | null
   razlicice: RazlicicaMrezeDto[]
+  /* Povprečno števk na potrjen listek; null, dokler listkov ni (ocenaListkovBrezNapake). */
+  stevkNaListek: number | null
 }
 
 /* Napake mreže števk (F6.6, samo admin): preizkusne števke po števkah in sumljive
@@ -3552,6 +3554,8 @@ export interface VadnicaDto {
   odobrena: boolean
   ustvarjenoOb: string
   odobrenoOb: string | null
+  /* Različica postavitve lista (pomozno/vadnica.ts): vrstice in okenca pregleda. */
+  razlicica: number
 }
 
 export interface SeznamVadnicDto {
@@ -3560,8 +3564,9 @@ export interface SeznamVadnicDto {
   stevkVUcenju: number
 }
 
-/* Števka lista za pregled: okence (vrstica × 10 + stolpec), prava vrednost,
-   sivine 28 × 28 (base64), ali jo mreža že zdaj bere prav. */
+/* Števka lista za pregled: okence (vrstica × stolpcev + stolpec; stolpcev je 10
+   v različici 1 in 8 v različici 2), prava vrednost, sivine 28 × 28 (base64), ali
+   jo mreža že zdaj bere prav. */
 export interface StevkaVadniceDto {
   id: number
   okence: number

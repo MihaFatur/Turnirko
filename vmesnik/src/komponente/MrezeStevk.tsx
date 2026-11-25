@@ -11,7 +11,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { MrezeStevkDto, RazlicicaMrezeDto } from '../api/tipi'
 import { meritevBranjaApi } from '../api/zahteve'
-import { delez, prejPotem, stanjeRazlicice, trajanje, type StanjeRazlicice } from '../pomozno/branjeListkov'
+import {
+  delez,
+  ocenaListkovBrezNapake,
+  prejPotem,
+  PRIVZETO_STEVK_NA_LISTEK,
+  stanjeRazlicice,
+  trajanje,
+  type StanjeRazlicice,
+} from '../pomozno/branjeListkov'
 import { oblikujTermin, oblikujUro } from '../pomozno/oblikovanje'
 import { KLJUC_NAPAK, NapakeMreze } from './NapakeMreze'
 import { SporociloNapake } from './SporociloNapake'
@@ -85,7 +93,17 @@ export function MrezeStevk() {
           <p className="meritev-branja__besedilo">
             Števk v učenju: {s.stevkVUcenju} (z vadnic {s.stevkVadnice}). Novih od zadnjega učenja: {s.novihStevk},
             učenje jih potrebuje vsaj {s.najmanjNovih}. Učenje teče vsako noč ob 3.50 ali takoj z »Uči zdaj«. Nova
-            mreža se sprejme samo, če na preizkusnih števkah in zlatem naboru ne bere slabše.
+            mreža se sprejme samo, če na preizkusnih števkah in zlatem naboru ne bere slabše. Števke s pravih
+            listkov štejejo pri učenju dvakrat toliko kot števke z vadnic.
+          </p>
+          <p className="meritev-branja__besedilo">
+            <strong>Natančnost velja za eno števko.</strong> Listek ima{' '}
+            {s.stevkNaListek !== null
+              ? `povprečno ${s.stevkNaListek.toFixed(1).replace('.', ',')} števk`
+              : `okoli ${PRIVZETO_STEVK_NA_LISTEK} števk`}{' '}
+            in je brez napake le, če so prav vse, zato je listkov brez napake manj: pri 98 % na števko{' '}
+            {delez(ocenaListkovBrezNapake(0.98, s.stevkNaListek))}, pri 99,5 %{' '}
+            {delez(ocenaListkovBrezNapake(0.995, s.stevkNaListek))}. Ocena je ob vsaki različici spodaj.
           </p>
 
           {s.uciSe ? (
@@ -154,7 +172,7 @@ export function MrezeStevk() {
           {s.razlicice.length === 0 ? (
             <p className="namig">Mreža se še ni učila.</p>
           ) : (
-            <Zgodovina razlicice={s.razlicice} vUporabi={s.vUporabi} />
+            <Zgodovina razlicice={s.razlicice} vUporabi={s.vUporabi} stevkNaListek={s.stevkNaListek} />
           )}
         </>
       )}
@@ -164,7 +182,15 @@ export function MrezeStevk() {
 
 /* Seznam namesto tabele: na telefonu mora biti stanje in razlog zavrnitve viden brez
    vodoravnega pomikanja (sedem stolpcev ne gre v 390 px). */
-function Zgodovina({ razlicice, vUporabi }: { razlicice: RazlicicaMrezeDto[]; vUporabi: number | null }) {
+function Zgodovina({
+  razlicice,
+  vUporabi,
+  stevkNaListek,
+}: {
+  razlicice: RazlicicaMrezeDto[]
+  vUporabi: number | null
+  stevkNaListek: number | null
+}) {
   return (
     <ol className="mreze-stevk__zgodovina">
       {razlicice.map((r) => {
@@ -183,6 +209,17 @@ function Zgodovina({ razlicice, vUporabi }: { razlicice: RazlicicaMrezeDto[]; vU
               <div>
                 <dt>Preizkusne števke{r.preizkusnih !== null && ` (${r.preizkusnih})`}</dt>
                 <dd>{r.prekinjena ? delez(r.natancnostPrej) : prejPotem(r.natancnostPrej, r.natancnost)}</dd>
+              </div>
+              <div>
+                <dt>Ocena: listki brez napake</dt>
+                <dd>
+                  {r.prekinjena
+                    ? delez(ocenaListkovBrezNapake(r.natancnostPrej, stevkNaListek))
+                    : prejPotem(
+                        ocenaListkovBrezNapake(r.natancnostPrej, stevkNaListek),
+                        ocenaListkovBrezNapake(r.natancnost, stevkNaListek),
+                      )}
+                </dd>
               </div>
               <div>
                 <dt>Zlati nabor{r.zlatih !== null && ` (${r.zlatih} listkov)`}</dt>

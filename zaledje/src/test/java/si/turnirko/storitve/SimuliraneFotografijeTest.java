@@ -196,6 +196,52 @@ class SimuliraneFotografijeTest {
         assertFalse(p.negotovaMiza());
     }
 
+    /* Listki stare postavitve (siroke nizke celice 35 x 6 mm, natisnjeni do 24. 11.
+       2026, npr. za generalko) se se vedno preberejo: bralnik poskusi najprej nove
+       stolpce, nato stare (GeometrijaListka.TABELE). */
+    @Test
+    void starListekSirokihCelicSePrebere() throws IOException {
+        BufferedImage star;
+        try (InputStream v = SimuliraneFotografijeTest.class.getResourceAsStream("/branje/listek-5-nizov-siroke.png")) {
+            star = ImageIO.read(v);
+        }
+        double[][] qr = KodaListka.najdi(star).getFirst().tocke();
+        Temnost poravnan = PoravnavaListka.poravnaj(star, qr).slika();
+        CeliceListka.Tabela stareCelice = CeliceListka.najdi(poravnan);
+        assertNotNull(stareCelice, "celice starega listka niso najdene");
+        assertEquals(5, stareCelice.nizi().size());
+        assertTrue(stareCelice.nizi().getFirst().levo().sirina() > 300, "siroka celica starega listka");
+        Random r = new Random(24112026L);
+        int prav = 0;
+        int vseh = 0;
+        for (int k = 0; k < 8; k++) {
+            int[][] izid = {{11, 4 + k}, {7, 11}, {11, 9 - k}};
+            BufferedImage izpolnjen = kopija(star);
+            for (int i = 0; i < izid.length; i++) {
+                napisi(izpolnjen, stareCelice.nizi().get(i).levo(), izid[i][0], r, OBICAJNO);
+                napisi(izpolnjen, stareCelice.nizi().get(i).desno(), izid[i][1], r, OBICAJNO);
+            }
+            PrebranListek p = bralnik.preberi(fotografija(izpolnjen, r, OBICAJNO)).listek();
+            for (int i = 0; i < izid.length; i++) {
+                vseh += 2;
+                prav += java.util.Objects.equals(p.nizi().get(i).levo(), izid[i][0]) ? 1 : 0;
+                prav += java.util.Objects.equals(p.nizi().get(i).desno(), izid[i][1]) ? 1 : 0;
+            }
+        }
+        assertTrue(prav >= 0.95 * vseh, "stari listek: prav " + prav + " od " + vseh);
+    }
+
+    /* Novi listek ima ozke visoke celice (17 mm, pri petih nizih 9 mm) na stalnem mestu. */
+    @Test
+    void noviListekImaOzkeVisokeCelice() {
+        int r = GeometrijaListka.PX_NA_MM;
+        CeliceListka.Celica c = celice.nizi().getFirst().levo();
+        assertTrue(Math.abs(c.x0() - GeometrijaListka.TABELA.levi()[0] * r) < 15, "x0 " + c.x0());
+        assertTrue(Math.abs(c.x1() - GeometrijaListka.TABELA.levi()[1] * r) < 15, "x1 " + c.x1());
+        assertTrue(c.visina() > 8 * r, "visina " + c.visina());
+        assertTrue(c.sirina() < 17 * r, "sirina " + c.sirina());
+    }
+
     @Test
     void obicajneFotografijeSoPrebranePrav() throws IOException {
         Meritev m = izmeri(new Random(19112026L), 30, OBICAJNO);
@@ -262,29 +308,53 @@ class SimuliraneFotografijeTest {
         assertEquals(0, m.mizaTihe(), "tiha napaka mize na prepognjenem listku");
     }
 
-    /* F2.5: precrtana in prepisana vrednost je vedno negotova in ima opombo;
-       tiha napaka v taki celici ni dovoljena. */
+    /* F2.5: precrtana in prepisana vrednost ne sme dati tihe napake - celica je
+       negotova in listek ima opombo. V ozki celici novega listka (od 24. 11. 2026)
+       se precrtana in nova vrednost stisneta v isto sirino, zato jo bralnik pogosto
+       ujame po neujemanju s pravili namesto po obliki (PopravljenaCelicaPoskus) in
+       opomba je lahko splosna (»Preveri vse nize«). */
     @Test
     void popravljenaCelicaJeNegotovaZOpombo() throws IOException {
         if (listek == null) {
             pripravi();
         }
         Random r = new Random(24112026L);
-        int[][] izid = {{11, 4}, {7, 11}, {11, 9}};
-        BufferedImage izpolnjen = kopija(listek);
-        for (int i = 0; i < izid.length; i++) {
-            napisi(izpolnjen, celice.nizi().get(i).levo(), izid[i][0], r, OBICAJNO);
-            if (i == 1) {
-                napisiPopravljeno(izpolnjen, celice.nizi().get(i).desno(), izid[i][1], r, OBICAJNO);
-            } else {
-                napisi(izpolnjen, celice.nizi().get(i).desno(), izid[i][1], r, OBICAJNO);
-            }
+        PrebranListek p = bralnik.preberi(fotografija(sPopravljenoCelico(listek, celice, r), r, OBICAJNO)).listek();
+        assertTrue(p.nizi().get(1).negotovoDesno(), "popravljena celica mora biti negotova");
+        assertNotNull(p.opomba());
+    }
+
+    /* Na starem listku (siroke celice) se precrtana vrednost prepozna po obliki:
+       opomba jo imenuje, navadna celica ostane gotova (kot pred 24. 11. 2026). */
+    @Test
+    void popravljenaCelicaNaStaremListkuImaOpombo() throws IOException {
+        BufferedImage star;
+        try (InputStream v = SimuliraneFotografijeTest.class.getResourceAsStream("/branje/listek-5-nizov-siroke.png")) {
+            star = ImageIO.read(v);
         }
-        PrebranListek p = bralnik.preberi(fotografija(izpolnjen, r, OBICAJNO)).listek();
+        double[][] qr = KodaListka.najdi(star).getFirst().tocke();
+        CeliceListka.Tabela stareCelice = CeliceListka.najdi(PoravnavaListka.poravnaj(star, qr).slika());
+        Random r = new Random(24112026L);
+        PrebranListek p = bralnik.preberi(fotografija(sPopravljenoCelico(star, stareCelice, r), r, OBICAJNO)).listek();
         assertTrue(p.nizi().get(1).negotovoDesno(), "popravljena celica mora biti negotova");
         assertNotNull(p.opomba());
         assertTrue(p.opomba().contains("Popravljena celica (2. niz)"), p.opomba());
         assertTrue(p.nizi().get(0).levo() == 11 && !p.nizi().get(0).negotovoLevo(), "navadna celica ostane gotova");
+    }
+
+    /* Izid 11:4, 7:11, 11:9; desna celica 2. niza je precrtana in prepisana. */
+    private static BufferedImage sPopravljenoCelico(BufferedImage osnova, CeliceListka.Tabela t, Random r) {
+        int[][] izid = {{11, 4}, {7, 11}, {11, 9}};
+        BufferedImage izpolnjen = kopija(osnova);
+        for (int i = 0; i < izid.length; i++) {
+            napisi(izpolnjen, t.nizi().get(i).levo(), izid[i][0], r, OBICAJNO);
+            if (i == 1) {
+                napisiPopravljeno(izpolnjen, t.nizi().get(i).desno(), izid[i][1], r, OBICAJNO);
+            } else {
+                napisi(izpolnjen, t.nizi().get(i).desno(), izid[i][1], r, OBICAJNO);
+            }
+        }
+        return izpolnjen;
     }
 
     /* Tretja raven (F2.7): prepognjen listek, prst cez oznako, popravljene celice,
@@ -625,7 +695,11 @@ class SimuliraneFotografijeTest {
         double h = c.visina() / r10 * pxNaMm;
         double visina = h * (pogoji.visinaOd() + r.nextDouble() * (pogoji.visinaDo() - pogoji.visinaOd()));
         double razmik = pxNaMm * (pogoji.razmikOd() + r.nextDouble() * (pogoji.razmikDo() - pogoji.razmikOd()));
-        double x = x0 + w * (xOd + r.nextDouble() * 0.2);
+        // ozka visoka celica novega listka (17 x 9 mm): dvomestna vrednost zapolni
+        // skoraj vso sirino, zato jo sodnik zacne blizu levega roba (zacetek pri
+        // 30-50 % bi jo potisnil cez desni rob); nakljucna stevila ostanejo ista
+        double od = w < 4 * h ? Math.max(0.05, xOd - 0.25) : xOd;
+        double x = x0 + w * (od + r.nextDouble() * 0.2);
         double y = y0 + (h - visina) / 2 + (r.nextDouble() - 0.5) * h * 0.1;
         double zacetek = x;
         for (char znak : zapis.toCharArray()) {

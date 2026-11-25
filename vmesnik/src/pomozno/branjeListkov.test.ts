@@ -21,6 +21,8 @@ import {
   delezOd,
   zamenjaveBesedilo,
   brezStevke,
+  ocenaListkovBrezNapake,
+  PRIVZETO_STEVK_NA_LISTEK,
 } from './branjeListkov'
 
 function predlog(polja: Partial<PredlogIzidaDto> = {}): PredlogIzidaDto {
@@ -191,6 +193,14 @@ describe('mreža števk (F6)', () => {
     expect(stanjeRazlicice({ ...r, umaknjenaOb: '2026-11-22T10:00:00' }, null)).toBe('umaknjena')
     expect(stanjeRazlicice({ ...r, sprejeta: false }, 3)).toBe('zavrnjena')
     expect(stanjeRazlicice({ ...r, sprejeta: false, prekinjena: true }, null)).toBe('prekinjena')
+  })
+
+  it('ocena listkov brez napake: natančnost na števko na potenco števk listka', () => {
+    // lastnik 24. 11. 2026: 98 % pri učenju, 59 % listkov brez napake na generalki
+    expect(ocenaListkovBrezNapake(0.98, 16)).toBeCloseTo(0.7238, 3)
+    expect(ocenaListkovBrezNapake(0.98, 26)).toBeCloseTo(0.5914, 3)
+    expect(ocenaListkovBrezNapake(0.995, null)).toBeCloseTo(Math.pow(0.995, PRIVZETO_STEVK_NA_LISTEK), 6)
+    expect(ocenaListkovBrezNapake(null, 16)).toBeNull()
   })
 })
 

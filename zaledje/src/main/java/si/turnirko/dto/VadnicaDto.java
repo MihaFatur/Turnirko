@@ -10,7 +10,10 @@ public record VadnicaDto(
         int preskocenih,
         boolean odobrena,
         LocalDateTime ustvarjenoOb,
-        LocalDateTime odobrenoOb) {
+        LocalDateTime odobrenoOb,
+        /* Razlicica postavitve lista (GeometrijaVadnice): pregled razvrsti stevke po
+           vrsticah te razlicice. */
+        int razlicica) {
 
     /* Seznam listov in koliko stevk vadnice je odobrenih (gredo v ucenje). */
     public record Seznam(java.util.List<VadnicaDto> listi, long stevkVUcenju) {}

@@ -226,6 +226,18 @@ export function prejPotem(prej: number | null, potem: number | null): string {
   return `${delez(prej)} → ${delez(potem)}`
 }
 
+/* Števk na listek, kadar podatka še ni: štirje nizi po dve dvomestni vrednosti. */
+export const PRIVZETO_STEVK_NA_LISTEK = 16
+
+/* Ocena deleža listkov brez napake iz natančnosti na eno števko (lastnik 24. 11.
+   2026: »98 %« pri učenju je bil na števko, na generalki pa je bilo brez napake le
+   59 % listkov). Listek ima n števk in je brez napake le, če so prav vse:
+   natančnost^n. Zato 98 % na števko pri 16 števkah da le ~72 % listkov. */
+export function ocenaListkovBrezNapake(natancnost: number | null, stevkNaListek: number | null): number | null {
+  if (natancnost === null) return null
+  return Math.pow(natancnost, stevkNaListek ?? PRIVZETO_STEVK_NA_LISTEK)
+}
+
 /* Delež prav od vseh; brez števk »–«. */
 export function delezOd(prav: number, vseh: number): string {
   return vseh === 0 ? '–' : delez(prav / vseh)

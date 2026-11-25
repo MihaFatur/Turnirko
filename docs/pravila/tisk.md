@@ -61,11 +61,22 @@
       zadnje vrednosti.
     - Pravila, ki jih ne razbij:
     - **Listek je tabela, v kateri ima vsak igralec SVOJ stolpec**: ime je
-      glava stolpca, pod njim znački »Prvi servis« in »Timeout« (kvadratek, v
-      katerega sodnik zapiše križ), nato po ena celica za vsak niz in
-      rezultat (dobljeni nizi, debelejša obroba). Vse vrstice delijo
-      `--listek-stolpci`, zato so točke vedno natanko pod imenom tistega, ki jih
-      je dosegel. Dvopičje v sredinskem žlebu bere vrstico kot »11 : 7«.
+      glava stolpca, pod njim po ena celica za vsak niz in rezultat (dobljeni
+      nizi). Vse vrstice delijo `--listek-stolpci`, zato so točke vedno natanko pod
+      imenom tistega, ki jih je dosegel. Dvopičje v sredinskem žlebu (na sredini
+      listka) bere vrstico kot »11 : 7«.
+    - **Celice za točke** (lastnik 24. 11. 2026, po generalki): visoke in ozke,
+      17 mm široke, 10 mm visoke pri največ štirih nizih, 9 mm pri petih, ~6,8 mm pri
+      sedmih (prej 35 × ~6 mm: števke so segale čez črto in jih je bralnik odrezal),
+      **brez črte med deseticami in enicami** (lastnik izrecno), rezultat z enako tanko
+      obrobo. Stolpci `14,5 | 11,25 | 17 | 5,5 | 17 | 1fr` mm (znak igralca 1, oznaka
+      niza, celica, dvopičje, celica, znak igralca 2): celici sta na stalnem mestu
+      (`GeometrijaListka.TABELA`). Višina vrstic je stalna (`--listek-niz` iz števila
+      nizov), imena imajo stalno višino (dve vrstici, levo ime poravnano k dvopičju),
+      kontekst dve vrstici (kategorija · dogodek; skupina in kolo oz. faza) levo od
+      okenca mize, številka `T-<id>` pod okencem. Znački »Prvi servis« in »Timeout«
+      (kvadratek za križ) sta na zunanji strani stolpca ob 1. in 2. nizu, vsaj 11 mm
+      od celice. Mere preveri `/dev/listek?nizov=3|5|7` (in `&dolgo=1`).
     - **Oznake za branje s fotografije** (V68, `docs/pravila/branje-listkov.md`): trije
       črni kvadrati 4 mm v vogalih, QR koda tekme 13 mm zgoraj desno in okence za
       mizo (S1, x 62–80 mm, y 5–12 mm) na STALNIH mestih (`GeometrijaListka.java` jih
@@ -81,13 +92,13 @@
       Vsebina hrbta ostane znotraj roba 20/15 mm, da ne sije za oznake, QR ali okence
       mize (`docs/pravila/branje-listkov.md`, »Sodnik slika listek«).
     - Vsebina: znamka (`ZnakTurnirko` + »Turnirko«) in okence »Miza« (številka se
-      izpiše, če je že dodeljena), nato Dogodek (= turnir, kot ga
-      igralci poznajo), Kategorija (ime dogodka; spol in starost se dodata samo,
-      če ju ime ne pove, `oznakaKategorije`; »Kdorkoli« se izpusti), Skupina +
-      kolo oz. Faza pri mreži, spodaj Sodnik in Podpis. **Kluba na listku ni**
-      (prostor; sodnik igralca vidi). Dvojica ima vsakega igralca v svoji vrstici.
-      Pri 6–7 nizih se listek stisne (`.listek--gosto`), da celice ostanejo
-      ≥ 4,2 mm.
+      izpiše, če je že dodeljena), nato Kategorija (ime dogodka; spol in starost se
+      dodata samo, če ju ime ne pove, `oznakaKategorije`; »Kdorkoli« se izpusti) in
+      za piko Dogodek (= turnir, kot ga igralci poznajo; ob pomanjkanju prostora se
+      odreže), Skupina + kolo oz. Faza pri mreži, spodaj Sodnik in Podpis. **Kluba na
+      listku ni** (prostor; sodnik igralca vidi). Dvojica ima vsakega igralca v svoji
+      vrstici. Pri 6–7 nizih se listek stisne (`.listek--gosto`: imena, rezultat,
+      noga in razmiki), da celice ostanejo ~6,8 mm.
     - **List A4 = natanko 210 × 297 mm = 2 × 3 listki po 105 × 99 mm, brez
       robov** (`@page listki { margin: 0 }`, `page: listki` na
       `.listki-stran--listki`). Globalni rob 10 mm bi listek skrčil na
