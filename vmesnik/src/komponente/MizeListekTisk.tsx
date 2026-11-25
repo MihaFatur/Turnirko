@@ -23,6 +23,8 @@ export interface NalogaTiska {
   idDogodka: number
   idTekme: number
   miza: number
+  /* Turnir tekme, kadar ni turnir strani (skupne mize, V78: tekma drugega turnirja). */
+  imeTurnirja?: string
 }
 
 interface ListekZaTisk {
@@ -60,7 +62,7 @@ export function useTiskListkov(imeTurnirja: string): {
           if (!l) continue
           vsi.push({
             kljuc: `tekma-${n.idTekme}`,
-            podatki: { ...podatkiListka(l, imeTurnirja, mreza.dogodek, kode?.kode[String(n.idTekme)] ?? null), miza: n.miza },
+            podatki: { ...podatkiListka(l, n.imeTurnirja ?? imeTurnirja, mreza.dogodek, kode?.kode[String(n.idTekme)] ?? null), miza: n.miza },
           })
         }
       }

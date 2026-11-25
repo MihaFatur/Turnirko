@@ -7,6 +7,7 @@ import {
   idjiNenatisnjenih,
   imaVecSkupin,
   jeNatisnjen,
+  listkiVsehKategorij,
   NAJVEC_PRAZNIH_LISTKOV,
   nenatisnjeni,
   opisNatisa,
@@ -15,6 +16,7 @@ import {
   shraniRazvrstitev,
   sklopiListkov,
   steviloPraznih,
+  tabelaListkov,
 } from './listki'
 
 const prijave = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => prijava(id))
@@ -43,6 +45,47 @@ describe('pripraviListke', () => {
 
   it('brez podatkov ni listkov', () => {
     expect(pripraviListke(undefined)).toEqual([])
+  })
+})
+
+/* Skupne mize (V78, lastnik 25. 11. 2026): en tisk za vse kategorije turnirjev v dvorani. */
+describe('listkiVsehKategorij', () => {
+  /* Kategorija s skupinama 1 in 2 (po dve koli) in krogom mreže za skupinami. */
+  const kategorija = (zamik: number) =>
+    mreza({ id: zamik }, prijave, [
+      tekma(zamik + 1, 1, 2, { ...PRIPRAVLJENA, faza: 'SKUPINA', idSkupina: zamik + 1, kolo: 1 }),
+      tekma(zamik + 2, 3, 4, { ...PRIPRAVLJENA, faza: 'SKUPINA', idSkupina: zamik + 2, kolo: 1 }),
+      tekma(zamik + 3, 1, 3, { ...PRIPRAVLJENA, faza: 'SKUPINA', idSkupina: zamik + 1, kolo: 2 }),
+      tekma(zamik + 4, 2, 4, { ...PRIPRAVLJENA, faza: 'SKUPINA', idSkupina: zamik + 2, kolo: 2 }),
+      tekma(zamik + 5, 5, 6, { ...PRIPRAVLJENA, faza: 'GLAVNI', kolo: 1 }),
+    ], { skupine: [skupina(zamik + 1, '1'), skupina(zamik + 2, '2')] })
+  const kategorije = [
+    { idDogodka: 100, naslov: 'U15 dečki', mreza: kategorija(100) },
+    { idDogodka: 200, naslov: 'U15 deklice', mreza: kategorija(200) },
+  ]
+
+  it('po kolih: 1. kolo vseh kategorij po vrsti, nato 2. kolo, mreža kot 3. kolo', () => {
+    expect(listkiVsehKategorij(kategorije, 'kola').map((l) => l.tekma.id)).toEqual([
+      101, 102, 201, 202, 103, 104, 203, 204, 105, 205,
+    ])
+  })
+
+  it('po kategorijah: vse tekme prve kategorije, nato druge', () => {
+    expect(listkiVsehKategorij(kategorije, 'skupine').map((l) => l.tekma.id)).toEqual([
+      101, 103, 102, 104, 105, 201, 203, 202, 204, 205,
+    ])
+  })
+
+  it('tabela ima vrstice po kategoriji in skupini, kolo velja za vse kategorije', () => {
+    const tabela = tabelaListkov(listkiVsehKategorij(kategorije, 'kola'))
+    expect(tabela.kola).toEqual([1, 2])
+    expect(tabela.vrste.map((v) => v.naslovDolgo)).toEqual([
+      'U15 dečki · Skupina 1', 'U15 dečki · Skupina 2', 'U15 deklice · Skupina 1', 'U15 deklice · Skupina 2',
+    ])
+    expect(tabela.ostali.map((o) => [o.kategorija, o.naslov])).toEqual([
+      ['U15 dečki', 'Mreža · Finale'],
+      ['U15 deklice', 'Mreža · Finale'],
+    ])
   })
 })
 

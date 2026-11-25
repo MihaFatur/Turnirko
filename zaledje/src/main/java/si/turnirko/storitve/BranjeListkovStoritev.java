@@ -351,7 +351,7 @@ public class BranjeListkovStoritev {
         }
         return branjaRepozitorij.poKljucuPosiljanja(idUporabnika, kljuc)
                 .map(b -> {
-                    if (!b.getTurnir().getId().equals(idTurnir)) {
+                    if (!skupniTurnirji(idTurnir).contains(b.getTurnir().getId())) {
                         throw new NeveljavenVnosIzjema("Ključ pošiljanja je že uporabljen za drug turnir.");
                     }
                     return dto(b, Map.of(), Map.of(), List.of());
@@ -570,7 +570,7 @@ public class BranjeListkovStoritev {
             return;
         }
         if (kode.size() == 1) {
-            Tekma tekma = tekmaTurnirja(kode.getFirst(), idTurnir);
+            Tekma tekma = tekmaSkupnihMiz(kode.getFirst(), idTurnir);
             if (tekma != null) {
                 branje.setTekma(tekma);
                 branje.setPrepoznava(PrepoznavaTekme.KODA);
@@ -580,7 +580,7 @@ public class BranjeListkovStoritev {
         }
         Long izNatisnjene = KodaListka.izNatisnjene(listek.koda()).orElse(null);
         if (izNatisnjene != null) {
-            Tekma tekma = tekmaTurnirja(izNatisnjene, idTurnir);
+            Tekma tekma = tekmaSkupnihMiz(izNatisnjene, idTurnir);
             // prebrana stevka je lahko napacna (T-48213 / T-48218): veljajo samo, ce se ujemajo imena
             if (tekma != null && (nimaImen(listek) || ujemanjeImen(listek, tekma) >= UjemanjeTekmeListka.PRAG_IZBIRE)) {
                 branje.setTekma(tekma);
@@ -589,17 +589,28 @@ public class BranjeListkovStoritev {
             }
         }
         UjemanjeTekmeListka.Izid izid = UjemanjeTekmeListka.najdi(listek.imeLevo(), listek.imeDesno(),
-                listek.kategorija(), kandidati(tekmaRepozitorij.cakajoceNaListekZaTurnir(idTurnir)));
+                listek.kategorija(), kandidati(tekmaRepozitorij.cakajoceNaListekZaTurnirje(skupniTurnirji(idTurnir))));
         if (izid.izbrana() != null) {
             branje.setTekma(tekmaRepozitorij.getReferenceById(izid.izbrana().idTekme()));
             branje.setPrepoznava(PrepoznavaTekme.IMENA);
         }
     }
 
-    private Tekma tekmaTurnirja(Long idTekme, Long idTurnir) {
+    /* Tekma turnirja ali turnirja, s katerim si deli mize (V78): pult bere listke vseh
+       turnirjev v dvorani (lastnik 25. 11. 2026). Branje ostane na turnirju, kjer je bila
+       fotografija poslana; potrditev preveri se dostop do turnirja tekme. */
+    private Tekma tekmaSkupnihMiz(Long idTekme, Long idTurnir) {
+        List<Long> skupni = skupniTurnirji(idTurnir);
         return tekmaRepozitorij.najdiZVsem(idTekme)
-                .filter(t -> t.getDogodek().getTurnir().getId().equals(idTurnir))
+                .filter(t -> skupni.contains(t.getDogodek().getTurnir().getId()))
                 .orElse(null);
+    }
+
+    /* Turnir in turnirji, s katerimi si deli mize (V78); sam, ce jih ne deli. */
+    private List<Long> skupniTurnirji(Long idTurnir) {
+        Long glavni = turnirRepozitorij.idGlavnegaZaMize(idTurnir).orElse(idTurnir);
+        List<Long> idji = turnirRepozitorij.idjiSkupnihMiz(List.of(glavni));
+        return idji.isEmpty() ? List.of(idTurnir) : idji;
     }
 
     private void zapisiNapako(Long idBranja, String sporocilo, List<Long> kode) {
@@ -620,7 +631,7 @@ public class BranjeListkovStoritev {
         branje.setNapaka(sporocilo);
         branje.setPrebranoOb(LocalDateTime.now());
         if (kode.size() == 1) {
-            Tekma tekma = tekmaTurnirja(kode.getFirst(), branje.getTurnir().getId());
+            Tekma tekma = tekmaSkupnihMiz(kode.getFirst(), branje.getTurnir().getId());
             if (tekma != null) {
                 branje.setTekma(tekma);
                 branje.setPrepoznava(PrepoznavaTekme.KODA);
@@ -633,7 +644,7 @@ public class BranjeListkovStoritev {
     @Transactional(readOnly = true)
     public BranjaTurnirjaDto seznam(Long idTurnir) {
         preveriDostop(idTurnir);
-        List<BranjeListka> vsa = branjaRepozitorij.najdiZaTurnir(idTurnir);
+        List<BranjeListka> vsa = branjaRepozitorij.najdiZaTurnirje(skupniTurnirji(idTurnir));
         List<BranjeListka> prikaz = new ArrayList<>();
         int zakljucenih = 0;
         int potrjenih = 0;
@@ -652,7 +663,7 @@ public class BranjeListkovStoritev {
 
         boolean rabimKandidate = prikaz.stream()
                 .anyMatch(b -> b.getStanje() == StanjeBranja.PREBRANO && b.getTekma() == null);
-        List<Tekma> cakajoce = rabimKandidate ? tekmaRepozitorij.cakajoceNaListekZaTurnir(idTurnir) : List.of();
+        List<Tekma> cakajoce = rabimKandidate ? tekmaRepozitorij.cakajoceNaListekZaTurnirje(skupniTurnirji(idTurnir)) : List.of();
         Set<Long> idji = prikaz.stream().map(BranjeListka::getTekma).filter(Objects::nonNull)
                 .map(Tekma::getId).collect(Collectors.toSet());
         Map<Long, Tekma> tekme = new HashMap<>();
@@ -669,13 +680,19 @@ public class BranjeListkovStoritev {
     }
 
     /* Stikalo »Sodniki slikajo listke« (S2): null izklopi. Sme ga organizator, ki
-       sme brati listke tega turnirja (dokler velja samo-admin, samo admin). */
+       sme brati listke tega turnirja (dokler velja samo-admin, samo admin). Pri
+       skupnih mizah (V78) velja za vse turnirje v dvorani: pult jih vodi kot celoto. */
     @Transactional
     public SodniskaPotrditev nastaviSodnike(Long idTurnir, SodniskaPotrditev nacin) {
         preveriDostop(idTurnir);
-        Turnir turnir = turnirRepozitorij.findById(idTurnir)
+        turnirRepozitorij.findById(idTurnir)
                 .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + idTurnir + " ne obstaja."));
-        turnir.setSodnikiListki(nacin);
+        for (Turnir turnir : turnirRepozitorij.findAllById(skupniTurnirji(idTurnir))) {
+            if (!turnir.getId().equals(idTurnir)) {
+                preveriDostop(turnir.getId());
+            }
+            turnir.setSodnikiListki(nacin);
+        }
         return nacin;
     }
 
@@ -805,7 +822,8 @@ public class BranjeListkovStoritev {
 
     private TekmaListka tekmaListka(Tekma t, Map<Long, String> skupine) {
         return new TekmaListka(TekmaDto.iz(t), t.getDogodek().getId(), t.getDogodek().getIme(),
-                t.getIdSkupina() == null ? null : skupine.get(t.getIdSkupina()));
+                t.getIdSkupina() == null ? null : skupine.get(t.getIdSkupina()),
+                t.getDogodek().getTurnir().getId(), t.getDogodek().getTurnir().getIme());
     }
 
     // ---------- Potrditev, zavrnitev, ponovno branje ----------
@@ -873,9 +891,12 @@ public class BranjeListkovStoritev {
         if (idTekme == null) {
             throw new NeveljavenVnosIzjema("Izberi tekmo, ki je na listku.");
         }
-        Tekma tekma = tekmaTurnirja(idTekme, branje.getTurnir().getId());
+        Tekma tekma = tekmaSkupnihMiz(idTekme, branje.getTurnir().getId());
         if (tekma == null) {
             throw new NeveljavenVnosIzjema("Tekma ni s tega turnirja.");
+        }
+        if (!tekma.getDogodek().getTurnir().getId().equals(branje.getTurnir().getId())) {
+            preveriDostop(tekma.getDogodek().getTurnir().getId()); // tekma turnirja s skupnimi mizami
         }
 
         boolean izbranaRocno = branje.getTekma() == null || !branje.getTekma().getId().equals(idTekme);

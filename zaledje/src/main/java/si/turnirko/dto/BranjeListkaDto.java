@@ -49,8 +49,10 @@ public record BranjeListkaDto(
         Integer mizaSodnika
 ) {
 
-    /* Tekma z imenom dogodka in oznako skupine (za izpis »U15 · Skupina B · 2. kolo»). */
-    public record TekmaListka(TekmaDto tekma, Long idDogodka, String imeDogodka, String oznakaSkupine) {}
+    /* Tekma z imenom dogodka in oznako skupine (za izpis »U15 · Skupina B · 2. kolo»);
+       turnir loci enako imenovane kategorije turnirjev s skupnimi mizami (V78). */
+    public record TekmaListka(TekmaDto tekma, Long idDogodka, String imeDogodka, String oznakaSkupine,
+                              Long idTurnir, String imeTurnirja) {}
 
     /* Tekma, ki bi lahko bila na listku, s predlogom v njenih straneh. */
     public record KandidatListka(TekmaListka tekma, boolean obrnjeno, PredlogIzidaDto predlog) {}

@@ -20,6 +20,15 @@ const RANG_FAZE: Record<FazaTekme, number> = { SKUPINA: 0, GLAVNI: 1, TOLAZILNI:
    žrebi SV regije so v obeh enaki. */
 export type RazvrstitevListkov = 'skupine' | 'kola'
 
+/* Kategorija listka na skupnem tisku vseh kategorij (skupne mize, V78; SkupniListkiStran):
+   tabela ima vrstice po kategoriji in skupini, sled tiska gre na dogodek. red = mesto
+   kategorije v vrstnem redu kola. */
+export interface KategorijaListka {
+  idDogodka: number
+  naslov: string
+  red: number
+}
+
 export interface PripravljenListek {
   tekma: TekmaDto
   /* Oznaka skupine (»1«, starejši »A«); prazna pri izločilni mreži. */
@@ -32,6 +41,8 @@ export interface PripravljenListek {
   /* Sklop za hitro izbiro (»Skupina 1«, »1. kolo«, »Tolažilni žreb«) in njegov ključ. */
   sklop: string
   sklopNaslov: string
+  /* Samo na skupnem tisku vseh kategorij. */
+  kategorija?: KategorijaListka
 }
 
 /* Tekme, ki jih je smiselno natisniti skupaj: skupina, žreb ali kolo. */
@@ -208,6 +219,8 @@ export const NAJVEC_KOL_V_TABELI = 7
 
 export interface VrstaTabele {
   kljuc: string
+  /* Ime kategorije nad oznako skupine (samo na skupnem tisku). */
+  kategorija?: string
   /* »Sk. 3«; na telefonu »Skupina 3«. */
   naslov: string
   naslovDolgo: string
@@ -218,6 +231,7 @@ export interface VrstaTabele {
 
 export interface OstaloVTabeli {
   kljuc: string
+  kategorija?: string
   naslov: string
   listki: PripravljenListek[]
 }
@@ -255,20 +269,29 @@ export function tabelaListkov(listki: PripravljenListek[]): TabelaListkov {
     skupinski.every((l) => l.skupina !== null) &&
     kola.length <= NAJVEC_KOL_V_TABELI
 
+  /* Na skupnem tisku je vrstica kategorija in skupina (»Sk. 1« obstaja v vsaki kategoriji),
+     po vrstnem redu kategorij; sicer samo skupina. */
   const vrste: VrstaTabele[] = []
   if (vTabeli) {
-    const oznake = [...new Set(skupinski.map((l) => l.skupina as string))].sort((a, b) =>
-      primerjajSkupine({ oznaka: a }, { oznaka: b }),
-    )
-    for (const oznaka of oznake) {
-      vrste.push({
-        kljuc: `skupina-${oznaka}`,
-        naslov: `Sk. ${oznaka}`,
-        naslovDolgo: `Skupina ${oznaka}`,
-        celice: kola.map((k) =>
-          skupinski.filter((l) => l.skupina === oznaka && l.tekma.kolo === k),
-        ),
-      })
+    const kategorije = new Map<number, KategorijaListka | undefined>()
+    for (const l of skupinski) kategorije.set(l.kategorija?.idDogodka ?? 0, l.kategorija)
+    const poRedu = [...kategorije.entries()].sort(([, a], [, b]) => (a?.red ?? 0) - (b?.red ?? 0))
+    for (const [idKat, kat] of poRedu) {
+      const vKategoriji = skupinski.filter((l) => (l.kategorija?.idDogodka ?? 0) === idKat)
+      const oznake = [...new Set(vKategoriji.map((l) => l.skupina as string))].sort((a, b) =>
+        primerjajSkupine({ oznaka: a }, { oznaka: b }),
+      )
+      for (const oznaka of oznake) {
+        vrste.push({
+          kljuc: kat ? `${idKat}|skupina-${oznaka}` : `skupina-${oznaka}`,
+          kategorija: kat?.naslov,
+          naslov: `Sk. ${oznaka}`,
+          naslovDolgo: kat ? `${kat.naslov} · Skupina ${oznaka}` : `Skupina ${oznaka}`,
+          celice: kola.map((k) =>
+            vKategoriji.filter((l) => l.skupina === oznaka && l.tekma.kolo === k),
+          ),
+        })
+      }
     }
   }
 
@@ -276,10 +299,11 @@ export function tabelaListkov(listki: PripravljenListek[]): TabelaListkov {
   const poKljucu = new Map<string, OstaloVTabeli>()
   for (const l of listki) {
     if (vTabeli && l.tekma.faza === 'SKUPINA') continue
-    const { kljuc, naslov } = oznakaVrstice(l)
+    const oznaka = oznakaVrstice(l)
+    const kljuc = l.kategorija ? `${l.kategorija.idDogodka}|${oznaka.kljuc}` : oznaka.kljuc
     let vrsta = poKljucu.get(kljuc)
     if (!vrsta) {
-      vrsta = { kljuc, naslov, listki: [] }
+      vrsta = { kljuc, naslov: oznaka.naslov, kategorija: l.kategorija?.naslov, listki: [] }
       poKljucu.set(kljuc, vrsta)
       ostali.push(vrsta)
     }
@@ -295,8 +319,41 @@ export function enoteListkov(tabela: TabelaListkov): EnotaListkov[] {
     naslov: `${k}. kolo`,
     listki: tabela.vrste.flatMap((v) => v.celice[i]),
   }))
-  for (const o of tabela.ostali) enote.push({ kljuc: o.kljuc, naslov: o.naslov, listki: o.listki })
+  for (const o of tabela.ostali) {
+    enote.push({ kljuc: o.kljuc, naslov: o.kategorija ? `${o.kategorija} · ${o.naslov}` : o.naslov, listki: o.listki })
+  }
   return enote
+}
+
+/* Kolo po vrsti za skupni tisk (isto pravilo kot predlog tekem na strani Mize): skupinski
+   del po kolih skupin, izločilni del kot naslednja kola za zadnjim kolom skupin kategorije. */
+export function koloPoVrsti(t: TekmaDto, zadnjeKoloSkupin: number): number {
+  return t.faza === 'SKUPINA' ? t.kolo : zadnjeKoloSkupin + t.kolo
+}
+
+/* Listki vseh kategorij za en tisk (skupne mize, V78): po kolih = 1. kolo vseh kategorij v
+   vrstnem redu kategorij, nato 2. kolo …; po skupinah = kategorija za kategorijo, v vsaki
+   kot na njeni strani listkov. */
+export function listkiVsehKategorij(
+  kategorije: { idDogodka: number; naslov: string; mreza: MrezaDto }[],
+  razvrstitev: RazvrstitevListkov,
+): PripravljenListek[] {
+  const vsi: { l: PripravljenListek; kolo: number }[] = []
+  kategorije.forEach((k, red) => {
+    const skupinska = k.mreza.tekme.filter((t) => t.faza === 'SKUPINA').map((t) => t.kolo)
+    const zadnje = skupinska.length > 0 ? Math.max(...skupinska) : 0
+    for (const l of pripraviListke(k.mreza, razvrstitev)) {
+      vsi.push({
+        l: { ...l, kategorija: { idDogodka: k.idDogodka, naslov: k.naslov, red } },
+        kolo: koloPoVrsti(l.tekma, zadnje),
+      })
+    }
+  })
+  if (razvrstitev === 'kola') {
+    // stabilno: v istem kolu kategorije po vrsti, v kategoriji kot na njeni strani
+    vsi.sort((a, b) => a.kolo - b.kolo || (a.l.kategorija!.red - b.l.kategorija!.red))
+  }
+  return vsi.map((x) => x.l)
 }
 
 /* Prva enota, v kateri je še kaj nenatisnjenega: kar organizator natisne naslednje. */

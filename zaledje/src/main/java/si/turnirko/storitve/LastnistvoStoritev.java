@@ -111,6 +111,17 @@ public class LastnistvoStoritev {
         preveriTurnirskoLastnistvo(turnir);
     }
 
+    /* Ali sme trenutni uporabnik urejati turnir (izbira turnirjev za skupne mize, V78):
+       ista preverba kot preveriTurnir, le brez izjeme. */
+    public boolean smeUrejatiTurnir(Turnir turnir) {
+        try {
+            preveriTurnir(turnir);
+            return true;
+        } catch (PrepovedanoIzjema | DomenskaIzjema e) {
+            return false;
+        }
+    }
+
     public void preveriTurnirPoId(Long idTurnir) {
         preveriTurnir(turnirRepozitorij.najdiZLastnistvom(idTurnir)
                 .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + idTurnir + " ne obstaja.")));

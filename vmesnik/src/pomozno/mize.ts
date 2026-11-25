@@ -2,7 +2,7 @@
    kdo je predlagan in v kakšnem vrstnem redu, odloči strežnik (PredlogTekem);
    tu je samo prikaz: minute, imena, privzeti sodnik in sproščene mize. */
 import { imeUdelezenca, priimekUdelezenca } from '../api/tipi'
-import type { KandidatMizeDto, MizaDto, OsebaMizeDto, TekmaMizeDto, Udelezenec } from '../api/tipi'
+import type { KandidatMizeDto, MizaDto, MizeTurnirjaDto, OsebaMizeDto, TekmaMizeDto, Udelezenec } from '../api/tipi'
 
 /* Meja »predolgo« (prenova tlorisa, 24. 11. 2026): tekma, ki na mizi traja vsaj toliko
    minut, je na tlorisu rjasto označena (ne velja za ekipno srečanje, ki je dolgo že po
@@ -25,6 +25,23 @@ export function imenaTekme(t: TekmaMizeDto): string {
 /* »Člani · Skupina 2« */
 export function opisTekme(t: TekmaMizeDto): string {
   return `${t.imeDogodka} · ${t.del}`
+}
+
+/* Skupne mize (V78): turnirja na istih mizah imata lahko enako imenovane kategorije
+   (»Moški« v U15 in v U21). Kategorija, katere ime ni edino med kategorijami turnirjev na
+   teh mizah, dobi ime turnirja, da so oznake na mizi, v vrsti in na zaslonu nedvoumne.
+   Brez povezave ostane vse, kot je. */
+export function sOznakamiKategorij(p: MizeTurnirjaDto): MizeTurnirjaDto {
+  if (p.skupne.turnirji.length < 2) return p
+  const imen = new Map<string, number>()
+  for (const k of p.skupne.kategorije) imen.set(k.ime, (imen.get(k.ime) ?? 0) + 1)
+  const oznaci = (t: TekmaMizeDto): TekmaMizeDto =>
+    (imen.get(t.imeDogodka) ?? 0) > 1 ? { ...t, imeDogodka: `${t.imeDogodka} · ${t.imeTurnirja}` } : t
+  return {
+    ...p,
+    mize: p.mize.map((m) => (m.tekma ? { ...m, tekma: oznaci(m.tekma) } : m)),
+    kandidati: p.kandidati.map((k) => ({ ...k, tekma: oznaci(k.tekma) })),
+  }
 }
 
 /* Mize tekme v igri: »3« ali »3 in 4« (ekipno srečanje na dveh mizah). */

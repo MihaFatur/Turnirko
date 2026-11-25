@@ -93,6 +93,26 @@ public interface TurnirRepozitorij extends JpaRepository<Turnir, Long> {
             """)
     Optional<Turnir> najdiZLastnistvom(Long id);
 
+    /* Turnirji s skupnimi mizami (V78): glavni in njegovi clani, glavni prvi, nato po
+       datumu in id. Z lastnistvom, ker storitev preveri dostop do vsakega. */
+    @Query("""
+            SELECT t FROM Turnir t
+            LEFT JOIN FETCH t.ustvaril
+            LEFT JOIN FETCH t.klubLastnik
+            WHERE t.id = :idGlavni OR t.idSkupneMize = :idGlavni
+            ORDER BY CASE WHEN t.id = :idGlavni THEN 0 ELSE 1 END, t.datumZacetka, t.id
+            """)
+    List<Turnir> skupneMize(Long idGlavni);
+
+    /* Glavni turnir skupnih miz, kot je v bazi zdaj (po zaklepu: povezava se je
+       lahko vmes spremenila). Prazno, ce turnirja ni. */
+    @Query("SELECT COALESCE(t.idSkupneMize, t.id) FROM Turnir t WHERE t.id = :id")
+    Optional<Long> idGlavnegaZaMize(Long id);
+
+    /* Id-ji vseh turnirjev v skupinah skupnih miz danih glavnih (zaklep pred povezavo). */
+    @Query("SELECT t.id FROM Turnir t WHERE t.id IN :glavni OR t.idSkupneMize IN :glavni")
+    List<Long> idjiSkupnihMiz(java.util.Collection<Long> glavni);
+
     @Query("""
             SELECT t FROM Dogodek d JOIN d.turnir t
             LEFT JOIN FETCH t.ustvaril

@@ -11,23 +11,20 @@
    (0) tekma z udelezencem, ki zdaj igra ali sodi, ni predlagana (ostane na seznamu
        z razlogom, organizator jo sme vseeno poklicati);
    (1) tekma brez porazenca, ki caka na sojenje na svoji mizi, pred tekmo s takim;
-   (2) ZAOSTANEK: koliko kol ima skupina (v izlocilnem delu mreza) od kola te
-       tekme do konca. Lastnik 23. 11. 2026: zaostala skupina ima prednost pred
-       pocitkom. Steje skupina, ne igralec: prej je stel igralec z najvec
-       preostalimi tekmami in skupine po 3 (2 tekmi na igralca) so zdrsnile za vse
-       skupine po 4 (3 tekme), ceprav imata obe 3 kola. Zdaj ima 1. kolo obeh enako
-       (3 kola do konca); zaostala tekma nizjega kola gre pred visje kolo drugih;
-       vecja skupina (po 5: 5 kol) pride prej, da konca hkrati z ostalimi. Ocene
-       izlocilnega dela ni vec: kategorije se izmenjujejo po kolih (lastnik
-       23. 11. 2026), ne gre najprej tista z daljso potjo naprej;
+   (2) STROGO PO KOLIH (lastnik 25. 11. 2026, velja povsod, tudi za en turnir):
+       najprej celo 1. kolo vseh skupin vseh kategorij, nato 2. kolo ... Krog
+       izlocilne mreze steje kot naslednje kolo za zadnjim kolom skupin svoje
+       kategorije (pri 3 kolih skupin je 1. krog mreze »4. kolo«). Zaostala tekma
+       nizjega kola gre zato pred visje kolo drugih. To preklicuje »vecja skupina
+       prej« (23. 11. 2026): skupina po 5 zdaj konca zadnja;
    (3) POCITEK: tekma, v kateri je vsak udelezenec koncal pred vsaj N min (ali se
-       ni igral), pred tekmo z utrujenim;
-   (4) nizje kolo prej (vrstni red kol v skupini);
-   (5) NAJDLJE CAKA: tekma, katere udelezenec z najkrajsim premorom caka najdlje
-       (kdor se ni igral, caka najdlje);
-   (6) dogodek, skupina (1, 2, 3 ...), pozicija, id - stalen vrstni red, da se
-       predlog med osvezitvami ne premetava; v istem kolu gredo tekme po skupinah
-       kot na listkih (lastnik 23. 11. 2026).
+       ni igral), pred tekmo z utrujenim - samo med tekmami istega kola;
+   (4) VRSTNI RED KATEGORIJ, ki ga nastavi organizator (skupne mize, V78; npr. U15m,
+       U15z, U21m, U21z), privzeto po turnirju in nastanku kategorije;
+   (5) skupina (1, 2, 3 ...), zreb, pozicija, id - stalen vrstni red, da se predlog
+       med osvezitvami ne premetava; v istem kolu gredo tekme po skupinah kot na
+       listkih (lastnik 23. 11. 2026).
+   Merilo »najdlje caka« (23. 11. 2026) je odpadlo: v kolu odloci red kategorij.
    Ce je organizator vrsto uredil sam (rocni vrstni red), velja njegov red pred vsemi
    merili (glej poRocnemRedu). */
 package si.turnirko.storitve;
@@ -101,17 +98,24 @@ public final class PredlogTekem {
     }
 
     /* rocniRed = vrstni red vrste, ki ga je organizator nastavil s premikom tekme
-       (prazen = samodejni). */
+       (prazen = samodejni); redDogodkov = vrstni red kategorij v kolu (dogodek, ki ga
+       ni na seznamu, gre za vsemi, po id). */
     public record Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi,
-                             int pocitekMin, List<Long> rocniRed) {
+                             int pocitekMin, List<Long> rocniRed, List<Long> redDogodkov) {
 
         public Nastavitve {
             izklopljene = Set.copyOf(izklopljene);
             rocniRed = rocniRed == null ? List.of() : List.copyOf(rocniRed);
+            redDogodkov = redDogodkov == null ? List.of() : List.copyOf(redDogodkov);
+        }
+
+        public Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi, int pocitekMin,
+                          List<Long> rocniRed) {
+            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, rocniRed, List.of());
         }
 
         public Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi, int pocitekMin) {
-            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, List.of());
+            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, List.of(), List.of());
         }
     }
 
@@ -265,8 +269,18 @@ public final class PredlogTekem {
         }
 
         private List<Kandidat> kandidati() {
-            record Ocena(Kandidat kandidat, boolean zaseden, boolean konfliktSodnika, int zaostanek,
-                         boolean spocit, long cakanje) {}
+            record Ocena(Kandidat kandidat, boolean zaseden, boolean konfliktSodnika, int kolo,
+                         boolean spocit, int mestoDogodka) {}
+            Map<Long, Integer> zadnjeKoloSkupin = new HashMap<>();
+            for (Tekma t : tekme) {
+                if (t.faza() == FazaTekme.SKUPINA) {
+                    zadnjeKoloSkupin.merge(t.idDogodka(), t.kolo(), Math::max);
+                }
+            }
+            Map<Long, Integer> mestoDogodka = new HashMap<>();
+            for (Long id : nastavitve.redDogodkov()) {
+                mestoDogodka.putIfAbsent(id, mestoDogodka.size());
+            }
             List<Ocena> ocene = new ArrayList<>();
             for (Tekma t : tekme) {
                 if (!jeKandidat(t)) {
@@ -298,9 +312,9 @@ public final class PredlogTekem {
                     }
                 }
 
-                int zaostanek = kolaDoKonca(t);
+                int kolo = koloPoVrsti(t, zadnjeKoloSkupin);
 
-                // pocitek in cakanje: udelezenec z najkrajsim premorom
+                // pocitek: udelezenec z najkrajsim premorom
                 Long najkrajsiPremor = null;
                 Stran utrujen = null;
                 for (Stran s : t.strani()) {
@@ -315,12 +329,10 @@ public final class PredlogTekem {
                     }
                 }
                 boolean spocit = najkrajsiPremor == null || najkrajsiPremor >= nastavitve.pocitekMin();
-                long cakanje = najkrajsiPremor == null ? Long.MAX_VALUE : najkrajsiPremor;
 
                 List<String> razlogi = new ArrayList<>(zasedeni);
                 razlogi.addAll(sodniki);
-                razlogi.add((t.faza() == FazaTekme.SKUPINA ? "do konca skupine še " : "do konca mreže še ")
-                        + zaostanek + " " + kol(zaostanek));
+                razlogi.add(t.faza() == FazaTekme.SKUPINA ? t.kolo() + ". kolo" : "šteje kot " + kolo + ". kolo");
                 if (!spocit) {
                     razlogi.add(utrujen.ime() + ": zadnja tekma pred " + najkrajsiPremor + " min");
                 } else if (najkrajsiPremor != null) {
@@ -328,20 +340,18 @@ public final class PredlogTekem {
                 } else {
                     razlogi.add("prva tekma");
                 }
-                if (t.faza() == FazaTekme.SKUPINA) {
-                    razlogi.add(t.kolo() + ". kolo");
-                }
                 Kandidat k = new Kandidat(t, !zasedeni.isEmpty(), List.copyOf(razlogi), Set.copyOf(osebe));
-                ocene.add(new Ocena(k, !zasedeni.isEmpty(), !sodniki.isEmpty(), zaostanek, spocit, cakanje));
+                ocene.add(new Ocena(k, !zasedeni.isEmpty(), !sodniki.isEmpty(), kolo, spocit,
+                        mestoDogodka.getOrDefault(t.idDogodka(), Integer.MAX_VALUE)));
             }
             ocene.sort(Comparator.comparing(Ocena::zaseden)
                     .thenComparing(Ocena::konfliktSodnika)
-                    .thenComparing(Ocena::zaostanek, Comparator.reverseOrder())
+                    .thenComparing(Ocena::kolo)
                     .thenComparing(Ocena::spocit, Comparator.reverseOrder())
-                    .thenComparing(o -> o.kandidat().tekma().kolo())
-                    .thenComparing(Ocena::cakanje, Comparator.reverseOrder())
+                    .thenComparing(Ocena::mestoDogodka)
                     .thenComparing(o -> o.kandidat().tekma().idDogodka())
                     .thenComparing(o -> o.kandidat().tekma().skupina(), PredlogTekem::primerjajSkupini)
+                    .thenComparing(o -> o.kandidat().tekma().idZreb(), Comparator.nullsFirst(Comparator.naturalOrder()))
                     .thenComparing(o -> o.kandidat().tekma().pozicija())
                     .thenComparing(o -> o.kandidat().tekma().id()));
             return poRocnemRedu(ocene.stream().map(Ocena::kandidat).toList());
@@ -376,16 +386,15 @@ public final class PredlogTekem {
                     || (t.vrsta() == Vrsta.EKIPNO && t.status() == StatusTekme.V_IGRI && t.miza() == null);
         }
 
-        /* Koliko kol ima skupina oz. mreza te tekme od njenega kola do konca
-           (vkljucno z njim). Posnetek vsebuje vse tekme dogodka v teku, zato je
-           zadnje kolo skupine znano tudi, ko je ze odigrano. */
-        private int kolaDoKonca(Tekma t) {
-            int zadnjeKolo = tekme.stream()
-                    .filter(u -> u.idDogodka() == t.idDogodka() && u.faza() == t.faza()
-                            && Objects.equals(u.idSkupina(), t.idSkupina())
-                            && Objects.equals(u.idZreb(), t.idZreb()))
-                    .mapToInt(Tekma::kolo).max().orElse(t.kolo());
-            return Math.max(1, zadnjeKolo - t.kolo() + 1);
+        /* Kolo po vrsti (2): v skupinskem delu kolo skupine, v izlocilnem delu (glavna in
+           tolazilna mreza, zrebi SV regije) krog mreze za zadnjim kolom skupin iste
+           kategorije. Posnetek vsebuje vse tekme dogodka v teku, zato je zadnje kolo
+           skupin znano tudi, ko je ze odigrano. */
+        private static int koloPoVrsti(Tekma t, Map<Long, Integer> zadnjeKoloSkupin) {
+            if (t.faza() == FazaTekme.SKUPINA) {
+                return t.kolo();
+            }
+            return zadnjeKoloSkupin.getOrDefault(t.idDogodka(), 0) + t.kolo();
         }
 
         private LocalDateTime konecStrani(Stran s) {

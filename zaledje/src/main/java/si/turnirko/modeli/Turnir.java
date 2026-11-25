@@ -92,6 +92,15 @@ public class Turnir {
     @Column(name = "vrstni_red_tekem")
     private String vrstniRedTekem;
 
+    /* Skupne mize (V78): glavni turnir skupine, katere mize si ta turnir deli (null =
+       sam ali glavni). Nastavitve miz in vrstni red skupine nosi glavni turnir. */
+    @Column(name = "id_skupne_mize")
+    private Long idSkupneMize;
+
+    /* Vrstni red kategorij v kolu (V78): id-ji dogodkov "12,15,13", null = privzeti. */
+    @Column(name = "vrstni_red_dogodkov")
+    private String vrstniRedDogodkov;
+
     /* Od kod je turnir prisel (V27). Prazen = nastal je v Turnirku; sicer je
        uvozen in samo za branje (glej VirTekmovanja, LastnistvoStoritev). */
     @Enumerated(EnumType.STRING)
@@ -196,11 +205,36 @@ public class Turnir {
 
     /* Rocni vrstni red tekem po vrsti; zapis pise samo MizeStoritev, tuj del se preskoci. */
     public List<Long> getVrstniRedTekem() {
+        return idji(vrstniRedTekem);
+    }
+
+    public void setVrstniRedTekem(List<Long> red) {
+        this.vrstniRedTekem = zapisIdjev(red);
+    }
+
+    public Long getIdSkupneMize() { return idSkupneMize; }
+    public void setIdSkupneMize(Long idSkupneMize) { this.idSkupneMize = idSkupneMize; }
+
+    /* Glavni turnir skupine skupnih miz: ta, ce ni clan druge skupine. */
+    public Long idGlavnegaZaMize() {
+        return idSkupneMize != null ? idSkupneMize : id;
+    }
+
+    /* Vrstni red kategorij v kolu (id-ji dogodkov); zapis pise samo MizeStoritev. */
+    public List<Long> getVrstniRedDogodkov() {
+        return idji(vrstniRedDogodkov);
+    }
+
+    public void setVrstniRedDogodkov(List<Long> red) {
+        this.vrstniRedDogodkov = zapisIdjev(red);
+    }
+
+    private static List<Long> idji(String zapis) {
         List<Long> red = new ArrayList<>();
-        if (vrstniRedTekem == null || vrstniRedTekem.isBlank()) {
+        if (zapis == null || zapis.isBlank()) {
             return red;
         }
-        for (String del : vrstniRedTekem.split(",")) {
+        for (String del : zapis.split(",")) {
             try {
                 red.add(Long.parseLong(del.trim()));
             } catch (NumberFormatException e) {
@@ -210,8 +244,8 @@ public class Turnir {
         return red;
     }
 
-    public void setVrstniRedTekem(List<Long> red) {
-        this.vrstniRedTekem = red == null || red.isEmpty() ? null
+    private static String zapisIdjev(List<Long> red) {
+        return red == null || red.isEmpty() ? null
                 : red.stream().distinct().map(String::valueOf).collect(Collectors.joining(","));
     }
 

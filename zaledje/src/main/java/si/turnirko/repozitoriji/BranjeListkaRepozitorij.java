@@ -80,14 +80,14 @@ public interface BranjeListkaRepozitorij extends JpaRepository<BranjeListka, Lon
             """)
     int pobrisiKljucePosiljanja(@Param("meja") LocalDateTime meja);
 
-    /* Vsa branja turnirja, najnovejsa prva (vrsta na strani Branje listkov). */
+    /* Vsa branja turnirjev (skupne mize, V78), najnovejsa prva (vrsta na strani Branje listkov). */
     @Query("""
             SELECT b FROM BranjeListka b
             LEFT JOIN FETCH b.tekma
-            WHERE b.turnir.id = :idTurnir
+            WHERE b.turnir.id IN :idjiTurnirjev
             ORDER BY b.ustvarjenoOb DESC, b.id DESC
             """)
-    List<BranjeListka> najdiZaTurnir(@Param("idTurnir") Long idTurnir);
+    List<BranjeListka> najdiZaTurnirje(@Param("idjiTurnirjev") Collection<Long> idjiTurnirjev);
 
     /* Koliko fotografij je uporabnik poslal od danega trenutka (omejitev hitrosti,
        vsako branje stane). */

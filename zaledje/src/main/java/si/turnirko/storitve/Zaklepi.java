@@ -52,7 +52,11 @@ public class Zaklepi {
         STRIPE(9),
         /* Pravila "najvec N na racun" (spremljani igralci, druzina): zaklene se
            racun, da dva hkratna zahtevka ne prideta oba mimo stetja. */
-        RACUN(10);
+        RACUN(10),
+        /* Skupne mize turnirjev (V78): kljuc je glavni turnir skupine. Klic tekme,
+           nastavitve miz in povezava turnirjev tecejo ena za drugo cez vse turnirje,
+           ki si delijo mize (dva klica na isto mizo iz dveh turnirjev). */
+        MIZE(11);
 
         final int prostor;
 
@@ -124,6 +128,32 @@ public class Zaklepi {
         if (idTurnir != null) {
             zakleni(Vrsta.TURNIR, idTurnir);
         }
+    }
+
+    /* --- skupne mize (V78) ---
+
+       Vzame se ZA zaklepom turnirja (tekmovanje -> mize -> rating), nikoli pred njim.
+       Kljuc je glavni turnir skupine, izpeljan s skalarno poizvedbo. Povezava turnirjev
+       se lahko spremeni, medtem ko zahteva caka na zaklep: takrat vrne null in klicatelj
+       zahtevo zavrne (ali preskoci), da ne bi preverjal mize v napacni skupini. */
+
+    public Long zakleniMizePoTurnirju(Long idTurnir) {
+        return zakleniMize("SELECT COALESCE(t.idSkupneMize, t.id) FROM Turnir t WHERE t.id = :id", idTurnir);
+    }
+
+    public Long zakleniMizePoTekmi(Long idTekme) {
+        return zakleniMize("""
+                SELECT COALESCE(tu.idSkupneMize, tu.id) FROM Tekma t JOIN t.dogodek d JOIN d.turnir tu
+                WHERE t.id = :id""", idTekme);
+    }
+
+    private Long zakleniMize(String jpql, Long id) {
+        Long glavni = prvi(jpql, id);
+        if (glavni == null) {
+            return null; // zapisa ni - storitev bo vrnila 404
+        }
+        zakleni(Vrsta.MIZE, glavni);
+        return glavni.equals(prvi(jpql, id)) ? glavni : null;
     }
 
     private Long prvi(String jpql, Long id) {

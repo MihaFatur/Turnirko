@@ -17,7 +17,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { KandidatMizeDto, MizaDto, MizeTurnirjaDto, NastavitveMizVnos, TekmaMizeDto } from '../api/tipi'
-import { mizeApi, turnirjiApi } from '../api/zahteve'
+import { mizeApi } from '../api/zahteve'
 import { GlavaDejanja, useNazaj } from '../komponente/GlavaTelefona'
 import { MeniDejanj } from '../komponente/MeniDejanj'
 import {
@@ -33,6 +33,7 @@ import {
 } from '../komponente/MizeTloris'
 import { MaliTloris, NaslovTelefon, PodrobnostiMize, VrstaTelefon } from '../komponente/MizeTelefon'
 import { OknoIzida, OknoKlica, PrviZagon, type Klic, type PotrditevKlica } from '../komponente/MizeOkna'
+import { OknoSkupnihMiz } from '../komponente/MizeSkupne'
 import { useTiskListkov } from '../komponente/MizeListekTisk'
 import { NapakaPoizvedbe } from '../komponente/NapakaPoizvedbe'
 import { PotrditvenoOkno } from '../komponente/PotrditvenoOkno'
@@ -48,6 +49,7 @@ import {
   prosteMize,
   prviPredlogi,
   razlogiZasedenosti,
+  sOznakamiKategorij,
   sprosceneMize,
   uraIzCasa,
   type Vlecem,
@@ -87,6 +89,7 @@ export function MizeStran() {
   const [preklic, nastaviPreklic] = useState<TekmaMizeDto | null>(null)
   const [vseKartice, nastaviVseKartice] = useState(false)
   const [izbranaMiza, nastaviIzbranoMizo] = useState<number | null>(null)
+  const [skupneOkno, nastaviSkupneOkno] = useState(false)
   const [zagonStevilo, nastaviZagonStevilo] = useState(20)
   const [zagonPorazenec, nastaviZagonPorazenca] = useState(true)
   const koracnikZagona = useRef<HTMLButtonElement>(null)
@@ -103,20 +106,24 @@ export function MizeStran() {
   const pregled = useQuery({
     queryKey: kljuc,
     queryFn: () => mizeApi.pregled(idTurnirja),
+    /* Enako imenovane kategorije turnirjev s skupnimi mizami dobijo ime turnirja (V78). */
+    select: sOznakamiKategorij,
     /* Med vlečenjem in med shranjevanjem vrstnega reda strežnik ne sprašuje: osvežitev bi
        zamenjala elemente pod kazalcem oziroma za hip vrnila stari vrstni red. */
     refetchInterval: vlecem || vrstniRed.isPending ? false : OSVEZITEV_MS,
   })
 
-  /* Kategorije v teku za gumb »Listki za tiskanje« (stran Listki je po kategoriji). */
-  const dogodki = useQuery({
-    queryKey: ['turnir', idTurnirja, 'dogodki'],
-    queryFn: () => turnirjiApi.dogodki(idTurnirja),
-    staleTime: 60_000,
-  })
-  const kategorijeListkov: KategorijaListkov[] = (dogodki.data ?? [])
-    .filter((d) => d.dejanskiStatus === 'V_TEKU')
-    .map((d) => ({ id: d.id, ime: d.ime, ekipno: d.disciplina === 'EKIPNO' }))
+  /* Kategorije v teku za gumb »Listki za tiskanje« (stran Listki je po kategoriji): vseh
+     turnirjev s skupnimi mizami, v vrstnem redu kola (V78). */
+  const skupne = pregled.data?.skupne
+  const povezane = (skupne?.turnirji.length ?? 0) > 1
+  const kategorijeListkov: KategorijaListkov[] = (skupne?.kategorije ?? [])
+    .filter((k) => k.status === 'V_TEKU')
+    .map((k) => ({ id: k.idDogodka, ime: povezane ? `${k.ime} · ${k.imeTurnirja}` : k.ime, ekipno: k.ekipno }))
+  /* En tisk za vse kategorije (posamične; ekipne imajo zapisnike), ko jih je vsaj dvoje. */
+  const skupniTisk = kategorijeListkov.filter((k) => !k.ekipno).length > 1
+    ? `/turnirji/${idTurnirja}/listki`
+    : undefined
 
   const tisk = useTiskListkov(pregled.data?.imeTurnirja ?? '')
 
@@ -215,7 +222,7 @@ export function MizeStran() {
       },
     })
     if (v.tisk) {
-      void tisk.natisni([{ idDogodka: t.idDogodka, idTekme: t.tekma.id, miza: v.miza }]).catch(() => {
+      void tisk.natisni([{ idDogodka: t.idDogodka, idTekme: t.tekma.id, miza: v.miza, imeTurnirja: t.imeTurnirja }]).catch(() => {
         sporoci({ besedilo: 'Listka ni bilo mogoče pripraviti. Natisneš ga lahko na strani Listki.' })
       })
     }
@@ -389,6 +396,7 @@ export function MizeStran() {
           zapisiPisk(v)
         },
         odstraniZadnjo,
+        naSkupne: () => nastaviSkupneOkno(true),
         konec: () => nastaviUrejanje(false),
       }
     : undefined
@@ -512,6 +520,15 @@ export function MizeStran() {
         />
       )}
 
+      {skupneOkno && (
+        <OknoSkupnihMiz
+          idTurnirja={idTurnirja}
+          podatki={podatki}
+          onSpremenjeno={osvezi}
+          onZapri={() => nastaviSkupneOkno(false)}
+        />
+      )}
+
       {sporocilo && <SporociloZRazveljavitvijo sporocilo={sporocilo} naZapri={() => nastaviSporocilo(null)} />}
       {tisk.izris}
     </>
@@ -535,8 +552,21 @@ export function MizeStran() {
           )}
           {kategorijeListkov.length > 0 && (
             <MeniDejanj naslov="Dejanja strani Mize">
-              {(zapri) =>
-                kategorijeListkov.map((k) => (
+              {(zapri) => [
+                ...(skupniTisk
+                  ? [
+                      <Link
+                        key="vse"
+                        to={skupniTisk}
+                        role="menuitem"
+                        className="uporabnik-meni__postavka"
+                        onClick={zapri}
+                      >
+                        Listki vseh kategorij
+                      </Link>,
+                    ]
+                  : []),
+                ...kategorijeListkov.map((k) => (
                   <Link
                     key={k.id}
                     to={`/dogodki/${k.id}/listki`}
@@ -547,8 +577,8 @@ export function MizeStran() {
                     {oznakaListkov(k)}
                     {kategorijeListkov.length > 1 ? ` · ${k.ime}` : ''}
                   </Link>
-                ))
-              }
+                )),
+              ]}
             </MeniDejanj>
           )}
         </GlavaDejanja>
@@ -604,10 +634,11 @@ export function MizeStran() {
     <section className="mize">
       <GlavaMize
         idTurnirja={idTurnirja}
-        imeTurnirja={podatki.imeTurnirja}
+        imeTurnirja={podatki.skupne.turnirji.map((t) => t.ime).join(' + ')}
         ura={uraIzCasa(podatki.casStreznika)}
         kazalniki={kazalniki}
         listki={kategorijeListkov}
+        skupniTisk={skupniTisk}
       />
       {pregled.error && (
         <div className="mize__napake">

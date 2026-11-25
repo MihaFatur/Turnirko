@@ -12,16 +12,28 @@
    - Pregled sestavi posnetek turnirja, PredlogTekem pa iz njega izpelje stanje miz
      in vrstni red pripravljenih tekem.
 
-   Vse spremembe tecejo pod zaklepom turnirja (kot vnos rezultata): dva klica na
-   isto mizo ne prestaneta oba preverbe proste mize. */
+   Skupne mize (V78, lastnik 25. 11. 2026): vec turnirjev istega organizatorja v isti
+   dvorani si deli mize. Organizator jih poveze na strani Mize; od tedaj so mize,
+   vrsta, klici, sodniki in nastavitve ena celota. Skupino vodi GLAVNI turnir
+   (turnir.id_skupne_mize clanov kaze nanj): nosi nastavitve miz, rocni vrstni red
+   tekem in vrstni red kategorij. Turnir brez povezave je skupina enega in vse
+   deluje kot prej.
+
+   Zaklepi: klic tece pod zaklepom turnirja tekme (kot vnos rezultata) in pod
+   zaklepom skupnih miz (Zaklepi.Vrsta.MIZE, kljuc glavni turnir) - dva klica na isto
+   mizo iz dveh turnirjev ne prestaneta oba preverbe proste mize. Sprememba
+   nastavitev zaklene se turnir glavnega (njegova entiteta ima verzijo), povezava
+   pa vse turnirje obeh skupin po vrsti id-jev; vedno najprej turnirji, nato mize. */
 package si.turnirko.storitve;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,10 +48,15 @@ import org.springframework.transaction.annotation.Transactional;
 import si.turnirko.dto.KlicTekmeVnos;
 import si.turnirko.dto.MizeTurnirjaDto;
 import si.turnirko.dto.MizeTurnirjaDto.KandidatDto;
+import si.turnirko.dto.MizeTurnirjaDto.KategorijaMizDto;
 import si.turnirko.dto.MizeTurnirjaDto.MizaDto;
 import si.turnirko.dto.MizeTurnirjaDto.OsebaDto;
+import si.turnirko.dto.MizeTurnirjaDto.SkupneMizeDto;
 import si.turnirko.dto.MizeTurnirjaDto.TekmaMizeDto;
+import si.turnirko.dto.MizeTurnirjaDto.TurnirMizDto;
 import si.turnirko.dto.NastavitveMizVnos;
+import si.turnirko.dto.PovezavaMizVnos;
+import si.turnirko.dto.RedKategorijVnos;
 import si.turnirko.dto.TekmaDto;
 import si.turnirko.dto.VrstniRedTekemVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
@@ -56,6 +73,7 @@ import si.turnirko.modeli.StranEkipe;
 import si.turnirko.modeli.Tekma;
 import si.turnirko.modeli.Turnir;
 import si.turnirko.pomozno.SlovenskaAbeceda;
+import si.turnirko.repozitoriji.DogodekRepozitorij;
 import si.turnirko.repozitoriji.IgralecRepozitorij;
 import si.turnirko.repozitoriji.KaderEkipeRepozitorij;
 import si.turnirko.repozitoriji.PostavaSrecanjaRepozitorij;
@@ -72,7 +90,12 @@ public class MizeStoritev {
     static final int NAJVEC_MIZ = 99;
     static final int NAJVEC_POCITKA_MIN = 30;
 
+    /* Povezava turnirjev se je spremenila, medtem ko je zahteva cakala na zaklep. */
+    static final String SKUPNE_SPREMENJENE =
+            "Skupne mize turnirja so se ravno spremenile. Osveži stran in poskusi znova.";
+
     private final TurnirRepozitorij turnirRepozitorij;
+    private final DogodekRepozitorij dogodekRepozitorij;
     private final TekmaRepozitorij tekmaRepozitorij;
     private final PostavaSrecanjaRepozitorij postavaRepozitorij;
     private final SrecanjeRepozitorij srecanjeRepozitorij;
@@ -83,12 +106,14 @@ public class MizeStoritev {
     private final LastnistvoStoritev lastnistvo;
     private final Zaklepi zaklepi;
 
-    public MizeStoritev(TurnirRepozitorij turnirRepozitorij, TekmaRepozitorij tekmaRepozitorij,
+    public MizeStoritev(TurnirRepozitorij turnirRepozitorij, DogodekRepozitorij dogodekRepozitorij,
+                        TekmaRepozitorij tekmaRepozitorij,
                         PostavaSrecanjaRepozitorij postavaRepozitorij, SrecanjeRepozitorij srecanjeRepozitorij,
                         SkupinaRepozitorij skupinaRepozitorij, PrijavaRepozitorij prijavaRepozitorij,
                         KaderEkipeRepozitorij kaderRepozitorij, IgralecRepozitorij igralecRepozitorij,
                         LastnistvoStoritev lastnistvo, Zaklepi zaklepi) {
         this.turnirRepozitorij = turnirRepozitorij;
+        this.dogodekRepozitorij = dogodekRepozitorij;
         this.tekmaRepozitorij = tekmaRepozitorij;
         this.postavaRepozitorij = postavaRepozitorij;
         this.srecanjeRepozitorij = srecanjeRepozitorij;
@@ -106,11 +131,14 @@ public class MizeStoritev {
     public MizeTurnirjaDto pregled(Long idTurnir) {
         lastnistvo.preveriTurnirPoId(idTurnir);
         Turnir turnir = najdiTurnir(idTurnir);
+        SkupneMize skupne = skupne(turnir.idGlavnegaZaMize());
+        Turnir glavni = skupne.glavni();
         LocalDateTime zdaj = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
-        List<Tekma> tekme = tekmaRepozitorij.zaMizeTurnirja(idTurnir, zdaj.toLocalDate().atStartOfDay());
+        List<Tekma> tekme = tekmaRepozitorij.zaMizeTurnirjev(skupne.idji(), zdaj.toLocalDate().atStartOfDay());
+        List<Dogodek> dogodki = redDogodkov(skupne);
 
         Posnetek posnetek = posnetek(tekme);
-        PredlogTekem.Rezultat rezultat = PredlogTekem.izracunaj(posnetek.vhod(), nastavitve(turnir), zdaj);
+        PredlogTekem.Rezultat rezultat = PredlogTekem.izracunaj(posnetek.vhod(), nastavitve(glavni, dogodki), zdaj);
 
         Map<Long, TekmaMizeDto> dto = new HashMap<>();
         Function<PredlogTekem.Tekma, TekmaMizeDto> vDto = t -> dto.computeIfAbsent(t.id(),
@@ -125,40 +153,39 @@ public class MizeStoritev {
                 .map(k -> new KandidatDto(vDto.apply(k.tekma()), k.zaseden(), k.razlogi()))
                 .toList();
         boolean vTeku = tekme.stream().anyMatch(t -> t.getDogodek().getStatus() == StatusTekmovanja.V_TEKU);
-        Set<Long> rocni = Set.copyOf(turnir.getVrstniRedTekem());
+        Set<Long> rocni = Set.copyOf(glavni.getVrstniRedTekem());
         boolean rocniRed = rezultat.kandidati().stream().anyMatch(k -> rocni.contains(k.tekma().id()));
-        return new MizeTurnirjaDto(turnir.getId(), turnir.getIme(), turnir.getSteviloMiz(),
-                List.copyOf(turnir.getIzklopljeneMize()), turnir.isPorazenecSodi(), turnir.getPocitekMin(),
-                vTeku, zdaj, mize, kandidati, rocniRed);
+        return new MizeTurnirjaDto(turnir.getId(), turnir.getIme(), glavni.getSteviloMiz(),
+                List.copyOf(glavni.getIzklopljeneMize()), glavni.isPorazenecSodi(), glavni.getPocitekMin(),
+                vTeku, zdaj, mize, kandidati, rocniRed, skupneDto(skupne, dogodki));
     }
 
     /* Rocni vrstni red vrste »Na vrsti« (V77): organizator je tekmo povlekel na drugo
-       mesto, vmesnik poslje vrsto, kot jo je videl. Shranijo se samo tekme tega turnirja
-       (dogodki v teku in tekme, koncane danes - isti posnetek kot pregled), da tuj id ne
-       pride v zapis. Prazen seznam vrne samodejni vrstni red. */
+       mesto, vmesnik poslje vrsto, kot jo je videl. Shranijo se samo tekme turnirjev s
+       skupnimi mizami (dogodki v teku in tekme, koncane danes - isti posnetek kot
+       pregled), da tuj id ne pride v zapis. Prazen seznam vrne samodejni vrstni red. */
     @Transactional
     public void nastaviVrstniRed(Long idTurnir, VrstniRedTekemVnos vnos) {
-        zaklepi.zakleni(Zaklepi.Vrsta.TURNIR, idTurnir);
-        lastnistvo.preveriTurnirPoId(idTurnir);
-        Turnir turnir = najdiTurnir(idTurnir);
+        SkupneMize skupne = zakleniNastavitve(idTurnir);
         List<Long> zeleni = vnos.idjiTekem() == null ? List.of() : vnos.idjiTekem();
         // List.of(...).contains(null) vrze izjemo, zato pregled po elementih
         if (zeleni.stream().anyMatch(Objects::isNull)) {
             throw new NeveljavenVnosIzjema("Vrstni red tekem ne sme vsebovati praznih vnosov.");
         }
-        Set<Long> tekmeTurnirja = tekmaRepozitorij
-                .zaMizeTurnirja(idTurnir, LocalDateTime.now().toLocalDate().atStartOfDay()).stream()
+        Set<Long> tekmeSkupine = tekmaRepozitorij
+                .zaMizeTurnirjev(skupne.idji(), LocalDateTime.now().toLocalDate().atStartOfDay()).stream()
                 .map(Tekma::getId).collect(Collectors.toSet());
-        turnir.setVrstniRedTekem(zeleni.stream().filter(tekmeTurnirja::contains).distinct().toList());
+        skupne.glavni().setVrstniRedTekem(zeleni.stream().filter(tekmeSkupine::contains).distinct().toList());
     }
 
-    /* Osebe, ki smejo soditi: igralci s prijavo na turnir (tudi soigralci para in
-       kadri ekip), po abecedi priimkov. */
+    /* Osebe, ki smejo soditi: igralci s prijavo na turnirje s skupnimi mizami (tudi
+       soigralci para in kadri ekip), po abecedi priimkov. Porazenec sodi tudi tekmo
+       drugega turnirja na isti mizi (lastnik 25. 11. 2026). */
     @Transactional(readOnly = true)
     public List<OsebaDto> osebe(Long idTurnir) {
         lastnistvo.preveriTurnirPoId(idTurnir);
-        najdiTurnir(idTurnir);
-        return igralecRepozitorij.findAllById(osebeTurnirja(idTurnir)).stream()
+        SkupneMize skupne = skupne(najdiTurnir(idTurnir).idGlavnegaZaMize());
+        return igralecRepozitorij.findAllById(osebeTurnirjev(skupne.idji())).stream()
                 .sorted(Comparator.comparing(Igralec::getPriimek, SlovenskaAbeceda.RED)
                         .thenComparing(Igralec::getIme, SlovenskaAbeceda.RED))
                 .map(i -> new OsebaDto(i.getId(), i.polnoIme()))
@@ -167,11 +194,11 @@ public class MizeStoritev {
 
     // ---------- nastavitve ----------
 
+    /* Nastavitve miz veljajo za vse turnirje s skupnimi mizami (zapise jih glavni). */
     @Transactional
     public void nastavi(Long idTurnir, NastavitveMizVnos vnos) {
-        zaklepi.zakleni(Zaklepi.Vrsta.TURNIR, idTurnir);
-        lastnistvo.preveriTurnirPoId(idTurnir);
-        Turnir turnir = najdiTurnir(idTurnir);
+        SkupneMize skupne = zakleniNastavitve(idTurnir);
+        Turnir glavni = skupne.glavni();
 
         Integer stevilo = vnos.steviloMiz();
         if (stevilo != null && (stevilo < 1 || stevilo > NAJVEC_MIZ)) {
@@ -194,17 +221,136 @@ public class MizeStoritev {
             }
         }
         // miza, na kateri se igra, ne sme izginiti: tekma bi ostala na mizi, ki je ni
-        for (Tekma t : tekmaRepozitorij.naMizahTurnirja(idTurnir)) {
+        for (Tekma t : tekmaRepozitorij.naMizahTurnirjev(skupne.idji())) {
             for (Integer miza : mizeTekme(t)) {
                 if (stevilo == null || miza > stevilo || izklopljene.contains(miza)) {
                     throw new DomenskaIzjema("Na mizi " + miza + " se igra. Najprej vpiši izid ali prekliči klic.");
                 }
             }
         }
-        turnir.setSteviloMiz(stevilo);
-        turnir.setIzklopljeneMize(izklopljene);
-        turnir.setPorazenecSodi(vnos.porazenecSodi());
-        turnir.setPocitekMin(vnos.pocitekMin());
+        glavni.setSteviloMiz(stevilo);
+        glavni.setIzklopljeneMize(izklopljene);
+        glavni.setPorazenecSodi(vnos.porazenecSodi());
+        glavni.setPocitekMin(vnos.pocitekMin());
+    }
+
+    /* Vrstni red kategorij v kolu (V78): predlog gre strogo po kolih, v kolu po tem redu
+       kategorij (lastnik 25. 11. 2026). Samo kategorije turnirjev s skupnimi mizami;
+       prazen seznam vrne privzeti red. */
+    @Transactional
+    public void nastaviRedKategorij(Long idTurnir, RedKategorijVnos vnos) {
+        SkupneMize skupne = zakleniNastavitve(idTurnir);
+        Set<Long> dogodkiSkupine = dogodekRepozitorij.zaTurnirje(skupne.idji()).stream()
+                .map(Dogodek::getId).collect(Collectors.toSet());
+        List<Long> red = new ArrayList<>(new LinkedHashSet<>(vnos.idjiDogodkov()));
+        for (Long id : red) {
+            if (!dogodkiSkupine.contains(id)) {
+                throw new NeveljavenVnosIzjema("Kategorija z id " + id + " ni v turnirjih s temi mizami.");
+            }
+        }
+        skupne.glavni().setVrstniRedDogodkov(red);
+    }
+
+    // ---------- skupne mize: povezava turnirjev (V78) ----------
+
+    /* Turnirji, s katerimi sme organizator ta turnir povezati: njegovi turnirji, ki se
+       dotikajo istih dni (lastnik 25. 11. 2026: vedno isti racun, isti dan) in se nimajo
+       skupnih miz s tem. */
+    @Transactional(readOnly = true)
+    public List<TurnirMizDto> zaPovezavo(Long idTurnir) {
+        lastnistvo.preveriTurnirPoId(idTurnir);
+        Turnir turnir = najdiTurnir(idTurnir);
+        if (turnir.getDatumZacetka() == null) {
+            return List.of();
+        }
+        Set<Long> skupine = Set.copyOf(skupne(turnir.idGlavnegaZaMize()).idji());
+        LocalDate konec = turnir.getDatumKonca() != null ? turnir.getDatumKonca() : turnir.getDatumZacetka();
+        return turnirRepozitorij.najdiVObdobju(turnir.getDatumZacetka(), konec).stream()
+                .filter(t -> !skupine.contains(t.getId()))
+                .filter(t -> !t.jeUvozen() && lastnistvo.smeUrejatiTurnir(t))
+                .map(MizeStoritev::turnirMiz)
+                .toList();
+    }
+
+    /* Ta turnir (z vsemi, s katerimi ze deli mize) se pridruzi skupnim mizam izbranega.
+       Nastavitve miz ostanejo izbranega, razen ce jih ta se nima. Mize, na katerih se
+       ze igra, se ne smejo prekrivati (miza 3 v obeh turnirjih). */
+    @Transactional
+    public void povezi(Long idTurnir, PovezavaMizVnos vnos) {
+        Long idDrugega = vnos.idTurnirja();
+        if (idDrugega.equals(idTurnir)) {
+            throw new NeveljavenVnosIzjema("Turnir ne more deliti miz sam s sabo.");
+        }
+        Long g1 = glavniId(idTurnir);
+        Long g2 = glavniId(idDrugega);
+        zakleniSkupine(List.of(g1, g2));
+        if (!g1.equals(glavniId(idTurnir)) || !g2.equals(glavniId(idDrugega))) {
+            throw new DomenskaIzjema(SKUPNE_SPREMENJENE);
+        }
+        if (g1.equals(g2)) {
+            throw new DomenskaIzjema("Turnirja že imata skupne mize.");
+        }
+        SkupneMize pridruzena = skupne(g1);
+        SkupneMize cilj = skupne(g2);
+        // vsi turnirji obeh skupin morajo biti organizatorjevi (preveriTurnir zavrne tudi uvozene)
+        pridruzena.turnirji().forEach(lastnistvo::preveriTurnir);
+        cilj.turnirji().forEach(lastnistvo::preveriTurnir);
+        if (!istiDnevi(najdiTurnir(idTurnir), najdiTurnir(idDrugega))) {
+            throw new DomenskaIzjema("Mize lahko delita samo turnirja na isti dan.");
+        }
+
+        Turnir glavni = cilj.glavni();
+        Turnir prejsnji = pridruzena.glavni();
+        if (glavni.getSteviloMiz() == null && prejsnji.getSteviloMiz() != null) {
+            prepisiNastavitve(prejsnji, glavni);
+        }
+        preveriMizeVIgri(tekmaRepozitorij.naMizahTurnirjev(pridruzena.idji()),
+                tekmaRepozitorij.naMizahTurnirjev(cilj.idji()), glavni);
+
+        // kategorije pridruzenih gredo za ze razvrscenimi (privzeti red jih doda sam)
+        if (!glavni.getVrstniRedDogodkov().isEmpty() && !prejsnji.getVrstniRedDogodkov().isEmpty()) {
+            List<Long> red = new ArrayList<>(glavni.getVrstniRedDogodkov());
+            red.addAll(prejsnji.getVrstniRedDogodkov());
+            glavni.setVrstniRedDogodkov(red);
+        }
+        for (Turnir t : pridruzena.turnirji()) {
+            t.setIdSkupneMize(glavni.getId());
+            t.setVrstniRedTekem(null);
+            t.setVrstniRedDogodkov(null);
+        }
+    }
+
+    /* Turnir zapusti skupne mize: dobi kopijo nastavitev skupine (tekme, ki jih igra,
+       ostanejo na svojih mizah). Ce odide glavni, skupino prevzame naslednji. */
+    @Transactional
+    public void razdruzi(Long idTurnir) {
+        Long g = glavniId(idTurnir);
+        zakleniSkupine(List.of(g));
+        if (!g.equals(glavniId(idTurnir))) {
+            throw new DomenskaIzjema(SKUPNE_SPREMENJENE);
+        }
+        lastnistvo.preveriTurnirPoId(idTurnir);
+        SkupneMize skupne = skupne(g);
+        if (!skupne.povezane()) {
+            throw new DomenskaIzjema("Turnir nima skupnih miz z drugim turnirjem.");
+        }
+        Turnir glavni = skupne.glavni();
+        if (glavni.getId().equals(idTurnir)) {
+            Turnir novi = skupne.turnirji().get(1);
+            prepisiNastavitve(glavni, novi);
+            novi.setVrstniRedTekem(glavni.getVrstniRedTekem());
+            novi.setVrstniRedDogodkov(glavni.getVrstniRedDogodkov());
+            novi.setIdSkupneMize(null);
+            for (Turnir t : skupne.turnirji().subList(2, skupne.turnirji().size())) {
+                t.setIdSkupneMize(novi.getId());
+            }
+        } else {
+            Turnir odhaja = najdiTurnir(idTurnir);
+            prepisiNastavitve(glavni, odhaja);
+            odhaja.setVrstniRedTekem(glavni.getVrstniRedTekem());
+            odhaja.setVrstniRedDogodkov(glavni.getVrstniRedDogodkov());
+            odhaja.setIdSkupneMize(null);
+        }
     }
 
     // ---------- klic ----------
@@ -213,12 +359,17 @@ public class MizeStoritev {
     @Transactional
     public void poklici(Long idTekme, KlicTekmeVnos vnos) {
         zaklepi.zakleniTurnirPoTekmi(idTekme);
+        Long idGlavni = zaklepi.zakleniMizePoTekmi(idTekme);
         lastnistvo.preveriTurnirPoTekmi(idTekme);
         Tekma tekma = najdiTekmo(idTekme);
+        if (idGlavni == null) {
+            throw new DomenskaIzjema(SKUPNE_SPREMENJENE);
+        }
+        SkupneMize skupne = skupne(idGlavni);
+        Turnir glavni = skupne.glavni();
         Dogodek dogodek = tekma.getDogodek();
-        Turnir turnir = dogodek.getTurnir();
 
-        if (turnir.getSteviloMiz() == null) {
+        if (glavni.getSteviloMiz() == null) {
             throw new DomenskaIzjema("Turnir nima nastavljenih miz - najprej vpiši število miz.");
         }
         if (dogodek.getStatus() != StatusTekmovanja.V_TEKU) {
@@ -241,7 +392,7 @@ public class MizeStoritev {
 
         int miza = vnos.miza();
         Integer miza2 = vnos.miza2();
-        preveriMizo(turnir, miza);
+        preveriMizo(glavni, miza);
         if (miza2 != null) {
             if (!dogodek.jeEkipno()) {
                 throw new NeveljavenVnosIzjema("Drugo mizo dobi samo ekipno srečanje.");
@@ -249,9 +400,9 @@ public class MizeStoritev {
             if (miza2 == miza) {
                 throw new NeveljavenVnosIzjema("Druga miza mora biti druga od prve.");
             }
-            preveriMizo(turnir, miza2);
+            preveriMizo(glavni, miza2);
         }
-        for (Tekma druga : tekmaRepozitorij.naMizahTurnirja(turnir.getId())) {
+        for (Tekma druga : tekmaRepozitorij.naMizahTurnirjev(skupne.idji())) {
             if (druga.getId().equals(tekma.getId())) {
                 continue;
             }
@@ -262,13 +413,14 @@ public class MizeStoritev {
                 throw new DomenskaIzjema("Na mizi " + miza2 + " se že igra.");
             }
         }
-        Igralec sodnik = vnos.idSodnika() == null ? null : sodnik(turnir, tekma, vnos.idSodnika());
+        Igralec sodnik = vnos.idSodnika() == null ? null : sodnik(skupne, tekma, vnos.idSodnika());
         tekma.poklici(miza, miza2, sodnik, LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         tekmaRepozitorij.save(tekma);
     }
 
     /* Preklic klica: tekma se vrne med pripravljene. Ekipna tekma, katere srecanje ze
-       ima postavo, se igra naprej (postava jo je zacela) in izgubi samo mizo. */
+       ima postavo, se igra naprej (postava jo je zacela) in izgubi samo mizo. Miza se
+       samo sprosti, zato zaklep skupnih miz ni potreben. */
     @Transactional
     public void preklici(Long idTekme) {
         zaklepi.zakleniTurnirPoTekmi(idTekme);
@@ -291,45 +443,172 @@ public class MizeStoritev {
     /* Miza z listka (M1, 3.7): koncana tekma, ki ni bila poklicana, dobi mizo, ki jo
        je potrdil sodnik (ali jo je bralnik zanesljivo prebral) - tako tudi
        »porazenec sodi« ve, kje se je igralo. Samo veljavna miza, na kateri ne igra
-       druga tekma: listek z napacno mizo ne sme prestaviti sodnika druge mize.
-       Klice se v transakciji potrditve, za vpisom izida. */
+       druga tekma (tudi drugega turnirja s skupnimi mizami): listek z napacno mizo ne
+       sme prestaviti sodnika druge mize. Klice se v transakciji potrditve, za vpisom
+       izida (zaklep turnirja tekme je ze vzet). */
     void zapisiMizoZListka(Long idTekme, Integer miza) {
         if (miza == null) {
             return;
+        }
+        Long idGlavni = zaklepi.zakleniMizePoTekmi(idTekme);
+        if (idGlavni == null) {
+            return; // povezava se je ravno spremenila: miza z listka ni nujna
         }
         Tekma tekma = tekmaRepozitorij.najdiZVsem(idTekme).orElse(null);
         if (tekma == null || tekma.getMiza() != null || tekma.getStatus() != StatusTekme.KONCANA) {
             return;
         }
-        Turnir turnir = tekma.getDogodek().getTurnir();
-        if (turnir.getSteviloMiz() == null || miza < 1 || miza > turnir.getSteviloMiz()
-                || turnir.getIzklopljeneMize().contains(miza)) {
+        SkupneMize skupne = skupne(idGlavni);
+        Turnir glavni = skupne.glavni();
+        if (glavni.getSteviloMiz() == null || miza < 1 || miza > glavni.getSteviloMiz()
+                || glavni.getIzklopljeneMize().contains(miza)) {
             return;
         }
-        if (tekmaRepozitorij.naMizahTurnirja(turnir.getId()).stream().anyMatch(t -> t.naMizi(miza))) {
+        if (tekmaRepozitorij.naMizahTurnirjev(skupne.idji()).stream().anyMatch(t -> t.naMizi(miza))) {
             return;
         }
         tekma.setMiza(miza);
         tekmaRepozitorij.save(tekma);
     }
 
+    // ---------- pomozno: skupne mize ----------
+
+    /* Turnirji s skupnimi mizami: glavni (nosi nastavitve miz, vrstni red tekem in
+       kategorij) in clani. Turnir brez povezave je skupina enega. */
+    private record SkupneMize(Turnir glavni, List<Turnir> turnirji) {
+
+        List<Long> idji() {
+            return turnirji.stream().map(Turnir::getId).toList();
+        }
+
+        boolean povezane() {
+            return turnirji.size() > 1;
+        }
+    }
+
+    private SkupneMize skupne(Long idGlavni) {
+        List<Turnir> turnirji = turnirRepozitorij.skupneMize(idGlavni);
+        if (turnirji.isEmpty() || !turnirji.getFirst().getId().equals(idGlavni)) {
+            throw new NiNajdenoIzjema("Turnir z id " + idGlavni + " ne obstaja.");
+        }
+        return new SkupneMize(turnirji.getFirst(), turnirji);
+    }
+
+    private Long glavniId(Long idTurnir) {
+        return turnirRepozitorij.idGlavnegaZaMize(idTurnir)
+                .orElseThrow(() -> new NiNajdenoIzjema("Turnir z id " + idTurnir + " ne obstaja."));
+    }
+
+    /* Sprememba nastavitev skupnih miz: najprej turnir glavnega (entiteta z verzijo, ki
+       jo pise tudi drugo urejanje turnirja), nato mize skupine. */
+    private SkupneMize zakleniNastavitve(Long idTurnir) {
+        Long idGlavni = glavniId(idTurnir);
+        zaklepi.zakleni(Zaklepi.Vrsta.TURNIR, idGlavni);
+        Long poZaklepu = zaklepi.zakleniMizePoTurnirju(idTurnir);
+        lastnistvo.preveriTurnirPoId(idTurnir);
+        if (!idGlavni.equals(poZaklepu)) {
+            throw new DomenskaIzjema(SKUPNE_SPREMENJENE);
+        }
+        return skupne(idGlavni);
+    }
+
+    /* Povezava spremeni turnirje obeh skupin: zaklene vse po vrsti id-jev (dve povezavi
+       hkrati se ne cakata navzkriz), nato mize obeh skupin. */
+    private void zakleniSkupine(List<Long> glavni) {
+        List<Long> sorted = turnirRepozitorij.idjiSkupnihMiz(glavni).stream().sorted().toList();
+        for (Long id : sorted) {
+            zaklepi.zakleni(Zaklepi.Vrsta.TURNIR, id);
+        }
+        for (Long id : glavni.stream().distinct().sorted().toList()) {
+            zaklepi.zakleni(Zaklepi.Vrsta.MIZE, id);
+        }
+    }
+
+    private static void prepisiNastavitve(Turnir iz, Turnir v) {
+        v.setSteviloMiz(iz.getSteviloMiz());
+        v.setIzklopljeneMize(iz.getIzklopljeneMize());
+        v.setPorazenecSodi(iz.isPorazenecSodi());
+        v.setPocitekMin(iz.getPocitekMin());
+    }
+
+    /* Pred povezavo: tekme v igri obeh skupin morajo ostati na veljavnih, razlicnih mizah. */
+    private static void preveriMizeVIgri(List<Tekma> pridruzeni, List<Tekma> cilj, Turnir glavni) {
+        Set<Integer> zasedene = new HashSet<>();
+        cilj.forEach(t -> zasedene.addAll(mizeTekme(t)));
+        for (Tekma t : pridruzeni) {
+            for (Integer miza : mizeTekme(t)) {
+                if (zasedene.contains(miza)) {
+                    throw new DomenskaIzjema("Na mizi " + miza + " se igra v obeh turnirjih. Pred povezavo "
+                            + "vpiši izid ali prekliči enega od klicev.");
+                }
+                if (glavni.getSteviloMiz() == null || miza > glavni.getSteviloMiz()
+                        || glavni.getIzklopljeneMize().contains(miza)) {
+                    throw new DomenskaIzjema("Na mizi " + miza + " se igra, skupne mize pa je nimajo. Pred "
+                            + "povezavo vpiši izid ali prekliči klic.");
+                }
+            }
+        }
+    }
+
+    /* Turnirja se dotikata istih dni (enodnevni ima samo zacetek). */
+    private static boolean istiDnevi(Turnir a, Turnir b) {
+        if (a.getDatumZacetka() == null || b.getDatumZacetka() == null) {
+            return false;
+        }
+        LocalDate konecA = a.getDatumKonca() != null ? a.getDatumKonca() : a.getDatumZacetka();
+        LocalDate konecB = b.getDatumKonca() != null ? b.getDatumKonca() : b.getDatumZacetka();
+        return !a.getDatumZacetka().isAfter(konecB) && !b.getDatumZacetka().isAfter(konecA);
+    }
+
+    /* Kategorije skupine v vrstnem redu kola (V78): kot jih je razvrstil organizator,
+       ostale za njimi po turnirju (glavni prvi) in nastanku kategorije. */
+    private List<Dogodek> redDogodkov(SkupneMize skupne) {
+        Map<Long, Integer> turnir = new HashMap<>();
+        for (Turnir t : skupne.turnirji()) {
+            turnir.putIfAbsent(t.getId(), turnir.size());
+        }
+        Map<Long, Integer> mesto = new HashMap<>();
+        for (Long id : skupne.glavni().getVrstniRedDogodkov()) {
+            mesto.putIfAbsent(id, mesto.size());
+        }
+        return dogodekRepozitorij.zaTurnirje(skupne.idji()).stream()
+                .sorted(Comparator.comparing((Dogodek d) -> mesto.getOrDefault(d.getId(), Integer.MAX_VALUE))
+                        .thenComparing(d -> turnir.getOrDefault(d.getTurnir().getId(), Integer.MAX_VALUE))
+                        .thenComparing(Dogodek::getId))
+                .toList();
+    }
+
+    private static SkupneMizeDto skupneDto(SkupneMize skupne, List<Dogodek> dogodki) {
+        return new SkupneMizeDto(
+                skupne.turnirji().stream().map(MizeStoritev::turnirMiz).toList(),
+                dogodki.stream().map(d -> new KategorijaMizDto(d.getId(), d.getIme(), d.getTurnir().getId(),
+                        d.getTurnir().getIme(), d.getStatus(), d.jeEkipno())).toList(),
+                !skupne.glavni().getVrstniRedDogodkov().isEmpty());
+    }
+
+    private static TurnirMizDto turnirMiz(Turnir t) {
+        return new TurnirMizDto(t.getId(), t.getIme(), t.getDatumZacetka());
+    }
+
     // ---------- pomozno: preverbe ----------
 
-    private static void preveriMizo(Turnir turnir, int miza) {
-        if (miza < 1 || miza > turnir.getSteviloMiz()) {
+    private static void preveriMizo(Turnir glavni, int miza) {
+        if (miza < 1 || miza > glavni.getSteviloMiz()) {
             throw new NeveljavenVnosIzjema("Miza " + miza + " ne obstaja - turnir ima mize od 1 do "
-                    + turnir.getSteviloMiz() + ".");
+                    + glavni.getSteviloMiz() + ".");
         }
-        if (turnir.getIzklopljeneMize().contains(miza)) {
+        if (glavni.getIzklopljeneMize().contains(miza)) {
             throw new DomenskaIzjema("Miza " + miza + " je izklopljena.");
         }
     }
 
-    /* Sodnik je oseba s prijavo na turnir, ki v tej tekmi ne igra. Ali je zaseden
-       drugje, odloci organizator (vmesnik ga opozori). */
-    private Igralec sodnik(Turnir turnir, Tekma tekma, Long idSodnika) {
-        if (!osebeTurnirja(turnir.getId()).contains(idSodnika)) {
-            throw new NeveljavenVnosIzjema("Sodnik mora biti igralec, prijavljen na ta turnir.");
+    /* Sodnik je oseba s prijavo na enega od turnirjev s skupnimi mizami, ki v tej
+       tekmi ne igra. Ali je zaseden drugje, odloci organizator (vmesnik ga opozori). */
+    private Igralec sodnik(SkupneMize skupne, Tekma tekma, Long idSodnika) {
+        if (!osebeTurnirjev(skupne.idji()).contains(idSodnika)) {
+            throw new NeveljavenVnosIzjema(skupne.povezane()
+                    ? "Sodnik mora biti igralec, prijavljen na enega od turnirjev s temi mizami."
+                    : "Sodnik mora biti igralec, prijavljen na ta turnir.");
         }
         for (Prijava p : List.of(tekma.getPrijava1(), tekma.getPrijava2())) {
             boolean igra = (p.getIgralec() != null && p.getIgralec().getId().equals(idSodnika))
@@ -344,14 +623,13 @@ public class MizeStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Igralec z id " + idSodnika + " ne obstaja."));
     }
 
-    private Set<Long> osebeTurnirja(Long idTurnir) {
-        List<Long> turnir = List.of(idTurnir);
+    private Set<Long> osebeTurnirjev(List<Long> turnirji) {
         Set<Long> osebe = new HashSet<>();
-        prijavaRepozitorij.igralciTurnirjev(turnir, Prijava.StatusPrijave.ODJAVLJEN)
+        prijavaRepozitorij.igralciTurnirjev(turnirji, Prijava.StatusPrijave.ODJAVLJEN)
                 .forEach(v -> osebe.add(((Number) v[1]).longValue()));
-        prijavaRepozitorij.soigralciTurnirjev(turnir, Prijava.StatusPrijave.ODJAVLJEN)
+        prijavaRepozitorij.soigralciTurnirjev(turnirji, Prijava.StatusPrijave.ODJAVLJEN)
                 .forEach(v -> osebe.add(((Number) v[1]).longValue()));
-        kaderRepozitorij.igralciEkipnihTurnirjev(turnir)
+        kaderRepozitorij.igralciEkipnihTurnirjev(turnirji)
                 .forEach(v -> osebe.add(((Number) v[1]).longValue()));
         return osebe;
     }
@@ -373,10 +651,10 @@ public class MizeStoritev {
                 .orElseThrow(() -> new NiNajdenoIzjema("Tekma z id " + idTekme + " ne obstaja."));
     }
 
-    private static PredlogTekem.Nastavitve nastavitve(Turnir turnir) {
-        return new PredlogTekem.Nastavitve(turnir.getSteviloMiz() == null ? 0 : turnir.getSteviloMiz(),
-                turnir.getIzklopljeneMize(), turnir.isPorazenecSodi(), turnir.getPocitekMin(),
-                turnir.getVrstniRedTekem());
+    private static PredlogTekem.Nastavitve nastavitve(Turnir glavni, List<Dogodek> redDogodkov) {
+        return new PredlogTekem.Nastavitve(glavni.getSteviloMiz() == null ? 0 : glavni.getSteviloMiz(),
+                glavni.getIzklopljeneMize(), glavni.isPorazenecSodi(), glavni.getPocitekMin(),
+                glavni.getVrstniRedTekem(), redDogodkov.stream().map(Dogodek::getId).toList());
     }
 
     private static OsebaDto oseba(PredlogTekem.Oseba o) {
@@ -396,9 +674,10 @@ public class MizeStoritev {
             for (PredlogTekem.Stran s : List.of(v.stran1(), v.stran2())) {
                 if (s != null) s.osebe().forEach(o -> osebe.add(o.id()));
             }
+            Turnir turnir = t.getDogodek().getTurnir();
             return new TekmaMizeDto(TekmaDto.iz(t), t.getDogodek().getId(), t.getDogodek().getIme(),
                     del(t), t.getDogodek().jeEkipno(), srecanja.get(t.getId()), t.getMiza(), t.getMiza2(),
-                    t.getPoklicanaOb(), oseba(v.sodnik()), List.copyOf(osebe));
+                    t.getPoklicanaOb(), oseba(v.sodnik()), List.copyOf(osebe), turnir.getId(), turnir.getIme());
         }
 
         /* »Skupina B«, »polfinale«, »za 5.-8. mesto«, »tolažilni del«. */

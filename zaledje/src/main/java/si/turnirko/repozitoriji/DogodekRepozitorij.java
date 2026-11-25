@@ -17,6 +17,10 @@ public interface DogodekRepozitorij extends JpaRepository<Dogodek, Long> {
     @Query("SELECT d FROM Dogodek d JOIN FETCH d.turnir WHERE d.turnir.id = :idTurnir ORDER BY d.id")
     List<Dogodek> findByTurnirIdOrderByIdAsc(Long idTurnir);
 
+    /* Dogodki turnirjev s skupnimi mizami (V78), po nastanku. */
+    @Query("SELECT d FROM Dogodek d JOIN FETCH d.turnir WHERE d.turnir.id IN :idjiTurnirjev ORDER BY d.id")
+    List<Dogodek> zaTurnirje(java.util.Collection<Long> idjiTurnirjev);
+
     /* Dogodek skupaj s turnirjem v eni poizvedbi. */
     @Query("SELECT d FROM Dogodek d JOIN FETCH d.turnir WHERE d.id = :id")
     Optional<Dogodek> najdiSTurnirjem(Long id);

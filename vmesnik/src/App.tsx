@@ -11,6 +11,7 @@ import { TurnirjiStran } from './strani/TurnirjiStran'
 import { TurnirStran } from './strani/TurnirStran'
 import { DogodekStran } from './strani/DogodekStran'
 import { ListkiStran } from './strani/ListkiStran'
+import { SkupniListkiStran } from './strani/SkupniListkiStran'
 import { IzpisStran } from './strani/IzpisStran'
 import { SezonskiZapisnikStran } from './strani/SezonskiZapisnikStran'
 import { IgralciStran } from './strani/IgralciStran'
@@ -236,6 +237,15 @@ export function App() {
       {/* Natis listkov je zunaj skupne postavitve - stran brez navigacije,
           da je tiskanje čisto (turnirski dogodki in ekipna srečanja). */}
       <Route path="/dogodki/:id/listki" element={<ListkiStran />} />
+      {/* En tisk listkov vseh kategorij turnirjev na istih mizah (skupne mize, V78). */}
+      <Route
+        path="/turnirji/:id/listki"
+        element={
+          <SamoUrejevalec>
+            <SkupniListkiStran />
+          </SamoUrejevalec>
+        }
+      />
       {/* Stran za sodnika (S2): brez prijave in brez navigacije - telefon sodnika ob mizi.
           Odpre jo koda na hrbtni strani natisnjenega listka. */}
       <Route path="/s" element={<SodnikStran />} />

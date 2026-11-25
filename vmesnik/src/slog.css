@@ -34283,6 +34283,105 @@ html.uvod-tece {
   color: var(--barva-negativna-tekst);
 }
 
+/* Okno »Turnirji in kategorije« (skupne mize, V78): turnirji na istih mizah in vrstni red
+   kategorij v kolu. */
+.mize-skupne {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.mize-skupne__razdelek {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mize-skupne__naslov {
+  margin: 0;
+  font: 700 13px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mize-skupne__seznam {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--barva-crta);
+}
+
+.mize-skupne__vrstica {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--barva-crta);
+  font-size: 15px;
+}
+
+.mize-skupne__st {
+  min-width: 24px;
+  font: 600 13px var(--pisava-mono);
+  color: var(--barva-crnilo-3);
+}
+
+.mize-skupne__ime {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mize-skupne__oznaka {
+  font-weight: 300;
+  color: var(--barva-crnilo-3);
+}
+
+.mize-skupne__premik {
+  display: flex;
+  gap: 4px;
+}
+
+.mize-skupne__gumb {
+  width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--barva-crnilo);
+  background: none;
+  color: var(--barva-crnilo);
+  font: 500 16px var(--pisava-mono);
+  cursor: pointer;
+}
+
+.mize-skupne__gumb:hover:not(:disabled) {
+  background: var(--barva-glavna-mehko);
+}
+
+.mize-skupne__gumb:disabled {
+  border-color: var(--barva-crta);
+  color: var(--barva-crnilo-3);
+  cursor: not-allowed;
+}
+
+.mize-skupne__povezi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.mize-skupne__povezi .mize-okno__polje {
+  flex: 1 1 240px;
+}
+
+.mize-skupne__povezi select {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--barva-crnilo);
+  background: var(--barva-bela);
+  font: 400 16px var(--pisava-telo);
+}
+
 .mize-okno__potrditev {
   display: flex;
   align-items: center;
@@ -36909,6 +37008,27 @@ a.mize-okno__gumb {
 .listki-tabela__oznaka-ime--ostali {
   font-size: 14px;
   line-height: 1.15;
+}
+
+/* Skupni tisk vseh kategorij (skupne mize, V78): ime kategorije nad oznako skupine v prvi
+   vrstici kategorije, med kategorijami debelejša črta. */
+.listki-tabela__oznaka-besedilo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.listki-tabela__oznaka-kat {
+  font: 600 10px / 1.2 var(--pisava-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--barva-crnilo-3);
+  overflow-wrap: anywhere;
+}
+
+.listki-tabela__vrsta--kategorija {
+  border-top: 2px solid var(--barva-crnilo);
 }
 
 .listki-tabela__oznaka-meta {

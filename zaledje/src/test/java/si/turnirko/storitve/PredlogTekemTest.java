@@ -5,8 +5,9 @@
      izklopljena miza ne dobi predlogov;
    - kdor igra ali sodi tekmo v igri, ni predlagan - po OSEBI (isti igralec v
      dvojicah ali drugem dogodku); tekma ostane na seznamu z razlogom;
-   - vrstni red: zaostanek (lastnik: zaostala skupina pred pocitkom), pocitek,
-     nizje kolo, najdlje caka, stalen vrstni red;
+   - vrstni red: strogo po kolih (lastnik 25. 11. 2026; izlocilni del steje kot
+     naslednja kola za skupinami), v kolu pocitek, vrstni red kategorij (skupne
+     mize), skupina, stalen vrstni red;
    - porazenec zadnje tekme na mizi sodi naslednjo: samo po tekmi posameznikov,
      odigrani ali predani, isti dan, ce od tedaj ni igral ali sodil; tekme s
      takim igralcem gredo za ostale;
@@ -128,9 +129,9 @@ class PredlogTekemTest {
 
     // ---------- vrstni red ----------
 
-    /* Lastnik 23. 11. 2026: zaostala skupina ima prednost pred pocitkom. Tekma 1.
-       kola skupine A, ki je zaostala (igralec 1 je bil zaseden drugje in je pravkar
-       koncal), gre pred 2. kolo skupine B, ceprav so tam vsi spocit. */
+    /* Strogo po kolih (lastnik 25. 11. 2026): zaostala tekma 1. kola skupine A
+       (igralec 1 je bil zaseden drugje in je pravkar koncal) gre pred 2. kolo skupine
+       B, ceprav so tam vsi spocit - pocitek odloca samo v istem kolu. */
     @Test
     void zaostalaTekmaNizjegaKolaPredPocitkom() {
         Tekma drugje = t(1).dogodek(2).skupina(50).igralca(1, 9).koncana(ZDAJ.minusMinutes(1)).v();
@@ -141,16 +142,14 @@ class PredlogTekemTest {
         Rezultat r = izracunaj(nast(1), drugje, zaostala, a3, b2, b3);
 
         assertEquals(List.of(2L, 4L, 3L, 5L), idji(r));
-        assertTrue(kandidat(r, 2).razlogi().contains("do konca skupine še 3 kola"),
-                kandidat(r, 2).razlogi().toString());
+        assertTrue(kandidat(r, 2).razlogi().contains("1. kolo"), kandidat(r, 2).razlogi().toString());
         assertTrue(kandidat(r, 2).razlogi().contains("Igralec1: zadnja tekma pred 1 min"),
                 kandidat(r, 2).razlogi().toString());
     }
 
-    /* Lastnik 23. 11. 2026 (turnir s skupinami D, G, J po 3 igralce): skupina po 3
-       ima prav tako 3 kola kot skupina po 4, zato njena edina tekma 1. kola pride
-       za 1. kolom skupine C, ne na konec. V istem kolu gredo skupine po vrsti A, B,
-       C, D (ne po id-ju tekem). */
+    /* Lastnik 23. 11. 2026 (turnir s skupinami D, G, J po 3 igralce): edina tekma
+       1. kola skupine po 3 pride za 1. kolom skupine C, ne na konec. V istem kolu
+       gredo skupine po vrsti A, B, C, D (ne po id-ju tekem). */
     @Test
     void skupinaPoTriVKoluMedSkupinamiPoStiri() {
         List<Tekma> tekme = new ArrayList<>();
@@ -163,16 +162,14 @@ class PredlogTekemTest {
         assertEquals(List.of(11L, 12L, 21L, 22L, 31L, 32L, 1L,
                         13L, 14L, 23L, 24L, 33L, 34L, 2L,
                         15L, 16L, 25L, 26L, 35L, 36L, 3L), idji(r));
-        assertTrue(kandidat(r, 1).razlogi().contains("do konca skupine še 3 kola"),
-                kandidat(r, 1).razlogi().toString());
         assertTrue(kandidat(r, 1).razlogi().contains("1. kolo"), kandidat(r, 1).razlogi().toString());
     }
 
-    /* Lastnik 23. 11. 2026: vecja skupina prej, da konca hkrati z ostalimi. Skupina
-       po 5 (5 kol) odigra 1. in 2. kolo, preden pride na vrsto 1. kolo skupine po 4;
-       pri enakem stevilu kol do konca gre nizje kolo prej. */
+    /* Lastnik 25. 11. 2026 (preklicuje »vecja skupina prej« s 23. 11.): strogo po
+       kolih, zato skupina po 5 v vsakem kolu igra skupaj s skupino po 4 in konca
+       zadnja (4. in 5. kolo igra sama). */
     @Test
-    void vecjaSkupinaPrej() {
+    void skupinaPoPetIgraPoKolihInKoncaZadnja() {
         List<Tekma> tekme = new ArrayList<>();
         for (int kolo = 1; kolo <= 5; kolo++) {
             tekme.add(t(50 + kolo).skupina(50, "E").kolo(kolo).igralca(50 + 2 * kolo, 51 + 2 * kolo).v());
@@ -181,7 +178,7 @@ class PredlogTekemTest {
             tekme.add(t(10 + kolo).skupina(10, "A").kolo(kolo).igralca(10 + 2 * kolo, 11 + 2 * kolo).v());
         }
         Rezultat r = PredlogTekem.izracunaj(tekme, nast(1), ZDAJ);
-        assertEquals(List.of(51L, 52L, 11L, 53L, 12L, 54L, 13L, 55L), idji(r));
+        assertEquals(List.of(11L, 51L, 12L, 52L, 13L, 53L, 54L, 55L), idji(r));
     }
 
     /* Lastnik 23. 11. 2026: kategorije se izmenjujejo po kolih. Kategorija z vec
@@ -218,34 +215,82 @@ class PredlogTekemTest {
         assertEquals(List.of(2L, 1L), idji(izracunaj(nast(1), kolo2, kolo1)));
     }
 
+    /* Merilo »najdlje caka« je odpadlo (25. 11. 2026): v istem kolu gredo tekme po
+       skupinah kot na listkih, ne po tem, kdo dlje caka. */
     @Test
-    void najdljeCakaPrej() {
+    void vKoluPoSkupinahNeNajdljeCaka() {
         Tekma prej1 = t(1).igralca(1, 9).koncana(ZDAJ.minusMinutes(10)).v();
         Tekma prej2 = t(2).skupina(20).igralca(3, 8).koncana(ZDAJ.minusMinutes(25)).v();
         Tekma cakaDeset = t(3).igralca(1, 2).v();
         Tekma cakaPetindvajset = t(4).skupina(20).igralca(3, 4).v();
         Tekma seNiIgral = t(5).skupina(30).igralca(5, 6).v();
         Rezultat r = izracunaj(nast(1), prej1, prej2, cakaDeset, cakaPetindvajset, seNiIgral);
-        assertEquals(List.of(5L, 4L, 3L), idji(r));
+        assertEquals(List.of(3L, 4L, 5L), idji(r));
         assertTrue(kandidat(r, 5).razlogi().contains("prva tekma"));
         assertTrue(kandidat(r, 4).razlogi().contains("premor 25 min"), kandidat(r, 4).razlogi().toString());
     }
 
-    /* Izlocilni del: kola do konca veje. Cetrtfinale (3 kola do konca) pred skupino,
-       v kateri imata oba se 2 tekmi. */
+    /* Izlocilni del steje kot naslednja kola za zadnjim kolom skupin svoje kategorije
+       (lastnik 25. 11. 2026): pri 3 kolih skupin je cetrtfinale »4. kolo«. Gre za 3. kolom
+       in skupaj s 4. kolom skupine po 5 druge kategorije, pred njenim 5. kolom. */
     @Test
-    void zaostanekIzlocilnegaDelaSoKolaDoKonca() {
+    void izlocilniDelStejeKotNaslednjaKola() {
+        List<Tekma> tekme = new ArrayList<>();
+        for (int kolo = 1; kolo <= 3; kolo++) {
+            tekme.add(t(20 + kolo).dogodek(2).skupina(20, "1").kolo(kolo).igralca(40 + 2 * kolo, 41 + 2 * kolo)
+                    .koncana(ZDAJ.minusMinutes(90)).v());
+        }
         Tekma cetrtfinale = t(1).dogodek(2).faza(FazaTekme.GLAVNI).skupina(null).kolo(1).igralca(1, 2).v();
         Tekma polfinale = t(2).dogodek(2).faza(FazaTekme.GLAVNI).skupina(null).kolo(2).brezIgralcev()
                 .status(StatusTekme.CAKA).v();
-        Tekma finale = t(3).dogodek(2).faza(FazaTekme.GLAVNI).skupina(null).kolo(3).brezIgralcev()
-                .status(StatusTekme.CAKA).v();
-        Tekma skupina1 = t(4).igralca(5, 6).v();
-        Tekma skupina2 = t(5).igralca(5, 6).kolo(2).v();
-        Rezultat r = izracunaj(nast(1), cetrtfinale, polfinale, finale, skupina1, skupina2);
-        assertEquals(1L, idji(r).get(0));
-        assertTrue(kandidat(r, 1).razlogi().contains("do konca mreže še 3 kola"),
-                kandidat(r, 1).razlogi().toString());
+        tekme.add(cetrtfinale);
+        tekme.add(polfinale);
+        Tekma kolo3 = t(13).skupina(10, "1").kolo(3).igralca(5, 6).v();
+        Tekma kolo4 = t(14).skupina(10, "1").kolo(4).igralca(7, 8).v();
+        Tekma kolo5 = t(15).skupina(10, "1").kolo(5).igralca(9, 11).v();
+        tekme.addAll(List.of(kolo5, kolo4, kolo3));
+
+        Rezultat r = PredlogTekem.izracunaj(tekme, nast(1), ZDAJ);
+
+        assertEquals(List.of(13L, 14L, 1L, 15L), idji(r));
+        assertTrue(kandidat(r, 1).razlogi().contains("šteje kot 4. kolo"), kandidat(r, 1).razlogi().toString());
+    }
+
+    /* Skupne mize (V78): v kolu gredo kategorije v vrstnem redu, ki ga je nastavil
+       organizator (U15m, U15z, U21m, U21z), nato naslednje kolo v istem redu. */
+    @Test
+    void vKoluPoVrstnemReduKategorij() {
+        List<Tekma> tekme = new ArrayList<>();
+        long[] dogodki = {21, 11, 22, 12};
+        for (int i = 0; i < dogodki.length; i++) {
+            long d = dogodki[i];
+            tekme.add(t(d * 10 + 1).dogodek(d).skupina(d, "1").kolo(1).igralca(d * 10 + 1, d * 10 + 2).v());
+            tekme.add(t(d * 10 + 2).dogodek(d).skupina(d, "1").kolo(2).igralca(d * 10 + 3, d * 10 + 4).v());
+        }
+        Nastavitve n = new Nastavitve(1, Set.of(), false, 3, List.of(), List.of(11L, 12L, 21L, 22L));
+
+        Rezultat r = PredlogTekem.izracunaj(tekme, n, ZDAJ);
+
+        assertEquals(List.of(111L, 121L, 211L, 221L, 112L, 122L, 212L, 222L), idji(r));
+        // brez reda kategorij po id-ju dogodka
+        assertEquals(List.of(111L, 121L, 211L, 221L, 112L, 122L, 212L, 222L),
+                idji(PredlogTekem.izracunaj(tekme, nast(1), ZDAJ)));
+        Nastavitve obrnjeno = new Nastavitve(1, Set.of(), false, 3, List.of(), List.of(22L, 21L));
+        assertEquals(List.of(221L, 211L, 111L, 121L, 222L, 212L, 112L, 122L),
+                idji(PredlogTekem.izracunaj(tekme, obrnjeno, ZDAJ)));
+    }
+
+    /* Pocitek odloca pred vrstnim redom kategorij, a samo v istem kolu: utrujen
+       igralec prve kategorije pocaka za spocitimi drugih kategorij istega kola. */
+    @Test
+    void vKoluPocitekPredRedomKategorij() {
+        Tekma koncana = t(1).dogodek(1).kolo(1).igralca(1, 9).koncana(ZDAJ.minusMinutes(1)).v();
+        Tekma utrujen = t(2).dogodek(1).kolo(2).igralca(1, 2).v();
+        Tekma spocit = t(3).dogodek(2).skupina(20).kolo(2).igralca(3, 4).v();
+        Tekma naslednjeKolo = t(4).dogodek(2).skupina(20).kolo(3).igralca(5, 6).v();
+        Nastavitve n = new Nastavitve(1, Set.of(), false, 3, List.of(), List.of(1L, 2L));
+        assertEquals(List.of(3L, 2L, 4L), idji(PredlogTekem.izracunaj(
+                List.of(koncana, utrujen, spocit, naslednjeKolo), n, ZDAJ)));
     }
 
     // ---------- porazenec sodi ----------

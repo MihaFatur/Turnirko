@@ -42,6 +42,8 @@ export interface PrazniListki {
 
 interface Lastnosti {
   vrsta: VrstaListka
+  /* Besedilo povezave nazaj (privzeto »Dogodek«; skupni tisk se vrne na Mize). */
+  nazaj?: string
   /* »Jesenski turnir NTK Celje · Moški posamezno«. */
   nadnaslov: string
   naslov: string
@@ -121,6 +123,7 @@ function Ploscica({
 
 export function ListkiPloskev({
   vrsta,
+  nazaj = 'Dogodek',
   nadnaslov,
   naslov,
   povezavaNazaj,
@@ -206,7 +209,7 @@ export function ListkiPloskev({
     return (
       <div className="listki-ploskev listki-ploskev--telefon zaslon-samo">
         <header className="listki-ploskev__glava">
-          <Link to={povezavaNazaj} className="listki-ploskev__nazaj" aria-label="Nazaj na dogodek">
+          <Link to={povezavaNazaj} className="listki-ploskev__nazaj" aria-label={`Nazaj: ${nazaj}`}>
             ←
           </Link>
           <h1 className="listki-ploskev__naslov">{naslov}</h1>
@@ -321,7 +324,7 @@ export function ListkiPloskev({
     <div className="listki-ploskev zaslon-samo">
       <header className="listki-ploskev__glava">
         <Link to={povezavaNazaj} className="listki-ploskev__nazaj">
-          ← Dogodek
+          ← {nazaj}
         </Link>
         <div className="listki-ploskev__naslovi">
           <span className="listki-ploskev__nad">{nadnaslov}</span>
@@ -376,13 +379,21 @@ export function ListkiPloskev({
                   </div>
                 )}
                 <div className="listki-tabela__vrste">
-                  {tabela.vrste.map((v) => {
+                  {tabela.vrste.map((v, i) => {
                     const vsi = v.celice.flat()
                     const izb = vsi.filter((l) => izbira.izbrani.has(l.tekma.id)).length
+                    /* Skupni tisk: prva vrstica kategorije nosi njeno ime in debelejšo črto. */
+                    const novaKategorija = !!v.kategorija && (i === 0 || tabela.vrste[i - 1].kategorija !== v.kategorija)
                     return (
-                      <div key={v.kljuc} className="listki-tabela__vrsta">
+                      <div
+                        key={v.kljuc}
+                        className={'listki-tabela__vrsta' + (novaKategorija && i > 0 ? ' listki-tabela__vrsta--kategorija' : '')}
+                      >
                         <button type="button" className="listki-tabela__oznaka" onClick={() => preklopiSklop(vsi)}>
-                          <span className="listki-tabela__oznaka-ime">{v.naslov}</span>
+                          <span className="listki-tabela__oznaka-besedilo">
+                            {novaKategorija && <span className="listki-tabela__oznaka-kat">{v.kategorija}</span>}
+                            <span className="listki-tabela__oznaka-ime">{v.naslov}</span>
+                          </span>
                           <span className="listki-tabela__oznaka-meta">{izb || ''}</span>
                         </button>
                         {v.celice.map((celica, i) => (
@@ -398,7 +409,10 @@ export function ListkiPloskev({
                   {tabela.ostali.map((o) => (
                     <div key={o.kljuc} className="listki-tabela__vrsta listki-tabela__vrsta--ostali">
                       <button type="button" className="listki-tabela__oznaka" onClick={() => preklopiSklop(o.listki)}>
-                        <span className="listki-tabela__oznaka-ime listki-tabela__oznaka-ime--ostali">{o.naslov}</span>
+                        <span className="listki-tabela__oznaka-besedilo">
+                          {o.kategorija && <span className="listki-tabela__oznaka-kat">{o.kategorija}</span>}
+                          <span className="listki-tabela__oznaka-ime listki-tabela__oznaka-ime--ostali">{o.naslov}</span>
+                        </span>
                         <span className="listki-tabela__oznaka-meta">
                           {o.listki.filter((l) => izbira.izbrani.has(l.tekma.id)).length || ''}
                         </span>
@@ -562,10 +576,15 @@ export function ListkiPloskev({
                     <span className="listki-ploskev__vrstica-naslov" id="listki-vrstni-red">Vrstni red na listih</span>
                     <div className="listki-ploskev__izbirnik" role="group" aria-labelledby="listki-vrstni-red">
                       {(
-                        [
-                          ['kola', 'Po kolih', '1. kolo skupine 1, 2, 3 …, nato 2. kolo …'],
-                          ['skupine', 'Po skupinah', 'Vsa kola skupine 1, nato skupine 2 …'],
-                        ] as const
+                        razvrstitev.poKategorijah
+                          ? ([
+                              ['kola', 'Po kolih', '1. kolo vseh kategorij po vrsti, nato 2. kolo …'],
+                              ['skupine', 'Po kategorijah', 'Vse tekme prve kategorije, nato druge …'],
+                            ] as const)
+                          : ([
+                              ['kola', 'Po kolih', '1. kolo skupine 1, 2, 3 …, nato 2. kolo …'],
+                              ['skupine', 'Po skupinah', 'Vsa kola skupine 1, nato skupine 2 …'],
+                            ] as const)
                       ).map(([vrednost, oznaka, opis]) => (
                         <button
                           key={vrednost}

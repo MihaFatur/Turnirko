@@ -30,6 +30,19 @@
       izločilnega dela) z nenatisnjenimi listki. »Na vrsti: 2. kolo · 16 listkov« jo ponovno izbere,
       »Vsi nenatisnjeni« in »Počisti« sta ob njej. Po potrjenem tisku se izbira vrne na
       privzetek, torej na naslednje kolo.
+    - **En tisk vseh kategorij** (skupne mize, V78, lastnik 25. 11. 2026;
+      `/turnirji/:id/listki`, `SkupniListkiStran`, samo organizator; na strani Mize »Listki za
+      tiskanje → Vse kategorije · en tisk«, ko teče vsaj dve posamični kategoriji). Zajame
+      posamične kategorije v teku vseh turnirjev s skupnimi mizami v vrstnem redu kola
+      (`MizeTurnirjaDto.skupne.kategorije`). Ista ploskev (`ListkiPloskev`): vrstica tabele je
+      kategorija in skupina (`PripravljenListek.kategorija`, ime kategorije nad oznako v prvi
+      vrstici, debela črta med kategorijami), stolpec kolo velja za vse kategorije, zato »Na
+      vrsti: 1. kolo« izbere 1. kolo vseh. **Po kolih** (`listkiVsehKategorij`): kolo po vrsti
+      kot predlog tekem (izločilni del za zadnjim kolom skupin kategorije), v kolu kategorije
+      po vrsti, v kategoriji kot na njeni strani; **po kategorijah**: kategorija za kategorijo.
+      Glava listka nosi turnir svoje kategorije. Sled tiska se zapiše po dogodkih
+      (`useIzbiraListkov(null, …)`). Prazni listki in ekipni zapisniki ostanejo na strani
+      kategorije. Listek ob klicu na strani Mize dobi turnir tekme (`NalogaTiska.imeTurnirja`).
     - **Skupine na listih: po skupinah ali po kolih** (lastnik 23. 11. 2026;
       `RazvrstitevListkov`, »Vrstni red na listih« v desnem stolpcu, samo pri vsaj dveh
       skupinah s pripravljenimi tekmami, `imaVecSkupin`). Po skupinah (privzeto): vsa kola

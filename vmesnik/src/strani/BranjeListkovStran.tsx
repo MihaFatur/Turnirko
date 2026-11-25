@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { imeUdelezenca } from '../api/tipi'
 import type {
+  BranjaTurnirjaDto,
   BranjeListkaDto,
   CeliceListkaDto,
   KandidatListkaDto,
@@ -109,6 +110,9 @@ export function BranjeListkovStran() {
   const branja = useQuery({
     queryKey: kljucBranj,
     queryFn: () => branjeListkovApi.seznam(idTurnirja),
+    /* Skupne mize (V78): pult bere tudi listke turnirja na istih mizah; njihova kategorija
+       dobi ime turnirja (»Moški · U21«), da se loči od enako imenovane tega turnirja. */
+    select: (p: BranjaTurnirjaDto) => zImenomTujegaTurnirja(p, idTurnirja),
     enabled: omogoceno,
     /* Dokler se kaj bere, vsaki 1,5 s (branje traja nekaj sekund); sicer na 3 s
        (F4.5): isti turnir lahko vodita dva organizatorja, listki pa pridejo tudi s
@@ -840,6 +844,22 @@ function IzrezCelice({
       style={{ ...slog, backgroundImage: `url(${naslovSlike(slika.data)})` }}
     />
   )
+}
+
+function zImenomTujegaTurnirja(p: BranjaTurnirjaDto, idTurnirja: number): BranjaTurnirjaDto {
+  const oznaci = (t: TekmaListkaDto): TekmaListkaDto =>
+    t.idTurnir === idTurnirja ? t : { ...t, imeDogodka: `${t.imeDogodka} · ${t.imeTurnirja}` }
+  if (!p.branja.some((b) => (b.tekma && b.tekma.idTurnir !== idTurnirja) || b.kandidati.some((k) => k.tekma.idTurnir !== idTurnirja))) {
+    return p
+  }
+  return {
+    ...p,
+    branja: p.branja.map((b) => ({
+      ...b,
+      tekma: b.tekma ? oznaci(b.tekma) : null,
+      kandidati: b.kandidati.map((k) => ({ ...k, tekma: oznaci(k.tekma) })),
+    })),
+  }
 }
 
 function imeTekme(t: TekmaListkaDto): string {

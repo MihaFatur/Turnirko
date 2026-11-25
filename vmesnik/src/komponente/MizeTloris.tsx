@@ -85,10 +85,12 @@ export function oznakaListkov(k: KategorijaListkov) {
 }
 
 /* Pot do strani »Listki za tiskanje« (izbira listkov po sklopih) brez poti čez kategorijo:
-   ena kategorija v teku je povezava, več jih je v spustnem meniju. */
-function ListkiZaTiskanje({ kategorije }: { kategorije: KategorijaListkov[] }) {
+   ena kategorija v teku je povezava, več jih je v spustnem meniju. Ob vsaj dveh posamičnih
+   kategorijah je prva postavka en tisk za vse (skupne mize, V78: tudi kategorije drugega
+   turnirja na teh mizah). */
+function ListkiZaTiskanje({ kategorije, skupniTisk }: { kategorije: KategorijaListkov[]; skupniTisk?: string }) {
   if (kategorije.length === 0) return null
-  if (kategorije.length === 1) {
+  if (kategorije.length === 1 && !skupniTisk) {
     return (
       <Link to={`/dogodki/${kategorije[0].id}/listki`} className="mize__zaslon-povezava">
         {oznakaListkov(kategorije[0])}
@@ -97,8 +99,15 @@ function ListkiZaTiskanje({ kategorije }: { kategorije: KategorijaListkov[] }) {
   }
   return (
     <MeniDejanj naslov="Listki za tiskanje po kategorijah" oznaka="Listki za tiskanje" razred="mize__zaslon-povezava mize__listki">
-      {(zapri) =>
-        kategorije.map((k) => (
+      {(zapri) => [
+        ...(skupniTisk
+          ? [
+              <Link key="vse" to={skupniTisk} role="menuitem" className="uporabnik-meni__postavka" onClick={zapri}>
+                Vse kategorije · en tisk
+              </Link>,
+            ]
+          : []),
+        ...kategorije.map((k) => (
           <Link
             key={k.id}
             to={`/dogodki/${k.id}/listki`}
@@ -109,8 +118,8 @@ function ListkiZaTiskanje({ kategorije }: { kategorije: KategorijaListkov[] }) {
             {k.ime}
             {k.ekipno ? ' · zapisniki' : ''}
           </Link>
-        ))
-      }
+        )),
+      ]}
     </MeniDejanj>
   )
 }
@@ -121,6 +130,7 @@ export function GlavaMize({
   ura,
   kazalniki,
   listki,
+  skupniTisk,
 }: {
   idTurnirja: number
   imeTurnirja: string
@@ -129,6 +139,8 @@ export function GlavaMize({
   kazalniki?: { proste: number; vIgri: number; naVrsti: number }
   /* Kategorije v teku (gumb »Listki za tiskanje«). */
   listki: KategorijaListkov[]
+  /* Pot do enega tiska vseh kategorij (skupne mize, V78). */
+  skupniTisk?: string
 }) {
   return (
     <div className="mize__glava">
@@ -152,7 +164,7 @@ export function GlavaMize({
             <Kazalnik vrednost={kazalniki.naVrsti} oznaka="na vrsti" />
           </div>
         )}
-        <ListkiZaTiskanje kategorije={listki} />
+        <ListkiZaTiskanje kategorije={listki} skupniTisk={skupniTisk} />
         {/* Zaslon za igralce je ločena stran celega zaslona; odpre se v novem oknu (drugi zaslon). */}
         <a
           className="mize__zaslon-povezava"
@@ -188,6 +200,8 @@ export interface UrejanjeDvorane {
   naPocitek: (minute: number) => void
   naPisk: (vklopljen: boolean) => void
   odstraniZadnjo: () => void
+  /* Okno »Turnirji in kategorije«: skupne mize in vrstni red kategorij (V78). */
+  naSkupne: () => void
   konec: () => void
 }
 
@@ -267,6 +281,9 @@ export function CrnaVrstica({
               onClick={urejanje.odstraniZadnjo}
             >
               − Odstrani zadnjo
+            </button>
+            <button type="button" className="mize__d-gumb" onClick={urejanje.naSkupne}>
+              Turnirji in kategorije
             </button>
             <button type="button" className="mize__d-gumb mize__d-gumb--konec" onClick={urejanje.konec}>
               Končaj urejanje

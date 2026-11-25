@@ -10,6 +10,7 @@ import type {
   MizeTurnirjaDto,
   NastavitveMizVnos,
   OsebaMizeDto,
+  TurnirMizDto,
   MeritevBranjaDto,
   MrezeStevkDto,
   NapakeMrezeDto,
@@ -317,6 +318,14 @@ export const mizeApi = {
      seznam vrne samodejni red. */
   vrstniRed: (idTurnir: number, idjiTekem: number[]) =>
     api.posodobi<void>(`/turnirji/${idTurnir}/mize/vrstni-red`, { idjiTekem }),
+  /* Skupne mize (V78): vrstni red kategorij v kolu (prazen = privzeti), turnirji, s
+     katerimi sme organizator ta turnir povezati, povezava in razdružitev. */
+  redKategorij: (idTurnir: number, idjiDogodkov: number[]) =>
+    api.posodobi<void>(`/turnirji/${idTurnir}/mize/red-kategorij`, { idjiDogodkov }),
+  zaPovezavo: (idTurnir: number) => api.vrni<TurnirMizDto[]>(`/turnirji/${idTurnir}/mize/za-povezavo`),
+  povezi: (idTurnir: number, idTurnirja: number) =>
+    api.posodobi<void>(`/turnirji/${idTurnir}/mize/skupne`, { idTurnirja }),
+  razdruzi: (idTurnir: number) => api.izbrisi(`/turnirji/${idTurnir}/mize/skupne`),
   /* Klic na mizo; isti klic tekmo premakne ali zamenja sodnika. */
   poklici: (idTekme: number, vnos: KlicTekmeVnos) => api.posodobi<void>(`/tekme/${idTekme}/klic`, vnos),
   preklici: (idTekme: number) => api.izbrisi(`/tekme/${idTekme}/klic`),

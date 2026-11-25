@@ -25,7 +25,27 @@
   (`turnir.pocitek_min`, 0–30).
 - Stran je za prenosnik na pultu. Na telefonu deluje, a zanj ni optimizirana.
 
-## Model (V76)
+## Odločitve lastnika (25. 11. 2026): skupne mize in strogo po kolih
+
+Vprašanje lastnika: v isti dvorani pod istim organizatorjem igrata hkrati dva turnirja
+(npr. U21 moški in ženske ter U15 moški in ženske) na istih mizah; organizator naj ju na
+strani Mize in pri tisku listkov vidi kot celoto, gledalec pa kot prej.
+
+- **Povezavo naredi organizator** na strani Mize (Uredi dvorano → Turnirji in kategorije),
+  ne samodejno po dnevu. Povezati sme samo **svoje turnirje** (vedno isti račun) na **isti
+  dan**.
+- **Vrstni red kategorij v kolu nastavi organizator** (npr. U15m, U15ž, U21m, U21ž).
+- **Predlog gre strogo po kolih, povsod** (tudi en sam turnir): najprej celo 1. kolo vseh
+  skupin vseh kategorij, nato 2. kolo … To **preklicuje »večja skupina prej«** s 23. 11.
+  (skupina po 5 zdaj konča zadnja). **Krog izločilne mreže šteje kot naslednje kolo** za
+  zadnjim kolom skupin svoje kategorije.
+- **Poraženec sodi katerokoli** naslednjo tekmo na mizi, tudi iz drugega turnirja.
+- **En tisk listkov** za vse kategorije obeh turnirjev.
+- Skupno je tudi **branje listkov na pultu, zaslon za igralce, počitek in »poraženec
+  sodi«** (število in izklopljene mize tako ali tako).
+- Ni bilo nujno za soboto 28. 11. (»lahko pozneje«).
+
+## Model (V76, V78)
 
 - `turnir.stevilo_miz` je 1–99 (toliko jih prebere okence listka, `MizaListka`).
   Vrednost `null` pomeni, da mize niso nastavljene in klic ni mogoč.
@@ -46,6 +66,45 @@
   ob nastanku. Počitek zato upošteva samo igrane tekme (ne `PROSTO`, ne prenesene).
 - Miza ostane zapisana tudi na končani tekmi. Iz nje se ve, kdo je na mizi zadnji
   izgubil.
+
+## Skupne mize (V78, `MizeStoritev`)
+
+- `turnir.id_skupne_mize` kaže na **glavni turnir** skupine (NULL = sam ali glavni). Skupina
+  je globoka en nivo: ko se pridruži turnir, ki že ima člane, gredo vsi pod novega glavnega.
+  Glavni nosi **nastavitve miz** (`stevilo_miz`, `izklopljene_mize`, `porazenec_sodi`,
+  `pocitek_min`), **ročni vrstni red** (`vrstni_red_tekem`) in **vrstni red kategorij**
+  (`vrstni_red_dogodkov`, id-ji dogodkov). Nastavitve članov se med povezavo ne berejo.
+- Turnir brez povezave je skupina enega: vse poti delujejo kot prej.
+- **Pregled** (`GET …/mize` kateregakoli člana) sestavi posnetek vseh turnirjev skupine;
+  `MizeTurnirjaDto.skupne` nosi turnirje (glavni prvi) in kategorije v vrstnem redu kola,
+  `TekmaMizeDto` turnir tekme. Pravica: dostop do turnirja, ki ga uporabnik odpre; dejanja
+  na tekmi preverijo turnir tekme.
+- **Povezava** `PUT …/mize/skupne {idTurnirja}`: ta turnir (z vsemi, s katerimi že deli
+  mize) se pridruži skupini izbranega. Pogoji: vsi turnirji obeh skupin so
+  organizatorjevi (`preveriTurnir`, uvoženi odpadejo), turnirja se dotikata istih dni,
+  mize v igri se ne prekrivajo in obstajajo v skupnih mizah. Nastavitve ostanejo
+  izbranega, razen če jih ta še nima (takrat jih dobi od pridruženega). Vrstni red
+  kategorij pridruženih gre za že razvrščenimi. `GET …/mize/za-povezavo` ponudi
+  organizatorjeve turnirje istih dni (`najdiVObdobju` + `smeUrejatiTurnir`).
+- **Razdružitev** `DELETE …/mize/skupne`: turnir dobi kopijo nastavitev in vrstnih redov
+  skupine (tekme v igri ostanejo na svojih mizah). Če odide glavni, skupino prevzame
+  naslednji (po datumu in id).
+- **Vrstni red kategorij** `PUT …/mize/red-kategorij {idjiDogodkov}`: samo dogodki
+  turnirjev skupine; prazen seznam = privzeti red (po turnirju, glavni prvi, nato po
+  nastanku kategorije).
+- **Zaklepi:** `Zaklepi.Vrsta.MIZE` s ključem glavnega turnirja, vedno ZA zaklepom turnirja
+  (tekmovanje → mize → rating). Klic: zaklep turnirja tekme, nato mize. Nastavitve: turnir
+  glavnega (entiteta z verzijo), nato mize. Povezava: vsi turnirji obeh skupin po vrsti
+  id-jev, nato mize obeh. Če se povezava spremeni, medtem ko zahteva čaka, ta odneha
+  (»Skupne mize turnirja so se ravno spremenile«); miza z listka se takrat preskoči.
+- **Sodnik** je igralec kateregakoli turnirja skupine; `osebe` vrne vse.
+- **Branje listkov** (`BranjeListkovStoritev`): pult bere kode in imena tekem vseh turnirjev
+  skupine, seznam kaže branja vseh. Branje ostane na turnirju, kjer je bila fotografija
+  poslana; potrditev tekme drugega turnirja preveri še dostop do njega. Stikalo »Sodniki
+  slikajo listke« se nastavi vsem turnirjem skupine.
+- **Tisk** (`/turnirji/:id/listki`, `SkupniListkiStran`): en tisk vseh posamičnih kategorij
+  v teku, glej `docs/pravila/tisk.md`.
+- Gledalec povezave ne vidi: nobena javna pot je ne bere.
 
 ## Klic, premik, preklic (`MizeStoritev`)
 
@@ -87,27 +146,24 @@
   z razlogom.
 - **Vrstni red** (vsako merilo odloči šele pri izenačenju prejšnjega):
   1. tekme brez poraženca, ki čaka na sojenje, pridejo pred tekme s takim igralcem;
-  2. **zaostanek**: koliko kol ima skupina od kola te tekme do konca (v izločilnem
-     delu mreža). Šteje skupina, ne igralec (lastnik 23. 11. 2026): skupina po 3 ima
-     3 kola kot skupina po 4, zato njeno 1. kolo pride med 1. kola ostalih, ne na
-     konec (prej je štel igralec z največ preostalimi tekmami in skupine po 3 so
-     zdrsnile za vse skupine po 4). Posledice:
+  2. **strogo po kolih** (lastnik 25. 11. 2026, velja povsod): kolo skupine, v izločilnem
+     delu (glavna in tolažilna mreža, žrebi SV regije) krog mreže **za zadnjim kolom
+     skupin svoje kategorije** (pri 3 kolih skupin je 1. krog mreže 4. kolo). Posledice:
      - **zaostala tekma** nižjega kola gre pred višje kolo drugih skupin, tudi pred
        počitkom;
-     - **večja skupina prej**: skupina po 5 (5 kol) odigra 1. in 2. kolo pred 1. kolom
-       skupin po 4, da konča hkrati z njimi. Njeni igralci zato lahko igrajo dve koli
-       zapored brez počitka;
-     - **kategorije se izmenjujejo po kolih**: ocene izločilnega dela, ki sledi, ni,
-       zato kategorija z več skupinami ne gre vsa naprej;
+     - skupina po 3 (3 kola) gre v kolu med skupinami po 4;
+     - **skupina po 5 konča zadnja** (4. in 5. kolo igra sama); to preklicuje »večja
+       skupina prej« s 23. 11. 2026;
+     - kategorije gredo po kolih: najprej 1. kolo vseh;
   3. **počitek**: tekme, v katerih so vsi udeleženci končali pred vsaj N min, pridejo
-     pred ostale;
-  4. nižje kolo;
-  5. **najdlje čaka**: odloči najkrajši premor med udeleženci, kdor še ni igral, čaka
-     najdlje;
-  6. stalen vrstni red: dogodek, **skupina po vrsti kot na listkih** (1, 2, 3 …, pri
+     pred ostale (samo v istem kolu);
+  4. **vrstni red kategorij** (skupne mize, V78), ki ga nastavi organizator; brez njega
+     po turnirju in nastanku kategorije;
+  5. stalen vrstni red: dogodek, **skupina po vrsti kot na listkih** (1, 2, 3 …, pri
      starejših dogodkih in v SV regiji A, B, C …; krajša oznaka prej, zato 9 pred 10
      in Z pred ZA, isto pravilo kot `SkupinaRepozitorij.findByDogodekIdOrderByOznakaAsc`),
-     pozicija, id. V istem kolu gredo tako obe tekmi skupine 1, nato skupine 2 …
+     žreb, pozicija, id. V istem kolu gredo tako obe tekmi skupine 1, nato skupine 2 …
+     Merilo »najdlje čaka« (23. 11.) je odpadlo: v kolu odloči red kategorij.
 - **Poraženec sodi** (ko je vklopljen): predlagani sodnik proste mize je poraženec
   zadnje končane tekme na njej. Pogoji:
   - tekma posameznikov z izidom odigrano ali predaja;

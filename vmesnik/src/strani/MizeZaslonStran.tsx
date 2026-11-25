@@ -22,6 +22,7 @@ import {
   minutOd,
   opisTekme,
   oznakaMize,
+  sOznakamiKategorij,
   tekmeVIgri,
   uraIzCasa,
   zadnjaBeseda,
@@ -65,6 +66,8 @@ export function MizeZaslonStran() {
   const pregled = useQuery({
     queryKey: ['turnir', idTurnirja, 'mize'],
     queryFn: () => mizeApi.pregled(idTurnirja),
+    /* Skupne mize (V78): enako imenovane kategorije dveh turnirjev dobijo ime turnirja. */
+    select: sOznakamiKategorij,
     refetchInterval: OSVEZITEV_MS,
     /* Poverilnice se preberejo ob zagonu; prej bi prvi klic šel brez njih. */
     enabled: !nalaganje,
@@ -89,7 +92,7 @@ export function MizeZaslonStran() {
           <span className="mize-zaslon__znamka">
             <ZnakTurnirko velikost={28} />
             <span>Turnirko</span>
-            {podatki && <span className="mize-zaslon__turnir">{podatki.imeTurnirja}</span>}
+            {podatki && <span className="mize-zaslon__turnir">{podatki.skupne.turnirji.map((t) => t.ime).join(' + ')}</span>}
           </span>
           <span className="mize-zaslon__ura">{podatki ? uraIzCasa(podatki.casStreznika) : ''}</span>
         </div>

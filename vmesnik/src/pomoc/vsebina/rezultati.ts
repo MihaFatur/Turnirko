@@ -219,6 +219,11 @@ export const REZULTATI: Clanek[] = [
       'razpored',
       'vrstni red',
       'tisk',
+      'skupne mize',
+      'dva turnirja',
+      'ista dvorana',
+      'vrstni red kategorij',
+      'listki vseh kategorij',
     ],
     vsebina: [
       { tip: 'kje', pot: ['Turnir', 'Mize'] },
@@ -252,29 +257,29 @@ export const REZULTATI: Clanek[] = [
         id: 'predlog',
         naslov: 'Kako Turnirko izbere naslednjo tekmo',
         kratko:
-          'Igralec, ki igra ali sodi drugje, ni predlagan. Tekme gredo po kolih: najprej 1. kolo vseh skupin po vrsti (skupina 1, 2, 3 …), nato 2. kolo. Prednost ima skupina, ki ima do konca še največ kol, nato tekma spočitih igralcev in tisti, ki čakajo najdlje.',
+          'Igralec, ki igra ali sodi drugje, ni predlagan. Tekme gredo strogo po kolih: najprej 1. kolo vseh skupin vseh kategorij, nato 2. kolo. V kolu imajo prednost spočiti igralci, nato kategorije v tvojem vrstnem redu in skupine po vrsti.',
       },
       {
         tip: 'seznam',
         postavke: [
           'Ne predlaga tekme igralca, ki zdaj igra ali sodi na drugi mizi, tudi v drugi kategoriji ali v dvojicah.',
-          'Prednost ima skupina, ki ima do konca še največ kol. Skupina po 3 ima 3 kola kot skupina po 4, zato pride na vrsto skupaj z njimi. Tekma, ki je zaostala (na primer 1. kolo, ko ostali že igrajo 2. kolo), gre naprej, tudi če igralec še ni počival.',
-          'Skupina po 5 ima 5 kol, zato začne prej: njeno 2. kolo pride pred 1. kolom skupin po 4, da vse skupine končajo hkrati.',
-          'Pri enakem številu kol ima prednost tekma, v kateri so vsi igralci počivali vsaj toliko minut, kot je nastavljeno pod **Počitek**. Nato pride na vrsto nižje kolo, potem tekma, katere igralci čakajo najdlje, nazadnje skupine po vrsti.',
-          'Dve kategoriji hkrati se izmenjujeta po kolih: najprej 1. kolo obeh, nato 2. kolo obeh.',
+          'Tekme gredo strogo po kolih: najprej celo 1. kolo vseh skupin vseh kategorij, nato 2. kolo … Tekma, ki je zaostala (na primer 1. kolo, ko ostali že igrajo 2. kolo), gre naprej, tudi če igralec še ni počival.',
+          'Skupina po 5 igra v vsakem kolu skupaj z ostalimi in konča zadnja (4. in 5. kolo igra sama).',
+          'Izločilni del šteje kot naslednje kolo za skupinami svoje kategorije: pri treh kolih skupin je prvi krog mreže »4. kolo«.',
+          'V istem kolu ima prednost tekma, v kateri so vsi igralci počivali vsaj toliko minut, kot je nastavljeno pod **Počitek**. Nato gredo kategorije po vrstnem redu, ki ga nastaviš v **Uredi dvorano → Turnirji in kategorije**, v kategoriji pa skupine po vrsti (skupina 1, 2, 3 …).',
         ],
       },
       {
         tip: 'odstavek',
         besedilo:
-          'Predlog je samo predlog, odločiš vedno ti: na prosto mizo lahko povlečeš katero koli tekmo z vrste (tudi zasedeno, s sporočilom, kdo igra drugje). Razlogi predloga, na primer »do konca skupine še 3 kola« ali »zadnja tekma pred 1 min«, so v oknu klica. Desni stolpec **Na vrsti** tekme našteje po vrstnem redu predloga; številka ob tekmi je predlagana miza. Ko vrsto urediš sam, velja tvoj vrstni red, dokler ne izbereš **Samodejni vrstni red** (tudi počitek takrat ne premakne tekme; zasedena tekma ostane na svojem mestu, a mize ne dobi).',
+          'Predlog je samo predlog, odločiš vedno ti: na prosto mizo lahko povlečeš katero koli tekmo z vrste (tudi zasedeno, s sporočilom, kdo igra drugje). Razlogi predloga, na primer »2. kolo« ali »zadnja tekma pred 1 min«, so v oknu klica. Desni stolpec **Na vrsti** tekme našteje po vrstnem redu predloga; številka ob tekmi je predlagana miza. Ko vrsto urediš sam, velja tvoj vrstni red, dokler ne izbereš **Samodejni vrstni red** (tudi počitek takrat ne premakne tekme; zasedena tekma ostane na svojem mestu, a mize ne dobi).',
       },
       {
         tip: 'razdelek',
         id: 'sodnik',
         naslov: 'Sodnik: poraženec sodi naslednjo tekmo',
         kratko:
-          'Ko je vklopljeno **Poraženec sodi**, je ob klicu za sodnika predlagan poraženec zadnje tekme na tej mizi. Zamenjaš ga lahko s katerimkoli igralcem turnirja.',
+          'Ko je vklopljeno **Poraženec sodi**, je ob klicu za sodnika predlagan poraženec zadnje tekme na tej mizi, tudi če je naslednja tekma iz drugega turnirja na teh mizah. Zamenjaš ga lahko s katerimkoli igralcem turnirja.',
       },
       {
         tip: 'odstavek',
@@ -302,6 +307,31 @@ export const REZULTATI: Clanek[] = [
           '**Prekliči klic** je prav tam in vrne tekmo med pripravljene. Ekipno srečanje, ki že ima postavo, se igra naprej in izgubi samo mizo.',
           '**Uredi dvorano:** klikni prosto mizo, da jo izklopiš (pokvarjena ali zasedena za drug namen), ali izklopljeno, da jo vklopiš. **+ Miza** in **− Odstrani zadnjo** spremenita število miz. Mize, na kateri se igra, ni mogoče izklopiti ali odstraniti.',
           'Ekipno srečanje pokličeš na dve mizi (druga je sosednja prosta). Izid se vpiše v zapisnik srečanja: klikni mizo in **Odpri zapisnik**.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'skupne',
+        naslov: 'Dva turnirja na istih mizah',
+        kratko:
+          'Ko v isti dvorani na istih mizah igrata dva tvoja turnirja (na primer U15 in U21), ju povežeš v **Uredi dvorano → Turnirji in kategorije**. Stran Mize, tisk listkov, branje listkov in zaslon za igralce ju nato vodijo kot celoto, gledalci pa ju vidijo ločeno kot prej.',
+      },
+      {
+        tip: 'koraki',
+        postavke: [
+          'Na strani **Mize** enega od turnirjev pritisni **Uredi dvorano** in nato **Turnirji in kategorije**.',
+          'Pod **Deli mize s turnirjem** izberi drugi turnir in pritisni **Poveži**. Ponujeni so samo tvoji turnirji na isti dan.',
+          'Pod **Vrstni red kategorij** s puščicama razvrsti kategorije (na primer U15 moški, U15 ženske, U21 moški, U21 ženske). Predlog gre po kolih, v kolu po tem vrstnem redu.',
+          'Listke vseh kategorij natisneš naenkrat: **Listki za tiskanje → Vse kategorije · en tisk**. **Po kolih** da 1. kolo vseh kategorij v tvojem vrstnem redu, nato 2. kolo.',
+        ],
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          'Mize, vrsta **Na vrsti**, klici in nastavitve (število miz, izklopljene mize, počitek, poraženec sodi) so skupne. Stran Mize kateregakoli od obeh turnirjev kaže isto.',
+          'Za sodnika lahko izbereš igralca obeh turnirjev. Kategorija z enakim imenom v obeh turnirjih ima ob sebi ime turnirja.',
+          'Na strani **Branje listkov** fotografiraš listke obeh turnirjev; stikalo **Sodniki slikajo listke** velja za oba.',
+          '**Loči** v istem oknu turnir vrne na njegove mize; nastavitve miz obdrži, tekme, ki se igrajo, ostanejo na svojih mizah.',
         ],
       },
       {

@@ -412,6 +412,8 @@ export function tekmaDto(t: Tk, dodatno: { miza?: number | null; miza2?: number 
     poklicanaOb: dodatno.ob != null ? cas(dodatno.ob) : null,
     sodnik: dodatno.sodnik ? osebaDto(dodatno.sodnik) : null,
     osebe: osebe(t).map(idOsebe),
+    idTurnir: 1,
+    imeTurnirja: 'Jesenski turnir',
   }
 }
 
@@ -448,5 +450,10 @@ export function vDto(s: Stanje): MizeTurnirjaDto {
     mize,
     kandidati,
     rocniVrstniRed: kandidati.some((k) => red.includes(k.tekma.tekma.id)),
+    skupne: {
+      turnirji: [{ id: 1, ime: s.imeTurnirja, datumZacetka: null }],
+      kategorije: [],
+      redNastavljen: false,
+    },
   }
 }

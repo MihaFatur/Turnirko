@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { KandidatMizeDto, MizaDto, TekmaMizeDto } from '../api/tipi'
+import type { KandidatMizeDto, MizaDto, MizeTurnirjaDto, TekmaMizeDto } from '../api/tipi'
 import {
   MEJA_PREDOLGO_MIN,
   drugaMizaEkipnega,
@@ -20,6 +20,7 @@ import {
   prviPredlogi,
   razlogiPredloga,
   razlogiZasedenosti,
+  sOznakamiKategorij,
   sirinaTraka,
   sprosceneMize,
   tekmeVIgri,
@@ -43,6 +44,8 @@ function tekma(id: number, osebe: number[] = [1, 2], miza: number | null = null)
     miza2: null,
     poklicanaOb: null,
     sodnik: null,
+    idTurnir: 1,
+    imeTurnirja: 'Turnir',
     osebe,
   }
 }
@@ -50,6 +53,39 @@ function tekma(id: number, osebe: number[] = [1, 2], miza: number | null = null)
 function miza(stevilka: number, dodatno: Partial<MizaDto> = {}): MizaDto {
   return { stevilka, izklopljena: false, tekma: null, prostaOd: null, cakajociSodnik: null, predlogi: [], ...dodatno }
 }
+
+/* Skupne mize (V78): enako imenovane kategorije dveh turnirjev se ločijo po turnirju. */
+describe('sOznakamiKategorij', () => {
+  const kat = (idDogodka: number, ime: string, idTurnir: number, imeTurnirja: string) => ({
+    idDogodka, ime, idTurnir, imeTurnirja, status: 'V_TEKU' as const, ekipno: false,
+  })
+  const pregled = (turnirjev: number): MizeTurnirjaDto => ({
+    idTurnir: 1, imeTurnirja: 'U15', steviloMiz: 2, izklopljeneMize: [], porazenecSodi: false, pocitekMin: 3,
+    dogodkiVTeku: true, casStreznika: '2026-11-28T10:00:00', rocniVrstniRed: false,
+    mize: [{ stevilka: 1, izklopljena: false, tekma: { ...tekma(1), imeDogodka: 'Moški', imeTurnirja: 'U21' },
+      prostaOd: null, cakajociSodnik: null, predlogi: [] }],
+    kandidati: [
+      { tekma: { ...tekma(2), imeDogodka: 'Moški', imeTurnirja: 'U15' }, zaseden: false, razlogi: [] },
+      { tekma: { ...tekma(3), imeDogodka: 'Mladinci', imeTurnirja: 'U15' }, zaseden: false, razlogi: [] },
+    ],
+    skupne: {
+      turnirji: Array.from({ length: turnirjev }, (_, i) => ({ id: i + 1, ime: i ? 'U21' : 'U15', datumZacetka: null })),
+      kategorije: [kat(1, 'Moški', 1, 'U15'), kat(2, 'Mladinci', 1, 'U15'), kat(3, 'Moški', 2, 'U21')],
+      redNastavljen: false,
+    },
+  })
+
+  it('doda ime turnirja samo enako imenovanim kategorijam', () => {
+    const p = sOznakamiKategorij(pregled(2))
+    expect(p.mize[0].tekma?.imeDogodka).toBe('Moški · U21')
+    expect(p.kandidati.map((k) => k.tekma.imeDogodka)).toEqual(['Moški · U15', 'Mladinci'])
+  })
+
+  it('brez povezave ostane vse, kot je', () => {
+    const p = pregled(1)
+    expect(sOznakamiKategorij(p)).toBe(p)
+  })
+})
 
 describe('minutOd', () => {
   it('šteje cele minute po uri strežnika', () => {

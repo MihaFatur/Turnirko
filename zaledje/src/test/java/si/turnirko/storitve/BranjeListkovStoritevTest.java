@@ -128,6 +128,7 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
     @Autowired BranjeListkaRepozitorij branjaRepozitorij;
     @Autowired SlikaBranjaListkaRepozitorij slikeRepozitorij;
     @Autowired UporabnikRepozitorij uporabnikRepozitorij;
+    @Autowired MizeStoritev mize;
 
     private Dogodek dogodek;
     private Tekma tekma;
@@ -711,6 +712,36 @@ class BranjeListkovStoritevTest extends IntegracijskiTest {
         BranjeListka drugo = new BranjeListka(dogodek.getTurnir(), admin, LocalDateTime.now());
         drugo.setKljucPosiljanja("isti-kljuc-12345678");
         assertThrows(DataIntegrityViolationException.class, () -> branjaRepozitorij.saveAndFlush(drugo));
+    }
+
+    /* Skupne mize (V78, lastnik 25. 11. 2026): pult enega turnirja bere tudi listke
+       turnirja, s katerim si deli mize; brez povezave koda drugega turnirja ne velja.
+       Seznam obeh turnirjev kaze ista branja, potrditev vpise izid tekme drugega. */
+    @Test
+    void pultBereListkeTurnirjaSSkupnimiMizami() throws IOException {
+        Dogodek drugi = pripraviDogodek(4);
+        zrebStoritev.izvediZreb(drugi.getId());
+        Tekma tuja = tekmeDogodka(drugi.getId()).stream()
+                .filter(t -> t.getStatus() == StatusTekme.PRIPRAVLJENA)
+                .findFirst().orElseThrow();
+        bralnik.naslednji = prepis(ime(tuja.getPrijava1()), ime(tuja.getPrijava2()),
+                new int[][] {{11, 7}, {11, 9}, {11, 5}}, 3, 0);
+
+        Long brez = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tuja.getId())).id();
+        storitev.obdelaj(brez);
+        assertNull(branje(brez).tekma(), "brez povezave koda drugega turnirja ne velja");
+
+        mize.povezi(drugi.getTurnir().getId(), new si.turnirko.dto.PovezavaMizVnos(idTurnirja()));
+        Long id = storitev.sprejmi(idTurnirja(), fotografija("TK:" + tuja.getId())).id();
+        storitev.obdelaj(id);
+        BranjeListkaDto prebrano = branje(id);
+        assertEquals(PrepoznavaTekme.KODA, prebrano.prepoznava());
+        assertEquals(tuja.getId(), prebrano.tekma().tekma().id());
+        assertEquals(drugi.getTurnir().getId(), prebrano.tekma().idTurnir());
+        assertTrue(storitev.seznam(drugi.getTurnir().getId()).branja().stream().anyMatch(b -> b.id().equals(id)));
+
+        storitev.potrdi(id, new PotrditevBranjaVnos(null, vnos(prebrano.predlog())));
+        assertEquals(StatusTekme.KONCANA, tekmaRepozitorij.findById(tuja.getId()).orElseThrow().getStatus());
     }
 
     private BranjeListkaDto branje(Long id) {

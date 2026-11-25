@@ -3229,6 +3229,9 @@ export interface TekmaListkaDto {
   idDogodka: number
   imeDogodka: string
   oznakaSkupine: string | null
+  /* turnir tekme: pult bere tudi listke turnirjev s skupnimi mizami (V78) */
+  idTurnir: number
+  imeTurnirja: string
 }
 
 /* Tekma, ki bi lahko bila na listku (tekma ni bila prepoznana sama). */
@@ -3602,6 +3605,9 @@ export interface TekmaMizeDto {
   poklicanaOb: string | null
   sodnik: OsebaMizeDto | null
   osebe: number[]
+  /* turnir kategorije: loči enako imenovane kategorije turnirjev s skupnimi mizami (V78) */
+  idTurnir: number
+  imeTurnirja: string
 }
 
 export interface MizaDto {
@@ -3639,6 +3645,32 @@ export interface MizeTurnirjaDto {
   kandidati: KandidatMizeDto[]
   /* vrsto je uredil organizator (V77); sicer samodejni vrstni red */
   rocniVrstniRed: boolean
+  /* turnirji, ki si delijo mize, in kategorije v vrstnem redu kola (V78) */
+  skupne: SkupneMizeDto
+}
+
+/* Skupne mize (V78; docs/pravila/mize.md): turnirji v isti dvorani na istih mizah
+   (glavni prvi; en sam = brez povezave) in kategorije vseh v vrstnem redu kola. */
+export interface SkupneMizeDto {
+  turnirji: TurnirMizDto[]
+  kategorije: KategorijaMizDto[]
+  /* organizator je kategorije razvrstil sam (sicer po turnirju in nastanku) */
+  redNastavljen: boolean
+}
+
+export interface TurnirMizDto {
+  id: number
+  ime: string
+  datumZacetka: string | null
+}
+
+export interface KategorijaMizDto {
+  idDogodka: number
+  ime: string
+  idTurnir: number
+  imeTurnirja: string
+  status: StatusTekmovanja
+  ekipno: boolean
 }
 
 export interface NastavitveMizVnos {

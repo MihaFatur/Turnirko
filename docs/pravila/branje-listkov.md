@@ -499,6 +499,18 @@ pisave). Ni uvedeno.
   neposredno v odgovor (ne asinhrono), pravica se preveri pred prvim bajtom; zadnja
   datoteka `konec.txt` s številom listkov pove, da prenos ni bil prekinjen.
 
+## Skupne mize (V78, 25. 11. 2026)
+
+- Pult turnirja, ki si deli mize z drugimi turnirji (`docs/pravila/mize.md`, »Skupne
+  mize«), bere listke vseh: koda QR, natisnjena številka in imena iščejo tekmo med
+  turnirji skupine (`tekmaSkupnihMiz`, `cakajoceNaListekZaTurnirje`); seznam
+  (`najdiZaTurnirje`) kaže branja vseh, ključ pošiljanja velja v skupini.
+- Branje ostane na turnirju, kjer je bila fotografija poslana (`branje_listka.id_turnir`
+  se ne spremeni); potrditev tekme drugega turnirja preveri še dostop do njega.
+  `TekmaListkaDto` nosi turnir tekme: vmesnik kategoriji drugega turnirja doda njegovo
+  ime (»Moški · U21«).
+- Stikalo »Sodniki slikajo listke« se nastavi vsem turnirjem skupine.
+
 ## Pregled in potrditev (F4, 21. 11. 2026, V71)
 
 - Ob branju se shrani **poravnan listek** (sivine, 10 px/mm, JPEG ~50–100 kB) v

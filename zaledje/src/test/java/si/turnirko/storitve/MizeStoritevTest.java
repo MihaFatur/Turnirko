@@ -45,6 +45,8 @@ import si.turnirko.dto.KlicTekmeVnos;
 import si.turnirko.dto.MizeTurnirjaDto;
 import si.turnirko.dto.NastavitveMizVnos;
 import si.turnirko.dto.PostavaVnos;
+import si.turnirko.dto.PovezavaMizVnos;
+import si.turnirko.dto.RedKategorijVnos;
 import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.dto.VrstniRedTekemVnos;
@@ -430,6 +432,150 @@ class MizeStoritevTest extends IntegracijskiTest {
         assertEquals(vrstniRed.stream().sorted().toList(), vrstniRed,
                 "po kolih, v kolu po skupinah: " + vrstniRed);
         assertEquals(5, vrstniRed.stream().filter(s -> s.startsWith("1. kolo")).count());
+    }
+
+    // ---------- skupne mize (V78) ----------
+
+    /* Lastnik 25. 11. 2026: dva turnirja v isti dvorani na istih mizah. Po povezavi
+       kaze stran Mize obeh isto, nastavitve so glavnega, ista miza ne more dobiti
+       tekme iz obeh turnirjev, porazenec/sodnik je lahko iz drugega turnirja. */
+    @Test
+    void povezanaTurnirjaImataSkupneMize() {
+        Dogodek d1 = izlocilni(4);
+        Dogodek d2 = izlocilni(4);
+        Long t1 = d1.getTurnir().getId();
+        Long t2 = d2.getTurnir().getId();
+        mize.nastavi(t1, new NastavitveMizVnos(3, List.of(), true, 5));
+
+        assertTrue(mize.zaPovezavo(t2).stream().anyMatch(t -> t.id().equals(t1)));
+        mize.povezi(t2, new PovezavaMizVnos(t1));
+        assertTrue(mize.zaPovezavo(t2).stream().noneMatch(t -> t.id().equals(t1)));
+
+        MizeTurnirjaDto p2 = mize.pregled(t2);
+        assertEquals(3, p2.steviloMiz());
+        assertEquals(5, p2.pocitekMin());
+        assertEquals(List.of(t1, t2), p2.skupne().turnirji().stream().map(MizeTurnirjaDto.TurnirMizDto::id).toList());
+        assertEquals(List.of(d1.getId(), d2.getId()),
+                p2.skupne().kategorije().stream().map(MizeTurnirjaDto.KategorijaMizDto::idDogodka).toList());
+        assertEquals(4, p2.kandidati().size(), "polfinala obeh turnirjev");
+        assertEquals(4, mize.pregled(t1).kandidati().size());
+
+        Tekma a = pripravljene(d1).get(0);
+        Tekma b = pripravljene(d2).get(0);
+        mize.poklici(a.getId(), new KlicTekmeVnos(1, null, null));
+        DomenskaIzjema zasedena = assertThrows(DomenskaIzjema.class,
+                () -> mize.poklici(b.getId(), new KlicTekmeVnos(1, null, null)));
+        assertTrue(zasedena.getMessage().contains("Na mizi 1 se že igra"), zasedena.getMessage());
+
+        // sodnik tekme drugega turnirja je igralec prvega
+        Long sodnik = pripravljene(d1).get(0).getPrijava1().getIgralec().getId();
+        mize.poklici(b.getId(), new KlicTekmeVnos(2, null, sodnik));
+        assertEquals(sodnik, sveza(b.getId()).getSodnik().getId());
+        assertTrue(mize.osebe(t2).stream().anyMatch(o -> o.id().equals(sodnik)));
+
+        // nastavitve s strani drugega turnirja zapise glavni
+        mize.nastavi(t2, new NastavitveMizVnos(4, List.of(), false, 3));
+        assertEquals(4, sveziTurnir(t1).getSteviloMiz());
+        assertEquals(t1, sveziTurnir(t2).getIdSkupneMize());
+    }
+
+    /* Miza, na kateri se ze igra v obeh turnirjih, prepreci povezavo (dve tekmi na
+       mizi 1); povezava je samo za turnirje istih dni. */
+    @Test
+    void povezavaZavrneIstoMizoVIgriInDrugDan() {
+        Dogodek d1 = izlocilni(4);
+        Dogodek d2 = izlocilni(4);
+        Long t1 = d1.getTurnir().getId();
+        Long t2 = d2.getTurnir().getId();
+        mize.nastavi(t1, new NastavitveMizVnos(2, List.of(), false, 3));
+        mize.nastavi(t2, new NastavitveMizVnos(2, List.of(), false, 3));
+        mize.poklici(pripravljene(d1).get(0).getId(), new KlicTekmeVnos(1, null, null));
+        mize.poklici(pripravljene(d2).get(0).getId(), new KlicTekmeVnos(1, null, null));
+
+        DomenskaIzjema obe = assertThrows(DomenskaIzjema.class, () -> mize.povezi(t2, new PovezavaMizVnos(t1)));
+        assertTrue(obe.getMessage().contains("v obeh turnirjih"), obe.getMessage());
+        assertThrows(NeveljavenVnosIzjema.class, () -> mize.povezi(t1, new PovezavaMizVnos(t1)));
+
+        Dogodek d3 = izlocilni(4);
+        Turnir jutri = d3.getTurnir();
+        jutri.setDatumZacetka(LocalDate.now().plusDays(1));
+        turnirRepozitorij.save(jutri);
+        assertThrows(DomenskaIzjema.class, () -> mize.povezi(jutri.getId(), new PovezavaMizVnos(t1)));
+        assertTrue(mize.zaPovezavo(t1).stream().noneMatch(t -> t.id().equals(jutri.getId())));
+    }
+
+    /* Turnir, ki odide, dobi kopijo nastavitev; ce odide glavni, skupino prevzame
+       naslednji (tretji turnir ostane povezan z drugim). */
+    @Test
+    void razdruzitevDaKopijoNastavitevInNovegaGlavnega() {
+        Long t1 = izlocilni(4).getTurnir().getId();
+        Long t2 = izlocilni(4).getTurnir().getId();
+        Long t3 = izlocilni(4).getTurnir().getId();
+        mize.nastavi(t1, new NastavitveMizVnos(6, List.of(2), true, 4));
+        mize.povezi(t2, new PovezavaMizVnos(t1));
+        mize.povezi(t3, new PovezavaMizVnos(t2));
+        assertEquals(t1, sveziTurnir(t3).getIdSkupneMize(), "skupina je globoka en nivo");
+
+        mize.razdruzi(t1);
+        Turnir drugi = sveziTurnir(t2);
+        assertNull(drugi.getIdSkupneMize());
+        assertEquals(6, drugi.getSteviloMiz());
+        assertEquals(List.of(2), List.copyOf(drugi.getIzklopljeneMize()));
+        assertEquals(t2, sveziTurnir(t3).getIdSkupneMize());
+        assertEquals(1, mize.pregled(t1).skupne().turnirji().size());
+        assertEquals(2, mize.pregled(t3).skupne().turnirji().size());
+
+        mize.razdruzi(t3);
+        Turnir tretji = sveziTurnir(t3);
+        assertNull(tretji.getIdSkupneMize());
+        assertEquals(6, tretji.getSteviloMiz());
+        assertThrows(DomenskaIzjema.class, () -> mize.razdruzi(t3));
+    }
+
+    /* Vrstni red kategorij (organizator, V78) odloci v kolu: kategorija drugega turnirja
+       gre naprej. Samo kategorije turnirjev s temi mizami. */
+    @Test
+    void redKategorijVeljaZaPredlog() {
+        Dogodek d1 = izlocilni(4);
+        Dogodek d2 = izlocilni(4);
+        Dogodek tuj = izlocilni(4);
+        Long t1 = d1.getTurnir().getId();
+        Long t2 = d2.getTurnir().getId();
+        mize.nastavi(t1, new NastavitveMizVnos(2, List.of(), false, 3));
+        mize.povezi(t2, new PovezavaMizVnos(t1));
+
+        assertEquals(d1.getId(), mize.pregled(t1).kandidati().get(0).tekma().idDogodka());
+        mize.nastaviRedKategorij(t2, new RedKategorijVnos(List.of(d2.getId(), d1.getId())));
+        MizeTurnirjaDto p = mize.pregled(t1);
+        assertTrue(p.skupne().redNastavljen());
+        assertEquals(d2.getId(), p.skupne().kategorije().get(0).idDogodka());
+        assertEquals(d2.getId(), p.kandidati().get(0).tekma().idDogodka());
+        assertEquals(d2.getId(), p.kandidati().get(1).tekma().idDogodka());
+        assertEquals(t2, p.kandidati().get(0).tekma().idTurnir());
+
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> mize.nastaviRedKategorij(t1, new RedKategorijVnos(List.of(tuj.getId()))));
+        mize.nastaviRedKategorij(t1, new RedKategorijVnos(List.of()));
+        assertFalse(mize.pregled(t1).skupne().redNastavljen());
+    }
+
+    /* Vedno isti racun (lastnik 25. 11. 2026): tujega turnirja ni med ponujenimi in
+       povezava z njim je prepovedana. */
+    @Test
+    void tujegaTurnirjaNiMogocePovezati() {
+        Turnir moj = izlocilni(4).getTurnir();
+        Turnir tuj = izlocilni(4).getTurnir();
+        Uporabnik jaz = racun("moj-skupne@test", Vloga.ORGANIZATOR);
+        Uporabnik drug = racun("tuj-skupne@test", Vloga.ORGANIZATOR);
+        moj.setUstvaril(jaz);
+        tuj.setUstvaril(drug);
+        turnirRepozitorij.save(moj);
+        turnirRepozitorij.save(tuj);
+
+        prijava("moj-skupne@test", "ROLE_ORGANIZATOR");
+        assertTrue(mize.zaPovezavo(moj.getId()).stream().noneMatch(t -> t.id().equals(tuj.getId())));
+        assertThrows(PrepovedanoIzjema.class, () -> mize.povezi(moj.getId(), new PovezavaMizVnos(tuj.getId())));
+        assertThrows(PrepovedanoIzjema.class, () -> mize.povezi(tuj.getId(), new PovezavaMizVnos(moj.getId())));
     }
 
     // ---------- pomozno ----------

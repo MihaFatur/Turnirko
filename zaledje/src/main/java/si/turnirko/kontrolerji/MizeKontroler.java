@@ -21,6 +21,8 @@ import jakarta.validation.Valid;
 import si.turnirko.dto.KlicTekmeVnos;
 import si.turnirko.dto.MizeTurnirjaDto;
 import si.turnirko.dto.NastavitveMizVnos;
+import si.turnirko.dto.PovezavaMizVnos;
+import si.turnirko.dto.RedKategorijVnos;
 import si.turnirko.dto.VrstniRedTekemVnos;
 import si.turnirko.storitve.MizeStoritev;
 
@@ -57,6 +59,34 @@ public class MizeKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void vrstniRed(@PathVariable Long id, @Valid @RequestBody VrstniRedTekemVnos vnos) {
         storitev.nastaviVrstniRed(id, vnos);
+    }
+
+    /* Vrstni red kategorij v kolu (V78); prazen seznam vrne privzeti red. */
+    @PutMapping("/api/v1/turnirji/{id}/mize/red-kategorij")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void redKategorij(@PathVariable Long id, @Valid @RequestBody RedKategorijVnos vnos) {
+        storitev.nastaviRedKategorij(id, vnos);
+    }
+
+    /* Skupne mize (V78): turnirji, s katerimi sme organizator ta turnir povezati. */
+    @GetMapping("/api/v1/turnirji/{id}/mize/za-povezavo")
+    public ResponseEntity<List<MizeTurnirjaDto.TurnirMizDto>> zaPovezavo(@PathVariable Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
+                .body(storitev.zaPovezavo(id));
+    }
+
+    /* Ta turnir deli mize z izbranim (in z vsemi, s katerimi jih ze deli izbrani). */
+    @PutMapping("/api/v1/turnirji/{id}/mize/skupne")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void povezi(@PathVariable Long id, @Valid @RequestBody PovezavaMizVnos vnos) {
+        storitev.povezi(id, vnos);
+    }
+
+    /* Ta turnir zapusti skupne mize in dobi kopijo njihovih nastavitev. */
+    @DeleteMapping("/api/v1/turnirji/{id}/mize/skupne")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void razdruzi(@PathVariable Long id) {
+        storitev.razdruzi(id);
     }
 
     @PutMapping("/api/v1/tekme/{id}/klic")

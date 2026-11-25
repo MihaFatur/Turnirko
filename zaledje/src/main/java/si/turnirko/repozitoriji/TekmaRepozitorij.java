@@ -222,7 +222,7 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             """)
     List<Tekma> najdiZVsemPoIdjih(@Param("idji") Collection<Long> idji);
 
-    /* Posnetek turnirja za stran Mize (M1, M2): vse tekme dogodkov v teku (tudi CAKA:
+    /* Posnetek turnirjev s skupnimi mizami (stran Mize, M1, M2, V78): vse tekme dogodkov v teku (tudi CAKA:
        iz njih se ve, koliko kol ima veja), vse tekme v igri in tekme, koncane po
        :od (porazenec zadnje tekme na mizi, pocitek - tudi ko je dogodek ze
        zakljucen). Z vsem, kar potrebujeta TekmaDto in predlog. */
@@ -237,24 +237,24 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             LEFT JOIN FETCH p2.ekipa e2 LEFT JOIN FETCH e2.klub
             LEFT JOIN FETCH t.zmagovalec
             LEFT JOIN FETCH t.sodnik
-            WHERE d.turnir.id = :idTurnir
+            WHERE d.turnir.id IN :idjiTurnirjev
               AND (d.status = si.turnirko.modeli.StatusTekmovanja.V_TEKU
                    OR t.status = si.turnirko.modeli.StatusTekme.V_IGRI
                    OR t.koncanaOb >= :od)
             """)
-    List<Tekma> zaMizeTurnirja(@Param("idTurnir") Long idTurnir, @Param("od") LocalDateTime od);
+    List<Tekma> zaMizeTurnirjev(@Param("idjiTurnirjev") Collection<Long> idjiTurnirjev, @Param("od") LocalDateTime od);
 
-    /* Tekme v igri na izbranih mizah turnirja (preverba proste mize ob klicu in ob
+    /* Tekme v igri na mizah turnirjev (skupne mize, V78; preverba proste mize ob klicu in ob
        zmanjsanju stevila miz). */
     @Query("""
             SELECT t FROM Tekma t
-            WHERE t.dogodek.turnir.id = :idTurnir
+            WHERE t.dogodek.turnir.id IN :idjiTurnirjev
               AND t.status = si.turnirko.modeli.StatusTekme.V_IGRI
               AND (t.miza IS NOT NULL OR t.miza2 IS NOT NULL)
             """)
-    List<Tekma> naMizahTurnirja(@Param("idTurnir") Long idTurnir);
+    List<Tekma> naMizahTurnirjev(@Param("idjiTurnirjev") Collection<Long> idjiTurnirjev);
 
-    /* Posamicne tekme turnirja, ki so na vrsti in cakajo na izid (oba znana),
+    /* Posamicne tekme turnirjev (skupne mize, V78), ki so na vrsti in cakajo na izid (oba znana),
        v dogodkih v teku: kandidati za listek, ki nima berljive kode. Ekipne tekme
        odpadejo - njihov izid nastane iz zapisnika srecanja, ne iz listka. */
     @Query("""
@@ -264,13 +264,13 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             LEFT JOIN FETCH p1.igralec2 LEFT JOIN FETCH p1.klubObPrijavi2
             JOIN FETCH t.prijava2 p2 LEFT JOIN FETCH p2.igralec LEFT JOIN FETCH p2.klubObPrijavi
             LEFT JOIN FETCH p2.igralec2 LEFT JOIN FETCH p2.klubObPrijavi2
-            WHERE d.turnir.id = :idTurnir
+            WHERE d.turnir.id IN :idjiTurnirjev
               AND d.status = si.turnirko.modeli.StatusTekmovanja.V_TEKU
               AND d.disciplina <> si.turnirko.modeli.Disciplina.EKIPNO
               AND t.status IN (si.turnirko.modeli.StatusTekme.PRIPRAVLJENA,
                                si.turnirko.modeli.StatusTekme.V_IGRI)
             """)
-    List<Tekma> cakajoceNaListekZaTurnir(@Param("idTurnir") Long idTurnir);
+    List<Tekma> cakajoceNaListekZaTurnirje(@Param("idjiTurnirjev") Collection<Long> idjiTurnirjev);
 
     /* Tekme enega zreba sistema SV_REGIJA (brez nalaganja udelezencev). */
     List<Tekma> findByIdZreb(Long idZreb);

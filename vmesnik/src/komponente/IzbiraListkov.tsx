@@ -52,10 +52,13 @@ export interface Izbira {
 export interface IzbiraRazvrstitve {
   vrednost: RazvrstitevListkov
   nastavi: (r: RazvrstitevListkov) => void
+  /* Skupni tisk vseh kategorij: »po skupinah« je tam »po kategorijah«. */
+  poKategorijah?: boolean
 }
 
 export function useIzbiraListkov(
-  idDogodka: number,
+  /* Dogodek strani; na skupnem tisku vseh kategorij (null) nosi dogodek vsak listek sam. */
+  idDogodka: number | null,
   listki: PripravljenListek[],
   /* Sled tiska smeta pisati samo organizator in admin; gost listke natisne brez nje. */
   smemOznacevati: boolean,
@@ -73,10 +76,24 @@ export function useIzbiraListkov(
   }, [izrecna, listki])
   const izbraniListki = useMemo(() => listki.filter((l) => izbrani.has(l.tekma.id)), [listki, izbrani])
 
+  /* Sled tiska se zapiše po dogodkih: na skupnem tisku so v izbiri tekme več kategorij. */
   const oznaci = useMutation({
-    mutationFn: (v: { idji: number[]; natisnjeno: boolean }) =>
-      dogodkiApi.oznaciListke(idDogodka, v.idji, v.natisnjeno),
-    onSuccess: () => odjemalec.invalidateQueries({ queryKey: ['dogodek', idDogodka] }),
+    mutationFn: async (v: { idji: number[]; natisnjeno: boolean }) => {
+      const dogodekTekme = new Map(listki.map((l) => [l.tekma.id, l.kategorija?.idDogodka ?? idDogodka]))
+      const poDogodkih = new Map<number, number[]>()
+      for (const id of v.idji) {
+        const d = dogodekTekme.get(id)
+        if (d == null) continue
+        poDogodkih.set(d, [...(poDogodkih.get(d) ?? []), id])
+      }
+      for (const [d, idji] of poDogodkih) await dogodkiApi.oznaciListke(d, idji, v.natisnjeno)
+      return [...poDogodkih.keys()]
+    },
+    onSettled: (dogodki) => {
+      for (const d of dogodki ?? (idDogodka === null ? [] : [idDogodka])) {
+        void odjemalec.invalidateQueries({ queryKey: ['dogodek', d] })
+      }
+    },
   })
 
   const nastavi = (idji: number[]) => nastaviIzrecno(new Set(idji))

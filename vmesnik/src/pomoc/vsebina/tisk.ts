@@ -33,6 +33,11 @@ export const TISK: Clanek[] = [
         ],
       },
       {
+        tip: 'odstavek',
+        besedilo:
+          'Listke vseh kategorij v teku natisneš naenkrat na strani **Mize**: **Listki za tiskanje → Vse kategorije · en tisk**. Tabela ima vrstice po kategoriji in skupini. **Po kolih** da 1. kolo vseh kategorij v vrstnem redu, ki ga nastaviš na strani Mize (tudi kategorije drugega turnirja na istih mizah), **Po kategorijah** pa kategorijo za kategorijo. Prazne listke in zapisnike ekipnih kategorij natisneš na strani posamezne kategorije. Glej [Dva turnirja na istih mizah](mize#skupne).',
+      },
+      {
         tip: 'razdelek',
         id: 'natisnjeno',
         naslov: 'Sled natisnjenih',
