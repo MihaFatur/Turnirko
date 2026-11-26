@@ -34,6 +34,10 @@ public class StevkaListka {
     @Column(name = "id_vadnica")
     private Long idVadnica;
 
+    /* Potrjen ligaski zapisnik (V79): pisava iz dvorane kot pri listkih. */
+    @Column(name = "id_branje_zapisnika")
+    private Long idBranjeZapisnika;
+
     /* Okence lista vadnice (vrstica * 10 + stolpec); pri listku celica listka
        (UcenjeIzListkov.celicaListka: niz * 2 + stolpec, rezultat 100 + stolpec, V72),
        pri starejsih stevkah listkov null. */
@@ -68,6 +72,16 @@ public class StevkaListka {
         this.ustvarjenoOb = ustvarjenoOb;
     }
 
+    /* Stevka potrjenega ligaskega zapisnika (V79): vrednost je potrdil organizator;
+       celica = 10 * tekma + 2 * niz + stran (0 domaci, 1 gost). */
+    public static StevkaListka zZapisnika(Long idBranjeZapisnika, int celica, byte[] slika, int vrednost,
+                                         boolean mrezaPrav, LocalDateTime ustvarjenoOb) {
+        StevkaListka s = new StevkaListka(null, slika, vrednost, mrezaPrav, ustvarjenoOb);
+        s.idBranjeZapisnika = idBranjeZapisnika;
+        s.celica = (short) celica;
+        return s;
+    }
+
     /* Stevka lista vadnice: do odobritve ni v ucenju. */
     public static StevkaListka zVadnice(Long idVadnica, int celica, byte[] slika, int vrednost, boolean mrezaPrav,
                                         LocalDateTime ustvarjenoOb) {
@@ -81,6 +95,12 @@ public class StevkaListka {
     public Long getId() { return id; }
     public Long getIdBranje() { return idBranje; }
     public Long getIdVadnica() { return idVadnica; }
+    public Long getIdBranjeZapisnika() { return idBranjeZapisnika; }
+
+    /* Stevka s prave pisave iz dvorane: potrjen listek ali ligaski zapisnik. */
+    public boolean jeIzDvorane() {
+        return idBranje != null || idBranjeZapisnika != null;
+    }
     public Short getCelica() { return celica; }
     public byte[] getSlika() { return slika; }
     public int getVrednost() { return vrednost; }

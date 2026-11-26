@@ -18,12 +18,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { NapakaStreznika, opisNapake } from '../api/odjemalec'
-import type { BranjeListkaDto } from '../api/tipi'
-import { opisNapakeFotografije, pripraviFotografijo } from './branjeListkov'
+import { NAJVEC_STRANICA, opisNapakeFotografije, pripraviFotografijo } from './branjeListkov'
 
 /* Fotografija v vrsti, kot je shranjena v brskalniku. */
 export interface ZapisVrste {
   kljuc: string
+  /* Turnir, na katerem je bila fotografija posneta; PROSTOR_ZAPISNIKOV za ligaške zapisnike. */
   idTurnir: number
   idUporabnika: number
   jpeg: Blob
@@ -197,12 +197,18 @@ interface Vnos extends FotografijaVrste {
   zapis: ZapisVrste | null
 }
 
-/* poslano: strežnik je fotografijo sprejel; predogled preide v last strani. */
-export function useVrstaFotografij(
+/* Ligaški zapisniki (V79) nimajo turnirja: njihove fotografije imajo ta prostor in se ne
+   mešajo s fotografijami listkov. */
+export const PROSTOR_ZAPISNIKOV = -1
+
+/* poslano: strežnik je fotografijo sprejel; predogled preide v last strani.
+   najvecStranica: list A4 (zapisnik) potrebuje več pik kot listek. */
+export function useVrstaFotografij<T>(
   idTurnir: number,
   idUporabnika: number | null,
-  poslano: (branje: BranjeListkaDto, predogled: string | null) => void,
-  posiljanje: (zapis: ZapisVrste, signal: AbortSignal) => Promise<BranjeListkaDto>,
+  poslano: (branje: T, predogled: string | null) => void,
+  posiljanje: (zapis: ZapisVrste, signal: AbortSignal) => Promise<T>,
+  najvecStranica: number = NAJVEC_STRANICA,
 ) {
   const [fotografije, nastaviFotografije] = useState<FotografijaVrste[]>([])
   const vnosi = useRef(new Map<string, Vnos>())
@@ -371,7 +377,7 @@ export function useVrstaFotografij(
 
   /* Nova fotografija: pomanjša se v brskalniku, shrani v vrsto in pošlje. */
   const dodaj = useCallback(
-    async (datoteka: File) => {
+    async (datoteka: Blob) => {
       if (idUporabnika === null) return
       const kljuc = novKljucPosiljanja()
       // čas posnetka, ne konca priprave: več hkrati izbranih se pripravlja vzporedno
@@ -387,7 +393,7 @@ export function useVrstaFotografij(
       })
       prikazi()
       try {
-        const { jpeg } = await pripraviFotografijo(datoteka)
+        const { jpeg } = await pripraviFotografijo(datoteka, najvecStranica)
         const zapis: ZapisVrste = { kljuc, idTurnir, idUporabnika, jpeg, ustvarjeno }
         const trajna = await shrambaVrste.shrani(zapis)
         if (!vnosi.current.has(kljuc)) return
@@ -415,7 +421,7 @@ export function useVrstaFotografij(
         prikazi()
       }
     },
-    [idTurnir, idUporabnika, obdelaj, prikazi],
+    [idTurnir, idUporabnika, obdelaj, prikazi, najvecStranica],
   )
 
   /* Organizator fotografijo opusti (napaka ali fotografija, ki je ne želi več

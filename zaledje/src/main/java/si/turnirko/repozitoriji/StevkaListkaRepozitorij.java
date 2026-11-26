@@ -42,6 +42,8 @@ public interface StevkaListkaRepozitorij extends JpaRepository<StevkaListka, Lon
 
     long countByIdVadnica(Long idVadnica);
 
+    boolean existsByIdBranjeZapisnika(Long idBranjeZapisnika);
+
     /* Odobrene stevke vadnice (v ucenju, dokler jih hramba ne izbrise). */
     long countByIdVadnicaIsNotNullAndOdobrenoTrue();
 

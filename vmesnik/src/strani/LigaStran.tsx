@@ -16,7 +16,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { igralciApi, klubiApi, ligeApi } from '../api/zahteve'
 import type { EkipaDto, LestvicaEkipeDto, LigaDto, SrecanjeDto } from '../api/tipi'
-import { OZNAKE_FORMAT, OZNAKE_RAVEN, nizovZaZmago } from '../api/tipi'
+import { OZNAKE_FORMAT, OZNAKE_RAVEN, igralcevFormata, nizovZaZmago } from '../api/tipi'
+import { useBranjeZapisnikovNaVoljo } from '../pomozno/useBranjeZapisnikov'
 import { useAvtentikacija, type TekmovanjeDostopa } from '../avtentikacija/AvtentikacijaKontekst'
 import {
   GlavaDejanja,
@@ -85,6 +86,7 @@ export function LigaStran() {
   const { id } = useParams()
   const idLiga = Number(id)
   const { smemUrejati, jeAdmin } = useAvtentikacija()
+  const zapisnikiNaVoljo = useBranjeZapisnikovNaVoljo()
   const jeTelefon = useTelefon()
   /* Na telefonu glava strani ni nosila konteksta (samo logotip), ker stran
      kavlja ni klicala - gledalec ni imel poti nazaj na seznam lig. Kontekst
@@ -282,6 +284,10 @@ export function LigaStran() {
     : rocnoKolo != null && kola.includes(rocnoKolo)
       ? rocnoKolo
       : privzetoKolo
+  /* Zapisniki za bralnik (V79): organizator lige z dvema igralcema na ekipo natisne
+     zapisnike kola in jih po kolu fotografira (docs/pravila/branje-zapisnikov.md). */
+  const zaBralnik = smem && imaRazpored && zapisnikiNaVoljo && igralcevFormata(l.formatSrecanja) === 2
+  const koloZapisnikov = kolo === KOLO_BREZ_TERMINA ? privzetoKolo : kolo
 
   /* Zavihek se ponudi, ko je odigranih dovolj tekem (isti prag kot pri turnirju
      in v zaledju). Merilo ni celo kolo: v ligi, kjer se ekipe menjajo za
@@ -537,6 +543,28 @@ export function LigaStran() {
                       </span>
                     )}
                   </button>
+                  {/* Zapisniki za bralnik (V79): na telefonu je glavno slikanje po kolu. */}
+                  {zaBralnik && (
+                    <Link
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      to="/zapisniki/branje"
+                      onClick={zapri}
+                    >
+                      Branje zapisnikov
+                      <span className="uporabnik-meni__pojasnilo">Fotografiraj zapisnike kola</span>
+                    </Link>
+                  )}
+                  {zaBralnik && (
+                    <Link
+                      role="menuitem"
+                      className="uporabnik-meni__postavka"
+                      to={`/lige/${idLiga}/zapisniki-kola?kolo=${koloZapisnikov}`}
+                      onClick={zapri}
+                    >
+                      Zapisniki kola za tisk
+                    </Link>
+                  )}
                   <button
                     type="button"
                     role="menuitem"
@@ -862,6 +890,16 @@ export function LigaStran() {
                 >
                   Termini
                 </button>
+              )}
+              {zaBralnik && (
+                <Link to={`/lige/${idLiga}/zapisniki-kola?kolo=${koloZapisnikov}`} className="gumb gumb--majhen">
+                  Zapisniki kola
+                </Link>
+              )}
+              {zaBralnik && (
+                <Link to="/zapisniki/branje" className="gumb gumb--majhen">
+                  Branje zapisnikov
+                </Link>
               )}
               {/* Logotip sme lastnik tudi pri uvoženi ligi - je prikaz. */}
               {smemPoLastnistvu && (

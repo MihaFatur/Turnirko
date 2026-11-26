@@ -5,6 +5,10 @@ import { api } from './odjemalec'
 import type {
   BranjaTurnirjaDto,
   BranjeListkaDto,
+  BranjeZapisnikaDto,
+  NatisZapisnikaDto,
+  OblikaZapisnikaBralnika,
+  ZapisZapisnikaVnos,
   KlicTekmeVnos,
   KodeListkovDto,
   MizeTurnirjaDto,
@@ -856,4 +860,30 @@ export const statistikaApi = {
 export const koledarApi = {
   obdobje: (od: string, doKdaj: string) =>
     api.vrni<KoledarVnosDto[]>(`/koledar?od=${od}&do=${doKdaj}`),
+}
+
+/* Ligaški zapisniki za bralnik (V79): tisk s kodami QR (samo organizator in admin)
+   in branje s fotografije. Zanesljivo prebran zapisnik se zapiše sam (če je to
+   ob nalaganju dovoljeno), ostale organizator potrdi. */
+export const zapisnikiApi = {
+  natisni: (srecanja: number[], oblika: OblikaZapisnikaBralnika | null) =>
+    api.objavi<NatisZapisnikaDto[]>('/zapisniki/natis', { srecanja, oblika }),
+  stanje: () => api.vrni<StanjeBranjaListkovDto>('/zapisniki/branje/stanje'),
+  seznam: () => api.vrni<BranjeZapisnikaDto[]>('/branja-zapisnikov'),
+  nalozi: (jpeg: Blob, samodejno: boolean, kljuc?: string, signal?: AbortSignal) => {
+    const obrazec = new FormData()
+    obrazec.append('slika', jpeg, 'zapisnik.jpg')
+    obrazec.append('samodejno', String(samodejno))
+    return api.objavi<BranjeZapisnikaDto>('/branja-zapisnikov', obrazec, {
+      glave: kljuc ? { 'Idempotency-Key': kljuc } : undefined,
+      signal,
+    })
+  },
+  podrobno: (id: number) => api.vrni<BranjeZapisnikaDto>(`/branja-zapisnikov/${id}`),
+  slika: (id: number) => api.vrniDatoteko(`/branja-zapisnikov/${id}/slika`),
+  poravnana: (id: number) => api.vrniDatoteko(`/branja-zapisnikov/${id}/poravnana`),
+  potrdi: (id: number, vnos: ZapisZapisnikaVnos) =>
+    api.objavi<BranjeZapisnikaDto>(`/branja-zapisnikov/${id}/potrdi`, vnos),
+  zavrzi: (id: number) => api.objavi<void>(`/branja-zapisnikov/${id}/zavrzi`),
+  znova: (id: number) => api.objavi<BranjeZapisnikaDto>(`/branja-zapisnikov/${id}/znova`),
 }

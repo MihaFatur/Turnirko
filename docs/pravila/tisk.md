@@ -414,3 +414,7 @@
       Primerjava z vzorcem: PDF → mupdf, prekrivanje (vzorec rdeče, moj izpis modro).
     - **Ni preverjeno**: pravi tiskalnik, Firefox/Safari, dogodki z več kot ~8 igralci v skupini (tabela raste v
       širino, zadnja stolpca gresta do roba), žreb 64.
+- **Ligaški zapisnik za bralnik** (V79, 26. 11. 2026): ležeči A4, ki ga Turnirko po kolu
+  prebere s fotografije (vrstica tekme ali tabela kadra, `ZapisnikZaBralnik`). Lege riše
+  vmesnik po postavitvi s strežnika (`GeometrijaZapisnika`), `@page zapisnik-bralnik` z
+  robom 0, en list na srečanje. Pravila: `docs/pravila/branje-zapisnikov.md`.

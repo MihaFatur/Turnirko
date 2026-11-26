@@ -23,6 +23,8 @@ import { LigeStran } from './strani/LigeStran'
 import { LigaStran } from './strani/LigaStran'
 import { SrecanjeStran } from './strani/SrecanjeStran'
 import { ListkiSrecanjaStran } from './strani/ListkiSrecanjaStran'
+import { ZapisnikiKolaStran } from './strani/ZapisnikiKolaStran'
+import { BranjeZapisnikovStran } from './strani/BranjeZapisnikovStran'
 import { ZrebMrezeDogodkaStran, ZrebMrezeTurnirjaStran } from './strani/ZrebMrezeStran'
 import { ZrebSkupinDogodkaStran, ZrebSkupinTurnirjaStran } from './strani/ZrebSkupinStran'
 import { ProfilStran } from './strani/ProfilStran'
@@ -250,6 +252,15 @@ export function App() {
           Odpre jo koda na hrbtni strani natisnjenega listka. */}
       <Route path="/s" element={<SodnikStran />} />
       <Route path="/srecanja/:id/listki" element={<ListkiSrecanjaStran />} />
+      {/* Zapisniki celega kola za bralnik (V79): tisk brez navigacije, samo urejevalec. */}
+      <Route
+        path="/lige/:id/zapisniki-kola"
+        element={
+          <SamoUrejevalec>
+            <ZapisnikiKolaStran />
+          </SamoUrejevalec>
+        }
+      />
       {/* Žreb skupin za vrata dvorane: ena kategorija ali ves turnir. */}
       <Route path="/dogodki/:id/zreb-skupin" element={<ZrebSkupinDogodkaStran />} />
       <Route path="/turnirji/:id/zreb-skupin" element={<ZrebSkupinTurnirjaStran />} />
@@ -279,6 +290,14 @@ export function App() {
         <Route path="/lige" element={<LigeStran />} />
         <Route path="/lige/:id" element={<LigaStran />} />
         <Route path="/srecanja/:id" element={<SrecanjeStran />} />
+        <Route
+          path="/zapisniki/branje"
+          element={
+            <SamoUrejevalec>
+              <BranjeZapisnikovStran />
+            </SamoUrejevalec>
+          }
+        />
         <Route path="/lestvica" element={<LestvicaStran />} />
         <Route path="/dvoboj" element={<DvobojStran />} />
         <Route path="/koledar" element={<KoledarStran />} />

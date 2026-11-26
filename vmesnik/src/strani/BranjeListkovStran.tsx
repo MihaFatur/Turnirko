@@ -78,7 +78,7 @@ export function BranjeListkovStran() {
 
   /* Vrsta brez signala (F5.2): fotografija se shrani v telefon in pošilja, dokler
      ne pride; ponovitev z istim ključem ne ustvari dvojnika. */
-  const vrstaFotografij = useVrstaFotografij(
+  const vrstaFotografij = useVrstaFotografij<BranjeListkaDto>(
     idTurnirja,
     omogoceno ? (uporabnik?.id ?? null) : null,
     (branje, predogled) => {

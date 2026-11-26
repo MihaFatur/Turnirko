@@ -20,6 +20,7 @@ import { SIRINA_LEZECEGA_LISTA_PX, useMeriloLista } from '../pomozno/meriloLista
 import {
   type IzbiraObrazca,
   type OblikaZapisnika,
+  jeZaBralnik,
   preberiOblikoZapisnika,
   privzetaOblika,
   shraniOblikoZapisnika,
@@ -100,7 +101,9 @@ export function ZapisnikiEkipnegaDogodka({
   /* Turnirkov zapisnik je ležeči A4 in ga je en na list (list je že cel
      zapisnik), zato izbira »Na list« velja samo za uradni obrazec NTZS. */
   const [izbranaOblika, nastaviObliko] = useState<OblikaZapisnika | null>(preberiOblikoZapisnika)
-  const oblika: OblikaZapisnika = izbranaOblika ?? privzetaOblika(dogodek.formatSrecanja)
+  // zapisnik za bralnik je samo za ligo (V79): shranjena izbira z lige tu ne velja
+  const oblika: OblikaZapisnika =
+    (jeZaBralnik(izbranaOblika) ? null : izbranaOblika) ?? privzetaOblika(dogodek.formatSrecanja)
   const lezeci = oblika === 'TURNIRKO'
   const izberiObliko = (izbira: IzbiraObrazca) => {
     const nova: OblikaZapisnika = izbira === 'TURNIRKO' ? 'TURNIRKO' : 'NTZS'

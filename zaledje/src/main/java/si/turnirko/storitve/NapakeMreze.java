@@ -111,7 +111,7 @@ public class NapakeMreze {
                 if (poVgrajeni == v) {
                     pravVgrajena[v]++;
                 }
-                int[] vir = poViru[s.getIdBranje() != null ? 0 : s.getIdVadnica() != null ? 1 : 2];
+                int[] vir = poViru[s.jeIzDvorane() ? 0 : s.getIdVadnica() != null ? 1 : 2];
                 vir[0]++;
                 if (prebrano == v) {
                     vir[1]++;
@@ -184,7 +184,7 @@ public class NapakeMreze {
                 vadnice.odstejStevko(s.getIdVadnica());
             }
             log.info("Stevka {} (vrednost {}, {}) izlocena iz ucenja", id, s.getVrednost(),
-                    s.getIdVadnica() != null ? "vadnica " + s.getIdVadnica() : "listek " + s.getIdBranje());
+                    s.getIdVadnica() != null ? "vadnica " + s.getIdVadnica() : (s.getIdBranjeZapisnika() != null ? "zapisnik " + s.getIdBranjeZapisnika() : "listek " + s.getIdBranje()));
         });
     }
 
@@ -201,6 +201,6 @@ public class NapakeMreze {
     private static NapakeMrezeDto.Stevka dto(Prebrana n) {
         StevkaListka s = n.stevka();
         return new NapakeMrezeDto.Stevka(s.getId(), s.getVrednost(), n.prebrano(), n.verjetnost(),
-                Base64.getEncoder().encodeToString(s.getSlika()), s.getIdVadnica(), s.getIdBranje() != null);
+                Base64.getEncoder().encodeToString(s.getSlika()), s.getIdVadnica(), s.jeIzDvorane());
     }
 }

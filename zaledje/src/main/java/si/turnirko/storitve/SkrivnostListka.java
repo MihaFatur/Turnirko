@@ -68,11 +68,29 @@ public class SkrivnostListka {
 
     /* Skrivnost listka tekme. */
     public String za(long idTekme) {
+        return hmac(KodaListka.vsebinaQr(idTekme));
+    }
+
+    /* Skrivnost ligaskega zapisnika za bralnik (natis, 26. 11. 2026): isti kljuc,
+       drug vhod (»TZ:<id>«), zato skrivnost listka z istim id za zapisnik ne velja. */
+    public String zaZapisnik(long idNatisa) {
+        return hmac(KodaListka.vsebinaQrZapisnika(idNatisa));
+    }
+
+    public boolean veljaZapisnik(long idNatisa, String skrivnost) {
+        if (skrivnost == null || skrivnost.length() != DOLZINA) {
+            return false;
+        }
+        return MessageDigest.isEqual(zaZapisnik(idNatisa).getBytes(StandardCharsets.US_ASCII),
+                skrivnost.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private String hmac(String vsebina) {
         byte[] hmac;
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(kljuc(), "HmacSHA256"));
-            hmac = mac.doFinal(KodaListka.vsebinaQr(idTekme).getBytes(StandardCharsets.US_ASCII));
+            hmac = mac.doFinal(vsebina.getBytes(StandardCharsets.US_ASCII));
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("HmacSHA256 ni na voljo.", e);
         }

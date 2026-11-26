@@ -214,6 +214,10 @@ public class VarnostneNastavitve {
                         // fotografija listka tekme (F4.4) ni javna, ceprav je GET pod /tekme
                         .requestMatchers("/api/v1/branje-listkov/**", "/api/v1/branja-listkov/**",
                                 "/api/v1/turnirji/*/branja-listkov", "/api/v1/tekme/*/listek").authenticated()
+                        // ligaski zapisniki za bralnik (V79): tisk s kodami QR, fotografije in
+                        // predlogi so organizatorjevo delo - tudi GET (lastnistvo preveri storitev)
+                        .requestMatchers("/api/v1/zapisniki/**", "/api/v1/branja-zapisnikov",
+                                "/api/v1/branja-zapisnikov/**").hasAnyRole("ADMIN", "ORGANIZATOR")
                         // kode QR za tisk listkov (S1) nosijo skrivnost, ki sodniku da pravico
                         // poslati izid: samo prijavljeni (lastnistvo preveri ListkiStoritev)
                         .requestMatchers("/api/v1/dogodki/*/listki/kode").authenticated()

@@ -41,6 +41,17 @@ public final class PoravnavaListka {
     }
 
     public static PoravnanListek poravnaj(BufferedImage fotografija, double[][] qrTocke, Postavitev p) {
+        PoravnavaSPreslikavo s = poravnajSPreslikavo(fotografija, qrTocke, p);
+        return new PoravnanListek(s.slika(), s.perspektiva());
+    }
+
+    /* Poravnan list ter preslikava (mm lista -> px fotografije) in temnost fotografije:
+       ligaski zapisnik (A4) poravnavo izboljsa se po oznakah vrst in list preslika
+       znova iz fotografije (OdcitekZapisnika.izboljsaj), brez dvojnega vzorcenja. */
+    public record PoravnavaSPreslikavo(Temnost slika, boolean perspektiva, Preslikava preslikava,
+                                       Temnost fotografija) {}
+
+    public static PoravnavaSPreslikavo poravnajSPreslikavo(BufferedImage fotografija, double[][] qrTocke, Postavitev p) {
         Temnost d = Temnost.iz(fotografija);
         int okno = Math.max(15, Math.max(d.sirina, d.visina) / 20);
         boolean[] maska = d.crnilo(okno, 0.12f, 0.2f);
@@ -62,7 +73,7 @@ public final class PoravnavaListka {
                 throw new NapakaPoravnave("Na fotografiji ni mogoče najti oznak v vogalih listka. "
                         + "Fotografiraj cel listek od zgoraj, da se vidijo trije črni kvadrati.");
             }
-            return new PoravnanListek(prerisi(d, rezervna, p), true);
+            return new PoravnavaSPreslikavo(prerisi(d, rezervna, p), true, rezervna, d);
         }
         double[][] slika = {
                 {oznake[0].cx(), oznake[0].cy()},
@@ -92,7 +103,7 @@ public final class PoravnavaListka {
         if (preslikava == null) {
             throw new NapakaPoravnave("Listka na fotografiji ni mogoče poravnati. Fotografiraj ga znova.");
         }
-        return new PoravnanListek(prerisi(d, preslikava, p), perspektiva);
+        return new PoravnavaSPreslikavo(prerisi(d, preslikava, p), perspektiva, preslikava, d);
     }
 
     /* Trojica oznak (zgoraj levo, spodaj levo, spodaj desno), ki najbolje ustreza
@@ -262,7 +273,7 @@ public final class PoravnavaListka {
         return Math.hypot(a[0] - b[0], a[1] - b[1]);
     }
 
-    private static Temnost prerisi(Temnost vir, Preslikava listekVSliko, Postavitev postavitev) {
+    public static Temnost prerisi(Temnost vir, Preslikava listekVSliko, Postavitev postavitev) {
         int r = GeometrijaListka.PX_NA_MM;
         Temnost cilj = new Temnost((int) Math.round(postavitev.sirina() * r),
                 (int) Math.round(postavitev.visina() * r));

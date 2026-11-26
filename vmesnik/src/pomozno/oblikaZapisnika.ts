@@ -9,7 +9,26 @@
    ki ga igra format Savinja). */
 import type { FormatSrecanja, PredlogaLige } from '../api/tipi'
 
-export type OblikaZapisnika = 'NTZS' | 'TURNIRKO'
+/* Za bralnik (V79): zapisnik, ki ga Turnirko prebere s fotografije - samodejna oblika
+   (vrstice tekem, kadar gre kader nanje, sicer tabela kadra) ali izbrana. */
+export type OblikaZapisnika = 'NTZS' | 'TURNIRKO' | 'BRALNIK' | 'BRALNIK_VRSTICE' | 'BRALNIK_KADER'
+
+export const OBLIKE_BRALNIKA: OblikaZapisnika[] = ['BRALNIK', 'BRALNIK_VRSTICE', 'BRALNIK_KADER']
+
+export const OZNAKE_BRALNIKA: Record<string, string> = {
+  BRALNIK: 'Za bralnik – samodejna oblika',
+  BRALNIK_VRSTICE: 'Za bralnik – vrstica tekme',
+  BRALNIK_KADER: 'Za bralnik – tabela kadra',
+}
+
+export function jeZaBralnik(oblika: OblikaZapisnika | null | undefined): boolean {
+  return oblika != null && OBLIKE_BRALNIKA.includes(oblika)
+}
+
+/* Oblika lista, kot jo pozna strežnik (null = samodejna). */
+export function oblikaBralnika(oblika: OblikaZapisnika): 'VRSTICE' | 'KADER' | null {
+  return oblika === 'BRALNIK_VRSTICE' ? 'VRSTICE' : oblika === 'BRALNIK_KADER' ? 'KADER' : null
+}
 
 /* Možnosti izbirnika »Obrazec«: pri ligi sta uradna obrazca dva (1. SNTL in
    2./3. SNTL), pri ekipni tekmi turnirja en sam. */
@@ -24,7 +43,9 @@ const KLJUC_SHRAMBE = 'turnirko-oblika-zapisnika'
 export function preberiOblikoZapisnika(): OblikaZapisnika | null {
   try {
     const v = window.localStorage.getItem(KLJUC_SHRAMBE)
-    return v === 'NTZS' || v === 'TURNIRKO' ? v : null
+    return v === 'NTZS' || v === 'TURNIRKO' || OBLIKE_BRALNIKA.includes(v as OblikaZapisnika)
+      ? (v as OblikaZapisnika)
+      : null
   } catch {
     return null
   }

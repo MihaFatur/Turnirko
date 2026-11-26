@@ -155,7 +155,8 @@ public class UcenjeMreze {
        (list) po id, tudi med listki istega turnirja. */
     static boolean jePreizkusna(StevkaListka s) {
         long kljuc = s.getIdBranje() != null ? s.getIdBranje()
-                : s.getIdVadnica() != null ? s.getIdVadnica() : s.getId();
+                : s.getIdVadnica() != null ? s.getIdVadnica()
+                : s.getIdBranjeZapisnika() != null ? s.getIdBranjeZapisnika() : s.getId();
         return Math.floorMod(kljuc, 5L) == 0;
     }
 
@@ -333,7 +334,7 @@ public class UcenjeMreze {
                 if (s.isPopravljena()) {
                     mocni.add(v);
                 }
-                if (s.getIdBranje() != null) {
+                if (s.jeIzDvorane()) {
                     zListkov.add(v);
                 }
             }

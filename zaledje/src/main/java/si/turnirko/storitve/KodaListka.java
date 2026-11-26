@@ -48,6 +48,9 @@ public final class KodaListka {
     private static final Pattern NATISNJENA = Pattern.compile("T\\s*[-–:]?\\s*(\\d{1,12})");
     /* List vadnice stevk: »TKV:<razlicica postavitve>:<id lista>« (vadnica.ts v vmesniku). */
     private static final Pattern QR_VADNICE = Pattern.compile("^TKV:(\\d{1,3}):(\\d{1,12})$");
+    /* Ligaski zapisnik za bralnik (26. 11. 2026): »TZ:<id natisa>:<skrivnost>«.
+       Natis (natis_zapisnika) pove srecanje, obliko in kader, kakor je bil natisnjen. */
+    private static final Pattern QR_ZAPISNIKA = Pattern.compile("^TZ:(\\d{1,9}):([A-Z2-7]{8})$");
 
     /* Telefonska fotografija ima tudi po pomanjsanju v brskalniku do 2000 px; QR
        je na listku ~14 mm, torej dovolj velika tudi v manjsi razlicici, ki se
@@ -64,6 +67,15 @@ public final class KodaListka {
     /* Zapis novega listka s skrivnostjo (SkrivnostListka). */
     public static String vsebinaQr(long idTekme, String skrivnost) {
         return "TK:" + idTekme + ":" + skrivnost;
+    }
+
+    /* Vhod za HMAC skrivnosti zapisnika (SkrivnostListka.zaZapisnik). */
+    public static String vsebinaQrZapisnika(long idNatisa) {
+        return "TZ:" + idNatisa;
+    }
+
+    public static String vsebinaQrZapisnika(long idNatisa, String skrivnost) {
+        return "TZ:" + idNatisa + ":" + skrivnost;
     }
 
     public static String natisnjena(long idTekme) {
@@ -122,6 +134,23 @@ public final class KodaListka {
         return najdi(slika, QR_VADNICE, 2 * MANJSA_STRANICA).stream()
                 .map(z -> new KodaVadnice(Integer.parseInt(z.skupine().group(1)),
                         Long.parseLong(z.skupine().group(2)), z.tocke()))
+                .toList();
+    }
+
+    /* Prebrana koda ligaskega zapisnika: id natisa, skrivnost in sredisca iskalnih
+       vzorcev kot pri NajdenaKoda. Skrivnost ne sme v dnevnik. */
+    public record KodaZapisnika(long idNatisa, String skrivnost, double[][] tocke) {
+        @Override
+        public String toString() {
+            return "KodaZapisnika[idNatisa=" + idNatisa + "]";
+        }
+    }
+
+    /* Kode zapisnikov na fotografiji. List je A4 kot vadnica: manjsa razlicica slike
+       je vecja kot pri listku, da QR ostane berljiva. */
+    public static List<KodaZapisnika> najdiZapisnik(BufferedImage slika) {
+        return najdi(slika, QR_ZAPISNIKA, 2 * MANJSA_STRANICA).stream()
+                .map(z -> new KodaZapisnika(Long.parseLong(z.skupine().group(1)), z.skupine().group(2), z.tocke()))
                 .toList();
     }
 

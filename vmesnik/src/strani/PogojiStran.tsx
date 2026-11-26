@@ -64,7 +64,7 @@ const V_STEVILKAH: [string, string][] = [
   ],
   [
     '30 dni',
-    'Fotografije sodniških listkov po tekmovanju (listek, vnesen pozneje, 30 dni po vnosu).',
+    'Fotografije sodniških listkov po tekmovanju (listek, vnesen pozneje, 30 dni po vnosu) in fotografije ligaških zapisnikov po nalaganju.',
   ],
   [
     'Brez roka',
@@ -221,6 +221,10 @@ const ZASEBNOST: Tocka[] = [
         izrezane ročno napisane številke s točkami (posamezne števke, pri delu listkov pa vse
         celice s točkami skupaj); imen ne vsebujejo, njihovo število je omejeno in odvečne se
         sproti brišejo.
+        Enako velja za ligaške zapisnike, ki jih organizator lige po kolu fotografira ali skenira,
+        da Turnirko prebere, kdo je igral, in točke: na njih so imena igralcev obeh ekip.
+        Fotografijo vidita le organizator, ki jo je naložil, in upravljavec, izbriše pa se 30 dni
+        po nalaganju.
       </>
     ),
   },
@@ -296,7 +300,8 @@ const ZASEBNOST: Tocka[] = [
         Račun, katerega e-pošta ni potrjena, se izbriše po 48 urah; račun mlajšega od 15 let
         brez soglasja skrbnika po 30 dneh. Podatki registracije s plačljivim paketom, ki ni
         bila plačana, se izbrišejo po 4 dneh. Fotografije sodniških listkov se izbrišejo 30 dni
-        po tekmovanju oziroma po vnosu, če je listek vnesen pozneje. Račun izbrišemo na tvojo
+        po tekmovanju oziroma po vnosu, če je listek vnesen pozneje, fotografije ligaških zapisnikov
+        pa 30 dni po nalaganju. Račun izbrišemo na tvojo
         zahtevo. Izdane račune za
         plačila hranimo toliko časa, kot zahtevajo davčni predpisi, tudi po izbrisu računa.
         Rezultati tekmovanj ostanejo kot zapis zgodovine tekmovanja.

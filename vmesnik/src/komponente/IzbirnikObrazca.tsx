@@ -9,6 +9,9 @@ import {
   type OblikaZapisnika,
   OZNAKA_OBRAZCA_NTZS,
   OZNAKA_OBRAZCA_TURNIRKO,
+  OBLIKE_BRALNIKA,
+  OZNAKE_BRALNIKA,
+  jeZaBralnik,
 } from '../pomozno/oblikaZapisnika'
 
 const PREDLOGE: PredlogaLige[] = ['SNTL_1', 'SNTL_23']
@@ -18,14 +21,18 @@ export function IzbirnikObrazca({
   predloga,
   onIzbira,
   razred = 'listki-orodja__izbira',
+  bralnik = false,
 }: {
   oblika: OblikaZapisnika
   /* Izbrana predloga lige; null pri ekipni tekmi turnirja (brez lige). */
   predloga: PredlogaLige | null
   onIzbira: (izbira: IzbiraObrazca) => void
   razred?: string
+  /* Ponudi se zapisnik za bralnik (organizator lige, format z dvema igralcema). */
+  bralnik?: boolean
 }) {
-  const vrednost: IzbiraObrazca = oblika === 'TURNIRKO' ? 'TURNIRKO' : (predloga ?? 'NTZS')
+  const vrednost: IzbiraObrazca =
+    oblika === 'TURNIRKO' || (bralnik && jeZaBralnik(oblika)) ? oblika : (predloga ?? 'NTZS')
 
   return (
     <label className={razred}>
@@ -41,6 +48,12 @@ export function IzbirnikObrazca({
           <option value="NTZS">{OZNAKA_OBRAZCA_NTZS}</option>
         )}
         <option value="TURNIRKO">{OZNAKA_OBRAZCA_TURNIRKO}</option>
+        {bralnik &&
+          OBLIKE_BRALNIKA.map((o) => (
+            <option key={o} value={o}>
+              {OZNAKE_BRALNIKA[o]}
+            </option>
+          ))}
       </select>
     </label>
   )

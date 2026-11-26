@@ -360,7 +360,7 @@ export const LIGA: Clanek[] = [
           'Postave po prvem izidu ni več mogoče spremeniti. Če si v postavo vpisal napačna igralca, zapisnik razveljavi in ga vpiši znova. [Razveljavitev](razveljavitev-zapisnika)',
       },
     ],
-    povezani: ['format-srecanja', 'razveljavitev-zapisnika', 'lestvica-lige'],
+    povezani: ['format-srecanja', 'razveljavitev-zapisnika', 'lestvica-lige', 'branje-zapisnikov'],
   },
   {
     id: 'razveljavitev-zapisnika',
@@ -492,5 +492,72 @@ export const LIGA: Clanek[] = [
       },
     ],
     povezani: ['kvalifikacije', 'lestvica-lige', 'liga-nova'],
+  },
+  {
+    id: 'branje-zapisnikov',
+    naslov: 'Zapisniki za bralnik',
+    poglavje: 'liga',
+    kratko:
+      'Zapisnike kola natisneš »za bralnik«, igralci prekrižajo, kdo je igral, in vpišejo točke. Po kolu liste fotografiraš ali skeniraš, Turnirko jih prebere in zanesljive zapiše sam; ostale pregledaš.',
+    kljucne: ['fotografija', 'slika', 'skener', 'PDF', 'QR', 'križec', 'menjava', 'samodejno', 'zapisnik kola', 'bralnik', 'tabela kadra', 'vrstica tekme'],
+    vsebina: [
+      { tip: 'kje', pot: ['Liga', 'Zapisniki kola'] },
+      {
+        tip: 'koraki',
+        postavke: [
+          'Pred kolom odpri **Zapisniki kola**, izberi kolo in **Natisni**. Vsako srečanje dobi svoj ležeči list s kodo QR in kadroma obeh ekip.',
+          'Liste razdeli ekipam. Na srečanju pri vsaki tekmi prekrižajo igralca, ki jo je igral (pri dvojicah oba), in vpišejo točke nizov.',
+          'Po kolu odpri **Branje zapisnikov** in liste fotografiraj z **Fotografiraj zapisnik** ali naloži PDF iz skenerja z **Naloži slike ali PDF**.',
+          'Zanesljivo prebrani zapisniki se zapišejo sami. Ostali so pod **Za pregled**: odpri **Preglej**, primerjaj obarvana polja z izrezom fotografije, popravi in **Zapiši v srečanje**.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'oblika',
+        naslov: 'Vrstica tekme ali tabela kadra',
+        kratko: 'Vrstica tekme: križci in točke v isti vrsti, za kader do šest igralcev. Tabela kadra: igralci so vrstice, tekme stolpci - za večji kader. Samodejna oblika izbere sama.',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          '**Vrstica tekme**: vsaka tekma je ena vrsta - kvadratki domačih, točke nizov, kvadratki gostov. Imena kadra so glave stolpcev.',
+          '**Tabela kadra**: zgoraj kadra obeh ekip (igralec je vrstica, tekma stolpec), spodaj tabela točk. Prostora je za več imen.',
+          'Samodejna oblika vzame vrstico tekme, kadar gre kader nanjo, sicer tabelo kadra.',
+          'Zadnja vrstica ali stolpec kadra je za igralca, ki ga v kadru še ni: ime napišejo na črto. Takega igralca izbereš ob pregledu.',
+        ],
+      },
+      {
+        tip: 'razdelek',
+        id: 'krizci',
+        naslov: 'Križci in napake',
+        kratko: 'Napačen križec igralci zapolnijo do črnega - bralnik ga ne šteje. Pri posamični tekmi je na ekipo en križec, pri dvojicah dva.',
+      },
+      {
+        tip: 'odstavek',
+        besedilo:
+          'Postave ni treba posebej vpisovati: mesto A je igralec, ki je igral prvo tekmo z mestom A (pri Savinji A-X). Kdor kasneje igra namesto njega, je menjava te tekme. [Menjava](zapisnik-srecanja#menjava)',
+      },
+      {
+        tip: 'razdelek',
+        id: 'samodejno',
+        naslov: 'Kdaj se zapisnik zapiše sam',
+        kratko: 'Ko je vsak križec in vsaka številka prebrana zanesljivo, potek srečanja drži pravila in srečanje še ni vpisano. Izbiro »zapiši sam« lahko izklopiš.',
+      },
+      {
+        tip: 'seznam',
+        postavke: [
+          'Zapis gre po isti poti kot ročni vnos: postava, menjave, izidi, rating.',
+          'Če je srečanje že vpisano, se zapisnik ne prepiše sam: odpri ga in izberi **Prepiši zapisnik**.',
+          'Zapisan zapisnik lahko pod **Zapisano** odpreš s **popravi** - prejšnji zapis se razveljavi in zapiše popravljeni.',
+          'Fotografija ostane 30 dni, vidiš jo samo ti (in administrator).',
+        ],
+      },
+      {
+        tip: 'pazi',
+        besedilo:
+          'Bralnik bere samo zapisnike, natisnjene iz Turnirka z obliko »za bralnik« (koda QR zgoraj desno). Uradni obrazec NTZS in ležeči zapisnik Turnirko vpišeš ročno.',
+      },
+    ],
+    povezani: ['zapisnik-srecanja', 'razveljavitev-zapisnika', 'branje-listkov'],
   },
 ]

@@ -3685,3 +3685,187 @@ export interface KlicTekmeVnos {
   miza2: number | null
   idSodnika: number | null
 }
+
+/* ---------- Ligaški zapisnik za bralnik (V79) ----------
+   Postavitev lista pove strežnik (GeometrijaZapisnika.java), vmesnik po njej
+   nariše list do milimetra natančno - bralnik išče kvadratke in celice na istih
+   legah. Oblika VRSTICE = vrstica tekme (križci in točke v isti vrsti), KADER =
+   tabela kadra nad tabelo točk (za večji kader). */
+export type OblikaZapisnikaBralnika = 'VRSTICE' | 'KADER'
+
+export interface PravokotnikMm {
+  x: number
+  y: number
+  sirina: number
+  visina: number
+}
+
+export interface PasZapisnika {
+  levo: [number, number]
+  desno: [number, number]
+}
+
+export interface KvadratekZapisnika {
+  tekma: number
+  domaci: boolean
+  igralec: number
+  pas: number
+  p: PravokotnikMm
+}
+
+export interface CelicaZapisnika {
+  tekma: number
+  niz: number
+  domaci: boolean
+  pas: number
+  p: PravokotnikMm
+}
+
+export type VrstaBesedilaZapisnika =
+  | 'NASLOV' | 'EKIPE' | 'EKIPA' | 'IME' | 'OZNAKA_TEKME' | 'NIZ' | 'DVOPICJE' | 'NOV' | 'NAVODILO' | 'KODA'
+
+export interface BesediloZapisnika {
+  vrsta: VrstaBesedilaZapisnika
+  domaci: boolean | null
+  indeks: number | null
+  p: PravokotnikMm
+  kot: number
+}
+
+export interface PostavitevZapisnika {
+  oblika: OblikaZapisnikaBralnika
+  razlicica: number
+  sirina: number
+  visina: number
+  stranicaOznake: number
+  oznake: [number, number][]
+  qr: PravokotnikMm
+  stranicaOznakeVrste: number
+  pasovi: PasZapisnika[]
+  kvadratki: KvadratekZapisnika[]
+  celice: CelicaZapisnika[]
+  besedila: BesediloZapisnika[]
+  crta: number
+}
+
+export interface IgralecNatisa {
+  id: number
+  ime: string
+  priimek: string
+}
+
+export interface NatisZapisnikaDto {
+  idSrecanje: number
+  idNatis: number
+  koda: string
+  oznaka: string
+  oblika: OblikaZapisnikaBralnika
+  postavitev: PostavitevZapisnika
+  tekme: { oznaka: string; dvojice: boolean }[]
+  kaderDomaci: IgralecNatisa[]
+  kaderGost: IgralecNatisa[]
+  domaci: string
+  gost: string
+  tekmovanje: string
+  sezona: string | null
+  opis: string | null
+  termin: string | null
+  idLiga: number | null
+}
+
+export type StanjeBranjaZapisnika = 'V_VRSTI' | 'PREBRANO' | 'NAPAKA' | 'ZAPISANO' | 'ZAVRZENO'
+
+export interface NizBranjaZapisnika {
+  domaci: number | null
+  gost: number | null
+  negotovoDomaci: boolean
+  negotovoGost: boolean
+}
+
+export type StanjeTekmeZapisnika = 'ODIGRANA' | 'NEODIGRANA' | 'NEPOPOLNA'
+
+export interface TekmaBranjaZapisnika {
+  oznaka: string
+  dvojice: boolean
+  /* id igralcev iz kadra; null = nov igralec, ki ga izbere organizator */
+  domaci: (number | null)[]
+  gost: (number | null)[]
+  negotovoDomaci: boolean
+  negotovoGost: boolean
+  nizi: NizBranjaZapisnika[]
+  stanje: StanjeTekmeZapisnika
+  niziDomaci: number
+  niziGost: number
+}
+
+export interface CeliceZapisnikaDto {
+  sirina: number
+  visina: number
+  kvadratki: { tekma: number; domaci: boolean; igralec: number; x0: number; y0: number; x1: number; y1: number }[]
+  celice: { tekma: number; niz: number; domaci: boolean; x0: number; y0: number; x1: number; y1: number }[]
+}
+
+export interface IgralecBranjaZapisnika {
+  id: number
+  ime: string
+}
+
+export interface BranjeZapisnikaDto {
+  id: number
+  stanje: StanjeBranjaZapisnika
+  napaka: string | null
+  opomba: string | null
+  samodejno: boolean
+  zapisanoSamodejno: boolean
+  zanesljivo: boolean | null
+  ustvarjenoOb: string
+  obviselo: boolean
+  slika: boolean
+  srecanje: {
+    id: number
+    idLiga: number | null
+    tekmovanje: string
+    opis: string | null
+    kolo: number | null
+    domaci: string
+    gost: string
+    status: StatusSrecanja
+    dobljeneDomaci: number
+    dobljeneGost: number
+    vpisano: boolean
+  } | null
+  predlog: {
+    tekme: TekmaBranjaZapisnika[]
+    zanesljiv: boolean
+    opozorila: string[]
+    negotovih: number
+  } | null
+  podrobnosti: {
+    oblika: OblikaZapisnikaBralnika
+    format: FormatSrecanja
+    steviloNizov: number
+    zmagZaSrecanje: number | null
+    kaderNatisaDomaci: IgralecBranjaZapisnika[]
+    kaderNatisaGost: IgralecBranjaZapisnika[]
+    kaderDomaci: IgralecBranjaZapisnika[]
+    kaderGost: IgralecBranjaZapisnika[]
+    celice: CeliceZapisnikaDto | null
+    poravnana: boolean
+    /* zapis, ki je šel v srečanje (zapisano branje): popravek začne iz njega */
+    potrjeno: ZapisZapisnikaVnos | null
+  } | null
+}
+
+export interface TekmaZapisaZapisnika {
+  domaci: number[]
+  gost: number[]
+  nizi: NizVnos[]
+  izidTip: IzidTekme | null
+  zmagovalecStran: StranEkipe | null
+}
+
+export interface ZapisZapisnikaVnos {
+  tekme: TekmaZapisaZapisnika[]
+  prepisi: boolean
+  casPregledaMs: number | null
+}

@@ -29,10 +29,12 @@ public class OpravilaBranjaListkov {
     private final BranjeListkovStoritev storitev;
     private final UcenjeMreze ucenje;
     private final PogostostNizovStoritev pogostost;
+    private final BranjeZapisnikovStoritev zapisniki;
 
     public OpravilaBranjaListkov(BranjeListkovStoritev storitev, UcenjeMreze ucenje,
-                                 PogostostNizovStoritev pogostost) {
+                                 PogostostNizovStoritev pogostost, BranjeZapisnikovStoritev zapisniki) {
         this.storitev = storitev;
+        this.zapisniki = zapisniki;
         this.ucenje = ucenje;
         this.pogostost = pogostost;
     }
@@ -53,6 +55,16 @@ public class OpravilaBranjaListkov {
         } catch (RuntimeException e) {
             log.error("Branje listkov: brisanje kljucev posiljanja ni uspelo", e);
         }
+        // ligaski zapisniki (V79): fotografije 30 dni od nalaganja, kljuci 24 ur
+        try {
+            int izbrisanih = zapisniki.izbrisiStareSlike();
+            zapisniki.pobrisiStareKljucePosiljanja();
+            if (izbrisanih > 0) {
+                log.info("Branje zapisnikov: izbrisanih {} fotografij, starejsih od 30 dni", izbrisanih);
+            }
+        } catch (RuntimeException e) {
+            log.error("Branje zapisnikov: brisanje starih fotografij ni uspelo", e);
+        }
         try {
             int[] hramba = ucenje.pocisti();
             if (hramba[0] > 0 || hramba[1] > 0) {
@@ -69,6 +81,10 @@ public class OpravilaBranjaListkov {
         int prekinjenih = storitev.prekiniOstalaVVrsti();
         if (prekinjenih > 0) {
             log.warn("Branje listkov: {} branj je prekinil ponovni zagon", prekinjenih);
+        }
+        int zapisnikov = zapisniki.prekiniOstalaVVrsti();
+        if (zapisnikov > 0) {
+            log.warn("Branje zapisnikov: {} branj je prekinil ponovni zagon", zapisnikov);
         }
         osveziPogostost();
     }
