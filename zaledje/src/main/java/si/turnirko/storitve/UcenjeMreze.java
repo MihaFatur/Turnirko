@@ -8,9 +8,10 @@
    - na preizkusnih stevkah ne bere slabse,
    - na zlatem naboru (celi listki, F1.5) nima vec napacnih celic - ce je nabor
      dovolj velik,
-   - na MNIST ne nazaduje za vec kot eno odstotno tocko od mreze v uporabi in za
-     vec kot dve od vgrajene (sicer bi vsaka razlicica lahko vzela svojo tocko in
-     bi mreza po nekaj ucenjih pozabila splosne oblike stevk).
+   - na MNIST brez enic in sedmic ne nazaduje za vec kot eno odstotno tocko od
+     mreze v uporabi in za vec kot dve od vgrajene (sicer bi vsaka razlicica lahko
+     vzela svojo tocko in bi mreza po nekaj ucenjih pozabila splosne oblike stevk).
+     Enice in sedmice MNIST so ameriske (mejaMnist), zato jih meja ne steje.
    Vsak poskus se zapise (tudi zavrnjen in prekinjen), da admin vidi, kaj se je
    zgodilo; odlozen poskus (premalo stevk) ne, ker se ponovi, ko jih pride vec.
 
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -101,6 +103,12 @@ public class UcenjeMreze {
        pricakovana, zdrs brez meje pa ne. */
     static final double PADEC_MNIST = 0.01;
     static final double PADEC_MNIST_SKUPAJ = 0.02;
+    /* Stevke MNIST, ki jih meja ne steje (lastnik 27. 11. 2026). Ameriska enica je
+       navpicna crta brez nosu, ameriska sedmica nima precke: mreza, ki se nauci nase
+       enice z nosom in sedmice s precko, ju bere drugace. To je drugacna pisava, ne
+       pozaba. Razlicica 5 (27. 11. 2026) je bila zavrnjena, ker je od 12 stevk MNIST,
+       ki jih je brala slabse od razlicice 3, osem ameriskih sedmic prebrala kot 1. */
+    static final Set<Integer> MNIST_BREZ = Set.of(1, 7);
     static final Duration NAJDALJ = Duration.ofMinutes(30);
     static final Duration PREMOR = Duration.ofMinutes(10);
     /* Zgodovina na strani: toliko zadnjih razlicic. */
@@ -120,7 +128,8 @@ public class UcenjeMreze {
     private volatile LocalDateTime zadnjiZagon;
     private volatile String sporocilo;
     private volatile LocalDateTime sporociloOb;
-    /* MNIST vgrajene mreze (izracuna se ob prvem ucenju; vgrajena se ne spreminja). */
+    /* MNIST vgrajene mreze za mejo (brez MNIST_BREZ; izracuna se ob prvem ucenju,
+       vgrajena se ne spreminja). */
     private volatile Double mnistVgrajene;
     private final ExecutorService nit = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ucenje-mreze");
@@ -349,6 +358,7 @@ public class UcenjeMreze {
             return null;
         }
         List<UcenjeStevk.Vzorec> mnistPreizkus = beri("/branje/mnist-preizkus.bin.gz");
+        List<UcenjeStevk.Vzorec> mnistMeja = mejaMnist(mnistPreizkus);
         List<UcenjeStevk.Vzorec> mesano = zaUcenje(beri("/branje/mnist-izbor.bin.gz"), ucni, mocni, zListkov);
         double prej = UcenjeStevk.natancnost(trenutna.mreza(), preizkusni);
         MrezaStevk nova = trenutna.mreza().kopija();
@@ -361,12 +371,16 @@ public class UcenjeMreze {
         try {
             UcenjeStevk.uci(nova, mesano, epoh, 0.0003f, niti, new Random().nextLong(), null, prekini);
             potem = UcenjeStevk.natancnost(nova, preizkusni);
+            // zapise se MNIST na vseh stevkah (zgodovina ostane primerljiva), meja pa
+            // steje samo stevke brez MNIST_BREZ
             mnistPrej = UcenjeStevk.natancnost(trenutna.mreza(), mnistPreizkus);
             mnistPotem = UcenjeStevk.natancnost(nova, mnistPreizkus);
+            double mejaPrej = UcenjeStevk.natancnost(trenutna.mreza(), mnistMeja);
+            double mejaPotem = UcenjeStevk.natancnost(nova, mnistMeja);
             double vgrajena = trenutna.oznaka().startsWith(VirMrezeStevk.PREDPONA_UCENE)
-                    ? mnistVgrajene(mnistPreizkus) : mnistPrej;
+                    ? mnistVgrajene(mnistMeja) : mejaPrej;
             zlati = zlati(trenutna.mreza(), nova, prekini);
-            razlog = razlogZavrnitve(prej, potem, mnistPrej, mnistPotem, vgrajena, zlati);
+            razlog = razlogZavrnitve(prej, potem, mejaPrej, mejaPotem, vgrajena, zlati);
         } catch (UcenjeStevk.Prekinjeno e) {
             if (Thread.currentThread().isInterrupted()) {
                 // streznik se ustavlja: nic se ne zapise, mreza ostane stara
@@ -406,19 +420,24 @@ public class UcenjeMreze {
                 narobe(b.celice()));
     }
 
-    private double mnistVgrajene(List<UcenjeStevk.Vzorec> mnistPreizkus) {
+    private double mnistVgrajene(List<UcenjeStevk.Vzorec> mnistMeja) {
         Double m = mnistVgrajene;
         if (m == null) {
             VirMrezeStevk.Nalozena vgrajena = VirMrezeStevk.vgrajena();
             // brez vgrajene (samo v okolju brez virov) meja velja le od mreze v uporabi
-            m = vgrajena == null ? 0.0 : UcenjeStevk.natancnost(vgrajena.mreza(), mnistPreizkus);
+            m = vgrajena == null ? 0.0 : UcenjeStevk.natancnost(vgrajena.mreza(), mnistMeja);
             mnistVgrajene = m;
         }
         return m;
     }
 
-    /* Zakaj nova mreza ni sprejeta; null = sprejeta (F6.3). mnistVgrajene je MNIST
-       vgrajene mreze (meja skupnega zdrsa). */
+    /* Stevke MNIST, ki jih steje meja (brez MNIST_BREZ). */
+    static List<UcenjeStevk.Vzorec> mejaMnist(List<UcenjeStevk.Vzorec> mnist) {
+        return mnist.stream().filter(v -> !MNIST_BREZ.contains(v.oznaka())).toList();
+    }
+
+    /* Zakaj nova mreza ni sprejeta; null = sprejeta (F6.3). MNIST (prej, potem in
+       vgrajene, meja skupnega zdrsa) je merjen brez MNIST_BREZ (mejaMnist). */
     static String razlogZavrnitve(double prej, double potem, double mnistPrej, double mnistPotem,
                                   double mnistVgrajene, Zlati zlati) {
         if (potem < prej) {
@@ -428,11 +447,12 @@ public class UcenjeMreze {
             return "Na zlatem naboru več napačnih celic: " + zlati.narobePrej() + " → " + zlati.narobePotem() + ".";
         }
         if (mnistPotem < mnistPrej - PADEC_MNIST) {
-            return "Na MNIST slabša za več kot 1 odstotno točko: " + odstotek(mnistPrej) + " → "
+            return "Na MNIST brez enic in sedmic slabša za več kot 1 odstotno točko: " + odstotek(mnistPrej) + " → "
                     + odstotek(mnistPotem) + ".";
         }
         if (mnistPotem < mnistVgrajene - PADEC_MNIST_SKUPAJ) {
-            return "Na MNIST za več kot 2 odstotni točki slabša od vgrajene mreže: " + odstotek(mnistVgrajene)
+            return "Na MNIST brez enic in sedmic za več kot 2 odstotni točki slabša od vgrajene mreže: "
+                    + odstotek(mnistVgrajene)
                     + " → " + odstotek(mnistPotem) + ".";
         }
         return null;

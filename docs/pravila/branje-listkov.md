@@ -223,6 +223,16 @@ celici simulacija vrednost začne pri 5–25 % širine (pri 30–50 % bi dvomest
   21. 11. 2026: meja samo od prejšnje bi dovolila zdrs za točko ob vsakem učenju; prva
   različica v produkciji je padla 99,5 % → 98,6 %). Razlog zavrnitve se zapiše (`razlog`),
   z vsemi meritvami, načinom in trajanjem.
+- **Meja MNIST ne šteje enic in sedmic** (`UcenjeMreze.MNIST_BREZ`, lastnik 27. 11. 2026):
+  MNIST je ameriška pisava (enica je navpična črta brez nosu, sedmica nima prečke), naši
+  sodniki pišejo enico z nosom in sedmico s prečko. Mreža, ki se nauči naše enice,
+  ameriško sedmico bere kot 1: to je drugačna pisava, ne pozaba splošnih oblik. Različica
+  5 (27. 11. 2026) je bila zavrnjena (MNIST 97,2 % proti 99,5 % vgrajene), čeprav je od
+  12 števk MNIST, ki jih je brala slabše od različice 3, osem ameriških sedmic prebrala
+  kot 1; brez enic in sedmic 98,0 % proti 99,5 %. Meja (−1 od mreže v uporabi, −2 od
+  vgrajene) zato meri samo števke 0, 2–6, 8, 9 (800 od 1000); v `mreza_stevk.mnist_prej`
+  in `mnist` se še naprej zapiše MNIST na vseh števkah, da je zgodovina primerljiva, besedilo
+  razloga pa navaja vrednosti brez enic in sedmic.
 - **Meje (F6.5):** hkrati teče največ eno učenje (zastavica; vrnitev prejšnje vzame isto),
   »Uči zdaj« ima premor 10 min. Učenje (2 niti) se po 30 min prekine: zapis brez uteži
   (`razlog` »Prekinjeno …«), mreža ostane stara. Ob ustavitvi strežnika se nič ne zapiše.

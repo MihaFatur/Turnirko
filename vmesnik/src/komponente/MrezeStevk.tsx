@@ -93,8 +93,10 @@ export function MrezeStevk() {
           <p className="meritev-branja__besedilo">
             Števk v učenju: {s.stevkVUcenju} (z vadnic {s.stevkVadnice}). Novih od zadnjega učenja: {s.novihStevk},
             učenje jih potrebuje vsaj {s.najmanjNovih}. Učenje teče vsako noč ob 3.50 ali takoj z »Uči zdaj«. Nova
-            mreža se sprejme samo, če na preizkusnih števkah in zlatem naboru ne bere slabše. Števke s pravih
-            listkov štejejo pri učenju dvakrat toliko kot števke z vadnic.
+            mreža se sprejme samo, če na preizkusnih števkah in zlatem naboru ne bere slabše in na MNIST ne
+            nazaduje za več kot 1 točko (od vgrajene za več kot 2). Enic in sedmic MNIST ta meja ne šteje, ker
+            so ameriške (enica brez nosu, sedmica brez prečke); MNIST v zgodovini je izmerjen na vseh števkah.
+            Števke s pravih listkov štejejo pri učenju dvakrat toliko kot števke z vadnic.
           </p>
           <p className="meritev-branja__besedilo">
             <strong>Natančnost velja za eno števko.</strong> Listek ima{' '}

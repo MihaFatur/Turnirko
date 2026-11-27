@@ -1036,3 +1036,21 @@ slabše, kot kaže meritev?«). Pravila: `docs/pravila/branje-listkov.md`, »Dia
   (po viru), `NapakeMrezeTest` (po viru), simulacija bralnika nespremenjena
   (`SimuliraneFotografijeTest` 12/12); prikaz `/dev/diagnoza-branja`. Na pravih podatkih
   izmeri admin na test.turnirko-nt.si ali v produkciji (»Izmeri trenutni bralnik«).
+
+**Meja MNIST brez enic in sedmic** (27. 11. 2026, brez migracije; lastnik po zavrnitvi
+različice 5: »popravi mejo MNIST, da ne šteje sedmic in ne šteje enk, saj so tudi te
+drugačne«). Pravila: `docs/pravila/branje-listkov.md`, »Meja MNIST ne šteje enic in sedmic«.
+- **Zakaj:** različica 5 (»Uči zdaj« 27. 11. ob 19.16, 9311 števk, vse z vadnic) je bila
+  zavrnjena po meji −2 od vgrajene (MNIST 99,5 % → 97,2 %). Lokalna primerjava na izvozu
+  produkcije: od 12 števk MNIST, ki jih #5 bere slabše od #3, je 8 ameriških sedmic,
+  prebranih kot 1; na vadnicah #5 popravi 4 enice, ki jih #3 bere kot 7, sedmice pa ne
+  pokvari nobene. Preizkusne števke 78 → 66 napak (v1 31 → 20, v2 47 → 46; 33 od 46 napak
+  v2 z dveh listov), McNemar 2,63 (ni značilno). #3 je bila že 1,3 točke pod vgrajeno,
+  zato bi meja zavrnila skoraj vsako nadaljnje učenje proti naši pisavi.
+- **Kaj:** `UcenjeMreze.MNIST_BREZ = {1, 7}`, `mejaMnist`; meja (−1 od mreže v uporabi,
+  −2 od vgrajene) meri na 800 števkah, zapis `mnist_prej`/`mnist` ostane na vseh 1000
+  (primerljiva zgodovina), razlog navaja »MNIST brez enic in sedmic«. Besedilo na strani
+  Meritev branja razloži mejo.
+- S tem bi bila #5 sprejeta (brez 1 in 7: #3 98,375 %, #5 98,0 %, vgrajena 99,5 %).
+  Shranjena zavrnjena #5 se ne sprejme sama; naslednje učenje (≥ 200 novih števk) teče
+  po novi meji.

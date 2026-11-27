@@ -6,7 +6,8 @@
      samo, ce ne bere slabse;
    - nova mreza je zavrnjena, ce je slabsa na preizkusnih stevkah, ima vec napacnih
      celic na zlatem naboru ali na MNIST pade za vec kot eno odstotno tocko (od
-     vgrajene skupaj za vec kot dve, F6.3);
+     vgrajene skupaj za vec kot dve, F6.3); meja MNIST ne steje enic in sedmic
+     (ameriska pisava, lastnik 27. 11. 2026);
    - preizkusne stevke se delijo po listku (ista pisava ni v obeh delih); brez
      dovolj preizkusnih se ucenje odlozi brez zapisa;
    - prekinjeno ucenje (casovna meja) se zapise brez utezi, mreza ostane stara (F6.5);
@@ -159,7 +160,30 @@ class UcenjeMrezeTest extends IntegracijskiTest {
         assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.94, 0.98, 0.98, 0.98, null).startsWith("Na preizkusnih"));
         assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.98, 0.98,
                 new UcenjeMreze.Zlati(30, 0.95f, 0.94f, 10, 12)).startsWith("Na zlatem naboru"));
-        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.965, 0.98, null).startsWith("Na MNIST slabša"));
+        assertTrue(UcenjeMreze.razlogZavrnitve(0.95, 0.97, 0.98, 0.965, 0.98, null)
+                .startsWith("Na MNIST brez enic in sedmic slabša"));
+    }
+
+    /* Meja MNIST ne steje ameriskih enic in sedmic: nasa enica z nosom je ameriski
+       sedmici podobna, zato mreza, ki se je nauci, ameriske sedmice bere kot 1. */
+    @Test
+    void mejaMnistNeStejeEnicInSedmic() throws IOException {
+        List<UcenjeStevk.Vzorec> mnist;
+        try (InputStream v = UcenjeMrezeTest.class.getResourceAsStream("/branje/mnist-preizkus.bin.gz")) {
+            mnist = UcenjeStevk.beriIzbor(v);
+        }
+        List<UcenjeStevk.Vzorec> meja = UcenjeMreze.mejaMnist(mnist);
+        assertTrue(meja.stream().noneMatch(v -> v.oznaka() == 1 || v.oznaka() == 7));
+        assertEquals(mnist.stream().filter(v -> v.oznaka() != 1 && v.oznaka() != 7).count(), meja.size());
+        for (int stevka : new int[] {0, 2, 3, 4, 5, 6, 8, 9}) {
+            assertTrue(meja.stream().anyMatch(v -> v.oznaka() == stevka), "stevka " + stevka);
+        }
+
+        // razlicica 5 v produkciji (27. 11. 2026): na vseh stevkah MNIST 98,2 % -> 97,2 %
+        // (vgrajena 99,5 %), zavrnjena; brez enic in sedmic 98,375 % -> 98,0 % (vgrajena
+        // 99,5 %), zato bi bila sprejeta
+        assertNotNull(UcenjeMreze.razlogZavrnitve(0.9648, 0.9702, 0.982, 0.972, 0.995, null));
+        assertNull(UcenjeMreze.razlogZavrnitve(0.9648, 0.9702, 0.98375, 0.98, 0.995, null));
     }
 
     /* Vsako ucenje sme vzeti do eno tocko MNIST, vse skupaj pa najvec dve od vgrajene:
@@ -173,7 +197,8 @@ class UcenjeMrezeTest extends IntegracijskiTest {
         // tretja: od mreze v uporabi -0,5 tocke, a od vgrajene -2,3: zavrnjena
         String razlog = UcenjeMreze.razlogZavrnitve(0.97, 0.98, 0.977, 0.972, 0.995, null);
         assertNotNull(razlog);
-        assertTrue(razlog.startsWith("Na MNIST za več kot 2 odstotni točki slabša od vgrajene"), razlog);
+        assertTrue(razlog.startsWith("Na MNIST brez enic in sedmic za več kot 2 odstotni točki slabša od vgrajene"),
+                razlog);
     }
 
     /* Zlati nabor odloca, ko ima vsaj NAJMANJ_ZLATIH listkov: obe mrezi se izmerita
