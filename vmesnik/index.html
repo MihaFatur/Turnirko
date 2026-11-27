@@ -76,14 +76,66 @@
         }
       } catch (e) {}
     </script>
+    <!-- Statistika šteje samo ljudi (27. 11. 2026). Od 20. 10. stran prebira
+         samodejni brskalnik, ki se seli med oblaki (Tencent, Alibaba) in
+         domačimi priključki tujih ljudi, zato ga po naslovu ni mogoče ustaviti
+         (glej blokado v Caddyfile). Skupno mu je, da odpre eno stran in po
+         2–3 s odide, ne da bi se je dotaknil. Umami zato ogled ali dogodek
+         pošlje šele, ko je na strani človek: dotik, klik, premik miške, tipka
+         ali kolešček, ali 15 s vidne strani (kdor samo bere). Kdor odide prej
+         in se strani ne dotakne, se ne šteje. Pomik strani (scroll) ni znak,
+         ker ga sproži tudi vmesnik sam. Umami čaka na odgovor te funkcije
+         (data-before-send; obisk.js kliče await Promise.resolve(...)), zato jo
+         lahko zadrži; ogled, ki ne dočaka človeka, se nikoli ne pošlje. -->
+    <script>
+      try {
+        ;(function () {
+          const ZNAKI = ['pointerdown', 'pointermove', 'touchstart', 'keydown', 'wheel']
+          const VIDNO_DOVOLJ_MS = 15000
+          let clovek = false
+          let vidnoMs = 0
+          let ura = 0
+          const cakajo = []
+          function potrdi() {
+            if (clovek) return
+            clovek = true
+            clearInterval(ura)
+            ZNAKI.forEach(function (z) {
+              removeEventListener(z, potrdi, true)
+            })
+            cakajo.splice(0).forEach(function (spusti) {
+              spusti()
+            })
+          }
+          ZNAKI.forEach(function (z) {
+            addEventListener(z, potrdi, { capture: true, passive: true })
+          })
+          ura = setInterval(function () {
+            if (document.visibilityState !== 'visible') return
+            vidnoMs += 1000
+            if (vidnoMs >= VIDNO_DOVOLJ_MS) potrdi()
+          }, 1000)
+          window.turnirkoClovek = function (vrsta, podatki) {
+            if (clovek) return podatki
+            return new Promise(function (spusti) {
+              cakajo.push(function () {
+                spusti(podatki)
+              })
+            })
+          }
+        })()
+      } catch (e) {}
+    </script>
     <!-- Statistika obiska (Umami, glej docs/OBJAVA.md, razdelek 8). Šteje samo
          na pravi domeni (data-domains), zato razvoj in namizna različica ne
-         pošiljata ničesar; defer pomeni, da stran brez interneta ne čaka nanj. -->
+         pošiljata ničesar; defer pomeni, da stran brez interneta ne čaka nanj.
+         data-before-send: zgornja funkcija, ki ogled zadrži do človeka. -->
     <script
       defer
       src="https://statistika.turnirko-nt.si/obisk.js"
       data-website-id="6bf90444-b1dd-4a71-8ca6-cf935b218c10"
       data-domains="turnirko-nt.si,www.turnirko-nt.si"
+      data-before-send="turnirkoClovek"
     ></script>
   </head>
   <body>

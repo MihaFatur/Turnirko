@@ -17,6 +17,15 @@
   soglasje (Google Analytics), ne dodajaj. Skript `obisk.js` v `index.html` ima
   `data-domains`, zato razvoj in namizna različica ne štejeta; naložen je z
   `defer`, da vmesnik brez interneta v dvorani ne čaka nanj.
+- **Umami šteje samo ljudi** (27. 11. 2026): `data-before-send="turnirkoClovek"`
+  v `index.html` zadrži vsak ogled in dogodek, dokler na strani ni človeškega
+  znaka (pointerdown/pointermove/touchstart/keydown/wheel) ali 15 s vidne
+  strani. Razlog: od 20. 10. stran prebira samodejni brskalnik (jezik zh-CN,
+  ena stran, 2–3 s), ki se seli med oblaki in stanovanjskimi posredniki, zato
+  ga blokada po IP (Tencent v `Caddyfile`) ne ustavi. `scroll` NI znak (sproži
+  ga tudi vmesnik). Ne blokiraj jezika zh-CN na strežniku (kitajski trenerji in
+  igralci v klubih) in ne postavljaj preverjanja pred gledalca (Cloudflare,
+  Anubis). Če bot začne ostajati dlje, se to vidi v trajanju sej v Umamiju.
 - **Mavnov profil `splet`** (`mvnw -Psplet package`) zgradi vmesnik in ga
   vloži v isti `.jar`; `SpletniVmesnik` ga postreže in vsako pot, ki ni
   datoteka in ne začne z `api/`, vrne kot `index.html` (sicer osvežitev na
