@@ -336,6 +336,9 @@ export interface DogodekDto {
      in velikost mreže ravni (8 = četrtfinale); null = samodejno. */
   steviloZrebov: (number | null)[]
   velikostZrebov: (number | null)[]
+  /* Vrstni red kol skupin s strani Mize (V80); prazno = 1, 2, 3 … Listki po kolih gredo
+     po njem kot predlog tekem (pomozno/listki.ts, redKol). */
+  vrstniRedKol: number[]
 }
 
 export interface PrijavaDto {
@@ -3671,6 +3674,11 @@ export interface KategorijaMizDto {
   imeTurnirja: string
   status: StatusTekmovanja
   ekipno: boolean
+  /* Kola skupin v vrstnem redu igranja (V80); prazno, dokler kategorija ni v teku z
+     žrebom skupin. */
+  kola: number[]
+  /* organizator je kola razvrstil sam (sicer 1, 2, 3 …) */
+  redKolNastavljen: boolean
 }
 
 export interface NastavitveMizVnos {

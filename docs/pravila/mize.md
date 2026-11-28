@@ -45,7 +45,19 @@ strani Mize in pri tisku listkov vidi kot celoto, gledalec pa kot prej.
   sodi«** (število in izklopljene mize tako ali tako).
 - Ni bilo nujno za soboto 28. 11. (»lahko pozneje«).
 
-## Model (V76, V78)
+## Odločitev lastnika (28. 11. 2026): vrstni red kol
+
+- Poleg vrstnega reda kategorij sme organizator na strani Mize razvrstiti tudi **kola
+  skupin vsake kategorije** (npr. 3, 1, 2 namesto 1, 2, 3); vrstni red predlaganih tekem
+  se ravna po njem.
+- Izvedba (izbira Claude, lastnik ni posebej odločal): vrstni red je **lastnost kategorije**
+  (`dogodek.vrstni_red_kol`), ne skupnih miz, zato ostane ob povezavi in razdružitvi.
+  Razvrščajo se samo **kola skupin** (tudi krožni sistem in skupine SV regije); izločilni
+  del ostane za vsemi koli skupin, ker mreža brez prejšnjih krogov ne more teči. Po istem
+  vrstnem redu gredo **listki za tisk po kolih** (tudi stolpci tabele in »Na vrsti«), da
+  tisk ostane enak predlogu.
+
+## Model (V76, V78, V80)
 
 - `turnir.stevilo_miz` je 1–99 (toliko jih prebere okence listka, `MizaListka`).
   Vrednost `null` pomeni, da mize niso nastavljene in klic ni mogoč.
@@ -66,6 +78,15 @@ strani Mize in pri tisku listkov vidi kot celoto, gledalec pa kot prej.
   ob nastanku. Počitek zato upošteva samo igrane tekme (ne `PROSTO`, ne prenesene).
 - Miza ostane zapisana tudi na končani tekmi. Iz nje se ve, kdo je na mizi zadnji
   izgubil.
+- `dogodek.vrstni_red_kol` (V80, besedilo »3,1,2«; NULL = 1, 2, 3 …) je vrstni red kol
+  skupin kategorije. Velja `PredlogTekem.redKol`: našteta kola naprej, manjkajoča po vrsti
+  za njimi, kola, ki jih ni (žreb ponovljen z manjšimi skupinami), odpadejo. Isto pravilo
+  ima vmesnik (`pomozno/listki.ts`, `redKol`). Navzven gre v `DogodekDto.vrstniRedKol`
+  (tisk) in kot izpeljan seznam `KategorijaMizDto.kola` (okno na strani Mize).
+- **Vrstni red kol** `PUT …/mize/red-kol {idDogodka, kola}`: kategorija turnirja z istimi
+  mizami (dostop do obeh turnirjev), samo kola od 1 do zadnjega kola skupin
+  (`TekmaRepozitorij.zadnjeKoloSkupin`); kategorija brez skupin vrne napako. Prazen seznam
+  = 1, 2, 3 … Teče pod zaklepom turnirja kategorije (lastnost kategorije, ne miz).
 
 ## Skupne mize (V78, `MizeStoritev`)
 
@@ -155,6 +176,10 @@ strani Mize in pri tisku listkov vidi kot celoto, gledalec pa kot prej.
      - **skupina po 5 konča zadnja** (4. in 5. kolo igra sama); to preklicuje »večja
        skupina prej« s 23. 11. 2026;
      - kategorije gredo po kolih: najprej 1. kolo vseh;
+     - **vrstni red kol** (V80): kolo skupin šteje po mestu v vrstnem redu kol svoje
+       kategorije. Pri 3, 1, 2 gre 3. kolo te kategorije v prvi val skupaj s 1. kolom
+       ostalih. Krog mreže je še vedno za zadnjim kolom skupin (4. pri treh kolih).
+       Razlog predloga pove pravo kolo (»3. kolo«);
   3. **počitek**: tekme, v katerih so vsi udeleženci končali pred vsaj N min, pridejo
      pred ostale (samo v istem kolu);
   4. **vrstni red kategorij** (skupne mize, V78), ki ga nastavi organizator; brez njega
@@ -211,6 +236,11 @@ Po predaji `design_handoff_mize_tloris` (smer 1b). Komponente: `komponente/MizeT
   kartica → okno klica, zasedena miza → okno izida.
 - **Sporočilo z razveljavitvijo** (6 s) po klicu, »Pokliči vse«, premiku in spremembi vrstnega
   reda; izid razveljavitve nima.
+- **Turnirji in kategorije** (Uredi dvorano, `komponente/MizeSkupne.tsx`): povezava turnirjev,
+  vrstni red kategorij (↑/↓) in **vrstni red kol** (V80): za vsako kategorijo v teku z vsaj
+  dvema koloma skupin vrsta kol, levo prej, vsako kolo s puščicama ← in → (zamenja mesto s
+  sosedom, shrani se takoj); »Po vrsti« vrne 1, 2, 3. Ko je vrsta urejena ročno, okno
+  opozori, da premaknjene tekme ostanejo na svojih mestih (ročni red je pred vsemi merili).
 - **Listki za tiskanje** (glava): ena kategorija v teku = povezava na `/dogodki/:id/listki`,
   več = spustni meni kategorij (ekipna: zapisniki); na telefonu v meniju »⋯«.
 - **Okno izida** izbere zmagovalca in izid v nizih, shranjevanje pa teče v `VnosRezultataOkno` z

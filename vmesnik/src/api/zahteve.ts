@@ -326,6 +326,9 @@ export const mizeApi = {
      katerimi sme organizator ta turnir povezati, povezava in razdružitev. */
   redKategorij: (idTurnir: number, idjiDogodkov: number[]) =>
     api.posodobi<void>(`/turnirji/${idTurnir}/mize/red-kategorij`, { idjiDogodkov }),
+  /* Vrstni red kol skupin ene kategorije (V80); prazen seznam vrne 1, 2, 3 … */
+  redKol: (idTurnir: number, idDogodka: number, kola: number[]) =>
+    api.posodobi<void>(`/turnirji/${idTurnir}/mize/red-kol`, { idDogodka, kola }),
   zaPovezavo: (idTurnir: number) => api.vrni<TurnirMizDto[]>(`/turnirji/${idTurnir}/mize/za-povezavo`),
   povezi: (idTurnir: number, idTurnirja: number) =>
     api.posodobi<void>(`/turnirji/${idTurnir}/mize/skupne`, { idTurnirja }),

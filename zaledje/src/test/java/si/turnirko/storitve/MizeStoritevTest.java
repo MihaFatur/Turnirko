@@ -47,6 +47,7 @@ import si.turnirko.dto.NastavitveMizVnos;
 import si.turnirko.dto.PostavaVnos;
 import si.turnirko.dto.PovezavaMizVnos;
 import si.turnirko.dto.RedKategorijVnos;
+import si.turnirko.dto.RedKolVnos;
 import si.turnirko.dto.SrecanjePodrobnoDto;
 import si.turnirko.dto.VnosRezultata;
 import si.turnirko.dto.VrstniRedTekemVnos;
@@ -432,6 +433,48 @@ class MizeStoritevTest extends IntegracijskiTest {
         assertEquals(vrstniRed.stream().sorted().toList(), vrstniRed,
                 "po kolih, v kolu po skupinah: " + vrstniRed);
         assertEquals(5, vrstniRed.stream().filter(s -> s.startsWith("1. kolo")).count());
+    }
+
+    /* Vrstni red kol (V80, lastnik 28. 11. 2026): kola skupin kategorije gredo v vrstnem
+       redu organizatorja (3, 1, 2). Shrani se na kategoriji, pregled ga vrne, prazen
+       seznam vrne 1, 2, 3. Samo kola, ki obstajajo, samo kategorije s skupinami in samo
+       kategorije turnirjev s temi mizami. */
+    @Test
+    void vrstniRedKolVeljaZaPredlog() {
+        Dogodek dogodek = pripraviDogodek(11, SistemTekmovanja.SKUPINE_IZLOCILNI);
+        zrebStoritev.izvediZreb(dogodek.getId());
+        Long idTurnir = dogodek.getTurnir().getId();
+        mize.nastavi(idTurnir, new NastavitveMizVnos(1, List.of(), false, 3));
+        assertEquals(List.of(1, 2, 3), mize.pregled(idTurnir).skupne().kategorije().get(0).kola());
+
+        mize.nastaviRedKol(idTurnir, new RedKolVnos(dogodek.getId(), List.of(3, 1, 2)));
+        seja.flush();
+        seja.clear();
+
+        MizeTurnirjaDto p = mize.pregled(idTurnir);
+        MizeTurnirjaDto.KategorijaMizDto k = p.skupne().kategorije().get(0);
+        assertEquals(List.of(3, 1, 2), k.kola());
+        assertTrue(k.redKolNastavljen());
+        List<Integer> kola = p.kandidati().stream().map(c -> c.tekma().tekma().kolo()).toList();
+        assertEquals(List.of(3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2), kola);
+        assertEquals(List.of(3, 1, 2),
+                dogodekRepozitorij.findById(dogodek.getId()).orElseThrow().getVrstniRedKol());
+
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> mize.nastaviRedKol(idTurnir, new RedKolVnos(dogodek.getId(), List.of(4, 1))));
+        Dogodek brezSkupin = izlocilni(4);
+        Long tujTurnir = brezSkupin.getTurnir().getId();
+        assertThrows(NeveljavenVnosIzjema.class,
+                () -> mize.nastaviRedKol(idTurnir, new RedKolVnos(brezSkupin.getId(), List.of(1))));
+        assertThrows(DomenskaIzjema.class,
+                () -> mize.nastaviRedKol(tujTurnir, new RedKolVnos(brezSkupin.getId(), List.of(1))));
+
+        mize.nastaviRedKol(idTurnir, new RedKolVnos(dogodek.getId(), List.of()));
+        seja.flush();
+        seja.clear();
+        k = mize.pregled(idTurnir).skupne().kategorije().get(0);
+        assertEquals(List.of(1, 2, 3), k.kola());
+        assertFalse(k.redKolNastavljen());
     }
 
     // ---------- skupne mize (V78) ----------

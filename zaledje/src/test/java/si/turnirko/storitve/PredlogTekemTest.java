@@ -280,6 +280,48 @@ class PredlogTekemTest {
                 idji(PredlogTekem.izracunaj(tekme, obrnjeno, ZDAJ)));
     }
 
+    /* Vrstni red kol (V80, lastnik 28. 11. 2026): kategorija 1 igra kola 3, 1, 2,
+       kategorija 2 naravno. »Strogo po kolih« velja po mestu v vrstnem redu: v prvem
+       valu gre 3. kolo prve in 1. kolo druge kategorije ... Izlocilni del prve
+       kategorije ostane za vsemi njenimi koli skupin. */
+    @Test
+    void vrstniRedKolVKategoriji() {
+        List<Tekma> tekme = new ArrayList<>();
+        for (long d = 1; d <= 2; d++) {
+            for (int kolo = 1; kolo <= 3; kolo++) {
+                long id = d * 10 + kolo;
+                tekme.add(t(id).dogodek(d).skupina(d, "1").kolo(kolo).igralca(id * 10 + 1, id * 10 + 2).v());
+            }
+        }
+        tekme.add(t(19).dogodek(1).faza(FazaTekme.GLAVNI).kolo(1).igralca(191, 192).v());
+        Nastavitve n = new Nastavitve(1, Set.of(), false, 3, List.of(), List.of(1L, 2L),
+                java.util.Map.of(1L, List.of(3, 1, 2)));
+
+        Rezultat r = PredlogTekem.izracunaj(tekme, n, ZDAJ);
+
+        assertEquals(List.of(13L, 21L, 11L, 22L, 12L, 23L, 19L), idji(r));
+        // razlog pove pravo kolo skupine, ne mesta v vrstnem redu
+        assertTrue(kandidat(r, 13).razlogi().contains("3. kolo"), kandidat(r, 13).razlogi().toString());
+        assertTrue(kandidat(r, 19).razlogi().contains("šteje kot 4. kolo"), kandidat(r, 19).razlogi().toString());
+        // brez vrstnega reda kol naravno
+        assertEquals(List.of(11L, 21L, 12L, 22L, 13L, 23L, 19L),
+                idji(PredlogTekem.izracunaj(tekme, new Nastavitve(1, Set.of(), false, 3, List.of(),
+                        List.of(1L, 2L)), ZDAJ)));
+    }
+
+    /* Nastavljena kola najprej, manjkajoca po vrsti za njimi, neobstojeca odpadejo
+       (zreb je bil ponovljen z manjsimi skupinami). */
+    @Test
+    void redKolDopolniManjkajocaInOdstraniNeobstojeca() {
+        assertEquals(List.of(1, 2, 3), PredlogTekem.redKol(null, 3));
+        assertEquals(List.of(1, 2, 3), PredlogTekem.redKol(List.of(), 3));
+        assertEquals(List.of(3, 1, 2), PredlogTekem.redKol(List.of(3, 1, 2), 3));
+        assertEquals(List.of(2, 1, 3), PredlogTekem.redKol(List.of(2), 3));
+        assertEquals(List.of(1, 2, 3), PredlogTekem.redKol(List.of(5, 4), 3));
+        assertEquals(List.of(3, 1, 2, 4, 5), PredlogTekem.redKol(List.of(3, 1, 2), 5));
+        assertEquals(List.of(), PredlogTekem.redKol(List.of(1), 0));
+    }
+
     /* Pocitek odloca pred vrstnim redom kategorij, a samo v istem kolu: utrujen
        igralec prve kategorije pocaka za spocitimi drugih kategorij istega kola. */
     @Test

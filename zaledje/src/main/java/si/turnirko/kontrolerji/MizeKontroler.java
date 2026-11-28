@@ -23,6 +23,7 @@ import si.turnirko.dto.MizeTurnirjaDto;
 import si.turnirko.dto.NastavitveMizVnos;
 import si.turnirko.dto.PovezavaMizVnos;
 import si.turnirko.dto.RedKategorijVnos;
+import si.turnirko.dto.RedKolVnos;
 import si.turnirko.dto.VrstniRedTekemVnos;
 import si.turnirko.storitve.MizeStoritev;
 
@@ -66,6 +67,13 @@ public class MizeKontroler {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void redKategorij(@PathVariable Long id, @Valid @RequestBody RedKategorijVnos vnos) {
         storitev.nastaviRedKategorij(id, vnos);
+    }
+
+    /* Vrstni red kol skupin ene kategorije (V80); prazen seznam vrne 1, 2, 3 ... */
+    @PutMapping("/api/v1/turnirji/{id}/mize/red-kol")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void redKol(@PathVariable Long id, @Valid @RequestBody RedKolVnos vnos) {
+        storitev.nastaviRedKol(id, vnos);
     }
 
     /* Skupne mize (V78): turnirji, s katerimi sme organizator ta turnir povezati. */

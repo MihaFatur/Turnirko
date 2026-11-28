@@ -223,6 +223,7 @@ export const REZULTATI: Clanek[] = [
       'dva turnirja',
       'ista dvorana',
       'vrstni red kategorij',
+      'vrstni red kol',
       'listki vseh kategorij',
     ],
     vsebina: [
@@ -266,6 +267,7 @@ export const REZULTATI: Clanek[] = [
           'Tekme gredo strogo po kolih: najprej celo 1. kolo vseh skupin vseh kategorij, nato 2. kolo … Tekma, ki je zaostala (na primer 1. kolo, ko ostali že igrajo 2. kolo), gre naprej, tudi če igralec še ni počival.',
           'Skupina po 5 igra v vsakem kolu skupaj z ostalimi in konča zadnja (4. in 5. kolo igra sama).',
           'Izločilni del šteje kot naslednje kolo za skupinami svoje kategorije: pri treh kolih skupin je prvi krog mreže »4. kolo«.',
+          'Kola skupin kategorije lahko razvrstiš sam, na primer 3., 1., 2. kolo, v **Uredi dvorano → Turnirji in kategorije → Vrstni red kol**. »Najprej 1. kolo« takrat pomeni prvo kolo po tvojem vrstnem redu (pri tej kategoriji 3. kolo), druge kategorije gredo po svojem. Po istem vrstnem redu so razvrščeni listki po kolih.',
           'V istem kolu ima prednost tekma, v kateri so vsi igralci počivali vsaj toliko minut, kot je nastavljeno pod **Počitek**. Nato gredo kategorije po vrstnem redu, ki ga nastaviš v **Uredi dvorano → Turnirji in kategorije**, v kategoriji pa skupine po vrsti (skupina 1, 2, 3 …).',
         ],
       },
@@ -322,6 +324,7 @@ export const REZULTATI: Clanek[] = [
           'Na strani **Mize** enega od turnirjev pritisni **Uredi dvorano** in nato **Turnirji in kategorije**.',
           'Pod **Deli mize s turnirjem** izberi drugi turnir in pritisni **Poveži**. Ponujeni so samo tvoji turnirji na isti dan.',
           'Pod **Vrstni red kategorij** s puščicama razvrsti kategorije (na primer U15 moški, U15 ženske, U21 moški, U21 ženske). Predlog gre po kolih, v kolu po tem vrstnem redu.',
+          'Pod **Vrstni red kol** s puščicama ← in → razvrsti kola skupin vsake kategorije (levo se igra prej). **Po vrsti** vrne 1., 2., 3. kolo. To velja tudi za en sam turnir.',
           'Listke vseh kategorij natisneš naenkrat: **Listki za tiskanje → Vse kategorije · en tisk**. **Po kolih** da 1. kolo vseh kategorij v tvojem vrstnem redu, nato 2. kolo.',
         ],
       },

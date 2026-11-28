@@ -244,6 +244,14 @@ public interface TekmaRepozitorij extends JpaRepository<Tekma, Long> {
             """)
     List<Tekma> zaMizeTurnirjev(@Param("idjiTurnirjev") Collection<Long> idjiTurnirjev, @Param("od") LocalDateTime od);
 
+    /* Zadnje kolo skupin dogodka (null = dogodek nima skupin ali se ne zreba): vrstni red
+       kol na strani Mize (V80) sme nasteti samo kola od 1 do tega. */
+    @Query("""
+            SELECT MAX(t.kolo) FROM Tekma t
+            WHERE t.dogodek.id = :idDogodka AND t.faza = si.turnirko.modeli.FazaTekme.SKUPINA
+            """)
+    Integer zadnjeKoloSkupin(@Param("idDogodka") Long idDogodka);
+
     /* Tekme v igri na mizah turnirjev (skupne mize, V78; preverba proste mize ob klicu in ob
        zmanjsanju stevila miz). */
     @Query("""

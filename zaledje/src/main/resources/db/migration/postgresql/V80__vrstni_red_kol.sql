@@ -1,0 +1,12 @@
+-- Vrstni red kol skupin v kategoriji (lastnik 28. 11. 2026, docs/pravila/mize.md).
+-- Predlog tekem na strani Mize gre strogo po kolih (V78). Organizator zdaj sme kola
+-- skupin vsake kategorije razvrstiti sam, npr. 3., 1., 2. kolo namesto 1., 2., 3.:
+-- predlog (in tisk listkov po kolih) gre takrat po tem vrstnem redu, izlocilni del pa
+-- se vedno za vsemi koli skupin.
+--
+--   vrstni_red_kol  stevilke kol skupin v vrstnem redu igranja (besedilo "3,1,2").
+--                   NULL = naravni red 1, 2, 3 ... Kolo, ki ga na seznamu ni (npr. po
+--                   ponovljenem zrebu z vecjimi skupinami), gre za nastetimi po vrsti.
+--                   Vrednost je lastnost kategorije, zato ostane ob povezavi ali
+--                   razdruzitvi skupnih miz.
+ALTER TABLE dogodek ADD COLUMN vrstni_red_kol text;

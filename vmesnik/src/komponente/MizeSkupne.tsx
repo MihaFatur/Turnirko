@@ -7,7 +7,11 @@
 
    Tu organizator tudi razvrsti kategorije: predlog gre strogo po kolih (1. kolo vseh
    kategorij, nato 2. kolo …), v kolu po tem vrstnem redu. Velja tudi za en sam turnir z
-   več kategorijami. */
+   več kategorijami.
+
+   In razvrsti kola skupin vsake kategorije (V80, lastnik 28. 11. 2026): namesto 1, 2, 3
+   npr. 3, 1, 2. Predlog tekem in tisk listkov po kolih gresta po tem vrstnem redu,
+   izločilni del ostane za vsemi koli skupin. */
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
@@ -58,8 +62,13 @@ export function OknoSkupnihMiz({
     mutationFn: (idji: number[]) => mizeApi.redKategorij(idTurnirja, idji),
     onSuccess: onSpremenjeno,
   })
+  const redKol = useMutation({
+    mutationFn: ({ idDogodka, kola }: { idDogodka: number; kola: number[] }) =>
+      mizeApi.redKol(idTurnirja, idDogodka, kola),
+    onSuccess: onSpremenjeno,
+  })
 
-  const zasedeno = povezi.isPending || razdruzi.isPending || red.isPending
+  const zasedeno = povezi.isPending || razdruzi.isPending || red.isPending || redKol.isPending
   const premakni = (i: number, smer: -1 | 1) => {
     const idji = kategorije.map((k) => k.idDogodka)
     const j = i + smer
@@ -67,6 +76,16 @@ export function OknoSkupnihMiz({
     ;[idji[i], idji[j]] = [idji[j], idji[i]]
     red.mutate(idji)
   }
+  /* Kolo zamenja mesto s sosedom; strežnik dobi cel vrstni red kol kategorije. */
+  const premakniKolo = (k: KategorijaMizDto, i: number, smer: -1 | 1) => {
+    const kola = [...k.kola]
+    const j = i + smer
+    if (j < 0 || j >= kola.length) return
+    ;[kola[i], kola[j]] = [kola[j], kola[i]]
+    redKol.mutate({ idDogodka: k.idDogodka, kola })
+  }
+  /* Kola razvrsti organizator samo pri kategoriji z vsaj dvema koloma skupin. */
+  const sKoli = kategorije.filter((k) => k.kola.length > 1)
   /* Ime turnirja ob kategoriji samo, ko so turnirji povezani (sicer je vedno isti). */
   const imeKategorije = (k: KategorijaMizDto) => (povezane ? `${k.ime} · ${k.imeTurnirja}` : k.ime)
   const ponujeni = kandidati.data ?? []
@@ -189,6 +208,72 @@ export function OknoSkupnihMiz({
             </button>
           )}
           <SporociloNapake napaka={red.error} />
+        </section>
+
+        <section className="mize-skupne__razdelek" aria-labelledby="mize-skupne-kola">
+          <h3 id="mize-skupne-kola" className="mize-skupne__naslov">
+            Vrstni red kol
+          </h3>
+          <p className="mize-okno__namig">
+            Kola skupin gredo v predlog in na listke po kolih v tem vrstnem redu, levo prej. Izločilni del
+            pride za vsemi koli skupin.
+          </p>
+          {podatki.rocniVrstniRed && (
+            <p className="mize-okno__namig mize-okno__namig--opozorilo">
+              Vrsto si uredil ročno, zato premaknjene tekme ostanejo na svojih mestih. Vrstni red kol in
+              kategorij velja zanje, ko v vrsti »Na vrsti« izbereš »Samodejni vrstni red«.
+            </p>
+          )}
+          {sKoli.length === 0 ? (
+            <p className="mize-okno__namig">Kola razvrstiš, ko je kategorija v teku z žrebom skupin.</p>
+          ) : (
+            <ul className="mize-skupne__seznam">
+              {sKoli.map((k) => (
+                <li key={k.idDogodka} className="mize-skupne__vrstica mize-skupne__vrstica--kola">
+                  <span className="mize-skupne__glava-kol">
+                    <span className="mize-skupne__ime">{imeKategorije(k)}</span>
+                    {k.redKolNastavljen && (
+                      <button
+                        type="button"
+                        className="mize-okno__gumb"
+                        aria-label={`${imeKategorije(k)}: kola po vrsti 1, 2, 3`}
+                        disabled={zasedeno}
+                        onClick={() => redKol.mutate({ idDogodka: k.idDogodka, kola: [] })}
+                      >
+                        Po vrsti
+                      </button>
+                    )}
+                  </span>
+                  <ol className="mize-skupne__kola" aria-label={`Vrstni red kol: ${imeKategorije(k)}`}>
+                    {k.kola.map((kolo, i) => (
+                      <li key={kolo} className="mize-skupne__kolo">
+                        <button
+                          type="button"
+                          className="mize-skupne__kolo-gumb"
+                          aria-label={`${imeKategorije(k)}: ${kolo}. kolo prej`}
+                          disabled={zasedeno || i === 0}
+                          onClick={() => premakniKolo(k, i, -1)}
+                        >
+                          ←
+                        </button>
+                        <span className="mize-skupne__kolo-st">{kolo}.</span>
+                        <button
+                          type="button"
+                          className="mize-skupne__kolo-gumb"
+                          aria-label={`${imeKategorije(k)}: ${kolo}. kolo pozneje`}
+                          disabled={zasedeno || i === k.kola.length - 1}
+                          onClick={() => premakniKolo(k, i, 1)}
+                        >
+                          →
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                </li>
+              ))}
+            </ul>
+          )}
+          <SporociloNapake napaka={redKol.error} />
         </section>
 
         <div className="mize-okno__gumbi">

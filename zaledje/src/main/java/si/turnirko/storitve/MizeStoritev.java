@@ -57,6 +57,7 @@ import si.turnirko.dto.MizeTurnirjaDto.TurnirMizDto;
 import si.turnirko.dto.NastavitveMizVnos;
 import si.turnirko.dto.PovezavaMizVnos;
 import si.turnirko.dto.RedKategorijVnos;
+import si.turnirko.dto.RedKolVnos;
 import si.turnirko.dto.TekmaDto;
 import si.turnirko.dto.VrstniRedTekemVnos;
 import si.turnirko.izjeme.DomenskaIzjema;
@@ -138,6 +139,12 @@ public class MizeStoritev {
         List<Dogodek> dogodki = redDogodkov(skupne);
 
         Posnetek posnetek = posnetek(tekme);
+        Map<Long, Integer> zadnjeKoloSkupin = new HashMap<>();
+        for (Tekma t : tekme) {
+            if (t.getFaza() == FazaTekme.SKUPINA) {
+                zadnjeKoloSkupin.merge(t.getDogodek().getId(), t.getKolo(), Math::max);
+            }
+        }
         PredlogTekem.Rezultat rezultat = PredlogTekem.izracunaj(posnetek.vhod(), nastavitve(glavni, dogodki), zdaj);
 
         Map<Long, TekmaMizeDto> dto = new HashMap<>();
@@ -157,7 +164,7 @@ public class MizeStoritev {
         boolean rocniRed = rezultat.kandidati().stream().anyMatch(k -> rocni.contains(k.tekma().id()));
         return new MizeTurnirjaDto(turnir.getId(), turnir.getIme(), glavni.getSteviloMiz(),
                 List.copyOf(glavni.getIzklopljeneMize()), glavni.isPorazenecSodi(), glavni.getPocitekMin(),
-                vTeku, zdaj, mize, kandidati, rocniRed, skupneDto(skupne, dogodki));
+                vTeku, zdaj, mize, kandidati, rocniRed, skupneDto(skupne, dogodki, zadnjeKoloSkupin));
     }
 
     /* Rocni vrstni red vrste »Na vrsti« (V77): organizator je tekmo povlekel na drugo
@@ -249,6 +256,46 @@ public class MizeStoritev {
             }
         }
         skupne.glavni().setVrstniRedDogodkov(red);
+    }
+
+    /* Vrstni red kol skupin kategorije (V80, lastnik 28. 11. 2026): predlog gre po kolih,
+       kola kategorije pa v tem vrstnem redu (npr. 3., 1., 2. kolo). Je lastnost kategorije,
+       zato ga pise zaklep njenega turnirja (kot zreb in vnos izidov), ne skupnih miz, in
+       ostane ob povezavi in razdruzitvi. Samo kategorije turnirjev s skupnimi mizami,
+       samo kola skupin od 1 do zadnjega; prazen seznam vrne 1, 2, 3 ... */
+    @Transactional
+    public void nastaviRedKol(Long idTurnir, RedKolVnos vnos) {
+        Long idTurnirKategorije = dogodekRepozitorij.najdiSTurnirjem(vnos.idDogodka())
+                .map(d -> d.getTurnir().getId())
+                .orElseThrow(() -> new NiNajdenoIzjema("Kategorija z id " + vnos.idDogodka() + " ne obstaja."));
+        zaklepi.zakleni(Zaklepi.Vrsta.TURNIR, idTurnirKategorije);
+        lastnistvo.preveriTurnirPoId(idTurnir);
+        lastnistvo.preveriTurnirPoId(idTurnirKategorije);
+        if (!glavniId(idTurnir).equals(glavniId(idTurnirKategorije))) {
+            throw new NeveljavenVnosIzjema("Kategorija z id " + vnos.idDogodka() + " ni v turnirjih s temi mizami.");
+        }
+        Dogodek dogodek = dogodekRepozitorij.findById(vnos.idDogodka())
+                .orElseThrow(() -> new NiNajdenoIzjema("Kategorija z id " + vnos.idDogodka() + " ne obstaja."));
+        List<Integer> kola = vnos.kola() == null ? List.of() : vnos.kola();
+        // List.of(...).contains(null) vrze izjemo, zato pregled po elementih
+        if (kola.stream().anyMatch(Objects::isNull)) {
+            throw new NeveljavenVnosIzjema("Vrstni red kol ne sme vsebovati praznih vnosov.");
+        }
+        List<Integer> red = new ArrayList<>(new LinkedHashSet<>(kola));
+        if (!red.isEmpty()) {
+            Integer zadnje = tekmaRepozitorij.zadnjeKoloSkupin(dogodek.getId());
+            if (zadnje == null) {
+                throw new DomenskaIzjema("Kategorija " + dogodek.getIme() + " nima kol skupin - vrstni red kol "
+                        + "nastaviš po žrebu skupin.");
+            }
+            for (Integer kolo : red) {
+                if (kolo < 1 || kolo > zadnje) {
+                    throw new NeveljavenVnosIzjema("Kategorija " + dogodek.getIme() + " ima kola skupin od 1 do "
+                            + zadnje + " - " + kolo + ". kola ni.");
+                }
+            }
+        }
+        dogodek.setVrstniRedKol(red);
     }
 
     // ---------- skupne mize: povezava turnirjev (V78) ----------
@@ -578,11 +625,19 @@ public class MizeStoritev {
                 .toList();
     }
 
-    private static SkupneMizeDto skupneDto(SkupneMize skupne, List<Dogodek> dogodki) {
+    /* Kola skupin kategorije v vrstnem redu igranja: samo pri kategoriji v teku (posnetek
+       ima takrat vse njene tekme, zato je zadnje kolo skupin pravo). */
+    private static SkupneMizeDto skupneDto(SkupneMize skupne, List<Dogodek> dogodki,
+                                           Map<Long, Integer> zadnjeKoloSkupin) {
         return new SkupneMizeDto(
                 skupne.turnirji().stream().map(MizeStoritev::turnirMiz).toList(),
-                dogodki.stream().map(d -> new KategorijaMizDto(d.getId(), d.getIme(), d.getTurnir().getId(),
-                        d.getTurnir().getIme(), d.getStatus(), d.jeEkipno())).toList(),
+                dogodki.stream().map(d -> {
+                    Integer zadnje = d.getStatus() == StatusTekmovanja.V_TEKU ? zadnjeKoloSkupin.get(d.getId()) : null;
+                    List<Integer> kola = zadnje == null ? List.of() : PredlogTekem.redKol(d.getVrstniRedKol(), zadnje);
+                    return new KategorijaMizDto(d.getId(), d.getIme(), d.getTurnir().getId(),
+                            d.getTurnir().getIme(), d.getStatus(), d.jeEkipno(), kola,
+                            !d.getVrstniRedKol().isEmpty());
+                }).toList(),
                 !skupne.glavni().getVrstniRedDogodkov().isEmpty());
     }
 
@@ -652,9 +707,15 @@ public class MizeStoritev {
     }
 
     private static PredlogTekem.Nastavitve nastavitve(Turnir glavni, List<Dogodek> redDogodkov) {
+        Map<Long, List<Integer>> redKol = new HashMap<>();
+        for (Dogodek d : redDogodkov) {
+            if (!d.getVrstniRedKol().isEmpty()) {
+                redKol.put(d.getId(), d.getVrstniRedKol());
+            }
+        }
         return new PredlogTekem.Nastavitve(glavni.getSteviloMiz() == null ? 0 : glavni.getSteviloMiz(),
                 glavni.getIzklopljeneMize(), glavni.isPorazenecSodi(), glavni.getPocitekMin(),
-                glavni.getVrstniRedTekem(), redDogodkov.stream().map(Dogodek::getId).toList());
+                glavni.getVrstniRedTekem(), redDogodkov.stream().map(Dogodek::getId).toList(), redKol);
     }
 
     private static OsebaDto oseba(PredlogTekem.Oseba o) {

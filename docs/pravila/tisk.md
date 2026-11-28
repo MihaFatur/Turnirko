@@ -50,7 +50,11 @@
       …; skupina po 3 (ena tekma na kolo) je v kolu na svojem mestu, ne na koncu. **To je
       samo vrstni red na listih**: tabela je enaka (kolo je vedno stolpec). Skupine gredo po
       vrsti oznak (`primerjajSkupine`: 9 pred 10), ne po id-ju. Izločilni del in
-      žrebi SV regije so v obeh enaki. Velja tudi za ekipne zapisnike. Zadnja izbira
+      žrebi SV regije so v obeh enaki. Velja tudi za ekipne zapisnike. **Kola gredo po
+      vrstnem redu kol kategorije** s strani Mize (V80, `DogodekDto.vrstniRedKol`,
+      `docs/pravila/mize.md`): po kolih in znotraj skupine, stolpci tabele in »Na vrsti«
+      (`PripravljenListek.mestoKola`; na skupnem tisku gre levo kolo, ki se v kateri od
+      kategorij igra prej). Zadnja izbira
       ostane v brskalniku (`turnirko-razvrstitev-listkov`, brez shrambe privzetek). Natisnjeni
       listki so v tabeli sivi in jih izbira privzeto ne zajame; z »N izbranih je že natisnjenih ·
       Odznači natisnjene« se oznaka odstrani, z izrecnim klikom na ploščico se natisnjena tekma

@@ -57,7 +57,7 @@ function miza(stevilka: number, dodatno: Partial<MizaDto> = {}): MizaDto {
 /* Skupne mize (V78): enako imenovane kategorije dveh turnirjev se ločijo po turnirju. */
 describe('sOznakamiKategorij', () => {
   const kat = (idDogodka: number, ime: string, idTurnir: number, imeTurnirja: string) => ({
-    idDogodka, ime, idTurnir, imeTurnirja, status: 'V_TEKU' as const, ekipno: false,
+    idDogodka, ime, idTurnir, imeTurnirja, status: 'V_TEKU' as const, ekipno: false, kola: [], redKolNastavljen: false,
   })
   const pregled = (turnirjev: number): MizeTurnirjaDto => ({
     idTurnir: 1, imeTurnirja: 'U15', steviloMiz: 2, izklopljeneMize: [], porazenecSodi: false, pocitekMin: 3,

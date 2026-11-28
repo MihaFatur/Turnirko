@@ -4,6 +4,7 @@ import type { SkupinaDto, SvNivoDto } from '../api/tipi'
 import { mreza, prijava, tekma } from '../testi/tovarna'
 import {
   enakiIdji,
+  idjiNaVrsti,
   idjiNenatisnjenih,
   imaVecSkupin,
   jeNatisnjen,
@@ -74,6 +75,25 @@ describe('listkiVsehKategorij', () => {
     expect(listkiVsehKategorij(kategorije, 'skupine').map((l) => l.tekma.id)).toEqual([
       101, 103, 102, 104, 105, 201, 203, 202, 204, 205,
     ])
+  })
+
+  /* Vrstni red kol s strani Mize (V80, lastnik 28. 11. 2026): kategorija igra 2. kolo pred 1. */
+  it('po kolih upošteva vrstni red kol kategorije, mreža ostane za vsemi koli', () => {
+    const obrnjena = [
+      { idDogodka: 100, naslov: 'U15 dečki', mreza: { ...kategorija(100), dogodek: { ...kategorija(100).dogodek, vrstniRedKol: [2, 1] } } },
+      kategorije[1],
+    ]
+    expect(listkiVsehKategorij(obrnjena, 'kola').map((l) => l.tekma.id)).toEqual([
+      103, 104, 201, 202, 101, 102, 203, 204, 105, 205,
+    ])
+  })
+
+  it('ena kategorija: listki, stolpci tabele in »Na vrsti« po vrstnem redu kol', () => {
+    const podatki = { ...kategorija(100), dogodek: { ...kategorija(100).dogodek, vrstniRedKol: [2, 1] } }
+    expect(pripraviListke(podatki, 'kola').map((l) => l.tekma.id)).toEqual([103, 104, 101, 102, 105])
+    expect(pripraviListke(podatki, 'skupine').map((l) => l.tekma.id)).toEqual([103, 101, 104, 102, 105])
+    expect(tabelaListkov(pripraviListke(podatki, 'kola')).kola).toEqual([2, 1])
+    expect(idjiNaVrsti(pripraviListke(podatki, 'kola'))).toEqual([103, 104])
   })
 
   it('tabela ima vrstice po kategoriji in skupini, kolo velja za vse kategorije', () => {

@@ -100,6 +100,11 @@ public class Dogodek {
     @Column(name = "tekma_za_tretje_mesto", nullable = false)
     private boolean tekmaZaTretjeMesto = false;
 
+    /* Vrstni red kol skupin na strani Mize (V80, "3,1,2"; null = 1, 2, 3 ...). Pise ga
+       samo MizeStoritev; predlog tekem in tisk listkov po kolih gresta po njem. */
+    @Column(name = "vrstni_red_kol")
+    private String vrstniRedKol;
+
     @Column(name = "prijavnina")
     private Double prijavnina;
 
@@ -206,6 +211,29 @@ public class Dogodek {
             }
         }
         return seznam;
+    }
+
+    /* Vrstni red kol skupin, kot ga je nastavil organizator; prazen = naravni red.
+       Poskodovan del se preskoci (zapis je samo nas, stran Mize ne sme pasti). */
+    public java.util.List<Integer> getVrstniRedKol() {
+        java.util.List<Integer> red = new java.util.ArrayList<>();
+        if (vrstniRedKol == null || vrstniRedKol.isBlank()) {
+            return red;
+        }
+        for (String del : vrstniRedKol.split(",")) {
+            try {
+                red.add(Integer.parseInt(del.trim()));
+            } catch (NumberFormatException e) {
+                // preskoci
+            }
+        }
+        return red;
+    }
+
+    public void setVrstniRedKol(java.util.List<Integer> red) {
+        this.vrstniRedKol = red == null || red.isEmpty() ? null
+                : red.stream().distinct().map(String::valueOf)
+                        .collect(java.util.stream.Collectors.joining(","));
     }
 
     /* Rocne velikosti nivojev ("16,16,12") kot seznam; prazen, kadar niso vpisane

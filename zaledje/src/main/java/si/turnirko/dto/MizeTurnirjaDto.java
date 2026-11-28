@@ -62,6 +62,10 @@ public record MizeTurnirjaDto(
 
     public record TurnirMizDto(Long id, String ime, LocalDate datumZacetka) {}
 
+    /* kola = kola skupin v vrstnem redu igranja (V80; prazno, dokler kategorija nima
+       zreba skupin ali ni v teku); redKolNastavljen = organizator je kola razvrstil sam
+       (sicer 1, 2, 3 ...). */
     public record KategorijaMizDto(Long idDogodka, String ime, Long idTurnir, String imeTurnirja,
-                                   StatusTekmovanja status, boolean ekipno) {}
+                                   StatusTekmovanja status, boolean ekipno, List<Integer> kola,
+                                   boolean redKolNastavljen) {}
 }

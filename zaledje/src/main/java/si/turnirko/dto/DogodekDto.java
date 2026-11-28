@@ -50,7 +50,10 @@ public record DogodekDto(
         /* Sistem SV_REGIJA: izlocilni zrebi po nivojih (Skupinah), kot jih je vpisal
            organizator - stevilo zrebov in velikost mreze ravni; null = samodejno. */
         List<Integer> steviloZrebov,
-        List<Integer> velikostZrebov
+        List<Integer> velikostZrebov,
+        /* Vrstni red kol skupin, ki ga je organizator nastavil na strani Mize (V80); prazno =
+           1, 2, 3 ... Listki za tisk po kolih gredo po njem kot predlog tekem. */
+        List<Integer> vrstniRedKol
 ) {
 
     /* Brez stevcev - za odgovor ob nastanku dogodka, ko jih se ni. */
@@ -84,7 +87,8 @@ public record DogodekDto(
                 dogodek.getSteviloNivojev(),
                 dogodek.velikostiNivojevSeznam(),
                 dogodek.steviloZrebovSeznam(),
-                dogodek.velikostZrebovSeznam()
+                dogodek.velikostZrebovSeznam(),
+                dogodek.getVrstniRedKol()
         );
     }
 }

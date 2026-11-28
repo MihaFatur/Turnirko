@@ -16,7 +16,9 @@
        izlocilne mreze steje kot naslednje kolo za zadnjim kolom skupin svoje
        kategorije (pri 3 kolih skupin je 1. krog mreze »4. kolo«). Zaostala tekma
        nizjega kola gre zato pred visje kolo drugih. To preklicuje »vecja skupina
-       prej« (23. 11. 2026): skupina po 5 zdaj konca zadnja;
+       prej« (23. 11. 2026): skupina po 5 zdaj konca zadnja. Kola skupin kategorije
+       sme organizator razvrstiti sam (V80, lastnik 28. 11. 2026: npr. 3, 1, 2):
+       »1. kolo« je takrat prvo kolo po njegovem vrstnem redu (glej redKol);
    (3) POCITEK: tekma, v kateri je vsak udelezenec koncal pred vsaj N min (ali se
        ni igral), pred tekmo z utrujenim - samo med tekmami istega kola;
    (4) VRSTNI RED KATEGORIJ, ki ga nastavi organizator (skupne mize, V78; npr. U15m,
@@ -36,6 +38,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -99,23 +102,31 @@ public final class PredlogTekem {
 
     /* rocniRed = vrstni red vrste, ki ga je organizator nastavil s premikom tekme
        (prazen = samodejni); redDogodkov = vrstni red kategorij v kolu (dogodek, ki ga
-       ni na seznamu, gre za vsemi, po id). */
+       ni na seznamu, gre za vsemi, po id); redKol = vrstni red kol skupin po dogodkih
+       (dogodka ni = 1, 2, 3 ...; glej redKol). */
     public record Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi,
-                             int pocitekMin, List<Long> rocniRed, List<Long> redDogodkov) {
+                             int pocitekMin, List<Long> rocniRed, List<Long> redDogodkov,
+                             Map<Long, List<Integer>> redKol) {
 
         public Nastavitve {
             izklopljene = Set.copyOf(izklopljene);
             rocniRed = rocniRed == null ? List.of() : List.copyOf(rocniRed);
             redDogodkov = redDogodkov == null ? List.of() : List.copyOf(redDogodkov);
+            redKol = redKol == null ? Map.of() : Map.copyOf(redKol);
+        }
+
+        public Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi, int pocitekMin,
+                          List<Long> rocniRed, List<Long> redDogodkov) {
+            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, rocniRed, redDogodkov, Map.of());
         }
 
         public Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi, int pocitekMin,
                           List<Long> rocniRed) {
-            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, rocniRed, List.of());
+            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, rocniRed, List.of(), Map.of());
         }
 
         public Nastavitve(int steviloMiz, Set<Integer> izklopljene, boolean porazenecSodi, int pocitekMin) {
-            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, List.of(), List.of());
+            this(steviloMiz, izklopljene, porazenecSodi, pocitekMin, List.of(), List.of(), Map.of());
         }
     }
 
@@ -277,6 +288,15 @@ public final class PredlogTekem {
                     zadnjeKoloSkupin.merge(t.idDogodka(), t.kolo(), Math::max);
                 }
             }
+            // dogodek -> kolo skupin -> mesto v vrstnem redu kol (1, 2, 3 ...)
+            Map<Long, Map<Integer, Integer>> mestoKola = new HashMap<>();
+            zadnjeKoloSkupin.forEach((dogodek, zadnje) -> {
+                Map<Integer, Integer> mesta = new HashMap<>();
+                for (int kolo : redKol(nastavitve.redKol().get(dogodek), zadnje)) {
+                    mesta.put(kolo, mesta.size() + 1);
+                }
+                mestoKola.put(dogodek, mesta);
+            });
             Map<Long, Integer> mestoDogodka = new HashMap<>();
             for (Long id : nastavitve.redDogodkov()) {
                 mestoDogodka.putIfAbsent(id, mestoDogodka.size());
@@ -312,7 +332,7 @@ public final class PredlogTekem {
                     }
                 }
 
-                int kolo = koloPoVrsti(t, zadnjeKoloSkupin);
+                int kolo = koloPoVrsti(t, zadnjeKoloSkupin, mestoKola);
 
                 // pocitek: udelezenec z najkrajsim premorom
                 Long najkrajsiPremor = null;
@@ -386,13 +406,15 @@ public final class PredlogTekem {
                     || (t.vrsta() == Vrsta.EKIPNO && t.status() == StatusTekme.V_IGRI && t.miza() == null);
         }
 
-        /* Kolo po vrsti (2): v skupinskem delu kolo skupine, v izlocilnem delu (glavna in
+        /* Kolo po vrsti (2): v skupinskem delu mesto kola v vrstnem redu kol kategorije
+           (brez organizatorjevega reda je to kolo skupine), v izlocilnem delu (glavna in
            tolazilna mreza, zrebi SV regije) krog mreze za zadnjim kolom skupin iste
            kategorije. Posnetek vsebuje vse tekme dogodka v teku, zato je zadnje kolo
            skupin znano tudi, ko je ze odigrano. */
-        private static int koloPoVrsti(Tekma t, Map<Long, Integer> zadnjeKoloSkupin) {
+        private static int koloPoVrsti(Tekma t, Map<Long, Integer> zadnjeKoloSkupin,
+                                       Map<Long, Map<Integer, Integer>> mestoKola) {
             if (t.faza() == FazaTekme.SKUPINA) {
-                return t.kolo();
+                return mestoKola.getOrDefault(t.idDogodka(), Map.of()).getOrDefault(t.kolo(), t.kolo());
             }
             return zadnjeKoloSkupin.getOrDefault(t.idDogodka(), 0) + t.kolo();
         }
@@ -472,6 +494,25 @@ public final class PredlogTekem {
             if (b == null) return a;
             return a.isAfter(b) ? a : b;
         }
+    }
+
+    /* Vrstni red kol skupin kategorije z zadnjim kolom skupin zadnjeKolo: kola, kot jih je
+       nastavil organizator (V80), nato tista, ki jih na seznamu ni, po vrsti. Kolo, ki ga
+       ni (zreb je bil ponovljen z manjsimi skupinami), odpade. Brez nastavitve 1, 2, 3 ...
+       Isto pravilo bere vmesnik pri tisku listkov po kolih (pomozno/listki.ts, redKol). */
+    public static List<Integer> redKol(List<Integer> shranjen, int zadnjeKolo) {
+        Set<Integer> red = new LinkedHashSet<>();
+        if (shranjen != null) {
+            for (Integer kolo : shranjen) {
+                if (kolo != null && kolo >= 1 && kolo <= zadnjeKolo) {
+                    red.add(kolo);
+                }
+            }
+        }
+        for (int kolo = 1; kolo <= zadnjeKolo; kolo++) {
+            red.add(kolo);
+        }
+        return List.copyOf(red);
     }
 
     /* »ima še 1 tekmo, 2 tekmi, 3 tekme, 5 tekem« */

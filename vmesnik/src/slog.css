@@ -34363,6 +34363,64 @@ html.uvod-tece {
   cursor: not-allowed;
 }
 
+/* Vrstni red kol (V80): ime kategorije zgoraj, kola levo prej v vrsti pod njim. */
+.mize-skupne__vrstica--kola {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 0 12px;
+}
+
+.mize-skupne__glava-kol {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.mize-skupne__kola {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mize-skupne__kolo {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--barva-crnilo);
+  background: var(--barva-bela);
+}
+
+.mize-skupne__kolo-st {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  font: 700 16px var(--pisava-mono);
+}
+
+.mize-skupne__kolo-gumb {
+  width: 30px;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--barva-crnilo);
+  font: 500 16px var(--pisava-mono);
+  cursor: pointer;
+}
+
+.mize-skupne__kolo-gumb:hover:not(:disabled) {
+  background: var(--barva-glavna-mehko);
+}
+
+.mize-skupne__kolo-gumb:disabled {
+  color: var(--barva-crta);
+  cursor: not-allowed;
+}
+
 .mize-skupne__povezi {
   display: flex;
   flex-wrap: wrap;

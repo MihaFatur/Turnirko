@@ -43,6 +43,9 @@ export interface PripravljenListek {
   sklopNaslov: string
   /* Samo na skupnem tisku vseh kategorij. */
   kategorija?: KategorijaListka
+  /* Mesto kola skupin v vrstnem redu kol kategorije (V80; 1 = igra se prvo); stolpci tabele
+     in hitra izbira »Na vrsti« gredo po njem. Brez njega velja številka kola. */
+  mestoKola?: number
 }
 
 /* Tekme, ki jih je smiselno natisniti skupaj: skupina, žreb ali kolo. */
@@ -90,16 +93,19 @@ export function pripraviListke(
   )
   const rangSkupine = (t: TekmaDto) =>
     t.idSkupina === null ? -1 : (rangi.get(t.idSkupina) ?? rangi.size + t.idSkupina)
+  /* Kola skupin v vrstnem redu, ki ga je organizator nastavil na strani Mize (V80): tisk
+     po kolih gre kot predlog tekem, tudi kola v skupini. */
+  const kolo = mestaKol(podatki)
 
   return podatki.tekme
     .filter(jePripravljena)
     .sort(
       (a, b) =>
         RANG_FAZE[a.faza] - RANG_FAZE[b.faza] ||
-        (poKolih && a.faza === 'SKUPINA' ? a.kolo - b.kolo : 0) ||
+        (poKolih && a.faza === 'SKUPINA' ? kolo(a) - kolo(b) : 0) ||
         rangSkupine(a) - rangSkupine(b) ||
         (a.idZreb ?? 0) - (b.idZreb ?? 0) ||
-        a.kolo - b.kolo ||
+        kolo(a) - kolo(b) ||
         a.pozicija - b.pozicija,
     )
     .map((tekma) => {
@@ -116,6 +122,7 @@ export function pripraviListke(
         opis: poKolih && skupina !== null ? `Skupina ${skupina}` : faza,
         sklop: sklop.kljuc,
         sklopNaslov: sklop.naslov,
+        ...(tekma.faza === 'SKUPINA' ? { mestoKola: kolo(tekma) } : {}),
       }
     })
 }
@@ -263,7 +270,14 @@ function oznakaVrstice(l: PripravljenListek): { kljuc: string; naslov: string } 
 /* Listke (že razvrščene za tisk) razporedi v tabelo. */
 export function tabelaListkov(listki: PripravljenListek[]): TabelaListkov {
   const skupinski = listki.filter((l) => l.tekma.faza === 'SKUPINA')
-  const kola = [...new Set(skupinski.map((l) => l.tekma.kolo))].sort((a, b) => a - b)
+  /* Stolpci po vrstnem redu kol (V80): kolo, ki se v kateri od kategorij igra prej, gre levo;
+     brez nastavitve po številki. */
+  const mesto = new Map<number, number>()
+  for (const l of skupinski) {
+    const m = l.mestoKola ?? l.tekma.kolo
+    mesto.set(l.tekma.kolo, Math.min(mesto.get(l.tekma.kolo) ?? m, m))
+  }
+  const kola = [...mesto.keys()].sort((a, b) => mesto.get(a)! - mesto.get(b)! || a - b)
   const vTabeli =
     skupinski.length > 0 &&
     skupinski.every((l) => l.skupina !== null) &&
@@ -327,8 +341,30 @@ export function enoteListkov(tabela: TabelaListkov): EnotaListkov[] {
 
 /* Kolo po vrsti za skupni tisk (isto pravilo kot predlog tekem na strani Mize): skupinski
    del po kolih skupin, izločilni del kot naslednja kola za zadnjim kolom skupin kategorije. */
-export function koloPoVrsti(t: TekmaDto, zadnjeKoloSkupin: number): number {
-  return t.faza === 'SKUPINA' ? t.kolo : zadnjeKoloSkupin + t.kolo
+export function koloPoVrsti(
+  t: TekmaDto,
+  zadnjeKoloSkupin: number,
+  mestoKola: (t: TekmaDto) => number = (x) => x.kolo,
+): number {
+  return t.faza === 'SKUPINA' ? mestoKola(t) : zadnjeKoloSkupin + t.kolo
+}
+
+/* Vrstni red kol skupin (V80): nastavljena kola, nato manjkajoča po vrsti; kolo, ki ga ni,
+   odpade. Isto pravilo kot PredlogTekem.redKol na strežniku. */
+export function redKol(shranjen: readonly number[] | undefined, zadnjeKolo: number): number[] {
+  const red = new Set<number>()
+  for (const k of shranjen ?? []) if (Number.isInteger(k) && k >= 1 && k <= zadnjeKolo) red.add(k)
+  for (let k = 1; k <= zadnjeKolo; k++) red.add(k)
+  return [...red]
+}
+
+/* Mesto kola skupin v vrstnem redu kategorije (1, 2, 3 …); tekma izločilnega dela vrne
+   svoj krog (primerja se samo s tekmami istega dela). */
+function mestaKol(podatki: MrezaDto): (t: TekmaDto) => number {
+  const skupinska = podatki.tekme.filter((t) => t.faza === 'SKUPINA').map((t) => t.kolo)
+  const zadnje = skupinska.length > 0 ? Math.max(...skupinska) : 0
+  const mesta = new Map(redKol(podatki.dogodek.vrstniRedKol, zadnje).map((k, i) => [k, i + 1] as const))
+  return (t) => (t.faza === 'SKUPINA' ? (mesta.get(t.kolo) ?? t.kolo) : t.kolo)
 }
 
 /* Listki vseh kategorij za en tisk (skupne mize, V78): po kolih = 1. kolo vseh kategorij v
@@ -342,10 +378,11 @@ export function listkiVsehKategorij(
   kategorije.forEach((k, red) => {
     const skupinska = k.mreza.tekme.filter((t) => t.faza === 'SKUPINA').map((t) => t.kolo)
     const zadnje = skupinska.length > 0 ? Math.max(...skupinska) : 0
+    const mestoKola = mestaKol(k.mreza)
     for (const l of pripraviListke(k.mreza, razvrstitev)) {
       vsi.push({
         l: { ...l, kategorija: { idDogodka: k.idDogodka, naslov: k.naslov, red } },
-        kolo: koloPoVrsti(l.tekma, zadnje),
+        kolo: koloPoVrsti(l.tekma, zadnje, mestoKola),
       })
     }
   })
